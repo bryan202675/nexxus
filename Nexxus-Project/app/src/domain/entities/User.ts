@@ -1,0 +1,66 @@
+/**
+ * Entidad pura de Usuario.
+ * No depende de Firebase, React, ni ninguna librería externa.
+ */
+export interface User {
+  id: string;
+  nombre: string;
+  correo: string;
+  rol: 'empleado' | 'jefe' | 'admin' | 'psicologo' | string;
+  departamento: string;
+  departamentoId?: string;
+  empresa?: string;
+  empresaId?: string;
+  foto_perfil?: string;
+  cargoId?: string;
+  cargo?: string;
+  telefono?: string;
+  sede?: string;
+  sedeId?: string;
+  jefeId?: string;
+  jefeNombre?: string;
+  salarioBase?: number;
+  permisos?: {
+    modulos?: string[];
+    sedes?: string[];
+  };
+  eliminado?: boolean;
+  racha: number;
+  ultimoCheckIn?: string;
+  activo: boolean;
+  estado_activo?: boolean;
+  estado_trabajo?: 'disponible' | 'ocupado' | 'en_pausa' | 'en_reunion' | 'fuera_oficina';
+  
+  // Extensiones Fase 3 (Perfil Laboral Útil)
+  horario_laboral?: string;
+  dias_vacaciones_disponibles?: number;
+  kpis?: {
+    nombre: string;
+    valor: number;
+    meta: number;
+    unidad: string;
+  }[];
+  habilidades?: string[];
+  historial_laboral?: {
+    puesto: string;
+    fecha: string;
+    accion: string;
+  }[];
+  certificaciones?: string[];
+  
+  // Extensiones Fase 5 (Gamificación y Capacitación)
+  insignias?: {
+    id: string;
+    nombre: string;
+    icono: string;
+    fecha_obtenida: string;
+    categoria: 'productividad' | 'bienestar' | 'aprendizaje';
+  }[];
+  progreso_capacitacion?: {
+    curso_id: string;
+    porcentaje: number;
+    completado: boolean;
+  }[];
+  puntos_recompensa?: number;
+  createdAt?: string;
+}

@@ -1,0 +1,135 @@
+export const ANIMACIONES = {
+  spring: {
+    bouncy: { tension: 60, friction: 5, useNativeDriver: true },
+    smooth: { tension: 40, friction: 8, useNativeDriver: true },
+    stiff: { tension: 100, friction: 10, useNativeDriver: true },
+  },
+  timing: {
+    rapida: { duration: 150, useNativeDriver: true },
+    normal: { duration: 300, useNativeDriver: true },
+    lenta: { duration: 500, useNativeDriver: true },
+  }
+};
+
+export const COLORES = {
+  primario: '#7C3AED',
+  primarioFuerte: '#6D28D9',
+  primarioClaro: '#8B5CF6',
+  blanco: '#FFFFFF',
+  secundario: '#3B82F6',
+  secundarioFuerte: '#2563EB',
+  secundarioClaro: '#60A5FA',
+  acento: '#8B5CF6',
+  exito: '#22C55E',
+  alerta: '#F59E0B',
+  error: '#EF4444',
+  fondo: '#000000',
+  fondoOscuro: '#0A0A0A',
+  fondoProfundo: '#000000',
+  fondoVioleta: '#1E1B4B',
+  superficie: '#171717',
+  superficieVidrio: 'rgba(255, 255, 255, 0.05)',
+  superficieVidrioOscura: 'rgba(255, 255, 255, 0.02)',
+  superficieSuave: 'rgba(255, 255, 255, 0.03)',
+  superficieSecundaria: '#121212',
+  borde: 'rgba(255, 255, 255, 0.08)',
+  bordeFuerte: 'rgba(255, 255, 255, 0.12)',
+  texto: '#FAFAFA',
+  textoSecundario: '#A1A1AA',
+  textoSuave: '#71717A',
+  textoInverso: '#000000',
+  sombra: '#000000',
+  cardGradient: ['#171717', '#0A0A0A'] as const,
+
+  // Aliases para compatibilidad
+  sobreSuperficie: '#F8FAFC',
+  sobreSuperficieVariante: '#94A3B8',
+  superficieContenedorBaja: '#111827',
+  superficieContenedorAlta: 'rgba(255, 255, 255, 0.08)',
+  superficieContenedorMinima: '#0F172A',
+  superficieContenedorMaxima: 'rgba(255, 255, 255, 0.12)',
+  contorno: '#64748B',
+  contornoVariante: 'rgba(255, 255, 255, 0.1)',
+  contenedorPrimario: 'rgba(124, 58, 237, 0.2)',
+  contenedorSecundario: 'rgba(59, 130, 246, 0.2)',
+  contenedorError: 'rgba(239, 68, 68, 0.2)',
+  fijoPrimarioDim: '#7C3AED',
+  terciarioDim: '#8B5CF6',
+};
+
+export const GRADIENTES = {
+  principal: ['#6D28D9', '#7C3AED', '#3B82F6'] as const,
+  premium: ['#7C3AED', '#8B5CF6', '#3B82F6'] as const,
+  suave: ['#1E1B4B', '#0F172A'] as const,
+  aurora: ['#1A1A24', '#12121A', '#0D0D14'] as const,
+  glass: ['rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0.02)'] as const,
+  enfasis: ['#8B5CF6', '#7C3AED'] as const,
+  exito: ['#4ADE80', '#22C55E'] as const,
+  peligro: ['#F87171', '#EF4444'] as const,
+};
+
+export const TIPOGRAFIA = {
+  hero: { fontSize: 40, fontWeight: '900' as const, lineHeight: 48, letterSpacing: -1 },
+  tituloPantalla: { fontSize: 32, fontWeight: '800' as const, lineHeight: 40, letterSpacing: -0.5 },
+  tituloSeccion: { fontSize: 24, fontWeight: '700' as const, lineHeight: 32, letterSpacing: -0.3 },
+  tituloTarjeta: { fontSize: 18, fontWeight: '700' as const, lineHeight: 24 },
+  cuerpoGrande: { fontSize: 16, fontWeight: '500' as const, lineHeight: 24 },
+  cuerpo: { fontSize: 15, fontWeight: '400' as const, lineHeight: 22 },
+  cuerpoPequeno: { fontSize: 13, fontWeight: '400' as const, lineHeight: 18 },
+  leyenda: { fontSize: 13, fontWeight: '600' as const, lineHeight: 18 },
+  micro: { fontSize: 11, fontWeight: '700' as const, lineHeight: 14, textTransform: 'uppercase' as const },
+};
+
+export const ESPACIADO = {
+  none: 0,
+  xxs: 4,
+  xs: 8,
+  sm: 12,
+  md: 16,
+  lg: 20,
+  xl: 24,
+  xxl: 32,
+  xxxl: 48,
+  huge: 64,
+};
+
+export const RADIOS = {
+  xs: 8,
+  sm: 12,
+  md: 16,
+  lg: 20,
+  xl: 28,
+  xxl: 32,
+  completo: 999,
+};
+
+export const SOMBRAS = {
+  suave: {
+    shadowColor: COLORES.sombra,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  tarjeta: {
+    shadowColor: COLORES.sombra,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    elevation: 6,
+  },
+  flotante: {
+    shadowColor: COLORES.sombra,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.16,
+    shadowRadius: 32,
+    elevation: 10,
+  },
+  premium: {
+    shadowColor: '#7C4DFF',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.2,
+    shadowRadius: 40,
+    elevation: 15,
+  }
+};

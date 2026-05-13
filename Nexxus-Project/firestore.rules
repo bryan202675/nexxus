@@ -1,0 +1,145 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function autenticado() {
+      return request.auth != null;
+    }
+    
+    function obtenerUsuario() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+    
+    function mismaEmpresa(empresaId) {
+      return obtenerUsuario().empresaId == empresaId || obtenerUsuario().empresa_id == empresaId;
+    }
+    
+    function esAdmin() {
+      return obtenerUsuario().rol == 'admin';
+    }
+
+    function esGerente() {
+      return obtenerUsuario().rol == 'admin';
+    }
+
+    function esJefe() {
+      return obtenerUsuario().rol == 'jefe' || obtenerUsuario().rol == 'jefe_sector';
+    }
+
+    function esPsicologo() {
+      return obtenerUsuario().rol == 'psicologo';
+    }
+
+    function activo() {
+      return obtenerUsuario().estado_activo == true;
+    }
+
+    function accesoEmpresa(empresaId) {
+      return autenticado() && mismaEmpresa(empresaId);
+    }
+
+    match /usuarios/{userId} {
+      allow read: if autenticado(); 
+      allow create: if autenticado() && request.auth.uid == userId;
+      allow update: if autenticado() && (request.auth.uid == userId || esAdmin());
+      allow delete: if autenticado() && esAdmin();
+
+      match /{subcollection}/{docId} {
+        allow read, write: if autenticado() && (request.auth.uid == userId || esAdmin());
+      }
+    }
+    
+    match /empresas/{empresaId} {
+      allow read: if autenticado();
+      allow create: if autenticado() && request.resource.data.adminId == request.auth.uid;
+      allow update, delete: if autenticado() && 
+                            (request.auth.uid == resource.data.adminId || 
+                             obtenerUsuario().rol == "admin");
+    }
+    
+    match /anuncios/{anuncioId} {
+      allow read: if autenticado();
+      allow write: if autenticado() && (esAdmin() || esJefe());
+    }
+    
+    match /notificaciones/{notifId} {
+      allow read: if autenticado() && (resource.data.usuario_id == request.auth.uid || esAdmin() || esJefe());
+      allow update: if autenticado() && resource.data.usuario_id == request.auth.uid;
+      allow create: if autenticado();
+      allow delete: if autenticado() && (esAdmin() || resource.data.usuario_id == request.auth.uid);
+    }
+
+    match /push_tokens/{tokenId} {
+      allow read: if autenticado() && (resource.data.usuario_id == request.auth.uid || esAdmin());
+      allow create: if autenticado() && request.resource.data.usuario_id == request.auth.uid;
+      allow update: if autenticado() && (resource.data.usuario_id == request.auth.uid || esAdmin());
+      allow delete: if autenticado() && resource.data.usuario_id == request.auth.uid;
+    }
+
+    match /tareas/{tarea_id} {
+      allow read: if autenticado();
+      allow create: if autenticado() && (esAdmin() || esJefe());
+      allow update: if autenticado() && (
+        esAdmin() || esJefe() ||
+        resource.data.asignado_a == request.auth.uid
+      );
+      allow delete: if autenticado() && (esAdmin() || esJefe());
+    }
+
+    match /solicitudes_ausencia/{solicitud_id} {
+      allow read: if autenticado();
+      allow create: if autenticado();
+      allow update: if autenticado() && (
+        esAdmin() || esJefe() ||
+        resource.data.usuario_id == request.auth.uid
+      );
+      allow delete: if autenticado() && (esAdmin() || resource.data.usuario_id == request.auth.uid);
+    }
+
+    match /respuestas_formularios/{respuesta_id} {
+      allow read: if autenticado() && (
+        accesoEmpresa(resource.data.empresaId) ||
+        resource.data.usuario_id == request.auth.uid
+      );
+      allow create: if autenticado() && request.resource.data.usuario_id == request.auth.uid;
+      allow update, delete: if autenticado() && esAdmin();
+    }
+
+    match /especialistas/{especialistaId} {
+      allow read: if autenticado();
+      allow create, update, delete: if autenticado() && (esAdmin() || esJefe());
+    }
+
+    match /citas/{citaId} {
+      allow read: if autenticado();
+      allow create: if autenticado();
+      allow update: if autenticado() && (
+        esAdmin() ||
+        resource.data.usuario_id == request.auth.uid ||
+        resource.data.especialista == obtenerUsuario().nombre
+      );
+      allow delete: if autenticado() && esAdmin();
+    }
+
+    match /sedes/{sedeId} {
+      allow read: if autenticado();
+      allow write: if autenticado() && (esAdmin() || esJefe());
+    }
+
+    match /nominas/{nominaId} {
+      allow read: if autenticado() && (resource.data.usuario_id == request.auth.uid || esAdmin() || esJefe());
+      allow write: if autenticado() && (esAdmin() || esJefe());
+    }
+
+    match /logs_auditoria/{log_id} {
+      allow read: if autenticado() && (esAdmin() || esJefe());
+      allow create: if autenticado();
+      allow update, delete: if false; 
+    }
+    
+    match /{collection}/{document=**} {
+      allow read: if autenticado();
+      allow write: if autenticado();
+    }
+  }
+}

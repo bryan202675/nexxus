@@ -1,0 +1,8 @@
+{
+  "name": "nexxus-monorepo",
+  "private": true,
+  "workspaces": [
+    "app",
+    "backend"
+  ]
+}

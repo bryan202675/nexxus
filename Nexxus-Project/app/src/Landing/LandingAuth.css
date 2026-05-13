@@ -1,0 +1,505 @@
+.nx-auth-shell {
+  border-radius: 34px;
+  margin-top: 8px;
+}
+
+.nx-auth-layout {
+  display: grid;
+  gap: 22px;
+  grid-template-columns: 0.82fr 1.18fr;
+  padding: 22px;
+}
+
+.nx-auth-aside {
+  background:
+    radial-gradient(circle at 30% 20%, rgba(168, 85, 247, 0.24), transparent 36%),
+    rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 26px;
+  padding: 26px;
+}
+
+.nx-auth-eyebrow,
+.nx-company-head span {
+  color: #d8b4fe;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.nx-auth-aside h3 {
+  color: white;
+  font-size: clamp(1.9rem, 3vw, 3.2rem);
+  letter-spacing: -0.045em;
+  line-height: 1;
+  margin: 18px 0 16px;
+}
+
+.nx-auth-aside p {
+  color: #b7acd8;
+  line-height: 1.7;
+}
+
+.nx-auth-progress,
+.nx-password-meter {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  height: 9px;
+  margin: 24px 0 14px;
+  overflow: hidden;
+}
+
+.nx-auth-progress i,
+.nx-password-meter i {
+  background: linear-gradient(90deg, #7c3aed, #c084fc, #4f46e5);
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+  transition: width 260ms ease;
+}
+
+.nx-auth-steps {
+  display: grid;
+  gap: 10px;
+}
+
+.nx-auth-steps span {
+  align-items: center;
+  color: #80749f;
+  display: flex;
+  font-size: 0.86rem;
+  font-weight: 800;
+  gap: 9px;
+}
+
+.nx-auth-steps span::before {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  content: "";
+  height: 8px;
+  width: 8px;
+}
+
+.nx-auth-steps span.is-active {
+  color: white;
+}
+
+.nx-auth-steps span.is-active::before {
+  background: #c084fc;
+  box-shadow: 0 0 18px rgba(192, 132, 252, 0.72);
+}
+
+.nx-auth-panel {
+  min-width: 0;
+}
+
+.nx-auth-tabs {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  display: inline-flex;
+  gap: 5px;
+  margin-bottom: 14px;
+  padding: 5px;
+  width: 100%;
+}
+
+.nx-auth-tabs button,
+.nx-auth-secondary {
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  color: #b7acd8;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 900;
+  padding: 11px 16px;
+}
+
+.nx-auth-tabs button {
+  flex: 1;
+}
+
+.nx-auth-tabs button.active {
+  background: #f4efff;
+  color: #21113c;
+}
+
+.nx-google-button {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  font-weight: 900;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 16px;
+  min-height: 52px;
+  width: 100%;
+}
+
+.nx-google-button span {
+  align-items: center;
+  background: white;
+  border-radius: 999px;
+  color: #5b21b6;
+  display: inline-flex;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+
+.nx-auth-form {
+  animation: nx-auth-enter 360ms ease both;
+  display: grid;
+  gap: 13px;
+}
+
+.nx-company-form {
+  gap: 10px;
+}
+
+.nx-auth-field {
+  display: grid;
+  gap: 8px;
+}
+
+.nx-auth-field span {
+  color: #eee8ff;
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.nx-auth-field input,
+.nx-auth-field select {
+  background: rgba(4, 3, 14, 0.68);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  color: white;
+  font: inherit;
+  outline: 0;
+  padding: 15px 16px;
+  transition: 180ms ease;
+  width: 100%;
+}
+
+.nx-company-form .nx-auth-field {
+  gap: 6px;
+}
+
+.nx-company-form .nx-auth-field input,
+.nx-company-form .nx-auth-field select {
+  padding: 13px 14px;
+}
+
+.nx-auth-field select option {
+  background: #140f22;
+}
+
+.nx-auth-field input:focus,
+.nx-auth-field select:focus {
+  border-color: rgba(192, 132, 252, 0.62);
+  box-shadow: 0 0 0 4px rgba(192, 132, 252, 0.1);
+}
+
+.nx-auth-field.is-invalid input,
+.nx-auth-field.is-invalid select {
+  border-color: rgba(255, 105, 135, 0.72);
+}
+
+.nx-auth-field small,
+.nx-logo-error {
+  color: #ff9eb2;
+  font-size: 0.78rem;
+}
+
+.nx-password-meter {
+  height: 7px;
+  margin: 0;
+}
+
+.nx-password-list {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.nx-password-list span {
+  color: #8f82b0;
+  font-size: 0.8rem;
+  transition: color 180ms ease, transform 180ms ease;
+}
+
+.nx-password-list span.valid {
+  color: #d8b4fe;
+  transform: translateX(2px);
+}
+
+.nx-auth-error {
+  background: rgba(255, 105, 135, 0.12);
+  border: 1px solid rgba(255, 105, 135, 0.28);
+  border-radius: 16px;
+  color: #ffd1dc;
+  padding: 13px;
+}
+
+.nx-auth-submit {
+  margin-top: 4px;
+  width: 100%;
+}
+
+.nx-auth-submit .star-inner-content {
+  width: 100%;
+}
+
+.nx-company-head {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.nx-company-head strong {
+  color: white;
+}
+
+.nx-logo-drop {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px dashed rgba(216, 180, 254, 0.42);
+  border-radius: 22px;
+  color: #d8b4fe;
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  min-height: 126px;
+  overflow: hidden;
+  padding: 18px;
+  position: relative;
+  text-align: center;
+}
+
+.nx-logo-drop.is-invalid {
+  border-color: rgba(255, 105, 135, 0.72);
+}
+
+.nx-logo-drop img {
+  border-radius: 18px;
+  max-height: 74px;
+  max-width: 160px;
+  object-fit: contain;
+}
+
+.nx-logo-drop span {
+  color: #a99cc9;
+  font-size: 0.78rem;
+}
+
+.nx-logo-drop input {
+  cursor: pointer;
+  inset: 0;
+  opacity: 0;
+  position: absolute;
+}
+
+.nx-company-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.nx-company-actions {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 0.36fr 0.64fr;
+}
+
+.nx-auth-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  min-height: 52px;
+}
+
+@keyframes nx-auth-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 940px) {
+  .nx-auth-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .nx-auth-shell {
+    border-radius: 24px;
+    margin-top: 0;
+  }
+
+  .nx-auth-layout {
+    gap: 14px;
+    padding: 12px;
+  }
+
+  .nx-auth-aside {
+    border-radius: 20px;
+    padding: 14px;
+  }
+
+  .nx-auth-eyebrow,
+  .nx-company-head span {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+  }
+
+  .nx-auth-aside h3 {
+    display: none;
+  }
+
+  .nx-auth-aside p {
+    display: none;
+  }
+
+  .nx-auth-progress,
+  .nx-password-meter {
+    margin: 10px 0 0;
+  }
+
+  .nx-auth-steps {
+    display: none;
+  }
+
+  .nx-auth-steps span {
+    font-size: 0.78rem;
+    gap: 7px;
+  }
+
+  .nx-auth-tabs {
+    margin-bottom: 10px;
+    padding: 4px;
+  }
+
+  .nx-auth-tabs button,
+  .nx-auth-secondary {
+    font-size: 0.9rem;
+    padding: 10px 12px;
+  }
+
+  .nx-google-button {
+    border-radius: 16px;
+    margin-bottom: 12px;
+    min-height: 46px;
+  }
+
+  .nx-google-button span {
+    height: 24px;
+    width: 24px;
+  }
+
+  .nx-auth-form {
+    gap: 10px;
+  }
+
+  .nx-auth-field {
+    gap: 6px;
+  }
+
+  .nx-auth-field span {
+    font-size: 0.8rem;
+  }
+
+  .nx-auth-field input,
+  .nx-auth-field select,
+  .nx-company-form .nx-auth-field input,
+  .nx-company-form .nx-auth-field select {
+    border-radius: 14px;
+    min-height: 44px;
+    padding: 12px 13px;
+  }
+
+  .nx-password-list {
+    gap: 6px;
+  }
+
+  .nx-password-list span,
+  .nx-auth-field small,
+  .nx-logo-error {
+    font-size: 0.76rem;
+  }
+
+  .nx-auth-submit,
+  .nx-auth-submit .star-inner-content,
+  .star-border-container.nx-auth-submit {
+    width: 100%;
+  }
+
+  .nx-auth-submit .star-inner-content {
+    min-height: 44px;
+    padding: 0 14px;
+  }
+
+  .nx-company-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .nx-logo-drop {
+    border-radius: 18px;
+    min-height: 104px;
+    padding: 14px;
+  }
+
+  .nx-logo-drop img {
+    max-height: 58px;
+    max-width: 132px;
+  }
+
+  .nx-logo-drop span {
+    font-size: 0.74rem;
+  }
+
+  .nx-company-grid,
+  .nx-company-actions,
+  .nx-password-list {
+    grid-template-columns: 1fr;
+  }
+
+  .nx-company-actions {
+    gap: 10px;
+  }
+
+  .nx-auth-secondary {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 380px) {
+  .nx-auth-layout {
+    padding: 10px;
+  }
+
+  .nx-auth-aside {
+    padding: 14px;
+  }
+
+  .nx-auth-aside p {
+    display: none;
+  }
+
+  .nx-auth-progress {
+    margin-top: 12px;
+  }
+}
