@@ -196,10 +196,10 @@ export default function GestionNomina() {
   }
 
   const stats = [
-    { label: "Salario Bruto Total", val: moneda(datos.bruto), icon: "account-balance-wallet" as const, color: BRAND.iconBright },
+    { label: "Salario Bruto Total", val: moneda(datos.bruto), icon: "account-balance-wallet" as const, color: ADMIN.iconos.dinero },
     { label: "Deducciones Legales", val: moneda(datos.isss + datos.afp + datos.renta), icon: "gavel" as const, color: BRAND.warning },
     { label: "Salario Neto Total", val: moneda(datos.neto), icon: "payments" as const, color: BRAND.success },
-    { label: "Avance de Pago", val: `${datos.avance}%`, icon: "task-alt" as const, color: datos.avance >= 90 ? BRAND.success : BRAND.cyan },
+    { label: "Avance de Pago", val: `${datos.avance}%`, icon: "task-alt" as const, color: datos.avance >= 90 ? ADMIN.iconos.exito : ADMIN.iconos.tareas },
   ];
 
   return (
@@ -240,7 +240,7 @@ export default function GestionNomina() {
               <Text style={estilos.panelTitle}>Estado de Dispersión</Text>
               <Text style={estilos.panelSubtitle}>Pagos por estado operativo</Text>
             </View>
-            <IconPanel icon="timeline" color={BRAND.cyan} />
+            <IconPanel icon="timeline" color={ADMIN.iconos.auditoria} />
           </View>
           <MetricRow label="Pagado" value={datos.pagados} total={pagos.length} color={BRAND.success} />
           <MetricRow label="Procesando" value={datos.procesando} total={pagos.length} color={BRAND.warning} />
@@ -255,8 +255,8 @@ export default function GestionNomina() {
             </View>
             <IconPanel icon="receipt-long" color={BRAND.warning} />
           </View>
-          <MiniMoney label="ISSS 3%" value={datos.isss} color={BRAND.cyan} />
-          <MiniMoney label="AFP 7.25%" value={datos.afp} color={BRAND.violet} />
+          <MiniMoney label="ISSS 3%" value={datos.isss} color={ADMIN.iconos.documentos} />
+          <MiniMoney label="AFP 7.25%" value={datos.afp} color={ADMIN.iconos.organizacion} />
           <MiniMoney label="Renta" value={datos.renta} color={BRAND.warning} />
         </View>
 
@@ -266,7 +266,7 @@ export default function GestionNomina() {
               <Text style={estilos.panelTitle}>Costo por Departamento</Text>
               <Text style={estilos.panelSubtitle}>Mayor concentración salarial</Text>
             </View>
-            <IconPanel icon="domain" color={BRAND.violet} />
+            <IconPanel icon="domain" color={ADMIN.iconos.organizacion} />
           </View>
           <View style={estilos.departmentList}>
             {datos.departamentos.length > 0 ? datos.departamentos.map((depto) => (

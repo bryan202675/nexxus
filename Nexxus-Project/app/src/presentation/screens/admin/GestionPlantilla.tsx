@@ -155,7 +155,7 @@ const normalizarSalarioUSD = (valor: string) => valor.replace(/[^\d.,]/g, '').sp
 const conTiempoLimite = async <T,>(promesa: Promise<T>, milisegundos = 25000): Promise<T> => {
   let temporizador: ReturnType<typeof setTimeout>;
   const limite = new Promise<T>((_, rechazar) => {
-    temporizador = setTimeout(() => rechazar(new Error('La creación tardó demasiado. Verifica que la Cloud Function crearUsuarioEmpresa esté desplegada y vuelve a intentar.')), milisegundos);
+    temporizador = setTimeout(() => rechazar(new Error('La creaciÃ³n tardÃ³ demasiado. Verifica que la Cloud Function crearUsuarioEmpresa estÃ© desplegada y vuelve a intentar.')), milisegundos);
   });
   try {
     return await Promise.race([promesa, limite]);
@@ -169,8 +169,8 @@ const PremiumBadge = ({ variant, children }: { variant: 'success' | 'warning' | 
     success: { color: BRAND.success, bgColor: 'rgba(34,197,94,0.1)', borderColor: 'rgba(34,197,94,0.2)' },
     warning: { color: BRAND.warning, bgColor: 'rgba(245,158,11,0.1)', borderColor: 'rgba(245,158,11,0.2)' },
     error: { color: BRAND.error, bgColor: 'rgba(239,68,68,0.1)', borderColor: 'rgba(239,68,68,0.2)' },
-    blue: { color: BRAND.iconBright, bgColor: 'rgba(96,165,250,0.1)', borderColor: 'rgba(96,165,250,0.2)' },
-    violet: { color: BRAND.violet, bgColor: 'rgba(167,139,250,0.1)', borderColor: 'rgba(167,139,250,0.2)' },
+    blue: { color: ADMIN.iconos.personas, bgColor: 'rgba(96,165,250,0.1)', borderColor: 'rgba(96,165,250,0.2)' },
+    violet: { color: ADMIN.iconos.seguridad, bgColor: 'rgba(167,139,250,0.1)', borderColor: 'rgba(167,139,250,0.2)' },
     default: { color: BRAND.textSec, bgColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(196,181,253,0.10)' },
   }[variant];
 
@@ -276,7 +276,7 @@ const SelectorOpciones = ({
         <Text style={[estilos.selectorSelectText, !seleccion && estilos.selectorSelectPlaceholder]} numberOfLines={1}>
           {seleccion ? seleccion.nombre : placeholder}
         </Text>
-        <MaterialIcons name={abierto ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} size={22} color={BRAND.iconBright} />
+        <MaterialIcons name={abierto ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} size={22} color={ADMIN.iconos.organizacion} />
       </TouchableOpacity>
       {abierto && (
         <View style={estilos.dropdownPanel}>
@@ -291,7 +291,7 @@ const SelectorOpciones = ({
                   <Text style={[estilos.dropdownItemTitulo, value === opcion.id && estilos.selectorTextActivo]} numberOfLines={1}>{opcion.nombre}</Text>
                   {opcion.detalle ? <Text style={estilos.dropdownItemDetalle} numberOfLines={1}>{opcion.detalle}</Text> : null}
                 </View>
-                {value === opcion.id ? <MaterialIcons name="check-circle" size={18} color={BRAND.success} /> : null}
+                {value === opcion.id ? <MaterialIcons name="check-circle" size={18} color={ADMIN.iconos.exito} /> : null}
               </TouchableOpacity>
             )) : (
               <Text style={estilos.dropdownEmpty}>{placeholder}</Text>
@@ -610,11 +610,11 @@ export default function GestionPlantilla() {
     const correo = formulario.correo.trim().toLowerCase();
     if (!empresaId || !nombre || !correo || guardando) return;
     if (modoFormulario === 'crear' && formulario.contrasena.trim().length < 6) {
-      Alert.alert('Contraseña requerida', 'La contraseña debe tener al menos 6 caracteres.');
+      Alert.alert('ContraseÃ±a requerida', 'La contraseÃ±a debe tener al menos 6 caracteres.');
       return;
     }
     if (!formulario.cargoId || !formulario.departamentoId || !formulario.sedeId) {
-      Alert.alert('Datos laborales requeridos', 'Selecciona cargo, departamento y sede desde los catálogos creados en Estructura.');
+      Alert.alert('Datos laborales requeridos', 'Selecciona cargo, departamento y sede desde los catÃ¡logos creados en Estructura.');
       return;
     }
 
@@ -639,7 +639,7 @@ export default function GestionPlantilla() {
         }));
         const uid = (resultado.data as { uid?: string })?.uid;
         if (!uid) {
-          throw new Error('Firebase no devolvió el identificador del empleado creado.');
+          throw new Error('Firebase no devolviÃ³ el identificador del empleado creado.');
         }
         try {
           await updateDoc(doc(db, 'usuarios', uid), {
@@ -655,14 +655,14 @@ export default function GestionPlantilla() {
             empresaId,
             usuario_id: uid,
             titulo: 'Bienvenido a NexusHR',
-            mensaje: 'Tu cuenta empresarial fue creada por administración. Completa tu perfil y primer check-in.',
+            mensaje: 'Tu cuenta empresarial fue creada por administraciÃ³n. Completa tu perfil y primer check-in.',
             tipo: 'info',
             leida: false,
             fecha: new Date().toISOString(),
           }), 8000);
         } catch {}
         try {
-          await registrarAuditoria('Creación de Empleado', `${nombre} · ${correo}`);
+          await registrarAuditoria('CreaciÃ³n de Empleado', `${nombre} Â· ${correo}`);
         } catch {}
       } else if (empleadoSeleccionado?.id) {
         try {
@@ -670,13 +670,13 @@ export default function GestionPlantilla() {
         } catch (error: any) {
           throw new Error(error?.message || 'No se pudo actualizar el empleado en Firestore.');
         }
-        await registrarAuditoria('Edición de Empleado', `${nombre} · ${correo}`);
+        await registrarAuditoria('EdiciÃ³n de Empleado', `${nombre} Â· ${correo}`);
       }
       cerrarModal();
     } catch (error: any) {
-      Alert.alert('No se pudo guardar', error?.message || 'Firebase no confirmó la operación.');
+      Alert.alert('No se pudo guardar', error?.message || 'Firebase no confirmÃ³ la operaciÃ³n.');
       try {
-        await registrarAuditoria('Error al Guardar Empleado', `${nombre} · ${correo}`, 'Error');
+        await registrarAuditoria('Error al Guardar Empleado', `${nombre} Â· ${correo}`, 'Error');
       } catch {}
     } finally {
       setGuardando(false);
@@ -687,7 +687,7 @@ export default function GestionPlantilla() {
     if (!id) return;
     await useCases.admin.updateUserProfile.execute(id, { activo });
     const empleado = usuarios.find((usuario) => usuario.id === id);
-    await registrarAuditoria(activo ? 'Activación de Empleado' : 'Desactivación de Empleado', empleado?.nombre || id);
+    await registrarAuditoria(activo ? 'ActivaciÃ³n de Empleado' : 'DesactivaciÃ³n de Empleado', empleado?.nombre || id);
   };
 
   const eliminarEmpleado = async (empleado: UsuarioPlantilla) => {
@@ -705,7 +705,7 @@ export default function GestionPlantilla() {
 
     Alert.alert(
       'Eliminar empleado',
-      `Se dará de baja operativa a ${empleado.nombre || 'este empleado'} y dejará de aparecer en Plantilla.`,
+      `Se darÃ¡ de baja operativa a ${empleado.nombre || 'este empleado'} y dejarÃ¡ de aparecer en Plantilla.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Eliminar', style: 'destructive', onPress: ejecutar },
@@ -716,16 +716,16 @@ export default function GestionPlantilla() {
   if (cargando) {
     return (
       <View style={[estilos.contenedor, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={BRAND.iconBright} />
+        <ActivityIndicator size="large" color={ADMIN.iconos.organizacion} />
       </View>
     );
   }
 
   const resumen = [
-    { label: 'Total Plantilla', valor: usuarios.length, detalle: `${datos.activos} activos`, icono: 'groups' as const, color: BRAND.iconBright },
-    { label: 'Check-in Hoy', valor: `${datos.coberturaCheckIn}%`, detalle: `${datos.checkInsHoy} registros`, icono: 'timer' as const, color: BRAND.cyan },
-    { label: 'En Seguimiento', valor: datos.riesgo, detalle: 'riesgo operativo', icono: 'warning' as const, color: datos.riesgo > 0 ? BRAND.error : BRAND.success },
-    { label: 'Jefaturas', valor: datos.jefes, detalle: `${datos.admins} admins`, icono: 'verified-user' as const, color: BRAND.violet },
+    { label: 'Total Plantilla', valor: usuarios.length, detalle: `${datos.activos} activos`, icono: 'groups' as const, color: ADMIN.iconos.personas },
+    { label: 'Check-in Hoy', valor: `${datos.coberturaCheckIn}%`, detalle: `${datos.checkInsHoy} registros`, icono: 'timer' as const, color: ADMIN.iconos.calendario },
+    { label: 'En Seguimiento', valor: datos.riesgo, detalle: 'riesgo operativo', icono: 'warning' as const, color: datos.riesgo > 0 ? ADMIN.iconos.peligro : ADMIN.iconos.exito },
+    { label: 'Jefaturas', valor: datos.jefes, detalle: `${datos.admins} admins`, icono: 'verified-user' as const, color: ADMIN.iconos.seguridad },
   ];
 
   return (
@@ -733,8 +733,8 @@ export default function GestionPlantilla() {
     <ScrollView style={estilos.contenedor} contentContainerStyle={estilos.scrollContent} showsVerticalScrollIndicator={false}>
       <View style={estilos.header}>
         <View>
-          <Text style={estilos.titulo}>Gestión de Plantilla</Text>
-          <Text style={estilos.subtitulo}>Directorio corporativo, estado operativo y señales de bienestar</Text>
+          <Text style={estilos.titulo}>GestiÃ³n de Plantilla</Text>
+          <Text style={estilos.subtitulo}>Directorio corporativo, estado operativo y seÃ±ales de bienestar</Text>
         </View>
         <TouchableOpacity style={estilos.btnPrimary} onPress={abrirCrear}>
           <LinearGradient colors={[BRAND.bangladeshBlue, BRAND.caribbeanBlue]} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.btnGradient}>
@@ -763,16 +763,16 @@ export default function GestionPlantilla() {
         <View style={estilos.panelCard}>
           <View style={estilos.panelHeader}>
             <View>
-              <Text style={estilos.panelTitle}>Distribución por Rol</Text>
+              <Text style={estilos.panelTitle}>DistribuciÃ³n por Rol</Text>
               <Text style={estilos.panelSubtitle}>Permisos y gobierno interno</Text>
             </View>
-            <IconPanel icon="admin-panel-settings" color={BRAND.violet} />
+            <IconPanel icon="admin-panel-settings" color={ADMIN.iconos.seguridad} />
           </View>
           <View style={estilos.roleGrid}>
-            <MiniRole label="Admins" value={datos.admins} color={BRAND.violet} />
-            <MiniRole label="Jefes" value={datos.jefes} color={BRAND.iconBright} />
-            <MiniRole label="Empleados" value={datos.empleados} color={BRAND.success} />
-            <MiniRole label="Psicólogos" value={datos.psicologos} color={BRAND.cyan} />
+            <MiniRole label="Admins" value={datos.admins} color={ADMIN.iconos.seguridad} />
+            <MiniRole label="Jefes" value={datos.jefes} color={ADMIN.iconos.organizacion} />
+            <MiniRole label="Empleados" value={datos.empleados} color={ADMIN.iconos.personas} />
+            <MiniRole label="PsicÃ³logos" value={datos.psicologos} color={ADMIN.iconos.calendario} />
           </View>
         </View>
 
@@ -780,9 +780,9 @@ export default function GestionPlantilla() {
           <View style={estilos.panelHeader}>
             <View>
               <Text style={estilos.panelTitle}>Departamentos</Text>
-              <Text style={estilos.panelSubtitle}>Concentración de personal</Text>
+              <Text style={estilos.panelSubtitle}>ConcentraciÃ³n de personal</Text>
             </View>
-            <IconPanel icon="domain" color={BRAND.cyan} />
+            <IconPanel icon="domain" color={ADMIN.iconos.calendario} />
           </View>
           <View style={estilos.departmentList}>
             {datos.topDepartamentos.length > 0 ? datos.topDepartamentos.map((depto) => (
@@ -807,12 +807,12 @@ export default function GestionPlantilla() {
               <Text style={estilos.panelTitle}>Estado de Cuenta</Text>
               <Text style={estilos.panelSubtitle}>Disponibilidad laboral</Text>
             </View>
-            <IconPanel icon="fact-check" color={BRAND.success} />
+            <IconPanel icon="fact-check" color={ADMIN.iconos.exito} />
           </View>
           <View style={estilos.metricRows}>
-            <MetricRow label="Activos" value={datos.activos} total={usuarios.length} color={BRAND.success} />
-            <MetricRow label="Inactivos" value={datos.inactivos} total={usuarios.length} color={BRAND.error} />
-            <MetricRow label="Check-in cubierto" value={datos.checkInsHoy} total={datos.activos} color={BRAND.cyan} />
+            <MetricRow label="Activos" value={datos.activos} total={usuarios.length} color={ADMIN.iconos.exito} />
+            <MetricRow label="Inactivos" value={datos.inactivos} total={usuarios.length} color={ADMIN.iconos.peligro} />
+            <MetricRow label="Check-in cubierto" value={datos.checkInsHoy} total={datos.activos} color={ADMIN.iconos.calendario} />
           </View>
         </View>
       </View>
@@ -883,23 +883,23 @@ export default function GestionPlantilla() {
                   </View>
                 </View>
                 <View style={[estilos.tdCell, { flex: 1.2, alignItems: 'center' }]}>
-                  <PremiumBadge variant={bienestarVariant}>{emp.checkInHoy ? `ESTRÉS ${emp.estres}/5` : 'SIN CHECK-IN'}</PremiumBadge>
+                  <PremiumBadge variant={bienestarVariant}>{emp.checkInHoy ? `ESTRÃ‰S ${emp.estres}/5` : 'SIN CHECK-IN'}</PremiumBadge>
                 </View>
                 <View style={[estilos.tdCell, { flex: 1, alignItems: 'center' }]}>
                   <PremiumBadge variant={activo ? 'success' : 'warning'}>{activo ? 'ACTIVO' : 'INACTIVO'}</PremiumBadge>
                 </View>
-                <View style={[estilos.tdCell, estilos.actionsCell, { flex: 1 }]}>
-                  <TouchableOpacity style={estilos.actionBtn} onPress={() => abrirEditar(emp)}>
-                    <MaterialIcons name="edit" size={18} color={BRAND.iconBright} />
+                <View style={[estilos.tdCell, estilos.actionsCell]}>
+                  <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnEdit]} onPress={() => abrirEditar(emp)}>
+                    <MaterialIcons name="edit" size={17} color={ADMIN.iconos.documentos} />
                   </TouchableOpacity>
-                  <TouchableOpacity style={estilos.actionBtn} onPress={() => actualizarActivo(emp.id, true)}>
-                    <MaterialIcons name="check-circle" size={18} color={BRAND.success} />
+                  <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnSuccess]} onPress={() => actualizarActivo(emp.id, true)}>
+                    <MaterialIcons name="check-circle" size={17} color={ADMIN.iconos.exito} />
                   </TouchableOpacity>
                   <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnDanger]} onPress={() => actualizarActivo(emp.id, false)}>
-                    <MaterialIcons name="block" size={18} color={BRAND.error} />
+                    <MaterialIcons name="block" size={17} color={ADMIN.iconos.peligro} />
                   </TouchableOpacity>
                   <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnDanger]} onPress={() => eliminarEmpleado(emp)}>
-                    <MaterialIcons name="delete-outline" size={18} color={BRAND.error} />
+                    <MaterialIcons name="delete-outline" size={17} color={ADMIN.iconos.peligro} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -932,7 +932,7 @@ export default function GestionPlantilla() {
               <FormField label="Nombre completo" value={formulario.nombre} onChangeText={(valor) => actualizarFormulario('nombre', valor)} placeholder="Nombre del empleado" />
               <FormField label="Correo empresarial" value={formulario.correo} onChangeText={(valor) => actualizarFormulario('correo', valor)} placeholder="correo@empresa.com" editable={modoFormulario === 'crear'} />
               {modoFormulario === 'crear' && (
-                <FormField label="Contraseña temporal" value={formulario.contrasena} onChangeText={(valor) => actualizarFormulario('contrasena', valor)} placeholder="Mínimo 6 caracteres" secureTextEntry />
+                <FormField label="ContraseÃ±a temporal" value={formulario.contrasena} onChangeText={(valor) => actualizarFormulario('contrasena', valor)} placeholder="MÃ­nimo 6 caracteres" secureTextEntry />
               )}
               <SelectorOpciones
                 label="Cargo"
@@ -970,7 +970,7 @@ export default function GestionPlantilla() {
                   setSelectorActivo(null);
                 }}
               />
-              <FormField label="Teléfono" value={formulario.telefono} onChangeText={(valor) => actualizarFormulario('telefono', valor)} placeholder="+503 0000 0000" />
+              <FormField label="TelÃ©fono" value={formulario.telefono} onChangeText={(valor) => actualizarFormulario('telefono', valor)} placeholder="+503 0000 0000" />
               <FormField label="Salario base USD" value={formulario.salarioBase ? `$${formulario.salarioBase}` : ''} onChangeText={(valor) => actualizarFormulario('salarioBase', normalizarSalarioUSD(valor))} placeholder="$0" />
             </View>
 
@@ -1226,7 +1226,7 @@ const estilos = StyleSheet.create({
     textTransform: 'uppercase',
   },
   departmentValue: {
-    color: BRAND.cyan,
+    color: ADMIN.iconos.calendario,
     fontSize: 13,
     fontWeight: '900',
   },
@@ -1326,7 +1326,7 @@ const estilos = StyleSheet.create({
     letterSpacing: 1.3,
   },
   filterChipTextActivo: {
-    color: BRAND.iconBright,
+    color: ADMIN.iconos.personas,
   },
   tableContainer: {
     width: '100%',
@@ -1418,14 +1418,28 @@ const estilos = StyleSheet.create({
     alignItems: 'flex-end',
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 8,
+    gap: 10,
+    flex: 1.25,
+    minWidth: 184,
   },
   actionBtn: {
-    padding: 11,
+    width: 40,
+    height: 40,
     backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: ADMIN.radioPequeno,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(196,181,253,0.10)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  actionBtnEdit: {
+    borderColor: 'rgba(96,165,250,0.24)',
+    backgroundColor: 'rgba(96,165,250,0.08)',
+  },
+  actionBtnSuccess: {
+    borderColor: 'rgba(34,197,94,0.24)',
+    backgroundColor: 'rgba(34,197,94,0.08)',
   },
   actionBtnDanger: {
     borderColor: 'rgba(239,68,68,0.2)',
@@ -1651,7 +1665,7 @@ const estilos = StyleSheet.create({
     backgroundColor: 'rgba(96,165,250,0.08)',
   },
   suggestionText: {
-    color: BRAND.iconBright,
+    color: ADMIN.iconos.personas,
     fontSize: 9,
     fontWeight: '900',
     textTransform: 'uppercase',

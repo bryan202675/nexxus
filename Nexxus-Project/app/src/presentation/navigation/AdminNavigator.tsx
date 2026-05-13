@@ -11,6 +11,7 @@ import EstructuraOrganizativa from '../screens/admin/EstructuraOrganizativa';
 import GestionNomina from '../screens/admin/GestionNomina';
 import ComunicacionAdmin from '../screens/admin/ComunicacionAdmin';
 import AuditoriaLogs from '../screens/admin/AuditoriaLogs';
+import CalendarioEmpresarial from '../screens/admin/CalendarioEmpresarial';
 
 const Tab = createBottomTabNavigator();
 
@@ -29,12 +30,13 @@ const BRAND = {
 };
 
 const MENU_ITEMS = [
-  { name: 'DashboardGeneral', label: 'Dashboard', icon: 'grid-view' },
+  { name: 'DashboardGeneral', label: 'Centro operativo', icon: 'dashboard-customize' },
+  { name: 'CalendarioEmpresarial', label: 'Calendario', icon: 'event-note' },
   { name: 'GestionPlantilla', label: 'Plantilla', icon: 'people-outline' },
   { name: 'EstructuraOrganizativa', label: 'Estructura', icon: 'domain' },
-  { name: 'GestionNomina', label: 'Nómina', icon: 'attach-money' },
-  { name: 'ComunicacionAdmin', label: 'Comunicación', icon: 'chat-bubble-outline' },
-  { name: 'AuditoriaLogs', label: 'Auditoría', icon: 'history' },
+  { name: 'GestionNomina', label: 'Nómina', icon: 'payments' },
+  { name: 'ComunicacionAdmin', label: 'Comunicación', icon: 'forum' },
+  { name: 'AuditoriaLogs', label: 'Auditoría', icon: 'manage-search' },
 ];
 
 const PARTICULAS = [
@@ -158,7 +160,7 @@ function Sidebar({ state, navigation }: BottomTabBarProps) {
         
         <View style={estilos.assetSystemCard}>
           <Text style={estilos.assetSystemLabel}>Admin Suite</Text>
-          <Text style={estilos.assetSystemValue}>Control Center</Text>
+          <Text style={estilos.assetSystemValue}>Centro operativo</Text>
         </View>
       </View>
 
@@ -181,6 +183,7 @@ function Sidebar({ state, navigation }: BottomTabBarProps) {
 
           const MenuItemContent = (
             <View style={[estilos.menuItemInner, isFocused && estilos.menuItemInnerActivo]}>
+              {isFocused && <View style={estilos.menuIndicadorActivo} />}
               <MaterialIcons 
                 name={menuItem.icon as any} 
                 size={20} 
@@ -230,14 +233,14 @@ function Sidebar({ state, navigation }: BottomTabBarProps) {
           </View>
         </View>
         <View style={estilos.darkModeRow}>
-          <Text style={estilos.darkModeText}>Dark Mode</Text>
+          <Text style={estilos.darkModeText}>Modo premium</Text>
           <View style={estilos.darkModeSwitch}>
             <View style={estilos.darkModeKnob} />
           </View>
         </View>
         <BotonAnimado style={estilos.logoutBtn} onPress={logout}>
           <MaterialIcons name="logout" size={16} color="#4B5563" />
-          <Text style={estilos.logoutText}>Cerrar Sesión</Text>
+          <Text style={estilos.logoutText}>Cerrar sesión</Text>
         </BotonAnimado>
       </View>
     </Animated.View>
@@ -245,6 +248,7 @@ function Sidebar({ state, navigation }: BottomTabBarProps) {
 }
 
 const NavbarHeader = () => {
+  const { user } = useAuth();
   const entrada = useRef(new Animated.Value(0)).current;
   const pulso = useRef(new Animated.Value(0)).current;
 
@@ -268,11 +272,11 @@ const NavbarHeader = () => {
       <BlurView intensity={30} tint="dark" style={estilos.navbarGlass}>
         <View style={estilos.navbarLeft}>
           <Animated.View style={[estilos.statusDot, { transform: [{ scale: pulso.interpolate({ inputRange: [0, 1], outputRange: [1, 1.45] }) }] }]} />
-          <Text style={estilos.statusText}>Welcome Back, Admin</Text>
+          <Text style={estilos.statusText}>Hola, {user?.nombre?.split(' ')[0] || 'Admin'}</Text>
         </View>
         <View style={estilos.navbarRight}>
           <View style={estilos.searchBox}>
-            <Text style={estilos.searchText}>Search</Text>
+            <Text style={estilos.searchText}>Buscar en Nexxus</Text>
             <MaterialIcons name="search" size={16} color="rgba(255,255,255,0.58)" />
           </View>
           <BotonAnimado style={estilos.iconCircle}>
@@ -288,7 +292,7 @@ const NavbarHeader = () => {
           <View style={estilos.divider} />
           <BotonAnimado style={estilos.vipBtn}>
             <LinearGradient colors={[BRAND.bangladeshBlue, BRAND.caribbeanBlue]} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.vipBtnGradient}>
-              <Text style={estilos.vipBtnText}>ACTIVO</Text>
+              <Text style={estilos.vipBtnText}>EN VIVO</Text>
             </LinearGradient>
           </BotonAnimado>
         </View>
@@ -300,7 +304,8 @@ const NavbarHeader = () => {
 export default function AdminNavigator() {
   return (
     <View style={estilos.contenedorPrincipal}>
-      <CampoParticulas />
+      <View pointerEvents="none" style={estilos.fondoGlowUno} />
+      <View pointerEvents="none" style={estilos.fondoGlowDos} />
       <Tab.Navigator 
         tabBar={(props) => <Sidebar {...props} />}
         screenOptions={{ 
@@ -311,6 +316,7 @@ export default function AdminNavigator() {
         }}
       >
         <Tab.Screen name="DashboardGeneral" component={DashboardAdmin} />
+        <Tab.Screen name="CalendarioEmpresarial" component={CalendarioEmpresarial} />
         <Tab.Screen name="GestionPlantilla" component={GestionPlantilla} />
         <Tab.Screen name="EstructuraOrganizativa" component={EstructuraOrganizativa} />
         <Tab.Screen name="GestionNomina" component={GestionNomina} />
@@ -325,6 +331,26 @@ const estilos = StyleSheet.create({
   contenedorPrincipal: {
     flex: 1,
     backgroundColor: BRAND.richBlack,
+  },
+  fondoGlowUno: {
+    position: 'absolute',
+    top: -180,
+    right: -140,
+    width: 420,
+    height: 420,
+    borderRadius: 210,
+    backgroundColor: 'rgba(124,58,237,0.18)',
+    zIndex: 0,
+  },
+  fondoGlowDos: {
+    position: 'absolute',
+    bottom: -220,
+    left: 120,
+    width: 520,
+    height: 360,
+    borderRadius: 260,
+    backgroundColor: 'rgba(37,99,235,0.10)',
+    zIndex: 0,
   },
   hoverElevado: {
     borderColor: ADMIN.bordeFuerte,
@@ -348,8 +374,8 @@ const estilos = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
-    width: 188,
-    backgroundColor: 'rgba(6, 4, 15, 0.90)',
+    width: 224,
+    backgroundColor: 'rgba(13, 9, 27, 0.78)',
     borderRightWidth: 1,
     borderRightColor: ADMIN.borde,
     display: 'flex',
@@ -362,12 +388,12 @@ const estilos = StyleSheet.create({
     left: -128,
     width: 320,
     height: 320,
-    backgroundColor: 'rgba(139,92,246,0.18)',
+    backgroundColor: 'rgba(168,85,247,0.18)',
     borderRadius: 160,
   },
   contenidoPrincipal: {
     flex: 1,
-    marginLeft: 188,
+    marginLeft: 224,
     backgroundColor: BRAND.richBlack,
   },
   logoContainer: {
@@ -402,7 +428,7 @@ const estilos = StyleSheet.create({
     marginTop: 16,
     padding: 11,
     borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.045)',
+    backgroundColor: 'rgba(13,9,27,0.62)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.10)',
   },
@@ -426,30 +452,40 @@ const estilos = StyleSheet.create({
     gap: 5,
   },
   menuItem: {
-    borderRadius: 8,
+    borderRadius: 10,
     overflow: 'hidden',
   },
   menuItemActivo: {
     ...sombraVioleta,
   },
   menuItemGradient: {
-    borderRadius: 8,
+    borderRadius: 10,
   },
   menuItemInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 10,
+    paddingVertical: 11,
+    paddingHorizontal: 11,
+    position: 'relative',
   },
   menuItemInnerActivo: {
     backgroundColor: 'transparent',
   },
   menuTexto: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '800',
     color: '#94A3B8',
     letterSpacing: 0,
     marginLeft: 9,
+  },
+  menuIndicadorActivo: {
+    position: 'absolute',
+    left: 0,
+    top: 9,
+    bottom: 9,
+    width: 3,
+    borderRadius: 999,
+    backgroundColor: '#F8FBFF',
   },
   menuTextoActivo: {
     color: '#fff',
@@ -526,7 +562,7 @@ const estilos = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 10,
-    backgroundColor: 'rgba(10, 7, 20, 0.70)',
+    backgroundColor: 'rgba(13, 9, 27, 0.68)',
     borderWidth: 1,
     borderColor: ADMIN.borde,
     ...sombraAdmin,
@@ -559,12 +595,12 @@ const estilos = StyleSheet.create({
     gap: 10,
   },
   searchBox: {
-    width: 180,
+    width: 220,
     minHeight: 34,
     borderRadius: 9,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.10)',
-    backgroundColor: 'rgba(0,0,0,0.22)',
+    backgroundColor: 'rgba(5,3,12,0.36)',
     paddingHorizontal: 11,
     flexDirection: 'row',
     alignItems: 'center',

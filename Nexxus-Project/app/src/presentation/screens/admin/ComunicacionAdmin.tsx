@@ -199,10 +199,10 @@ export default function ComunicacionAdmin() {
   }
 
   const stats = [
-    { label: "Anuncios Totales", val: feeds.length, detail: "historial activo", icon: "campaign" as const, color: BRAND.iconBright },
-    { label: "Receptores Canal", val: datos.receptores, detail: selectedAudience, icon: "groups" as const, color: BRAND.success },
-    { label: "Prioridad Alta", val: datos.urgentes, detail: "requiere atención", icon: "priority-high" as const, color: datos.urgentes > 0 ? BRAND.error : BRAND.success },
-    { label: "No Leídas", val: datos.noLeidas, detail: "notificaciones", icon: "notifications-active" as const, color: datos.noLeidas > 0 ? BRAND.warning : BRAND.cyan },
+    { label: "Anuncios Totales", val: feeds.length, detail: "historial activo", icon: "campaign" as const, color: ADMIN.iconos.comunicacion },
+    { label: "Receptores Canal", val: datos.receptores, detail: selectedAudience, icon: "groups" as const, color: ADMIN.iconos.personas },
+    { label: "Prioridad Alta", val: datos.urgentes, detail: "requiere atención", icon: "priority-high" as const, color: datos.urgentes > 0 ? ADMIN.iconos.peligro : ADMIN.iconos.exito },
+    { label: "No Leídas", val: datos.noLeidas, detail: "notificaciones", icon: "notifications-active" as const, color: datos.noLeidas > 0 ? ADMIN.iconos.advertencia : ADMIN.iconos.comunicacion },
   ];
 
   return (
@@ -244,7 +244,7 @@ export default function ComunicacionAdmin() {
                 <Text style={estilos.panelTitle}>Canales</Text>
                 <Text style={estilos.panelSubtitle}>Audiencias reales</Text>
               </View>
-              <IconPanel icon="forum" color={BRAND.cyan} />
+              <IconPanel icon="forum" color={ADMIN.iconos.comunicacion} />
             </View>
             <View style={estilos.audienceList}>
               {datos.porCanal.map((canal) => (
@@ -271,7 +271,7 @@ export default function ComunicacionAdmin() {
                 <Text style={estilos.panelTitle}>Nuevo Anuncio</Text>
                 <Text style={estilos.panelSubtitle}>Destino: {selectedAudience}</Text>
               </View>
-              <IconPanel icon="send" color={BRAND.iconBright} />
+              <IconPanel icon="send" color={ADMIN.iconos.comunicacion} />
             </View>
             <TextInput
               style={estilos.chatInput}

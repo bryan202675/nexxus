@@ -148,11 +148,11 @@ const IconPanel = ({ icon, color }: { icon: keyof typeof MaterialIcons.glyphMap;
 
 const PremiumBadge = ({ variant, children }: { variant: 'success' | 'warning' | 'error' | 'blue' | 'violet' | 'default', children: React.ReactNode }) => {
   const mapa = {
-    success: { color: BRAND.success, bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.22)' },
-    warning: { color: BRAND.warning, bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.22)' },
-    error: { color: BRAND.error, bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.22)' },
-    blue: { color: BRAND.iconBright, bg: 'rgba(96,165,250,0.1)', border: 'rgba(96,165,250,0.22)' },
-    violet: { color: BRAND.violet, bg: 'rgba(167,139,250,0.1)', border: 'rgba(167,139,250,0.22)' },
+    success: { color: ADMIN.iconos.exito, bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.22)' },
+    warning: { color: ADMIN.iconos.advertencia, bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.22)' },
+    error: { color: ADMIN.iconos.peligro, bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.22)' },
+    blue: { color: ADMIN.iconos.documentos, bg: 'rgba(96,165,250,0.1)', border: 'rgba(96,165,250,0.22)' },
+    violet: { color: ADMIN.iconos.seguridad, bg: 'rgba(167,139,250,0.1)', border: 'rgba(167,139,250,0.22)' },
     default: { color: BRAND.textSec, bg: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.06)' },
   }[variant];
 
@@ -224,12 +224,12 @@ const SummaryList = ({ title, items, empty, onEdit, onDelete }: { title: string;
           <View style={estilos.summaryActions}>
             {onEdit && (
               <TouchableOpacity style={estilos.summaryActionBtn} onPress={() => onEdit(item)}>
-                <MaterialIcons name="edit" size={16} color={BRAND.iconBright} />
+                <MaterialIcons name="edit" size={16} color={ADMIN.iconos.documentos} />
               </TouchableOpacity>
             )}
             {onDelete && (
               <TouchableOpacity style={[estilos.summaryActionBtn, estilos.summaryActionDanger]} onPress={() => onDelete(item)}>
-                <MaterialIcons name="delete-outline" size={16} color={BRAND.error} />
+                <MaterialIcons name="delete-outline" size={16} color={ADMIN.iconos.peligro} />
               </TouchableOpacity>
             )}
           </View>
@@ -478,10 +478,10 @@ export default function EstructuraOrganizativa() {
         ...(modoModal === 'crear' ? { createdAt: new Date().toISOString() } : {}),
         creadoPor: user?.id || '',
       }, { merge: true });
-      await registrarAuditoria(modoModal === 'crear' ? 'Creación de Sede' : 'Edición de Sede', nombre);
+      await registrarAuditoria(modoModal === 'crear' ? 'CreaciÃ³n de Sede' : 'EdiciÃ³n de Sede', nombre);
       cerrarModal();
     } catch (error: any) {
-      Alert.alert('No se pudo crear la sede', error?.message || 'Firebase no confirmó la operación.');
+      Alert.alert('No se pudo crear la sede', error?.message || 'Firebase no confirmÃ³ la operaciÃ³n.');
     } finally {
       setGuardando(false);
     }
@@ -511,10 +511,10 @@ export default function EstructuraOrganizativa() {
       } else {
         await useCases.admin.departments.create({ ...payload, createdAt: new Date().toISOString() } as any);
       }
-      await registrarAuditoria(modoModal === 'crear' ? 'Creación de Departamento' : 'Edición de Departamento', `${nombre} · ${sede?.nombre || 'Global'}`);
+      await registrarAuditoria(modoModal === 'crear' ? 'CreaciÃ³n de Departamento' : 'EdiciÃ³n de Departamento', `${nombre} Â· ${sede?.nombre || 'Global'}`);
       cerrarModal();
     } catch (error: any) {
-      Alert.alert('No se pudo crear el departamento', error?.message || 'Firebase no confirmó la operación.');
+      Alert.alert('No se pudo crear el departamento', error?.message || 'Firebase no confirmÃ³ la operaciÃ³n.');
     } finally {
       setGuardando(false);
     }
@@ -541,10 +541,10 @@ export default function EstructuraOrganizativa() {
         ...(modoModal === 'crear' ? { createdAt: new Date().toISOString() } : {}),
         creadoPor: user?.id || '',
       }, { merge: true });
-      await registrarAuditoria(modoModal === 'crear' ? 'Creación de Cargo' : 'Edición de Cargo', `${nombre} · ${departamento?.nombre || 'Global'}`);
+      await registrarAuditoria(modoModal === 'crear' ? 'CreaciÃ³n de Cargo' : 'EdiciÃ³n de Cargo', `${nombre} Â· ${departamento?.nombre || 'Global'}`);
       cerrarModal();
     } catch (error: any) {
-      Alert.alert('No se pudo crear el cargo', error?.message || 'Firebase no confirmó la operación.');
+      Alert.alert('No se pudo crear el cargo', error?.message || 'Firebase no confirmÃ³ la operaciÃ³n.');
     } finally {
       setGuardando(false);
     }
@@ -568,10 +568,10 @@ export default function EstructuraOrganizativa() {
         ...(modoModal === 'crear' ? { createdAt: new Date().toISOString() } : {}),
         creadoPor: user?.id || '',
       }, { merge: true });
-      await registrarAuditoria(modoModal === 'crear' ? 'Creación de Rol Personalizado' : 'Edición de Rol Personalizado', nombre);
+      await registrarAuditoria(modoModal === 'crear' ? 'CreaciÃ³n de Rol Personalizado' : 'EdiciÃ³n de Rol Personalizado', nombre);
       cerrarModal();
     } catch (error: any) {
-      Alert.alert('No se pudo crear el rol', error?.message || 'Firebase no confirmó la operación.');
+      Alert.alert('No se pudo crear el rol', error?.message || 'Firebase no confirmÃ³ la operaciÃ³n.');
     } finally {
       setGuardando(false);
     }
@@ -592,7 +592,7 @@ export default function EstructuraOrganizativa() {
     const etiqueta = tipo === 'sede' ? 'Sede' : tipo === 'departamento' ? 'Departamento' : tipo === 'cargo' ? 'Cargo' : 'Rol Personalizado';
     Alert.alert(
       `Eliminar ${etiqueta}`,
-      `Se eliminará "${nombre}". Esta acción quedará registrada en auditoría.`,
+      `Se eliminarÃ¡ "${nombre}". Esta acciÃ³n quedarÃ¡ registrada en auditorÃ­a.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -600,7 +600,7 @@ export default function EstructuraOrganizativa() {
           style: 'destructive',
           onPress: async () => {
             await deleteDoc(doc(db, coleccion, id));
-            await registrarAuditoria(`Eliminación de ${etiqueta}`, nombre, 'Warning');
+            await registrarAuditoria(`EliminaciÃ³n de ${etiqueta}`, nombre, 'Warning');
           },
         },
       ]
@@ -678,16 +678,16 @@ export default function EstructuraOrganizativa() {
   if (cargando) {
     return (
       <View style={[estilos.contenedor, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={BRAND.iconBright} />
+        <ActivityIndicator size="large" color={ADMIN.iconos.organizacion} />
       </View>
     );
   }
 
   const stats = [
-    { label: "Sedes / Sucursales", val: sedes.length, trend: `${sedes.filter((sede) => sede.activa !== false).length} activas`, icon: "apartment" as const, color: BRAND.cyan },
-    { label: "Departamentos Activos", val: departamentos.length, trend: `${datos.sinJefe} sin jefe`, icon: "domain" as const, color: BRAND.iconBright },
-    { label: "Plazas Ocupadas", val: datos.totalEmpleados, trend: `${usuarios.length} usuarios`, icon: "groups" as const, color: BRAND.success },
-    { label: "Roles y Cargos", val: `${roles.length}/${cargos.length}`, trend: "permisos y puestos", icon: "badge" as const, color: BRAND.violet },
+    { label: "Sedes / Sucursales", val: sedes.length, trend: `${sedes.filter((sede) => sede.activa !== false).length} activas`, icon: "apartment" as const, color: ADMIN.iconos.calendario },
+    { label: "Departamentos Activos", val: departamentos.length, trend: `${datos.sinJefe} sin jefe`, icon: "domain" as const, color: ADMIN.iconos.organizacion },
+    { label: "Plazas Ocupadas", val: datos.totalEmpleados, trend: `${usuarios.length} usuarios`, icon: "groups" as const, color: ADMIN.iconos.personas },
+    { label: "Roles y Cargos", val: `${roles.length}/${cargos.length}`, trend: "permisos y puestos", icon: "badge" as const, color: ADMIN.iconos.seguridad },
   ];
 
   return (
@@ -696,12 +696,12 @@ export default function EstructuraOrganizativa() {
       <View style={estilos.header}>
         <View>
           <Text style={estilos.titulo}>Estructura Org.</Text>
-          <Text style={estilos.subtitulo}>Mapa jerárquico, sectores, nodos y carga operativa</Text>
+          <Text style={estilos.subtitulo}>Mapa jerÃ¡rquico, sectores, nodos y carga operativa</Text>
         </View>
         <View style={estilos.headerActions}>
-          <QuickCreateButton label="Sede" icon="apartment" color={BRAND.cyan} onPress={() => abrirCrear('sede')} />
-          <QuickCreateButton label="Depto" icon="domain-add" color={BRAND.iconBright} onPress={() => abrirCrear('departamento')} />
-          <QuickCreateButton label="Cargo" icon="work" color={BRAND.success} onPress={() => abrirCrear('cargo')} />
+          <QuickCreateButton label="Sede" icon="apartment" color={ADMIN.iconos.calendario} onPress={() => abrirCrear('sede')} />
+          <QuickCreateButton label="Depto" icon="domain-add" color={ADMIN.iconos.organizacion} onPress={() => abrirCrear('departamento')} />
+          <QuickCreateButton label="Cargo" icon="work" color={ADMIN.iconos.personas} onPress={() => abrirCrear('cargo')} />
           <TouchableOpacity style={estilos.btnPrimary} onPress={() => abrirCrear('rol')}>
             <LinearGradient colors={[BRAND.bangladeshBlue, BRAND.caribbeanBlue]} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.btnGradient}>
               <MaterialIcons name="admin-panel-settings" size={18} color="#fff" style={estilos.btnIcon} />
@@ -730,16 +730,16 @@ export default function EstructuraOrganizativa() {
       </View>
 
       <View style={estilos.catalogGrid}>
-        <CatalogCard title="Sedes y Sucursales" subtitle="Ubicaciones empresariales" icon="apartment" color={BRAND.cyan} total={sedes.length} onPress={() => abrirCrear('sede')} />
-        <CatalogCard title="Departamentos" subtitle="Áreas dentro o fuera de sedes" icon="domain-add" color={BRAND.iconBright} total={departamentos.length} onPress={() => abrirCrear('departamento')} />
-        <CatalogCard title="Cargos" subtitle="Puestos operativos" icon="work" color={BRAND.success} total={cargos.length} onPress={() => abrirCrear('cargo')} />
-        <CatalogCard title="Roles y Permisos" subtitle="Accesos granulares" icon="admin-panel-settings" color={BRAND.violet} total={roles.length} onPress={() => abrirCrear('rol')} />
+        <CatalogCard title="Sedes y Sucursales" subtitle="Ubicaciones empresariales" icon="apartment" color={ADMIN.iconos.calendario} total={sedes.length} onPress={() => abrirCrear('sede')} />
+        <CatalogCard title="Departamentos" subtitle="Ãreas dentro o fuera de sedes" icon="domain-add" color={ADMIN.iconos.organizacion} total={departamentos.length} onPress={() => abrirCrear('departamento')} />
+        <CatalogCard title="Cargos" subtitle="Puestos operativos" icon="work" color={ADMIN.iconos.personas} total={cargos.length} onPress={() => abrirCrear('cargo')} />
+        <CatalogCard title="Roles y Permisos" subtitle="Accesos granulares" icon="admin-panel-settings" color={ADMIN.iconos.seguridad} total={roles.length} onPress={() => abrirCrear('rol')} />
       </View>
 
       <View style={estilos.catalogSummaryGrid}>
-        <SummaryList title="Sedes Registradas" items={sedes.map((sede) => ({ id: sede.id || sede.nombre || '', title: sede.nombre || 'Sede', detail: `${sede.ciudad || 'Sin ciudad'} · ${sede.responsableNombre || 'Sin responsable'}`, raw: sede }))} empty="Sin sedes creadas" onEdit={(item) => abrirEditarSede(item.raw as SedeEstructura)} onDelete={(item) => eliminarEntidad('sede', item.id, item.title)} />
-        <SummaryList title="Departamentos" items={departamentos.map((departamento) => ({ id: departamento.id || departamento.nombre || '', title: departamento.nombre, detail: `${departamento.sedeNombre || 'Global'} · ${departamento.jefe || 'Sin jefe'}`, raw: departamento }))} empty="Sin departamentos creados" onEdit={(item) => abrirEditarDepartamento(item.raw as ReturnType<typeof normalizarDepartamento>)} onDelete={(item) => eliminarEntidad('departamento', item.id, item.title)} />
-        <SummaryList title="Cargos Registrados" items={cargos.map((cargo) => ({ id: cargo.id || cargo.nombre || '', title: cargo.nombre || 'Cargo', detail: `${cargo.departamentoNombre || 'Global'} · ${cargo.nivel || 'Sin nivel'}`, raw: cargo }))} empty="Sin cargos creados" onEdit={(item) => abrirEditarCargo(item.raw as CargoEstructura)} onDelete={(item) => eliminarEntidad('cargo', item.id, item.title)} />
+        <SummaryList title="Sedes Registradas" items={sedes.map((sede) => ({ id: sede.id || sede.nombre || '', title: sede.nombre || 'Sede', detail: `${sede.ciudad || 'Sin ciudad'} Â· ${sede.responsableNombre || 'Sin responsable'}`, raw: sede }))} empty="Sin sedes creadas" onEdit={(item) => abrirEditarSede(item.raw as SedeEstructura)} onDelete={(item) => eliminarEntidad('sede', item.id, item.title)} />
+        <SummaryList title="Departamentos" items={departamentos.map((departamento) => ({ id: departamento.id || departamento.nombre || '', title: departamento.nombre, detail: `${departamento.sedeNombre || 'Global'} Â· ${departamento.jefe || 'Sin jefe'}`, raw: departamento }))} empty="Sin departamentos creados" onEdit={(item) => abrirEditarDepartamento(item.raw as ReturnType<typeof normalizarDepartamento>)} onDelete={(item) => eliminarEntidad('departamento', item.id, item.title)} />
+        <SummaryList title="Cargos Registrados" items={cargos.map((cargo) => ({ id: cargo.id || cargo.nombre || '', title: cargo.nombre || 'Cargo', detail: `${cargo.departamentoNombre || 'Global'} Â· ${cargo.nivel || 'Sin nivel'}`, raw: cargo }))} empty="Sin cargos creados" onEdit={(item) => abrirEditarCargo(item.raw as CargoEstructura)} onDelete={(item) => eliminarEntidad('cargo', item.id, item.title)} />
         <SummaryList title="Roles Personalizados" items={roles.map((rol) => ({ id: rol.id || rol.nombre || '', title: rol.nombre || 'Rol', detail: `${Object.values(rol.permisos || {}).filter(Boolean).length} permisos activos`, raw: rol }))} empty="Sin roles personalizados" onEdit={(item) => abrirEditarRol(item.raw as RolPersonalizado)} onDelete={(item) => eliminarEntidad('rol', item.id, item.title)} />
       </View>
 
@@ -748,9 +748,9 @@ export default function EstructuraOrganizativa() {
           <View style={estilos.panelHeader}>
             <View>
               <Text style={estilos.panelTitle}>Mapa de Nodos</Text>
-              <Text style={estilos.panelSubtitle}>Distribución por plazas</Text>
+              <Text style={estilos.panelSubtitle}>DistribuciÃ³n por plazas</Text>
             </View>
-            <IconPanel icon="hub" color={BRAND.violet} />
+            <IconPanel icon="hub" color={ADMIN.iconos.organizacion} />
           </View>
           <View style={estilos.nodeList}>
             {datos.departamentosOrdenados.slice(0, 5).map((departamento) => (
@@ -774,12 +774,12 @@ export default function EstructuraOrganizativa() {
               <Text style={estilos.panelTitle}>Gobernanza</Text>
               <Text style={estilos.panelSubtitle}>Responsables y cobertura</Text>
             </View>
-            <IconPanel icon="verified-user" color={BRAND.success} />
+            <IconPanel icon="verified-user" color={ADMIN.iconos.seguridad} />
           </View>
           <View style={estilos.metricRows}>
-            <MetricRow label="Con responsable" value={departamentos.length - datos.sinJefe} total={departamentos.length} color={BRAND.success} />
-            <MetricRow label="Sin responsable" value={datos.sinJefe} total={departamentos.length} color={BRAND.error} />
-            <MetricRow label="Nodos activos" value={datos.nodosActivos} total={Math.max(datos.nodosActivos, departamentos.length + datos.totalSectores)} color={BRAND.cyan} />
+            <MetricRow label="Con responsable" value={departamentos.length - datos.sinJefe} total={departamentos.length} color={ADMIN.iconos.personas} />
+            <MetricRow label="Sin responsable" value={datos.sinJefe} total={departamentos.length} color={ADMIN.iconos.peligro} />
+            <MetricRow label="Nodos activos" value={datos.nodosActivos} total={Math.max(datos.nodosActivos, departamentos.length + datos.totalSectores)} color={ADMIN.iconos.calendario} />
           </View>
         </View>
 
@@ -789,7 +789,7 @@ export default function EstructuraOrganizativa() {
               <Text style={estilos.panelTitle}>Sectores a Revisar</Text>
               <Text style={estilos.panelSubtitle}>Responsable o capacidad pendiente</Text>
             </View>
-            <IconPanel icon="warning" color={datos.sectoresCriticos.length > 0 ? BRAND.warning : BRAND.success} />
+            <IconPanel icon="warning" color={datos.sectoresCriticos.length > 0 ? ADMIN.iconos.advertencia : ADMIN.iconos.exito} />
           </View>
           <View style={estilos.criticalList}>
             {datos.sectoresCriticos.length > 0 ? datos.sectoresCriticos.map((sector) => (
@@ -797,7 +797,7 @@ export default function EstructuraOrganizativa() {
                 <View style={estilos.criticalDot} />
                 <View style={estilos.criticalInfo}>
                   <Text style={estilos.criticalName}>{sector.nombre}</Text>
-                  <Text style={estilos.criticalMeta}>{sector.departamento} · {sector.responsable}</Text>
+                  <Text style={estilos.criticalMeta}>{sector.departamento} Â· {sector.responsable}</Text>
                 </View>
               </View>
             )) : (
@@ -842,7 +842,7 @@ export default function EstructuraOrganizativa() {
                 </View>
                 <View style={estilos.deptTitleBox}>
                   <Text style={estilos.deptName} numberOfLines={1}>{dept.nombre}</Text>
-                  <Text style={estilos.deptCount}>{dept.plazas} Integrantes · {dept.sectores.length} Sectores</Text>
+                  <Text style={estilos.deptCount}>{dept.plazas} Integrantes Â· {dept.sectores.length} Sectores</Text>
                 </View>
               </View>
               <PremiumBadge variant={dept.estado === 'sinJefe' ? 'error' : dept.estado === 'sobrecarga' ? 'warning' : 'success'}>
@@ -858,7 +858,7 @@ export default function EstructuraOrganizativa() {
                     <Text style={estilos.managerAvatarText}>{(dept.jefe || '?')[0].toUpperCase()}</Text>
                   </View>
                   <View style={estilos.managerTextBox}>
-                    <Text style={estilos.managerLabel}>Responsable de Área</Text>
+                    <Text style={estilos.managerLabel}>Responsable de Ãrea</Text>
                     <Text style={estilos.managerName} numberOfLines={1}>{dept.jefe || 'No asignado'}</Text>
                   </View>
                 </View>
@@ -866,7 +866,7 @@ export default function EstructuraOrganizativa() {
               </View>
 
               <View style={estilos.deptMetrics}>
-                <MiniMetric label="Activos" value={dept.activos} color={BRAND.success} />
+                <MiniMetric label="Activos" value={dept.activos} color={ADMIN.iconos.personas} />
                 <MiniMetric label="Pendientes" value={dept.pendientes} color={dept.pendientes > 0 ? BRAND.warning : BRAND.success} />
                 <MiniMetric label="Productividad" value={`${dept.productividad}%`} color={dept.productividad >= 70 ? BRAND.success : BRAND.warning} />
               </View>
@@ -888,7 +888,7 @@ export default function EstructuraOrganizativa() {
                       <View style={[estilos.sectorIndicator, { backgroundColor: sector.responsable === 'No asignado' ? BRAND.warning : BRAND.iconBright }]} />
                       <View style={estilos.sectorTextBox}>
                         <Text style={estilos.sectorName} numberOfLines={1}>{sector.nombre}</Text>
-                        <Text style={estilos.sectorLead} numberOfLines={1}>Líder: <Text style={estilos.sectorLeadStrong}>{sector.responsable}</Text></Text>
+                        <Text style={estilos.sectorLead} numberOfLines={1}>LÃ­der: <Text style={estilos.sectorLeadStrong}>{sector.responsable}</Text></Text>
                       </View>
                     </View>
                     <View style={estilos.sectorCountPill}>
@@ -919,7 +919,7 @@ export default function EstructuraOrganizativa() {
               <Text style={estilos.modalTitle}>
                 {`${modoModal === 'crear' ? 'Crear' : 'Editar'} ${modalActivo === 'sede' ? 'Sede' : modalActivo === 'departamento' ? 'Departamento' : modalActivo === 'cargo' ? 'Cargo' : 'Rol'}`}
               </Text>
-              <Text style={estilos.modalSubtitle}>Configuración organizacional conectada a Firebase</Text>
+              <Text style={estilos.modalSubtitle}>ConfiguraciÃ³n organizacional conectada a Firebase</Text>
             </View>
             <TouchableOpacity style={estilos.modalClose} onPress={cerrarModal}>
               <MaterialIcons name="close" size={20} color={BRAND.textSec} />
@@ -930,10 +930,10 @@ export default function EstructuraOrganizativa() {
             {modalActivo === 'sede' && (
               <View style={estilos.formGrid}>
                 <FormField label="Nombre de sede" value={formSede.nombre} onChangeText={(valor) => setFormSede((actual) => ({ ...actual, nombre: valor }))} placeholder="Sucursal San Salvador" />
-                <FormField label="País" value={formSede.pais} onChangeText={(valor) => setFormSede((actual) => ({ ...actual, pais: valor }))} placeholder="El Salvador" />
+                <FormField label="PaÃ­s" value={formSede.pais} onChangeText={(valor) => setFormSede((actual) => ({ ...actual, pais: valor }))} placeholder="El Salvador" />
                 <FormField label="Ciudad" value={formSede.ciudad} onChangeText={(valor) => setFormSede((actual) => ({ ...actual, ciudad: valor }))} placeholder="Ciudad" />
-                <FormField label="Teléfono de sede" value={formSede.telefono} onChangeText={(valor) => setFormSede((actual) => ({ ...actual, telefono: valor }))} placeholder="+503 0000 0000" />
-                <FormField label="Dirección" value={formSede.direccion} onChangeText={(valor) => setFormSede((actual) => ({ ...actual, direccion: valor }))} placeholder="Dirección física" anchoCompleto />
+                <FormField label="TelÃ©fono de sede" value={formSede.telefono} onChangeText={(valor) => setFormSede((actual) => ({ ...actual, telefono: valor }))} placeholder="+503 0000 0000" />
+                <FormField label="DirecciÃ³n" value={formSede.direccion} onChangeText={(valor) => setFormSede((actual) => ({ ...actual, direccion: valor }))} placeholder="DirecciÃ³n fÃ­sica" anchoCompleto />
                 <Selector label="Responsable de sede" value={formSede.responsableId} options={responsables.map((responsable) => ({ id: responsable.id || '', label: responsable.nombre || 'Responsable' }))} onSelect={(valor) => setFormSede((actual) => ({ ...actual, responsableId: valor }))} emptyLabel="Sin responsable" />
               </View>
             )}
@@ -951,14 +951,14 @@ export default function EstructuraOrganizativa() {
                 <FormField label="Nombre del cargo" value={formCargo.nombre} onChangeText={(valor) => setFormCargo((actual) => ({ ...actual, nombre: valor }))} placeholder="Analista Senior" />
                 <FormField label="Nivel" value={formCargo.nivel} onChangeText={(valor) => setFormCargo((actual) => ({ ...actual, nivel: valor }))} placeholder="Junior, Senior, Lead..." />
                 <Selector label="Departamento" value={formCargo.departamentoId} options={departamentos.map((departamento) => ({ id: departamento.id || '', label: departamento.nombre }))} onSelect={(valor) => setFormCargo((actual) => ({ ...actual, departamentoId: valor }))} emptyLabel="Cargo global" />
-                <FormField label="Descripción" value={formCargo.descripcion} onChangeText={(valor) => setFormCargo((actual) => ({ ...actual, descripcion: valor }))} placeholder="Responsabilidades principales" anchoCompleto />
+                <FormField label="DescripciÃ³n" value={formCargo.descripcion} onChangeText={(valor) => setFormCargo((actual) => ({ ...actual, descripcion: valor }))} placeholder="Responsabilidades principales" anchoCompleto />
               </View>
             )}
 
             {modalActivo === 'rol' && (
               <View style={estilos.formGrid}>
                 <FormField label="Nombre del rol" value={formRol.nombre} onChangeText={(valor) => setFormRol((actual) => ({ ...actual, nombre: valor }))} placeholder="Coordinador RRHH" />
-                <FormField label="Descripción" value={formRol.descripcion} onChangeText={(valor) => setFormRol((actual) => ({ ...actual, descripcion: valor }))} placeholder="Alcance operativo del rol" anchoCompleto />
+                <FormField label="DescripciÃ³n" value={formRol.descripcion} onChangeText={(valor) => setFormRol((actual) => ({ ...actual, descripcion: valor }))} placeholder="Alcance operativo del rol" anchoCompleto />
                 <View style={estilos.permissionsBlock}>
                   <Text style={estilos.formLabel}>Permisos del rol</Text>
                   <View style={estilos.permissionGrid}>
@@ -1139,12 +1139,13 @@ const estilos = StyleSheet.create({
     letterSpacing: 1.3,
   },
   iconPanel: {
-    width: 52,
-    height: 52,
-    borderRadius: 17,
+    width: 50,
+    height: 50,
+    borderRadius: 16,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   panelGrid: {
     flexDirection: 'row',
@@ -1205,7 +1206,7 @@ const estilos = StyleSheet.create({
     textTransform: 'uppercase',
   },
   nodeValue: {
-    color: BRAND.violet,
+    color: ADMIN.iconos.seguridad,
     fontSize: 13,
     fontWeight: '900',
   },
@@ -1335,7 +1336,7 @@ const estilos = StyleSheet.create({
     letterSpacing: 1.3,
   },
   filterTextActivo: {
-    color: BRAND.iconBright,
+    color: ADMIN.iconos.organizacion,
   },
   gridDepts: {
     flexDirection: 'row',
@@ -1450,7 +1451,7 @@ const estilos = StyleSheet.create({
   managerAvatarText: {
     fontSize: 17,
     fontWeight: '900',
-    color: BRAND.iconBright,
+    color: ADMIN.iconos.organizacion,
   },
   managerTextBox: {
     flex: 1,
@@ -1576,7 +1577,7 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
   },
   sectorCountText: {
-    color: BRAND.iconBright,
+    color: ADMIN.iconos.organizacion,
     fontSize: 12,
     fontWeight: '900',
   },
@@ -1699,7 +1700,7 @@ const estilos = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.055)',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
   summaryItemInfo: {
     flex: 1,
@@ -1719,17 +1720,19 @@ const estilos = StyleSheet.create({
   },
   summaryActions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
+    flexShrink: 0,
   },
   summaryActionBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: ADMIN.radioPequeno,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(96,165,250,0.08)',
     borderWidth: 1,
-    borderColor: ADMIN.borde,
+    borderColor: 'rgba(96,165,250,0.24)',
+    flexShrink: 0,
   },
   summaryActionDanger: {
     backgroundColor: 'rgba(239,68,68,0.08)',
@@ -1881,7 +1884,7 @@ const estilos = StyleSheet.create({
     letterSpacing: 1,
   },
   permissionTextActive: {
-    color: BRAND.success,
+    color: ADMIN.iconos.personas,
   },
   modalFooter: {
     padding: 24,

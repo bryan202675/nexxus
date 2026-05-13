@@ -135,10 +135,10 @@ export default function AuditoriaLogs() {
   }
 
   const stats = [
-    { label: "Total Eventos Log", val: datos.total, trend: "últimos registros", icon: "terminal" as const, color: BRAND.iconBright },
-    { label: "Procesos Exitosos", val: datos.success, trend: `${datos.ratio}% ratio`, icon: "security" as const, color: BRAND.success },
-    { label: "Advertencias IA", val: datos.warning, trend: "monitoreado", icon: "warning" as const, color: BRAND.warning },
-    { label: "Riesgo Crítico", val: `${datos.riesgo}%`, trend: `${datos.error} errores`, icon: "shield" as const, color: datos.riesgo > 0 ? BRAND.error : BRAND.success },
+    { label: "Total Eventos Log", val: datos.total, trend: "últimos registros", icon: "terminal" as const, color: ADMIN.iconos.auditoria },
+    { label: "Procesos Exitosos", val: datos.success, trend: `${datos.ratio}% ratio`, icon: "security" as const, color: ADMIN.iconos.seguridad },
+    { label: "Advertencias IA", val: datos.warning, trend: "monitoreado", icon: "warning" as const, color: ADMIN.iconos.advertencia },
+    { label: "Riesgo Crítico", val: `${datos.riesgo}%`, trend: `${datos.error} errores`, icon: "shield" as const, color: datos.riesgo > 0 ? ADMIN.iconos.peligro : ADMIN.iconos.exito },
   ];
 
   return (
@@ -185,7 +185,7 @@ export default function AuditoriaLogs() {
               <Text style={estilos.panelTitle}>Módulos con Actividad</Text>
               <Text style={estilos.panelSubtitle}>Distribución de eventos</Text>
             </View>
-            <IconPanel icon="dataset" color={BRAND.cyan} />
+            <IconPanel icon="dataset" color={ADMIN.iconos.documentos} />
           </View>
           {datos.modulos.length > 0 ? datos.modulos.map((modulo) => (
             <View key={modulo.nombre} style={estilos.metricRow}>
@@ -206,7 +206,7 @@ export default function AuditoriaLogs() {
               <Text style={estilos.panelTitle}>Operadores Principales</Text>
               <Text style={estilos.panelSubtitle}>Usuarios con mayor actividad</Text>
             </View>
-            <IconPanel icon="manage-accounts" color={BRAND.violet} />
+            <IconPanel icon="manage-accounts" color={ADMIN.iconos.personas} />
           </View>
           <View style={estilos.operatorList}>
             {datos.operadores.length > 0 ? datos.operadores.map((operador) => (
@@ -227,7 +227,7 @@ export default function AuditoriaLogs() {
               <Text style={estilos.panelTitle}>Estado de Seguridad</Text>
               <Text style={estilos.panelSubtitle}>Salud del registro</Text>
             </View>
-            <IconPanel icon="health-and-safety" color={datos.riesgo > 0 ? BRAND.error : BRAND.success} />
+            <IconPanel icon="health-and-safety" color={datos.riesgo > 0 ? ADMIN.iconos.peligro : ADMIN.iconos.exito} />
           </View>
           <MetricRow label="Éxito" value={datos.success} total={datos.total} color={BRAND.success} />
           <MetricRow label="Advertencia" value={datos.warning} total={datos.total} color={BRAND.warning} />

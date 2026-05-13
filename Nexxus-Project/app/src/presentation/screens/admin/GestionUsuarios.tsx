@@ -65,7 +65,7 @@ export default function GestionUsuarios({ navigation }: { navigation: any }) {
       <View style={estilos.appBar}>
         <View style={estilos.appBarIzq}>
           <BotonAnimado onPress={() => navigation.goBack()} style={estilos.botonVolver}>
-            <MaterialIcons name="arrow-back" size={24} color={COLORES.texto} />
+            <MaterialIcons name="arrow-back" size={24} color={ADMIN.iconos.neutro} />
           </BotonAnimado>
           <View>
             <Text style={estilos.saludo}>Equipo Admin</Text>
@@ -81,7 +81,7 @@ export default function GestionUsuarios({ navigation }: { navigation: any }) {
       >
         <TarjetaAnimada index={0}>
           <View style={estilos.barraBusqueda}>
-            <MaterialIcons name="search" size={24} color={COLORES.textoSuave} />
+            <MaterialIcons name="search" size={24} color={ADMIN.iconos.documentos} />
             <TextInput 
               style={estilos.inputBusqueda}
               placeholder="Buscar por nombre o departamento..."
@@ -91,7 +91,7 @@ export default function GestionUsuarios({ navigation }: { navigation: any }) {
             />
             {busqueda.length > 0 && (
               <TouchableOpacity onPress={() => setBusqueda('')}>
-                <MaterialIcons name="close" size={20} color={COLORES.textoSuave} />
+                <MaterialIcons name="close" size={20} color={ADMIN.iconos.neutro} />
               </TouchableOpacity>
             )}
           </View>
@@ -120,13 +120,13 @@ export default function GestionUsuarios({ navigation }: { navigation: any }) {
                       {usuario.rol.toUpperCase()}
                     </Text>
                   </View>
-                  <MaterialIcons name="chevron-right" size={24} color={COLORES.textoSuave} />
+                  <MaterialIcons name="chevron-right" size={24} color={ADMIN.iconos.personas} />
                 </BotonAnimado>
               </TarjetaAnimada>
             ))}
             {usuariosFiltrados.length === 0 && (
               <View style={estilos.vacioContenedor}>
-                <MaterialIcons name="group-off" size={48} color={COLORES.textoSuave} />
+                <MaterialIcons name="group-off" size={48} color={ADMIN.iconos.neutro} />
                 <Text style={estilos.textoVacio}>No se encontraron colaboradores.</Text>
               </View>
             )}

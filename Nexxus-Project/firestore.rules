@@ -121,6 +121,17 @@ service cloud.firestore {
       allow delete: if autenticado() && esAdmin();
     }
 
+    match /calendario_empresarial/{eventoId} {
+      allow read: if autenticado() && accesoEmpresa(resource.data.empresaId);
+      allow create: if autenticado() &&
+                    request.resource.data.empresaId is string &&
+                    accesoEmpresa(request.resource.data.empresaId) &&
+                    (esAdmin() || esJefe());
+      allow update, delete: if autenticado() &&
+                            accesoEmpresa(resource.data.empresaId) &&
+                            (esAdmin() || esJefe());
+    }
+
     match /sedes/{sedeId} {
       allow read: if autenticado();
       allow write: if autenticado() && (esAdmin() || esJefe());

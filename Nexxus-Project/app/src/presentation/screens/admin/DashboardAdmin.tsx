@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, View, Text, ScrollView, Dimensions, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Defs, Line, LinearGradient as SvgLinearGradient, Polygon, Polyline, Stop, Text as SvgText } from 'react-native-svg';
 import { addDoc, collection, doc, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
 import {
@@ -182,11 +183,24 @@ type DocumentoAdmin = {
   empresaId?: string;
 };
 
-const PremiumCard = ({ children, style }: { children: React.ReactNode; style?: object }) => (
-  <View style={[estilos.premiumCard, style]}>
-    {children}
-  </View>
-);
+const PremiumCard = ({ children, style }: { children: React.ReactNode; style?: object }) => {
+  const entrada = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(entrada, {
+      toValue: 1,
+      duration: 520,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [entrada]);
+
+  return (
+    <Animated.View style={[estilos.premiumCard, style, { opacity: entrada, transform: [{ translateY: entrada.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }] }]}>
+      {children}
+    </Animated.View>
+  );
+};
 
 const IconWrapper = ({
   children,
@@ -276,6 +290,7 @@ const DashboardAdmin: React.FC = () => {
   const [inboxItems, setInboxItems] = useState<InboxAdmin[]>([]);
   const [documentos, setDocumentos] = useState<DocumentoAdmin[]>([]);
   const [modoGrafico, setModoGrafico] = useState<ModoGrafico>('semanal');
+  const [mostrarDetalleOperativo, setMostrarDetalleOperativo] = useState(false);
   const [cargando, setCargando] = useState(true);
   const entrada = useRef(new Animated.Value(0)).current;
 
@@ -738,29 +753,29 @@ const DashboardAdmin: React.FC = () => {
       label: "Empleados Activos",
       val: metricas.activos.toString(),
       trend: `${usuarios.length} registrados`,
-      tono: 'success' as const,
-      icon: <Users size={24} color={BRAND.success} />,
+      tono: 'cyan' as const,
+      icon: <Users size={24} color={ADMIN.iconos.personas} />,
     },
     {
       label: "Costo Mensual de Planilla",
       val: formatearMoneda(metricas.costoMensual),
       trend: `${metricas.payrollProcesando} pagos abiertos`,
-      tono: 'blue' as const,
-      icon: <DollarSign size={24} color={BRAND.iconBright} />,
+      tono: 'success' as const,
+      icon: <DollarSign size={24} color={ADMIN.iconos.dinero} />,
     },
     {
       label: "Productividad General",
       val: `${metricas.productividad}%`,
       trend: `${metricas.tareasPendientes} tareas pendientes`,
       tono: metricas.productividad >= 75 ? 'success' as const : 'warning' as const,
-      icon: <ClipboardList size={24} color={metricas.productividad >= 75 ? BRAND.success : BRAND.warning} />,
+      icon: <ClipboardList size={24} color={metricas.productividad >= 75 ? ADMIN.iconos.exito : ADMIN.iconos.tareas} />,
     },
     {
       label: "Riesgo Operativo",
       val: `${metricas.riesgo}%`,
       trend: `${metricas.aprobacionesPendientes} aprobaciones pendientes`,
       tono: metricas.riesgo > 45 || metricas.alertas > 0 ? 'error' as const : 'cyan' as const,
-      icon: <AlertTriangle size={24} color={metricas.riesgo > 45 || metricas.alertas > 0 ? BRAND.error : BRAND.cyan} />,
+      icon: <AlertTriangle size={24} color={metricas.riesgo > 45 || metricas.alertas > 0 ? ADMIN.iconos.peligro : ADMIN.iconos.auditoria} />,
     }
   ];
 
@@ -821,7 +836,7 @@ const DashboardAdmin: React.FC = () => {
           <PremiumCard style={estilos.barChartCard}>
             <View style={estilos.chartHeader}>
               <View style={estilos.chartTitleContainer}>
-                <IconWrapper tono="cyan"><Activity size={20} color={BRAND.cyan} /></IconWrapper>
+                <IconWrapper tono="violet"><Activity size={20} color={ADMIN.iconos.auditoria} /></IconWrapper>
                 <View>
                   <Text style={estilos.chartTitle}>Rendimiento, Carga y Estrés</Text>
                   <Text style={estilos.chartSubtitle}>Promedio general de empleados por {modoGrafico === 'semanal' ? 'semana' : 'mes'}</Text>
@@ -895,13 +910,25 @@ const DashboardAdmin: React.FC = () => {
         </View>
       </View>
 
+      <View style={estilos.detalleOperativoBar}>
+        <View>
+          <Text style={estilos.detalleOperativoTitulo}>Vista ejecutiva simplificada</Text>
+          <Text style={estilos.detalleOperativoTexto}>Los módulos secundarios siguen disponibles cuando necesites revisar operación profunda.</Text>
+        </View>
+        <TouchableOpacity onPress={() => setMostrarDetalleOperativo((valor) => !valor)} activeOpacity={0.88} style={estilos.detalleOperativoBoton}>
+          <Text style={estilos.detalleOperativoBotonTexto}>{mostrarDetalleOperativo ? 'Ocultar detalle' : 'Ver detalle operativo'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {mostrarDetalleOperativo && (
+      <Animated.View style={[estilos.detalleOperativoContenido, { opacity: entrada, transform: [{ translateY: entrada.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }] }]}>
       <PremiumCard style={estilos.checkInResultsCard}>
         <View style={estilos.panelHeader}>
           <View>
             <Text style={estilos.panelTitle}>Resultados del Check-in de Hoy</Text>
             <Text style={estilos.panelSubtitle}>Lectura directa de bienestar, energía, carga y estrés en tiempo real</Text>
           </View>
-          <IconWrapper tono="error"><HeartPulse size={20} color={BRAND.error} /></IconWrapper>
+          <IconWrapper tono="error"><HeartPulse size={20} color={ADMIN.iconos.peligro} /></IconWrapper>
         </View>
         <CheckInResultsPanel
           checkIns={metricas.checkInsHoyDetalle}
@@ -919,7 +946,7 @@ const DashboardAdmin: React.FC = () => {
               <Text style={estilos.panelTitle}>Pulso Operativo en Vivo</Text>
               <Text style={estilos.panelSubtitle}>Asistencia, carga, productividad y riesgo con datos Firebase</Text>
             </View>
-            <IconWrapper tono="violet"><Activity size={20} color={BRAND.violet} /></IconWrapper>
+            <IconWrapper tono="violet"><Activity size={20} color={ADMIN.iconos.auditoria} /></IconWrapper>
           </View>
           <OperationalBarsChart
             datos={[
@@ -938,7 +965,7 @@ const DashboardAdmin: React.FC = () => {
               <Text style={estilos.panelTitle}>Estado de Tareas</Text>
               <Text style={estilos.panelSubtitle}>Pendiente, progreso y completado</Text>
             </View>
-            <IconWrapper tono="warning"><ClipboardList size={20} color={BRAND.warning} /></IconWrapper>
+            <IconWrapper tono="warning"><ClipboardList size={20} color={ADMIN.iconos.tareas} /></IconWrapper>
           </View>
           <TaskDistributionChart
             pendientes={metricas.tareasPendientes}
@@ -1136,6 +1163,8 @@ const DashboardAdmin: React.FC = () => {
           )}
         </View>
       </PremiumCard>
+      </Animated.View>
+      )}
     </ScrollView>
     </Animated.View>
   );
@@ -1446,13 +1475,18 @@ const HeroTrustPanel = ({ activos, aprobaciones, productividad }: { activos: num
     <View style={estilos.heroGlowA} />
     <View style={estilos.heroGlowB} />
     <View style={estilos.heroCopy}>
-      <Text style={estilos.heroEyebrow}>Admin Control Center</Text>
-      <Text style={estilos.heroTitle}>Built on Trust and Standards</Text>
-      <Text style={estilos.heroText}>Supervisa plantilla, nómina, bienestar y auditoría con señales en vivo y acciones listas para resolver.</Text>
+      <View style={estilos.heroKicker}>
+        <View style={estilos.heroKickerDot} />
+        <Text style={estilos.heroEyebrow}>Sistema operativo empresarial con IA</Text>
+      </View>
+      <Text style={estilos.heroTitle}>Centro de control inteligente para operar tu empresa.</Text>
+      <Text style={estilos.heroText}>Nexxus conecta administración, empleados, tareas, asistencia, nómina, bienestar e IA en una experiencia SaaS premium para operar con claridad y velocidad.</Text>
       <View style={estilos.heroActions}>
-        <View style={estilos.heroButton}>
-          <Text style={estilos.heroButtonText}>Start Now</Text>
-        </View>
+        <LinearGradient colors={['#7C3AED', '#A855F7', '#D8B4FE']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.heroButtonGlow}>
+          <View style={estilos.heroButton}>
+            <Text style={estilos.heroButtonText}>Ver prioridades</Text>
+          </View>
+        </LinearGradient>
         <View style={estilos.heroMetricPill}>
           <Text style={estilos.heroMetricValue}>{activos}</Text>
           <Text style={estilos.heroMetricLabel}>Activos</Text>
@@ -1463,30 +1497,39 @@ const HeroTrustPanel = ({ activos, aprobaciones, productividad }: { activos: num
         </View>
       </View>
     </View>
-    <View style={estilos.heroCrystalWrap}>
-      <Svg width="220" height="150" viewBox="0 0 220 150">
-        <Defs>
-          <SvgLinearGradient id="crystalCore" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.96" />
-            <Stop offset="45%" stopColor="#C4B5FD" stopOpacity="0.9" />
-            <Stop offset="100%" stopColor="#4C1D95" stopOpacity="0.92" />
-          </SvgLinearGradient>
-          <SvgLinearGradient id="crystalShadow" x1="0" y1="0" x2="1" y2="0">
-            <Stop offset="0%" stopColor="#B69CFF" stopOpacity="0.05" />
-            <Stop offset="100%" stopColor="#B69CFF" stopOpacity="0.52" />
-          </SvgLinearGradient>
-        </Defs>
-        <Polygon points="110,10 154,34 176,82 110,136 44,82 66,34" fill="url(#crystalCore)" stroke="rgba(255,255,255,0.62)" strokeWidth="1.4" />
-        <Polygon points="110,10 110,136 66,34" fill="rgba(255,255,255,0.20)" />
-        <Polygon points="110,10 154,34 110,136" fill="rgba(76,29,149,0.34)" />
-        <Polygon points="44,82 110,136 18,136" fill="url(#crystalShadow)" />
-        <Polygon points="176,82 110,136 204,136" fill="url(#crystalShadow)" />
-        <Line x1="44" y1="82" x2="176" y2="82" stroke="rgba(255,255,255,0.35)" strokeWidth="1" />
-        <Line x1="66" y1="34" x2="154" y2="34" stroke="rgba(255,255,255,0.32)" strokeWidth="1" />
-      </Svg>
-      <View style={estilos.heroGlassMetric}>
-        <Text style={estilos.heroMetricValue}>{aprobaciones}</Text>
-        <Text style={estilos.heroMetricLabel}>Pendientes</Text>
+    <View style={estilos.heroDashboardShell}>
+      <View style={estilos.heroWindowBar}>
+        <View style={[estilos.heroWindowDot, { backgroundColor: '#FF5F57' }]} />
+        <View style={[estilos.heroWindowDot, { backgroundColor: '#FFBD2E' }]} />
+        <View style={[estilos.heroWindowDot, { backgroundColor: '#28C840' }]} />
+        <Text style={estilos.heroWindowTitle}>Nexxus Command</Text>
+      </View>
+      <View style={estilos.heroDashboardGrid}>
+        <View style={[estilos.heroPanelCard, estilos.heroPanelMain]}>
+          <Text style={estilos.heroPanelLabel}>Productividad</Text>
+          <Text style={estilos.heroPanelValue}>{productividad}%</Text>
+          <View style={estilos.heroChart}>
+            {[42, 68, 54, 86, 72].map((alto, index) => <View key={index} style={[estilos.heroChartBar, { height: `${alto}%` }]} />)}
+          </View>
+        </View>
+        <View style={estilos.heroPanelCard}>
+          <Text style={estilos.heroPanelLabel}>Nexus IA</Text>
+          <Text style={estilos.heroPanelStrong}>{aprobaciones} alertas</Text>
+          <Text style={estilos.heroPanelText}>Riesgo operativo bajo</Text>
+        </View>
+        <View style={estilos.heroPanelCard}>
+          <Text style={estilos.heroPanelLabel}>Asistencia</Text>
+          <Text style={estilos.heroPanelStrong}>{activos} activos</Text>
+          <Text style={estilos.heroPanelText}>Datos en tiempo real</Text>
+        </View>
+        <View style={[estilos.heroPanelCard, estilos.heroPanelTable]}>
+          {['Nómina lista', 'Tareas críticas', 'Check-ins pendientes'].map((item) => (
+            <View key={item} style={estilos.heroTableRow}>
+              <Text style={estilos.heroTableText}>{item}</Text>
+              <View style={estilos.heroTableStatus} />
+            </View>
+          ))}
+        </View>
       </View>
     </View>
   </View>
@@ -1633,28 +1676,28 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
   },
   scrollViewContent: {
-    padding: 24,
-    paddingTop: 84,
+    padding: 28,
+    paddingTop: 92,
     paddingBottom: 64,
   },
   header: {
-    marginBottom: 18,
+    marginBottom: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
   },
   headerTitle: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '900',
     color: BRAND.textMain,
-    letterSpacing: -1,
+    letterSpacing: 0,
   },
   headerSubtitle: {
     color: BRAND.textSec,
     fontWeight: '600',
     fontSize: 11,
     marginTop: 4,
-    letterSpacing: 0.4,
+    letterSpacing: 0,
   },
   livePill: {
     flexDirection: 'row',
@@ -1677,12 +1720,12 @@ const estilos = StyleSheet.create({
     color: BRAND.textSec,
     fontSize: 10,
     fontWeight: '900',
-    letterSpacing: 3,
+    letterSpacing: 1,
     textTransform: 'uppercase',
   },
   premiumCard: {
-    backgroundColor: ADMIN.fondoElevado,
-    borderRadius: ADMIN.radio,
+    backgroundColor: ADMIN.fondoVidrio,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: ADMIN.borde,
     overflow: 'hidden',
@@ -1724,7 +1767,7 @@ const estilos = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: 14,
+    marginBottom: 18,
   },
   statsGridMobile: {
     gap: 16,
@@ -1733,8 +1776,8 @@ const estilos = StyleSheet.create({
     minHeight: 106,
   },
   statCard: {
-    padding: 15,
-    minHeight: 106,
+    padding: 14,
+    minHeight: 96,
     position: 'relative',
   },
   statAccent: {
@@ -1783,13 +1826,52 @@ const estilos = StyleSheet.create({
   },
   topGrid: {
     flexDirection: 'row',
+    gap: 18,
+    marginBottom: 18,
+  },
+  detalleOperativoBar: {
+    marginBottom: 18,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(210,198,255,0.16)',
+    backgroundColor: 'rgba(13,9,27,0.54)',
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 14,
-    marginBottom: 14,
+  },
+  detalleOperativoTitulo: {
+    color: BRAND.textMain,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  detalleOperativoTexto: {
+    color: BRAND.textSec,
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 3,
+  },
+  detalleOperativoBoton: {
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: 'rgba(168,85,247,0.44)',
+    backgroundColor: 'rgba(124,58,237,0.18)',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  detalleOperativoBotonTexto: {
+    color: BRAND.iconBright,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  detalleOperativoContenido: {
+    gap: 0,
   },
   operationalGrid: {
     flexDirection: 'row',
-    gap: 14,
-    marginBottom: 14,
+    gap: 18,
+    marginBottom: 18,
   },
   checkInResultsCard: {
     padding: 18,
@@ -2098,7 +2180,7 @@ const estilos = StyleSheet.create({
   },
   barChartCard: {
     padding: 18,
-    minHeight: 360,
+    minHeight: 340,
   },
   chartHeader: {
     flexDirection: 'row',
@@ -2115,15 +2197,13 @@ const estilos = StyleSheet.create({
     fontSize: 14,
     fontWeight: '900',
     color: BRAND.textMain,
-    textTransform: 'uppercase',
-    letterSpacing: -0.2,
+    letterSpacing: 0,
   },
   chartSubtitle: {
     fontSize: 9,
     fontWeight: '800',
     color: BRAND.textSec,
-    textTransform: 'uppercase',
-    letterSpacing: 1.1,
+    letterSpacing: 0,
     marginTop: 4,
   },
   kpiInline: {
@@ -2144,10 +2224,10 @@ const estilos = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     padding: 4,
-    borderRadius: 18,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.07)',
-    backgroundColor: 'rgba(0,7,45,0.45)',
+    backgroundColor: 'rgba(13,9,27,0.64)',
   },
   chartToggle: {
     paddingHorizontal: 12,
@@ -2155,9 +2235,9 @@ const estilos = StyleSheet.create({
     borderRadius: 10,
   },
   chartToggleActivo: {
-    backgroundColor: 'rgba(96,165,250,0.16)',
+    backgroundColor: 'rgba(124,58,237,0.22)',
     borderWidth: 1,
-    borderColor: 'rgba(96,165,250,0.26)',
+    borderColor: 'rgba(168,85,247,0.34)',
   },
   chartToggleText: {
     color: BRAND.textSec,
@@ -2170,11 +2250,11 @@ const estilos = StyleSheet.create({
     color: BRAND.textMain,
   },
   lineChartShell: {
-    height: 330,
+    height: 300,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(96,165,250,0.18)',
-    backgroundColor: 'rgba(0,7,45,0.28)',
+    borderColor: 'rgba(210,198,255,0.16)',
+    backgroundColor: 'rgba(5,3,12,0.42)',
     overflow: 'hidden',
   },
   chartTooltip: {
@@ -2303,7 +2383,7 @@ const estilos = StyleSheet.create({
   moodCard: {
     padding: 18,
     alignItems: 'center',
-    minHeight: 360,
+    minHeight: 340,
   },
   moodCircleContainer: {
     position: 'relative',
@@ -2344,7 +2424,7 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.025)',
     padding: 12,
-    borderRadius: 16,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: 'rgba(196,181,253,0.12)',
   },
@@ -2373,8 +2453,8 @@ const estilos = StyleSheet.create({
   monitorGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 14,
-    marginBottom: 14,
+    gap: 18,
+    marginBottom: 18,
   },
   panelCard: {
     flex: 1,
@@ -2392,15 +2472,13 @@ const estilos = StyleSheet.create({
     color: BRAND.textMain,
     fontSize: 13,
     fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 0.2,
+    letterSpacing: 0,
   },
   panelSubtitle: {
     color: BRAND.textSec,
     fontSize: 10,
     fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1.4,
+    letterSpacing: 0,
     marginTop: 4,
   },
   metricRows: {
@@ -2656,89 +2734,114 @@ const estilos = StyleSheet.create({
     letterSpacing: 1,
   },
   heroPanel: {
-    minHeight: 158,
-    marginBottom: 14,
-    borderRadius: 14,
+    minHeight: 300,
+    marginBottom: 18,
+    borderRadius: 28,
     borderWidth: 1,
-    borderColor: 'rgba(196,181,253,0.16)',
-    backgroundColor: 'rgba(13,7,24,0.92)',
+    borderColor: 'rgba(210,198,255,0.16)',
+    backgroundColor: 'rgba(13,9,27,0.62)',
     overflow: 'hidden',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 20,
+    padding: 26,
+    gap: 26,
     ...sombraVioleta,
   },
   heroGlowA: {
     position: 'absolute',
-    right: 80,
-    top: -70,
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    backgroundColor: 'rgba(124,58,237,0.24)',
+    right: 180,
+    top: -110,
+    width: 340,
+    height: 340,
+    borderRadius: 170,
+    backgroundColor: 'rgba(37,99,235,0.30)',
   },
   heroGlowB: {
     position: 'absolute',
-    right: -60,
-    bottom: -90,
-    width: 260,
-    height: 190,
-    borderRadius: 130,
-    backgroundColor: 'rgba(255,255,255,0.07)',
+    right: -80,
+    bottom: -120,
+    width: 360,
+    height: 280,
+    borderRadius: 180,
+    backgroundColor: 'rgba(168,85,247,0.26)',
   },
   heroCopy: {
     flex: 1,
-    maxWidth: 620,
+    maxWidth: 640,
     zIndex: 2,
   },
+  heroKicker: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  heroKickerDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: '#C084FC',
+    shadowColor: '#C084FC',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 20,
+  },
   heroEyebrow: {
-    color: BRAND.iconBright,
-    fontSize: 9,
-    fontWeight: '900',
+    color: '#D8CAFF',
+    fontSize: 11,
+    fontWeight: '800',
     letterSpacing: 1.8,
     textTransform: 'uppercase',
-    marginBottom: 8,
   },
   heroTitle: {
     color: BRAND.textMain,
-    fontSize: 26,
+    fontSize: 36,
     fontWeight: '900',
-    letterSpacing: -0.4,
+    letterSpacing: 0,
+    lineHeight: 39,
   },
   heroText: {
     color: BRAND.textSec,
-    fontSize: 11,
+    fontSize: 15,
     fontWeight: '700',
-    lineHeight: 17,
-    maxWidth: 560,
-    marginTop: 7,
+    lineHeight: 24,
+    maxWidth: 620,
+    marginTop: 14,
   },
   heroActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginTop: 16,
+    marginTop: 24,
     flexWrap: 'wrap',
   },
+  heroButtonGlow: {
+    borderRadius: 999,
+    padding: 1,
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.4,
+    shadowRadius: 34,
+  },
   heroButton: {
-    borderRadius: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 9,
-    backgroundColor: BRAND.caribbeanBlue,
+    borderRadius: 999,
+    paddingHorizontal: 20,
+    paddingVertical: 13,
+    backgroundColor: 'rgba(13,9,27,0.92)',
   },
   heroButtonText: {
-    color: '#150B2C',
-    fontSize: 10,
+    color: '#FFFFFF',
+    fontSize: 12,
     fontWeight: '900',
   },
   heroMetricPill: {
-    borderRadius: 8,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.10)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    paddingHorizontal: 14,
+    paddingVertical: 11,
   },
   heroMetricValue: {
     color: BRAND.textMain,
@@ -2752,22 +2855,123 @@ const estilos = StyleSheet.create({
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
-  heroCrystalWrap: {
-    width: 260,
-    height: 150,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 2,
-  },
-  heroGlassMetric: {
-    position: 'absolute',
-    right: 8,
-    bottom: 8,
-    borderRadius: 10,
+  heroDashboardShell: {
+    width: 420,
+    borderRadius: 28,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
-    backgroundColor: 'rgba(4,3,12,0.72)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderColor: 'rgba(210,198,255,0.16)',
+    backgroundColor: 'rgba(255,255,255,0.055)',
+    overflow: 'hidden',
+    zIndex: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 28 },
+    shadowOpacity: 0.42,
+    shadowRadius: 90,
+  },
+  heroWindowBar: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(210,198,255,0.16)',
+    backgroundColor: 'rgba(6,5,18,0.72)',
+  },
+  heroWindowDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+  },
+  heroWindowTitle: {
+    marginLeft: 'auto',
+    color: BRAND.textSec,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  heroDashboardGrid: {
+    padding: 14,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  heroPanelCard: {
+    width: '48%',
+    minHeight: 92,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(210,198,255,0.14)',
+    backgroundColor: 'rgba(13,9,27,0.68)',
+    padding: 14,
+  },
+  heroPanelMain: {
+    width: '100%',
+    minHeight: 130,
+  },
+  heroPanelLabel: {
+    color: BRAND.textSec,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  heroPanelValue: {
+    color: BRAND.textMain,
+    fontSize: 38,
+    fontWeight: '900',
+    marginTop: 4,
+  },
+  heroPanelStrong: {
+    color: BRAND.textMain,
+    fontSize: 17,
+    fontWeight: '900',
+    marginTop: 8,
+  },
+  heroPanelText: {
+    color: BRAND.textSec,
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 6,
+  },
+  heroChart: {
+    position: 'absolute',
+    right: 16,
+    bottom: 14,
+    height: 82,
+    width: 150,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 9,
+  },
+  heroChartBar: {
+    flex: 1,
+    borderRadius: 999,
+    backgroundColor: '#C084FC',
+    shadowColor: '#C084FC',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 14,
+  },
+  heroPanelTable: {
+    width: '100%',
+    gap: 9,
+  },
+  heroTableRow: {
+    minHeight: 28,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.055)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+  },
+  heroTableText: {
+    color: BRAND.textMain,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  heroTableStatus: {
+    width: 42,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: '#A855F7',
   },
 });
