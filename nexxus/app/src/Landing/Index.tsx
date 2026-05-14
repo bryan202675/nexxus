@@ -145,7 +145,7 @@ export default function Landing() {
   const [menuMovilAbierto, setMenuMovilAbierto] = useState(false);
 
   useEffect(() => {
-    document.title = 'Nexxus | Plataforma SaaS empresarial con IA';
+    document.title = 'Nexxus | Impulsa tu empresa con rendimiento real';
     const description = 'Nexxus centraliza empleados, tareas, asistencia, nómina, IA y analytics para empresas modernas.';
     let meta = document.querySelector('meta[name="description"]');
     if (!meta) {
