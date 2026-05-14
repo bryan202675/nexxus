@@ -218,72 +218,6 @@ export default function GestionNomina() {
         </TouchableOpacity>
       </View>
 
-      <View style={estilos.gridStats}>
-        {stats.map((stat) => (
-          <View key={stat.label} style={estilos.statCard}>
-            <View style={estilos.statRow}>
-              <View style={estilos.statInfo}>
-                <Text style={estilos.statLabel}>{stat.label}</Text>
-                <Text style={estilos.statValue}>{stat.val}</Text>
-                <Text style={[estilos.statTrend, { color: stat.color }]}>Tiempo real</Text>
-              </View>
-              <IconPanel icon={stat.icon} color={stat.color} />
-            </View>
-          </View>
-        ))}
-      </View>
-
-      <View style={estilos.panelGrid}>
-        <View style={estilos.panelCard}>
-          <View style={estilos.panelHeader}>
-            <View>
-              <Text style={estilos.panelTitle}>Estado de Dispersión</Text>
-              <Text style={estilos.panelSubtitle}>Pagos por estado operativo</Text>
-            </View>
-            <IconPanel icon="timeline" color={ADMIN.iconos.auditoria} />
-          </View>
-          <MetricRow label="Pagado" value={datos.pagados} total={pagos.length} color={BRAND.success} />
-          <MetricRow label="Procesando" value={datos.procesando} total={pagos.length} color={BRAND.warning} />
-          <MetricRow label="Pendiente" value={datos.pendientes} total={pagos.length} color={BRAND.error} />
-        </View>
-
-        <View style={estilos.panelCard}>
-          <View style={estilos.panelHeader}>
-            <View>
-              <Text style={estilos.panelTitle}>Deducciones</Text>
-              <Text style={estilos.panelSubtitle}>ISSS, AFP y renta del periodo</Text>
-            </View>
-            <IconPanel icon="receipt-long" color={BRAND.warning} />
-          </View>
-          <MiniMoney label="ISSS 3%" value={datos.isss} color={ADMIN.iconos.documentos} />
-          <MiniMoney label="AFP 7.25%" value={datos.afp} color={ADMIN.iconos.organizacion} />
-          <MiniMoney label="Renta" value={datos.renta} color={BRAND.warning} />
-        </View>
-
-        <View style={estilos.panelCard}>
-          <View style={estilos.panelHeader}>
-            <View>
-              <Text style={estilos.panelTitle}>Costo por Departamento</Text>
-              <Text style={estilos.panelSubtitle}>Mayor concentración salarial</Text>
-            </View>
-            <IconPanel icon="domain" color={ADMIN.iconos.organizacion} />
-          </View>
-          <View style={estilos.departmentList}>
-            {datos.departamentos.length > 0 ? datos.departamentos.map((depto) => (
-              <View key={depto.nombre} style={estilos.departmentRow}>
-                <View style={estilos.departmentTop}>
-                  <Text style={estilos.departmentName}>{depto.nombre}</Text>
-                  <Text style={estilos.departmentValue}>{moneda(depto.total)}</Text>
-                </View>
-                <View style={estilos.progressTrack}>
-                  <View style={[estilos.progressFill, { width: `${Math.max(depto.share, 4)}%`, backgroundColor: BRAND.violet }]} />
-                </View>
-              </View>
-            )) : <EmptyState texto="Sin pagos por departamento" />}
-          </View>
-        </View>
-      </View>
-
       <View style={estilos.premiumCard}>
         <View style={estilos.cardHeader}>
           <View style={estilos.searchContainer}>
@@ -313,9 +247,7 @@ export default function GestionNomina() {
         <View style={estilos.tableContainer}>
           <View style={estilos.tableHeader}>
             <Text style={[estilos.thText, { flex: 2 }]}>COLABORADOR</Text>
-            <Text style={[estilos.thText, { flex: 1, textAlign: 'right' }]}>BRUTO</Text>
-            <Text style={[estilos.thText, { flex: 1, textAlign: 'right' }]}>DEDUCCIONES</Text>
-            <Text style={[estilos.thText, { flex: 1, textAlign: 'right', color: BRAND.iconBright }]}>NETO</Text>
+            <Text style={[estilos.thText, { flex: 1.2, textAlign: 'right', color: BRAND.iconBright }]}>NETO</Text>
             <Text style={[estilos.thText, { flex: 1, textAlign: 'center' }]}>ESTADO</Text>
             <Text style={[estilos.thText, { flex: 1, textAlign: 'right' }]}>ACCIONES</Text>
           </View>
@@ -329,15 +261,9 @@ export default function GestionNomina() {
               <View key={pago.id || i} style={estilos.tableRow}>
                 <View style={[estilos.tdCell, { flex: 2 }]}>
                   <Text style={estilos.empName}>{pago.usuarioNombre || 'Colaborador'}</Text>
-                  <Text style={estilos.empMeta}>{pago.periodo || periodoActual}</Text>
+                  <Text style={estilos.empMeta}>{pago.periodo || periodoActual} · bruto {moneda(bruto)}</Text>
                 </View>
-                <View style={[estilos.tdCell, { flex: 1, alignItems: 'flex-end' }]}>
-                  <Text style={estilos.salaryGross}>{moneda(bruto)}</Text>
-                </View>
-                <View style={[estilos.tdCell, { flex: 1, alignItems: 'flex-end' }]}>
-                  <Text style={estilos.salaryDeduction}>{moneda(deducciones)}</Text>
-                </View>
-                <View style={[estilos.tdCell, { flex: 1, alignItems: 'flex-end' }]}>
+                <View style={[estilos.tdCell, { flex: 1.2, alignItems: 'flex-end' }]}>
                   <Text style={estilos.salaryNet}>{moneda(neto)}</Text>
                 </View>
                 <View style={[estilos.tdCell, { flex: 1, alignItems: 'center' }]}>
@@ -393,30 +319,30 @@ const EmptyState = ({ texto }: { texto: string }) => (
 const estilos = StyleSheet.create({
   animatedScreen: { flex: 1, backgroundColor: BRAND.richBlack },
   contenedor: { flex: 1, backgroundColor: BRAND.richBlack },
-  scrollContent: { flexGrow: 1, padding: 24, paddingTop: 84, paddingBottom: 64 },
+  scrollContent: { flexGrow: 1, padding: 20, paddingTop: 84, paddingBottom: 64 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32 },
-  titulo: { fontSize: 36, fontWeight: '900', color: '#fff', letterSpacing: -1, textTransform: 'uppercase' },
+  titulo: { fontSize: 28, fontWeight: '800', color: '#fff', letterSpacing: 0 },
   subtitulo: { fontSize: 14, color: BRAND.textSec, fontWeight: '600', marginTop: 4, letterSpacing: 0.4 },
-  btnPrimary: { borderRadius: 18, overflow: 'hidden', shadowColor: BRAND.iconBright, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 25, elevation: 10 },
+  btnPrimary: { borderRadius: 12, overflow: 'hidden', shadowColor: BRAND.iconBright, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 25, elevation: 10 },
   btnGradient: { flexDirection: 'row', paddingHorizontal: 24, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
   btnIcon: { marginRight: 8 },
   btnPrimaryText: { color: '#fff', fontSize: 14, fontWeight: '900', letterSpacing: 2 },
   gridStats: { flexDirection: 'row', flexWrap: 'wrap', gap: 20, marginBottom: 24 },
-  statCard: { flex: 1, minWidth: 250, backgroundColor: ADMIN.fondoElevado, borderRadius: ADMIN.radio, padding: 24, borderWidth: 1, borderColor: ADMIN.borde, shadowColor: '#000', shadowOffset: { width: 0, height: 18 }, shadowOpacity: 0.35, shadowRadius: 36, elevation: 14 },
+  statCard: { flex: 1, minWidth: 250, backgroundColor: ADMIN.fondoElevado, borderRadius: ADMIN.radio, padding: 20, borderWidth: 1, borderColor: ADMIN.borde, shadowColor: '#000', shadowOffset: { width: 0, height: 18 }, shadowOpacity: 0.24, shadowRadius: 28, elevation: 14 },
   statRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 16 },
   statInfo: { flex: 1 },
   statLabel: { fontSize: 10, fontWeight: '900', color: BRAND.textSec, textTransform: 'uppercase', letterSpacing: 2.1, marginBottom: 10 },
   statValue: { fontSize: 24, fontWeight: '900', color: '#fff', letterSpacing: -0.5, marginBottom: 7 },
-  statTrend: { fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.2 },
+  statTrend: { fontSize: 10, fontWeight: '800', letterSpacing: 0.3 },
   iconPanel: { width: 52, height: 52, borderRadius: 17, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   panelGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 20, marginBottom: 24 },
-  panelCard: { flex: 1, minWidth: 320, backgroundColor: ADMIN.fondoElevado, borderRadius: ADMIN.radio, borderWidth: 1, borderColor: ADMIN.borde, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 18 }, shadowOpacity: 0.35, shadowRadius: 36, elevation: 14 },
+  panelCard: { flex: 1, minWidth: 320, backgroundColor: ADMIN.fondoElevado, borderRadius: ADMIN.radio, borderWidth: 1, borderColor: ADMIN.borde, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 18 }, shadowOpacity: 0.24, shadowRadius: 28, elevation: 14 },
   panelHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 16 },
-  panelTitle: { color: BRAND.textMain, fontSize: 15, fontWeight: '900', textTransform: 'uppercase' },
-  panelSubtitle: { color: BRAND.textSec, fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.3, marginTop: 4 },
+  panelTitle: { color: BRAND.textMain, fontSize: 14, fontWeight: '800' },
+  panelSubtitle: { color: BRAND.textSec, fontSize: 10, fontWeight: '800', letterSpacing: 0.3, marginTop: 4 },
   metricRow: { gap: 9, marginBottom: 16 },
   metricTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  metricLabel: { color: BRAND.textSec, fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.2 },
+  metricLabel: { color: BRAND.textSec, fontSize: 10, fontWeight: '800', letterSpacing: 0.3 },
   metricValue: { color: BRAND.textMain, fontSize: 13, fontWeight: '900' },
   progressTrack: { height: 8, backgroundColor: 'rgba(255,255,255,0.055)', borderRadius: 999, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 999 },
@@ -428,20 +354,20 @@ const estilos = StyleSheet.create({
   departmentTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   departmentName: { color: BRAND.textMain, fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
   departmentValue: { color: BRAND.violet, fontSize: 13, fontWeight: '900' },
-  premiumCard: { backgroundColor: ADMIN.fondoElevado, borderRadius: ADMIN.radio, borderWidth: 1, borderColor: 'rgba(196,181,253,0.10)', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.4, shadowRadius: 50, elevation: 15 },
-  cardHeader: { padding: 30, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)', backgroundColor: 'rgba(255,255,255,0.02)', gap: 18 },
-  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,7,45,0.5)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 16, paddingHorizontal: 20, height: 60 },
+  premiumCard: { backgroundColor: ADMIN.fondoElevado, borderRadius: ADMIN.radio, borderWidth: 1, borderColor: 'rgba(196,181,253,0.10)', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.26, shadowRadius: 30, elevation: 15 },
+  cardHeader: { padding: 22, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)', backgroundColor: 'rgba(255,255,255,0.02)', gap: 18 },
+  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.045)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 12, paddingHorizontal: 20, height: 46 },
   searchIcon: { marginRight: 12 },
   searchInput: { flex: 1, color: '#fff', fontSize: 14, fontWeight: '700' },
   filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   filterChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', backgroundColor: 'rgba(255,255,255,0.025)' },
   filterChipActivo: { backgroundColor: 'rgba(96,165,250,0.14)', borderColor: 'rgba(96,165,250,0.25)' },
-  filterText: { color: BRAND.textSec, fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.3 },
+  filterText: { color: BRAND.textSec, fontSize: 10, fontWeight: '800', letterSpacing: 0.3 },
   filterTextActivo: { color: BRAND.iconBright },
   tableContainer: { width: '100%' },
-  tableHeader: { flexDirection: 'row', paddingHorizontal: 32, paddingVertical: 24, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
+  tableHeader: { flexDirection: 'row', paddingHorizontal: 22, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
   thText: { fontSize: 10, fontWeight: '900', color: BRAND.textSec, textTransform: 'uppercase', letterSpacing: 2 },
-  tableRow: { flexDirection: 'row', paddingHorizontal: 32, paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)', alignItems: 'center' },
+  tableRow: { flexDirection: 'row', paddingHorizontal: 22, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)', alignItems: 'center' },
   tdCell: { justifyContent: 'center', minWidth: 0 },
   empName: { fontSize: 14, fontWeight: '900', color: '#fff', textTransform: 'uppercase' },
   empMeta: { fontSize: 10, fontWeight: '800', color: BRAND.textSec, marginTop: 4, textTransform: 'uppercase', letterSpacing: 1 },
@@ -451,7 +377,7 @@ const estilos = StyleSheet.create({
   actionCell: { alignItems: 'flex-end', flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
   actionBtn: { padding: 11, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: ADMIN.radioPequeno, borderWidth: 1, borderColor: 'rgba(196,181,253,0.10)' },
   badge: { paddingHorizontal: 11, paddingVertical: 5, borderRadius: 100, borderWidth: 1 },
-  badgeText: { fontSize: 9, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.2 },
+  badgeText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.2 },
   emptyState: { padding: 32, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: BRAND.textSec, fontWeight: '900', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1.2, textAlign: 'center' },
 });

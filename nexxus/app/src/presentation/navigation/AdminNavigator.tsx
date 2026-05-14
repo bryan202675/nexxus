@@ -144,7 +144,11 @@ function Sidebar({ state, navigation }: BottomTabBarProps) {
   
   return (
     <Animated.View style={[estilos.sidebar, { opacity: entrada, transform: [{ translateX: entrada.interpolate({ inputRange: [0, 1], outputRange: [-24, 0] }) }] }]}>
-      <View style={estilos.sidebarGlow} />
+      <LinearGradient
+        pointerEvents="none"
+        colors={['rgba(124,58,237,0.18)', 'rgba(37,99,235,0.08)', 'transparent']}
+        style={estilos.sidebarGlow}
+      />
 
       <View style={estilos.logoContainer}>
         <View style={estilos.logoHeader}>
@@ -159,8 +163,12 @@ function Sidebar({ state, navigation }: BottomTabBarProps) {
         </View>
         
         <View style={estilos.assetSystemCard}>
-          <Text style={estilos.assetSystemLabel}>Admin Suite</Text>
+          <Text style={estilos.assetSystemLabel}>Nexxus Enterprise</Text>
           <Text style={estilos.assetSystemValue}>Centro operativo</Text>
+          <View style={estilos.assetSystemStatus}>
+            <View style={estilos.assetSystemDot} />
+            <Text style={estilos.assetSystemStatusText}>Firebase en vivo</Text>
+          </View>
         </View>
       </View>
 
@@ -233,7 +241,7 @@ function Sidebar({ state, navigation }: BottomTabBarProps) {
           </View>
         </View>
         <View style={estilos.darkModeRow}>
-          <Text style={estilos.darkModeText}>Modo premium</Text>
+          <Text style={estilos.darkModeText}>Suite premium</Text>
           <View style={estilos.darkModeSwitch}>
             <View style={estilos.darkModeKnob} />
           </View>
@@ -272,13 +280,19 @@ const NavbarHeader = () => {
       <BlurView intensity={30} tint="dark" style={estilos.navbarGlass}>
         <View style={estilos.navbarLeft}>
           <Animated.View style={[estilos.statusDot, { transform: [{ scale: pulso.interpolate({ inputRange: [0, 1], outputRange: [1, 1.45] }) }] }]} />
-          <Text style={estilos.statusText}>Hola, {user?.nombre?.split(' ')[0] || 'Admin'}</Text>
+          <View>
+            <Text style={estilos.statusText}>Hola, {user?.nombre?.split(' ')[0] || 'Admin'}</Text>
+            <Text style={estilos.statusSubtext}>Operación empresarial sincronizada</Text>
+          </View>
         </View>
         <View style={estilos.navbarRight}>
           <View style={estilos.searchBox}>
-            <Text style={estilos.searchText}>Buscar en Nexxus</Text>
+            <Text style={estilos.searchText}>Buscar empleados, tareas o eventos</Text>
             <MaterialIcons name="search" size={16} color="rgba(255,255,255,0.58)" />
           </View>
+          <BotonAnimado style={estilos.iconCircle}>
+            <MaterialIcons name="bolt" size={17} color="#F8FAFC" />
+          </BotonAnimado>
           <BotonAnimado style={estilos.iconCircle}>
             <MaterialIcons name="notifications-none" size={17} color="#F8FAFC" />
           </BotonAnimado>
@@ -292,7 +306,7 @@ const NavbarHeader = () => {
           <View style={estilos.divider} />
           <BotonAnimado style={estilos.vipBtn}>
             <LinearGradient colors={[BRAND.bangladeshBlue, BRAND.caribbeanBlue]} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.vipBtnGradient}>
-              <Text style={estilos.vipBtnText}>EN VIVO</Text>
+              <Text style={estilos.vipBtnText}>Live</Text>
             </LinearGradient>
           </BotonAnimado>
         </View>
@@ -339,7 +353,7 @@ const estilos = StyleSheet.create({
     width: 420,
     height: 420,
     borderRadius: 210,
-    backgroundColor: 'rgba(124,58,237,0.18)',
+    backgroundColor: 'rgba(124,58,237,0.12)',
     zIndex: 0,
   },
   fondoGlowDos: {
@@ -349,7 +363,7 @@ const estilos = StyleSheet.create({
     width: 520,
     height: 360,
     borderRadius: 260,
-    backgroundColor: 'rgba(37,99,235,0.10)',
+    backgroundColor: 'rgba(37,99,235,0.08)',
     zIndex: 0,
   },
   hoverElevado: {
@@ -374,41 +388,40 @@ const estilos = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
-    width: 224,
-    backgroundColor: 'rgba(13, 9, 27, 0.78)',
+    width: 248,
+    backgroundColor: 'rgba(6, 5, 18, 0.86)',
     borderRightWidth: 1,
-    borderRightColor: ADMIN.borde,
+    borderRightColor: 'rgba(210,198,255,0.11)',
     display: 'flex',
     flexDirection: 'column',
     zIndex: 50,
   },
   sidebarGlow: {
     position: 'absolute',
-    top: 0,
+    top: -96,
     left: -128,
-    width: 320,
-    height: 320,
-    backgroundColor: 'rgba(168,85,247,0.18)',
-    borderRadius: 160,
+    width: 360,
+    height: 360,
+    borderRadius: 180,
   },
   contenidoPrincipal: {
     flex: 1,
-    marginLeft: 224,
+    marginLeft: 248,
     backgroundColor: BRAND.richBlack,
   },
   logoContainer: {
-    padding: 16,
-    paddingTop: 20,
-    paddingBottom: 18,
+    padding: 18,
+    paddingTop: 22,
+    paddingBottom: 20,
   },
   logoHeader: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   logoIconBg: {
-    width: 24,
-    height: 24,
-    borderRadius: 7,
+    width: 34,
+    height: 34,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 8,
@@ -419,21 +432,21 @@ const estilos = StyleSheet.create({
     elevation: 10,
   },
   logoTexto: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: '900',
     color: '#fff',
     letterSpacing: 0,
   },
   assetSystemCard: {
     marginTop: 16,
-    padding: 11,
-    borderRadius: 8,
-    backgroundColor: 'rgba(13,9,27,0.62)',
+    padding: 13,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.04)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: 'rgba(210,198,255,0.12)',
   },
   assetSystemLabel: {
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: '900',
     color: BRAND.iconBright,
     textTransform: 'uppercase',
@@ -441,40 +454,57 @@ const estilos = StyleSheet.create({
     marginBottom: 4,
   },
   assetSystemValue: {
-    fontSize: 10,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '800',
     color: '#fff',
     letterSpacing: 0.3,
   },
+  assetSystemStatus: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  assetSystemDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 99,
+    backgroundColor: '#22C55E',
+  },
+  assetSystemStatusText: {
+    color: ADMIN.textoSecundario,
+    fontSize: 10,
+    fontWeight: '700',
+  },
   menuContainer: {
     flex: 1,
-    paddingHorizontal: 12,
-    gap: 5,
+    paddingHorizontal: 14,
+    gap: 6,
   },
   menuItem: {
-    borderRadius: 10,
+    borderRadius: 12,
     overflow: 'hidden',
   },
   menuItemActivo: {
     ...sombraVioleta,
   },
   menuItemGradient: {
-    borderRadius: 10,
+    borderRadius: 12,
   },
   menuItemInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 11,
-    paddingHorizontal: 11,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     position: 'relative',
   },
   menuItemInnerActivo: {
     backgroundColor: 'transparent',
   },
   menuTexto: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#94A3B8',
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#A9A4C7',
     letterSpacing: 0,
     marginLeft: 9,
   },
@@ -491,10 +521,10 @@ const estilos = StyleSheet.create({
     color: '#fff',
   },
   usuarioContainer: {
-    padding: 12,
+    padding: 14,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.05)',
-    backgroundColor: 'rgba(255,255,255,0.01)',
+    backgroundColor: 'rgba(255,255,255,0.018)',
   },
   usuarioInfoRow: {
     flexDirection: 'row',
@@ -528,7 +558,7 @@ const estilos = StyleSheet.create({
     letterSpacing: 0,
   },
   usuarioRol: {
-    color: '#4B5563',
+    color: '#8B86AA',
     fontSize: 8,
     fontWeight: '700',
     letterSpacing: 0.8,
@@ -544,13 +574,13 @@ const estilos = StyleSheet.create({
   logoutText: {
     fontSize: 10,
     fontWeight: '900',
-    color: '#4B5563',
+    color: '#8B86AA',
     textTransform: 'uppercase',
     letterSpacing: 2,
   },
   navbarContainer: {
     position: 'absolute',
-    top: 20,
+    top: 18,
     left: 24,
     right: 24,
     zIndex: 40,
@@ -559,10 +589,10 @@ const estilos = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: 'rgba(13, 9, 27, 0.68)',
+    borderRadius: 14,
+    backgroundColor: 'rgba(8, 7, 20, 0.72)',
     borderWidth: 1,
     borderColor: ADMIN.borde,
     ...sombraAdmin,
@@ -584,10 +614,16 @@ const estilos = StyleSheet.create({
     elevation: 5,
   },
   statusText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '900',
     color: '#F8FAFC',
     letterSpacing: 0,
+  },
+  statusSubtext: {
+    color: 'rgba(184,176,216,0.78)',
+    fontSize: 9,
+    fontWeight: '700',
+    marginTop: 2,
   },
   navbarRight: {
     flexDirection: 'row',
@@ -595,31 +631,31 @@ const estilos = StyleSheet.create({
     gap: 10,
   },
   searchBox: {
-    width: 220,
-    minHeight: 34,
-    borderRadius: 9,
+    width: 280,
+    minHeight: 38,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.10)',
-    backgroundColor: 'rgba(5,3,12,0.36)',
-    paddingHorizontal: 11,
+    backgroundColor: 'rgba(255,255,255,0.045)',
+    paddingHorizontal: 13,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   searchText: {
     color: 'rgba(255,255,255,0.46)',
-    fontSize: 9,
-    fontWeight: '800',
+    fontSize: 11,
+    fontWeight: '700',
   },
   iconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.10)',
-    backgroundColor: 'rgba(255,255,255,0.045)',
+    backgroundColor: 'rgba(255,255,255,0.055)',
   },
   avatarStack: {
     flexDirection: 'row',

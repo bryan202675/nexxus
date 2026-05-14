@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, Easing, Modal, View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput } from 'react-native';
+import { Alert, Animated, Easing, Image, Modal, View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { addDoc, collection, doc, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
@@ -47,6 +47,8 @@ type UsuarioPlantilla = {
   ultimoCheckIn?: string;
   createdAt?: string;
   foto_perfil?: string;
+  fotoPerfil?: string;
+  photoURL?: string;
 };
 
 type DepartamentoCatalogo = {
@@ -92,12 +94,16 @@ type TareaPlantilla = {
 };
 
 type CheckInPlantilla = {
+  id?: string;
   userId?: string;
   fecha?: string;
   timestamp?: any;
   estres?: number;
+  balanceEmocional?: number;
   cargaLaboral?: number;
+  energia?: string;
   empresaId?: string;
+  empresa_id?: string;
 };
 
 type AusenciaPlantilla = {
@@ -108,6 +114,7 @@ type AusenciaPlantilla = {
 };
 
 type FiltroEstado = 'todos' | 'activos' | 'inactivos' | 'riesgo';
+type AlcanceTarea = 'sede' | 'departamento' | 'individual';
 type ModoFormulario = 'crear' | 'editar';
 type SelectorActivo = 'cargo' | 'departamento' | 'sede' | 'rol' | null;
 
@@ -124,6 +131,16 @@ type FormularioEmpleado = {
   salarioBase: string;
 };
 
+type FormularioTarea = {
+  titulo: string;
+  descripcion: string;
+  prioridad: 'Alta' | 'Media' | 'Baja' | 'Urgente';
+  fecha_limite: string;
+  sedeId: string;
+  departamentoId: string;
+  usuarioId: string;
+};
+
 const formularioInicial: FormularioEmpleado = {
   nombre: '',
   correo: '',
@@ -135,6 +152,16 @@ const formularioInicial: FormularioEmpleado = {
   jefeId: '',
   telefono: '',
   salarioBase: '',
+};
+
+const formularioTareaInicial: FormularioTarea = {
+  titulo: '',
+  descripcion: '',
+  prioridad: 'Media',
+  fecha_limite: '',
+  sedeId: '',
+  departamentoId: '',
+  usuarioId: '',
 };
 
 const obtenerFecha = (valor: any): Date | null => {
@@ -315,7 +342,13 @@ export default function GestionPlantilla() {
   const [cargando, setCargando] = useState(true);
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('todos');
+  const [filtroRol, setFiltroRol] = useState('todos');
+  const [filtroDepartamento, setFiltroDepartamento] = useState('todos');
+  const [sedeSeleccionadaId, setSedeSeleccionadaId] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [modalTareaVisible, setModalTareaVisible] = useState(false);
+  const [alcanceTarea, setAlcanceTarea] = useState<AlcanceTarea>('individual');
+  const [formularioTarea, setFormularioTarea] = useState<FormularioTarea>(formularioTareaInicial);
   const [modoFormulario, setModoFormulario] = useState<ModoFormulario>('crear');
   const [empleadoSeleccionado, setEmpleadoSeleccionado] = useState<UsuarioPlantilla | null>(null);
   const [formulario, setFormulario] = useState<FormularioEmpleado>(formularioInicial);
@@ -376,7 +409,33 @@ export default function GestionPlantilla() {
     );
 
     const unsubTareas = crearListener<TareaPlantilla>('tareas', 'tareas', setTareas);
-    const unsubCheckIns = crearListener<CheckInPlantilla>('checkins', 'checkins', setCheckIns);
+    const mapasCheckIns = new Map<string, Map<string, CheckInPlantilla>>();
+    const publicarCheckIns = () => {
+      const combinados = new Map<string, CheckInPlantilla>();
+      mapasCheckIns.forEach((mapa) => mapa.forEach((checkIn, id) => combinados.set(id, checkIn)));
+      setCheckIns(Array.from(combinados.values()));
+    };
+    const escucharCheckIns = (campo: 'empresaId' | 'empresa_id', clave: string) => onSnapshot(
+      query(collection(db, 'checkins'), where(campo, '==', empresaId)),
+      (snapshot) => {
+        const mapa = new Map<string, CheckInPlantilla>();
+        snapshot.docs.forEach((documento) => {
+          mapa.set(documento.id, { id: documento.id, ...documento.data() } as CheckInPlantilla);
+        });
+        mapasCheckIns.set(clave, mapa);
+        publicarCheckIns();
+        marcarCarga('checkins');
+      },
+      () => {
+        mapasCheckIns.set(clave, new Map());
+        publicarCheckIns();
+        marcarCarga('checkins');
+      }
+    );
+    const unsubCheckIns = [
+      escucharCheckIns('empresaId', 'actual'),
+      escucharCheckIns('empresa_id', 'legacy'),
+    ];
     const unsubAusencias = crearListener<AusenciaPlantilla>('ausencias', 'solicitudes_ausencia', setAusencias);
     const unsubDepartamentos = crearListener<DepartamentoCatalogo>('departamentos', 'departments', setDepartamentosCatalogo);
     const unsubSedes = crearListener<SedeCatalogo>('sedes', 'sedes', setSedesCatalogo);
@@ -386,7 +445,7 @@ export default function GestionPlantilla() {
     return () => {
       unsubUsuarios();
       unsubTareas();
-      unsubCheckIns();
+      unsubCheckIns.forEach((unsubscribe) => unsubscribe());
       unsubAusencias();
       unsubDepartamentos();
       unsubSedes();
@@ -426,6 +485,14 @@ export default function GestionPlantilla() {
     return { departamentos, sedes, cargos, roles, jefes };
   }, [usuarios, departamentosCatalogo, sedesCatalogo, cargosCatalogo, rolesPersonalizados]);
 
+  useEffect(() => {
+    if (catalogos.sedes.length <= 1) {
+      setSedeSeleccionadaId(catalogos.sedes[0]?.id || null);
+    } else if (sedeSeleccionadaId && !catalogos.sedes.some((sede) => sede.id === sedeSeleccionadaId)) {
+      setSedeSeleccionadaId(null);
+    }
+  }, [catalogos.sedes, sedeSeleccionadaId]);
+
   const registrarAuditoria = async (accion: string, detalles: string, estado: 'Success' | 'Warning' | 'Error' = 'Success') => {
     const empresaId = obtenerEmpresaIdAdmin(user);
     if (!empresaId || !user) return;
@@ -449,6 +516,21 @@ export default function GestionPlantilla() {
 
   const alternarSelector = (selector: SelectorActivo) => {
     setSelectorActivo((actual) => actual === selector ? null : selector);
+  };
+
+  const actualizarFormularioTarea = (campo: keyof FormularioTarea, valor: string) => {
+    setFormularioTarea((actual) => ({ ...actual, [campo]: valor }));
+  };
+
+  const abrirAsignarTarea = (alcance: AlcanceTarea = 'individual', usuario?: UsuarioPlantilla) => {
+    setAlcanceTarea(alcance);
+    setFormularioTarea({
+      ...formularioTareaInicial,
+      sedeId: alcance === 'sede' ? (sedeSeleccionadaId || catalogos.sedes[0]?.id || '') : (usuario?.sedeId || sedeSeleccionadaId || ''),
+      departamentoId: alcance === 'departamento' ? (usuario?.departamentoId || (filtroDepartamento !== 'todos' ? filtroDepartamento : '')) : (usuario?.departamentoId || ''),
+      usuarioId: usuario?.id || '',
+    });
+    setModalTareaVisible(true);
   };
 
   const abrirCrear = () => {
@@ -538,6 +620,10 @@ export default function GestionPlantilla() {
         .sort((a, b) => (obtenerFecha(b.fecha || b.timestamp)?.getTime() || 0) - (obtenerFecha(a.fecha || a.timestamp)?.getTime() || 0))[0];
       const estres = Number(ultimoCheckIn?.estres) || 0;
       const carga = Number(ultimoCheckIn?.cargaLaboral) || 0;
+      const balance = Number(ultimoCheckIn?.balanceEmocional) || 0;
+      const bienestar = ultimoCheckIn
+        ? Math.max(0, Math.min(100, Math.round(((balance + (5 - estres) + (5 - carga)) / 15) * 100)))
+        : 0;
       const checkInHoy = mismoDia(obtenerFecha(ultimoCheckIn?.fecha || ultimoCheckIn?.timestamp || usuario.ultimoCheckIn));
       const ausenciasPendientes = ausencias.filter((ausencia) => ausencia.usuario_id === usuario.id && ausencia.estado === 'pendiente').length;
       const riesgo = estres >= 4 || carga >= 4 || tareasPendientes >= 5 || !checkInHoy;
@@ -549,6 +635,9 @@ export default function GestionPlantilla() {
         productividad,
         estres,
         carga,
+        balance,
+        bienestar,
+        energia: ultimoCheckIn?.energia || '',
         checkInHoy,
         ausenciasPendientes,
         riesgo,
@@ -589,6 +678,21 @@ export default function GestionPlantilla() {
     };
   }, [usuarios, tareas, checkIns, ausencias]);
 
+  const sedesResumen = useMemo(() => {
+    const sedesBase = catalogos.sedes.length > 0
+      ? catalogos.sedes
+      : [{ id: 'sin-sede', nombre: 'Plantilla', detalle: 'Sede principal' }];
+    return sedesBase.map((sede) => {
+      const colaboradores = datos.usuariosEnriquecidos.filter((usuario) => {
+        if (sede.id === 'sin-sede') return !usuario.sedeId;
+        return usuario.sedeId === sede.id || usuario.sede === sede.nombre;
+      });
+      const activos = colaboradores.filter((usuario) => usuario.activo !== false && usuario.estado_activo !== false).length;
+      const departamentos = new Set(colaboradores.map((usuario) => usuario.departamento || 'General'));
+      return { ...sede, colaboradores, activos, departamentos: departamentos.size };
+    });
+  }, [catalogos.sedes, datos.usuariosEnriquecidos]);
+
   const usuariosFiltrados = datos.usuariosEnriquecidos.filter((usuario) => {
     const texto = busqueda.toLowerCase();
     const coincideBusqueda =
@@ -598,6 +702,12 @@ export default function GestionPlantilla() {
       usuario.departamento?.toLowerCase().includes(texto);
 
     if (!coincideBusqueda) return false;
+    if (catalogos.sedes.length > 1 && sedeSeleccionadaId) {
+      const sede = catalogos.sedes.find((item) => item.id === sedeSeleccionadaId);
+      if (usuario.sedeId !== sedeSeleccionadaId && usuario.sede !== sede?.nombre) return false;
+    }
+    if (filtroRol !== 'todos' && usuario.rol !== filtroRol) return false;
+    if (filtroDepartamento !== 'todos' && usuario.departamentoId !== filtroDepartamento && usuario.departamento !== departamentosCatalogo.find((item) => item.id === filtroDepartamento)?.nombre) return false;
     if (filtroEstado === 'activos') return usuario.activo !== false && usuario.estado_activo !== false;
     if (filtroEstado === 'inactivos') return usuario.activo === false || usuario.estado_activo === false;
     if (filtroEstado === 'riesgo') return usuario.riesgo;
@@ -683,6 +793,58 @@ export default function GestionPlantilla() {
     }
   };
 
+  const guardarAsignacionTarea = async () => {
+    const empresaId = obtenerEmpresaIdAdmin(user);
+    const titulo = formularioTarea.titulo.trim();
+    if (!empresaId || !titulo || guardando) return;
+
+    const sede = catalogos.sedes.find((item) => item.id === formularioTarea.sedeId);
+    const departamento = departamentosCatalogo.find((item) => item.id === formularioTarea.departamentoId);
+    const destinatarios = datos.usuariosEnriquecidos.filter((usuario) => {
+      const activo = usuario.activo !== false && usuario.estado_activo !== false;
+      if (!activo || !usuario.id) return false;
+      if (alcanceTarea === 'individual') return usuario.id === formularioTarea.usuarioId;
+      if (alcanceTarea === 'sede') return usuario.sedeId === formularioTarea.sedeId || usuario.sede === sede?.nombre;
+      return usuario.departamentoId === formularioTarea.departamentoId || usuario.departamento === departamento?.nombre;
+    });
+
+    if (destinatarios.length === 0) {
+      Alert.alert('Sin destinatarios', 'Selecciona una sede, departamento o empleado con colaboradores activos.');
+      return;
+    }
+
+    setGuardando(true);
+    try {
+      await Promise.all(destinatarios.map((empleado) => addDoc(collection(db, 'tareas'), {
+        empresaId,
+        titulo,
+        descripcion: formularioTarea.descripcion.trim(),
+        prioridad: formularioTarea.prioridad,
+        estado: 'pendiente',
+        progreso: 0,
+        asignado_a: empleado.id,
+        asignado_nombre: empleado.nombre || empleado.correo || 'Empleado',
+        fecha_creacion: new Date().toISOString(),
+        fecha_limite: formularioTarea.fecha_limite.trim() || null,
+        depto: empleado.departamento || departamento?.nombre || '',
+        sedeId: empleado.sedeId || sede?.id || '',
+        sede: empleado.sede || sede?.nombre || '',
+        jefe: user?.nombre || user?.correo || 'Administrador',
+        alcance: alcanceTarea,
+      })));
+      await registrarAuditoria('Asignación de Tareas', `${titulo} · ${destinatarios.length} destinatarios`);
+      setModalTareaVisible(false);
+      setFormularioTarea(formularioTareaInicial);
+    } catch (error: any) {
+      Alert.alert('No se pudo asignar', error?.message || 'Firebase no confirmó la asignación de tareas.');
+      try {
+        await registrarAuditoria('Error al Asignar Tareas', titulo, 'Error');
+      } catch {}
+    } finally {
+      setGuardando(false);
+    }
+  };
+
   const actualizarActivo = async (id?: string, activo = true) => {
     if (!id) return;
     await useCases.admin.updateUserProfile.execute(id, { activo });
@@ -728,97 +890,134 @@ export default function GestionPlantilla() {
     { label: 'Jefaturas', valor: datos.jefes, detalle: `${datos.admins} admins`, icono: 'verified-user' as const, color: ADMIN.iconos.seguridad },
   ];
 
+  const usuariosSinSede = datos.usuariosEnriquecidos.filter(u => !u.sedeId && (!u.sede || u.sede === ''));
+
+  const renderEmployeeRow = (emp: UsuarioPlantilla, i: number) => {
+    const activo = emp.activo !== false && emp.estado_activo !== false;
+    return (
+      <View key={emp.id || i} style={estilos.tableRow}>
+        <View style={[estilos.tdCell, estilos.colaboradorCell, { flex: 2.2 }]}>
+          {emp.foto_perfil || emp.fotoPerfil || emp.photoURL ? (
+            <Image source={{ uri: emp.foto_perfil || emp.fotoPerfil || emp.photoURL }} style={estilos.avatarImagen} />
+          ) : (
+            <LinearGradient colors={[BRAND.bangladeshBlue, BRAND.caribbeanBlue]} style={estilos.avatar}>
+              <MaterialIcons name="person" size={17} color="rgba(255,255,255,0.92)" />
+              <Text style={estilos.avatarText}>{(emp.nombre || '?')[0].toUpperCase()}</Text>
+            </LinearGradient>
+          )}
+          <View style={estilos.empInfo}>
+            <Text style={estilos.empName} numberOfLines={1}>{emp.nombre || 'Sin nombre'}</Text>
+            <Text style={estilos.empEmail} numberOfLines={1}>{emp.correo || 'Sin correo'}</Text>
+          </View>
+        </View>
+        <View style={[estilos.tdCell, { flex: 1.15, alignItems: 'center' }]}>
+          <PremiumBadge variant={emp.rol === 'admin' ? 'violet' : emp.rol === 'jefe' ? 'blue' : 'default'}>{emp.rol || 'EMPLEADO'}</PremiumBadge>
+        </View>
+        <View style={[estilos.tdCell, { flex: 1.35, alignItems: 'center' }]}>
+          <Text style={estilos.empRole} numberOfLines={1}>{emp.departamento || 'N/A'}</Text>
+        </View>
+        <View style={[estilos.tdCell, { flex: 1, alignItems: 'center' }]}>
+          <PremiumBadge variant={activo ? 'success' : 'warning'}>{activo ? 'ACTIVO' : 'INACTIVO'}</PremiumBadge>
+        </View>
+        <View style={[estilos.tdCell, estilos.actionsCell]}>
+          <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnTask]} onPress={() => abrirAsignarTarea('individual', emp)}>
+            <MaterialIcons name="assignment-add" size={17} color={ADMIN.iconos.tareas} />
+          </TouchableOpacity>
+          <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnEdit]} onPress={() => abrirEditar(emp)}>
+            <MaterialIcons name="edit" size={17} color={ADMIN.iconos.documentos} />
+          </TouchableOpacity>
+          {activo ? (
+            <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnDanger]} onPress={() => actualizarActivo(emp.id, false)}>
+              <MaterialIcons name="block" size={17} color={ADMIN.iconos.peligro} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnSuccess]} onPress={() => actualizarActivo(emp.id, true)}>
+              <MaterialIcons name="check-circle" size={17} color={ADMIN.iconos.exito} />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnDanger]} onPress={() => eliminarEmpleado(emp)}>
+            <MaterialIcons name="delete-outline" size={17} color={ADMIN.iconos.peligro} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <Animated.View style={[estilos.animatedScreen, { transform: [{ translateY: entrada.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }] }]}>
     <ScrollView style={estilos.contenedor} contentContainerStyle={estilos.scrollContent} showsVerticalScrollIndicator={false}>
       <View style={estilos.header}>
         <View>
-          <Text style={estilos.titulo}>GestiÃ³n de Plantilla</Text>
-          <Text style={estilos.subtitulo}>Directorio corporativo, estado operativo y seÃ±ales de bienestar</Text>
+          <Text style={estilos.titulo}>Gestión de Plantilla</Text>
+          <Text style={estilos.subtitulo}>Organiza sedes, filtra colaboradores y asigna tareas sin salir del directorio.</Text>
         </View>
-        <TouchableOpacity style={estilos.btnPrimary} onPress={abrirCrear}>
-          <LinearGradient colors={[BRAND.bangladeshBlue, BRAND.caribbeanBlue]} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.btnGradient}>
-            <MaterialIcons name="person-add" size={18} color="#fff" style={estilos.btnIcon} />
-            <Text style={estilos.btnPrimaryText}>AGREGAR</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+        <View style={estilos.headerActions}>
+          <TouchableOpacity style={estilos.btnSecondaryTop} onPress={() => abrirAsignarTarea(sedeSeleccionadaId ? 'sede' : 'individual')}>
+            <MaterialIcons name="assignment-add" size={18} color={ADMIN.iconos.tareas} style={estilos.btnIcon} />
+            <Text style={estilos.btnSecondaryTopText}>Asignar tarea</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={estilos.btnPrimary} onPress={abrirCrear}>
+            <LinearGradient colors={[BRAND.bangladeshBlue, BRAND.caribbeanBlue]} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.btnGradient}>
+              <MaterialIcons name="person-add" size={18} color="#fff" style={estilos.btnIcon} />
+              <Text style={estilos.btnPrimaryText}>Agregar</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <View style={estilos.resumenGrid}>
-        {resumen.map((item) => (
-          <View key={item.label} style={estilos.resumenCard}>
-            <View style={estilos.resumenTop}>
-              <View>
-                <Text style={estilos.resumenLabel}>{item.label}</Text>
-                <Text style={estilos.resumenValor}>{item.valor}</Text>
-                <Text style={[estilos.resumenDetalle, { color: item.color }]}>{item.detalle}</Text>
+      {catalogos.sedes.length > 1 && !sedeSeleccionadaId && (
+        <View style={estilos.sedesGrid}>
+          {sedesResumen.map((sede) => (
+            <TouchableOpacity key={sede.id} style={estilos.sedeCard} activeOpacity={0.88} onPress={() => setSedeSeleccionadaId(sede.id)}>
+              <View style={estilos.sedeIcono}>
+                <MaterialIcons name="business" size={22} color={ADMIN.iconos.calendario} />
               </View>
-              <IconPanel icon={item.icono} color={item.color} />
-            </View>
-          </View>
-        ))}
-      </View>
-
-      <View style={estilos.panelGrid}>
-        <View style={estilos.panelCard}>
-          <View style={estilos.panelHeader}>
-            <View>
-              <Text style={estilos.panelTitle}>DistribuciÃ³n por Rol</Text>
-              <Text style={estilos.panelSubtitle}>Permisos y gobierno interno</Text>
-            </View>
-            <IconPanel icon="admin-panel-settings" color={ADMIN.iconos.seguridad} />
-          </View>
-          <View style={estilos.roleGrid}>
-            <MiniRole label="Admins" value={datos.admins} color={ADMIN.iconos.seguridad} />
-            <MiniRole label="Jefes" value={datos.jefes} color={ADMIN.iconos.organizacion} />
-            <MiniRole label="Empleados" value={datos.empleados} color={ADMIN.iconos.personas} />
-            <MiniRole label="PsicÃ³logos" value={datos.psicologos} color={ADMIN.iconos.calendario} />
-          </View>
-        </View>
-
-        <View style={estilos.panelCard}>
-          <View style={estilos.panelHeader}>
-            <View>
-              <Text style={estilos.panelTitle}>Departamentos</Text>
-              <Text style={estilos.panelSubtitle}>ConcentraciÃ³n de personal</Text>
-            </View>
-            <IconPanel icon="domain" color={ADMIN.iconos.calendario} />
-          </View>
-          <View style={estilos.departmentList}>
-            {datos.topDepartamentos.length > 0 ? datos.topDepartamentos.map((depto) => (
-              <View key={depto.nombre} style={estilos.departmentRow}>
-                <View style={estilos.departmentTop}>
-                  <Text style={estilos.departmentName}>{depto.nombre}</Text>
-                  <Text style={estilos.departmentValue}>{depto.total}</Text>
-                </View>
-                <View style={estilos.progressTrack}>
-                  <View style={[estilos.progressFill, { width: `${Math.max(depto.share, 4)}%`, backgroundColor: BRAND.cyan }]} />
-                </View>
+              <View style={estilos.sedeInfo}>
+                <Text style={estilos.sedeNombre}>{sede.nombre}</Text>
+                <Text style={estilos.sedeDetalle}>{sede.detalle}</Text>
               </View>
-            )) : (
-              <Text style={estilos.emptyText}>Sin departamentos registrados</Text>
-            )}
-          </View>
+              <View style={estilos.sedeMeta}>
+                <Text style={estilos.sedeTotal}>{sede.colaboradores.length}</Text>
+                <Text style={estilos.sedeLabel}>personas</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
         </View>
+      )}
 
-        <View style={estilos.panelCard}>
-          <View style={estilos.panelHeader}>
-            <View>
-              <Text style={estilos.panelTitle}>Estado de Cuenta</Text>
-              <Text style={estilos.panelSubtitle}>Disponibilidad laboral</Text>
+      {catalogos.sedes.length > 1 && !sedeSeleccionadaId && usuariosSinSede.length > 0 && (
+        <View style={[estilos.premiumCard, { marginTop: 24 }]}>
+          <View style={[estilos.cardHeader, { paddingVertical: 14 }]}>
+            <Text style={estilos.sedeActualNombre}>Empleados sin sede asignada</Text>
+          </View>
+          <View style={estilos.tableContainer}>
+            <View style={estilos.tableHeader}>
+              <Text style={[estilos.thText, { flex: 2.2 }]}>COLABORADOR</Text>
+              <Text style={[estilos.thText, { flex: 1.15, textAlign: 'center' }]}>ROL</Text>
+              <Text style={[estilos.thText, { flex: 1.35, textAlign: 'center' }]}>DEPARTAMENTO</Text>
+              <Text style={[estilos.thText, { flex: 1, textAlign: 'center' }]}>ESTADO</Text>
+              <Text style={[estilos.thText, { flex: 1, textAlign: 'right' }]}>ACCIONES</Text>
             </View>
-            <IconPanel icon="fact-check" color={ADMIN.iconos.exito} />
-          </View>
-          <View style={estilos.metricRows}>
-            <MetricRow label="Activos" value={datos.activos} total={usuarios.length} color={ADMIN.iconos.exito} />
-            <MetricRow label="Inactivos" value={datos.inactivos} total={usuarios.length} color={ADMIN.iconos.peligro} />
-            <MetricRow label="Check-in cubierto" value={datos.checkInsHoy} total={datos.activos} color={ADMIN.iconos.calendario} />
+            {usuariosSinSede.map((emp, i) => renderEmployeeRow(emp, i))}
           </View>
         </View>
-      </View>
+      )}
 
+      {(catalogos.sedes.length <= 1 || sedeSeleccionadaId) && (
       <View style={estilos.premiumCard}>
         <View style={estilos.cardHeader}>
+          {catalogos.sedes.length > 1 && (
+            <View style={estilos.sedeBar}>
+              <TouchableOpacity onPress={() => setSedeSeleccionadaId(null)} style={estilos.volverSedes}>
+                <MaterialIcons name="arrow-back" size={16} color={BRAND.textSec} />
+                <Text style={estilos.volverSedesText}>Sedes</Text>
+              </TouchableOpacity>
+              <View>
+                <Text style={estilos.sedeActualLabel}>Sede seleccionada</Text>
+                <Text style={estilos.sedeActualNombre}>{catalogos.sedes.find((sede) => sede.id === sedeSeleccionadaId)?.nombre || 'Plantilla'}</Text>
+              </View>
+            </View>
+          )}
           <View style={estilos.searchContainer}>
             <MaterialIcons name="search" size={20} color={BRAND.textSec} style={estilos.searchIcon} />
             <TextInput
@@ -830,6 +1029,7 @@ export default function GestionPlantilla() {
             />
           </View>
           <View style={estilos.filterRow}>
+            <Text style={estilos.filterLabel}>Estado</Text>
             {[
               { id: 'todos', label: 'Todos' },
               { id: 'activos', label: 'Activos' },
@@ -841,6 +1041,32 @@ export default function GestionPlantilla() {
               </TouchableOpacity>
             ))}
           </View>
+          <View style={estilos.filterRow}>
+            <Text style={estilos.filterLabel}>Rol</Text>
+            {['todos', ...catalogos.roles].map((rol) => (
+              <TouchableOpacity key={rol} onPress={() => setFiltroRol(rol)} style={[estilos.filterChip, filtroRol === rol && estilos.filterChipActivo]}>
+                <Text style={[estilos.filterChipText, filtroRol === rol && estilos.filterChipTextActivo]}>{rol === 'todos' ? 'Todos' : rol}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <View style={estilos.filterRow}>
+            <Text style={estilos.filterLabel}>Departamento</Text>
+            {[{ id: 'todos', nombre: 'Todos' }, ...catalogos.departamentos].map((departamento) => (
+              <TouchableOpacity key={departamento.id} onPress={() => setFiltroDepartamento(departamento.id)} style={[estilos.filterChip, filtroDepartamento === departamento.id && estilos.filterChipActivo]}>
+                <Text style={[estilos.filterChipText, filtroDepartamento === departamento.id && estilos.filterChipTextActivo]}>{departamento.nombre}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <View style={estilos.quickAssignRow}>
+            <TouchableOpacity style={estilos.quickAssignButton} onPress={() => abrirAsignarTarea('sede')}>
+              <MaterialIcons name="business" size={16} color={ADMIN.iconos.calendario} />
+              <Text style={estilos.quickAssignText}>Tarea a sede</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={estilos.quickAssignButton} onPress={() => abrirAsignarTarea('departamento')}>
+              <MaterialIcons name="domain" size={16} color={ADMIN.iconos.organizacion} />
+              <Text style={estilos.quickAssignText}>Tarea a departamento</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={estilos.tableContainer}>
@@ -848,63 +1074,11 @@ export default function GestionPlantilla() {
             <Text style={[estilos.thText, { flex: 2.2 }]}>COLABORADOR</Text>
             <Text style={[estilos.thText, { flex: 1.15, textAlign: 'center' }]}>ROL</Text>
             <Text style={[estilos.thText, { flex: 1.35, textAlign: 'center' }]}>DEPARTAMENTO</Text>
-            <Text style={[estilos.thText, { flex: 1.15, textAlign: 'center' }]}>PRODUCTIVIDAD</Text>
-            <Text style={[estilos.thText, { flex: 1.2, textAlign: 'center' }]}>BIENESTAR</Text>
             <Text style={[estilos.thText, { flex: 1, textAlign: 'center' }]}>ESTADO</Text>
             <Text style={[estilos.thText, { flex: 1, textAlign: 'right' }]}>ACCIONES</Text>
           </View>
 
-          {usuariosFiltrados.map((emp, i) => {
-            const activo = emp.activo !== false && emp.estado_activo !== false;
-            const bienestarVariant = emp.riesgo ? 'error' : emp.checkInHoy ? 'success' : 'warning';
-            return (
-              <View key={emp.id || i} style={estilos.tableRow}>
-                <View style={[estilos.tdCell, estilos.colaboradorCell, { flex: 2.2 }]}>
-                  <LinearGradient colors={[BRAND.bangladeshBlue, BRAND.caribbeanBlue]} style={estilos.avatar}>
-                    <Text style={estilos.avatarText}>{(emp.nombre || '?')[0].toUpperCase()}</Text>
-                  </LinearGradient>
-                  <View style={estilos.empInfo}>
-                    <Text style={estilos.empName} numberOfLines={1}>{emp.nombre || 'Sin nombre'}</Text>
-                    <Text style={estilos.empEmail} numberOfLines={1}>{emp.correo || 'Sin correo'}</Text>
-                  </View>
-                </View>
-                <View style={[estilos.tdCell, { flex: 1.15, alignItems: 'center' }]}>
-                  <PremiumBadge variant={emp.rol === 'admin' ? 'violet' : emp.rol === 'jefe' ? 'blue' : 'default'}>{emp.rol || 'EMPLEADO'}</PremiumBadge>
-                </View>
-                <View style={[estilos.tdCell, { flex: 1.35, alignItems: 'center' }]}>
-                  <Text style={estilos.empRole} numberOfLines={1}>{emp.departamento || 'N/A'}</Text>
-                </View>
-                <View style={[estilos.tdCell, { flex: 1.15 }]}>
-                  <View style={estilos.productividadBox}>
-                    <Text style={estilos.productividadText}>{emp.productividad}%</Text>
-                    <View style={estilos.progressTrack}>
-                      <View style={[estilos.progressFill, { width: `${Math.max(emp.productividad, emp.tareasCompletadas > 0 ? 6 : 0)}%`, backgroundColor: emp.productividad >= 75 ? BRAND.success : emp.productividad >= 45 ? BRAND.warning : BRAND.error }]} />
-                    </View>
-                  </View>
-                </View>
-                <View style={[estilos.tdCell, { flex: 1.2, alignItems: 'center' }]}>
-                  <PremiumBadge variant={bienestarVariant}>{emp.checkInHoy ? `ESTRÃ‰S ${emp.estres}/5` : 'SIN CHECK-IN'}</PremiumBadge>
-                </View>
-                <View style={[estilos.tdCell, { flex: 1, alignItems: 'center' }]}>
-                  <PremiumBadge variant={activo ? 'success' : 'warning'}>{activo ? 'ACTIVO' : 'INACTIVO'}</PremiumBadge>
-                </View>
-                <View style={[estilos.tdCell, estilos.actionsCell]}>
-                  <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnEdit]} onPress={() => abrirEditar(emp)}>
-                    <MaterialIcons name="edit" size={17} color={ADMIN.iconos.documentos} />
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnSuccess]} onPress={() => actualizarActivo(emp.id, true)}>
-                    <MaterialIcons name="check-circle" size={17} color={ADMIN.iconos.exito} />
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnDanger]} onPress={() => actualizarActivo(emp.id, false)}>
-                    <MaterialIcons name="block" size={17} color={ADMIN.iconos.peligro} />
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnDanger]} onPress={() => eliminarEmpleado(emp)}>
-                    <MaterialIcons name="delete-outline" size={17} color={ADMIN.iconos.peligro} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          })}
+          {usuariosFiltrados.map((emp, i) => renderEmployeeRow(emp, i))}
           {usuariosFiltrados.length === 0 && (
             <View style={estilos.emptyTable}>
               <MaterialIcons name="group-off" size={48} color={BRAND.textSec} style={estilos.emptyIcon} />
@@ -913,6 +1087,7 @@ export default function GestionPlantilla() {
           )}
         </View>
       </View>
+      )}
     </ScrollView>
     <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={cerrarModal}>
       <View style={estilos.modalOverlay}>
@@ -1018,6 +1193,101 @@ export default function GestionPlantilla() {
         </View>
       </View>
     </Modal>
+    <Modal visible={modalTareaVisible} transparent animationType="fade" onRequestClose={() => setModalTareaVisible(false)}>
+      <View style={estilos.modalOverlay}>
+        <View style={[estilos.modalCard, estilos.modalTareaCard]}>
+          <View style={estilos.modalHeader}>
+            <View>
+              <Text style={estilos.modalTitle}>Asignar tarea</Text>
+              <Text style={estilos.modalSubtitle}>Sede, departamento o colaborador individual</Text>
+            </View>
+            <TouchableOpacity style={estilos.modalClose} onPress={() => setModalTareaVisible(false)}>
+              <MaterialIcons name="close" size={20} color={BRAND.textSec} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={estilos.modalBody} showsVerticalScrollIndicator={false}>
+            <View style={estilos.selectorGrid}>
+              {(['sede', 'departamento', 'individual'] as AlcanceTarea[]).map((alcance) => (
+                <TouchableOpacity key={alcance} onPress={() => setAlcanceTarea(alcance)} style={[estilos.selectorChip, alcanceTarea === alcance && estilos.selectorChipActivo]}>
+                  <Text style={[estilos.selectorText, alcanceTarea === alcance && estilos.selectorTextActivo]}>
+                    {alcance === 'sede' ? 'Sede completa' : alcance === 'departamento' ? 'Departamento' : 'Individual'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={[estilos.formGrid, estilos.formGridTarea]}>
+              <FormField label="Título" value={formularioTarea.titulo} onChangeText={(valor) => actualizarFormularioTarea('titulo', valor)} placeholder="Ej. Actualizar expediente" />
+              <FormField label="Fecha límite" value={formularioTarea.fecha_limite} onChangeText={(valor) => actualizarFormularioTarea('fecha_limite', valor)} placeholder="YYYY-MM-DD" />
+              <FormField label="Descripción" value={formularioTarea.descripcion} onChangeText={(valor) => actualizarFormularioTarea('descripcion', valor)} placeholder="Contexto breve de la tarea" />
+            </View>
+
+            <View style={estilos.formSection}>
+              <Text style={estilos.formLabel}>Prioridad</Text>
+              <View style={estilos.selectorGrid}>
+                {(['Baja', 'Media', 'Alta', 'Urgente'] as FormularioTarea['prioridad'][]).map((prioridad) => (
+                  <TouchableOpacity key={prioridad} onPress={() => actualizarFormularioTarea('prioridad', prioridad)} style={[estilos.selectorChip, formularioTarea.prioridad === prioridad && estilos.selectorChipActivo]}>
+                    <Text style={[estilos.selectorText, formularioTarea.prioridad === prioridad && estilos.selectorTextActivo]}>{prioridad}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {alcanceTarea === 'sede' && (
+              <View style={estilos.formSection}>
+                <Text style={estilos.formLabel}>Sede destino</Text>
+                <View style={estilos.selectorGrid}>
+                  {catalogos.sedes.map((sede) => (
+                    <TouchableOpacity key={sede.id} onPress={() => actualizarFormularioTarea('sedeId', sede.id)} style={[estilos.selectorChip, formularioTarea.sedeId === sede.id && estilos.selectorChipActivo]}>
+                      <Text style={[estilos.selectorText, formularioTarea.sedeId === sede.id && estilos.selectorTextActivo]}>{sede.nombre}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {alcanceTarea === 'departamento' && (
+              <View style={estilos.formSection}>
+                <Text style={estilos.formLabel}>Departamento destino</Text>
+                <View style={estilos.selectorGrid}>
+                  {catalogos.departamentos.map((departamento) => (
+                    <TouchableOpacity key={departamento.id} onPress={() => actualizarFormularioTarea('departamentoId', departamento.id)} style={[estilos.selectorChip, formularioTarea.departamentoId === departamento.id && estilos.selectorChipActivo]}>
+                      <Text style={[estilos.selectorText, formularioTarea.departamentoId === departamento.id && estilos.selectorTextActivo]}>{departamento.nombre}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {alcanceTarea === 'individual' && (
+              <View style={estilos.formSection}>
+                <Text style={estilos.formLabel}>Colaborador destino</Text>
+                <View style={estilos.selectorGrid}>
+                  {usuariosFiltrados.map((empleado) => (
+                    <TouchableOpacity key={empleado.id} onPress={() => actualizarFormularioTarea('usuarioId', empleado.id || '')} style={[estilos.selectorChip, formularioTarea.usuarioId === empleado.id && estilos.selectorChipActivo]}>
+                      <Text style={[estilos.selectorText, formularioTarea.usuarioId === empleado.id && estilos.selectorTextActivo]}>{empleado.nombre || empleado.correo}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+          </ScrollView>
+
+          <View style={estilos.modalFooter}>
+            <TouchableOpacity style={estilos.btnModalSecondary} onPress={() => setModalTareaVisible(false)}>
+              <Text style={estilos.btnModalSecondaryText}>Cancelar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={estilos.btnModalPrimary} onPress={guardarAsignacionTarea} disabled={guardando}>
+              <LinearGradient colors={[BRAND.bangladeshBlue, BRAND.caribbeanBlue]} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.btnModalGradient}>
+                <MaterialIcons name="assignment-add" size={18} color="#fff" style={estilos.btnIcon} />
+                <Text style={estilos.btnPrimaryText}>{guardando ? 'ASIGNANDO...' : 'ASIGNAR TAREA'}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
     </Animated.View>
   );
 }
@@ -1035,22 +1305,21 @@ const estilos = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    padding: 48,
-    paddingTop: 120,
+    padding: 24,
+    paddingTop: 88,
     paddingBottom: 64,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
-    marginBottom: 32,
+    marginBottom: 20,
   },
   titulo: {
-    fontSize: 36,
-    fontWeight: '900',
+    fontSize: 28,
+    fontWeight: '800',
     color: '#fff',
-    letterSpacing: -1,
-    textTransform: 'uppercase',
+    letterSpacing: 0,
   },
   subtitulo: {
     fontSize: 14,
@@ -1060,13 +1329,36 @@ const estilos = StyleSheet.create({
     letterSpacing: 0.4,
   },
   btnPrimary: {
-    borderRadius: 18,
+    borderRadius: 12,
     overflow: 'hidden',
     shadowColor: BRAND.iconBright,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
     shadowRadius: 25,
     elevation: 10,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+  },
+  btnSecondaryTop: {
+    minHeight: 46,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.24)',
+    backgroundColor: 'rgba(245,158,11,0.08)',
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnSecondaryTopText: {
+    color: ADMIN.iconos.tareas,
+    fontSize: 12,
+    fontWeight: '900',
   },
   btnGradient: {
     flexDirection: 'row',
@@ -1080,9 +1372,65 @@ const estilos = StyleSheet.create({
   },
   btnPrimaryText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '900',
-    letterSpacing: 2,
+    letterSpacing: 0,
+  },
+  sedesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 14,
+  },
+  sedeCard: {
+    flex: 1,
+    minWidth: 280,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoVidrio,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  sedeIcono: {
+    width: 46,
+    height: 46,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(96,165,250,0.22)',
+    backgroundColor: 'rgba(96,165,250,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sedeInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  sedeNombre: {
+    color: BRAND.textMain,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  sedeDetalle: {
+    color: BRAND.textSec,
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 3,
+  },
+  sedeMeta: {
+    alignItems: 'flex-end',
+  },
+  sedeTotal: {
+    color: BRAND.textMain,
+    fontSize: 24,
+    fontWeight: '900',
+  },
+  sedeLabel: {
+    color: BRAND.textSec,
+    fontSize: 9,
+    fontWeight: '800',
+    textTransform: 'uppercase',
   },
   resumenGrid: {
     flexDirection: 'row',
@@ -1100,8 +1448,8 @@ const estilos = StyleSheet.create({
     borderColor: ADMIN.borde,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 18 },
-    shadowOpacity: 0.35,
-    shadowRadius: 36,
+    shadowOpacity: 0.24,
+    shadowRadius: 28,
     elevation: 14,
   },
   resumenTop: {
@@ -1134,7 +1482,7 @@ const estilos = StyleSheet.create({
   iconPanel: {
     width: 50,
     height: 50,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1152,11 +1500,11 @@ const estilos = StyleSheet.create({
     borderRadius: ADMIN.radio,
     borderWidth: 1,
     borderColor: ADMIN.borde,
-    padding: 24,
+    padding: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 18 },
-    shadowOpacity: 0.35,
-    shadowRadius: 36,
+    shadowOpacity: 0.24,
+    shadowRadius: 28,
     elevation: 14,
   },
   panelHeader: {
@@ -1186,7 +1534,7 @@ const estilos = StyleSheet.create({
   },
   miniRole: {
     flex: 1,
-    borderRadius: 18,
+    borderRadius: 12,
     padding: 14,
     minHeight: 86,
     alignItems: 'center',
@@ -1271,26 +1619,60 @@ const estilos = StyleSheet.create({
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.4,
-    shadowRadius: 50,
+    shadowOpacity: 0.26,
+    shadowRadius: 30,
     elevation: 15,
   },
   cardHeader: {
-    padding: 30,
+    padding: 18,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.05)',
     backgroundColor: 'rgba(255,255,255,0.02)',
     gap: 18,
   },
+  sedeBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingBottom: 2,
+  },
+  volverSedes: {
+    minHeight: 38,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    backgroundColor: 'rgba(255,255,255,0.035)',
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  volverSedesText: {
+    color: BRAND.textSec,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  sedeActualLabel: {
+    color: BRAND.textSec,
+    fontSize: 9,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  sedeActualNombre: {
+    color: BRAND.textMain,
+    fontSize: 15,
+    fontWeight: '900',
+    marginTop: 2,
+  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,7,45,0.5)',
+    backgroundColor: 'rgba(255,255,255,0.045)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 16,
+    borderRadius: 12,
     paddingHorizontal: 20,
-    height: 60,
+    height: 46,
   },
   searchIcon: {
     marginRight: 12,
@@ -1305,6 +1687,14 @@ const estilos = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+    alignItems: 'center',
+  },
+  filterLabel: {
+    color: BRAND.textSec,
+    fontSize: 10,
+    fontWeight: '900',
+    minWidth: 92,
+    textTransform: 'uppercase',
   },
   filterChip: {
     paddingHorizontal: 16,
@@ -1322,19 +1712,40 @@ const estilos = StyleSheet.create({
     color: BRAND.textSec,
     fontSize: 10,
     fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1.3,
+    textTransform: 'capitalize',
+    letterSpacing: 0,
   },
   filterChipTextActivo: {
     color: ADMIN.iconos.personas,
+  },
+  quickAssignRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  quickAssignButton: {
+    minHeight: 40,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.22)',
+    backgroundColor: 'rgba(245,158,11,0.075)',
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  quickAssignText: {
+    color: ADMIN.iconos.tareas,
+    fontSize: 11,
+    fontWeight: '900',
   },
   tableContainer: {
     width: '100%',
   },
   tableHeader: {
     flexDirection: 'row',
-    paddingHorizontal: 32,
-    paddingVertical: 24,
+    paddingHorizontal: 22,
+    paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.05)',
   },
@@ -1347,8 +1758,8 @@ const estilos = StyleSheet.create({
   },
   tableRow: {
     flexDirection: 'row',
-    paddingHorizontal: 32,
-    paddingVertical: 20,
+    paddingHorizontal: 22,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.05)',
     alignItems: 'center',
@@ -1365,7 +1776,7 @@ const estilos = StyleSheet.create({
   avatar: {
     width: 50,
     height: 50,
-    borderRadius: 16,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: BRAND.iconBright,
@@ -1373,10 +1784,19 @@ const estilos = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 15,
   },
+  avatarImagen: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(196,181,253,0.18)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
   avatarText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: '900',
+    marginTop: -1,
   },
   empInfo: {
     flex: 1,
@@ -1423,8 +1843,8 @@ const estilos = StyleSheet.create({
     minWidth: 184,
   },
   actionBtn: {
-    width: 40,
-    height: 40,
+    width: 38,
+    height: 38,
     backgroundColor: 'rgba(255,255,255,0.05)',
     borderRadius: 12,
     borderWidth: 1,
@@ -1436,6 +1856,10 @@ const estilos = StyleSheet.create({
   actionBtnEdit: {
     borderColor: 'rgba(96,165,250,0.24)',
     backgroundColor: 'rgba(96,165,250,0.08)',
+  },
+  actionBtnTask: {
+    borderColor: 'rgba(245,158,11,0.30)',
+    backgroundColor: 'rgba(245,158,11,0.10)',
   },
   actionBtnSuccess: {
     borderColor: 'rgba(34,197,94,0.24)',
@@ -1474,7 +1898,7 @@ const estilos = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,7,45,0.82)',
+    backgroundColor: 'rgba(6,5,18,0.92)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 28,
@@ -1493,6 +1917,9 @@ const estilos = StyleSheet.create({
     shadowOpacity: 0.55,
     shadowRadius: 70,
     elevation: 24,
+  },
+  modalTareaCard: {
+    maxWidth: 780,
   },
   modalHeader: {
     padding: 28,
@@ -1537,6 +1964,9 @@ const estilos = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 16,
   },
+  formGridTarea: {
+    marginTop: 18,
+  },
   formField: {
     flexGrow: 1,
     flexBasis: 280,
@@ -1555,10 +1985,10 @@ const estilos = StyleSheet.create({
   },
   formInput: {
     height: 56,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: 'rgba(0,7,45,0.45)',
+    backgroundColor: 'rgba(255,255,255,0.045)',
     color: BRAND.textMain,
     paddingHorizontal: 16,
     fontSize: 13,
@@ -1569,10 +1999,10 @@ const estilos = StyleSheet.create({
   },
   selectorSelectBox: {
     minHeight: 56,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: 'rgba(0,7,45,0.45)',
+    backgroundColor: 'rgba(255,255,255,0.045)',
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1595,7 +2025,7 @@ const estilos = StyleSheet.create({
   },
   dropdownPanel: {
     marginTop: 8,
-    borderRadius: 18,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(96,165,250,0.22)',
     backgroundColor: BRAND.richBlack,
@@ -1707,18 +2137,18 @@ const estilos = StyleSheet.create({
     marginTop: 3,
   },
   modalFooter: {
-    padding: 24,
+    padding: 20,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.06)',
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: 12,
-    backgroundColor: 'rgba(0,7,45,0.25)',
+    backgroundColor: 'rgba(255,255,255,0.035)',
   },
   btnModalSecondary: {
     paddingHorizontal: 22,
     minHeight: 50,
-    borderRadius: 16,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.05)',
@@ -1733,7 +2163,7 @@ const estilos = StyleSheet.create({
     letterSpacing: 1.5,
   },
   btnModalPrimary: {
-    borderRadius: 16,
+    borderRadius: 12,
     overflow: 'hidden',
   },
   btnModalGradient: {

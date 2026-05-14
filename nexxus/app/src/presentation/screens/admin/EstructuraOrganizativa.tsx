@@ -24,6 +24,13 @@ const BRAND = {
   cyan: ADMIN.azul
 };
 
+const SOFT_COLORS = {
+  sedes: '#60A5FA',
+  deptos: '#A78BFA',
+  cargos: '#34D399',
+  roles: '#F472B6',
+};
+
 type SectorEstructura = {
   id?: string;
   nombre?: string;
@@ -193,9 +200,9 @@ const EmptyState = ({ texto }: { texto: string }) => (
 
 const CatalogCard = ({ title, subtitle, icon, color, total, onPress }: { title: string; subtitle: string; icon: keyof typeof MaterialIcons.glyphMap; color: string; total: number; onPress: () => void }) => (
   <TouchableOpacity style={estilos.catalogCard} onPress={onPress} activeOpacity={0.82}>
-    <View>
-      <Text style={estilos.catalogTitle}>{title}</Text>
-      <Text style={estilos.catalogSubtitle}>{subtitle}</Text>
+    <View style={{ flex: 1, paddingRight: 10 }}>
+      <Text style={estilos.catalogTitle} numberOfLines={1}>{title}</Text>
+      <Text style={estilos.catalogSubtitle} numberOfLines={2}>{subtitle}</Text>
       <Text style={[estilos.catalogTotal, { color }]}>{total}</Text>
     </View>
     <IconPanel icon={icon} color={color} />
@@ -478,10 +485,10 @@ export default function EstructuraOrganizativa() {
         ...(modoModal === 'crear' ? { createdAt: new Date().toISOString() } : {}),
         creadoPor: user?.id || '',
       }, { merge: true });
-      await registrarAuditoria(modoModal === 'crear' ? 'CreaciÃ³n de Sede' : 'EdiciÃ³n de Sede', nombre);
+      await registrarAuditoria(modoModal === 'crear' ? 'Creación de Sede' : 'Edición de Sede', nombre);
       cerrarModal();
     } catch (error: any) {
-      Alert.alert('No se pudo crear la sede', error?.message || 'Firebase no confirmÃ³ la operaciÃ³n.');
+      Alert.alert('No se pudo crear la sede', error?.message || 'Firebase no confirmó la operación.');
     } finally {
       setGuardando(false);
     }
@@ -511,10 +518,10 @@ export default function EstructuraOrganizativa() {
       } else {
         await useCases.admin.departments.create({ ...payload, createdAt: new Date().toISOString() } as any);
       }
-      await registrarAuditoria(modoModal === 'crear' ? 'CreaciÃ³n de Departamento' : 'EdiciÃ³n de Departamento', `${nombre} Â· ${sede?.nombre || 'Global'}`);
+      await registrarAuditoria(modoModal === 'crear' ? 'Creación de Departamento' : 'Edición de Departamento', `${nombre} · ${sede?.nombre || 'Global'}`);
       cerrarModal();
     } catch (error: any) {
-      Alert.alert('No se pudo crear el departamento', error?.message || 'Firebase no confirmÃ³ la operaciÃ³n.');
+      Alert.alert('No se pudo crear el departamento', error?.message || 'Firebase no confirmó la operación.');
     } finally {
       setGuardando(false);
     }
@@ -541,10 +548,10 @@ export default function EstructuraOrganizativa() {
         ...(modoModal === 'crear' ? { createdAt: new Date().toISOString() } : {}),
         creadoPor: user?.id || '',
       }, { merge: true });
-      await registrarAuditoria(modoModal === 'crear' ? 'CreaciÃ³n de Cargo' : 'EdiciÃ³n de Cargo', `${nombre} Â· ${departamento?.nombre || 'Global'}`);
+      await registrarAuditoria(modoModal === 'crear' ? 'Creación de Cargo' : 'Edición de Cargo', `${nombre} · ${departamento?.nombre || 'Global'}`);
       cerrarModal();
     } catch (error: any) {
-      Alert.alert('No se pudo crear el cargo', error?.message || 'Firebase no confirmÃ³ la operaciÃ³n.');
+      Alert.alert('No se pudo crear el cargo', error?.message || 'Firebase no confirmó la operación.');
     } finally {
       setGuardando(false);
     }
@@ -568,10 +575,10 @@ export default function EstructuraOrganizativa() {
         ...(modoModal === 'crear' ? { createdAt: new Date().toISOString() } : {}),
         creadoPor: user?.id || '',
       }, { merge: true });
-      await registrarAuditoria(modoModal === 'crear' ? 'CreaciÃ³n de Rol Personalizado' : 'EdiciÃ³n de Rol Personalizado', nombre);
+      await registrarAuditoria(modoModal === 'crear' ? 'Creación de Rol Personalizado' : 'Edición de Rol Personalizado', nombre);
       cerrarModal();
     } catch (error: any) {
-      Alert.alert('No se pudo crear el rol', error?.message || 'Firebase no confirmÃ³ la operaciÃ³n.');
+      Alert.alert('No se pudo crear el rol', error?.message || 'Firebase no confirmó la operación.');
     } finally {
       setGuardando(false);
     }
@@ -592,7 +599,7 @@ export default function EstructuraOrganizativa() {
     const etiqueta = tipo === 'sede' ? 'Sede' : tipo === 'departamento' ? 'Departamento' : tipo === 'cargo' ? 'Cargo' : 'Rol Personalizado';
     Alert.alert(
       `Eliminar ${etiqueta}`,
-      `Se eliminarÃ¡ "${nombre}". Esta acciÃ³n quedarÃ¡ registrada en auditorÃ­a.`,
+      `Se eliminará "${nombre}". Esta acción quedará registrada en auditoría.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -600,7 +607,7 @@ export default function EstructuraOrganizativa() {
           style: 'destructive',
           onPress: async () => {
             await deleteDoc(doc(db, coleccion, id));
-            await registrarAuditoria(`EliminaciÃ³n de ${etiqueta}`, nombre, 'Warning');
+            await registrarAuditoria(`Eliminación de ${etiqueta}`, nombre, 'Warning');
           },
         },
       ]
@@ -695,13 +702,13 @@ export default function EstructuraOrganizativa() {
     <ScrollView style={estilos.contenedor} contentContainerStyle={estilos.scrollContent} showsVerticalScrollIndicator={false}>
       <View style={estilos.header}>
         <View>
-          <Text style={estilos.titulo}>Estructura Org.</Text>
-          <Text style={estilos.subtitulo}>Mapa jerÃ¡rquico, sectores, nodos y carga operativa</Text>
+          <Text style={estilos.titulo}>Estructura Organizativa</Text>
+          <Text style={estilos.subtitulo}>Mapa jerárquico, sectores, nodos y carga operativa</Text>
         </View>
         <View style={estilos.headerActions}>
-          <QuickCreateButton label="Sede" icon="apartment" color={ADMIN.iconos.calendario} onPress={() => abrirCrear('sede')} />
-          <QuickCreateButton label="Depto" icon="domain-add" color={ADMIN.iconos.organizacion} onPress={() => abrirCrear('departamento')} />
-          <QuickCreateButton label="Cargo" icon="work" color={ADMIN.iconos.personas} onPress={() => abrirCrear('cargo')} />
+          <QuickCreateButton label="Sede" icon="apartment" color={SOFT_COLORS.sedes} onPress={() => abrirCrear('sede')} />
+          <QuickCreateButton label="Depto" icon="domain-add" color={SOFT_COLORS.deptos} onPress={() => abrirCrear('departamento')} />
+          <QuickCreateButton label="Cargo" icon="work" color={SOFT_COLORS.cargos} onPress={() => abrirCrear('cargo')} />
           <TouchableOpacity style={estilos.btnPrimary} onPress={() => abrirCrear('rol')}>
             <LinearGradient colors={[BRAND.bangladeshBlue, BRAND.caribbeanBlue]} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.btnGradient}>
               <MaterialIcons name="admin-panel-settings" size={18} color="#fff" style={estilos.btnIcon} />
@@ -711,100 +718,18 @@ export default function EstructuraOrganizativa() {
         </View>
       </View>
 
-      <View style={estilos.gridStats}>
-        {stats.map((stat) => (
-          <View key={stat.label} style={estilos.statCard}>
-            <View style={estilos.statRow}>
-              <View style={estilos.statInfo}>
-                <Text style={estilos.statLabel}>{stat.label}</Text>
-                <Text style={estilos.statValue}>{stat.val}</Text>
-                <View style={estilos.trendRow}>
-                  <MaterialIcons name="show-chart" size={12} color={stat.color} />
-                  <Text style={[estilos.statTrend, { color: stat.color }]}>{stat.trend}</Text>
-                </View>
-              </View>
-              <IconPanel icon={stat.icon} color={stat.color} />
-            </View>
-          </View>
-        ))}
-      </View>
-
       <View style={estilos.catalogGrid}>
-        <CatalogCard title="Sedes y Sucursales" subtitle="Ubicaciones empresariales" icon="apartment" color={ADMIN.iconos.calendario} total={sedes.length} onPress={() => abrirCrear('sede')} />
-        <CatalogCard title="Departamentos" subtitle="Ãreas dentro o fuera de sedes" icon="domain-add" color={ADMIN.iconos.organizacion} total={departamentos.length} onPress={() => abrirCrear('departamento')} />
-        <CatalogCard title="Cargos" subtitle="Puestos operativos" icon="work" color={ADMIN.iconos.personas} total={cargos.length} onPress={() => abrirCrear('cargo')} />
-        <CatalogCard title="Roles y Permisos" subtitle="Accesos granulares" icon="admin-panel-settings" color={ADMIN.iconos.seguridad} total={roles.length} onPress={() => abrirCrear('rol')} />
+        <CatalogCard title="Sedes y Sucursales" subtitle="Ubicaciones empresariales" icon="apartment" color={SOFT_COLORS.sedes} total={sedes.length} onPress={() => abrirCrear('sede')} />
+        <CatalogCard title="Departamentos" subtitle="Áreas dentro o fuera de sedes" icon="domain-add" color={SOFT_COLORS.deptos} total={departamentos.length} onPress={() => abrirCrear('departamento')} />
+        <CatalogCard title="Cargos" subtitle="Puestos operativos" icon="work" color={SOFT_COLORS.cargos} total={cargos.length} onPress={() => abrirCrear('cargo')} />
+        <CatalogCard title="Roles y Permisos" subtitle="Accesos granulares" icon="admin-panel-settings" color={SOFT_COLORS.roles} total={roles.length} onPress={() => abrirCrear('rol')} />
       </View>
 
       <View style={estilos.catalogSummaryGrid}>
-        <SummaryList title="Sedes Registradas" items={sedes.map((sede) => ({ id: sede.id || sede.nombre || '', title: sede.nombre || 'Sede', detail: `${sede.ciudad || 'Sin ciudad'} Â· ${sede.responsableNombre || 'Sin responsable'}`, raw: sede }))} empty="Sin sedes creadas" onEdit={(item) => abrirEditarSede(item.raw as SedeEstructura)} onDelete={(item) => eliminarEntidad('sede', item.id, item.title)} />
-        <SummaryList title="Departamentos" items={departamentos.map((departamento) => ({ id: departamento.id || departamento.nombre || '', title: departamento.nombre, detail: `${departamento.sedeNombre || 'Global'} Â· ${departamento.jefe || 'Sin jefe'}`, raw: departamento }))} empty="Sin departamentos creados" onEdit={(item) => abrirEditarDepartamento(item.raw as ReturnType<typeof normalizarDepartamento>)} onDelete={(item) => eliminarEntidad('departamento', item.id, item.title)} />
-        <SummaryList title="Cargos Registrados" items={cargos.map((cargo) => ({ id: cargo.id || cargo.nombre || '', title: cargo.nombre || 'Cargo', detail: `${cargo.departamentoNombre || 'Global'} Â· ${cargo.nivel || 'Sin nivel'}`, raw: cargo }))} empty="Sin cargos creados" onEdit={(item) => abrirEditarCargo(item.raw as CargoEstructura)} onDelete={(item) => eliminarEntidad('cargo', item.id, item.title)} />
+        <SummaryList title="Sedes Registradas" items={sedes.map((sede) => ({ id: sede.id || sede.nombre || '', title: sede.nombre || 'Sede', detail: `${sede.ciudad || 'Sin ciudad'} · ${sede.responsableNombre || 'Sin responsable'}`, raw: sede }))} empty="Sin sedes creadas" onEdit={(item) => abrirEditarSede(item.raw as SedeEstructura)} onDelete={(item) => eliminarEntidad('sede', item.id, item.title)} />
+        <SummaryList title="Departamentos" items={departamentos.map((departamento) => ({ id: departamento.id || departamento.nombre || '', title: departamento.nombre, detail: `${departamento.sedeNombre || 'Global'} · ${departamento.jefe || 'Sin jefe'}`, raw: departamento }))} empty="Sin departamentos creados" onEdit={(item) => abrirEditarDepartamento(item.raw as ReturnType<typeof normalizarDepartamento>)} onDelete={(item) => eliminarEntidad('departamento', item.id, item.title)} />
+        <SummaryList title="Cargos Registrados" items={cargos.map((cargo) => ({ id: cargo.id || cargo.nombre || '', title: cargo.nombre || 'Cargo', detail: `${cargo.departamentoNombre || 'Global'} · ${cargo.nivel || 'Sin nivel'}`, raw: cargo }))} empty="Sin cargos creados" onEdit={(item) => abrirEditarCargo(item.raw as CargoEstructura)} onDelete={(item) => eliminarEntidad('cargo', item.id, item.title)} />
         <SummaryList title="Roles Personalizados" items={roles.map((rol) => ({ id: rol.id || rol.nombre || '', title: rol.nombre || 'Rol', detail: `${Object.values(rol.permisos || {}).filter(Boolean).length} permisos activos`, raw: rol }))} empty="Sin roles personalizados" onEdit={(item) => abrirEditarRol(item.raw as RolPersonalizado)} onDelete={(item) => eliminarEntidad('rol', item.id, item.title)} />
-      </View>
-
-      <View style={estilos.panelGrid}>
-        <View style={estilos.panelCard}>
-          <View style={estilos.panelHeader}>
-            <View>
-              <Text style={estilos.panelTitle}>Mapa de Nodos</Text>
-              <Text style={estilos.panelSubtitle}>DistribuciÃ³n por plazas</Text>
-            </View>
-            <IconPanel icon="hub" color={ADMIN.iconos.organizacion} />
-          </View>
-          <View style={estilos.nodeList}>
-            {datos.departamentosOrdenados.slice(0, 5).map((departamento) => (
-              <View key={departamento.id || departamento.nombre} style={estilos.nodeRow}>
-                <View style={estilos.nodeTop}>
-                  <Text style={estilos.nodeName}>{departamento.nombre}</Text>
-                  <Text style={estilos.nodeValue}>{departamento.plazas}</Text>
-                </View>
-                <View style={estilos.progressTrack}>
-                  <View style={[estilos.progressFill, { width: `${Math.max(porcentaje(departamento.plazas, datos.totalEmpleados), 4)}%`, backgroundColor: BRAND.violet }]} />
-                </View>
-              </View>
-            ))}
-            {datos.departamentosOrdenados.length === 0 && <EmptyState texto="Sin departamentos registrados" />}
-          </View>
-        </View>
-
-        <View style={estilos.panelCard}>
-          <View style={estilos.panelHeader}>
-            <View>
-              <Text style={estilos.panelTitle}>Gobernanza</Text>
-              <Text style={estilos.panelSubtitle}>Responsables y cobertura</Text>
-            </View>
-            <IconPanel icon="verified-user" color={ADMIN.iconos.seguridad} />
-          </View>
-          <View style={estilos.metricRows}>
-            <MetricRow label="Con responsable" value={departamentos.length - datos.sinJefe} total={departamentos.length} color={ADMIN.iconos.personas} />
-            <MetricRow label="Sin responsable" value={datos.sinJefe} total={departamentos.length} color={ADMIN.iconos.peligro} />
-            <MetricRow label="Nodos activos" value={datos.nodosActivos} total={Math.max(datos.nodosActivos, departamentos.length + datos.totalSectores)} color={ADMIN.iconos.calendario} />
-          </View>
-        </View>
-
-        <View style={estilos.panelCard}>
-          <View style={estilos.panelHeader}>
-            <View>
-              <Text style={estilos.panelTitle}>Sectores a Revisar</Text>
-              <Text style={estilos.panelSubtitle}>Responsable o capacidad pendiente</Text>
-            </View>
-            <IconPanel icon="warning" color={datos.sectoresCriticos.length > 0 ? ADMIN.iconos.advertencia : ADMIN.iconos.exito} />
-          </View>
-          <View style={estilos.criticalList}>
-            {datos.sectoresCriticos.length > 0 ? datos.sectoresCriticos.map((sector) => (
-              <View key={`${sector.departamento}-${sector.id}`} style={estilos.criticalItem}>
-                <View style={estilos.criticalDot} />
-                <View style={estilos.criticalInfo}>
-                  <Text style={estilos.criticalName}>{sector.nombre}</Text>
-                  <Text style={estilos.criticalMeta}>{sector.departamento} Â· {sector.responsable}</Text>
-                </View>
-              </View>
-            )) : (
-              <EmptyState texto="Sectores cubiertos" />
-            )}
-          </View>
-        </View>
       </View>
 
       <View style={estilos.toolbarCard}>
@@ -842,7 +767,7 @@ export default function EstructuraOrganizativa() {
                 </View>
                 <View style={estilos.deptTitleBox}>
                   <Text style={estilos.deptName} numberOfLines={1}>{dept.nombre}</Text>
-                  <Text style={estilos.deptCount}>{dept.plazas} Integrantes Â· {dept.sectores.length} Sectores</Text>
+                  <Text style={estilos.deptCount}>{dept.plazas} Integrantes · {dept.sectores.length} Sectores</Text>
                 </View>
               </View>
               <PremiumBadge variant={dept.estado === 'sinJefe' ? 'error' : dept.estado === 'sobrecarga' ? 'warning' : 'success'}>
@@ -858,7 +783,7 @@ export default function EstructuraOrganizativa() {
                     <Text style={estilos.managerAvatarText}>{(dept.jefe || '?')[0].toUpperCase()}</Text>
                   </View>
                   <View style={estilos.managerTextBox}>
-                    <Text style={estilos.managerLabel}>Responsable de Ãrea</Text>
+                    <Text style={estilos.managerLabel}>Responsable de Área</Text>
                     <Text style={estilos.managerName} numberOfLines={1}>{dept.jefe || 'No asignado'}</Text>
                   </View>
                 </View>
@@ -888,7 +813,7 @@ export default function EstructuraOrganizativa() {
                       <View style={[estilos.sectorIndicator, { backgroundColor: sector.responsable === 'No asignado' ? BRAND.warning : BRAND.iconBright }]} />
                       <View style={estilos.sectorTextBox}>
                         <Text style={estilos.sectorName} numberOfLines={1}>{sector.nombre}</Text>
-                        <Text style={estilos.sectorLead} numberOfLines={1}>LÃ­der: <Text style={estilos.sectorLeadStrong}>{sector.responsable}</Text></Text>
+                        <Text style={estilos.sectorLead} numberOfLines={1}>Líder: <Text style={estilos.sectorLeadStrong}>{sector.responsable}</Text></Text>
                       </View>
                     </View>
                     <View style={estilos.sectorCountPill}>
@@ -919,7 +844,7 @@ export default function EstructuraOrganizativa() {
               <Text style={estilos.modalTitle}>
                 {`${modoModal === 'crear' ? 'Crear' : 'Editar'} ${modalActivo === 'sede' ? 'Sede' : modalActivo === 'departamento' ? 'Departamento' : modalActivo === 'cargo' ? 'Cargo' : 'Rol'}`}
               </Text>
-              <Text style={estilos.modalSubtitle}>ConfiguraciÃ³n organizacional conectada a Firebase</Text>
+              <Text style={estilos.modalSubtitle}>Configuración organizacional conectada a Firebase</Text>
             </View>
             <TouchableOpacity style={estilos.modalClose} onPress={cerrarModal}>
               <MaterialIcons name="close" size={20} color={BRAND.textSec} />
@@ -930,10 +855,10 @@ export default function EstructuraOrganizativa() {
             {modalActivo === 'sede' && (
               <View style={estilos.formGrid}>
                 <FormField label="Nombre de sede" value={formSede.nombre} onChangeText={(valor) => setFormSede((actual) => ({ ...actual, nombre: valor }))} placeholder="Sucursal San Salvador" />
-                <FormField label="PaÃ­s" value={formSede.pais} onChangeText={(valor) => setFormSede((actual) => ({ ...actual, pais: valor }))} placeholder="El Salvador" />
+                <FormField label="País" value={formSede.pais} onChangeText={(valor) => setFormSede((actual) => ({ ...actual, pais: valor }))} placeholder="El Salvador" />
                 <FormField label="Ciudad" value={formSede.ciudad} onChangeText={(valor) => setFormSede((actual) => ({ ...actual, ciudad: valor }))} placeholder="Ciudad" />
-                <FormField label="TelÃ©fono de sede" value={formSede.telefono} onChangeText={(valor) => setFormSede((actual) => ({ ...actual, telefono: valor }))} placeholder="+503 0000 0000" />
-                <FormField label="DirecciÃ³n" value={formSede.direccion} onChangeText={(valor) => setFormSede((actual) => ({ ...actual, direccion: valor }))} placeholder="DirecciÃ³n fÃ­sica" anchoCompleto />
+                <FormField label="Teléfono de sede" value={formSede.telefono} onChangeText={(valor) => setFormSede((actual) => ({ ...actual, telefono: valor }))} placeholder="+503 0000 0000" />
+                <FormField label="Dirección" value={formSede.direccion} onChangeText={(valor) => setFormSede((actual) => ({ ...actual, direccion: valor }))} placeholder="Dirección física" anchoCompleto />
                 <Selector label="Responsable de sede" value={formSede.responsableId} options={responsables.map((responsable) => ({ id: responsable.id || '', label: responsable.nombre || 'Responsable' }))} onSelect={(valor) => setFormSede((actual) => ({ ...actual, responsableId: valor }))} emptyLabel="Sin responsable" />
               </View>
             )}
@@ -951,14 +876,14 @@ export default function EstructuraOrganizativa() {
                 <FormField label="Nombre del cargo" value={formCargo.nombre} onChangeText={(valor) => setFormCargo((actual) => ({ ...actual, nombre: valor }))} placeholder="Analista Senior" />
                 <FormField label="Nivel" value={formCargo.nivel} onChangeText={(valor) => setFormCargo((actual) => ({ ...actual, nivel: valor }))} placeholder="Junior, Senior, Lead..." />
                 <Selector label="Departamento" value={formCargo.departamentoId} options={departamentos.map((departamento) => ({ id: departamento.id || '', label: departamento.nombre }))} onSelect={(valor) => setFormCargo((actual) => ({ ...actual, departamentoId: valor }))} emptyLabel="Cargo global" />
-                <FormField label="DescripciÃ³n" value={formCargo.descripcion} onChangeText={(valor) => setFormCargo((actual) => ({ ...actual, descripcion: valor }))} placeholder="Responsabilidades principales" anchoCompleto />
+                <FormField label="Descripción" value={formCargo.descripcion} onChangeText={(valor) => setFormCargo((actual) => ({ ...actual, descripcion: valor }))} placeholder="Responsabilidades principales" anchoCompleto />
               </View>
             )}
 
             {modalActivo === 'rol' && (
               <View style={estilos.formGrid}>
                 <FormField label="Nombre del rol" value={formRol.nombre} onChangeText={(valor) => setFormRol((actual) => ({ ...actual, nombre: valor }))} placeholder="Coordinador RRHH" />
-                <FormField label="DescripciÃ³n" value={formRol.descripcion} onChangeText={(valor) => setFormRol((actual) => ({ ...actual, descripcion: valor }))} placeholder="Alcance operativo del rol" anchoCompleto />
+                <FormField label="Descripción" value={formRol.descripcion} onChangeText={(valor) => setFormRol((actual) => ({ ...actual, descripcion: valor }))} placeholder="Alcance operativo del rol" anchoCompleto />
                 <View style={estilos.permissionsBlock}>
                   <Text style={estilos.formLabel}>Permisos del rol</Text>
                   <View style={estilos.permissionGrid}>
@@ -1028,11 +953,10 @@ const estilos = StyleSheet.create({
     maxWidth: 720,
   },
   titulo: {
-    fontSize: 36,
-    fontWeight: '900',
+    fontSize: 28,
+    fontWeight: '800',
     color: '#fff',
-    letterSpacing: -1,
-    textTransform: 'uppercase',
+    letterSpacing: 0,
   },
   subtitulo: {
     fontSize: 14,
@@ -1042,7 +966,7 @@ const estilos = StyleSheet.create({
     letterSpacing: 0.4,
   },
   btnPrimary: {
-    borderRadius: 18,
+    borderRadius: 12,
     overflow: 'hidden',
     shadowColor: BRAND.iconBright,
     shadowOffset: { width: 0, height: 0 },
@@ -1069,7 +993,7 @@ const estilos = StyleSheet.create({
   quickButton: {
     minHeight: 50,
     paddingHorizontal: 16,
-    borderRadius: 16,
+    borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.05)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.09)',
@@ -1094,13 +1018,13 @@ const estilos = StyleSheet.create({
     minWidth: 240,
     backgroundColor: ADMIN.fondoElevado,
     borderRadius: ADMIN.radio,
-    padding: 24,
+    padding: 20,
     borderWidth: 1,
     borderColor: ADMIN.borde,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 18 },
-    shadowOpacity: 0.35,
-    shadowRadius: 36,
+    shadowOpacity: 0.24,
+    shadowRadius: 28,
     elevation: 14,
   },
   statRow: {
@@ -1141,7 +1065,7 @@ const estilos = StyleSheet.create({
   iconPanel: {
     width: 50,
     height: 50,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1160,11 +1084,11 @@ const estilos = StyleSheet.create({
     borderRadius: ADMIN.radio,
     borderWidth: 1,
     borderColor: ADMIN.borde,
-    padding: 24,
+    padding: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 18 },
-    shadowOpacity: 0.35,
-    shadowRadius: 36,
+    shadowOpacity: 0.24,
+    shadowRadius: 28,
     elevation: 14,
   },
   panelHeader: {
@@ -1251,7 +1175,7 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     padding: 12,
-    borderRadius: 18,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.055)',
     backgroundColor: 'rgba(255,255,255,0.025)',
@@ -1288,19 +1212,19 @@ const estilos = StyleSheet.create({
     gap: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 18 },
-    shadowOpacity: 0.35,
-    shadowRadius: 36,
+    shadowOpacity: 0.24,
+    shadowRadius: 28,
     elevation: 14,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,7,45,0.5)',
+    backgroundColor: 'rgba(255,255,255,0.045)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 16,
+    borderRadius: 12,
     paddingHorizontal: 20,
-    height: 60,
+    height: 46,
   },
   searchIcon: {
     marginRight: 12,
@@ -1377,7 +1301,7 @@ const estilos = StyleSheet.create({
   deptIconBg: {
     width: 54,
     height: 54,
-    borderRadius: 16,
+    borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1478,7 +1402,7 @@ const estilos = StyleSheet.create({
   },
   miniMetric: {
     flex: 1,
-    borderRadius: 18,
+    borderRadius: 12,
     padding: 14,
     backgroundColor: 'rgba(255,255,255,0.025)',
     borderWidth: 1,
@@ -1596,7 +1520,7 @@ const estilos = StyleSheet.create({
   },
   emptyState: {
     minHeight: 64,
-    borderRadius: 18,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.055)',
     backgroundColor: 'rgba(255,255,255,0.025)',
@@ -1694,7 +1618,7 @@ const estilos = StyleSheet.create({
   },
   summaryItem: {
     padding: 12,
-    borderRadius: 16,
+    borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.025)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.055)',
@@ -1740,7 +1664,7 @@ const estilos = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,7,45,0.82)',
+    backgroundColor: 'rgba(6,5,18,0.92)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 28,
@@ -1816,10 +1740,10 @@ const estilos = StyleSheet.create({
   },
   formInput: {
     height: 56,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: 'rgba(0,7,45,0.45)',
+    backgroundColor: 'rgba(255,255,255,0.045)',
     color: BRAND.textMain,
     paddingHorizontal: 16,
     fontSize: 13,
@@ -1887,18 +1811,18 @@ const estilos = StyleSheet.create({
     color: ADMIN.iconos.personas,
   },
   modalFooter: {
-    padding: 24,
+    padding: 20,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.06)',
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: 12,
-    backgroundColor: 'rgba(0,7,45,0.25)',
+    backgroundColor: 'rgba(255,255,255,0.035)',
   },
   btnModalSecondary: {
     paddingHorizontal: 22,
     minHeight: 50,
-    borderRadius: 16,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.05)',
@@ -1913,7 +1837,7 @@ const estilos = StyleSheet.create({
     letterSpacing: 1.5,
   },
   btnModalPrimary: {
-    borderRadius: 16,
+    borderRadius: 12,
     overflow: 'hidden',
   },
   btnModalGradient: {

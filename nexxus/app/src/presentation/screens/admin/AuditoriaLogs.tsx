@@ -163,78 +163,6 @@ export default function AuditoriaLogs() {
         </View>
       </View>
 
-      <View style={estilos.gridStats}>
-        {stats.map((stat) => (
-          <View key={stat.label} style={estilos.statCard}>
-            <View style={estilos.statRow}>
-              <View style={estilos.statInfo}>
-                <Text style={estilos.statLabel}>{stat.label}</Text>
-                <Text style={estilos.statValue}>{stat.val}</Text>
-                <Text style={[estilos.statTrend, { color: stat.color }]}>{stat.trend}</Text>
-              </View>
-              <IconPanel icon={stat.icon} color={stat.color} />
-            </View>
-          </View>
-        ))}
-      </View>
-
-      <View style={estilos.panelGrid}>
-        <View style={estilos.panelCard}>
-          <View style={estilos.panelHeader}>
-            <View>
-              <Text style={estilos.panelTitle}>Módulos con Actividad</Text>
-              <Text style={estilos.panelSubtitle}>Distribución de eventos</Text>
-            </View>
-            <IconPanel icon="dataset" color={ADMIN.iconos.documentos} />
-          </View>
-          {datos.modulos.length > 0 ? datos.modulos.map((modulo) => (
-            <View key={modulo.nombre} style={estilos.metricRow}>
-              <View style={estilos.metricTop}>
-                <Text style={estilos.metricLabel}>{modulo.nombre}</Text>
-                <Text style={estilos.metricValue}>{modulo.total}</Text>
-              </View>
-              <View style={estilos.progressTrack}>
-                <View style={[estilos.progressFill, { width: `${Math.max(modulo.share, 4)}%`, backgroundColor: BRAND.cyan }]} />
-              </View>
-            </View>
-          )) : <EmptyState texto="Sin actividad por módulo" />}
-        </View>
-
-        <View style={estilos.panelCard}>
-          <View style={estilos.panelHeader}>
-            <View>
-              <Text style={estilos.panelTitle}>Operadores Principales</Text>
-              <Text style={estilos.panelSubtitle}>Usuarios con mayor actividad</Text>
-            </View>
-            <IconPanel icon="manage-accounts" color={ADMIN.iconos.personas} />
-          </View>
-          <View style={estilos.operatorList}>
-            {datos.operadores.length > 0 ? datos.operadores.map((operador) => (
-              <View key={operador.nombre} style={estilos.operatorRow}>
-                <View style={estilos.operatorAvatar}>
-                  <Text style={estilos.operatorAvatarText}>{operador.nombre[0]}</Text>
-                </View>
-                <Text style={estilos.operatorName}>{operador.nombre}</Text>
-                <PremiumBadge variant="blue">{operador.total}</PremiumBadge>
-              </View>
-            )) : <EmptyState texto="Sin operadores registrados" />}
-          </View>
-        </View>
-
-        <View style={estilos.panelCard}>
-          <View style={estilos.panelHeader}>
-            <View>
-              <Text style={estilos.panelTitle}>Estado de Seguridad</Text>
-              <Text style={estilos.panelSubtitle}>Salud del registro</Text>
-            </View>
-            <IconPanel icon="health-and-safety" color={datos.riesgo > 0 ? ADMIN.iconos.peligro : ADMIN.iconos.exito} />
-          </View>
-          <MetricRow label="Éxito" value={datos.success} total={datos.total} color={BRAND.success} />
-          <MetricRow label="Advertencia" value={datos.warning} total={datos.total} color={BRAND.warning} />
-          <MetricRow label="Error" value={datos.error} total={datos.total} color={BRAND.error} />
-        </View>
-      </View>
-
       <View style={estilos.premiumCard}>
         <View style={estilos.cardHeader}>
           <View style={estilos.searchContainer}>
@@ -265,9 +193,7 @@ export default function AuditoriaLogs() {
           <View style={estilos.tableHeader}>
             <Text style={[estilos.thText, { flex: 1.45 }]}>TIMESTAMP / ID</Text>
             <Text style={[estilos.thText, { flex: 1.7 }]}>OPERADOR</Text>
-            <Text style={[estilos.thText, { flex: 1.35 }]}>MÓDULO</Text>
-            <Text style={[estilos.thText, { flex: 2.5 }]}>DETALLE DE ACTIVIDAD</Text>
-            <Text style={[estilos.thText, { flex: 1.25 }]}>IP ADDRESS</Text>
+            <Text style={[estilos.thText, { flex: 3 }]}>ACTIVIDAD</Text>
             <Text style={[estilos.thText, { flex: 1, textAlign: 'center' }]}>ESTADO</Text>
           </View>
 
@@ -283,17 +209,9 @@ export default function AuditoriaLogs() {
                 </View>
                 <Text style={estilos.userName} numberOfLines={1}>{log.usuarioNombre || 'Sistema'}</Text>
               </View>
-              <View style={[estilos.tdCell, { flex: 1.35, alignItems: 'flex-start' }]}>
-                <PremiumBadge variant="default">{log.modulo || 'General'}</PremiumBadge>
-              </View>
-              <View style={[estilos.tdCell, { flex: 2.5 }]}>
+              <View style={[estilos.tdCell, { flex: 3 }]}>
                 <Text style={estilos.logAction}>{log.accion || 'Operación'}</Text>
-                <Text style={estilos.logDetails} numberOfLines={1}>{log.detalles || ''}</Text>
-              </View>
-              <View style={[estilos.tdCell, { flex: 1.25 }]}>
-                <View style={estilos.ipBadge}>
-                  <Text style={estilos.ipText}>{log.ipAddress || log.ip || ''}</Text>
-                </View>
+                <Text style={estilos.logDetails} numberOfLines={1}>{`${log.modulo || 'General'} · ${log.detalles || ''}`}</Text>
               </View>
               <View style={[estilos.tdCell, { flex: 1, alignItems: 'center' }]}>
                 <PremiumBadge variant={varianteEstado(log.estado)}>{log.estado || 'Success'}</PremiumBadge>
@@ -330,55 +248,55 @@ const EmptyState = ({ texto }: { texto: string }) => (
 const estilos = StyleSheet.create({
   animatedScreen: { flex: 1, backgroundColor: BRAND.richBlack },
   contenedor: { flex: 1, backgroundColor: BRAND.richBlack },
-  scrollContent: { flexGrow: 1, padding: 24, paddingTop: 84, paddingBottom: 64 },
+  scrollContent: { flexGrow: 1, padding: 20, paddingTop: 84, paddingBottom: 64 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32 },
-  titulo: { fontSize: 36, fontWeight: '900', color: '#fff', letterSpacing: -1, textTransform: 'uppercase' },
+  titulo: { fontSize: 28, fontWeight: '800', color: '#fff', letterSpacing: 0 },
   subtitulo: { fontSize: 14, color: BRAND.textSec, fontWeight: '600', marginTop: 4, letterSpacing: 0.4 },
   headerActions: { flexDirection: 'row', gap: 12 },
-  btnSecondary: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 18, paddingHorizontal: 24, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
+  btnSecondary: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
   btnSecondaryText: { color: '#fff', fontSize: 14, fontWeight: '900', letterSpacing: 2 },
-  btnPrimary: { borderRadius: 18, overflow: 'hidden', shadowColor: BRAND.iconBright, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 25, elevation: 10 },
+  btnPrimary: { borderRadius: 12, overflow: 'hidden', shadowColor: BRAND.iconBright, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 25, elevation: 10 },
   btnGradient: { flexDirection: 'row', paddingHorizontal: 24, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
   btnIcon: { marginRight: 8 },
   btnPrimaryText: { color: '#fff', fontSize: 14, fontWeight: '900', letterSpacing: 2 },
   gridStats: { flexDirection: 'row', flexWrap: 'wrap', gap: 20, marginBottom: 24 },
-  statCard: { flex: 1, minWidth: 240, backgroundColor: ADMIN.fondoElevado, borderRadius: ADMIN.radio, padding: 24, borderWidth: 1, borderColor: ADMIN.borde, shadowColor: '#000', shadowOffset: { width: 0, height: 18 }, shadowOpacity: 0.35, shadowRadius: 36, elevation: 14 },
+  statCard: { flex: 1, minWidth: 240, backgroundColor: ADMIN.fondoElevado, borderRadius: ADMIN.radio, padding: 20, borderWidth: 1, borderColor: ADMIN.borde, shadowColor: '#000', shadowOffset: { width: 0, height: 18 }, shadowOpacity: 0.24, shadowRadius: 28, elevation: 14 },
   statRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 16 },
   statInfo: { flex: 1 },
   statLabel: { fontSize: 10, fontWeight: '900', color: BRAND.textSec, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 10 },
-  statValue: { fontSize: 30, fontWeight: '900', color: '#fff', letterSpacing: -0.5, marginBottom: 7 },
-  statTrend: { fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.2 },
+  statValue: { fontSize: 26, fontWeight: '800', color: '#fff', letterSpacing: 0, marginBottom: 7 },
+  statTrend: { fontSize: 10, fontWeight: '800', letterSpacing: 0.3 },
   iconPanel: { width: 52, height: 52, borderRadius: 17, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   panelGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 20, marginBottom: 24 },
-  panelCard: { flex: 1, minWidth: 320, backgroundColor: ADMIN.fondoElevado, borderRadius: ADMIN.radio, borderWidth: 1, borderColor: ADMIN.borde, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 18 }, shadowOpacity: 0.35, shadowRadius: 36, elevation: 14 },
+  panelCard: { flex: 1, minWidth: 320, backgroundColor: ADMIN.fondoElevado, borderRadius: ADMIN.radio, borderWidth: 1, borderColor: ADMIN.borde, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 18 }, shadowOpacity: 0.24, shadowRadius: 28, elevation: 14 },
   panelHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 16 },
-  panelTitle: { color: BRAND.textMain, fontSize: 15, fontWeight: '900', textTransform: 'uppercase' },
-  panelSubtitle: { color: BRAND.textSec, fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.3, marginTop: 4 },
+  panelTitle: { color: BRAND.textMain, fontSize: 14, fontWeight: '800' },
+  panelSubtitle: { color: BRAND.textSec, fontSize: 10, fontWeight: '800', letterSpacing: 0.3, marginTop: 4 },
   metricRow: { gap: 9, marginBottom: 15 },
   metricTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  metricLabel: { color: BRAND.textSec, fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.2 },
+  metricLabel: { color: BRAND.textSec, fontSize: 10, fontWeight: '800', letterSpacing: 0.3 },
   metricValue: { color: BRAND.textMain, fontSize: 13, fontWeight: '900' },
   progressTrack: { height: 8, backgroundColor: 'rgba(255,255,255,0.055)', borderRadius: 999, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 999 },
   operatorList: { gap: 12 },
-  operatorRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.055)', backgroundColor: 'rgba(255,255,255,0.025)' },
+  operatorRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.055)', backgroundColor: 'rgba(255,255,255,0.025)' },
   operatorAvatar: { width: 36, height: 36, borderRadius: ADMIN.radioPequeno, backgroundColor: 'rgba(167,139,250,0.12)', alignItems: 'center', justifyContent: 'center' },
   operatorAvatarText: { color: BRAND.violet, fontSize: 12, fontWeight: '900' },
   operatorName: { flex: 1, color: BRAND.textMain, fontSize: 12, fontWeight: '900', textTransform: 'uppercase' },
-  premiumCard: { backgroundColor: ADMIN.fondoElevado, borderRadius: ADMIN.radio, borderWidth: 1, borderColor: 'rgba(196,181,253,0.10)', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.4, shadowRadius: 50, elevation: 15 },
-  cardHeader: { padding: 30, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)', backgroundColor: 'rgba(255,255,255,0.02)', gap: 18 },
-  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,7,45,0.5)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 16, paddingHorizontal: 20, height: 60 },
+  premiumCard: { backgroundColor: ADMIN.fondoElevado, borderRadius: ADMIN.radio, borderWidth: 1, borderColor: 'rgba(196,181,253,0.10)', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.26, shadowRadius: 30, elevation: 15 },
+  cardHeader: { padding: 22, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)', backgroundColor: 'rgba(255,255,255,0.02)', gap: 18 },
+  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.045)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 12, paddingHorizontal: 20, height: 46 },
   searchIcon: { marginRight: 12 },
   searchInput: { flex: 1, color: '#fff', fontSize: 14, fontWeight: '700' },
   filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   filterChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', backgroundColor: 'rgba(255,255,255,0.025)' },
   filterChipActivo: { backgroundColor: 'rgba(96,165,250,0.14)', borderColor: 'rgba(96,165,250,0.25)' },
-  filterText: { color: BRAND.textSec, fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.3 },
+  filterText: { color: BRAND.textSec, fontSize: 10, fontWeight: '800', letterSpacing: 0.3 },
   filterTextActivo: { color: BRAND.iconBright },
   tableContainer: { width: '100%' },
-  tableHeader: { flexDirection: 'row', paddingHorizontal: 32, paddingVertical: 24, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
+  tableHeader: { flexDirection: 'row', paddingHorizontal: 22, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
   thText: { fontSize: 10, fontWeight: '900', color: BRAND.textSec, textTransform: 'uppercase', letterSpacing: 2 },
-  tableRow: { flexDirection: 'row', paddingHorizontal: 32, paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)', alignItems: 'center' },
+  tableRow: { flexDirection: 'row', paddingHorizontal: 22, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)', alignItems: 'center' },
   tdCell: { justifyContent: 'center', minWidth: 0 },
   logId: { fontSize: 12, fontWeight: '900', color: '#9CA3AF', fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' },
   logTime: { fontSize: 10, fontWeight: '800', color: 'rgba(96,165,250,0.8)', marginTop: 4 },
@@ -391,7 +309,7 @@ const estilos = StyleSheet.create({
   ipBadge: { paddingHorizontal: 10, paddingVertical: 5, backgroundColor: BRAND.richBlack, borderWidth: 1, borderColor: 'rgba(196,181,253,0.10)', borderRadius: 8, alignSelf: 'flex-start' },
   ipText: { fontSize: 10, color: '#9CA3AF', fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', letterSpacing: 1 },
   badge: { paddingHorizontal: 11, paddingVertical: 5, borderRadius: 100, borderWidth: 1 },
-  badgeText: { fontSize: 9, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.2 },
+  badgeText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.2 },
   emptyState: { padding: 32, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: BRAND.textSec, fontWeight: '900', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1.2, textAlign: 'center' },
 });

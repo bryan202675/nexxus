@@ -150,7 +150,7 @@ const estilos = StyleSheet.create({
     right: -80,
     width: 360,
     height: 360,
-    borderRadius: 180,
+    borderRadius: 120,
     backgroundColor: 'rgba(124,58,237,0.20)',
   },
   glowDos: {
@@ -159,7 +159,7 @@ const estilos = StyleSheet.create({
     left: -100,
     width: 320,
     height: 320,
-    borderRadius: 160,
+    borderRadius: 120,
     backgroundColor: 'rgba(182,156,255,0.10)',
   },
   appBar: { 

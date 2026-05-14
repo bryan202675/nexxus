@@ -221,21 +221,6 @@ export default function ComunicacionAdmin() {
         </TouchableOpacity>
       </View>
 
-      <View style={estilos.gridStats}>
-        {stats.map((stat) => (
-          <View key={stat.label} style={estilos.statCard}>
-            <View style={estilos.statRow}>
-              <View style={estilos.statInfo}>
-                <Text style={estilos.statLabel}>{stat.label}</Text>
-                <Text style={estilos.statValue}>{stat.val}</Text>
-                <Text style={[estilos.statTrend, { color: stat.color }]}>{stat.detail}</Text>
-              </View>
-              <IconPanel icon={stat.icon} color={stat.color} />
-            </View>
-          </View>
-        ))}
-      </View>
-
       <View style={estilos.gridMain}>
         <View style={estilos.colLeft}>
           <View style={estilos.premiumCard}>
@@ -341,36 +326,36 @@ const EmptyState = ({ texto }: { texto: string }) => (
 const estilos = StyleSheet.create({
   animatedScreen: { flex: 1, backgroundColor: BRAND.richBlack },
   contenedor: { flex: 1, backgroundColor: BRAND.richBlack },
-  scrollContent: { flexGrow: 1, padding: 24, paddingTop: 84, paddingBottom: 64 },
+  scrollContent: { flexGrow: 1, padding: 20, paddingTop: 84, paddingBottom: 64 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32 },
-  titulo: { fontSize: 36, fontWeight: '900', color: '#fff', letterSpacing: -1, textTransform: 'uppercase' },
+  titulo: { fontSize: 28, fontWeight: '800', color: '#fff', letterSpacing: 0 },
   subtitulo: { fontSize: 14, color: BRAND.textSec, fontWeight: '600', marginTop: 4, letterSpacing: 0.4 },
-  btnPrimary: { borderRadius: 18, overflow: 'hidden', shadowColor: BRAND.iconBright, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 25, elevation: 10 },
+  btnPrimary: { borderRadius: 12, overflow: 'hidden', shadowColor: BRAND.iconBright, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 25, elevation: 10 },
   btnGradient: { flexDirection: 'row', paddingHorizontal: 24, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
   btnIcon: { marginRight: 8 },
   btnPrimaryText: { color: '#fff', fontSize: 14, fontWeight: '900', letterSpacing: 2 },
   gridStats: { flexDirection: 'row', flexWrap: 'wrap', gap: 20, marginBottom: 24 },
-  statCard: { flex: 1, minWidth: 230, backgroundColor: ADMIN.fondoElevado, borderRadius: ADMIN.radio, padding: 24, borderWidth: 1, borderColor: ADMIN.borde, shadowColor: '#000', shadowOffset: { width: 0, height: 18 }, shadowOpacity: 0.35, shadowRadius: 36, elevation: 14 },
+  statCard: { flex: 1, minWidth: 230, backgroundColor: ADMIN.fondoElevado, borderRadius: ADMIN.radio, padding: 20, borderWidth: 1, borderColor: ADMIN.borde, shadowColor: '#000', shadowOffset: { width: 0, height: 18 }, shadowOpacity: 0.24, shadowRadius: 28, elevation: 14 },
   statRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 16 },
   statInfo: { flex: 1 },
   statLabel: { fontSize: 10, fontWeight: '900', color: BRAND.textSec, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 10 },
-  statValue: { fontSize: 30, fontWeight: '900', color: '#fff', letterSpacing: -0.5, marginBottom: 7 },
-  statTrend: { fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.2 },
+  statValue: { fontSize: 26, fontWeight: '800', color: '#fff', letterSpacing: 0, marginBottom: 7 },
+  statTrend: { fontSize: 10, fontWeight: '800', letterSpacing: 0.3 },
   iconPanel: { width: 52, height: 52, borderRadius: 17, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   gridMain: { flexDirection: 'row', gap: 24 },
   colLeft: { flex: 0.85, gap: 24 },
   colRight: { flex: 1.65 },
-  premiumCard: { backgroundColor: ADMIN.fondoElevado, borderRadius: ADMIN.radio, borderWidth: 1, borderColor: ADMIN.borde, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 18 }, shadowOpacity: 0.35, shadowRadius: 36, elevation: 14 },
+  premiumCard: { backgroundColor: ADMIN.fondoElevado, borderRadius: ADMIN.radio, borderWidth: 1, borderColor: ADMIN.borde, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 18 }, shadowOpacity: 0.24, shadowRadius: 28, elevation: 14 },
   panelHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 16 },
-  panelTitle: { color: BRAND.textMain, fontSize: 15, fontWeight: '900', textTransform: 'uppercase' },
-  panelSubtitle: { color: BRAND.textSec, fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.3, marginTop: 4 },
+  panelTitle: { color: BRAND.textMain, fontSize: 14, fontWeight: '800' },
+  panelSubtitle: { color: BRAND.textSec, fontSize: 10, fontWeight: '800', letterSpacing: 0.3, marginTop: 4 },
   audienceList: { gap: 10 },
-  audienceWrap: { borderRadius: 16, overflow: 'hidden' },
-  audienceBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 15, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.025)' },
+  audienceWrap: { borderRadius: 12, overflow: 'hidden' },
+  audienceBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 15, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.025)' },
   audienceBtnText: { fontSize: 12, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.3 },
   audienceCount: { color: '#fff', fontSize: 12, fontWeight: '900' },
-  chatInput: { width: '100%', backgroundColor: BRAND.richBlack, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 16, padding: 18, color: '#fff', fontSize: 14, fontWeight: '700', minHeight: 130, textAlignVertical: 'top' },
-  publishBtn: { borderRadius: 16, overflow: 'hidden', marginTop: 14 },
+  chatInput: { width: '100%', backgroundColor: BRAND.richBlack, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 12, padding: 18, color: '#fff', fontSize: 14, fontWeight: '700', minHeight: 130, textAlignVertical: 'top' },
+  publishBtn: { borderRadius: 12, overflow: 'hidden', marginTop: 14 },
   publishGradient: { flexDirection: 'row', gap: 10, justifyContent: 'center', alignItems: 'center', paddingVertical: 15 },
   publishText: { color: '#fff', fontSize: 12, fontWeight: '900', letterSpacing: 1.6 },
   feedCard: { padding: 0, minHeight: 680 },
@@ -378,11 +363,11 @@ const estilos = StyleSheet.create({
   chatTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   liveDot: { width: 11, height: 11, borderRadius: 6, backgroundColor: BRAND.iconBright },
   chatTitle: { fontSize: 18, fontWeight: '900', color: '#fff', textTransform: 'uppercase' },
-  searchContainer: { margin: 24, marginBottom: 0, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,7,45,0.5)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 16, paddingHorizontal: 20, height: 56 },
+  searchContainer: { margin: 24, marginBottom: 0, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.045)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 12, paddingHorizontal: 20, height: 56 },
   searchIcon: { marginRight: 12 },
   searchInput: { flex: 1, color: '#fff', fontSize: 14, fontWeight: '700' },
   chatArea: { flex: 1 },
-  feedContent: { padding: 24 },
+  feedContent: { padding: 20 },
   feedItem: { padding: 22, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(196,181,253,0.10)', backgroundColor: 'rgba(255,255,255,0.02)', marginBottom: 18 },
   feedItemUrgent: { backgroundColor: 'rgba(239,68,68,0.05)', borderColor: 'rgba(239,68,68,0.2)' },
   feedItemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, gap: 14 },
@@ -393,7 +378,7 @@ const estilos = StyleSheet.create({
   feedUserMeta: { fontSize: 10, fontWeight: '900', color: BRAND.textSec, textTransform: 'uppercase', letterSpacing: 1.2, marginTop: 2 },
   feedMsg: { fontSize: 14, color: '#D1D5DB', lineHeight: 23, fontWeight: '600' },
   badge: { paddingHorizontal: 11, paddingVertical: 5, borderRadius: 100, borderWidth: 1 },
-  badgeText: { fontSize: 9, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.2 },
+  badgeText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.2 },
   emptyState: { padding: 32, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: BRAND.textSec, fontWeight: '900', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1.2, textAlign: 'center' },
 });

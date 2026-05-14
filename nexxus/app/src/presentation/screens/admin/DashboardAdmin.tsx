@@ -1,15 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, View, Text, ScrollView, Dimensions, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Defs, Line, LinearGradient as SvgLinearGradient, Polygon, Polyline, Stop, Text as SvgText } from 'react-native-svg';
 import { addDoc, collection, doc, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
 import {
   Users,
-  DollarSign,
   AlertTriangle,
   TrendingUp,
   Activity,
-  MoreVertical,
   ClipboardList,
   HeartPulse,
   CalendarClock,
@@ -95,6 +92,7 @@ type CheckInAdmin = {
   cargaLaboral?: number;
   energia?: string;
   empresaId?: string;
+  empresa_id?: string;
 };
 
 type AuditoriaAdmin = {
@@ -393,6 +391,19 @@ const DashboardAdmin: React.FC = () => {
       () => publicar()
     ));
 
+    consultas.push(onSnapshot(
+      query(collection(db, 'checkins'), where('empresa_id', '==', empresaId)),
+      (snapshot) => {
+        const mapa = new Map<string, CheckInAdmin>();
+        snapshot.docs.forEach((documento) => {
+          mapa.set(documento.id, { id: documento.id, ...documento.data() } as CheckInAdmin);
+        });
+        mapasPorFuente.set('empresa_legacy', mapa);
+        publicar();
+      },
+      () => publicar()
+    ));
+
     gruposIds.forEach((grupo, indice) => {
       if (grupo.length === 0) return;
       consultas.push(onSnapshot(
@@ -500,7 +511,7 @@ const DashboardAdmin: React.FC = () => {
     const tiempoPromedioTareas = tareas.length > 0 ? Math.round(tareas.reduce((total, tarea) => total + (Number(tarea.tiempoEstimado) || 0), 0) / tareas.length) : 0;
     const costoMensual = pagos.reduce((total, pago) => total + (pago.salario_bruto || pago.salario_neto || 0), 0);
     const payrollProcesando = pagos.filter((pago) => pago.estado !== 'Pagado').length;
-    const checkInsHoy = checkIns.filter((checkIn) => mismoDia(obtenerFecha(checkIn.fecha || checkIn.timestamp))).length;
+    const checkInsHoy = checkIns.filter((checkIn) => mismoDia(obtenerFechaCheckIn(checkIn))).length;
     const participacion = porcentaje(checkInsHoy, activos);
     const asistenciasHoy = asistencias.filter((asistencia) => mismoDia(obtenerFecha(asistencia.timestamp)));
     const entradasHoy = asistenciasHoy.filter((asistencia) => asistencia.tipo === 'entrada');
@@ -617,7 +628,7 @@ const DashboardAdmin: React.FC = () => {
         const balance = valorEscalaCinco(checkIn.balanceEmocional);
         const bienestarEmpleado = Math.max(0, Math.min(100, Math.round(((balance + (5 - estres) + (5 - carga)) / 15) * 100)));
         return {
-          id: checkIn.id || checkIn.userId || `${checkIn.fecha}-${checkIn.estres}`,
+          id: checkIn.id || checkIn.userId || `${checkIn.fecha || checkIn.timestamp}-${checkIn.estres || 0}`,
           nombre: checkIn.usuarioNombre || usuario?.nombre || 'Empleado',
           departamento: checkIn.departamento || usuario?.departamento || 'Sin departamento',
           estres,
@@ -684,7 +695,7 @@ const DashboardAdmin: React.FC = () => {
       .map((checkIn) => {
         const usuario = usuarios.find((item) => item.id === checkIn.userId);
         return {
-          id: checkIn.id || checkIn.userId || Math.random().toString(),
+          id: checkIn.id || checkIn.userId || `${checkIn.fecha || checkIn.timestamp}-${checkIn.estres || 0}`,
           nombre: usuario?.nombre || 'Empleado',
           depto: usuario?.departamento || 'Sin departamento',
           estres: Number(checkIn.estres) || 0,
@@ -750,28 +761,21 @@ const DashboardAdmin: React.FC = () => {
 
   const stats = [
     {
-      label: "Empleados Activos",
+      label: "Equipo activo",
       val: metricas.activos.toString(),
       trend: `${usuarios.length} registrados`,
       tono: 'cyan' as const,
       icon: <Users size={24} color={ADMIN.iconos.personas} />,
     },
     {
-      label: "Costo Mensual de Planilla",
-      val: formatearMoneda(metricas.costoMensual),
-      trend: `${metricas.payrollProcesando} pagos abiertos`,
-      tono: 'success' as const,
-      icon: <DollarSign size={24} color={ADMIN.iconos.dinero} />,
-    },
-    {
-      label: "Productividad General",
+      label: "Productividad",
       val: `${metricas.productividad}%`,
       trend: `${metricas.tareasPendientes} tareas pendientes`,
       tono: metricas.productividad >= 75 ? 'success' as const : 'warning' as const,
       icon: <ClipboardList size={24} color={metricas.productividad >= 75 ? ADMIN.iconos.exito : ADMIN.iconos.tareas} />,
     },
     {
-      label: "Riesgo Operativo",
+      label: "Prioridades",
       val: `${metricas.riesgo}%`,
       trend: `${metricas.aprobacionesPendientes} aprobaciones pendientes`,
       tono: metricas.riesgo > 45 || metricas.alertas > 0 ? 'error' as const : 'cyan' as const,
@@ -779,9 +783,6 @@ const DashboardAdmin: React.FC = () => {
     }
   ];
 
-  const positiveStroke = (metricas.bienestar / 100) * 251;
-  const neutralStroke = (metricas.neutral / 100) * 251;
-  const riskStroke = (metricas.riesgo / 100) * 251;
   const datosGrafico = modoGrafico === 'semanal' ? metricas.serieSemanal : metricas.serieMensual;
 
   if (cargando) {
@@ -797,20 +798,18 @@ const DashboardAdmin: React.FC = () => {
     <ScrollView style={estilos.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={estilos.scrollViewContent}>
       <View style={estilos.header}>
         <View>
-          <Text style={estilos.headerTitle}>Panel Ejecutivo</Text>
-          <Text style={estilos.headerSubtitle}>Centro de mando para empleados, operación y bienestar</Text>
+          <Text style={estilos.headerTitle}>Centro operativo</Text>
+          <Text style={estilos.headerSubtitle}>Lo esencial para decidir y actuar sin ruido.</Text>
         </View>
         <View style={estilos.livePill}>
           <View style={estilos.liveDot} />
-          <Text style={estilos.liveText}>Nexus System Live</Text>
+          <Text style={estilos.liveText}>Firebase live</Text>
         </View>
       </View>
 
-      <HeroTrustPanel activos={metricas.activos} aprobaciones={metricas.aprobacionesPendientes} productividad={metricas.productividad} />
-
       <View style={[estilos.statsGrid, !isTabletOrWeb && estilos.statsGridMobile]}>
         {stats.map((stat, i) => (
-          <View key={stat.label} style={[estilos.statCardContainer, { width: isTabletOrWeb ? '23.5%' : '48%' }]}>
+          <View key={stat.label} style={[estilos.statCardContainer, { width: isTabletOrWeb ? '32%' : '100%' }]}>
             <PremiumCard style={estilos.statCard}>
               <View style={estilos.statAccent} />
               <View style={estilos.statCardInner}>
@@ -862,49 +861,28 @@ const DashboardAdmin: React.FC = () => {
         </View>
 
         <View style={!isTabletOrWeb ? estilos.anchoTotal : estilos.columnaLateral}>
-          <PremiumCard style={estilos.moodCard}>
-            <View style={estilos.chartHeader}>
-              <Text style={estilos.chartTitle}>Nexus-Mood IA</Text>
-              <MoreVertical size={18} color={BRAND.textSec} />
+          <PremiumCard style={estilos.priorityCard}>
+            <View style={estilos.panelHeader}>
+              <View>
+                <Text style={estilos.panelTitle}>Prioridades de hoy</Text>
+                <Text style={estilos.panelSubtitle}>Acciones reales, sin métricas extra</Text>
+              </View>
+              <IconWrapper tono="warning"><Inbox size={20} color={BRAND.warning} /></IconWrapper>
             </View>
-
-            <View style={estilos.moodCircleContainer}>
-              <Svg height="190" width="190" viewBox="0 0 100 100" style={{ transform: [{ rotate: '-90deg' }] }}>
-                <Circle cx="50" cy="50" r="40" fill="transparent" stroke="rgba(255,255,255,0.04)" strokeWidth="12" />
-                <Circle cx="50" cy="50" r="40" fill="transparent" stroke={BRAND.success} strokeWidth="12" strokeDasharray={`${positiveStroke} 251`} strokeLinecap="round" />
-                <Circle cx="50" cy="50" r="40" fill="transparent" stroke={BRAND.warning} strokeWidth="12" strokeDasharray={`${neutralStroke} 251`} strokeDashoffset={-positiveStroke} strokeLinecap="round" />
-                <Circle cx="50" cy="50" r="40" fill="transparent" stroke={BRAND.error} strokeWidth="12" strokeDasharray={`${riskStroke} 251`} strokeDashoffset={-(positiveStroke + neutralStroke)} strokeLinecap="round" />
-              </Svg>
-              <View style={estilos.moodCircleTextContainer}>
-                <Text style={estilos.moodCircleValue}>{metricas.bienestar}%</Text>
-                <Text style={[estilos.moodCircleLabel, { color: metricas.bienestar >= 70 ? BRAND.success : metricas.bienestar >= 45 ? BRAND.warning : BRAND.error }]}>
-                  {metricas.bienestar >= 70 ? 'ÓPTIMO' : metricas.bienestar >= 45 ? 'OBSERVAR' : 'CRÍTICO'}
-                </Text>
-              </View>
-            </View>
-
-            <View style={estilos.moodLegendContainer}>
-              <View style={estilos.legendItem}>
-                <View style={estilos.legendLabelContainer}>
-                  <View style={[estilos.legendDot, { backgroundColor: BRAND.success }]} />
-                  <Text style={estilos.legendText}>Bienestar</Text>
-                </View>
-                <Text style={estilos.legendValue}>{metricas.bienestar}%</Text>
-              </View>
-              <View style={estilos.legendItem}>
-                <View style={estilos.legendLabelContainer}>
-                  <View style={[estilos.legendDot, { backgroundColor: BRAND.warning }]} />
-                  <Text style={estilos.legendText}>Carga</Text>
-                </View>
-                <Text style={estilos.legendValue}>{metricas.neutral}%</Text>
-              </View>
-              <View style={estilos.legendItem}>
-                <View style={estilos.legendLabelContainer}>
-                  <View style={[estilos.legendDot, { backgroundColor: BRAND.error }]} />
-                  <Text style={estilos.legendText}>Riesgo</Text>
-                </View>
-                <Text style={estilos.legendValue}>{metricas.riesgo}%</Text>
-              </View>
+            <View style={estilos.listadoCompacto}>
+              {metricas.solicitudesPendientes.length > 0 ? metricas.solicitudesPendientes.slice(0, 3).map((item) => (
+                <ApprovalItem
+                  key={`${item.tipo}-${item.id}`}
+                  titulo={item.titulo}
+                  detalle={`${item.empleado} · ${item.prioridad}`}
+                  onAprobar={() => item.tipo === 'ausencia' ? actualizarSolicitudAusencia(item.solicitud as AusenciaAdmin, 'aprobada') : actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'aprobado')}
+                  onRechazar={() => item.tipo === 'ausencia' ? actualizarSolicitudAusencia(item.solicitud as AusenciaAdmin, 'rechazada') : actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'rechazado')}
+                />
+              )) : metricas.alertasOperativas.length > 0 ? metricas.alertasOperativas.slice(0, 3).map((alerta) => (
+                <ListItem key={alerta.id} inicial="!" titulo={alerta.titulo} detalle={alerta.detalle} badge="Abierta" color={alerta.color} />
+              )) : (
+                <EmptyState texto="Sin prioridades pendientes" />
+              )}
             </View>
           </PremiumCard>
         </View>
@@ -912,257 +890,102 @@ const DashboardAdmin: React.FC = () => {
 
       <View style={estilos.detalleOperativoBar}>
         <View>
-          <Text style={estilos.detalleOperativoTitulo}>Vista ejecutiva simplificada</Text>
-          <Text style={estilos.detalleOperativoTexto}>Los módulos secundarios siguen disponibles cuando necesites revisar operación profunda.</Text>
+          <Text style={estilos.detalleOperativoTitulo}>Operación avanzada</Text>
+          <Text style={estilos.detalleOperativoTexto}>Check-ins, asistencia, tareas, alertas y auditoría siguen disponibles bajo demanda.</Text>
         </View>
         <TouchableOpacity onPress={() => setMostrarDetalleOperativo((valor) => !valor)} activeOpacity={0.88} style={estilos.detalleOperativoBoton}>
-          <Text style={estilos.detalleOperativoBotonTexto}>{mostrarDetalleOperativo ? 'Ocultar detalle' : 'Ver detalle operativo'}</Text>
+          <Text style={estilos.detalleOperativoBotonTexto}>{mostrarDetalleOperativo ? 'Ocultar' : 'Abrir'}</Text>
         </TouchableOpacity>
       </View>
 
       {mostrarDetalleOperativo && (
       <Animated.View style={[estilos.detalleOperativoContenido, { opacity: entrada, transform: [{ translateY: entrada.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }] }]}>
-      <PremiumCard style={estilos.checkInResultsCard}>
-        <View style={estilos.panelHeader}>
-          <View>
-            <Text style={estilos.panelTitle}>Resultados del Check-in de Hoy</Text>
-            <Text style={estilos.panelSubtitle}>Lectura directa de bienestar, energía, carga y estrés en tiempo real</Text>
-          </View>
-          <IconWrapper tono="error"><HeartPulse size={20} color={ADMIN.iconos.peligro} /></IconWrapper>
-        </View>
-        <CheckInResultsPanel
-          checkIns={metricas.checkInsHoyDetalle}
-          distribucion={metricas.energiaDistribucion}
-          participacion={metricas.participacion}
-          totalActivos={metricas.activos}
-          compacto={!isTabletOrWeb}
-        />
-      </PremiumCard>
-
-      <View style={[estilos.operationalGrid, !isTabletOrWeb && estilos.topGridMobile]}>
-        <PremiumCard style={estilos.operationalCard}>
-          <View style={estilos.panelHeader}>
-            <View>
-              <Text style={estilos.panelTitle}>Pulso Operativo en Vivo</Text>
-              <Text style={estilos.panelSubtitle}>Asistencia, carga, productividad y riesgo con datos Firebase</Text>
-            </View>
-            <IconWrapper tono="violet"><Activity size={20} color={ADMIN.iconos.auditoria} /></IconWrapper>
-          </View>
-          <OperationalBarsChart
-            datos={[
-              { label: 'Activos', valor: metricas.activos, total: Math.max(usuarios.length, metricas.activos, 1), color: BRAND.success, detalle: `${metricas.empleadosConectados} conectados ahora` },
-              { label: 'Asistencia', valor: metricas.entradasHoy, total: Math.max(metricas.activos, 1), color: BRAND.cyan, detalle: `${metricas.retrasos} retrasos registrados` },
-              { label: 'Productividad', valor: metricas.productividad, total: 100, color: BRAND.violet, detalle: `${metricas.tareasCompletadas} tareas completadas` },
-              { label: 'Aprobaciones', valor: metricas.aprobacionesPendientes, total: Math.max(metricas.aprobacionesPendientes + metricas.tareasPendientes, 1), color: BRAND.warning, detalle: `${metricas.ausenciasPendientes} ausencias por revisar` },
-              { label: 'Riesgo', valor: metricas.riesgo, total: 100, color: BRAND.error, detalle: `${metricas.incidenciasAbiertas} incidencias abiertas` },
-            ]}
-          />
-        </PremiumCard>
-
-        <PremiumCard style={estilos.operationalSideCard}>
-          <View style={estilos.panelHeader}>
-            <View>
-              <Text style={estilos.panelTitle}>Estado de Tareas</Text>
-              <Text style={estilos.panelSubtitle}>Pendiente, progreso y completado</Text>
-            </View>
-            <IconWrapper tono="warning"><ClipboardList size={20} color={ADMIN.iconos.tareas} /></IconWrapper>
-          </View>
-          <TaskDistributionChart
-            pendientes={metricas.tareasPendientes}
-            progreso={metricas.tareasProgreso}
-            completadas={metricas.tareasCompletadas}
-          />
-        </PremiumCard>
-      </View>
-
-      <View style={estilos.monitorGrid}>
-        <PremiumCard style={estilos.panelCard}>
-          <View style={estilos.panelHeader}>
-            <View>
-              <Text style={estilos.panelTitle}>Monitoreo de Plantilla</Text>
-              <Text style={estilos.panelSubtitle}>Estado operativo de empleados</Text>
-            </View>
-            <IconWrapper tono="success"><UserCheck size={20} color={BRAND.success} /></IconWrapper>
-          </View>
-          <View style={estilos.metricRows}>
-            <MetricRow icon={<UserCheck size={16} color={BRAND.success} />} label="Conectados" value={metricas.empleadosConectados} total={metricas.activos} color={BRAND.success} />
-            <MetricRow icon={<PauseCircle size={16} color={BRAND.warning} />} label="En pausa" value={metricas.pausasActivas} total={metricas.activos} color={BRAND.warning} />
-            <MetricRow icon={<UserX size={16} color={BRAND.error} />} label="Ausentes" value={metricas.empleadosAusentes} total={metricas.activos} color={BRAND.error} />
-            <MetricRow icon={<Timer size={16} color={BRAND.cyan} />} label="Check-in de hoy" value={metricas.checkInsHoy} total={metricas.activos} color={BRAND.cyan} />
-          </View>
-        </PremiumCard>
-
-        <PremiumCard style={estilos.panelCard}>
-          <View style={estilos.panelHeader}>
-            <View>
-              <Text style={estilos.panelTitle}>Carga de Trabajo</Text>
-              <Text style={estilos.panelSubtitle}>Tareas y prioridad</Text>
-            </View>
-            <IconWrapper tono="warning"><ClipboardList size={20} color={BRAND.warning} /></IconWrapper>
-          </View>
-          <View style={estilos.metricRows}>
-            <MetricRow icon={<CircleDot size={16} color={BRAND.warning} />} label="Pendientes" value={metricas.tareasPendientes} total={tareas.length} color={BRAND.warning} />
-            <MetricRow icon={<Clock3 size={16} color={BRAND.error} />} label="Vencidas" value={metricas.tareasVencidas} total={tareas.length} color={BRAND.error} />
-            <MetricRow icon={<Zap size={16} color={BRAND.iconBright} />} label="En progreso" value={metricas.tareasProgreso} total={tareas.length} color={BRAND.iconBright} />
-            <MetricRow icon={<CheckCircle2 size={16} color={BRAND.success} />} label="Completadas" value={metricas.tareasCompletadas} total={tareas.length} color={BRAND.success} />
-          </View>
-        </PremiumCard>
-
-        <PremiumCard style={estilos.panelCard}>
-          <View style={estilos.panelHeader}>
-            <View>
-              <Text style={estilos.panelTitle}>Alertas RRHH</Text>
-              <Text style={estilos.panelSubtitle}>Bienestar y solicitudes</Text>
-            </View>
-            <IconWrapper tono="error"><HeartPulse size={20} color={BRAND.error} /></IconWrapper>
-          </View>
-          <View style={estilos.alertGrid}>
-            <MiniKpi icon={<Flame size={18} color={BRAND.error} />} label="Incidencias" value={metricas.incidenciasAbiertas} color={BRAND.error} />
-            <MiniKpi icon={<CalendarClock size={18} color={BRAND.warning} />} label="Aprobaciones" value={metricas.aprobacionesPendientes} color={BRAND.warning} />
-            <MiniKpi icon={<Bell size={18} color={BRAND.violet} />} label="Inbox crítico" value={metricas.inboxCritico} color={BRAND.violet} />
-          </View>
-        </PremiumCard>
-      </View>
-
-      <View style={estilos.monitorGrid}>
-        <PremiumCard style={estilos.panelCard}>
-          <View style={estilos.panelHeader}>
-            <View>
-              <Text style={estilos.panelTitle}>Monitor de Asistencia</Text>
-              <Text style={estilos.panelSubtitle}>Jornada en tiempo real desde empleado</Text>
-            </View>
-            <IconWrapper tono="cyan"><Timer size={20} color={BRAND.cyan} /></IconWrapper>
-          </View>
-          <View style={estilos.metricRows}>
-            <MetricRow icon={<UserCheck size={16} color={BRAND.success} />} label="Entradas hoy" value={metricas.entradasHoy} total={metricas.activos} color={BRAND.success} />
-            <MetricRow icon={<Clock3 size={16} color={BRAND.warning} />} label="Retrasos" value={metricas.retrasos} total={metricas.activos} color={BRAND.warning} />
-            <MetricRow icon={<PauseCircle size={16} color={BRAND.violet} />} label="Pausas activas" value={metricas.pausasActivas} total={metricas.activos} color={BRAND.violet} />
-            <MetricRow icon={<Zap size={16} color={BRAND.cyan} />} label="Horas extra" value={metricas.horasExtra} total={Math.max(metricas.horasExtra, metricas.activos)} color={BRAND.cyan} />
-          </View>
-        </PremiumCard>
-
-        <PremiumCard style={estilos.panelCard}>
-          <View style={estilos.panelHeader}>
-            <View>
-              <Text style={estilos.panelTitle}>Centro de Aprobaciones</Text>
-              <Text style={estilos.panelSubtitle}>Ausencias y solicitudes internas</Text>
-            </View>
-            <IconWrapper tono="warning"><Inbox size={20} color={BRAND.warning} /></IconWrapper>
-          </View>
-          <View style={estilos.listadoCompacto}>
-            {metricas.solicitudesPendientes.length > 0 ? metricas.solicitudesPendientes.map((item) => (
-              <ApprovalItem
-                key={`${item.tipo}-${item.id}`}
-                titulo={item.titulo}
-                detalle={`${item.empleado} · ${item.prioridad}`}
-                onAprobar={() => item.tipo === 'ausencia' ? actualizarSolicitudAusencia(item.solicitud as AusenciaAdmin, 'aprobada') : actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'aprobado')}
-                onRechazar={() => item.tipo === 'ausencia' ? actualizarSolicitudAusencia(item.solicitud as AusenciaAdmin, 'rechazada') : actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'rechazado')}
-              />
-            )) : (
-              <EmptyState texto="Sin aprobaciones pendientes" />
-            )}
-          </View>
-        </PremiumCard>
-
-        <PremiumCard style={estilos.panelCard}>
-          <View style={estilos.panelHeader}>
-            <View>
-              <Text style={estilos.panelTitle}>Alertas Operativas</Text>
-              <Text style={estilos.panelSubtitle}>Inbox, feedback y documentos</Text>
-            </View>
-            <IconWrapper tono="error"><MessageSquareWarning size={20} color={BRAND.error} /></IconWrapper>
-          </View>
-          <View style={estilos.alertGrid}>
-            <MiniKpi icon={<Inbox size={18} color={BRAND.error} />} label="Urgentes" value={metricas.inboxCritico} color={BRAND.error} />
-            <MiniKpi icon={<MessageSquareWarning size={18} color={BRAND.warning} />} label="Feedback" value={metricas.incidenciasAbiertas} color={BRAND.warning} />
-            <MiniKpi icon={<FileText size={18} color={BRAND.cyan} />} label="Documentos" value={metricas.documentosPendientes} color={BRAND.cyan} />
-          </View>
-          <View style={estilos.listadoCompacto}>
-            {metricas.alertasOperativas.length > 0 ? metricas.alertasOperativas.map((alerta) => (
-              <ListItem key={alerta.id} inicial="!" titulo={alerta.titulo} detalle={alerta.detalle} badge="Abierta" color={alerta.color} />
-            )) : (
-              <EmptyState texto="Sin alertas abiertas" />
-            )}
-          </View>
-        </PremiumCard>
-      </View>
-
-      <View style={[estilos.bottomGrid, !isTabletOrWeb && estilos.topGridMobile]}>
-        <PremiumCard style={estilos.listCard}>
-          <View style={estilos.panelHeader}>
-            <View>
-              <Text style={estilos.panelTitle}>Empleados en Seguimiento</Text>
-              <Text style={estilos.panelSubtitle}>Estrés o carga elevada</Text>
-            </View>
-            <IconWrapper tono="error"><AlertTriangle size={20} color={BRAND.error} /></IconWrapper>
-          </View>
-          <View style={estilos.listado}>
-            {metricas.empleadosRiesgo.length > 0 ? metricas.empleadosRiesgo.map((empleado) => (
-              <ListItem key={empleado.id} inicial={empleado.nombre[0]} titulo={empleado.nombre} detalle={empleado.depto} badge={`Estrés ${empleado.estres}/5`} color={BRAND.error} />
-            )) : (
-              <EmptyState texto="Sin empleados en riesgo alto" />
-            )}
-          </View>
-        </PremiumCard>
-
-        <PremiumCard style={estilos.listCard}>
-          <View style={estilos.panelHeader}>
-            <View>
-              <Text style={estilos.panelTitle}>Check-ins Pendientes</Text>
-              <Text style={estilos.panelSubtitle}>Empleados activos sin pulso de hoy</Text>
-            </View>
-            <IconWrapper tono="cyan"><Timer size={20} color={BRAND.cyan} /></IconWrapper>
-          </View>
-          <View style={estilos.listado}>
-            {metricas.empleadosSinCheckIn.length > 0 ? metricas.empleadosSinCheckIn.map((empleado) => (
-              <ListItem key={empleado.id || empleado.correo} inicial={(empleado.nombre || '?')[0]} titulo={empleado.nombre || 'Empleado'} detalle={empleado.departamento || 'Sin departamento'} badge="Pendiente" color={BRAND.cyan} />
-            )) : (
-              <EmptyState texto="Check-ins al día" />
-            )}
-          </View>
-        </PremiumCard>
-
-        <PremiumCard style={estilos.listCard}>
-          <View style={estilos.panelHeader}>
-            <View>
-              <Text style={estilos.panelTitle}>Departamentos</Text>
-              <Text style={estilos.panelSubtitle}>Distribución de plantilla</Text>
-            </View>
-            <IconWrapper tono="violet"><Building2 size={20} color={BRAND.violet} /></IconWrapper>
-          </View>
-          <View style={estilos.listado}>
-            {metricas.topDepartamentos.length > 0 ? metricas.topDepartamentos.map((depto) => (
-              <DepartmentRow key={depto.nombre} nombre={depto.nombre} total={depto.total} share={depto.share} />
-            )) : (
-              <EmptyState texto="Sin departamentos registrados" />
-            )}
-          </View>
-        </PremiumCard>
-      </View>
-
-      <PremiumCard style={estilos.activityCard}>
-        <View style={estilos.panelHeader}>
-          <View>
-            <Text style={estilos.panelTitle}>Actividad Reciente</Text>
-            <Text style={estilos.panelSubtitle}>Eventos de auditoría en tiempo real</Text>
-          </View>
-          <IconWrapper tono="blue"><ShieldCheck size={20} color={BRAND.iconBright} /></IconWrapper>
-        </View>
-        <View style={estilos.timeline}>
-          {metricas.actividad.length > 0 ? metricas.actividad.map((log) => (
-            <View key={log.id} style={estilos.timelineItem}>
-              <View style={[estilos.timelineDot, { backgroundColor: log.estado === 'Error' ? BRAND.error : log.estado === 'Warning' ? BRAND.warning : BRAND.success }]} />
-              <View style={estilos.timelineContent}>
-                <Text style={estilos.timelineTitle}>{log.accion || 'Evento del sistema'}</Text>
-                <Text style={estilos.timelineMeta}>{log.usuarioNombre || 'Sistema'} · {log.modulo || 'General'} · {log.timestamp || ''}</Text>
+        <View style={[estilos.advancedGrid, !isTabletOrWeb && estilos.topGridMobile]}>
+          <PremiumCard style={estilos.advancedCard}>
+            <View style={estilos.panelHeader}>
+              <View>
+                <Text style={estilos.panelTitle}>Check-in de hoy</Text>
+                <Text style={estilos.panelSubtitle}>Solo participación y señales principales</Text>
               </View>
-              <Text style={[estilos.timelineEstado, { color: log.estado === 'Error' ? BRAND.error : log.estado === 'Warning' ? BRAND.warning : BRAND.success }]}>{log.estado || 'Success'}</Text>
+              <IconWrapper tono="cyan"><Timer size={20} color={BRAND.cyan} /></IconWrapper>
             </View>
-          )) : (
-            <EmptyState texto="Sin actividad reciente" />
-          )}
+            <View style={estilos.metricRows}>
+              <MetricRow icon={<Timer size={16} color={BRAND.cyan} />} label="Participación" value={metricas.checkInsHoy} total={metricas.activos} color={BRAND.cyan} />
+              <MetricRow icon={<HeartPulse size={16} color={BRAND.error} />} label="Seguimiento" value={metricas.empleadosRiesgo.length} total={Math.max(metricas.activos, 1)} color={BRAND.error} />
+            </View>
+            <View style={estilos.listadoCompacto}>
+              {metricas.empleadosSinCheckIn.slice(0, 3).map((empleado) => (
+                <ListItem key={empleado.id || empleado.correo} inicial={(empleado.nombre || '?')[0]} titulo={empleado.nombre || 'Empleado'} detalle={empleado.departamento || 'Sin departamento'} badge="Pendiente" color={BRAND.cyan} />
+              ))}
+              {metricas.empleadosSinCheckIn.length === 0 && <EmptyState texto="Check-ins al día" />}
+            </View>
+          </PremiumCard>
+
+          <PremiumCard style={estilos.advancedCard}>
+            <View style={estilos.panelHeader}>
+              <View>
+                <Text style={estilos.panelTitle}>Aprobaciones</Text>
+                <Text style={estilos.panelSubtitle}>Ausencias y solicitudes internas</Text>
+              </View>
+              <IconWrapper tono="warning"><Inbox size={20} color={BRAND.warning} /></IconWrapper>
+            </View>
+            <View style={estilos.listadoCompacto}>
+              {metricas.solicitudesPendientes.length > 0 ? metricas.solicitudesPendientes.slice(0, 5).map((item) => (
+                <ApprovalItem
+                  key={`${item.tipo}-${item.id}`}
+                  titulo={item.titulo}
+                  detalle={`${item.empleado} · ${item.prioridad}`}
+                  onAprobar={() => item.tipo === 'ausencia' ? actualizarSolicitudAusencia(item.solicitud as AusenciaAdmin, 'aprobada') : actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'aprobado')}
+                  onRechazar={() => item.tipo === 'ausencia' ? actualizarSolicitudAusencia(item.solicitud as AusenciaAdmin, 'rechazada') : actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'rechazado')}
+                />
+              )) : (
+                <EmptyState texto="Sin aprobaciones pendientes" />
+              )}
+            </View>
+          </PremiumCard>
         </View>
-      </PremiumCard>
+
+        <View style={[estilos.advancedGrid, !isTabletOrWeb && estilos.topGridMobile]}>
+          <PremiumCard style={estilos.advancedCard}>
+            <View style={estilos.panelHeader}>
+              <View>
+                <Text style={estilos.panelTitle}>Alertas abiertas</Text>
+                <Text style={estilos.panelSubtitle}>Incidencias, inbox y documentos pendientes</Text>
+              </View>
+              <IconWrapper tono="error"><MessageSquareWarning size={20} color={BRAND.error} /></IconWrapper>
+            </View>
+            <View style={estilos.listadoCompacto}>
+              {metricas.alertasOperativas.length > 0 ? metricas.alertasOperativas.slice(0, 5).map((alerta) => (
+                <ListItem key={alerta.id} inicial="!" titulo={alerta.titulo} detalle={alerta.detalle} badge="Abierta" color={alerta.color} />
+              )) : (
+                <EmptyState texto="Sin alertas abiertas" />
+              )}
+            </View>
+          </PremiumCard>
+
+          <PremiumCard style={estilos.advancedCard}>
+            <View style={estilos.panelHeader}>
+              <View>
+                <Text style={estilos.panelTitle}>Actividad reciente</Text>
+                <Text style={estilos.panelSubtitle}>Últimos eventos de auditoría</Text>
+              </View>
+              <IconWrapper tono="blue"><ShieldCheck size={20} color={BRAND.iconBright} /></IconWrapper>
+            </View>
+            <View style={estilos.timeline}>
+              {metricas.actividad.length > 0 ? metricas.actividad.slice(0, 5).map((log) => (
+                <View key={log.id} style={estilos.timelineItem}>
+                  <View style={[estilos.timelineDot, { backgroundColor: log.estado === 'Error' ? BRAND.error : log.estado === 'Warning' ? BRAND.warning : BRAND.success }]} />
+                  <View style={estilos.timelineContent}>
+                    <Text style={estilos.timelineTitle}>{log.accion || 'Evento del sistema'}</Text>
+                    <Text style={estilos.timelineMeta}>{log.usuarioNombre || 'Sistema'} · {log.modulo || 'General'}</Text>
+                  </View>
+                </View>
+              )) : (
+                <EmptyState texto="Sin actividad reciente" />
+              )}
+            </View>
+          </PremiumCard>
+        </View>
       </Animated.View>
       )}
     </ScrollView>
@@ -1187,14 +1010,6 @@ const MetricRow = ({ icon, label, value, total, color }: { icon: React.ReactNode
     </View>
   );
 };
-
-const MiniKpi = ({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: number; color: string }) => (
-  <View style={estilos.miniKpi}>
-    {icon}
-    <Text style={[estilos.miniKpiValue, { color }]}>{value}</Text>
-    <Text style={estilos.miniKpiLabel}>{label}</Text>
-  </View>
-);
 
 const ListItem = ({ inicial, titulo, detalle, badge, color }: { inicial: string; titulo: string; detalle: string; badge: string; color: string }) => (
   <View style={estilos.listItem}>
@@ -1228,310 +1043,9 @@ const ApprovalItem = ({ titulo, detalle, onAprobar, onRechazar }: { titulo: stri
   </View>
 );
 
-const DepartmentRow = ({ nombre, total, share }: { nombre: string; total: number; share: number }) => (
-  <View style={estilos.departmentRow}>
-    <View style={estilos.departmentTop}>
-      <Text style={estilos.departmentName}>{nombre}</Text>
-      <Text style={estilos.departmentValue}>{total}</Text>
-    </View>
-    <View style={estilos.progressTrack}>
-      <View style={[estilos.progressFill, { width: `${Math.max(share, 4)}%`, backgroundColor: BRAND.violet }]} />
-    </View>
-  </View>
-);
-
-type BarraOperativa = {
-  label: string;
-  valor: number;
-  total: number;
-  color: string;
-  detalle?: string;
-};
-
-type CheckInResultado = {
-  id: string;
-  nombre: string;
-  departamento: string;
-  estres: number;
-  carga: number;
-  balance: number;
-  energia: string;
-  bienestar: number;
-  fecha: Date | null;
-};
-
-const CheckInResultsPanel = ({
-  checkIns,
-  distribucion,
-  participacion,
-  totalActivos,
-  compacto,
-}: {
-  checkIns: CheckInResultado[];
-  distribucion: { alto: number; medio: number; bajo: number };
-  participacion: number;
-  totalActivos: number;
-  compacto?: boolean;
-}) => {
-  const totalCheckIns = checkIns.length;
-  const promedioBienestar = totalCheckIns > 0
-    ? Math.round(checkIns.reduce((total, item) => total + item.bienestar, 0) / totalCheckIns)
-    : 0;
-  const promedioEstres = totalCheckIns > 0
-    ? (checkIns.reduce((total, item) => total + item.estres, 0) / totalCheckIns).toFixed(1)
-    : '0.0';
-  const promedioCarga = totalCheckIns > 0
-    ? (checkIns.reduce((total, item) => total + item.carga, 0) / totalCheckIns).toFixed(1)
-    : '0.0';
-  const totalEnergia = Math.max(distribucion.alto + distribucion.medio + distribucion.bajo, 1);
-
-  return (
-    <View style={[estilos.checkInResultsGrid, compacto && estilos.checkInResultsGridCompact]}>
-      <View style={[estilos.checkInSummary, compacto && estilos.checkInSummaryCompact]}>
-        <View style={estilos.checkInRingWrap}>
-          <Svg width="158" height="158" viewBox="0 0 100 100">
-            <Circle cx="50" cy="50" r="38" fill="rgba(255,255,255,0.025)" stroke="rgba(255,255,255,0.06)" strokeWidth="11" />
-            <Circle
-              cx="50"
-              cy="50"
-              r="38"
-              fill="transparent"
-              stroke={promedioBienestar >= 70 ? BRAND.success : promedioBienestar >= 45 ? BRAND.warning : BRAND.error}
-              strokeWidth="11"
-              strokeLinecap="round"
-              strokeDasharray={`${(promedioBienestar / 100) * 239} 239`}
-              transform="rotate(-90 50 50)"
-            />
-          </Svg>
-          <View style={estilos.checkInRingText}>
-            <Text style={estilos.checkInRingValue}>{promedioBienestar}%</Text>
-            <Text style={estilos.checkInRingLabel}>Bienestar</Text>
-          </View>
-        </View>
-        <View style={estilos.checkInKpiGrid}>
-          <MiniCheckInStat label="Participación" value={`${participacion}%`} detail={`${totalCheckIns}/${totalActivos} activos`} color={BRAND.cyan} />
-          <MiniCheckInStat label="Estrés prom." value={promedioEstres} detail="escala 1-5" color={BRAND.error} />
-          <MiniCheckInStat label="Carga prom." value={promedioCarga} detail="escala 1-5" color={BRAND.warning} />
-        </View>
-        <View style={estilos.energyStrip}>
-          <EnergySegment label="Alta" value={distribucion.alto} total={totalEnergia} color={BRAND.success} />
-          <EnergySegment label="Media" value={distribucion.medio} total={totalEnergia} color={BRAND.warning} />
-          <EnergySegment label="Baja" value={distribucion.bajo} total={totalEnergia} color={BRAND.error} />
-        </View>
-      </View>
-
-      <View style={estilos.checkInPeopleList}>
-        {checkIns.length > 0 ? checkIns.map((item) => (
-          <View key={item.id} style={estilos.checkInPersonRow}>
-            <View style={[estilos.checkInPersonAvatar, { borderColor: item.bienestar >= 70 ? `${BRAND.success}55` : item.bienestar >= 45 ? `${BRAND.warning}55` : `${BRAND.error}55` }]}>
-              <Text style={estilos.checkInPersonInitial}>{item.nombre[0]?.toUpperCase() || '?'}</Text>
-            </View>
-            <View style={estilos.checkInPersonInfo}>
-              <Text style={estilos.checkInPersonName} numberOfLines={1}>{item.nombre}</Text>
-              <Text style={estilos.checkInPersonMeta} numberOfLines={1}>{item.departamento} · energía {item.energia}</Text>
-            </View>
-            <View style={estilos.checkInBadges}>
-              <Text style={[estilos.checkInBadge, { color: BRAND.error }]}>E {item.estres}/5</Text>
-              <Text style={[estilos.checkInBadge, { color: BRAND.warning }]}>C {item.carga}/5</Text>
-              <Text style={[estilos.checkInBadge, { color: BRAND.success }]}>{item.bienestar}%</Text>
-            </View>
-          </View>
-        )) : (
-          <EmptyState texto="Aún no hay check-ins de hoy" />
-        )}
-      </View>
-    </View>
-  );
-};
-
-const MiniCheckInStat = ({ label, value, detail, color }: { label: string; value: string; detail: string; color: string }) => (
-  <View style={estilos.checkInMiniStat}>
-    <Text style={[estilos.checkInMiniValue, { color }]}>{value}</Text>
-    <Text style={estilos.checkInMiniLabel}>{label}</Text>
-    <Text style={estilos.checkInMiniDetail}>{detail}</Text>
-  </View>
-);
-
-const EnergySegment = ({ label, value, total, color }: { label: string; value: number; total: number; color: string }) => {
-  const ancho = Math.max(5, Math.round((value / total) * 100));
-  return (
-    <View style={estilos.energySegment}>
-      <View style={estilos.energyHeader}>
-        <Text style={estilos.energyLabel}>{label}</Text>
-        <Text style={[estilos.energyValue, { color }]}>{value}</Text>
-      </View>
-      <View style={estilos.energyTrack}>
-        <View style={[estilos.energyFill, { width: `${ancho}%`, backgroundColor: color }]} />
-      </View>
-    </View>
-  );
-};
-
-const OperationalBarsChart = ({ datos }: { datos: BarraOperativa[] }) => {
-  const animacion = useRef(new Animated.Value(0)).current;
-  const [avance, setAvance] = useState(0);
-  const [activo, setActivo] = useState<BarraOperativa | null>(null);
-  const claveDatos = datos.map((item) => `${item.label}-${item.valor}-${item.total}`).join('|');
-
-  useEffect(() => {
-    animacion.stopAnimation();
-    animacion.setValue(0);
-    const listener = animacion.addListener(({ value }) => setAvance(value));
-    Animated.timing(animacion, {
-      toValue: 1,
-      duration: 820,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    }).start();
-    return () => animacion.removeListener(listener);
-  }, [animacion, claveDatos]);
-
-  return (
-    <View style={estilos.operationalPulseGrid}>
-      {datos.map((item, indice) => {
-        const porcentajeItem = item.total > 0 ? Math.min(100, Math.round((item.valor / item.total) * 100)) : 0;
-        const progreso = porcentajeItem * avance;
-        const radio = 32;
-        const circunferencia = 2 * Math.PI * radio;
-        const dash = (progreso / 100) * circunferencia;
-
-        return (
-          <TouchableOpacity
-            key={item.label}
-            activeOpacity={0.88}
-            onPress={() => setActivo(item)}
-            style={[estilos.operationalPulseCard, activo?.label === item.label && estilos.operationalPulseCardActive]}
-          >
-            <View style={estilos.operationalPulseHalo} />
-            <Svg width="86" height="86" viewBox="0 0 86 86">
-              <Circle cx="43" cy="43" r={radio} fill="rgba(255,255,255,0.025)" stroke="rgba(255,255,255,0.06)" strokeWidth="9" />
-              <Circle
-                cx="43"
-                cy="43"
-                r={radio}
-                fill="transparent"
-                stroke={item.color}
-                strokeWidth="9"
-                strokeLinecap="round"
-                strokeDasharray={`${dash} ${circunferencia}`}
-                transform="rotate(-90 43 43)"
-              />
-              <SvgText x="43" y="40" fill={BRAND.textMain} fontSize="16" fontWeight="900" textAnchor="middle">{porcentajeItem}%</SvgText>
-              <SvgText x="43" y="56" fill={BRAND.textSec} fontSize="8" fontWeight="900" textAnchor="middle">LIVE</SvgText>
-            </Svg>
-            <View style={estilos.operationalPulseInfo}>
-              <Text style={estilos.operationalPulseLabel}>{item.label}</Text>
-              <Text style={estilos.operationalPulseValue}>{item.valor}<Text style={estilos.operationalPulseBase}> / {item.total}</Text></Text>
-              <Text style={estilos.operationalPulseDetail} numberOfLines={2}>{item.detalle || 'Actualizado en tiempo real'}</Text>
-            </View>
-            <View style={[estilos.operationalPulseAccent, { backgroundColor: item.color }]} />
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-};
-
-const TaskDistributionChart = ({ pendientes, progreso, completadas }: { pendientes: number; progreso: number; completadas: number }) => {
-  const total = pendientes + progreso + completadas;
-  const datos = [
-    { label: 'Pendiente', valor: pendientes, color: BRAND.warning },
-    { label: 'Progreso', valor: progreso, color: BRAND.violet },
-    { label: 'Completada', valor: completadas, color: BRAND.success },
-  ];
-
-  return (
-    <View style={estilos.taskChart}>
-      {datos.map((item) => {
-        const ancho = total > 0 ? Math.max(8, Math.round((item.valor / total) * 100)) : 0;
-        return (
-          <View key={item.label} style={estilos.taskSegmentRow}>
-            <View style={estilos.taskSegmentHeader}>
-              <Text style={estilos.taskSegmentLabel}>{item.label}</Text>
-              <Text style={[estilos.taskSegmentValue, { color: item.color }]}>{item.valor}</Text>
-            </View>
-            <View style={estilos.taskSegmentTrack}>
-              <View style={[estilos.taskSegmentFill, { width: `${ancho}%`, backgroundColor: item.color }]} />
-            </View>
-          </View>
-        );
-      })}
-      <View style={estilos.taskTotalBox}>
-        <Text style={estilos.taskTotalValue}>{total}</Text>
-        <Text style={estilos.taskTotalLabel}>Tareas monitoreadas</Text>
-      </View>
-    </View>
-  );
-};
-
 const EmptyState = ({ texto }: { texto: string }) => (
   <View style={estilos.emptyState}>
     <Text style={estilos.emptyText}>{texto}</Text>
-  </View>
-);
-
-const HeroTrustPanel = ({ activos, aprobaciones, productividad }: { activos: number; aprobaciones: number; productividad: number }) => (
-  <View style={estilos.heroPanel}>
-    <View style={estilos.heroGlowA} />
-    <View style={estilos.heroGlowB} />
-    <View style={estilos.heroCopy}>
-      <View style={estilos.heroKicker}>
-        <View style={estilos.heroKickerDot} />
-        <Text style={estilos.heroEyebrow}>Sistema operativo empresarial con IA</Text>
-      </View>
-      <Text style={estilos.heroTitle}>Centro de control inteligente para operar tu empresa.</Text>
-      <Text style={estilos.heroText}>Nexxus conecta administración, empleados, tareas, asistencia, nómina, bienestar e IA en una experiencia SaaS premium para operar con claridad y velocidad.</Text>
-      <View style={estilos.heroActions}>
-        <LinearGradient colors={['#7C3AED', '#A855F7', '#D8B4FE']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.heroButtonGlow}>
-          <View style={estilos.heroButton}>
-            <Text style={estilos.heroButtonText}>Ver prioridades</Text>
-          </View>
-        </LinearGradient>
-        <View style={estilos.heroMetricPill}>
-          <Text style={estilos.heroMetricValue}>{activos}</Text>
-          <Text style={estilos.heroMetricLabel}>Activos</Text>
-        </View>
-        <View style={estilos.heroMetricPill}>
-          <Text style={estilos.heroMetricValue}>{productividad}%</Text>
-          <Text style={estilos.heroMetricLabel}>Productividad</Text>
-        </View>
-      </View>
-    </View>
-    <View style={estilos.heroDashboardShell}>
-      <View style={estilos.heroWindowBar}>
-        <View style={[estilos.heroWindowDot, { backgroundColor: '#FF5F57' }]} />
-        <View style={[estilos.heroWindowDot, { backgroundColor: '#FFBD2E' }]} />
-        <View style={[estilos.heroWindowDot, { backgroundColor: '#28C840' }]} />
-        <Text style={estilos.heroWindowTitle}>Nexxus Command</Text>
-      </View>
-      <View style={estilos.heroDashboardGrid}>
-        <View style={[estilos.heroPanelCard, estilos.heroPanelMain]}>
-          <Text style={estilos.heroPanelLabel}>Productividad</Text>
-          <Text style={estilos.heroPanelValue}>{productividad}%</Text>
-          <View style={estilos.heroChart}>
-            {[42, 68, 54, 86, 72].map((alto, index) => <View key={index} style={[estilos.heroChartBar, { height: `${alto}%` }]} />)}
-          </View>
-        </View>
-        <View style={estilos.heroPanelCard}>
-          <Text style={estilos.heroPanelLabel}>Nexus IA</Text>
-          <Text style={estilos.heroPanelStrong}>{aprobaciones} alertas</Text>
-          <Text style={estilos.heroPanelText}>Riesgo operativo bajo</Text>
-        </View>
-        <View style={estilos.heroPanelCard}>
-          <Text style={estilos.heroPanelLabel}>Asistencia</Text>
-          <Text style={estilos.heroPanelStrong}>{activos} activos</Text>
-          <Text style={estilos.heroPanelText}>Datos en tiempo real</Text>
-        </View>
-        <View style={[estilos.heroPanelCard, estilos.heroPanelTable]}>
-          {['Nómina lista', 'Tareas críticas', 'Check-ins pendientes'].map((item) => (
-            <View key={item} style={estilos.heroTableRow}>
-              <Text style={estilos.heroTableText}>{item}</Text>
-              <View style={estilos.heroTableStatus} />
-            </View>
-          ))}
-        </View>
-      </View>
-    </View>
   </View>
 );
 
@@ -1676,8 +1190,8 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
   },
   scrollViewContent: {
-    padding: 28,
-    paddingTop: 92,
+    padding: 20,
+    paddingTop: 88,
     paddingBottom: 64,
   },
   header: {
@@ -1687,15 +1201,15 @@ const estilos = StyleSheet.create({
     alignItems: 'flex-end',
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '900',
+    fontSize: 28,
+    fontWeight: '800',
     color: BRAND.textMain,
     letterSpacing: 0,
   },
   headerSubtitle: {
     color: BRAND.textSec,
     fontWeight: '600',
-    fontSize: 11,
+    fontSize: 13,
     marginTop: 4,
     letterSpacing: 0,
   },
@@ -1724,10 +1238,10 @@ const estilos = StyleSheet.create({
     textTransform: 'uppercase',
   },
   premiumCard: {
-    backgroundColor: ADMIN.fondoVidrio,
-    borderRadius: 12,
+    backgroundColor: 'rgba(13,11,30,0.62)',
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: ADMIN.borde,
+    borderColor: 'rgba(210,198,255,0.12)',
     overflow: 'hidden',
     ...sombraAdmin,
   },
@@ -1776,8 +1290,8 @@ const estilos = StyleSheet.create({
     minHeight: 106,
   },
   statCard: {
-    padding: 14,
-    minHeight: 96,
+    padding: 16,
+    minHeight: 100,
     position: 'relative',
   },
   statAccent: {
@@ -1798,16 +1312,16 @@ const estilos = StyleSheet.create({
     flex: 1,
   },
   statLabel: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '900',
     color: BRAND.textSec,
     textTransform: 'uppercase',
-    letterSpacing: 2,
+    letterSpacing: 0.4,
     marginBottom: 10,
     lineHeight: 13,
   },
   statValue: {
-    fontSize: 23,
+    fontSize: 26,
     fontWeight: '900',
     color: BRAND.textMain,
     marginBottom: 8,
@@ -1821,8 +1335,7 @@ const estilos = StyleSheet.create({
   trendText: {
     fontSize: 10,
     fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
+    letterSpacing: 0,
   },
   topGrid: {
     flexDirection: 'row',
@@ -1868,303 +1381,15 @@ const estilos = StyleSheet.create({
   detalleOperativoContenido: {
     gap: 0,
   },
-  operationalGrid: {
+  advancedGrid: {
     flexDirection: 'row',
-    gap: 18,
-    marginBottom: 18,
-  },
-  checkInResultsCard: {
-    padding: 18,
+    gap: 14,
     marginBottom: 14,
   },
-  checkInResultsGrid: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  checkInResultsGridCompact: {
-    flexDirection: 'column',
-  },
-  checkInSummary: {
-    width: 430,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(196,181,253,0.12)',
-    backgroundColor: 'rgba(255,255,255,0.028)',
+  advancedCard: {
+    flex: 1,
+    minWidth: 320,
     padding: 16,
-  },
-  checkInSummaryCompact: {
-    width: '100%',
-  },
-  checkInRingWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 168,
-  },
-  checkInRingText: {
-    position: 'absolute',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkInRingValue: {
-    color: BRAND.textMain,
-    fontSize: 32,
-    fontWeight: '900',
-  },
-  checkInRingLabel: {
-    color: BRAND.textSec,
-    fontSize: 9,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-  },
-  checkInKpiGrid: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  checkInMiniStat: {
-    flex: 1,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(196,181,253,0.10)',
-    backgroundColor: 'rgba(0,0,0,0.18)',
-    padding: 11,
-  },
-  checkInMiniValue: {
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  checkInMiniLabel: {
-    color: BRAND.textMain,
-    fontSize: 9,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginTop: 3,
-  },
-  checkInMiniDetail: {
-    color: BRAND.textSec,
-    fontSize: 9,
-    fontWeight: '800',
-    marginTop: 3,
-  },
-  energyStrip: {
-    gap: 10,
-    marginTop: 14,
-  },
-  energySegment: {
-    gap: 7,
-  },
-  energyHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  energyLabel: {
-    color: BRAND.textSec,
-    fontSize: 9,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  energyValue: {
-    fontSize: 11,
-    fontWeight: '900',
-  },
-  energyTrack: {
-    height: 8,
-    borderRadius: 999,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.055)',
-  },
-  energyFill: {
-    height: '100%',
-    borderRadius: 999,
-  },
-  checkInPeopleList: {
-    flex: 1,
-    gap: 10,
-  },
-  checkInPersonRow: {
-    minHeight: 62,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(196,181,253,0.10)',
-    backgroundColor: 'rgba(255,255,255,0.026)',
-    padding: 11,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-  },
-  checkInPersonAvatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    borderWidth: 1,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkInPersonInitial: {
-    color: BRAND.textMain,
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  checkInPersonInfo: {
-    flex: 1,
-    minWidth: 0,
-  },
-  checkInPersonName: {
-    color: BRAND.textMain,
-    fontSize: 12,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-  },
-  checkInPersonMeta: {
-    color: BRAND.textSec,
-    fontSize: 10,
-    fontWeight: '800',
-    marginTop: 3,
-  },
-  checkInBadges: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-  },
-  checkInBadge: {
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  operationalCard: {
-    flex: 1.45,
-    padding: 18,
-    minWidth: 360,
-  },
-  operationalSideCard: {
-    flex: 0.85,
-    padding: 18,
-    minWidth: 300,
-  },
-  operationalPulseGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  operationalPulseCard: {
-    flex: 1,
-    minWidth: 178,
-    minHeight: 156,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(196,181,253,0.12)',
-    backgroundColor: 'rgba(255,255,255,0.032)',
-    padding: 14,
-    overflow: 'hidden',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  operationalPulseCardActive: {
-    borderColor: 'rgba(196,181,253,0.34)',
-    backgroundColor: 'rgba(124,58,237,0.11)',
-  },
-  operationalPulseHalo: {
-    position: 'absolute',
-    right: -42,
-    top: -46,
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(182,156,255,0.08)',
-  },
-  operationalPulseInfo: {
-    flex: 1,
-    minWidth: 0,
-  },
-  operationalPulseLabel: {
-    color: BRAND.textMain,
-    fontSize: 12,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 0.7,
-  },
-  operationalPulseValue: {
-    color: BRAND.textMain,
-    fontSize: 22,
-    fontWeight: '900',
-    marginTop: 7,
-  },
-  operationalPulseBase: {
-    color: BRAND.textSec,
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  operationalPulseDetail: {
-    color: BRAND.textSec,
-    fontSize: 10,
-    fontWeight: '800',
-    lineHeight: 14,
-    marginTop: 6,
-  },
-  operationalPulseAccent: {
-    position: 'absolute',
-    left: 0,
-    top: 12,
-    bottom: 12,
-    width: 3,
-    borderRadius: 999,
-  },
-  taskChart: {
-    gap: 14,
-  },
-  taskSegmentRow: {
-    gap: 8,
-  },
-  taskSegmentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  taskSegmentLabel: {
-    color: BRAND.textSec,
-    fontSize: 10,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1.1,
-  },
-  taskSegmentValue: {
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  taskSegmentTrack: {
-    height: 10,
-    borderRadius: 999,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.055)',
-  },
-  taskSegmentFill: {
-    height: '100%',
-    borderRadius: 999,
-  },
-  taskTotalBox: {
-    marginTop: 6,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(196,181,253,0.12)',
-    backgroundColor: 'rgba(255,255,255,0.035)',
-    padding: 14,
-  },
-  taskTotalValue: {
-    color: BRAND.textMain,
-    fontSize: 28,
-    fontWeight: '900',
-  },
-  taskTotalLabel: {
-    color: BRAND.textSec,
-    fontSize: 10,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1.1,
-    marginTop: 3,
   },
   topGridMobile: {
     flexDirection: 'column',
@@ -2353,7 +1578,7 @@ const estilos = StyleSheet.create({
     width: '100%',
     maxWidth: 46,
     height: 170,
-    borderRadius: 18,
+    borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.035)',
     justifyContent: 'flex-end',
     overflow: 'hidden',
@@ -2362,7 +1587,7 @@ const estilos = StyleSheet.create({
   },
   bar: {
     width: '100%',
-    borderRadius: 18,
+    borderRadius: 12,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -2383,6 +1608,10 @@ const estilos = StyleSheet.create({
   moodCard: {
     padding: 18,
     alignItems: 'center',
+    minHeight: 340,
+  },
+  priorityCard: {
+    padding: 18,
     minHeight: 340,
   },
   moodCircleContainer: {
@@ -2621,7 +1850,7 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     padding: 12,
-    borderRadius: 18,
+    borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.025)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.055)',
@@ -2653,7 +1882,7 @@ const estilos = StyleSheet.create({
   departmentRow: {
     gap: 10,
     padding: 12,
-    borderRadius: 18,
+    borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.025)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.055)',
@@ -2678,7 +1907,7 @@ const estilos = StyleSheet.create({
     minHeight: 68,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 18,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.055)',
     backgroundColor: 'rgba(255,255,255,0.018)',
@@ -2734,18 +1963,18 @@ const estilos = StyleSheet.create({
     letterSpacing: 1,
   },
   heroPanel: {
-    minHeight: 300,
+    minHeight: 246,
     marginBottom: 18,
-    borderRadius: 28,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(210,198,255,0.16)',
-    backgroundColor: 'rgba(13,9,27,0.62)',
+    backgroundColor: 'rgba(13,11,30,0.58)',
     overflow: 'hidden',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 26,
-    gap: 26,
+    padding: 20,
+    gap: 22,
     ...sombraVioleta,
   },
   heroGlowA: {
@@ -2763,7 +1992,7 @@ const estilos = StyleSheet.create({
     bottom: -120,
     width: 360,
     height: 280,
-    borderRadius: 180,
+    borderRadius: 120,
     backgroundColor: 'rgba(168,85,247,0.26)',
   },
   heroCopy: {
@@ -2796,24 +2025,24 @@ const estilos = StyleSheet.create({
   },
   heroTitle: {
     color: BRAND.textMain,
-    fontSize: 36,
+    fontSize: 31,
     fontWeight: '900',
     letterSpacing: 0,
-    lineHeight: 39,
+    lineHeight: 36,
   },
   heroText: {
     color: BRAND.textSec,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     lineHeight: 24,
     maxWidth: 620,
-    marginTop: 14,
+    marginTop: 12,
   },
   heroActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginTop: 24,
+    marginTop: 20,
     flexWrap: 'wrap',
   },
   heroButtonGlow: {
@@ -2821,7 +2050,7 @@ const estilos = StyleSheet.create({
     padding: 1,
     shadowColor: '#7C3AED',
     shadowOffset: { width: 0, height: 18 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.26,
     shadowRadius: 34,
   },
   heroButton: {
@@ -2836,7 +2065,7 @@ const estilos = StyleSheet.create({
     fontWeight: '900',
   },
   heroMetricPill: {
-    borderRadius: 18,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.10)',
     backgroundColor: 'rgba(255,255,255,0.06)',
@@ -2856,8 +2085,8 @@ const estilos = StyleSheet.create({
     textTransform: 'uppercase',
   },
   heroDashboardShell: {
-    width: 420,
-    borderRadius: 28,
+    width: 390,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(210,198,255,0.16)',
     backgroundColor: 'rgba(255,255,255,0.055)',
@@ -2865,11 +2094,11 @@ const estilos = StyleSheet.create({
     zIndex: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 28 },
-    shadowOpacity: 0.42,
+    shadowOpacity: 0.262,
     shadowRadius: 90,
   },
   heroWindowBar: {
-    minHeight: 44,
+    minHeight: 38,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -2890,15 +2119,15 @@ const estilos = StyleSheet.create({
     fontWeight: '800',
   },
   heroDashboardGrid: {
-    padding: 14,
+    padding: 12,
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
   },
   heroPanelCard: {
     width: '48%',
-    minHeight: 92,
-    borderRadius: 18,
+    minHeight: 82,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(210,198,255,0.14)',
     backgroundColor: 'rgba(13,9,27,0.68)',
@@ -2906,7 +2135,7 @@ const estilos = StyleSheet.create({
   },
   heroPanelMain: {
     width: '100%',
-    minHeight: 130,
+    minHeight: 112,
   },
   heroPanelLabel: {
     color: BRAND.textSec,
@@ -2915,7 +2144,7 @@ const estilos = StyleSheet.create({
   },
   heroPanelValue: {
     color: BRAND.textMain,
-    fontSize: 38,
+    fontSize: 33,
     fontWeight: '900',
     marginTop: 4,
   },
@@ -2947,7 +2176,7 @@ const estilos = StyleSheet.create({
     backgroundColor: '#C084FC',
     shadowColor: '#C084FC',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.26,
     shadowRadius: 14,
   },
   heroPanelTable: {

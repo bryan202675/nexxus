@@ -273,8 +273,9 @@ const CalendarioEmpresarial: React.FC = () => {
   };
 
   const eliminarEvento = async (evento: EventoCalendario) => {
-    if (!evento.id) return;
-    const confirmar = async () => deleteDoc(doc(db, 'calendario_empresarial', evento.id));
+    const eventoId = evento.id;
+    if (!eventoId) return;
+    const confirmar = async () => deleteDoc(doc(db, 'calendario_empresarial', eventoId));
     Alert.alert('Eliminar evento', `¿Eliminar "${evento.titulo}"?`, [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Eliminar', style: 'destructive', onPress: confirmar },
@@ -306,13 +307,6 @@ const CalendarioEmpresarial: React.FC = () => {
               <Text style={estilos.botonCrearTexto}>Nuevo evento</Text>
             </LinearGradient>
           </TouchableOpacity>
-        </View>
-
-        <View style={estilos.resumenGrid}>
-          <TarjetaResumen label="Eventos hoy" valor={resumen.hoyEventos} color={ADMIN.iconos.calendario} icono={<CalendarDays size={18} color={ADMIN.iconos.calendario} />} />
-          <TarjetaResumen label="Semana activa" valor={resumen.semanaEventos} color={ADMIN.iconos.tareas} icono={<Clock3 size={18} color={ADMIN.iconos.tareas} />} />
-          <TarjetaResumen label="Asignados" valor={resumen.asignados} color={ADMIN.iconos.personas} icono={<Users size={18} color={ADMIN.iconos.personas} />} />
-          <TarjetaResumen label="Total agenda" valor={resumen.total} color={ADMIN.iconos.auditoria} icono={<Check size={18} color={ADMIN.iconos.auditoria} />} />
         </View>
 
         <View style={estilos.panel}>
@@ -401,11 +395,6 @@ const CalendarioEmpresarial: React.FC = () => {
           )}
         </View>
 
-        <View style={estilos.catalogoPanel}>
-          <PanelCatalogo titulo="Empleados" datos={usuarios} icono={<Users size={18} color={ADMIN.iconos.personas} />} />
-          <PanelCatalogo titulo="Departamentos" datos={departamentos} icono={<CalendarDays size={18} color={ADMIN.iconos.organizacion} />} />
-          <PanelCatalogo titulo="Sedes" datos={sedes} icono={<MapPin size={18} color={ADMIN.iconos.calendario} />} />
-        </View>
       </ScrollView>
 
       <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={() => setModalVisible(false)}>
@@ -420,8 +409,8 @@ const CalendarioEmpresarial: React.FC = () => {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={estilos.formulario}>
-              <Campo label="Título" value={formulario.titulo} onChangeText={(titulo) => setFormulario((actual) => ({ ...actual, titulo }))} />
-              <Campo label="Descripción" value={formulario.descripcion} onChangeText={(descripcion) => setFormulario((actual) => ({ ...actual, descripcion }))} multiline />
+              <Campo label="Título" value={formulario.titulo} onChangeText={(titulo: string) => setFormulario((actual) => ({ ...actual, titulo }))} />
+              <Campo label="Descripción" value={formulario.descripcion} onChangeText={(descripcion: string) => setFormulario((actual) => ({ ...actual, descripcion }))} multiline />
               <Text style={estilos.inputLabel}>Tipo</Text>
               <View style={estilos.tiposGrid}>
                 {tiposEvento.map((tipo) => (
@@ -432,12 +421,12 @@ const CalendarioEmpresarial: React.FC = () => {
                 ))}
               </View>
               <View style={estilos.formGrid}>
-                <Campo label="Inicio" value={formulario.inicio} onChangeText={(inicio) => setFormulario((actual) => ({ ...actual, inicio }))} />
-                <Campo label="Fin" value={formulario.fin} onChangeText={(fin) => setFormulario((actual) => ({ ...actual, fin }))} />
+                <Campo label="Inicio" value={formulario.inicio} onChangeText={(inicio: string) => setFormulario((actual) => ({ ...actual, inicio }))} />
+                <Campo label="Fin" value={formulario.fin} onChangeText={(fin: string) => setFormulario((actual) => ({ ...actual, fin }))} />
               </View>
-              <Campo label="IDs empleados separados por coma" value={formulario.empleadoIds} onChangeText={(empleadoIds) => setFormulario((actual) => ({ ...actual, empleadoIds }))} />
-              <Campo label="Departamentos separados por coma" value={formulario.departamentos} onChangeText={(departamentos) => setFormulario((actual) => ({ ...actual, departamentos }))} />
-              <Campo label="Sedes separadas por coma" value={formulario.sedes} onChangeText={(sedes) => setFormulario((actual) => ({ ...actual, sedes }))} />
+              <Campo label="IDs empleados separados por coma" value={formulario.empleadoIds} onChangeText={(empleadoIds: string) => setFormulario((actual) => ({ ...actual, empleadoIds }))} />
+              <Campo label="Departamentos separados por coma" value={formulario.departamentos} onChangeText={(departamentos: string) => setFormulario((actual) => ({ ...actual, departamentos }))} />
+              <Campo label="Sedes separadas por coma" value={formulario.sedes} onChangeText={(sedes: string) => setFormulario((actual) => ({ ...actual, sedes }))} />
             </ScrollView>
 
             <View style={estilos.modalAcciones}>
@@ -529,9 +518,9 @@ export default CalendarioEmpresarial;
 
 const estilos = StyleSheet.create({
   pantalla: { flex: 1, backgroundColor: BRAND.fondo },
-  contenido: { flexGrow: 1, padding: 24, paddingTop: 88, paddingBottom: 64 },
+  contenido: { flexGrow: 1, padding: 20, paddingTop: 88, paddingBottom: 64 },
   encabezado: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', gap: 18, marginBottom: 22 },
-  titulo: { color: BRAND.texto, fontSize: 30, fontWeight: '900', letterSpacing: 0 },
+  titulo: { color: BRAND.texto, fontSize: 26, fontWeight: '800', letterSpacing: 0 },
   subtitulo: { color: BRAND.textoSecundario, fontSize: 13, fontWeight: '600', marginTop: 8, maxWidth: 720 },
   botonCrear: { borderRadius: 10, overflow: 'hidden', ...sombraVioleta },
   botonCrearGradiente: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 18, paddingVertical: 13 },
@@ -541,7 +530,7 @@ const estilos = StyleSheet.create({
   resumenIcono: { width: 48, height: 48, borderRadius: 13, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginBottom: 22, flexShrink: 0 },
   resumenValor: { color: BRAND.texto, fontSize: 28, fontWeight: '900' },
   resumenLabel: { color: BRAND.textoSecundario, fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.7 },
-  panel: { borderRadius: 14, borderWidth: 1, borderColor: ADMIN.borde, backgroundColor: 'rgba(8, 12, 26, 0.78)', padding: 18, ...sombraAdmin },
+  panel: { borderRadius: 14, borderWidth: 1, borderColor: ADMIN.borde, backgroundColor: ADMIN.fondoVidrio, padding: 18, ...sombraAdmin },
   toolbar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 16, marginBottom: 18 },
   navegadorFecha: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   iconoBoton: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: ADMIN.borde, backgroundColor: 'rgba(255,255,255,0.05)' },
@@ -605,7 +594,7 @@ const estilos = StyleSheet.create({
   estadoVacio: { minHeight: 180, alignItems: 'center', justifyContent: 'center', gap: 10 },
   estadoVacioTexto: { color: BRAND.textoSecundario, fontSize: 12, fontWeight: '800' },
   modalFondo: { flex: 1, backgroundColor: 'rgba(0,0,0,0.72)', alignItems: 'center', justifyContent: 'center', padding: 20 },
-  modalTarjeta: { width: '100%', maxWidth: 720, maxHeight: '92%', borderRadius: 16, borderWidth: 1, borderColor: ADMIN.bordeFuerte, backgroundColor: 'rgba(8, 12, 26, 0.96)', padding: 18, ...sombraAdmin },
+  modalTarjeta: { width: '100%', maxWidth: 720, maxHeight: '92%', borderRadius: 12, borderWidth: 1, borderColor: ADMIN.bordeFuerte, backgroundColor: ADMIN.fondoVidrioFuerte, padding: 18, ...sombraAdmin },
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 14, marginBottom: 14 },
   modalTitulo: { color: BRAND.texto, fontSize: 20, fontWeight: '900' },
   modalSubtitulo: { color: BRAND.textoSecundario, fontSize: 11, fontWeight: '700', marginTop: 4 },

@@ -361,6 +361,7 @@ const estilos = StyleSheet.create({
   avatar: { width: '100%', height: '100%', borderRadius: 39 },
   avatarPlaceholder: { flex: 1, backgroundColor: 'rgba(124,58,237,0.18)', borderRadius: 39, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: COLORES.bordeFuerte },
   avatarLetra: { fontSize: 30, fontWeight: '800', color: COLORES.texto },
+  puntoEstado: { position: 'absolute', right: 2, bottom: 2, width: 16, height: 16, borderRadius: 8, borderWidth: 3, borderColor: COLORES.fondo },
   botonCambiarFoto: {
     position: 'absolute',
     bottom: 0,

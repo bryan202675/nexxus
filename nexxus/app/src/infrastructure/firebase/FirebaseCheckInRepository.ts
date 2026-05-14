@@ -17,6 +17,7 @@ export class FirebaseCheckInRepository implements ICheckInRepository {
     const docData = {
       ...data,
       userId,
+      empresaId: data.empresaId || '',
       empresa_id: data.empresaId || '',
       fecha: new Date().toISOString(),
       timestamp: Timestamp.now()
