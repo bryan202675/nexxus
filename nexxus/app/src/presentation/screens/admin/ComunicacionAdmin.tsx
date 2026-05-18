@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { Animated, Easing, View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, Alert, Image, Platform } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { addDoc, collection, onSnapshot, query, where } from 'firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,6 +25,8 @@ const BRAND = {
   cyan: ADMIN.azul
 };
 
+const CONTRAST_TEXT = '#FFFFFF';
+
 type Anuncio = {
   id?: string;
   creadoPorId?: string;
@@ -40,6 +43,9 @@ type UsuarioComunicacion = {
   departamento?: string;
   empresaId?: string;
   activo?: boolean;
+  foto_perfil?: string;
+  fotoPerfil?: string;
+  photoURL?: string;
 };
 
 type NotificacionComunicacion = {
@@ -61,8 +67,8 @@ const PremiumBadge = ({ variant, children }: { variant: 'success' | 'warning' | 
     success: { color: BRAND.success, bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.22)' },
     warning: { color: BRAND.warning, bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.22)' },
     error: { color: BRAND.error, bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.22)' },
-    blue: { color: BRAND.iconBright, bg: 'rgba(96,165,250,0.1)', border: 'rgba(96,165,250,0.22)' },
-    default: { color: BRAND.textSec, bg: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.06)' },
+    blue: { color: BRAND.violet, bg: 'rgba(168,85,247,0.12)', border: 'rgba(168,85,247,0.25)' },
+    default: { color: BRAND.textSec, bg: ADMIN.fondoCampo, border: ADMIN.borde },
   }[variant];
   return (
     <View style={[estilos.badge, { backgroundColor: mapa.bg, borderColor: mapa.border }]}>
@@ -72,7 +78,8 @@ const PremiumBadge = ({ variant, children }: { variant: 'success' | 'warning' | 
 };
 
 export default function ComunicacionAdmin() {
-  const [selectedAudience, setSelectedAudience] = useState("Global");
+  const { t } = useTranslation();
+  const [selectedAudience, setSelectedAudience] = useState(t('admin.comunicacion.global'));
   const [feeds, setFeeds] = useState<Anuncio[]>([]);
   const [usuarios, setUsuarios] = useState<UsuarioComunicacion[]>([]);
   const [notificaciones, setNotificaciones] = useState<NotificacionComunicacion[]>([]);
@@ -92,6 +99,22 @@ export default function ComunicacionAdmin() {
       useNativeDriver: true,
     }).start();
   }, [entrada]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+    if (!document.getElementById('nx-comunicacion-force-white')) {
+      const style = document.createElement('style');
+      style.id = 'nx-comunicacion-force-white';
+      style.textContent = `
+        .nx-force-white-always,
+        .nx-force-white-always * {
+          color: #FFFFFF !important;
+          fill: #FFFFFF !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }, []);
 
   useEffect(() => {
     const empresaId = obtenerEmpresaIdAdmin(user);
@@ -132,25 +155,25 @@ export default function ComunicacionAdmin() {
 
   const audiencias = useMemo(() => {
     const departamentos = Array.from(new Set(usuarios.map((u) => u.departamento).filter(Boolean))) as string[];
-    return ["Global", ...departamentos];
-  }, [usuarios]);
+    return [t('admin.comunicacion.global'), ...departamentos];
+  }, [usuarios, t]);
 
   const datos = useMemo(() => {
     const feedsFiltrados = feeds.filter((feed) => {
-      const destino = feed.departamentoDestino || 'Global';
-      const coincideAudiencia = selectedAudience === 'Global' || destino === selectedAudience || destino === 'Todos' || destino === 'Global';
+      const destino = feed.departamentoDestino || t('admin.comunicacion.global');
+      const coincideAudiencia = selectedAudience === t('admin.comunicacion.global') || destino === selectedAudience || destino === t('admin.comunicacion.todos') || destino === t('admin.comunicacion.global');
       const coincideBusqueda = (feed.mensaje || '').toLowerCase().includes(busqueda.toLowerCase()) || (feed.creadoPorNombre || '').toLowerCase().includes(busqueda.toLowerCase());
       return coincideAudiencia && coincideBusqueda;
     });
-    const receptores = selectedAudience === 'Global'
+    const receptores = selectedAudience === t('admin.comunicacion.global')
       ? usuarios.filter((u) => u.activo !== false).length
       : usuarios.filter((u) => u.activo !== false && u.departamento === selectedAudience).length;
     const urgentes = feeds.filter((feed) => feed.prioridad === 'Alta' || feed.prioridad === 'Urgente').length;
     const noLeidas = notificaciones.filter((n) => !n.leida).length;
     const porCanal = audiencias.map((audiencia) => ({
       audiencia,
-      total: feeds.filter((feed) => audiencia === 'Global' ? true : feed.departamentoDestino === audiencia).length,
-      receptores: audiencia === 'Global' ? usuarios.length : usuarios.filter((u) => u.departamento === audiencia).length,
+      total: feeds.filter((feed) => audiencia === t('admin.comunicacion.global') ? true : feed.departamentoDestino === audiencia).length,
+      receptores: audiencia === t('admin.comunicacion.global') ? usuarios.length : usuarios.filter((u) => u.departamento === audiencia).length,
     }));
     return { feedsFiltrados, receptores, urgentes, noLeidas, porCanal };
   }, [feeds, usuarios, notificaciones, selectedAudience, busqueda, audiencias]);
@@ -165,15 +188,15 @@ export default function ComunicacionAdmin() {
       await useCases.admin.announcements.create({
         empresaId,
         creadoPorId: user?.id || '',
-        creadoPorNombre: user?.nombre || 'Sistema',
-        departamentoDestino: selectedAudience === 'Global' ? 'Todos' : selectedAudience,
+        creadoPorNombre: user?.nombre || t('common.system'),
+        departamentoDestino: selectedAudience === t('admin.comunicacion.global') ? t('admin.comunicacion.todos') : selectedAudience,
         prioridad,
         mensaje: texto,
       });
       await addDoc(collection(db, 'audit_logs'), {
         empresaId,
         usuarioId: user?.id || '',
-        usuarioNombre: user?.nombre || 'Administrador',
+        usuarioNombre: user?.nombre || t('admin.roles.admin'),
         rol: user?.rol || 'admin',
         accion: 'Publicación de Anuncio',
         modulo: 'Mensajería',
@@ -184,7 +207,7 @@ export default function ComunicacionAdmin() {
       });
       setMensaje('');
     } catch {
-      Alert.alert('No se pudo enviar', 'Firebase no confirmó la creación del anuncio.');
+      Alert.alert(t('admin.comunicacion.error_envio'), t('admin.comunicacion.error_envio_msg'));
     } finally {
       setEnviando(false);
     }
@@ -199,10 +222,10 @@ export default function ComunicacionAdmin() {
   }
 
   const stats = [
-    { label: "Anuncios Totales", val: feeds.length, detail: "historial activo", icon: "campaign" as const, color: ADMIN.iconos.comunicacion },
-    { label: "Receptores Canal", val: datos.receptores, detail: selectedAudience, icon: "groups" as const, color: ADMIN.iconos.personas },
-    { label: "Prioridad Alta", val: datos.urgentes, detail: "requiere atención", icon: "priority-high" as const, color: datos.urgentes > 0 ? ADMIN.iconos.peligro : ADMIN.iconos.exito },
-    { label: "No Leídas", val: datos.noLeidas, detail: "notificaciones", icon: "notifications-active" as const, color: datos.noLeidas > 0 ? ADMIN.iconos.advertencia : ADMIN.iconos.comunicacion },
+    { label: t('admin.comunicacion.stats.total_announcements'), val: feeds.length, detail: t('admin.comunicacion.stats.active_history'), icon: "campaign" as const, color: ADMIN.iconos.comunicacion },
+    { label: t('admin.comunicacion.stats.channel_recipients'), val: datos.receptores, detail: selectedAudience, icon: "groups" as const, color: ADMIN.iconos.personas },
+    { label: t('admin.comunicacion.stats.high_priority'), val: datos.urgentes, detail: t('admin.comunicacion.stats.needs_attention'), icon: "priority-high" as const, color: datos.urgentes > 0 ? ADMIN.iconos.peligro : ADMIN.iconos.exito },
+    { label: t('admin.comunicacion.stats.unread'), val: datos.noLeidas, detail: t('admin.comunicacion.stats.notifications'), icon: "notifications-active" as const, color: datos.noLeidas > 0 ? ADMIN.iconos.advertencia : ADMIN.iconos.comunicacion },
   ];
 
   return (
@@ -210,15 +233,9 @@ export default function ComunicacionAdmin() {
     <ScrollView style={estilos.contenedor} contentContainerStyle={estilos.scrollContent} showsVerticalScrollIndicator={false}>
       <View style={estilos.header}>
         <View>
-          <Text style={estilos.titulo}>Mensajería Central</Text>
-          <Text style={estilos.subtitulo}>Difusión masiva, comunicación segmentada y trazabilidad de anuncios</Text>
+          <Text style={estilos.titulo}>{t('admin.comunicacion.title')}</Text>
+          <Text style={estilos.subtitulo}>{t('admin.comunicacion.subtitle')}</Text>
         </View>
-        <TouchableOpacity style={estilos.btnPrimary} onPress={crearAnuncio} disabled={enviando || !mensaje.trim()}>
-          <LinearGradient colors={[BRAND.bangladeshBlue, BRAND.caribbeanBlue]} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.btnGradient}>
-            <MaterialIcons name="flash-on" size={18} color="#fff" style={estilos.btnIcon} />
-            <Text style={estilos.btnPrimaryText}>PUBLICAR</Text>
-          </LinearGradient>
-        </TouchableOpacity>
       </View>
 
       <View style={estilos.gridMain}>
@@ -226,8 +243,8 @@ export default function ComunicacionAdmin() {
           <View style={estilos.premiumCard}>
             <View style={estilos.panelHeader}>
               <View>
-                <Text style={estilos.panelTitle}>Canales</Text>
-                <Text style={estilos.panelSubtitle}>Audiencias reales</Text>
+                <Text style={estilos.panelTitle}>{t('admin.comunicacion.channels_title')}</Text>
+                <Text style={estilos.panelSubtitle}>{t('admin.comunicacion.channels_subtitle')}</Text>
               </View>
               <IconPanel icon="forum" color={ADMIN.iconos.comunicacion} />
             </View>
@@ -235,14 +252,14 @@ export default function ComunicacionAdmin() {
               {datos.porCanal.map((canal) => (
                 <TouchableOpacity key={canal.audiencia} onPress={() => setSelectedAudience(canal.audiencia)} style={estilos.audienceWrap}>
                   {selectedAudience === canal.audiencia ? (
-                    <LinearGradient colors={[BRAND.bangladeshBlue, BRAND.caribbeanBlue]} style={estilos.audienceBtn}>
-                      <Text style={[estilos.audienceBtnText, { color: '#fff' }]}>{canal.audiencia}</Text>
-                      <Text style={estilos.audienceCount}>{canal.receptores}</Text>
+                    <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-force-white-always' } as any : {})} colors={['#A855F7', '#9333EA']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[estilos.audienceBtn, { opacity: 1 }]}>
+                      <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white-always' } as any : {})} style={[estilos.audienceBtnText, { color: '#FFFFFF' }]}>{canal.audiencia}</Text>
+                      <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white-always' } as any : {})} style={[estilos.audienceCount, { color: '#FFFFFF' }]}>{canal.receptores}</Text>
                     </LinearGradient>
                   ) : (
-                    <View style={estilos.audienceBtn}>
-                      <Text style={[estilos.audienceBtnText, { color: BRAND.textSec }]}>{canal.audiencia}</Text>
-                      <Text style={[estilos.audienceCount, { color: BRAND.textSec }]}>{canal.receptores}</Text>
+                    <View {...(Platform.OS === 'web' ? { className: 'nx-force-white-always' } as any : {})} style={[estilos.audienceBtn, { opacity: 0.6 }]}>
+                      <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white-always' } as any : {})} style={[estilos.audienceBtnText, { color: '#FFFFFF' }]}>{canal.audiencia}</Text>
+                      <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white-always' } as any : {})} style={[estilos.audienceCount, { color: '#FFFFFF' }]}>{canal.receptores}</Text>
                     </View>
                   )}
                 </TouchableOpacity>
@@ -253,23 +270,23 @@ export default function ComunicacionAdmin() {
           <View style={estilos.premiumCard}>
             <View style={estilos.panelHeader}>
               <View>
-                <Text style={estilos.panelTitle}>Nuevo Anuncio</Text>
-                <Text style={estilos.panelSubtitle}>Destino: {selectedAudience}</Text>
+                <Text style={estilos.panelTitle}>{t('admin.comunicacion.new_announcement_title')}</Text>
+                <Text style={estilos.panelSubtitle}>{t('admin.comunicacion.destination')}: {selectedAudience}</Text>
               </View>
-              <IconPanel icon="send" color={ADMIN.iconos.comunicacion} />
+              <IconPanel icon="campaign" color={ADMIN.iconos.organizacion} />
             </View>
             <TextInput
               style={estilos.chatInput}
-              placeholder="Redactar nuevo anuncio..."
+              placeholder={t('admin.comunicacion.new_announcement_placeholder')}
               placeholderTextColor={BRAND.textSec}
               multiline
               value={mensaje}
               onChangeText={setMensaje}
             />
             <TouchableOpacity style={estilos.publishBtn} onPress={crearAnuncio} disabled={enviando || !mensaje.trim()}>
-              <LinearGradient colors={[BRAND.bangladeshBlue, BRAND.caribbeanBlue]} style={estilos.publishGradient}>
-                <MaterialIcons name="send" size={18} color="#fff" />
-                <Text style={estilos.publishText}>ENVIAR AHORA</Text>
+              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-force-white-always' } as any : {})} colors={['#A855F7', '#9333EA']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.publishGradient}>
+                <MaterialIcons {...(Platform.OS === 'web' ? { className: 'nx-force-white-always' } as any : {})} name="send" size={18} color="#FFFFFF" style={{ color: '#FFFFFF' }} />
+                <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white-always' } as any : {})} style={[estilos.publishText, { color: '#FFFFFF' }]}>{t('admin.comunicacion.btn_send_now')}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -280,13 +297,13 @@ export default function ComunicacionAdmin() {
             <View style={estilos.chatHeader}>
               <View style={estilos.chatTitleRow}>
                 <View style={estilos.liveDot} />
-                <Text style={estilos.chatTitle}>Feed: {selectedAudience}</Text>
+                <Text style={estilos.chatTitle}>{t('admin.comunicacion.feed_title')}: {selectedAudience}</Text>
               </View>
-              <PremiumBadge variant="blue">{datos.receptores} receptores</PremiumBadge>
+              <PremiumBadge variant="blue">{datos.receptores} {t('admin.comunicacion.receptores')}</PremiumBadge>
             </View>
             <View style={estilos.searchContainer}>
               <MaterialIcons name="search" size={20} color={BRAND.textSec} style={estilos.searchIcon} />
-              <TextInput style={estilos.searchInput} placeholder="Buscar anuncios..." placeholderTextColor={BRAND.textSec} value={busqueda} onChangeText={setBusqueda} />
+              <TextInput style={estilos.searchInput} placeholder={t('admin.comunicacion.search_placeholder')} placeholderTextColor={BRAND.textSec} value={busqueda} onChangeText={setBusqueda} />
             </View>
             <ScrollView style={estilos.chatArea} contentContainerStyle={estilos.feedContent}>
               {datos.feedsFiltrados.map((feed) => {
@@ -295,12 +312,21 @@ export default function ComunicacionAdmin() {
                   <View key={feed.id} style={[estilos.feedItem, (prioridad === 'Alta' || prioridad === 'Urgente') && estilos.feedItemUrgent]}>
                     <View style={estilos.feedItemHeader}>
                       <View style={estilos.feedUserRow}>
-                        <LinearGradient colors={(prioridad === 'Alta' || prioridad === 'Urgente') ? ['#EF4444', '#991B1B'] : [BRAND.bangladeshBlue, BRAND.caribbeanBlue]} style={estilos.feedAvatar}>
-                          <Text style={estilos.feedAvatarText}>{(feed.creadoPorNombre || 'S')[0]}</Text>
-                        </LinearGradient>
+                        {(() => {
+                          const autor = usuarios.find(u => u.id === feed.creadoPorId || u.nombre === feed.creadoPorNombre);
+                          const foto = autor?.foto_perfil || autor?.fotoPerfil || autor?.photoURL;
+                          return foto ? (
+                            <Image source={{ uri: foto }} style={estilos.feedAvatar} />
+                          ) : (
+                            <LinearGradient {...({ className: 'nx-force-white' } as any)} colors={(prioridad === 'Alta' || prioridad === 'Urgente') ? ['#EF4444', '#991B1B'] : [BRAND.bangladeshBlue, BRAND.caribbeanBlue]} style={estilos.feedAvatar}>
+                              <MaterialIcons {...({ className: 'nx-force-white' } as any)} name="person" size={17} color={CONTRAST_TEXT} />
+                              <Text {...({ className: 'nx-force-white' } as any)} style={estilos.feedAvatarText}>{(feed.creadoPorNombre || 'S')[0].toUpperCase()}</Text>
+                            </LinearGradient>
+                          );
+                        })()}
                         <View>
-                          <Text style={estilos.feedUserName}>{feed.creadoPorNombre || 'Sistema'}</Text>
-                          <Text style={estilos.feedUserMeta}>{feed.fecha || ''} · {feed.departamentoDestino || 'Global'}</Text>
+                          <Text style={estilos.feedUserName}>{feed.creadoPorNombre || t('common.system')}</Text>
+                          <Text style={estilos.feedUserMeta}>{feed.fecha || ''} · {feed.departamentoDestino || t('admin.comunicacion.global')}</Text>
                         </View>
                       </View>
                       <PremiumBadge variant={(prioridad === 'Alta' || prioridad === 'Urgente') ? 'error' : prioridad === 'Normal' ? 'default' : 'warning'}>{prioridad}</PremiumBadge>
@@ -309,7 +335,7 @@ export default function ComunicacionAdmin() {
                   </View>
                 );
               })}
-              {datos.feedsFiltrados.length === 0 && <EmptyState texto="Sin anuncios para este canal" />}
+              {datos.feedsFiltrados.length === 0 && <EmptyState texto={t('admin.comunicacion.empty_feed')} />}
             </ScrollView>
           </View>
         </View>
@@ -326,20 +352,20 @@ const EmptyState = ({ texto }: { texto: string }) => (
 const estilos = StyleSheet.create({
   animatedScreen: { flex: 1, backgroundColor: BRAND.richBlack },
   contenedor: { flex: 1, backgroundColor: BRAND.richBlack },
-  scrollContent: { flexGrow: 1, padding: 20, paddingTop: 84, paddingBottom: 64 },
+  scrollContent: { flexGrow: 1, padding: 20, paddingTop: 260, paddingBottom: 64 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32 },
-  titulo: { fontSize: 28, fontWeight: '800', color: '#fff', letterSpacing: 0 },
+  titulo: { fontSize: 28, fontWeight: '800', color: BRAND.textMain, letterSpacing: 0 },
   subtitulo: { fontSize: 14, color: BRAND.textSec, fontWeight: '600', marginTop: 4, letterSpacing: 0.4 },
   btnPrimary: { borderRadius: 12, overflow: 'hidden', shadowColor: BRAND.iconBright, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 25, elevation: 10 },
   btnGradient: { flexDirection: 'row', paddingHorizontal: 24, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
   btnIcon: { marginRight: 8 },
-  btnPrimaryText: { color: '#fff', fontSize: 14, fontWeight: '900', letterSpacing: 2 },
+  btnPrimaryText: { color: CONTRAST_TEXT, fontSize: 14, fontWeight: '900', letterSpacing: 2 },
   gridStats: { flexDirection: 'row', flexWrap: 'wrap', gap: 20, marginBottom: 24 },
   statCard: { flex: 1, minWidth: 230, backgroundColor: ADMIN.fondoElevado, borderRadius: ADMIN.radio, padding: 20, borderWidth: 1, borderColor: ADMIN.borde, shadowColor: '#000', shadowOffset: { width: 0, height: 18 }, shadowOpacity: 0.24, shadowRadius: 28, elevation: 14 },
   statRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 16 },
   statInfo: { flex: 1 },
   statLabel: { fontSize: 10, fontWeight: '900', color: BRAND.textSec, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 10 },
-  statValue: { fontSize: 26, fontWeight: '800', color: '#fff', letterSpacing: 0, marginBottom: 7 },
+  statValue: { fontSize: 26, fontWeight: '800', color: BRAND.textMain, letterSpacing: 0, marginBottom: 7 },
   statTrend: { fontSize: 10, fontWeight: '800', letterSpacing: 0.3 },
   iconPanel: { width: 52, height: 52, borderRadius: 17, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   gridMain: { flexDirection: 'row', gap: 24 },
@@ -351,32 +377,32 @@ const estilos = StyleSheet.create({
   panelSubtitle: { color: BRAND.textSec, fontSize: 10, fontWeight: '800', letterSpacing: 0.3, marginTop: 4 },
   audienceList: { gap: 10 },
   audienceWrap: { borderRadius: 12, overflow: 'hidden' },
-  audienceBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 15, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.025)' },
+  audienceBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 15, borderRadius: 12, backgroundColor: ADMIN.fondoCampo, borderWidth: 1, borderColor: ADMIN.borde },
   audienceBtnText: { fontSize: 12, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.3 },
-  audienceCount: { color: '#fff', fontSize: 12, fontWeight: '900' },
-  chatInput: { width: '100%', backgroundColor: BRAND.richBlack, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 12, padding: 18, color: '#fff', fontSize: 14, fontWeight: '700', minHeight: 130, textAlignVertical: 'top' },
+  audienceCount: { color: CONTRAST_TEXT, fontSize: 12, fontWeight: '900' },
+  chatInput: { width: '100%', backgroundColor: ADMIN.fondoCampo, borderWidth: 1, borderColor: ADMIN.borde, borderRadius: 12, padding: 18, color: BRAND.textMain, fontSize: 14, fontWeight: '700', minHeight: 130, textAlignVertical: 'top' },
   publishBtn: { borderRadius: 12, overflow: 'hidden', marginTop: 14 },
   publishGradient: { flexDirection: 'row', gap: 10, justifyContent: 'center', alignItems: 'center', paddingVertical: 15 },
-  publishText: { color: '#fff', fontSize: 12, fontWeight: '900', letterSpacing: 1.6 },
+  publishText: { color: CONTRAST_TEXT, fontSize: 12, fontWeight: '900', letterSpacing: 1.6 },
   feedCard: { padding: 0, minHeight: 680 },
-  chatHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 28, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)', backgroundColor: 'rgba(255,255,255,0.02)' },
+  chatHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 28, borderBottomWidth: 1, borderBottomColor: ADMIN.borde, backgroundColor: ADMIN.fondoCampo },
   chatTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   liveDot: { width: 11, height: 11, borderRadius: 6, backgroundColor: BRAND.iconBright },
-  chatTitle: { fontSize: 18, fontWeight: '900', color: '#fff', textTransform: 'uppercase' },
-  searchContainer: { margin: 24, marginBottom: 0, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.045)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 12, paddingHorizontal: 20, height: 56 },
+  chatTitle: { fontSize: 18, fontWeight: '900', color: BRAND.textMain, textTransform: 'uppercase' },
+  searchContainer: { margin: 24, marginBottom: 0, flexDirection: 'row', alignItems: 'center', backgroundColor: ADMIN.fondoCampo, borderWidth: 1, borderColor: ADMIN.borde, borderRadius: 12, paddingHorizontal: 20, height: 56 },
   searchIcon: { marginRight: 12 },
-  searchInput: { flex: 1, color: '#fff', fontSize: 14, fontWeight: '700' },
+  searchInput: { flex: 1, color: BRAND.textMain, fontSize: 14, fontWeight: '700' },
   chatArea: { flex: 1 },
   feedContent: { padding: 20 },
-  feedItem: { padding: 22, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(196,181,253,0.10)', backgroundColor: 'rgba(255,255,255,0.02)', marginBottom: 18 },
+  feedItem: { padding: 22, borderRadius: 22, borderWidth: 1, borderColor: ADMIN.borde, backgroundColor: ADMIN.fondoCampo, marginBottom: 18 },
   feedItemUrgent: { backgroundColor: 'rgba(239,68,68,0.05)', borderColor: 'rgba(239,68,68,0.2)' },
   feedItemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, gap: 14 },
   feedUserRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  feedAvatar: { width: 46, height: 46, borderRadius: ADMIN.radio, alignItems: 'center', justifyContent: 'center' },
-  feedAvatarText: { color: '#fff', fontSize: 16, fontWeight: '900' },
-  feedUserName: { fontSize: 13, fontWeight: '900', color: '#fff', textTransform: 'uppercase' },
+  feedAvatar: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', backgroundColor: ADMIN.fondoCampo, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8 },
+  feedAvatarText: { color: CONTRAST_TEXT, fontSize: 13, fontWeight: '900', marginTop: -2 },
+  feedUserName: { fontSize: 13, fontWeight: '900', color: BRAND.textMain, textTransform: 'uppercase' },
   feedUserMeta: { fontSize: 10, fontWeight: '900', color: BRAND.textSec, textTransform: 'uppercase', letterSpacing: 1.2, marginTop: 2 },
-  feedMsg: { fontSize: 14, color: '#D1D5DB', lineHeight: 23, fontWeight: '600' },
+  feedMsg: { fontSize: 14, color: BRAND.textMain, lineHeight: 23, fontWeight: '600' },
   badge: { paddingHorizontal: 11, paddingVertical: 5, borderRadius: 100, borderWidth: 1 },
   badgeText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.2 },
   emptyState: { padding: 32, alignItems: 'center', justifyContent: 'center' },

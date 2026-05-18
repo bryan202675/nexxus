@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, Easing, Modal, View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { Alert, Animated, Easing, Modal, View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, Image, Platform } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { addDoc, collection, deleteDoc, doc, onSnapshot, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { useCases } from '@/infrastructure/firebase/container';
 import { db } from '@/infrastructure/firebase/firebaseConfig';
@@ -25,11 +27,14 @@ const BRAND = {
 };
 
 const SOFT_COLORS = {
-  sedes: '#60A5FA',
-  deptos: '#A78BFA',
-  cargos: '#34D399',
-  roles: '#F472B6',
+  sedes: '#3B82F6',
+  deptos: '#8B5CF6',
+  cargos: '#14B8A6',
+  roles: '#F59E0B',
 };
+
+const DEPT_HEADER_GRADIENT = ['#211A62', '#6D28D9', '#2563EB'] as const;
+const CONTRAST_TEXT = '#FFFFFF';
 
 type SectorEstructura = {
   id?: string;
@@ -65,6 +70,9 @@ type UsuarioEstructura = {
   empresaId?: string;
   activo?: boolean;
   estado_activo?: boolean;
+  foto_perfil?: string;
+  fotoPerfil?: string;
+  photoURL?: string;
 };
 
 type SedeEstructura = {
@@ -139,7 +147,7 @@ const normalizarDepartamento = (departamento: DepartamentoEstructura) => {
     id: departamento.id,
     nombre: departamento.nombre || departamento.name || 'Departamento sin nombre',
     sedeId: departamento.sedeId || '',
-    sedeNombre: departamento.sedeNombre || 'Global',
+    sedeNombre: (departamento.sedeNombre && departamento.sedeNombre.toLowerCase().trim() !== 'global.global') ? departamento.sedeNombre : 'Global',
     jefeId: departamento.jefeId || '',
     jefe: departamento.jefeNombre || departamento.manager || '',
     empleados: departamento.empleadosCount ?? departamento.count ?? 0,
@@ -160,7 +168,7 @@ const PremiumBadge = ({ variant, children }: { variant: 'success' | 'warning' | 
     error: { color: ADMIN.iconos.peligro, bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.22)' },
     blue: { color: ADMIN.iconos.documentos, bg: 'rgba(96,165,250,0.1)', border: 'rgba(96,165,250,0.22)' },
     violet: { color: ADMIN.iconos.seguridad, bg: 'rgba(167,139,250,0.1)', border: 'rgba(167,139,250,0.22)' },
-    default: { color: BRAND.textSec, bg: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.06)' },
+    default: { color: BRAND.textSec, bg: ADMIN.fondoCampo, border: ADMIN.borde },
   }[variant];
 
   return (
@@ -270,6 +278,7 @@ const Selector = ({ label, value, options, onSelect, emptyLabel }: { label: stri
 );
 
 export default function EstructuraOrganizativa() {
+  const { t } = useTranslation();
   const [departamentos, setDepartamentos] = useState<ReturnType<typeof normalizarDepartamento>[]>([]);
   const [sedes, setSedes] = useState<SedeEstructura[]>([]);
   const [cargos, setCargos] = useState<CargoEstructura[]>([]);
@@ -485,10 +494,10 @@ export default function EstructuraOrganizativa() {
         ...(modoModal === 'crear' ? { createdAt: new Date().toISOString() } : {}),
         creadoPor: user?.id || '',
       }, { merge: true });
-      await registrarAuditoria(modoModal === 'crear' ? 'Creación de Sede' : 'Edición de Sede', nombre);
+      await registrarAuditoria(modoModal === 'crear' ? t('auditoria.crear_sede') : t('auditoria.editar_sede'), nombre);
       cerrarModal();
     } catch (error: any) {
-      Alert.alert('No se pudo crear la sede', error?.message || 'Firebase no confirmó la operación.');
+      Alert.alert(t('alert.error'), error?.message || t('alert.default_error'));
     } finally {
       setGuardando(false);
     }
@@ -506,7 +515,7 @@ export default function EstructuraOrganizativa() {
         empresaId,
         nombre,
         sedeId: sede?.id || '',
-        sedeNombre: sede?.nombre || 'Global',
+        sedeNombre: sede?.nombre || t('common.global'),
         jefeId: jefe?.id || '',
         jefeNombre: jefe?.nombre || '',
         empleadosCount: 0,
@@ -518,10 +527,10 @@ export default function EstructuraOrganizativa() {
       } else {
         await useCases.admin.departments.create({ ...payload, createdAt: new Date().toISOString() } as any);
       }
-      await registrarAuditoria(modoModal === 'crear' ? 'Creación de Departamento' : 'Edición de Departamento', `${nombre} · ${sede?.nombre || 'Global'}`);
+      await registrarAuditoria(modoModal === 'crear' ? t('auditoria.crear_depto') : t('auditoria.editar_depto'), `${nombre} · ${sede?.nombre || t('common.global')}`);
       cerrarModal();
     } catch (error: any) {
-      Alert.alert('No se pudo crear el departamento', error?.message || 'Firebase no confirmó la operación.');
+      Alert.alert(t('alert.error'), error?.message || t('alert.default_error'));
     } finally {
       setGuardando(false);
     }
@@ -540,7 +549,7 @@ export default function EstructuraOrganizativa() {
         empresaId,
         nombre,
         departamentoId: departamento?.id || '',
-        departamentoNombre: departamento?.nombre || 'Global',
+        departamentoNombre: departamento?.nombre || t('common.global'),
         nivel: formCargo.nivel.trim(),
         descripcion: formCargo.descripcion.trim(),
         activo: true,
@@ -548,10 +557,10 @@ export default function EstructuraOrganizativa() {
         ...(modoModal === 'crear' ? { createdAt: new Date().toISOString() } : {}),
         creadoPor: user?.id || '',
       }, { merge: true });
-      await registrarAuditoria(modoModal === 'crear' ? 'Creación de Cargo' : 'Edición de Cargo', `${nombre} · ${departamento?.nombre || 'Global'}`);
+      await registrarAuditoria(modoModal === 'crear' ? t('auditoria.crear_cargo') : t('auditoria.editar_cargo'), `${nombre} · ${departamento?.nombre || t('common.global')}`);
       cerrarModal();
     } catch (error: any) {
-      Alert.alert('No se pudo crear el cargo', error?.message || 'Firebase no confirmó la operación.');
+      Alert.alert(t('alert.error'), error?.message || t('alert.default_error'));
     } finally {
       setGuardando(false);
     }
@@ -575,10 +584,10 @@ export default function EstructuraOrganizativa() {
         ...(modoModal === 'crear' ? { createdAt: new Date().toISOString() } : {}),
         creadoPor: user?.id || '',
       }, { merge: true });
-      await registrarAuditoria(modoModal === 'crear' ? 'Creación de Rol Personalizado' : 'Edición de Rol Personalizado', nombre);
+      await registrarAuditoria(modoModal === 'crear' ? t('auditoria.crear_rol') : t('auditoria.editar_rol'), nombre);
       cerrarModal();
     } catch (error: any) {
-      Alert.alert('No se pudo crear el rol', error?.message || 'Firebase no confirmó la operación.');
+      Alert.alert(t('alert.error'), error?.message || t('alert.default_error'));
     } finally {
       setGuardando(false);
     }
@@ -596,18 +605,18 @@ export default function EstructuraOrganizativa() {
 
   const eliminarEntidad = async (tipo: Exclude<ModalActivo, null>, id: string, nombre: string) => {
     const coleccion = tipo === 'sede' ? 'sedes' : tipo === 'departamento' ? 'departments' : tipo === 'cargo' ? 'cargos' : 'roles_personalizados';
-    const etiqueta = tipo === 'sede' ? 'Sede' : tipo === 'departamento' ? 'Departamento' : tipo === 'cargo' ? 'Cargo' : 'Rol Personalizado';
+    const etiqueta = tipo === 'sede' ? t('admin.estructura.sede') : tipo === 'departamento' ? t('admin.estructura.depto') : tipo === 'cargo' ? t('admin.estructura.cargo') : t('admin.estructura.rol');
     Alert.alert(
-      `Eliminar ${etiqueta}`,
-      `Se eliminará "${nombre}". Esta acción quedará registrada en auditoría.`,
+      `${t('global.eliminar')} ${etiqueta}`,
+      `${t('global.confirmar_eliminar')} "${nombre}". ${t('global.esta_accion_se_registra')}.`,
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('global.cancelar'), style: 'cancel' },
         {
-          text: 'Eliminar',
+          text: t('global.eliminar'),
           style: 'destructive',
           onPress: async () => {
             await deleteDoc(doc(db, coleccion, id));
-            await registrarAuditoria(`Eliminación de ${etiqueta}`, nombre, 'Warning');
+            await registrarAuditoria(`${t('global.eliminar')} ${etiqueta}`, nombre, 'Warning');
           },
         },
       ]
@@ -690,46 +699,39 @@ export default function EstructuraOrganizativa() {
     );
   }
 
-  const stats = [
-    { label: "Sedes / Sucursales", val: sedes.length, trend: `${sedes.filter((sede) => sede.activa !== false).length} activas`, icon: "apartment" as const, color: ADMIN.iconos.calendario },
-    { label: "Departamentos Activos", val: departamentos.length, trend: `${datos.sinJefe} sin jefe`, icon: "domain" as const, color: ADMIN.iconos.organizacion },
-    { label: "Plazas Ocupadas", val: datos.totalEmpleados, trend: `${usuarios.length} usuarios`, icon: "groups" as const, color: ADMIN.iconos.personas },
-    { label: "Roles y Cargos", val: `${roles.length}/${cargos.length}`, trend: "permisos y puestos", icon: "badge" as const, color: ADMIN.iconos.seguridad },
-  ];
-
   return (
     <Animated.View style={[estilos.animatedScreen, { transform: [{ translateY: entrada.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }] }]}>
     <ScrollView style={estilos.contenedor} contentContainerStyle={estilos.scrollContent} showsVerticalScrollIndicator={false}>
       <View style={estilos.header}>
         <View>
-          <Text style={estilos.titulo}>Estructura Organizativa</Text>
-          <Text style={estilos.subtitulo}>Mapa jerárquico, sectores, nodos y carga operativa</Text>
+          <Text style={estilos.titulo}>{t('admin.estructura.title')}</Text>
+          <Text style={estilos.subtitulo}>{t('admin.estructura.subtitle')}</Text>
         </View>
         <View style={estilos.headerActions}>
-          <QuickCreateButton label="Sede" icon="apartment" color={SOFT_COLORS.sedes} onPress={() => abrirCrear('sede')} />
-          <QuickCreateButton label="Depto" icon="domain-add" color={SOFT_COLORS.deptos} onPress={() => abrirCrear('departamento')} />
-          <QuickCreateButton label="Cargo" icon="work" color={SOFT_COLORS.cargos} onPress={() => abrirCrear('cargo')} />
-          <TouchableOpacity style={estilos.btnPrimary} onPress={() => abrirCrear('rol')}>
-            <LinearGradient colors={[BRAND.bangladeshBlue, BRAND.caribbeanBlue]} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.btnGradient}>
-              <MaterialIcons name="admin-panel-settings" size={18} color="#fff" style={estilos.btnIcon} />
-              <Text style={estilos.btnPrimaryText}>CREAR ROL</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+          <QuickCreateButton label={t('admin.estructura.btn_sede')} icon="apartment" color={SOFT_COLORS.sedes} onPress={() => abrirCrear('sede')} />
+          <QuickCreateButton label={t('admin.estructura.btn_dept')} icon="domain-add" color={SOFT_COLORS.deptos} onPress={() => abrirCrear('departamento')} />
+          <QuickCreateButton label={t('admin.estructura.btn_cargo')} icon="work" color={SOFT_COLORS.cargos} onPress={() => abrirCrear('cargo')} />
+          <View style={{ backgroundColor: 'transparent', borderWidth: 0 }}>
+            <TouchableOpacity style={estilos.btnPrimary} onPress={() => abrirCrear('rol')}>
+              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} colors={['#A855F7', '#9333EA']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.btnGradient}>
+                <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.btnPrimaryText}>{t('admin.estructura.btn_create_role')}</Text>
+                <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={[estilos.btnPrimaryText, estilos.btnIconRight, { fontSize: 18, marginTop: -1 }]}>→</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
       <View style={estilos.catalogGrid}>
-        <CatalogCard title="Sedes y Sucursales" subtitle="Ubicaciones empresariales" icon="apartment" color={SOFT_COLORS.sedes} total={sedes.length} onPress={() => abrirCrear('sede')} />
-        <CatalogCard title="Departamentos" subtitle="Áreas dentro o fuera de sedes" icon="domain-add" color={SOFT_COLORS.deptos} total={departamentos.length} onPress={() => abrirCrear('departamento')} />
-        <CatalogCard title="Cargos" subtitle="Puestos operativos" icon="work" color={SOFT_COLORS.cargos} total={cargos.length} onPress={() => abrirCrear('cargo')} />
-        <CatalogCard title="Roles y Permisos" subtitle="Accesos granulares" icon="admin-panel-settings" color={SOFT_COLORS.roles} total={roles.length} onPress={() => abrirCrear('rol')} />
+        <CatalogCard title={t('admin.estructura.catalog.sedes.title')} subtitle={t('admin.estructura.catalog.sedes.subtitle')} icon="apartment" color={SOFT_COLORS.sedes} total={sedes.length} onPress={() => abrirCrear('sede')} />
+        <CatalogCard title={t('admin.estructura.catalog.depts.title')} subtitle={t('admin.estructura.catalog.depts.subtitle')} icon="domain-add" color={SOFT_COLORS.deptos} total={departamentos.length} onPress={() => abrirCrear('departamento')} />
+        <CatalogCard title={t('admin.estructura.catalog.cargos.title')} subtitle={t('admin.estructura.catalog.cargos.subtitle')} icon="work" color={SOFT_COLORS.cargos} total={cargos.length} onPress={() => abrirCrear('cargo')} />
+        <CatalogCard title={t('admin.estructura.catalog.roles.title')} subtitle={t('admin.estructura.catalog.roles.subtitle')} icon="admin-panel-settings" color={SOFT_COLORS.roles} total={roles.length} onPress={() => abrirCrear('rol')} />
       </View>
 
       <View style={estilos.catalogSummaryGrid}>
-        <SummaryList title="Sedes Registradas" items={sedes.map((sede) => ({ id: sede.id || sede.nombre || '', title: sede.nombre || 'Sede', detail: `${sede.ciudad || 'Sin ciudad'} · ${sede.responsableNombre || 'Sin responsable'}`, raw: sede }))} empty="Sin sedes creadas" onEdit={(item) => abrirEditarSede(item.raw as SedeEstructura)} onDelete={(item) => eliminarEntidad('sede', item.id, item.title)} />
-        <SummaryList title="Departamentos" items={departamentos.map((departamento) => ({ id: departamento.id || departamento.nombre || '', title: departamento.nombre, detail: `${departamento.sedeNombre || 'Global'} · ${departamento.jefe || 'Sin jefe'}`, raw: departamento }))} empty="Sin departamentos creados" onEdit={(item) => abrirEditarDepartamento(item.raw as ReturnType<typeof normalizarDepartamento>)} onDelete={(item) => eliminarEntidad('departamento', item.id, item.title)} />
-        <SummaryList title="Cargos Registrados" items={cargos.map((cargo) => ({ id: cargo.id || cargo.nombre || '', title: cargo.nombre || 'Cargo', detail: `${cargo.departamentoNombre || 'Global'} · ${cargo.nivel || 'Sin nivel'}`, raw: cargo }))} empty="Sin cargos creados" onEdit={(item) => abrirEditarCargo(item.raw as CargoEstructura)} onDelete={(item) => eliminarEntidad('cargo', item.id, item.title)} />
-        <SummaryList title="Roles Personalizados" items={roles.map((rol) => ({ id: rol.id || rol.nombre || '', title: rol.nombre || 'Rol', detail: `${Object.values(rol.permisos || {}).filter(Boolean).length} permisos activos`, raw: rol }))} empty="Sin roles personalizados" onEdit={(item) => abrirEditarRol(item.raw as RolPersonalizado)} onDelete={(item) => eliminarEntidad('rol', item.id, item.title)} />
+        <SummaryList title={t('admin.estructura.summary.cargos')} items={cargos.map((cargo) => ({ id: cargo.id || cargo.nombre || '', title: cargo.nombre || 'Cargo', detail: `${cargo.departamentoNombre || t('common.global')} · ${cargo.nivel || ''}`, raw: cargo }))} empty={t('admin.estructura.summary.empty_cargos')} onEdit={(item) => abrirEditarCargo(item.raw as CargoEstructura)} onDelete={(item) => eliminarEntidad('cargo', item.id, item.title)} />
+        <SummaryList title={t('admin.estructura.summary.roles')} items={roles.map((rol) => ({ id: rol.id || rol.nombre || '', title: rol.nombre || 'Rol', detail: t('admin.estructura.roles_detail', { count: Object.values(rol.permisos || {}).filter(Boolean).length, defaultValue: `${Object.values(rol.permisos || {}).filter(Boolean).length} permisos` }), raw: rol }))} empty={t('admin.estructura.summary.empty_roles')} onEdit={(item) => abrirEditarRol(item.raw as RolPersonalizado)} onDelete={(item) => eliminarEntidad('rol', item.id, item.title)} />
       </View>
 
       <View style={estilos.toolbarCard}>
@@ -737,7 +739,7 @@ export default function EstructuraOrganizativa() {
           <MaterialIcons name="search" size={20} color={BRAND.textSec} style={estilos.searchIcon} />
           <TextInput
             style={estilos.searchInput}
-            placeholder="Buscar departamento o responsable..."
+            placeholder={t('admin.estructura.search_placeholder', { defaultValue: t('admin.estructura.search_placeholder') })}
             placeholderTextColor={BRAND.textSec}
             value={busqueda}
             onChangeText={setBusqueda}
@@ -745,10 +747,10 @@ export default function EstructuraOrganizativa() {
         </View>
         <View style={estilos.filterRow}>
           {[
-            { id: 'todos', label: 'Todos' },
-            { id: 'conJefe', label: 'Con jefe' },
-            { id: 'sinJefe', label: 'Sin jefe' },
-            { id: 'conCarga', label: 'Con carga' },
+            { id: 'todos', label: t('admin.estructura.filters.todos', { defaultValue: t('admin.estructura.filters.all') }) },
+            { id: 'conJefe', label: t('admin.estructura.filters.with_manager', { defaultValue: t('admin.estructura.filters.with_manager') }) },
+            { id: 'sinJefe', label: t('admin.estructura.filters.no_manager', { defaultValue: t('admin.estructura.filters.no_manager') }) },
+            { id: 'conCarga', label: t('admin.estructura.filters.with_load', { defaultValue: t('admin.estructura.filters.with_load') }) },
           ].map((item) => (
             <TouchableOpacity key={item.id} onPress={() => setFiltro(item.id as FiltroDepto)} style={[estilos.filterChip, filtro === item.id && estilos.filterChipActivo]}>
               <Text style={[estilos.filterText, filtro === item.id && estilos.filterTextActivo]}>{item.label}</Text>
@@ -760,45 +762,64 @@ export default function EstructuraOrganizativa() {
       <View style={estilos.gridDepts}>
         {departamentosFiltrados.map((dept) => (
           <View key={dept.id || dept.nombre} style={estilos.deptCard}>
-            <LinearGradient colors={[BRAND.darkBlue, BRAND.bangladeshBlue, BRAND.caribbeanBlue]} style={estilos.deptHeader}>
+            <LinearGradient
+              {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast' } as any : {})}
+              colors={DEPT_HEADER_GRADIENT}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={estilos.deptHeader}
+            >
               <View style={estilos.deptHeaderInner}>
-                <View style={estilos.deptIconBg}>
-                  <MaterialIcons name="domain" size={26} color="#fff" />
-                </View>
                 <View style={estilos.deptTitleBox}>
                   <Text style={estilos.deptName} numberOfLines={1}>{dept.nombre}</Text>
-                  <Text style={estilos.deptCount}>{dept.plazas} Integrantes · {dept.sectores.length} Sectores</Text>
+                  <Text style={estilos.deptCount}>{t('admin.estructura.dept_card.members_count', { count: dept.plazas })} · {t('admin.estructura.dept_card.sectors_count', { count: dept.sectores.length })}</Text>
                 </View>
               </View>
-              <PremiumBadge variant={dept.estado === 'sinJefe' ? 'error' : dept.estado === 'sobrecarga' ? 'warning' : 'success'}>
-                {dept.estado === 'sinJefe' ? 'Sin Jefe' : dept.estado === 'sobrecarga' ? 'Alta Carga' : 'Estable'}
-              </PremiumBadge>
+              <View style={estilos.deptHeaderActions}>
+                <TouchableOpacity style={estilos.deptActionBtn} onPress={() => abrirEditarDepartamento(dept)}>
+                  <MaterialIcons name="edit" size={18} color="#38BDF8" />
+                </TouchableOpacity>
+                <TouchableOpacity style={[estilos.deptActionBtn, estilos.deptActionBtnDanger]} onPress={() => eliminarEntidad('departamento', dept.id || '', dept.nombre || '')}>
+                  <MaterialIcons name="delete-outline" size={18} color="#EF4444" />
+                </TouchableOpacity>
+              </View>
               <View style={estilos.deptHeaderGlow} />
             </LinearGradient>
 
             <View style={estilos.deptBody}>
               <View style={estilos.managerCard}>
                 <View style={estilos.managerInfoRow}>
-                  <View style={estilos.managerAvatar}>
-                    <Text style={estilos.managerAvatarText}>{(dept.jefe || '?')[0].toUpperCase()}</Text>
-                  </View>
+                  {(() => {
+                    const manager = usuarios.find(u => (u.id && dept.jefeId && u.id === dept.jefeId) || (u.nombre && dept.jefe && u.nombre.toLowerCase() === dept.jefe.toLowerCase()));
+                    const foto = manager?.foto_perfil || manager?.fotoPerfil || manager?.photoURL;
+                    return foto ? (
+                      <Image source={{ uri: foto }} style={estilos.managerAvatar} />
+                    ) : (
+                      <View {...({ className: 'nx-force-white' } as any)} style={estilos.avatarContrastWrap}>
+                        <LinearGradient {...({ className: 'nx-force-white' } as any)} colors={[BRAND.bangladeshBlue, BRAND.caribbeanBlue]} style={estilos.managerAvatar}>
+                          <MaterialIcons {...({ className: 'nx-force-white' } as any)} name="person" size={17} color={CONTRAST_TEXT} style={estilos.whiteIcon} />
+                          <Text {...({ className: 'nx-force-white' } as any)} style={estilos.managerAvatarText}>{(dept.jefe && dept.jefe !== 'No asignado' ? dept.jefe[0] : '?').toUpperCase()}</Text>
+                        </LinearGradient>
+                      </View>
+                    );
+                  })()}
                   <View style={estilos.managerTextBox}>
-                    <Text style={estilos.managerLabel}>Responsable de Área</Text>
-                    <Text style={estilos.managerName} numberOfLines={1}>{dept.jefe || 'No asignado'}</Text>
+                    <Text style={estilos.managerLabel}>{t('admin.estructura.dept_card.manager_label')}</Text>
+                    <Text style={estilos.managerName} numberOfLines={1}>{dept.jefe || t('admin.estructura.dept_card.manager_none')}</Text>
                   </View>
                 </View>
-                <PremiumBadge variant={dept.jefe ? 'blue' : 'warning'}>{dept.jefe ? 'Principal' : 'Pendiente'}</PremiumBadge>
+                <PremiumBadge variant={dept.jefe ? 'blue' : 'warning'}>{dept.jefe ? t('common.primary', { defaultValue: 'Principal' }) : t('common.pending', { defaultValue: 'Pendiente' })}</PremiumBadge>
               </View>
 
               <View style={estilos.deptMetrics}>
-                <MiniMetric label="Activos" value={dept.activos} color={ADMIN.iconos.personas} />
-                <MiniMetric label="Pendientes" value={dept.pendientes} color={dept.pendientes > 0 ? BRAND.warning : BRAND.success} />
-                <MiniMetric label="Productividad" value={`${dept.productividad}%`} color={dept.productividad >= 70 ? BRAND.success : BRAND.warning} />
+                <MiniMetric label={t('admin.estructura.dept_card.active')} value={dept.activos} color="#3B82F6" />
+                <MiniMetric label={t('admin.estructura.dept_card.pending')} value={dept.pendientes} color={dept.pendientes > 0 ? '#F59E0B' : BRAND.textSec} />
+                <MiniMetric label={t('admin.estructura.dept_card.productivity')} value={`${dept.productividad}%`} color={dept.productividad >= 70 ? '#10B981' : '#EF4444'} />
               </View>
 
               <View style={estilos.capacityBlock}>
                 <View style={estilos.capacityTop}>
-                  <Text style={estilos.capacityLabel}>Cobertura operativa</Text>
+                  <Text style={estilos.capacityLabel}>{t('admin.estructura.dept_card.coverage')}</Text>
                   <Text style={estilos.capacityValue}>{dept.cobertura}%</Text>
                 </View>
                 <View style={estilos.progressTrack}>
@@ -810,10 +831,23 @@ export default function EstructuraOrganizativa() {
                 {dept.sectores.length > 0 ? dept.sectores.map((sector) => (
                   <TouchableOpacity key={sector.id || sector.nombre} style={estilos.sectorCard} activeOpacity={0.7}>
                     <View style={estilos.sectorInfoRow}>
-                      <View style={[estilos.sectorIndicator, { backgroundColor: sector.responsable === 'No asignado' ? BRAND.warning : BRAND.iconBright }]} />
+                      {(() => {
+                        const leader = usuarios.find(u => u.nombre && sector.responsable && u.nombre.toLowerCase() === sector.responsable.toLowerCase());
+                        const foto = leader?.foto_perfil || leader?.fotoPerfil || leader?.photoURL;
+                        return foto ? (
+                          <Image source={{ uri: foto }} style={estilos.sectorAvatar} />
+                        ) : (
+                          <View {...({ className: 'nx-force-white' } as any)} style={estilos.avatarContrastWrapSmall}>
+                            <LinearGradient {...({ className: 'nx-force-white' } as any)} colors={sector.responsable !== 'No asignado' ? [BRAND.bangladeshBlue, BRAND.caribbeanBlue] : [BRAND.warning, '#F59E0B']} style={estilos.sectorAvatar}>
+                              <MaterialIcons {...({ className: 'nx-force-white' } as any)} name="person" size={12} color={CONTRAST_TEXT} style={estilos.whiteIcon} />
+                              <Text {...({ className: 'nx-force-white' } as any)} style={estilos.sectorAvatarText}>{(sector.responsable && sector.responsable !== 'No asignado' ? sector.responsable[0] : '?').toUpperCase()}</Text>
+                            </LinearGradient>
+                          </View>
+                        );
+                      })()}
                       <View style={estilos.sectorTextBox}>
                         <Text style={estilos.sectorName} numberOfLines={1}>{sector.nombre}</Text>
-                        <Text style={estilos.sectorLead} numberOfLines={1}>Líder: <Text style={estilos.sectorLeadStrong}>{sector.responsable}</Text></Text>
+                        <Text style={estilos.sectorLead} numberOfLines={1}>{t('admin.estructura.dept_card.leader')}: <Text style={estilos.sectorLeadStrong}>{sector.responsable}</Text></Text>
                       </View>
                     </View>
                     <View style={estilos.sectorCountPill}>
@@ -821,7 +855,7 @@ export default function EstructuraOrganizativa() {
                     </View>
                   </TouchableOpacity>
                 )) : (
-                  <EmptyState texto="Sin sectores registrados" />
+                  <EmptyState texto={t('admin.estructura.dept_card.empty_sectors', { defaultValue: 'Sin sectores registrados' })} />
                 )}
               </View>
             </View>
@@ -832,19 +866,24 @@ export default function EstructuraOrganizativa() {
       {departamentosFiltrados.length === 0 && (
         <View style={estilos.emptyWide}>
           <MaterialIcons name="account-tree" size={48} color={BRAND.textSec} style={estilos.emptyIcon} />
-          <Text style={estilos.emptyText}>No se encontraron departamentos.</Text>
+          <Text style={estilos.emptyText}>{t('admin.estructura.empty_depts_msg', { defaultValue: 'No se encontraron departamentos.' })}</Text>
         </View>
       )}
     </ScrollView>
     <Modal visible={modalActivo !== null} transparent animationType="fade" onRequestClose={cerrarModal}>
+      {Platform.OS === 'web' ? (
+        <View {...({ className: 'nx-admin-blur-bg' } as any)} style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(6,5,18,0.25)' }]} />
+      ) : (
+        <BlurView intensity={24} tint="dark" style={StyleSheet.absoluteFill} />
+      )}
       <View style={estilos.modalOverlay}>
         <View style={estilos.modalCard}>
           <View style={estilos.modalHeader}>
             <View>
               <Text style={estilos.modalTitle}>
-                {`${modoModal === 'crear' ? 'Crear' : 'Editar'} ${modalActivo === 'sede' ? 'Sede' : modalActivo === 'departamento' ? 'Departamento' : modalActivo === 'cargo' ? 'Cargo' : 'Rol'}`}
+                {`${modoModal === 'crear' ? t('common.create') : t('common.edit')} ${modalActivo === 'sede' ? t('admin.estructura.btn_sede') : modalActivo === 'departamento' ? t('admin.estructura.btn_dept') : modalActivo === 'cargo' ? t('admin.estructura.btn_cargo') : t('admin.estructura.btn_create_role')}`}
               </Text>
-              <Text style={estilos.modalSubtitle}>Configuración organizacional conectada a Firebase</Text>
+              <Text style={estilos.modalSubtitle}>{t('admin.estructura.modal_subtitle', { defaultValue: 'Configuración organizacional conectada a Firebase' })}</Text>
             </View>
             <TouchableOpacity style={estilos.modalClose} onPress={cerrarModal}>
               <MaterialIcons name="close" size={20} color={BRAND.textSec} />
@@ -854,43 +893,43 @@ export default function EstructuraOrganizativa() {
           <ScrollView style={estilos.modalBody} showsVerticalScrollIndicator={false}>
             {modalActivo === 'sede' && (
               <View style={estilos.formGrid}>
-                <FormField label="Nombre de sede" value={formSede.nombre} onChangeText={(valor) => setFormSede((actual) => ({ ...actual, nombre: valor }))} placeholder="Sucursal San Salvador" />
-                <FormField label="País" value={formSede.pais} onChangeText={(valor) => setFormSede((actual) => ({ ...actual, pais: valor }))} placeholder="El Salvador" />
-                <FormField label="Ciudad" value={formSede.ciudad} onChangeText={(valor) => setFormSede((actual) => ({ ...actual, ciudad: valor }))} placeholder="Ciudad" />
-                <FormField label="Teléfono de sede" value={formSede.telefono} onChangeText={(valor) => setFormSede((actual) => ({ ...actual, telefono: valor }))} placeholder="+503 0000 0000" />
-                <FormField label="Dirección" value={formSede.direccion} onChangeText={(valor) => setFormSede((actual) => ({ ...actual, direccion: valor }))} placeholder="Dirección física" anchoCompleto />
-                <Selector label="Responsable de sede" value={formSede.responsableId} options={responsables.map((responsable) => ({ id: responsable.id || '', label: responsable.nombre || 'Responsable' }))} onSelect={(valor) => setFormSede((actual) => ({ ...actual, responsableId: valor }))} emptyLabel="Sin responsable" />
+                <FormField label={t('admin.estructura.modal_sede.label_name')} value={formSede.nombre} onChangeText={(valor) => setFormSede((actual) => ({ ...actual, nombre: valor }))} placeholder={t('admin.estructura.modal_sede.placeholder_name')} />
+                <FormField label={t('admin.estructura.modal_sede.label_country')} value={formSede.pais} onChangeText={(valor) => setFormSede((actual) => ({ ...actual, pais: valor }))} placeholder={t('admin.estructura.modal_sede.placeholder_country')} />
+                <FormField label={t('admin.estructura.modal_sede.label_city')} value={formSede.ciudad} onChangeText={(valor) => setFormSede((actual) => ({ ...actual, ciudad: valor }))} placeholder={t('admin.estructura.modal_sede.placeholder_city')} />
+                <FormField label={t('admin.estructura.modal_sede.label_phone')} value={formSede.telefono} onChangeText={(valor) => setFormSede((actual) => ({ ...actual, telefono: valor }))} placeholder="+503 0000 0000" />
+                <FormField label={t('admin.estructura.modal_sede.label_address')} value={formSede.direccion} onChangeText={(valor) => setFormSede((actual) => ({ ...actual, direccion: valor }))} placeholder={t('admin.estructura.modal_sede.placeholder_address')} anchoCompleto />
+                <Selector label={t('admin.estructura.modal_sede.label_manager')} value={formSede.responsableId} options={responsables.map((responsable) => ({ id: responsable.id || '', label: responsable.nombre || 'Responsable' }))} onSelect={(valor) => setFormSede((actual) => ({ ...actual, responsableId: valor }))} emptyLabel={t('admin.estructura.modal_sede.no_manager')} />
               </View>
             )}
 
             {modalActivo === 'departamento' && (
               <View style={estilos.formGrid}>
-                <FormField label="Nombre del departamento" value={formDepartamento.nombre} onChangeText={(valor) => setFormDepartamento((actual) => ({ ...actual, nombre: valor }))} placeholder="Operaciones" />
-                <Selector label="Sede asociada" value={formDepartamento.sedeId} options={sedes.map((sede) => ({ id: sede.id || '', label: sede.nombre || 'Sede' }))} onSelect={(valor) => setFormDepartamento((actual) => ({ ...actual, sedeId: valor }))} emptyLabel="Departamento global" />
-                <Selector label="Jefe de departamento" value={formDepartamento.jefeId} options={responsables.map((responsable) => ({ id: responsable.id || '', label: responsable.nombre || 'Responsable' }))} onSelect={(valor) => setFormDepartamento((actual) => ({ ...actual, jefeId: valor }))} emptyLabel="Sin jefe asignado" />
+                <FormField label={t('admin.estructura.modal_dept.label_name')} value={formDepartamento.nombre} onChangeText={(valor) => setFormDepartamento((actual) => ({ ...actual, nombre: valor }))} placeholder={t('admin.estructura.modal_dept.placeholder_name')} />
+                <Selector label={t('admin.estructura.modal_dept.label_sede')} value={formDepartamento.sedeId} options={sedes.map((sede) => ({ id: sede.id || '', label: sede.nombre || 'Sede' }))} onSelect={(valor) => setFormDepartamento((actual) => ({ ...actual, sedeId: valor }))} emptyLabel={t('admin.estructura.modal_dept.global_dept')} />
+                <Selector label={t('admin.estructura.modal_dept.label_manager')} value={formDepartamento.jefeId} options={responsables.map((responsable) => ({ id: responsable.id || '', label: responsable.nombre || 'Responsable' }))} onSelect={(valor) => setFormDepartamento((actual) => ({ ...actual, jefeId: valor }))} emptyLabel={t('admin.estructura.modal_dept.no_manager')} />
               </View>
             )}
 
             {modalActivo === 'cargo' && (
               <View style={estilos.formGrid}>
-                <FormField label="Nombre del cargo" value={formCargo.nombre} onChangeText={(valor) => setFormCargo((actual) => ({ ...actual, nombre: valor }))} placeholder="Analista Senior" />
-                <FormField label="Nivel" value={formCargo.nivel} onChangeText={(valor) => setFormCargo((actual) => ({ ...actual, nivel: valor }))} placeholder="Junior, Senior, Lead..." />
-                <Selector label="Departamento" value={formCargo.departamentoId} options={departamentos.map((departamento) => ({ id: departamento.id || '', label: departamento.nombre }))} onSelect={(valor) => setFormCargo((actual) => ({ ...actual, departamentoId: valor }))} emptyLabel="Cargo global" />
-                <FormField label="Descripción" value={formCargo.descripcion} onChangeText={(valor) => setFormCargo((actual) => ({ ...actual, descripcion: valor }))} placeholder="Responsabilidades principales" anchoCompleto />
+                <FormField label={t('admin.estructura.modal_cargo.label_name')} value={formCargo.nombre} onChangeText={(valor) => setFormCargo((actual) => ({ ...actual, nombre: valor }))} placeholder={t('admin.estructura.modal_cargo.placeholder_name')} />
+                <FormField label={t('admin.estructura.modal_cargo.label_level')} value={formCargo.nivel} onChangeText={(valor) => setFormCargo((actual) => ({ ...actual, nivel: valor }))} placeholder={t('admin.estructura.modal_cargo.placeholder_level')} />
+                <Selector label={t('admin.estructura.modal_cargo.label_dept')} value={formCargo.departamentoId} options={departamentos.map((departamento) => ({ id: departamento.id || '', label: departamento.nombre }))} onSelect={(valor) => setFormCargo((actual) => ({ ...actual, departamentoId: valor }))} emptyLabel={t('admin.estructura.modal_cargo.global_cargo')} />
+                <FormField label={t('admin.estructura.modal_cargo.label_desc')} value={formCargo.descripcion} onChangeText={(valor) => setFormCargo((actual) => ({ ...actual, descripcion: valor }))} placeholder={t('admin.estructura.modal_cargo.placeholder_desc')} anchoCompleto />
               </View>
             )}
 
             {modalActivo === 'rol' && (
               <View style={estilos.formGrid}>
-                <FormField label="Nombre del rol" value={formRol.nombre} onChangeText={(valor) => setFormRol((actual) => ({ ...actual, nombre: valor }))} placeholder="Coordinador RRHH" />
-                <FormField label="Descripción" value={formRol.descripcion} onChangeText={(valor) => setFormRol((actual) => ({ ...actual, descripcion: valor }))} placeholder="Alcance operativo del rol" anchoCompleto />
+                <FormField label={t('admin.estructura.modal_rol.label_name')} value={formRol.nombre} onChangeText={(valor) => setFormRol((actual) => ({ ...actual, nombre: valor }))} placeholder={t('admin.estructura.modal_rol.placeholder_name')} />
+                <FormField label={t('admin.estructura.modal_rol.label_desc')} value={formRol.descripcion} onChangeText={(valor) => setFormRol((actual) => ({ ...actual, descripcion: valor }))} placeholder={t('admin.estructura.modal_rol.placeholder_desc')} anchoCompleto />
                 <View style={estilos.permissionsBlock}>
-                  <Text style={estilos.formLabel}>Permisos del rol</Text>
+                  <Text style={estilos.formLabel}>{t('admin.estructura.modal_rol.label_permissions')}</Text>
                   <View style={estilos.permissionGrid}>
                     {MODULOS_PERMISOS.map((permiso) => (
                       <TouchableOpacity key={permiso} onPress={() => alternarPermiso(permiso)} style={[estilos.permissionChip, formRol.permisos[permiso] && estilos.permissionChipActive]}>
                         <MaterialIcons name={formRol.permisos[permiso] ? 'check-circle' : 'radio-button-unchecked'} size={16} color={formRol.permisos[permiso] ? BRAND.success : BRAND.textSec} />
-                        <Text style={[estilos.permissionText, formRol.permisos[permiso] && estilos.permissionTextActive]}>{permiso}</Text>
+                        <Text style={[estilos.permissionText, formRol.permisos[permiso] && estilos.permissionTextActive]}>{t(`admin.modules.${permiso}`, { defaultValue: permiso })}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -901,7 +940,7 @@ export default function EstructuraOrganizativa() {
 
           <View style={estilos.modalFooter}>
             <TouchableOpacity style={estilos.btnModalSecondary} onPress={cerrarModal}>
-              <Text style={estilos.btnModalSecondaryText}>Cancelar</Text>
+              <Text style={estilos.btnModalSecondaryText}>{t('common.cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={estilos.btnModalPrimary}
@@ -910,7 +949,7 @@ export default function EstructuraOrganizativa() {
             >
               <LinearGradient colors={[BRAND.bangladeshBlue, BRAND.caribbeanBlue]} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.btnModalGradient}>
                 <MaterialIcons name="save" size={18} color="#fff" style={estilos.btnIcon} />
-                <Text style={estilos.btnPrimaryText}>{guardando ? 'GUARDANDO...' : 'GUARDAR'}</Text>
+                <Text style={estilos.btnPrimaryText}>{guardando ? t('common.saving').toUpperCase() : t('common.save').toUpperCase()}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -935,7 +974,7 @@ const estilos = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     padding: 48,
-    paddingTop: 120,
+    paddingTop: 260,
     paddingBottom: 64,
   },
   header: {
@@ -955,7 +994,7 @@ const estilos = StyleSheet.create({
   titulo: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#fff',
+    color: BRAND.textMain,
     letterSpacing: 0,
   },
   subtitulo: {
@@ -966,17 +1005,13 @@ const estilos = StyleSheet.create({
     letterSpacing: 0.4,
   },
   btnPrimary: {
-    borderRadius: 12,
+    borderRadius: 999,
     overflow: 'hidden',
-    shadowColor: BRAND.iconBright,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 25,
-    elevation: 10,
+    backgroundColor: 'transparent',
   },
   btnGradient: {
     flexDirection: 'row',
-    paddingHorizontal: 24,
+    paddingHorizontal: 28,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
@@ -984,19 +1019,23 @@ const estilos = StyleSheet.create({
   btnIcon: {
     marginRight: 8,
   },
+  btnIconRight: {
+    marginLeft: 8,
+  },
   btnPrimaryText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '900',
-    letterSpacing: 2,
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textDecorationLine: 'none',
   },
   quickButton: {
     minHeight: 50,
     paddingHorizontal: 16,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: ADMIN.fondoCampo,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.09)',
+    borderColor: ADMIN.borde,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1047,7 +1086,7 @@ const estilos = StyleSheet.create({
   statValue: {
     fontSize: 30,
     fontWeight: '900',
-    color: '#fff',
+    color: BRAND.textMain,
     letterSpacing: -0.5,
     marginBottom: 8,
   },
@@ -1159,7 +1198,7 @@ const estilos = StyleSheet.create({
   },
   progressTrack: {
     height: 8,
-    backgroundColor: 'rgba(255,255,255,0.055)',
+    backgroundColor: ADMIN.fondoCampo,
     borderRadius: 999,
     overflow: 'hidden',
   },
@@ -1177,8 +1216,8 @@ const estilos = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.055)',
-    backgroundColor: 'rgba(255,255,255,0.025)',
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoCampo,
   },
   criticalDot: {
     width: 10,
@@ -1219,9 +1258,9 @@ const estilos = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.045)',
+    backgroundColor: ADMIN.fondoCampo,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: ADMIN.borde,
     borderRadius: 12,
     paddingHorizontal: 20,
     height: 46,
@@ -1231,7 +1270,7 @@ const estilos = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    color: '#fff',
+    color: BRAND.textMain,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -1245,8 +1284,8 @@ const estilos = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
-    backgroundColor: 'rgba(255,255,255,0.025)',
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoCampo,
   },
   filterChipActivo: {
     backgroundColor: 'rgba(96,165,250,0.14)',
@@ -1265,25 +1304,25 @@ const estilos = StyleSheet.create({
   gridDepts: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 28,
+    gap: 22,
   },
   deptCard: {
     flex: 1,
     minWidth: 440,
-    borderRadius: ADMIN.radio,
+    borderRadius: 18,
     overflow: 'hidden',
     backgroundColor: ADMIN.fondoElevado,
     borderWidth: 1,
     borderColor: ADMIN.borde,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 18 },
-    shadowOpacity: 0.38,
-    shadowRadius: 42,
-    elevation: 15,
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.18,
+    shadowRadius: 28,
+    elevation: 10,
   },
   deptHeader: {
-    paddingHorizontal: 28,
-    paddingVertical: 26,
+    paddingHorizontal: 24,
+    paddingVertical: 22,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -1298,11 +1337,33 @@ const estilos = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
+  deptHeaderActions: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+    zIndex: 20,
+  },
+  deptActionBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.35)',
+  },
+  deptActionBtnDanger: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderColor: 'rgba(239, 68, 68, 0.35)',
+  },
   deptIconBg: {
     width: 54,
     height: 54,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -1318,14 +1379,14 @@ const estilos = StyleSheet.create({
   deptName: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#fff',
+    color: CONTRAST_TEXT,
     textTransform: 'uppercase',
     letterSpacing: -0.8,
   },
   deptCount: {
     fontSize: 10,
     fontWeight: '900',
-    color: 'rgba(255,255,255,0.5)',
+    color: 'rgba(255,255,255,0.76)',
     textTransform: 'uppercase',
     letterSpacing: 2.5,
     marginTop: 4,
@@ -1336,22 +1397,22 @@ const estilos = StyleSheet.create({
     right: -80,
     width: 192,
     height: 192,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255,255,255,0.10)',
     borderRadius: 96,
   },
   deptBody: {
-    padding: 28,
+    padding: 22,
     backgroundColor: ADMIN.fondoElevado,
   },
   managerCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 18,
-    backgroundColor: 'rgba(255,255,255,0.025)',
+    padding: 16,
+    backgroundColor: ADMIN.fondoCampo,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.055)',
-    borderRadius: 22,
+    borderColor: ADMIN.borde,
+    borderRadius: 16,
     marginBottom: 18,
     gap: 14,
   },
@@ -1366,16 +1427,31 @@ const estilos = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 13,
-    backgroundColor: BRAND.bangladeshBlue,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: ADMIN.borde,
+    shadowColor: BRAND.iconBright,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+  },
+  avatarContrastWrap: {
+    width: 46,
+    height: 46,
+    borderRadius: 13,
+  },
+  avatarContrastWrapSmall: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+  },
+  whiteIcon: {
+    color: CONTRAST_TEXT,
   },
   managerAvatarText: {
-    fontSize: 17,
+    fontSize: 11,
     fontWeight: '900',
-    color: ADMIN.iconos.organizacion,
+    color: CONTRAST_TEXT,
+    marginTop: -1,
   },
   managerTextBox: {
     flex: 1,
@@ -1392,7 +1468,7 @@ const estilos = StyleSheet.create({
   managerName: {
     fontSize: 13,
     fontWeight: '900',
-    color: '#fff',
+    color: ADMIN.primario,
     textTransform: 'uppercase',
   },
   deptMetrics: {
@@ -1404,9 +1480,9 @@ const estilos = StyleSheet.create({
     flex: 1,
     borderRadius: 12,
     padding: 14,
-    backgroundColor: 'rgba(255,255,255,0.025)',
+    backgroundColor: ADMIN.fondoCampo,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.055)',
+    borderColor: ADMIN.borde,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1440,7 +1516,7 @@ const estilos = StyleSheet.create({
     letterSpacing: 1.2,
   },
   capacityValue: {
-    color: BRAND.textMain,
+    color: ADMIN.primario,
     fontSize: 12,
     fontWeight: '900',
   },
@@ -1452,9 +1528,9 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    backgroundColor: 'rgba(255,255,255,0.025)',
+    backgroundColor: ADMIN.fondoCampo,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.055)',
+    borderColor: ADMIN.borde,
     borderRadius: 20,
     gap: 12,
   },
@@ -1465,10 +1541,22 @@ const estilos = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
-  sectorIndicator: {
-    width: 6,
-    height: 40,
-    borderRadius: 3,
+  sectorAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: BRAND.iconBright,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+  },
+  sectorAvatarText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: CONTRAST_TEXT,
+    marginTop: -1,
   },
   sectorTextBox: {
     flex: 1,
@@ -1477,7 +1565,7 @@ const estilos = StyleSheet.create({
   sectorName: {
     fontSize: 13,
     fontWeight: '900',
-    color: '#fff',
+    color: BRAND.textMain,
     textTransform: 'uppercase',
     letterSpacing: -0.3,
   },
@@ -1488,7 +1576,7 @@ const estilos = StyleSheet.create({
     marginTop: 3,
   },
   sectorLeadStrong: {
-    color: '#D1D5DB',
+    color: ADMIN.primario,
   },
   sectorCountPill: {
     minWidth: 34,
@@ -1522,8 +1610,8 @@ const estilos = StyleSheet.create({
     minHeight: 64,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.055)',
-    backgroundColor: 'rgba(255,255,255,0.025)',
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoCampo,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 14,
@@ -1619,9 +1707,9 @@ const estilos = StyleSheet.create({
   summaryItem: {
     padding: 12,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.025)',
+    backgroundColor: ADMIN.fondoCampo,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.055)',
+    borderColor: ADMIN.borde,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
@@ -1664,7 +1752,7 @@ const estilos = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(6,5,18,0.92)',
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 28,
@@ -1676,14 +1764,14 @@ const estilos = StyleSheet.create({
     backgroundColor: ADMIN.fondoElevado,
     borderRadius: ADMIN.radio,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: ADMIN.borde,
     overflow: 'hidden',
   },
   modalHeader: {
     padding: 28,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
-    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderBottomColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoCampo,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -1710,9 +1798,9 @@ const estilos = StyleSheet.create({
     borderRadius: ADMIN.radio,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: ADMIN.fondoCampo,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
+    borderColor: ADMIN.borde,
   },
   modalBody: {
     padding: 28,
@@ -1742,8 +1830,8 @@ const estilos = StyleSheet.create({
     height: 56,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: 'rgba(255,255,255,0.045)',
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoCampo,
     color: BRAND.textMain,
     paddingHorizontal: 16,
     fontSize: 13,
@@ -1759,8 +1847,8 @@ const estilos = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
-    backgroundColor: 'rgba(255,255,255,0.025)',
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoCampo,
   },
   selectorChipActivo: {
     backgroundColor: 'rgba(96,165,250,0.14)',
@@ -1793,8 +1881,8 @@ const estilos = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
-    backgroundColor: 'rgba(255,255,255,0.025)',
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoCampo,
   },
   permissionChipActive: {
     borderColor: 'rgba(34,197,94,0.28)',
@@ -1813,11 +1901,11 @@ const estilos = StyleSheet.create({
   modalFooter: {
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.06)',
+    borderTopColor: ADMIN.borde,
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: 12,
-    backgroundColor: 'rgba(255,255,255,0.035)',
+    backgroundColor: ADMIN.fondoCampo,
   },
   btnModalSecondary: {
     paddingHorizontal: 22,
@@ -1825,9 +1913,9 @@ const estilos = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: ADMIN.fondoCampo,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: ADMIN.borde,
   },
   btnModalSecondaryText: {
     color: BRAND.textSec,

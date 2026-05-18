@@ -63,4 +63,29 @@ export interface User {
   }[];
   puntos_recompensa?: number;
   createdAt?: string;
+
+  // Extensiones Nómina (El Salvador)
+  tipo_contrato?: 'tiempo_completo' | 'medio_tiempo' | 'temporal' | 'servicios_profesionales';
+  fecha_ingreso?: string;
+  banco?: string;
+  cuenta_bancaria?: string;
+  dui?: string;
+  nit?: string;
+  nup?: string;
+  isss_numero?: string;
+  afp_pertenece?: 'Crecer' | 'Confía' | 'IPSFA' | 'UPISSS';
+  bonos_recurrentes?: number;
+  comisiones_recurrentes?: number;
+  descuentos_recurrentes?: number;
+  documentos_url?: {
+    id: string;
+    nombre: string;
+    url: string;
+    fecha: string;
+  }[];
+
+  // Autenticación Empresarial
+  codigoEmpresa?: string;
+  usuarioInterno?: string;
+  passwordInterno?: string; // Nota: En producción esto debería ser un hash
 }

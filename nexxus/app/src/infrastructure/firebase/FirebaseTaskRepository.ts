@@ -1,7 +1,7 @@
 
 import { ITaskRepository } from '../../domain/repositories/ITaskRepository';
 import { Task } from '../../domain/entities/Task';
-import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 
 export class FirebaseTaskRepository implements ITaskRepository {
@@ -9,6 +9,13 @@ export class FirebaseTaskRepository implements ITaskRepository {
     const q = query(collection(db, 'tareas'), where('asignado_a', '==', userId));
     const snap = await getDocs(q);
     return snap.docs.map(d => ({ id: d.id, ...d.data() } as Task));
+  }
+
+  subscribeTasksByUser(userId: string, callback: (tasks: Task[]) => void): () => void {
+    const q = query(collection(db, 'tareas'), where('asignado_a', '==', userId));
+    return onSnapshot(q, (snap) => {
+      callback(snap.docs.map(d => ({ id: d.id, ...d.data() } as Task)));
+    });
   }
   async getTasksByCompany(empresaId: string): Promise<Task[]> {
     const q = query(collection(db, 'tareas'), where('empresaId', '==', empresaId));

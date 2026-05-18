@@ -12,6 +12,13 @@ export interface LoginDTO {
   password: string;
 }
 
+/** DTO para las credenciales de login empresarial */
+export interface LoginEmpresarialDTO {
+  codigoEmpresa: string;
+  usuario: string;
+  password: string;
+}
+
 /** DTO para el registro de un nuevo usuario */
 export interface RegisterDTO {
   correo: string;

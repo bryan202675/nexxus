@@ -12,12 +12,14 @@ import {
 import { MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import FondoAurora from '@/presentation/components/FondoAurora';
+import { useTranslation } from 'react-i18next';
 import { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/constants/diseno';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 
 interface Props { navigation: any; }
 
 export default function MisLogros({ navigation }: Props) {
+  const { t, i18n } = useTranslation();
   const { perfil, metrics } = useContextoUsuario();
 
   const insignias = perfil?.insignias || [
@@ -31,7 +33,7 @@ export default function MisLogros({ navigation }: Props) {
         <MaterialIcons name={item.icono} size={32} color={COLORES.primario} />
       </LinearGradient>
       <Text style={estilos.nombreInsignia}>{item.nombre}</Text>
-      <Text style={estilos.fechaInsignia}>{new Date(item.fecha_obtenida).toLocaleDateString()}</Text>
+      <Text style={estilos.fechaInsignia}>{new Date(item.fecha_obtenida).toLocaleDateString(i18n.language === 'es' ? 'es-SV' : 'en-US')}</Text>
     </View>
   );
 
@@ -43,21 +45,21 @@ export default function MisLogros({ navigation }: Props) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={estilos.botonRegresar}>
           <MaterialIcons name="arrow-back" size={24} color={COLORES.texto} />
         </TouchableOpacity>
-        <Text style={estilos.tituloPantalla}>Mis Logros</Text>
+        <Text style={estilos.tituloPantalla}>{t('misLogros.title')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={estilos.scroll} showsVerticalScrollIndicator={false}>
         <View style={estilos.panelPuntos}>
-          <Text style={estilos.labelPuntos}>Puntos Acumulados</Text>
+          <Text style={estilos.labelPuntos}>{t('misLogros.accumulated_points')}</Text>
           <Text style={estilos.valorPuntos}>{perfil?.puntos_recompensa || 1250}</Text>
           <View style={estilos.rachaContenedor}>
             <FontAwesome5 name="fire" size={16} color="#f97316" />
-            <Text style={estilos.textoRacha}>{metrics?.racha || 0} Días de Racha</Text>
+            <Text style={estilos.textoRacha}>{t('misLogros.streak_days', { count: metrics?.racha || 0 })}</Text>
           </View>
         </View>
 
-        <Text style={estilos.seccionTitulo}>Insignias Obtenidas</Text>
+        <Text style={estilos.seccionTitulo}>{t('misLogros.obtained_badges')}</Text>
         <FlatList
           data={insignias}
           keyExtractor={i => i.id}
@@ -65,16 +67,16 @@ export default function MisLogros({ navigation }: Props) {
           numColumns={3}
           scrollEnabled={false}
           columnWrapperStyle={estilos.filaInsignias}
-          ListEmptyComponent={<Text style={estilos.vacio}>Aún no has obtenido insignias. ¡Sigue trabajando!</Text>}
+          ListEmptyComponent={<Text style={estilos.vacio}>{t('misLogros.no_badges_msg')}</Text>}
         />
 
         <View style={estilos.proximoLogro}>
-          <Text style={estilos.tituloProx}>Próximo Logro</Text>
+          <Text style={estilos.tituloProx}>{t('misLogros.next_achievement')}</Text>
           <View style={estilos.infoProx}>
             <MaterialIcons name="stars" size={40} color={COLORES.borde} />
             <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={estilos.nombreProx}>Especialista Técnico</Text>
-              <Text style={estilos.descProx}>Completa 5 cursos de la categoría técnica.</Text>
+              <Text style={estilos.nombreProx}>{t('misLogros.tech_specialist')}</Text>
+              <Text style={estilos.descProx}>{t('misLogros.tech_specialist_desc')}</Text>
               <View style={estilos.barraFondo}>
                 <View style={[estilos.barraRelleno, { width: '60%' }]} />
               </View>

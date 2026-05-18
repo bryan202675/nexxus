@@ -15,12 +15,14 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/constants/diseno';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
+import { useTranslation } from 'react-i18next';
 import { useCases } from '@/infrastructure/firebase/container';
 import { ContextualMessage } from '@/domain/repositories/IFase2Repositories';
 
 interface Props { route: any; navigation: any; }
 
 export default function ChatContextual({ route, navigation }: Props) {
+  const { t, i18n } = useTranslation();
   const { origenRefId, titulo, tipoOrigen } = route.params;
   const { perfil, enviarMensajeChat } = useContextoUsuario();
   const [mensajes, setMessages] = useState<ContextualMessage[]>([]);
@@ -62,7 +64,7 @@ export default function ChatContextual({ route, navigation }: Props) {
         <View style={[estilos.burbuja, esMio ? estilos.miBurbuja : estilos.otraBurbuja]}>
           <Text style={[estilos.textoMensaje, esMio && { color: '#fff' }]}>{item.mensaje}</Text>
           <Text style={[estilos.hora, esMio && { color: 'rgba(255,255,255,0.7)' }]}>
-            {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            {new Date(item.timestamp).toLocaleTimeString(i18n.language === 'es' ? 'es-SV' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
           </Text>
         </View>
       </View>
@@ -101,7 +103,7 @@ export default function ChatContextual({ route, navigation }: Props) {
             style={estilos.input}
             value={texto}
             onChangeText={setTexto}
-            placeholder="Escribe un mensaje..."
+            placeholder={t('chatContextual.placeholder')}
             multiline
           />
           <TouchableOpacity style={estilos.botonEnviar} onPress={manejarEnvio}>

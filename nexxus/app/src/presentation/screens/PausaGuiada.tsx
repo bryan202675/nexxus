@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import FondoAurora from '@/presentation/components/FondoAurora';
 import { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/constants/diseno';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -23,15 +24,16 @@ interface Props {
   navigation: any;
 }
 
-const EJERCICIOS = [
-  { id: 'respiracion', titulo: 'Respiración Profunda', subtitulo: '4-7-8 para calmar el sistema nervioso', duracion: 120, icono: 'air' },
-  { id: 'estiramiento', titulo: 'Estiramiento Rápido', subtitulo: 'Libera tensión en cuello y hombros', duracion: 180, icono: 'accessibility' },
-  { id: 'reflexion', titulo: 'Reflexión Emocional', subtitulo: 'Conecta con tu momento actual', duracion: 60, icono: 'psychology' },
+const EJERCICIOS_KEYS = [
+  { id: 'respiracion', duracion: 120, icono: 'air' },
+  { id: 'estiramiento', duracion: 180, icono: 'accessibility' },
+  { id: 'reflexion', duracion: 60, icono: 'psychology' },
 ];
 
 export default function PausaGuiada({ navigation }: Props) {
+  const { t } = useTranslation();
   const { registrarPausaGuiada } = useContextoUsuario() as any; // Assuming we add this to context
-  const [ejercicio, setEjercicio] = useState<typeof EJERCICIOS[0] | null>(null);
+  const [ejercicio, setEjercicio] = useState<any | null>(null);
   const [activo, setActivo] = useState(false);
   const [segundos, setSegundos] = useState(0);
   
@@ -63,7 +65,7 @@ export default function PausaGuiada({ navigation }: Props) {
     };
   }, [activo, segundos]);
 
-  const iniciarEjercicio = (item: typeof EJERCICIOS[0]) => {
+  const iniciarEjercicio = (item: any) => {
     setEjercicio(item);
     setSegundos(item.duracion);
     setActivo(true);
@@ -82,8 +84,8 @@ export default function PausaGuiada({ navigation }: Props) {
           fecha: new Date().toISOString()
         });
       }
-      Alert.alert('¡Excelente!', 'Has completado tu pausa guiada. Tu mente te lo agradecerá.', [
-        { text: 'Aceptar', onPress: () => setEjercicio(null) }
+      Alert.alert(t('pausaGuiada.excellent_title'), t('pausaGuiada.completed_msg'), [
+        { text: t('pausaGuiada.accept'), onPress: () => setEjercicio(null) }
       ]);
     } catch (e) {
       setEjercicio(null);
@@ -109,8 +111,8 @@ export default function PausaGuiada({ navigation }: Props) {
         </View>
 
         <View style={estilos.cuerpoActivo}>
-          <Text style={estilos.tituloEjercicio}>{ejercicio.titulo}</Text>
-          <Text style={estilos.subtituloEjercicio}>{ejercicio.subtitulo}</Text>
+          <Text style={estilos.tituloEjercicio}>{t(`pausaGuiada.exercises.${ejercicio.id}.title`)}</Text>
+          <Text style={estilos.subtituloEjercicio}>{t(`pausaGuiada.exercises.${ejercicio.id}.subtitle`)}</Text>
 
           <View style={estilos.contenedorCirculo}>
             <Animated.View style={[estilos.circuloRespiracion, { transform: [{ scale: scaleAnim }] }]} />
@@ -118,12 +120,12 @@ export default function PausaGuiada({ navigation }: Props) {
           </View>
 
           <Text style={estilos.instruccion}>
-            {ejercicio.id === 'respiracion' ? (segundos % 8 > 4 ? 'Exhala lentamente...' : 'Inhala profundamente...') : 'Mantén la calma y enfócate...'}
+            {ejercicio.id === 'respiracion' ? (segundos % 8 > 4 ? t('pausaGuiada.exhale') : t('pausaGuiada.inhale')) : t('pausaGuiada.keep_calm')}
           </Text>
         </View>
 
         <TouchableOpacity style={estilos.botonDetener} onPress={finalizarPausa}>
-          <Text style={estilos.textoDetener}>Finalizar Sesión</Text>
+          <Text style={estilos.textoDetener}>{t('pausaGuiada.end_session')}</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -138,14 +140,14 @@ export default function PausaGuiada({ navigation }: Props) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={estilos.botonRegresar}>
           <MaterialIcons name="arrow-back" size={24} color={COLORES.texto} />
         </TouchableOpacity>
-        <Text style={estilos.tituloPantalla}>Pausa Guiada</Text>
+        <Text style={estilos.tituloPantalla}>{t('pausaGuiada.title')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={estilos.scroll}>
-        <Text style={estilos.intro}>Tómate un momento para recalibrar tu energía y enfoque.</Text>
+        <Text style={estilos.intro}>{t('pausaGuiada.intro')}</Text>
 
-        {EJERCICIOS.map((item) => (
+        {EJERCICIOS_KEYS.map((item) => (
           <TouchableOpacity 
             key={item.id} 
             style={estilos.tarjetaEjercicio}
@@ -155,11 +157,11 @@ export default function PausaGuiada({ navigation }: Props) {
               <MaterialIcons name={item.icono as any} size={32} color={COLORES.primario} />
             </View>
             <View style={estilos.infoEjercicio}>
-              <Text style={estilos.itemTitulo}>{item.titulo}</Text>
-              <Text style={estilos.itemSubtitulo}>{item.subtitulo}</Text>
+              <Text style={estilos.itemTitulo}>{t(`pausaGuiada.exercises.${item.id}.title`)}</Text>
+              <Text style={estilos.itemSubtitulo}>{t(`pausaGuiada.exercises.${item.id}.subtitle`)}</Text>
               <View style={estilos.itemMeta}>
                 <MaterialIcons name="timer" size={14} color={COLORES.textoSuave} />
-                <Text style={estilos.itemDuracion}>{item.duracion / 60} min</Text>
+                <Text style={estilos.itemDuracion}>{item.duracion / 60} {t('pausaGuiada.min_suffix')}</Text>
               </View>
             </View>
             <MaterialIcons name="play-circle-filled" size={40} color={COLORES.primario} />
@@ -167,8 +169,8 @@ export default function PausaGuiada({ navigation }: Props) {
         ))}
 
         <View style={estilos.resumenBienestar}>
-          <Text style={estilos.tituloResumen}>Tu Impacto</Text>
-          <Text style={estilos.textoResumen}>Las pausas cortas reducen el estrés en un 30% y mejoran la claridad mental.</Text>
+          <Text style={estilos.tituloResumen}>{t('pausaGuiada.impact_title')}</Text>
+          <Text style={estilos.textoResumen}>{t('pausaGuiada.impact_desc')}</Text>
         </View>
       </ScrollView>
     </SafeAreaView>

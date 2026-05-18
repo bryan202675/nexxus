@@ -50,25 +50,25 @@ export class GetWellnessMetrics {
 
   private generarInsightIA(checkIns: CheckIn[], nombre: string): string {
     if (checkIns.length === 0) {
-      return `¡Bienvenido, ${nombre}! Comienza tu primer check-in para que pueda darte insights personalizados.`;
+      return 'miPulso.insight_welcome';
     }
     const ultimo = checkIns[0];
     const tendencia = checkIns.slice(0, 3).map(c => c.energia === 'alto' ? 3 : c.energia === 'medio' ? 2 : 1);
     const promedio = tendencia.reduce((a, b) => a + b, 0) / tendencia.length;
     
     if (ultimo.nivelEstres === 'alto' || ultimo.nivelEstres === 'critico') {
-      return `${nombre}, he notado niveles altos de estrés en tu último registro. ¿Has considerado probar una pausa guiada?`;
+      return 'miPulso.insight_stress';
     }
 
     if (ultimo.calidadSueno < 3) {
-      return `Parece que no has descansado bien, ${nombre}. Prioriza hoy las tareas más sencillas si es posible.`;
+      return 'miPulso.insight_sleep';
     }
 
     if (ultimo.energia === 'alto' && promedio >= 2.5) {
-      return `¡Excelente racha, ${nombre}! Tu energía ha estado consistentemente alta. ¡Aprovecha este impulso!`;
+      return 'miPulso.insight_energy';
     }
     
-    return `Buen trabajo manteniendo tu registro diario, ${nombre}. Tu consistencia es clave para entender tu bienestar.`;
+    return 'miPulso.insight_default';
   }
 
   private generarDatosSemana(checkIns: CheckIn[]): { dia: string; energia: number; estres: number; sueno: number }[] {

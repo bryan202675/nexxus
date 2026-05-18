@@ -15,8 +15,11 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA } from '@/shared/constants/diseno';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
+import { useTranslation } from 'react-i18next';
 import { useCases } from '@/infrastructure/firebase/container';
 import { Course } from '@/domain/entities/Course';
+import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
+import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 
 interface Props {
   navigation: any;
@@ -25,15 +28,14 @@ interface Props {
 type CategoriaFiltro = 'todo' | Course['categoria'];
 type IconoFeather = React.ComponentProps<typeof Feather>['name'];
 
-const LABEL_CATEGORIA: Record<Course['categoria'], string> = {
-  onboarding: 'Onboarding',
-  tecnico: 'Técnico',
-  habilidades_blandas: 'Habilidades',
-  seguridad: 'Seguridad',
-};
+// Moved to component for i18n support
+// const LABEL_CATEGORIA: Record<Course['categoria'], string> = { ... };
 
 export default function CentroAprendizaje({ navigation }: Props) {
+  const { t } = useTranslation();
   const { perfil } = useContextoUsuario();
+  const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
+  const estilos = crearEstilosAprendizaje(colores, esOscuro);
   const [cursos, setCursos] = useState<Course[]>([]);
   const [cargando, setCargando] = useState(true);
   const [categoria, setCategoria] = useState<CategoriaFiltro>('todo');
@@ -92,11 +94,10 @@ export default function CentroAprendizaje({ navigation }: Props) {
       : 0;
 
     return [
-      { label: 'Cursos', valor: cursos.length.toString(), icono: 'book-open' as IconoFeather },
-      { label: 'En progreso', valor: enProgreso.toString(), icono: 'play-circle' as IconoFeather },
-      { label: 'Completados', valor: completados.toString(), icono: 'check-circle' as IconoFeather },
-      { label: 'Avance', valor: `${avanceGeneral}%`, icono: 'trending-up' as IconoFeather },
-      { label: 'Puntos', valor: (perfil?.puntos_recompensa || puntosDisponibles).toString(), icono: 'award' as IconoFeather },
+      { label: t('centroAprendizaje.summary.courses'), valor: cursos.length.toString(), icono: 'book-open' as IconoFeather, color: '#3B82F6' },
+      { label: t('centroAprendizaje.summary.in_progress'), valor: enProgreso.toString(), icono: 'play-circle' as IconoFeather, color: COLORES.alerta },
+      { label: t('centroAprendizaje.summary.completed'), valor: completados.toString(), icono: 'check-circle' as IconoFeather, color: '#22C55E' },
+      { label: t('centroAprendizaje.summary.progress'), valor: `${avanceGeneral}%`, icono: 'trending-up' as IconoFeather, color: '#06B6D4' },
     ];
   }, [cursos, progresoPorCurso, perfil?.puntos_recompensa]);
 
@@ -127,12 +128,12 @@ export default function CentroAprendizaje({ navigation }: Props) {
         activeOpacity={0.84}
         onPress={() => setCursoActivoId(item.id)}
       >
-        <BlurView intensity={18} tint="dark" style={estilos.tarjetaCursoContenido}>
+        <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.tarjetaCursoContenido}>
           <View style={estilos.headerTarjeta}>
             <View style={[estilos.badgeCategoria, { borderColor: color, backgroundColor: `${color}18` }]}>
-              <Text style={[estilos.textoBadge, { color }]}>{LABEL_CATEGORIA[item.categoria]}</Text>
+              <Text style={[estilos.textoBadge, { color }]}>{t(`centroAprendizaje.categories.${item.categoria}`)}</Text>
             </View>
-            <Text style={estilos.puntos}>{item.puntos || 0} pts</Text>
+            <Text style={estilos.puntos}>{t('centroAprendizaje.points_suffix', { count: item.puntos || 0 })}</Text>
           </View>
           <Text style={estilos.tituloCurso} numberOfLines={2}>{item.titulo}</Text>
           <Text style={estilos.descCurso} numberOfLines={2}>{item.descripcion}</Text>
@@ -151,49 +152,45 @@ export default function CentroAprendizaje({ navigation }: Props) {
     <SafeAreaView style={estilos.contenedor}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       <View style={estilos.fondoAbsoluto}>
-        <LinearGradient colors={[COLORES.fondoOscuro, COLORES.fondo]} style={StyleSheet.absoluteFill} />
-        <View style={estilos.luzFondo1} />
-        <View style={estilos.luzFondo2} />
+        <FondoMobilePremium />
       </View>
 
       <View style={estilos.header}>
-        <BlurView intensity={18} tint="dark" style={estilos.headerVidrio}>
+        <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.headerVidrio}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={estilos.botonRegresar} activeOpacity={0.8}>
-            <Feather name="arrow-left" size={19} color={COLORES.texto} />
+            <Feather name="arrow-left" size={19} color={colores.texto} />
           </TouchableOpacity>
           <View style={estilos.headerCentro}>
-            <Text style={estilos.tituloPantalla}>Capacitación</Text>
-            <Text style={estilos.subtituloPantalla}>Aprendizaje y progreso</Text>
+            <Text style={estilos.tituloPantalla}>{t('centroAprendizaje.title')}</Text>
+            <Text style={estilos.subtituloPantalla}>{t('centroAprendizaje.subtitle')}</Text>
           </View>
           <View style={estilos.iconoHeader}>
-            <Feather name="book-open" size={18} color={COLORES.textoSuave} />
+            <Feather name="book-open" size={18} color={colores.textoSuave} />
           </View>
         </BlurView>
       </View>
 
       <ScrollView contentContainerStyle={estilos.scroll} showsVerticalScrollIndicator={false}>
-        <View style={estilos.resumenHorizontal}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={estilos.resumenScroll}>
-            {resumen.map((item) => (
-              <View key={item.label} style={estilos.tarjetaResumen}>
-                <Feather name={item.icono} size={16} color={COLORES.textoSuave} />
-                <Text style={estilos.valorResumen}>{item.valor}</Text>
-                <Text style={estilos.labelResumen}>{item.label}</Text>
-              </View>
-            ))}
-          </ScrollView>
+        <View style={estilos.resumenGrid}>
+          {resumen.map((item) => (
+            <View key={item.label} style={estilos.tarjetaResumen}>
+              <Feather name={item.icono} size={16} color={item.color} />
+              <Text style={estilos.valorResumen}>{item.valor}</Text>
+              <Text style={estilos.labelResumen}>{item.label}</Text>
+            </View>
+          ))}
         </View>
 
         {cursoActivo && (
           <View style={estilos.tarjetaHero}>
-            <BlurView intensity={18} tint="dark" style={estilos.heroContenido}>
+            <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.heroContenido}>
               <View style={estilos.heroHeader}>
                 <View style={estilos.iconoHero}>
                   <MaterialIcons name="school" size={24} color={obtenerColorCat(cursoActivo.categoria)} />
                 </View>
                 <View style={estilos.heroMeta}>
-                  <Text style={estilos.heroEyebrow}>{LABEL_CATEGORIA[cursoActivo.categoria]}</Text>
-                  <Text style={estilos.heroPuntos}>{cursoActivo.puntos || 0} puntos</Text>
+                  <Text style={estilos.heroEyebrow}>{t(`centroAprendizaje.categories.${cursoActivo.categoria}`)}</Text>
+                  <Text style={estilos.heroPuntos}>{t('centroAprendizaje.points_full', { count: cursoActivo.puntos || 0 })}</Text>
                 </View>
               </View>
               <Text style={estilos.tituloHero}>{cursoActivo.titulo}</Text>
@@ -218,8 +215,8 @@ export default function CentroAprendizaje({ navigation }: Props) {
 
         <View style={estilos.seccion}>
           <View style={estilos.encabezadoSeccion}>
-            <Text style={estilos.seccionTitulo}>Rutas asignadas</Text>
-            <Text style={estilos.seccionMeta}>{cursosFiltrados.length} cursos</Text>
+            <Text style={estilos.seccionTitulo}>{t('centroAprendizaje.routes_assigned')}</Text>
+            <Text style={estilos.seccionMeta}>{t('centroAprendizaje.courses_count', { count: cursosFiltrados.length })}</Text>
           </View>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={estilos.filtros}>
@@ -228,8 +225,8 @@ export default function CentroAprendizaje({ navigation }: Props) {
               style={[estilos.chipFiltro, categoria === 'todo' && estilos.chipFiltroActivo]}
               activeOpacity={0.82}
             >
-              <Feather name="grid" size={13} color={categoria === 'todo' ? COLORES.texto : COLORES.textoSuave} />
-              <Text style={[estilos.textoFiltro, categoria === 'todo' && estilos.textoFiltroActivo]}>Todo</Text>
+              <Feather name="grid" size={13} color={categoria === 'todo' ? colores.texto : colores.textoSuave} />
+              <Text style={[estilos.textoFiltro, categoria === 'todo' && estilos.textoFiltroActivo]}>{t('centroAprendizaje.all')}</Text>
             </TouchableOpacity>
             {categoriasDisponibles.map((cat) => (
               <TouchableOpacity
@@ -238,17 +235,17 @@ export default function CentroAprendizaje({ navigation }: Props) {
                 style={[estilos.chipFiltro, categoria === cat && estilos.chipFiltroActivo]}
                 activeOpacity={0.82}
               >
-                <Feather name="tag" size={13} color={categoria === cat ? COLORES.texto : COLORES.textoSuave} />
-                <Text style={[estilos.textoFiltro, categoria === cat && estilos.textoFiltroActivo]}>{LABEL_CATEGORIA[cat]}</Text>
+                <Feather name="tag" size={13} color={categoria === cat ? colores.texto : colores.textoSuave} />
+                <Text style={[estilos.textoFiltro, categoria === cat && estilos.textoFiltroActivo]}>{t(`centroAprendizaje.categories.${cat}`)}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
 
           {cargando ? (
             <View style={estilos.estadoVacio}>
-              <BlurView intensity={18} tint="dark" style={estilos.estadoVacioContenido}>
-                <ActivityIndicator color={COLORES.primarioClaro} />
-                <Text style={estilos.textoVacio}>Cargando capacitación asignada...</Text>
+              <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.estadoVacioContenido}>
+                <ActivityIndicator color={COLORES.primario} />
+                <Text style={estilos.textoVacio}>{t('centroAprendizaje.loading_msg')}</Text>
               </BlurView>
             </View>
           ) : cursosFiltrados.length > 0 ? (
@@ -257,10 +254,10 @@ export default function CentroAprendizaje({ navigation }: Props) {
             </View>
           ) : (
             <View style={estilos.estadoVacio}>
-              <BlurView intensity={18} tint="dark" style={estilos.estadoVacioContenido}>
-                <Feather name="book" size={26} color={COLORES.textoSuave} />
-                <Text style={estilos.textoVacio}>No hay cursos asignados en esta categoría.</Text>
-                <Text style={estilos.textoVacioDetalle}>Cuando RRHH publique nuevas capacitaciones, aparecerán aquí.</Text>
+              <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.estadoVacioContenido}>
+                <Feather name="book" size={26} color={colores.textoSuave} />
+                <Text style={estilos.textoVacio}>{t('centroAprendizaje.no_courses')}</Text>
+                <Text style={estilos.textoVacioDetalle}>{t('centroAprendizaje.no_courses_detail')}</Text>
               </BlurView>
             </View>
           )}
@@ -269,11 +266,11 @@ export default function CentroAprendizaje({ navigation }: Props) {
         {cursoActivo && (
           <View style={estilos.seccion}>
             <View style={estilos.encabezadoSeccion}>
-              <Text style={estilos.seccionTitulo}>Módulos del curso</Text>
-              <Text style={estilos.seccionMeta}>{cursoActivo.modulos?.length || 0} módulos</Text>
+              <Text style={estilos.seccionTitulo}>{t('centroAprendizaje.course_modules')}</Text>
+              <Text style={estilos.seccionMeta}>{t('centroAprendizaje.modules_count', { count: cursoActivo.modulos?.length || 0 })}</Text>
             </View>
             <View style={estilos.modulosCard}>
-              <BlurView intensity={18} tint="dark" style={estilos.modulosContenido}>
+              <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.modulosContenido}>
                 {(cursoActivo.modulos || []).length > 0 ? cursoActivo.modulos.map((modulo, index) => (
                   <View key={`${modulo.titulo}-${index}`} style={estilos.moduloFila}>
                     <View style={estilos.numeroModulo}>
@@ -282,13 +279,13 @@ export default function CentroAprendizaje({ navigation }: Props) {
                     <View style={estilos.infoModulo}>
                       <Text style={estilos.tituloModulo}>{modulo.titulo}</Text>
                       <Text style={estilos.tipoModulo}>
-                        {modulo.video_url ? 'Video disponible' : modulo.contenido_texto ? 'Lectura disponible' : 'Contenido pendiente'}
+                        {modulo.video_url ? t('centroAprendizaje.module_types.video') : modulo.contenido_texto ? t('centroAprendizaje.module_types.reading') : t('centroAprendizaje.module_types.pending')}
                       </Text>
                     </View>
-                    <Feather name={modulo.video_url ? 'play-circle' : 'file-text'} size={18} color={COLORES.textoSuave} />
+                    <Feather name={modulo.video_url ? 'play-circle' : 'file-text'} size={18} color={colores.textoSuave} />
                   </View>
                 )) : (
-                  <Text style={estilos.textoVacioInline}>Este curso aún no tiene módulos publicados.</Text>
+                  <Text style={estilos.textoVacioInline}>{t('centroAprendizaje.no_modules')}</Text>
                 )}
               </BlurView>
             </View>
@@ -301,69 +298,74 @@ export default function CentroAprendizaje({ navigation }: Props) {
   );
 }
 
-const estilos = StyleSheet.create({
-  contenedor: { flex: 1, backgroundColor: COLORES.fondo },
-  fondoAbsoluto: { ...StyleSheet.absoluteFillObject, zIndex: -1, overflow: 'hidden' },
-  luzFondo1: { position: 'absolute', top: -100, left: -100, width: 300, height: 300, borderRadius: 150, backgroundColor: COLORES.primario, opacity: 0.14 },
-  luzFondo2: { position: 'absolute', top: '31%', right: -160, width: 390, height: 390, borderRadius: 195, backgroundColor: COLORES.primarioFuerte, opacity: 0.12 },
-  header: { paddingHorizontal: ESPACIADO.lg, paddingTop: Platform.OS === 'ios' ? ESPACIADO.sm : ESPACIADO.lg, paddingBottom: ESPACIADO.sm },
-  headerVidrio: { minHeight: 72, borderRadius: RADIOS.xl, overflow: 'hidden', borderWidth: 1, borderColor: COLORES.borde, backgroundColor: 'rgba(255,255,255,0.035)', flexDirection: 'row', alignItems: 'center', paddingHorizontal: ESPACIADO.md, gap: ESPACIADO.sm },
-  botonRegresar: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.045)', borderWidth: 1, borderColor: COLORES.borde, alignItems: 'center', justifyContent: 'center' },
-  headerCentro: { flex: 1 },
-  tituloPantalla: { ...TIPOGRAFIA.tituloTarjeta, color: COLORES.texto, fontSize: 21, letterSpacing: -0.3 },
-  subtituloPantalla: { ...TIPOGRAFIA.micro, color: COLORES.textoSuave, marginTop: 2 },
-  iconoHeader: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.035)', borderWidth: 1, borderColor: COLORES.borde },
-  scroll: { paddingHorizontal: ESPACIADO.lg, paddingTop: ESPACIADO.sm },
-  resumenHorizontal: { marginBottom: ESPACIADO.lg },
-  resumenScroll: { gap: ESPACIADO.sm },
-  tarjetaResumen: { width: 118, minHeight: 104, borderRadius: RADIOS.xl, padding: ESPACIADO.md, backgroundColor: 'rgba(255,255,255,0.035)', borderWidth: 1, borderColor: COLORES.borde, justifyContent: 'space-between' },
-  valorResumen: { ...TIPOGRAFIA.tituloPantalla, color: COLORES.texto, fontSize: 26, lineHeight: 30 },
-  labelResumen: { ...TIPOGRAFIA.micro, color: COLORES.textoSuave, fontSize: 10 },
-  tarjetaHero: { borderRadius: RADIOS.xxl, overflow: 'hidden', borderWidth: 1, borderColor: COLORES.borde, backgroundColor: 'rgba(255,255,255,0.025)', marginBottom: ESPACIADO.xl },
-  heroContenido: { padding: ESPACIADO.lg },
-  heroHeader: { flexDirection: 'row', alignItems: 'center', gap: ESPACIADO.md, marginBottom: ESPACIADO.md },
-  iconoHero: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: COLORES.borde },
-  heroMeta: { flex: 1 },
-  heroEyebrow: { ...TIPOGRAFIA.micro, color: COLORES.textoSuave, fontSize: 10 },
-  heroPuntos: { ...TIPOGRAFIA.leyenda, color: COLORES.texto, marginTop: 2 },
-  tituloHero: { ...TIPOGRAFIA.tituloSeccion, color: COLORES.texto, fontSize: 24, letterSpacing: -0.5 },
-  descHero: { ...TIPOGRAFIA.cuerpoPequeno, color: COLORES.textoSecundario, marginTop: ESPACIADO.xs },
-  heroFooter: { flexDirection: 'row', alignItems: 'center', gap: ESPACIADO.sm, marginTop: ESPACIADO.lg },
-  heroProgreso: { ...TIPOGRAFIA.leyenda, color: COLORES.texto },
-  seccion: { marginBottom: ESPACIADO.xl },
-  encabezadoSeccion: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: ESPACIADO.md },
-  seccionTitulo: { ...TIPOGRAFIA.tituloTarjeta, color: COLORES.texto, fontSize: 17 },
-  seccionMeta: { ...TIPOGRAFIA.micro, color: COLORES.textoSuave, fontSize: 10 },
-  filtros: { gap: ESPACIADO.xs, paddingBottom: ESPACIADO.md },
-  chipFiltro: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 13, paddingVertical: 9, borderRadius: RADIOS.completo, backgroundColor: 'rgba(255,255,255,0.025)', borderWidth: 1, borderColor: COLORES.borde },
-  chipFiltroActivo: { backgroundColor: 'rgba(124,58,237,0.18)', borderColor: 'rgba(139,92,246,0.38)' },
-  textoFiltro: { ...TIPOGRAFIA.micro, color: COLORES.textoSuave, fontSize: 10 },
-  textoFiltroActivo: { color: COLORES.texto },
-  listaCursos: { gap: ESPACIADO.md },
-  tarjetaCurso: { borderRadius: RADIOS.xl, overflow: 'hidden', borderWidth: 1, borderColor: COLORES.borde, backgroundColor: 'rgba(255,255,255,0.025)' },
-  tarjetaCursoActiva: { borderColor: 'rgba(139,92,246,0.42)' },
-  tarjetaCursoContenido: { padding: ESPACIADO.lg },
-  headerTarjeta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: ESPACIADO.sm },
-  badgeCategoria: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: RADIOS.completo, borderWidth: 1 },
-  textoBadge: { ...TIPOGRAFIA.micro, fontSize: 9 },
-  puntos: { ...TIPOGRAFIA.micro, color: COLORES.textoSuave, fontSize: 10 },
-  tituloCurso: { ...TIPOGRAFIA.tituloTarjeta, color: COLORES.texto, fontSize: 17 },
-  descCurso: { ...TIPOGRAFIA.cuerpoPequeno, color: COLORES.textoSecundario, marginTop: 5 },
-  footerCurso: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: ESPACIADO.md },
-  barraProgresoFondo: { flex: 1, height: 6, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden' },
-  barraProgresoRelleno: { height: '100%', borderRadius: 4 },
-  textoProgreso: { ...TIPOGRAFIA.micro, color: COLORES.texto, fontSize: 10 },
-  estadoVacio: { borderRadius: RADIOS.xl, overflow: 'hidden', borderWidth: 1, borderColor: COLORES.borde, backgroundColor: 'rgba(255,255,255,0.025)' },
-  estadoVacioContenido: { minHeight: 140, alignItems: 'center', justifyContent: 'center', padding: ESPACIADO.xl },
-  textoVacio: { ...TIPOGRAFIA.leyenda, color: COLORES.texto, marginTop: ESPACIADO.md, textAlign: 'center' },
-  textoVacioDetalle: { ...TIPOGRAFIA.cuerpoPequeno, color: COLORES.textoSuave, textAlign: 'center', marginTop: ESPACIADO.xs },
-  modulosCard: { borderRadius: RADIOS.xl, overflow: 'hidden', borderWidth: 1, borderColor: COLORES.borde, backgroundColor: 'rgba(255,255,255,0.025)' },
-  modulosContenido: { padding: ESPACIADO.md, gap: ESPACIADO.sm },
-  moduloFila: { flexDirection: 'row', alignItems: 'center', gap: ESPACIADO.sm, paddingVertical: ESPACIADO.xs },
-  numeroModulo: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(124,58,237,0.13)', borderWidth: 1, borderColor: 'rgba(139,92,246,0.25)' },
-  textoNumeroModulo: { ...TIPOGRAFIA.micro, color: COLORES.texto, fontSize: 10 },
-  infoModulo: { flex: 1 },
-  tituloModulo: { ...TIPOGRAFIA.leyenda, color: COLORES.texto },
-  tipoModulo: { ...TIPOGRAFIA.cuerpoPequeno, color: COLORES.textoSuave, marginTop: 2 },
-  textoVacioInline: { ...TIPOGRAFIA.cuerpoPequeno, color: COLORES.textoSuave, textAlign: 'center', paddingVertical: ESPACIADO.md },
-});
+function crearEstilosAprendizaje(c: any, esOscuro: boolean) {
+  const glass = esOscuro ? 'rgba(255,255,255,0.025)' : 'rgba(255,255,255,0.78)';
+  const glassMini = esOscuro ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.6)';
+  const glassMicro = esOscuro ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.5)';
+  return StyleSheet.create({
+    contenedor: { flex: 1, backgroundColor: c.fondo },
+    fondoAbsoluto: { ...StyleSheet.absoluteFillObject, zIndex: -1, overflow: 'hidden' },
+    header: { paddingHorizontal: ESPACIADO.lg, paddingTop: Platform.OS === 'ios' ? ESPACIADO.sm : ESPACIADO.lg, paddingBottom: ESPACIADO.sm },
+    headerVidrio: { minHeight: 72, borderRadius: RADIOS.xl, overflow: 'hidden', borderWidth: 1, borderColor: c.borde, backgroundColor: glassMini, flexDirection: 'row', alignItems: 'center', paddingHorizontal: ESPACIADO.md, gap: ESPACIADO.sm },
+    botonRegresar: { width: 38, height: 38, borderRadius: 19, backgroundColor: glassMicro, borderWidth: 1, borderColor: c.borde, alignItems: 'center', justifyContent: 'center' },
+    headerCentro: { flex: 1 },
+    tituloPantalla: { ...TIPOGRAFIA.tituloTarjeta, color: c.texto, fontSize: 21, letterSpacing: -0.3 },
+    subtituloPantalla: { ...TIPOGRAFIA.micro, color: c.textoSuave, marginTop: 2 },
+    iconoHeader: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: glassMicro, borderWidth: 1, borderColor: c.borde },
+    scroll: { paddingHorizontal: ESPACIADO.lg, paddingTop: ESPACIADO.sm },
+    resumenGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: ESPACIADO.sm, marginBottom: ESPACIADO.lg },
+    tarjetaResumen: { width: '48.5%', minHeight: 96, borderRadius: RADIOS.xl, padding: ESPACIADO.md, backgroundColor: glassMini, borderWidth: 1, borderColor: c.borde, justifyContent: 'space-between' },
+    valorResumen: { ...TIPOGRAFIA.tituloPantalla, color: c.texto, fontSize: 26, lineHeight: 30 },
+    labelResumen: { ...TIPOGRAFIA.micro, color: c.textoSuave, fontSize: 10 },
+    tarjetaHero: { borderRadius: RADIOS.xxl, overflow: 'hidden', borderWidth: 1, borderColor: c.borde, backgroundColor: glass, marginBottom: ESPACIADO.xl },
+    heroContenido: { padding: ESPACIADO.lg },
+    heroHeader: { flexDirection: 'row', alignItems: 'center', gap: ESPACIADO.md, marginBottom: ESPACIADO.md },
+    iconoHero: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: glassMicro, borderWidth: 1, borderColor: c.borde },
+    heroMeta: { flex: 1 },
+    heroEyebrow: { ...TIPOGRAFIA.micro, color: c.textoSuave, fontSize: 10 },
+    heroPuntos: { ...TIPOGRAFIA.leyenda, color: c.texto, marginTop: 2 },
+    tituloHero: { ...TIPOGRAFIA.tituloSeccion, color: c.texto, fontSize: 24, letterSpacing: -0.5 },
+    descHero: { ...TIPOGRAFIA.cuerpoPequeno, color: c.textoSecundario, marginTop: ESPACIADO.xs },
+    heroFooter: { flexDirection: 'row', alignItems: 'center', gap: ESPACIADO.sm, marginTop: ESPACIADO.lg },
+    heroProgreso: { ...TIPOGRAFIA.leyenda, color: c.texto },
+    seccion: { marginBottom: ESPACIADO.xl },
+    encabezadoSeccion: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: ESPACIADO.md },
+    seccionTitulo: { ...TIPOGRAFIA.tituloTarjeta, color: c.texto, fontSize: 17 },
+    seccionMeta: { ...TIPOGRAFIA.micro, color: c.textoSuave, fontSize: 10 },
+    filtros: { gap: ESPACIADO.xs, paddingBottom: ESPACIADO.md },
+    chipFiltro: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 13, paddingVertical: 9, borderRadius: RADIOS.completo, backgroundColor: glass, borderWidth: 1, borderColor: c.borde },
+    chipFiltroActivo: { backgroundColor: 'rgba(124,58,237,0.18)', borderColor: 'rgba(139,92,246,0.38)' },
+    textoFiltro: { ...TIPOGRAFIA.micro, color: c.textoSuave, fontSize: 10 },
+    textoFiltroActivo: { color: c.texto },
+    listaCursos: { gap: ESPACIADO.md },
+    tarjetaCurso: { borderRadius: RADIOS.xl, overflow: 'hidden', borderWidth: 1, borderColor: c.borde, backgroundColor: glass },
+    tarjetaCursoActiva: { borderColor: 'rgba(139,92,246,0.42)' },
+    tarjetaCursoContenido: { padding: ESPACIADO.lg },
+    headerTarjeta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: ESPACIADO.sm },
+    badgeCategoria: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: RADIOS.completo, borderWidth: 1 },
+    textoBadge: { ...TIPOGRAFIA.micro, fontSize: 9 },
+    puntos: { ...TIPOGRAFIA.micro, color: c.textoSuave, fontSize: 10 },
+    tituloCurso: { ...TIPOGRAFIA.tituloTarjeta, color: c.texto, fontSize: 17 },
+    descCurso: { ...TIPOGRAFIA.cuerpoPequeno, color: c.textoSecundario, marginTop: 5 },
+    footerCurso: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: ESPACIADO.md },
+    barraProgresoFondo: { flex: 1, height: 6, backgroundColor: esOscuro ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)', borderRadius: 4, overflow: 'hidden' },
+    barraProgresoRelleno: { height: '100%', borderRadius: 4 },
+    textoProgreso: { ...TIPOGRAFIA.micro, color: c.texto, fontSize: 10 },
+    estadoVacio: { borderRadius: RADIOS.xl, overflow: 'hidden', borderWidth: 1, borderColor: c.borde, backgroundColor: glass },
+    estadoVacioContenido: { minHeight: 140, alignItems: 'center', justifyContent: 'center', padding: ESPACIADO.xl },
+    textoVacio: { ...TIPOGRAFIA.leyenda, color: c.texto, marginTop: ESPACIADO.md, textAlign: 'center' },
+    textoVacioDetalle: { ...TIPOGRAFIA.cuerpoPequeno, color: c.textoSuave, textAlign: 'center', marginTop: ESPACIADO.xs },
+    modulosCard: { borderRadius: RADIOS.xl, overflow: 'hidden', borderWidth: 1, borderColor: c.borde, backgroundColor: glass },
+    modulosContenido: { padding: ESPACIADO.md, gap: ESPACIADO.sm },
+    moduloFila: { flexDirection: 'row', alignItems: 'center', gap: ESPACIADO.sm, paddingVertical: ESPACIADO.xs },
+    numeroModulo: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(124,58,237,0.13)', borderWidth: 1, borderColor: 'rgba(139,92,246,0.25)' },
+    textoNumeroModulo: { ...TIPOGRAFIA.micro, color: c.texto, fontSize: 10 },
+    infoModulo: { flex: 1 },
+    tituloModulo: { ...TIPOGRAFIA.leyenda, color: c.texto },
+    tipoModulo: { ...TIPOGRAFIA.cuerpoPequeno, color: c.textoSuave, marginTop: 2 },
+    textoVacioInline: { ...TIPOGRAFIA.cuerpoPequeno, color: c.textoSuave, textAlign: 'center', paddingVertical: ESPACIADO.md },
+  });
+}
+
+
+

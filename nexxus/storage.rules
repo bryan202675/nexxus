@@ -14,6 +14,12 @@ service firebase.storage {
       allow write: if autenticado() && request.auth.uid == userId;
     }
 
+    // Permitir lectura/escritura en la carpeta de perfiles
+    match /perfiles/{userId}/{allPaths=**} {
+      allow read: if autenticado();
+      allow write: if autenticado() && request.auth.uid == userId;
+    }
+
     // Regla global por defecto: bloquea todo lo demás para mantener máxima seguridad
     match /{allPaths=**} {
       allow read, write: if false;

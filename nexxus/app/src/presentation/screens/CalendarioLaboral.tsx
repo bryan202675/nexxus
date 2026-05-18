@@ -4,10 +4,11 @@ import { MaterialIcons } from '@expo/vector-icons';
 import FondoAurora from '@/presentation/components/FondoAurora';
 import { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/constants/diseno';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
+import { useTranslation } from 'react-i18next';
 
 interface Props { navigation: any; }
 
-const DIAS_SEMANA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const DIAS_SEMANA_KEYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
 function generarDias(mes: number, anio: number) {
   const inicio = new Date(anio, mes, 1);
@@ -20,6 +21,7 @@ function generarDias(mes: number, anio: number) {
 }
 
 export default function CalendarioLaboral({ navigation }: Props) {
+  const { t, i18n } = useTranslation();
   const { tareas, solicitudes, citas } = useContextoUsuario();
   const hoy = new Date();
   const [mes, setMes] = useState(hoy.getMonth());
@@ -54,14 +56,14 @@ export default function CalendarioLaboral({ navigation }: Props) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={estilos.botonRegresar}>
           <MaterialIcons name="arrow-back" size={24} color={COLORES.texto} />
         </TouchableOpacity>
-        <Text style={estilos.tituloPantalla}>Calendario</Text>
+        <Text style={estilos.tituloPantalla}>{t('calendarioLaboral.title')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={estilos.scroll}>
         <View style={estilos.calendario}>
           <View style={estilos.cabeceraCal}>
-            <Text style={estilos.mesLabel}>{new Date(anio, mes).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' }).toUpperCase()}</Text>
+            <Text style={estilos.mesLabel}>{new Date(anio, mes).toLocaleDateString(i18n.language === 'es' ? 'es-MX' : 'en-US', { month: 'long', year: 'numeric' }).toUpperCase()}</Text>
             <View style={estilos.navMes}>
               <TouchableOpacity onPress={() => cambiarMes(-1)} style={estilos.btnNav}><MaterialIcons name="chevron-left" size={24} color={COLORES.primario} /></TouchableOpacity>
               <TouchableOpacity onPress={() => cambiarMes(1)} style={estilos.btnNav}><MaterialIcons name="chevron-right" size={24} color={COLORES.primario} /></TouchableOpacity>
@@ -69,7 +71,7 @@ export default function CalendarioLaboral({ navigation }: Props) {
           </View>
           
           <View style={estilos.gridDiasNombre}>
-            {DIAS_SEMANA.map(d => <Text key={d} style={estilos.nombreDia}>{d}</Text>)}
+            {DIAS_SEMANA_KEYS.map(d => <Text key={d} style={estilos.nombreDia}>{t(`calendarioLaboral.days.${d}`)}</Text>)}
           </View>
           
           <View style={estilos.gridDias}>
@@ -86,7 +88,7 @@ export default function CalendarioLaboral({ navigation }: Props) {
           </View>
         </View>
 
-        <Text style={estilos.subtitulo}>Agenda para el {diaSel} de {new Date(anio, mes).toLocaleDateString('es-MX', { month: 'long' })}</Text>
+        <Text style={estilos.subtitulo}>{t('calendarioLaboral.agenda_for', { day: diaSel, month: new Date(anio, mes).toLocaleDateString(i18n.language === 'es' ? 'es-MX' : 'en-US', { month: 'long' }) })}</Text>
         
         {eventosDelDia.length > 0 ? (
           eventosDelDia.map((ev: any, idx) => (
@@ -94,12 +96,12 @@ export default function CalendarioLaboral({ navigation }: Props) {
               <View style={[estilos.indicador, { backgroundColor: ev.tipoEvento === 'tarea' ? COLORES.primario : ev.tipoEvento === 'ausencia' ? COLORES.alerta : COLORES.exito }]} />
               <View style={estilos.infoEvento}>
                 <Text style={estilos.tituloEvento}>{ev.titulo || ev.asunto || ev.motivo}</Text>
-                <Text style={estilos.descEvento}>{ev.tipoEvento.toUpperCase()}</Text>
+                <Text style={estilos.descEvento}>{t(`calendarioLaboral.event_types.${ev.tipoEvento}`)}</Text>
               </View>
             </View>
           ))
         ) : (
-          <Text style={estilos.vacio}>No hay eventos registrados para este día.</Text>
+          <Text style={estilos.vacio}>{t('calendarioLaboral.no_events')}</Text>
         )}
       </ScrollView>
     </SafeAreaView>

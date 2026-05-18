@@ -13,6 +13,7 @@ import { FirebaseCourseRepository } from './FirebaseCourseRepository';
 import { GetTasks } from '@/application/use-cases/tasks/GetTasks';
 import { CreateTask } from '@/application/use-cases/tasks/CreateTask';
 import { UpdateTask } from '@/application/use-cases/tasks/UpdateTask';
+import { SubscribeTasks } from '@/application/use-cases/tasks/SubscribeTasks';
 
 import { GetAbsences } from '@/application/use-cases/absences/GetAbsences';
 import { CreateAbsence } from '@/application/use-cases/absences/CreateAbsence';
@@ -41,6 +42,7 @@ import { FirebaseInboxRepository } from './FirebaseInboxRepository';
 import { FirebaseInternalRequestRepository, FirebaseChatContextualRepository } from './FirebaseFase2Repositories';
 
 import { LoginUser } from '@/application/use-cases/auth/LoginUser';
+import { LoginEmpresarial } from '@/application/use-cases/auth/LoginEmpresarial';
 import { LogoutUser } from '@/application/use-cases/auth/LogoutUser';
 import { GetCurrentUser } from '@/application/use-cases/auth/GetCurrentUser';
 import { RecordCheckIn } from '@/application/use-cases/wellness/RecordCheckIn';
@@ -85,6 +87,7 @@ const courseRepository = new FirebaseCourseRepository();
 export const useCases = {
   auth: {
     login: new LoginUser(authRepository),
+    loginEmpresarial: new LoginEmpresarial(authRepository),
     logout: new LogoutUser(authRepository),
     getCurrentUser: new GetCurrentUser(authRepository),
   },
@@ -98,6 +101,7 @@ export const useCases = {
     getTasks: new GetTasks(taskRepository),
     createTask: new CreateTask(taskRepository),
     updateTask: new UpdateTask(taskRepository),
+    subscribe: new SubscribeTasks(taskRepository),
   },
   absences: {
     getAbsences: new GetAbsences(absenceRepository),

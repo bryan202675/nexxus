@@ -25,6 +25,9 @@
     },
     "web": {
       "favicon": "./assets/logozz.png"
-    }
+    },
+    "plugins": [
+      "expo-localization"
+    ]
   }
 }

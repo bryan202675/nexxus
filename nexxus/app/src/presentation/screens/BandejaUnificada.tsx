@@ -14,13 +14,16 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORES, ESPACIADO, TIPOGRAFIA } from '@/shared/constants/diseno';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
+import { useTranslation } from 'react-i18next';
 import { InboxItem } from '@/domain/entities/Inbox';
+import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
 
 interface Props {
   navigation: any;
 }
 
 export default function BandejaUnificada({ navigation }: Props) {
+  const { t, i18n } = useTranslation();
   const { inboxItems, resolverItemInbox } = useContextoUsuario();
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -34,7 +37,7 @@ export default function BandejaUnificada({ navigation }: Props) {
         navigation.navigate('MisTareas');
         break;
       case 'aprobacion':
-        Alert.alert('Aprobación', 'Esta acción será procesada.');
+        Alert.alert(t('bandejaUnificada.approval_alert_title'), t('bandejaUnificada.approval_alert_msg'));
         break;
       default:
         break;
@@ -60,11 +63,11 @@ export default function BandejaUnificada({ navigation }: Props) {
             <View style={estilos.remitenteContainer}>
               <Feather name={obtenerIcono(item.tipo) as any} size={14} color={isUrgente ? '#EF4444' : COLORES.textoSuave} />
               <Text style={[estilos.tipoTexto, isUrgente && estilos.textoUrgenteColor]}>
-                {obtenerTextoTipo(item.tipo).toUpperCase()}
+                {t(`bandejaUnificada.types.${item.tipo || 'general'}`)}
               </Text>
             </View>
             <Text style={estilos.tiempo}>
-              {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {new Date(item.timestamp).toLocaleTimeString(i18n.language === 'es' ? 'es-SV' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
             </Text>
           </View>
           
@@ -96,7 +99,7 @@ export default function BandejaUnificada({ navigation }: Props) {
     <SafeAreaView style={estilos.contenedor}>
       <StatusBar barStyle="light-content" />
       <View style={estilos.fondoAbsoluto}>
-        <LinearGradient colors={[COLORES.fondoOscuro, COLORES.fondo]} style={StyleSheet.absoluteFill} />
+        <FondoMobilePremium />
       </View>
       
       <View style={estilos.headerCompacto}>
@@ -113,9 +116,9 @@ export default function BandejaUnificada({ navigation }: Props) {
             </TouchableOpacity>
           </View>
         </View>
-        <Text style={estilos.tituloPantalla}>Inbox</Text>
+        <Text style={estilos.tituloPantalla}>{t('bandejaUnificada.title')}</Text>
         <Text style={estilos.subtitulo}>
-          {inboxItems.length === 0 ? 'Estás al día' : `${inboxItems.length} pendientes`}
+          {inboxItems.length === 0 ? t('bandejaUnificada.all_clear') : t('bandejaUnificada.pending_items', { count: inboxItems.length })}
         </Text>
       </View>
 
@@ -129,7 +132,7 @@ export default function BandejaUnificada({ navigation }: Props) {
         ListEmptyComponent={
           <View style={estilos.vacio}>
             <Feather name="check" size={48} color={COLORES.bordeFuerte} />
-            <Text style={estilos.textoVacio}>Bandeja vacía. Todo al día.</Text>
+            <Text style={estilos.textoVacio}>{t('bandejaUnificada.empty_msg')}</Text>
           </View>
         }
       />

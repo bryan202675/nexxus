@@ -1,4 +1,5 @@
 import React, { createContext, useContext, ReactNode, useEffect, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/presentation/hooks/useAuth';
 import { useWellness } from '@/presentation/hooks/useWellness';
 import { User } from '@/domain/entities/User';
@@ -41,6 +42,7 @@ interface EstadoContextoUsuario {
 
   // Acciones Auth/Wellness
   login: (dto: LoginDTO) => Promise<User>;
+  loginEmpresarial: (dto: any) => Promise<User>;
   cerrarSesion: () => Promise<void>;
   registrarCheckIn: (dto: CreateCheckInDTO) => Promise<void>;
   registrarPausaGuiada: (dto: any) => Promise<void>;
@@ -73,7 +75,8 @@ const obtenerEmpresaId = (user: User | null | undefined) => {
 };
 
 export function ProveedorUsuario({ children }: { children: ReactNode }) {
-  const { user, loading: authLoading, error: authError, login, logout, isAuthenticated } = useAuth();
+  const { t, i18n } = useTranslation();
+  const { user, isAuthenticated, loading: authLoading, error: authError, login, loginEmpresarial, logout, updateUser } = useAuth();
   const { metrics, loading: wellnessLoading, fetchMetrics, recordCheckIn } = useWellness(user?.id, user?.nombre);
 
   const [tareas, setTareas] = useState<Task[]>([]);
@@ -91,10 +94,16 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      const unsubscribe = useCases.inbox.subscribe.execute(user.id, (items) => {
+      const unsubInbox = useCases.inbox.subscribe.execute(user.id, (items) => {
         setInboxItems(items);
       });
-      return () => unsubscribe();
+      const unsubTasks = useCases.tasks.subscribe.execute(user.id, (t) => {
+        setTareas(t);
+      });
+      return () => {
+        unsubInbox();
+        unsubTasks();
+      };
     }
   }, [isAuthenticated, user]);
 
@@ -245,6 +254,7 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
     try {
       const url = await subirFotoPerfil(user.id, blob);
       await useCases.admin.updateUserProfile.execute(user.id, { foto_perfil: url });
+      updateUser({ ...user, foto_perfil: url });
       await fetchSaaSData();
     } catch (e) {
       console.error('Error actualizando foto de perfil:', e);
@@ -253,7 +263,11 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
   };
 
   const generarResumenJornada = async () => {
-    return `Jornada del ${new Date().toLocaleDateString()}: ${tareas.length} tareas procesadas y ${notificaciones.filter(n => !n.leida).length} notificaciones pendientes.`;
+    return t('miPulso.summary_jornada', { 
+      date: new Date().toLocaleDateString(i18n.language === 'es' ? 'es-MX' : 'en-US'), 
+      tasks: tareas.length, 
+      notifications: notificaciones.filter(n => !n.leida).length 
+    });
   };
 
   const alertasNoLeidas = notificaciones.filter(n => !n.leida).length;
@@ -262,7 +276,7 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
     perfil: user,
     uidUsuario: user?.id || null,
     autenticado: isAuthenticated,
-    cargando: authLoading || wellnessLoading || cargandoSaaS,
+    cargando: authLoading,
     error: authError,
     metrics,
     tareas,
@@ -278,6 +292,7 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
     especialistas,
     alertasNoLeidas,
     login,
+    loginEmpresarial,
     cerrarSesion: logout,
     registrarCheckIn: async (dto) => { await recordCheckIn(dto); await fetchMetrics(); },
     registrarPausaGuiada,

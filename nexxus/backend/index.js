@@ -15,10 +15,26 @@ exports.crearEmpresaAdmin = onCall({ cors: true }, async (request) => {
       displayName: nombreAdmin,
     });
 
+    // Generar un código de acceso de empresa único (ej. NEX-4927)
+    let codigo = '';
+    let unico = false;
+    const prefix = (nombreEmpresa || 'EMP').replace(/[^a-zA-Z]/g, '').substring(0, 3).toUpperCase() || 'EMP';
+    let attempts = 0;
+    while (!unico && attempts < 10) {
+      const num = Math.floor(1000 + Math.random() * 9000);
+      codigo = `${prefix}-${num}`;
+      const dup = await admin.firestore().collection('empresas').where('codigo', '==', codigo).get();
+      if (dup.empty) {
+        unico = true;
+      }
+      attempts++;
+    }
+
     const empresaRef = admin.firestore().collection('empresas').doc();
     await empresaRef.set({
       id: empresaRef.id,
       nombre: nombreEmpresa,
+      codigo: codigo || `${prefix}-1111`,
       giro: giroActividad || '',
       tamanoEquipo: tamanoEquipo || '',
       adminId: userRecord.uid,

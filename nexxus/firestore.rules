@@ -39,7 +39,7 @@ service cloud.firestore {
     }
 
     match /usuarios/{userId} {
-      allow read: if autenticado(); 
+      allow read: if true; 
       allow create: if autenticado() && request.auth.uid == userId;
       allow update: if autenticado() && (request.auth.uid == userId || esAdmin());
       allow delete: if autenticado() && esAdmin();

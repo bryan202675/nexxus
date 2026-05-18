@@ -1,4 +1,5 @@
 import React, { DragEvent, FormEvent, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
@@ -96,20 +97,20 @@ function normalizar(valor: string) {
 
 function validarCorreo(correo: string) {
   const limpio = correo.trim().toLowerCase();
-  if (limpio !== correo || /\s/.test(correo)) return 'El correo no debe contener espacios.';
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(limpio)) return 'Ingresa un correo empresarial válido.';
+  if (limpio !== correo || /\s/.test(correo)) return 'landing_auth.errors.email_spaces';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(limpio)) return 'landing_auth.errors.email_invalid';
   const dominio = limpio.split('@')[1] ?? '';
-  if (!dominio.includes('.') || dominio.length < 4) return 'El dominio del correo no es válido.';
+  if (!dominio.includes('.') || dominio.length < 4) return 'landing_auth.errors.domain_invalid';
   return undefined;
 }
 
 function reglasPassword(password: string) {
   return [
-    ['Mínimo 8 caracteres', password.length >= 8],
-    ['Una mayúscula', /[A-Z]/.test(password)],
-    ['Una minúscula', /[a-z]/.test(password)],
-    ['Un número', /\d/.test(password)],
-    ['Un carácter especial', /[^A-Za-z0-9]/.test(password)],
+    ['landing_auth.password_req_min', password.length >= 8],
+    ['landing_auth.password_req_upper', /[A-Z]/.test(password)],
+    ['landing_auth.password_req_lower', /[a-z]/.test(password)],
+    ['landing_auth.password_req_num', /\d/.test(password)],
+    ['landing_auth.password_req_special', /[^A-Za-z0-9]/.test(password)],
   ] as const;
 }
 
@@ -118,17 +119,17 @@ function seguridadPassword(password: string) {
 }
 
 function validarTelefono(telefono: string) {
-  return /^[+\d][\d\s()+-]{7,}$/.test(telefono.trim()) ? undefined : 'Ingresa un teléfono empresarial válido.';
+  return /^[+\d][\d\s()+-]{7,}$/.test(telefono.trim()) ? undefined : 'landing_auth.errors.phone';
 }
 
-function traducirErrorFirebase(codigo?: string) {
+function traducirErrorFirebase(codigo: string | undefined) {
   const errores: Record<string, string> = {
-    'auth/email-already-in-use': 'Ese correo ya tiene una cuenta. Inicia sesión para continuar.',
-    'auth/invalid-credential': 'Credenciales incorrectas o cuenta no encontrada.',
-    'auth/popup-closed-by-user': 'La ventana de Google se cerró antes de completar el acceso.',
-    'auth/weak-password': 'La contraseña no cumple los requisitos mínimos.',
+    'auth/email-already-in-use': 'landing_auth.fb_errors.email_in_use',
+    'auth/invalid-credential': 'landing_auth.fb_errors.invalid_credential',
+    'auth/popup-closed-by-user': 'landing_auth.fb_errors.popup_closed',
+    'auth/weak-password': 'landing_auth.fb_errors.weak_password',
   };
-  return errores[codigo ?? ''] ?? 'No pudimos completar la operación. Inténtalo nuevamente.';
+  return errores[codigo ?? ''] ?? 'landing_auth.fb_errors.default';
 }
 
 async function comprimirLogo(archivo: File) {
@@ -179,6 +180,7 @@ function Campo({
   type?: string;
   value: string;
 }) {
+  const { t } = useTranslation();
   return (
     <label className={`nx-auth-field ${error ? 'is-invalid' : ''}`}>
       <span>{label}</span>
@@ -189,7 +191,7 @@ function Campo({
         type={type}
         value={value}
       />
-      {error ? <small>{error}</small> : null}
+      {error ? <small>{t(error)}</small> : null}
     </label>
   );
 }
@@ -204,15 +206,20 @@ function Selector({
   error?: string;
   label: string;
   onChange: (valor: string) => void;
-  opciones: string[];
+  opciones: { value: string; label: string }[];
   value: string;
 }) {
+  const { t } = useTranslation();
   return (
     <label className={`nx-auth-field ${error ? 'is-invalid' : ''}`}>
       <span>{label}</span>
       <select onChange={(event) => onChange(event.target.value)} value={value}>
-        <option value="">Selecciona una opción</option>
-        {opciones.map((opcion) => <option key={opcion} value={opcion}>{opcion}</option>)}
+        <option value="">{t('landing_auth.field_type_placeholder')}</option>
+        {opciones.map((opcion) => (
+          <option key={opcion.value} value={opcion.value}>
+            {opcion.label}
+          </option>
+        ))}
       </select>
       {error ? <small>{error}</small> : null}
     </label>
@@ -220,6 +227,7 @@ function Selector({
 }
 
 export default function LandingAuth({ modoInicial = 'registro', planSeleccionado }: { modoInicial?: 'registro' | 'login'; planSeleccionado: string }) {
+  const { t } = useTranslation();
   const [vista, setVista] = useState<VistaAuth>(modoInicial);
   const [registro, setRegistro] = useState<RegistroEstado>(estadoRegistroInicial);
   const [login, setLogin] = useState<LoginEstado>(estadoLoginInicial);
@@ -255,12 +263,12 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
 
   const validarRegistro = () => {
     const nuevos: Errores = {};
-    if (limpiarTexto(registro.nombre).length < 3) nuevos.nombre = 'Ingresa tu nombre completo.';
+    if (limpiarTexto(registro.nombre).length < 3) nuevos.nombre = 'landing_auth.errors.name';
     const errorCorreo = validarCorreo(registro.correo);
     if (errorCorreo) nuevos.correo = errorCorreo;
-    if (passwordScore < 5) nuevos.password = 'La contraseña debe cumplir todos los requisitos.';
-    if (!registro.confirmarPassword) nuevos.confirmarPassword = 'Confirma tu contraseña.';
-    else if (registro.confirmarPassword !== registro.password) nuevos.confirmarPassword = 'Las contraseñas no coinciden.';
+    if (passwordScore < 5) nuevos.password = 'landing_auth.errors.password_weak';
+    if (!registro.confirmarPassword) nuevos.confirmarPassword = 'landing_auth.errors.password_confirm';
+    else if (registro.confirmarPassword !== registro.password) nuevos.confirmarPassword = 'landing_auth.errors.password_mismatch';
     setErrores(nuevos);
     return Object.keys(nuevos).length === 0;
   };
@@ -269,28 +277,28 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
     const nuevos: Errores = {};
     const errorCorreo = validarCorreo(login.correo);
     if (errorCorreo) nuevos.loginCorreo = errorCorreo;
-    if (!login.password) nuevos.loginPassword = 'Ingresa tu contraseña.';
+    if (!login.password) nuevos.loginPassword = 'landing_auth.errors.login_password';
     setErrores(nuevos);
     return Object.keys(nuevos).length === 0;
   };
 
   const validarEmpresa = async () => {
     const nuevos: Errores = {};
-    if (limpiarTexto(empresa.nombre).length < 2) nuevos.nombreEmpresa = 'Ingresa un nombre de empresa válido.';
-    if (!empresa.tipo) nuevos.tipo = 'Selecciona el tipo de empresa.';
-    if (!empresa.industria) nuevos.industria = 'Selecciona una industria.';
-    if (!empresa.tamano) nuevos.tamano = 'Selecciona el tamaño de empresa.';
-    if (limpiarTexto(empresa.pais).length < 2) nuevos.pais = 'Ingresa el país.';
-    if (limpiarTexto(empresa.ciudad).length < 2) nuevos.ciudad = 'Ingresa la ciudad.';
-    if (limpiarTexto(empresa.direccion).length < 6) nuevos.direccion = 'Ingresa una dirección más específica.';
+    if (limpiarTexto(empresa.nombre).length < 2) nuevos.nombreEmpresa = 'landing_auth.errors.company_name';
+    if (!empresa.tipo) nuevos.tipo = 'landing_auth.errors.company_type';
+    if (!empresa.industria) nuevos.industria = 'landing_auth.errors.company_industry';
+    if (!empresa.tamano) nuevos.tamano = 'landing_auth.errors.company_size';
+    if (limpiarTexto(empresa.pais).length < 2) nuevos.pais = 'landing_auth.errors.country';
+    if (limpiarTexto(empresa.ciudad).length < 2) nuevos.ciudad = 'landing_auth.errors.city';
+    if (limpiarTexto(empresa.direccion).length < 6) nuevos.direccion = 'landing_auth.errors.address';
     const errorTelefono = validarTelefono(empresa.telefono);
     if (errorTelefono) nuevos.telefono = errorTelefono;
-    if (limpiarTexto(empresa.sedePrincipal).length < 2) nuevos.sedePrincipal = 'Ingresa el nombre de la sede principal.';
-    if (!logo) nuevos.logo = 'Sube el logo de la empresa.';
+    if (limpiarTexto(empresa.sedePrincipal).length < 2) nuevos.sedePrincipal = 'landing_auth.errors.hq';
+    if (!logo) nuevos.logo = 'landing_auth.errors.logo';
 
     if (!nuevos.nombreEmpresa) {
       const duplicado = await getDocs(query(collection(db, 'empresas'), where('nombre_normalizado', '==', normalizar(empresa.nombre)), limit(1)));
-      if (!duplicado.empty) nuevos.nombreEmpresa = 'Ya existe una empresa registrada con ese nombre.';
+      if (!duplicado.empty) nuevos.nombreEmpresa = 'landing_auth.errors.company_duplicate';
     }
 
     setErrores(nuevos);
@@ -302,14 +310,14 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
     if (usuarioDoc.exists()) {
       const datos = usuarioDoc.data();
       if (datos.empresaId) {
-        window.location.assign('/');
+        window.location.assign('/app');
         return;
       }
     }
     setUsuarioPendiente({
       correo: correo ?? '',
       fotoPerfil,
-      nombre: nombre || (correo ? correo.split('@')[0] : 'Administrador'),
+      nombre: nombre || (correo ? correo.split('@')[0] : t('miPulso.user_default')),
       uid,
     });
     setVista('empresa');
@@ -384,7 +392,7 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
   const crearEmpresa = async (event: FormEvent) => {
     event.preventDefault();
     if (!usuarioPendiente) {
-      setErrorGlobal('Primero completa el registro o inicio de sesión.');
+      setErrorGlobal('landing_auth.errors.auth_pending');
       setVista('registro');
       return;
     }
@@ -508,12 +516,12 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
         updatedAt: serverTimestamp(),
       });
       await batchEstructura.commit();
-      window.location.assign('/');
+      window.location.assign('/app');
     } catch (error: any) {
       const mensajeStorage = error.code === 'storage/unauthorized'
-        ? 'Firebase Storage rechazó la subida. Ya se ajustó la ruta a usuarios/{uid}; si persiste, publica las reglas de Storage del proyecto.'
+        ? 'landing_auth.errors.storage_error'
         : error.message;
-      setErrorGlobal(mensajeStorage || 'No pudimos crear la empresa. Revisa los datos e inténtalo de nuevo.');
+      setErrorGlobal(mensajeStorage || 'landing_auth.errors.company_create_error');
     } finally {
       setCargando(false);
     }
@@ -523,14 +531,19 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
     <BorderGlow className="nx-auth-shell" backgroundColor="rgba(10, 7, 24, 0.82)" glowColor="268 88 72" glowIntensity={0.55}>
       <div className="nx-auth-layout">
         <aside className="nx-auth-aside">
-          <span className="nx-auth-eyebrow">Acceso empresarial</span>
-          <h3>{vista === 'empresa' ? 'Configura la base operativa de tu empresa.' : 'Crea tu workspace Nexxus con seguridad y control.'}</h3>
-          <p>Registro, autenticación y onboarding empresarial conectado a Firebase Auth, Firestore y Storage.</p>
+          <span className="nx-auth-eyebrow">{t('landing_auth.aside_eyebrow')}</span>
+          <h3>{vista === 'empresa' ? t('landing_auth.aside_title_empresa') : t('landing_auth.aside_title_default')}</h3>
+          <p>{t('landing_auth.aside_desc')}</p>
           <div className="nx-auth-progress">
             <i style={{ width: `${progresoOnboarding}%` }} />
           </div>
           <div className="nx-auth-steps">
-            {['Cuenta segura', 'Empresa', 'Administrador', 'Dashboard'].map((paso, index) => (
+            {[
+              t('landing_auth.steps.step_1'),
+              t('landing_auth.steps.step_2'),
+              t('landing_auth.steps.step_3'),
+              t('landing_auth.steps.step_4')
+            ].map((paso, index) => (
               <span key={paso} className={progresoOnboarding >= (index + 1) * 25 ? 'is-active' : ''}>{paso}</span>
             ))}
           </div>
@@ -540,46 +553,51 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
           {vista !== 'empresa' ? (
             <>
               <div className="nx-auth-tabs">
-                <button className={vista === 'registro' ? 'active' : ''} onClick={() => setVista('registro')} type="button">Registro</button>
-                <button className={vista === 'login' ? 'active' : ''} onClick={() => setVista('login')} type="button">Iniciar sesión</button>
+                <button className={vista === 'registro' ? 'active' : ''} onClick={() => setVista('registro')} type="button">{t('landing_auth.tab_register')}</button>
+                <button className={vista === 'login' ? 'active' : ''} onClick={() => setVista('login')} type="button">{t('landing_auth.tab_login')}</button>
               </div>
               <button className="nx-google-button" disabled={cargando} onClick={loginGoogle} type="button">
-                <span>G</span>
-                Continuar con Google
+                <svg viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                </svg>
+                {t('landing_auth.google_button')}
               </button>
             </>
           ) : null}
 
           {vista === 'registro' ? (
             <form className="nx-auth-form" onSubmit={enviarRegistro} noValidate>
-              <Campo error={errores.nombre} label="Nombre completo" onChange={(valor) => actualizarRegistro('nombre', valor)} placeholder="Nombre del administrador" value={registro.nombre} />
-              <Campo error={errores.correo} label="Correo empresarial" onChange={(valor) => actualizarRegistro('correo', valor)} placeholder="admin@empresa.com" value={registro.correo} />
-              <Campo error={errores.password} label="Contraseña" onChange={(valor) => actualizarRegistro('password', valor)} placeholder="Crea una contraseña segura" type="password" value={registro.password} />
+              <Campo error={errores.nombre} label={t('landing_auth.field_name_label')} onChange={(valor) => actualizarRegistro('nombre', valor)} placeholder={t('landing_auth.field_name_placeholder')} value={registro.nombre} />
+              <Campo error={errores.correo} label={t('landing_auth.field_email_label')} onChange={(valor) => actualizarRegistro('correo', valor)} placeholder={t('landing_auth.field_email_placeholder')} value={registro.correo} />
+              <Campo error={errores.password} label={t('landing_auth.field_password_label')} onChange={(valor) => actualizarRegistro('password', valor)} placeholder={t('landing_auth.field_password_placeholder')} type="password" value={registro.password} />
               <div className="nx-password-meter">
                 <i style={{ width: `${(passwordScore / 5) * 100}%` }} />
               </div>
               <div className="nx-password-list">
-                {reglasPassword(registro.password).map(([texto, valido]) => <span key={texto} className={valido ? 'valid' : ''}>{valido ? '✓' : '•'} {texto}</span>)}
+                {reglasPassword(registro.password).map(([key, valido]) => <span key={key} className={valido ? 'valid' : ''}>{valido ? '✓' : '•'} {t(key)}</span>)}
               </div>
-              <Campo error={errores.confirmarPassword} label="Confirmar contraseña" onChange={(valor) => actualizarRegistro('confirmarPassword', valor)} placeholder="Repite tu contraseña" type="password" value={registro.confirmarPassword} />
-              {errorGlobal ? <div className="nx-auth-error">{errorGlobal}</div> : null}
-              <StarButton className="nx-auth-submit" type="submit">{cargando ? 'Creando cuenta...' : 'Crear cuenta segura'}</StarButton>
+              <Campo error={errores.confirmarPassword} label={t('landing_auth.field_confirm_password_label')} onChange={(valor) => actualizarRegistro('confirmarPassword', valor)} placeholder={t('landing_auth.field_confirm_password_placeholder')} type="password" value={registro.confirmarPassword} />
+              {errorGlobal ? <div className="nx-auth-error">{t(errorGlobal)}</div> : null}
+              <StarButton className="nx-auth-submit" type="submit">{cargando ? t('landing_auth.btn_register_loading') : t('landing_auth.btn_register')}</StarButton>
             </form>
           ) : null}
 
           {vista === 'login' ? (
             <form className="nx-auth-form" onSubmit={enviarLogin} noValidate>
-              <Campo error={errores.loginCorreo} label="Correo empresarial" onChange={(valor) => actualizarLogin('correo', valor)} placeholder="admin@empresa.com" value={login.correo} />
-              <Campo error={errores.loginPassword} label="Contraseña" onChange={(valor) => actualizarLogin('password', valor)} placeholder="Tu contraseña" type="password" value={login.password} />
-              {errorGlobal ? <div className="nx-auth-error">{errorGlobal}</div> : null}
-              <StarButton className="nx-auth-submit" type="submit">{cargando ? 'Validando...' : 'Iniciar sesión'}</StarButton>
+              <Campo error={errores.loginCorreo} label={t('landing_auth.field_email_label')} onChange={(valor) => actualizarLogin('correo', valor)} placeholder={t('landing_auth.field_email_placeholder')} value={login.correo} />
+              <Campo error={errores.loginPassword} label={t('landing_auth.field_password_label')} onChange={(valor) => actualizarLogin('password', valor)} placeholder={t('landing_auth.field_login_password_placeholder')} type="password" value={login.password} />
+              {errorGlobal ? <div className="nx-auth-error">{t(errorGlobal)}</div> : null}
+              <StarButton className="nx-auth-submit" type="submit">{cargando ? t('landing_auth.btn_login_loading') : t('landing_auth.btn_login')}</StarButton>
             </form>
           ) : null}
 
           {vista === 'empresa' ? (
             <form className="nx-auth-form nx-company-form" onSubmit={crearEmpresa} noValidate>
               <div className="nx-company-head">
-                <span>Paso {pasoEmpresa} de 3</span>
+                <span>{t('landing_auth.onboarding_step', { step: pasoEmpresa })}</span>
                 <strong>{usuarioPendiente?.nombre}</strong>
               </div>
               <div
@@ -590,27 +608,27 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
                   seleccionarLogo(event.dataTransfer.files?.[0]);
                 }}
               >
-                {logoPreview ? <img alt="Logo empresa" src={logoPreview} /> : <b>Arrastra el logo aquí</b>}
-                <span>PNG, JPG o WEBP · Max 3MB · optimizado automáticamente</span>
+                {logoPreview ? <img alt="Logo empresa" src={logoPreview} /> : <b>{t('landing_auth.logo_drop_label')}</b>}
+                <span>{t('landing_auth.logo_drop_hint')}</span>
                 <input accept="image/png,image/jpeg,image/webp" onChange={(event) => seleccionarLogo(event.target.files?.[0])} type="file" />
               </div>
               {errores.logo ? <small className="nx-logo-error">{errores.logo}</small> : null}
 
               <div className="nx-company-grid">
-                <Campo error={errores.nombreEmpresa} label="Nombre de empresa" onChange={(valor) => actualizarEmpresa('nombre', valor)} placeholder="Nexxus Group" value={empresa.nombre} />
-                <Selector error={errores.tipo} label="Tipo de empresa" onChange={(valor) => actualizarEmpresa('tipo', valor)} opciones={tiposEmpresa} value={empresa.tipo} />
-                <Selector error={errores.industria} label="Industria" onChange={(valor) => actualizarEmpresa('industria', valor)} opciones={industrias} value={empresa.industria} />
-                <Selector error={errores.tamano} label="Tamaño" onChange={(valor) => actualizarEmpresa('tamano', valor)} opciones={tamanos} value={empresa.tamano} />
-                <Campo error={errores.pais} label="País" onChange={(valor) => actualizarEmpresa('pais', valor)} placeholder="El Salvador" value={empresa.pais} />
-                <Campo error={errores.ciudad} label="Ciudad" onChange={(valor) => actualizarEmpresa('ciudad', valor)} placeholder="San Salvador" value={empresa.ciudad} />
-                <Campo error={errores.direccion} label="Dirección" onChange={(valor) => actualizarEmpresa('direccion', valor)} placeholder="Colonia, avenida, edificio" value={empresa.direccion} />
-                <Campo error={errores.telefono} label="Teléfono empresarial" onChange={(valor) => actualizarEmpresa('telefono', valor)} placeholder="+503 2222 2222" value={empresa.telefono} />
-                <Campo error={errores.sedePrincipal} label="Sede principal" onChange={(valor) => actualizarEmpresa('sedePrincipal', valor)} placeholder="Casa matriz" value={empresa.sedePrincipal} />
+                <Campo error={errores.nombreEmpresa} label={t('landing_auth.field_company_name_label')} onChange={(valor) => actualizarEmpresa('nombre', valor)} placeholder={t('landing_auth.field_company_name_placeholder')} value={empresa.nombre} />
+                <Selector error={errores.tipo} label={t('landing_auth.field_type_label')} onChange={(valor) => actualizarEmpresa('tipo', valor)} opciones={tiposEmpresa.map(v => ({ value: v, label: t(`landing_auth.types.${v}`) }))} value={empresa.tipo} />
+                <Selector error={errores.industria} label={t('landing_auth.field_industry_label')} onChange={(valor) => actualizarEmpresa('industria', valor)} opciones={industrias.map(v => ({ value: v, label: t(`landing_auth.industries.${v}`) }))} value={empresa.industria} />
+                <Selector error={errores.tamano} label={t('landing_auth.field_size_label')} onChange={(valor) => actualizarEmpresa('tamano', valor)} opciones={tamanos.map(v => ({ value: v, label: v }))} value={empresa.tamano} />
+                <Campo error={errores.pais} label={t('landing_auth.field_country_label')} onChange={(valor) => actualizarEmpresa('pais', valor)} placeholder={t('landing_auth.field_country_placeholder')} value={empresa.pais} />
+                <Campo error={errores.ciudad} label={t('landing_auth.field_city_label')} onChange={(valor) => actualizarEmpresa('ciudad', valor)} placeholder={t('landing_auth.field_city_placeholder')} value={empresa.ciudad} />
+                <Campo error={errores.direccion} label={t('landing_auth.field_address_label')} onChange={(valor) => actualizarEmpresa('direccion', valor)} placeholder={t('landing_auth.field_address_placeholder')} value={empresa.direccion} />
+                <Campo error={errores.telefono} label={t('landing_auth.field_phone_label')} onChange={(valor) => actualizarEmpresa('telefono', valor)} placeholder={t('landing_auth.field_phone_placeholder')} value={empresa.telefono} />
+                <Campo error={errores.sedePrincipal} label={t('landing_auth.field_hq_label')} onChange={(valor) => actualizarEmpresa('sedePrincipal', valor)} placeholder={t('landing_auth.field_hq_placeholder')} value={empresa.sedePrincipal} />
               </div>
-              {errorGlobal ? <div className="nx-auth-error">{errorGlobal}</div> : null}
+              {errorGlobal ? <div className="nx-auth-error">{t(errorGlobal)}</div> : null}
               <div className="nx-company-actions">
-                <button className="nx-auth-secondary" onClick={() => setVista('registro')} type="button">Volver</button>
-                <StarButton className="nx-auth-submit" type="submit">{cargando ? 'Creando empresa...' : 'Crear empresa y entrar'}</StarButton>
+                <button className="nx-auth-secondary" onClick={() => setVista('registro')} type="button">{t('landing_auth.btn_back')}</button>
+                <StarButton className="nx-auth-submit" type="submit">{cargando ? t('landing_auth.btn_create_loading') : t('landing_auth.btn_create')}</StarButton>
               </div>
             </form>
           ) : null}

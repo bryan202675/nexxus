@@ -1,0 +1,23 @@
+.iridescence-container {
+  border-radius: inherit;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  width: 100%;
+}
+
+.iridescence-container canvas {
+  display: block;
+  height: 100% !important;
+  width: 100% !important;
+}
+
+.nx-admin-banner-iridescence {
+  height: max(720px, 100vh) !important;
+  left: 50% !important;
+  overflow: visible;
+  position: absolute !important;
+  top: 50% !important;
+  transform: translate3d(-50%, -50%, 0) scale(1.18);
+  width: max(1440px, 100vw) !important;
+}

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, View, Text, ScrollView, Dimensions, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
-import Svg, { Circle, Defs, Line, LinearGradient as SvgLinearGradient, Polygon, Polyline, Stop, Text as SvgText } from 'react-native-svg';
+import { useTranslation } from 'react-i18next';
+import { Animated, Easing, View, Text, ScrollView, Dimensions, StyleSheet, ActivityIndicator, TouchableOpacity, Platform, useWindowDimensions } from 'react-native';
+import Svg, { Circle, Defs, Line, LinearGradient as SvgLinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg';
 import { addDoc, collection, doc, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
 import {
   Users,
@@ -31,7 +32,7 @@ import {
 import { db } from '@/infrastructure/firebase/firebaseConfig';
 import { useAuth } from '@/presentation/hooks/useAuth';
 import { obtenerEmpresaIdAdmin } from './adminUtils';
-import { ADMIN, sombraAdmin, sombraVioleta } from './adminTheme';
+import { ADMIN, sombraAdmin, sombraVioleta, useAdminAppearance } from './adminTheme';
 
 const BRAND = {
   richBlack: ADMIN.fondo,
@@ -47,6 +48,8 @@ const BRAND = {
   violet: ADMIN.violeta,
   cyan: ADMIN.azul
 };
+
+const CHART_FONT = Platform.OS === 'ios' ? 'Avenir Next' : Platform.OS === 'web' ? 'Avenir Next, Satoshi, Segoe UI, sans-serif' : 'sans-serif';
 
 type UsuarioAdmin = {
   id?: string;
@@ -267,13 +270,85 @@ type PuntoGrafico = {
   estres: number;
 };
 
-type ModoGrafico = 'semanal' | 'mensual';
+type ModoGrafico = 'diario' | 'semanal' | 'mensual';
 
-const DashboardAdmin: React.FC = () => {
-  const { width } = Dimensions.get('window');
+const PARTICULAS_HERO = [
+  // Orbe Azul Izquierda (Detrás del Título)
+  { left: '-5%', top: '-8%', size: 240, color: 'rgba(37, 99, 235, 0.16)' },
+  // Orbe Morado Centro-Izquierda (Detrás de Métricas)
+  { left: '18%', top: '48%', size: 280, color: 'rgba(168, 85, 247, 0.15)' },
+  // Orbe Azul Centro-Derecha
+  { left: '42%', top: '-2%', size: 220, color: 'rgba(37, 99, 235, 0.12)' },
+  // Orbe Morado Extremo Derecho (Fondo general)
+  { left: '65%', top: '38%', size: 260, color: 'rgba(168, 85, 247, 0.14)' },
+] as const;
+
+function CampoParticulasHero() {
+  const avance = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animacion = Animated.loop(
+      Animated.timing(avance, {
+        toValue: 1,
+        duration: 22000, // Movimiento ultra lento y majestuoso
+        easing: Easing.inOut(Easing.sin),
+        useNativeDriver: true,
+      })
+    );
+    animacion.start();
+    return () => animacion.stop();
+  }, [avance]);
+
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      {PARTICULAS_HERO.map((particula, index) => {
+        const translateX = avance.interpolate({
+          inputRange: [0, 0.5, 1],
+          outputRange: [0, index % 2 === 0 ? 38 : -38, 0],
+        });
+        const translateY = avance.interpolate({
+          inputRange: [0, 0.5, 1],
+          outputRange: [0, index % 2 === 0 ? -22 : 22, 0],
+        });
+        const opacity = avance.interpolate({
+          inputRange: [0, 0.5, 1],
+          outputRange: [0.7, 0.95, 0.7],
+        });
+
+        return (
+          <Animated.View
+            key={index}
+            style={{
+              position: 'absolute',
+              left: particula.left,
+              top: particula.top,
+              width: particula.size,
+              height: particula.size,
+              borderRadius: particula.size / 2,
+              opacity,
+              backgroundColor: particula.color,
+              shadowColor: particula.color,
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.95,
+              shadowRadius: 50, // Gran radio para difuminar como orbe suave
+              transform: [{ translateX }, { translateY }],
+            }}
+          />
+        );
+      })}
+    </View>
+  );
+}
+
+export default function DashboardAdmin() {
+  const { t, i18n } = useTranslation();
+  const { theme } = useAdminAppearance();
+  const { width } = useWindowDimensions();
   const isTabletOrWeb = width > 900;
+  const isWidescreen = width > 1500;
   const { user } = useAuth();
   const empresaId = obtenerEmpresaIdAdmin(user);
+  const nombreEmpresa = (user?.empresa || (user as any)?.empresaNombre || (user as any)?.nombreEmpresa || 'Nexxus Enterprise').trim();
 
   const [usuarios, setUsuarios] = useState<UsuarioAdmin[]>([]);
   const [tareas, setTareas] = useState<TareaAdmin[]>([]);
@@ -287,10 +362,12 @@ const DashboardAdmin: React.FC = () => {
   const [feedbacks, setFeedbacks] = useState<FeedbackAdmin[]>([]);
   const [inboxItems, setInboxItems] = useState<InboxAdmin[]>([]);
   const [documentos, setDocumentos] = useState<DocumentoAdmin[]>([]);
+  const [eventosCalendario, setEventosCalendario] = useState<any[]>([]);
   const [modoGrafico, setModoGrafico] = useState<ModoGrafico>('semanal');
   const [mostrarDetalleOperativo, setMostrarDetalleOperativo] = useState(false);
   const [cargando, setCargando] = useState(true);
   const entrada = useRef(new Animated.Value(0)).current;
+  const brilloAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.timing(entrada, {
@@ -300,6 +377,19 @@ const DashboardAdmin: React.FC = () => {
       useNativeDriver: true,
     }).start();
   }, [entrada]);
+
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.timing(brilloAnim, {
+        toValue: 1,
+        duration: 24000,
+        easing: Easing.inOut(Easing.sin),
+        useNativeDriver: true,
+      })
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [brilloAnim]);
 
   useEffect(() => {
     if (!empresaId) {
@@ -315,6 +405,7 @@ const DashboardAdmin: React.FC = () => {
       setFeedbacks([]);
       setInboxItems([]);
       setDocumentos([]);
+      setEventosCalendario([]);
       setCargando(false);
       return;
     }
@@ -322,7 +413,7 @@ const DashboardAdmin: React.FC = () => {
     const cargadas = new Set<string>();
     const marcarCargada = (clave: string) => {
       cargadas.add(clave);
-      if (cargadas.size >= 11) setCargando(false);
+      if (cargadas.size >= 12) setCargando(false);
     };
 
     setCargando(true);
@@ -351,6 +442,7 @@ const DashboardAdmin: React.FC = () => {
       crearListener<FeedbackAdmin>('feedbacks', 'feedbacks', setFeedbacks),
       crearListener<InboxAdmin>('inboxItems', 'inbox_unificado', setInboxItems),
       crearListener<DocumentoAdmin>('documentos', 'documentos', setDocumentos),
+      crearListener<any>('eventos', 'calendario_empresarial', setEventosCalendario),
     ];
 
     return () => consultas.forEach((unsubscribe) => unsubscribe());
@@ -546,9 +638,20 @@ const DashboardAdmin: React.FC = () => {
     }, {});
 
     const crearPeriodos = (modo: ModoGrafico) => {
-      const totalPeriodos = modo === 'semanal' ? 8 : 12;
+      const totalPeriodos = 8;
       return Array.from({ length: totalPeriodos }).map((_, indice) => {
         const inicio = new Date();
+        if (modo === 'diario') {
+          inicio.setDate(inicio.getDate() - (totalPeriodos - 1 - indice));
+          inicio.setHours(0, 0, 0, 0);
+          const fin = new Date(inicio);
+          fin.setHours(23, 59, 59, 999);
+          return {
+            inicio,
+            fin,
+            label: inicio.toLocaleDateString(i18n.language === 'es' ? 'es-SV' : 'en-US', { weekday: 'short' }).replace('.', '').toUpperCase(),
+          };
+        }
         if (modo === 'semanal') {
           inicio.setDate(inicio.getDate() - ((totalPeriodos - 1 - indice) * 7));
           inicio.setHours(0, 0, 0, 0);
@@ -567,7 +670,7 @@ const DashboardAdmin: React.FC = () => {
         return {
           inicio,
           fin,
-          label: inicio.toLocaleDateString('es-SV', { month: 'short' }).replace('.', '').toUpperCase(),
+          label: inicio.toLocaleDateString(i18n.language === 'es' ? 'es-SV' : 'en-US', { month: 'short' }).replace('.', '').toUpperCase(),
         };
       });
     };
@@ -746,6 +849,7 @@ const DashboardAdmin: React.FC = () => {
       inboxCritico,
       documentosPendientes,
       notificacionesNoLeidas,
+      serieDiaria: crearSerie('diario'),
       serieSemanal: crearSerie('semanal'),
       serieMensual: crearSerie('mensual'),
       checkInsHoyDetalle,
@@ -761,29 +865,32 @@ const DashboardAdmin: React.FC = () => {
 
   const stats = [
     {
-      label: "Equipo activo",
+      label: t('admin.dashboard.stats.active_team'),
       val: metricas.activos.toString(),
-      trend: `${usuarios.length} registrados`,
+      trend: t('admin.dashboard.stats.registered_count', { count: usuarios.length }),
       tono: 'cyan' as const,
       icon: <Users size={24} color={ADMIN.iconos.personas} />,
     },
     {
-      label: "Productividad",
+      label: t('admin.dashboard.stats.productivity'),
       val: `${metricas.productividad}%`,
-      trend: `${metricas.tareasPendientes} tareas pendientes`,
+      trend: t('admin.dashboard.stats.pending_tasks', { count: metricas.tareasPendientes }),
       tono: metricas.productividad >= 75 ? 'success' as const : 'warning' as const,
       icon: <ClipboardList size={24} color={metricas.productividad >= 75 ? ADMIN.iconos.exito : ADMIN.iconos.tareas} />,
     },
     {
-      label: "Prioridades",
+      label: t('admin.dashboard.stats.priorities'),
       val: `${metricas.riesgo}%`,
-      trend: `${metricas.aprobacionesPendientes} aprobaciones pendientes`,
+      trend: t('admin.dashboard.stats.pending_approvals', { count: metricas.aprobacionesPendientes }),
       tono: metricas.riesgo > 45 || metricas.alertas > 0 ? 'error' as const : 'cyan' as const,
       icon: <AlertTriangle size={24} color={metricas.riesgo > 45 || metricas.alertas > 0 ? ADMIN.iconos.peligro : ADMIN.iconos.auditoria} />,
     }
   ];
 
-  const datosGrafico = modoGrafico === 'semanal' ? metricas.serieSemanal : metricas.serieMensual;
+  const datosGrafico = modoGrafico === 'diario' ? metricas.serieDiaria : modoGrafico === 'semanal' ? metricas.serieSemanal : metricas.serieMensual;
+  const subtituloGrafico = modoGrafico === 'diario'
+    ? 'Lectura diaria de los últimos 14 días'
+    : t(`admin.dashboard.chart.subtitle_${modoGrafico}`);
 
   if (cargando) {
     return (
@@ -798,90 +905,188 @@ const DashboardAdmin: React.FC = () => {
     <ScrollView style={estilos.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={estilos.scrollViewContent}>
       <View style={estilos.header}>
         <View>
-          <Text style={estilos.headerTitle}>Centro operativo</Text>
-          <Text style={estilos.headerSubtitle}>Lo esencial para decidir y actuar sin ruido.</Text>
+          <Text style={estilos.headerTitle}>{nombreEmpresa}</Text>
+          <Text style={estilos.headerSubtitle}>Centro operativo</Text>
         </View>
         <View style={estilos.livePill}>
           <View style={estilos.liveDot} />
-          <Text style={estilos.liveText}>Firebase live</Text>
+          <Text style={estilos.liveText}>Nexxus Cloud</Text>
         </View>
       </View>
 
-      <View style={[estilos.statsGrid, !isTabletOrWeb && estilos.statsGridMobile]}>
-        {stats.map((stat, i) => (
-          <View key={stat.label} style={[estilos.statCardContainer, { width: isTabletOrWeb ? '32%' : '100%' }]}>
-            <PremiumCard style={estilos.statCard}>
-              <View style={estilos.statAccent} />
-              <View style={estilos.statCardInner}>
-                <View style={estilos.statTextContainer}>
-                  <Text style={estilos.statLabel}>{stat.label}</Text>
-                  <Text style={estilos.statValue}>{stat.val}</Text>
-                  <View style={estilos.trendContainer}>
-                    <TrendingUp size={12} color={stat.tono === 'error' ? BRAND.error : stat.tono === 'warning' ? BRAND.warning : BRAND.success} />
-                    <Text style={[estilos.trendText, { color: stat.tono === 'error' ? BRAND.error : stat.tono === 'warning' ? BRAND.warning : BRAND.success }]}>
-                      {stat.trend}
-                    </Text>
-                  </View>
-                </View>
-                <IconWrapper tono={stat.tono}>{stat.icon}</IconWrapper>
-              </View>
-            </PremiumCard>
+      <View style={estilos.heroPanel}>
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            estilos.heroGlowA,
+            {
+              transform: [
+                {
+                  translateX: brilloAnim.interpolate({
+                    inputRange: [0, 0.5, 1],
+                    outputRange: [0, 36, 0],
+                  }),
+                },
+                {
+                  translateY: brilloAnim.interpolate({
+                    inputRange: [0, 0.5, 1],
+                    outputRange: [0, -22, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        />
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            estilos.heroGlowB,
+            {
+              transform: [
+                {
+                  translateX: brilloAnim.interpolate({
+                    inputRange: [0, 0.5, 1],
+                    outputRange: [0, -32, 0],
+                  }),
+                },
+                {
+                  translateY: brilloAnim.interpolate({
+                    inputRange: [0, 0.5, 1],
+                    outputRange: [0, 26, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        />
+        <CampoParticulasHero />
+        <View style={estilos.heroCopy}>
+          <View style={estilos.heroKicker}>
+            <View style={estilos.heroKickerDot} />
+            <Text style={estilos.heroEyebrow}>Nexxus Intelligence</Text>
           </View>
-        ))}
+          <Text style={estilos.heroTitle}>Pulso operativo de última generación</Text>
+          <View style={estilos.heroActions}>
+            {/* Activos */}
+            <View style={[estilos.heroMetricPill, estilos.heroMetricPillBlue]}>
+              <View style={estilos.heroMetricHeader}>
+                <View style={[estilos.heroMetricIconBg, { backgroundColor: 'rgba(59,130,246,0.12)' }]}>
+                  <Users size={12} color="#60A5FA" />
+                </View>
+                <Text style={estilos.heroMetricLabel}>Activos</Text>
+              </View>
+              <View style={estilos.heroMetricBody}>
+                <Text style={estilos.heroMetricValue}>{metricas.activos}</Text>
+                <Text style={[estilos.heroMetricTrend, { color: '#60A5FA' }]}>En línea</Text>
+              </View>
+            </View>
+
+            {/* Productividad */}
+            <View style={[estilos.heroMetricPill, estilos.heroMetricPillViolet]}>
+              <View style={estilos.heroMetricHeader}>
+                <View style={[estilos.heroMetricIconBg, { backgroundColor: 'rgba(168,85,247,0.12)' }]}>
+                  <Zap size={12} color="#C084FC" />
+                </View>
+                <Text style={estilos.heroMetricLabel}>Productividad</Text>
+              </View>
+              <View style={estilos.heroMetricBody}>
+                <Text style={estilos.heroMetricValue}>{metricas.productividad}%</Text>
+                <Text style={[estilos.heroMetricTrend, { color: '#C084FC' }]}>+2.4%</Text>
+              </View>
+            </View>
+
+            {/* Check-ins */}
+            <View style={[estilos.heroMetricPill, estilos.heroMetricPillEmerald]}>
+              <View style={estilos.heroMetricHeader}>
+                <View style={[estilos.heroMetricIconBg, { backgroundColor: 'rgba(16,185,129,0.12)' }]}>
+                  <UserCheck size={12} color="#34D399" />
+                </View>
+                <Text style={estilos.heroMetricLabel}>Check-ins</Text>
+              </View>
+              <View style={estilos.heroMetricBody}>
+                <Text style={estilos.heroMetricValue}>{metricas.checkInsHoy}</Text>
+                <Text style={[estilos.heroMetricTrend, { color: '#34D399' }]}>Completados</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+        <View style={estilos.heroDashboardShell}>
+          <View style={estilos.heroWindowBar}>
+            <View style={[estilos.heroWindowDot, { backgroundColor: BRAND.error }]} />
+            <View style={[estilos.heroWindowDot, { backgroundColor: BRAND.warning }]} />
+            <View style={[estilos.heroWindowDot, { backgroundColor: BRAND.success }]} />
+            <Text style={estilos.heroWindowTitle}>Live Ops</Text>
+          </View>
+          <View style={estilos.heroDashboardGrid}>
+            <View style={[estilos.heroPanelCard, estilos.heroPanelMain]}>
+              <View style={estilos.heroPanelMainCopy}>
+                <Text style={estilos.heroPanelLabel}>Health score</Text>
+                <Text style={estilos.heroPanelValue}>{Math.max(0, Math.min(100, metricas.productividad - Math.round(metricas.riesgo / 3)))}%</Text>
+                <Text style={estilos.heroPanelText}>Balance de rendimiento, riesgo y participación diaria.</Text>
+              </View>
+              <View style={estilos.heroChart}>
+                {datosGrafico.slice(-6).map((punto, index) => (
+                  <View key={`${punto.label}-${index}`} style={[estilos.heroChartBar, { height: `${Math.max(18, punto.rendimiento)}%`, opacity: 0.48 + index * 0.08 }]} />
+                ))}
+              </View>
+            </View>
+            <View style={estilos.heroPanelCard}>
+              <Text style={estilos.heroPanelLabel}>Carga</Text>
+              <Text style={estilos.heroPanelStrong}>{datosGrafico[datosGrafico.length - 1]?.carga || 0}%</Text>
+              <Text style={estilos.heroPanelText}>Capacidad activa</Text>
+            </View>
+            <View style={estilos.heroPanelCard}>
+              <Text style={estilos.heroPanelLabel}>Estrés</Text>
+              <Text style={estilos.heroPanelStrong}>{datosGrafico[datosGrafico.length - 1]?.estres || 0}%</Text>
+              <Text style={estilos.heroPanelText}>Señal emocional</Text>
+            </View>
+          </View>
+        </View>
       </View>
 
       <View style={[estilos.topGrid, !isTabletOrWeb && estilos.topGridMobile]}>
-        <View style={!isTabletOrWeb ? estilos.anchoTotal : estilos.columnaPrincipal}>
+        <View style={estilos.anchoTotal}>
           <PremiumCard style={estilos.barChartCard}>
             <View style={estilos.chartHeader}>
               <View style={estilos.chartTitleContainer}>
-                <IconWrapper tono="violet"><Activity size={20} color={ADMIN.iconos.auditoria} /></IconWrapper>
+                <IconWrapper tono="violet"><Activity size={20} color={theme.isDark ? '#FEFEFE' : '#7C3AED'} /></IconWrapper>
                 <View>
-                  <Text style={estilos.chartTitle}>Rendimiento, Carga y Estrés</Text>
-                  <Text style={estilos.chartSubtitle}>Promedio general de empleados por {modoGrafico === 'semanal' ? 'semana' : 'mes'}</Text>
+                  <Text style={estilos.chartTitle}>{t('admin.dashboard.chart.title')}</Text>
+                  <Text style={estilos.chartSubtitle}>{subtituloGrafico}</Text>
                 </View>
               </View>
               <View style={estilos.chartActions}>
+                <TouchableOpacity onPress={() => setModoGrafico('diario')} style={[estilos.chartToggle, modoGrafico === 'diario' && estilos.chartToggleActivo]}>
+                  <Text style={[estilos.chartToggleText, modoGrafico === 'diario' && estilos.chartToggleTextActivo]}>Días</Text>
+                </TouchableOpacity>
                 <TouchableOpacity onPress={() => setModoGrafico('semanal')} style={[estilos.chartToggle, modoGrafico === 'semanal' && estilos.chartToggleActivo]}>
-                  <Text style={[estilos.chartToggleText, modoGrafico === 'semanal' && estilos.chartToggleTextActivo]}>Semanal</Text>
+                  <Text style={[estilos.chartToggleText, modoGrafico === 'semanal' && estilos.chartToggleTextActivo]}>{t('common.weekly')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => setModoGrafico('mensual')} style={[estilos.chartToggle, modoGrafico === 'mensual' && estilos.chartToggleActivo]}>
-                  <Text style={[estilos.chartToggleText, modoGrafico === 'mensual' && estilos.chartToggleTextActivo]}>Mensual</Text>
+                  <Text style={[estilos.chartToggleText, modoGrafico === 'mensual' && estilos.chartToggleTextActivo]}>{t('common.monthly')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
 
-            <PerformanceLineChart datos={datosGrafico} />
-            <View style={estilos.chartLegend}>
-              <LegendItem color={BRAND.success} label="Rendimiento" value={`${datosGrafico[datosGrafico.length - 1]?.rendimiento || 0}%`} />
-              <LegendItem color={BRAND.warning} label="Carga" value={`${datosGrafico[datosGrafico.length - 1]?.carga || 0}%`} />
-              <LegendItem color={BRAND.error} label="Estrés" value={`${datosGrafico[datosGrafico.length - 1]?.estres || 0}%`} />
-            </View>
-          </PremiumCard>
-        </View>
-
-        <View style={!isTabletOrWeb ? estilos.anchoTotal : estilos.columnaLateral}>
-          <PremiumCard style={estilos.priorityCard}>
-            <View style={estilos.panelHeader}>
-              <View>
-                <Text style={estilos.panelTitle}>Prioridades de hoy</Text>
-                <Text style={estilos.panelSubtitle}>Acciones reales, sin métricas extra</Text>
-              </View>
-              <IconWrapper tono="warning"><Inbox size={20} color={BRAND.warning} /></IconWrapper>
-            </View>
-            <View style={estilos.listadoCompacto}>
-              {metricas.solicitudesPendientes.length > 0 ? metricas.solicitudesPendientes.slice(0, 3).map((item) => (
-                <ApprovalItem
-                  key={`${item.tipo}-${item.id}`}
-                  titulo={item.titulo}
-                  detalle={`${item.empleado} · ${item.prioridad}`}
-                  onAprobar={() => item.tipo === 'ausencia' ? actualizarSolicitudAusencia(item.solicitud as AusenciaAdmin, 'aprobada') : actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'aprobado')}
-                  onRechazar={() => item.tipo === 'ausencia' ? actualizarSolicitudAusencia(item.solicitud as AusenciaAdmin, 'rechazada') : actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'rechazado')}
-                />
-              )) : metricas.alertasOperativas.length > 0 ? metricas.alertasOperativas.slice(0, 3).map((alerta) => (
-                <ListItem key={alerta.id} inicial="!" titulo={alerta.titulo} detalle={alerta.detalle} badge="Abierta" color={alerta.color} />
-              )) : (
-                <EmptyState texto="Sin prioridades pendientes" />
+            <View style={[estilos.chartBody, !isTabletOrWeb && estilos.chartBodyMobile]}>
+              {isWidescreen ? (
+                <>
+                  <ChartEventsPanel eventos={eventosCalendario} />
+                  <View style={estilos.chartGraphArea}>
+                    <PerformanceLineChart datos={datosGrafico} />
+                  </View>
+                  <ChartDetailPanel datos={datosGrafico} />
+                </>
+              ) : (
+                <View style={estilos.chartMediumLayout}>
+                  <View style={[estilos.chartGraphArea, { maxWidth: '100%', width: '100%', minWidth: '100%', marginBottom: 12 }]}>
+                    <PerformanceLineChart datos={datosGrafico} />
+                  </View>
+                  <View style={estilos.chartBottomRow}>
+                    <ChartEventsPanel eventos={eventosCalendario} />
+                    <ChartDetailPanel datos={datosGrafico} />
+                  </View>
+                </View>
               )}
             </View>
           </PremiumCard>
@@ -890,44 +1095,44 @@ const DashboardAdmin: React.FC = () => {
 
       <View style={estilos.detalleOperativoBar}>
         <View>
-          <Text style={estilos.detalleOperativoTitulo}>Operación avanzada</Text>
-          <Text style={estilos.detalleOperativoTexto}>Check-ins, asistencia, tareas, alertas y auditoría siguen disponibles bajo demanda.</Text>
+          <Text style={estilos.detalleOperativoTitulo}>{t('admin.dashboard.advanced.bar_title')}</Text>
+          <Text style={estilos.detalleOperativoTexto}>{t('admin.dashboard.advanced.bar_subtitle')}</Text>
         </View>
         <TouchableOpacity onPress={() => setMostrarDetalleOperativo((valor) => !valor)} activeOpacity={0.88} style={estilos.detalleOperativoBoton}>
-          <Text style={estilos.detalleOperativoBotonTexto}>{mostrarDetalleOperativo ? 'Ocultar' : 'Abrir'}</Text>
+          <Text style={estilos.detalleOperativoBotonTexto}>{mostrarDetalleOperativo ? t('common.hide') : t('common.open_action')}</Text>
         </TouchableOpacity>
       </View>
 
       {mostrarDetalleOperativo && (
-      <Animated.View style={[estilos.detalleOperativoContenido, { opacity: entrada, transform: [{ translateY: entrada.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }] }]}>
-        <View style={[estilos.advancedGrid, !isTabletOrWeb && estilos.topGridMobile]}>
+      <Animated.View style={[estilos.detalleOperativoContenido, { transform: [{ translateY: entrada.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }] }]}>
+        <View style={[estilos.advancedGrid, estilos.advancedGridCompact, !isTabletOrWeb && estilos.topGridMobile]}>
           <PremiumCard style={estilos.advancedCard}>
             <View style={estilos.panelHeader}>
               <View>
-                <Text style={estilos.panelTitle}>Check-in de hoy</Text>
-                <Text style={estilos.panelSubtitle}>Solo participación y señales principales</Text>
+                <Text style={estilos.panelTitle}>{t('admin.dashboard.checkin.title')}</Text>
+                <Text style={estilos.panelSubtitle}>{t('admin.dashboard.checkin.subtitle')}</Text>
               </View>
-              <IconWrapper tono="cyan"><Timer size={20} color={BRAND.cyan} /></IconWrapper>
+              <IconWrapper tono="cyan"><Timer size={20} color={theme.isDark ? '#22D3EE' : '#0891B2'} /></IconWrapper>
             </View>
             <View style={estilos.metricRows}>
-              <MetricRow icon={<Timer size={16} color={BRAND.cyan} />} label="Participación" value={metricas.checkInsHoy} total={metricas.activos} color={BRAND.cyan} />
-              <MetricRow icon={<HeartPulse size={16} color={BRAND.error} />} label="Seguimiento" value={metricas.empleadosRiesgo.length} total={Math.max(metricas.activos, 1)} color={BRAND.error} />
+              <MetricRow icon={<Timer size={16} color={BRAND.cyan} />} label={t('admin.dashboard.checkin.participation')} value={metricas.checkInsHoy} total={metricas.activos} color={BRAND.cyan} />
+              <MetricRow icon={<HeartPulse size={16} color={BRAND.error} />} label={t('admin.dashboard.checkin.followup')} value={metricas.empleadosRiesgo.length} total={Math.max(metricas.activos, 1)} color={BRAND.error} />
             </View>
             <View style={estilos.listadoCompacto}>
               {metricas.empleadosSinCheckIn.slice(0, 3).map((empleado) => (
-                <ListItem key={empleado.id || empleado.correo} inicial={(empleado.nombre || '?')[0]} titulo={empleado.nombre || 'Empleado'} detalle={empleado.departamento || 'Sin departamento'} badge="Pendiente" color={BRAND.cyan} />
+                <ListItem key={empleado.id || empleado.correo} inicial={(empleado.nombre || '?')[0]} titulo={empleado.nombre || t('common.employee')} detalle={empleado.departamento || t('common.no_department')} badge={t('common.pending')} color={BRAND.cyan} />
               ))}
-              {metricas.empleadosSinCheckIn.length === 0 && <EmptyState texto="Check-ins al día" />}
+              {metricas.empleadosSinCheckIn.length === 0 && <EmptyState texto={t('admin.dashboard.checkin.all_up_to_date')} />}
             </View>
           </PremiumCard>
 
           <PremiumCard style={estilos.advancedCard}>
             <View style={estilos.panelHeader}>
               <View>
-                <Text style={estilos.panelTitle}>Aprobaciones</Text>
-                <Text style={estilos.panelSubtitle}>Ausencias y solicitudes internas</Text>
+                <Text style={estilos.panelTitle}>{t('admin.dashboard.approvals.title')}</Text>
+                <Text style={estilos.panelSubtitle}>{t('admin.dashboard.approvals.subtitle')}</Text>
               </View>
-              <IconWrapper tono="warning"><Inbox size={20} color={BRAND.warning} /></IconWrapper>
+              <IconWrapper tono="warning"><Inbox size={20} color={theme.isDark ? '#FBBF24' : '#D97706'} /></IconWrapper>
             </View>
             <View style={estilos.listadoCompacto}>
               {metricas.solicitudesPendientes.length > 0 ? metricas.solicitudesPendientes.slice(0, 5).map((item) => (
@@ -939,26 +1144,23 @@ const DashboardAdmin: React.FC = () => {
                   onRechazar={() => item.tipo === 'ausencia' ? actualizarSolicitudAusencia(item.solicitud as AusenciaAdmin, 'rechazada') : actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'rechazado')}
                 />
               )) : (
-                <EmptyState texto="Sin aprobaciones pendientes" />
+                <EmptyState texto={t('admin.dashboard.approvals.empty')} />
               )}
             </View>
           </PremiumCard>
-        </View>
-
-        <View style={[estilos.advancedGrid, !isTabletOrWeb && estilos.topGridMobile]}>
           <PremiumCard style={estilos.advancedCard}>
             <View style={estilos.panelHeader}>
               <View>
-                <Text style={estilos.panelTitle}>Alertas abiertas</Text>
-                <Text style={estilos.panelSubtitle}>Incidencias, inbox y documentos pendientes</Text>
+                <Text style={estilos.panelTitle}>{t('admin.dashboard.alerts.title')}</Text>
+                <Text style={estilos.panelSubtitle}>{t('admin.dashboard.alerts.subtitle')}</Text>
               </View>
-              <IconWrapper tono="error"><MessageSquareWarning size={20} color={BRAND.error} /></IconWrapper>
+              <IconWrapper tono="error"><MessageSquareWarning size={20} color={theme.isDark ? '#F87171' : '#DC2626'} /></IconWrapper>
             </View>
             <View style={estilos.listadoCompacto}>
               {metricas.alertasOperativas.length > 0 ? metricas.alertasOperativas.slice(0, 5).map((alerta) => (
-                <ListItem key={alerta.id} inicial="!" titulo={alerta.titulo} detalle={alerta.detalle} badge="Abierta" color={alerta.color} />
+                <ListItem key={alerta.id} inicial="!" titulo={alerta.titulo} detalle={alerta.detalle} badge={t('common.open')} color={alerta.color} />
               )) : (
-                <EmptyState texto="Sin alertas abiertas" />
+                <EmptyState texto={t('admin.dashboard.alerts.empty')} />
               )}
             </View>
           </PremiumCard>
@@ -966,22 +1168,22 @@ const DashboardAdmin: React.FC = () => {
           <PremiumCard style={estilos.advancedCard}>
             <View style={estilos.panelHeader}>
               <View>
-                <Text style={estilos.panelTitle}>Actividad reciente</Text>
-                <Text style={estilos.panelSubtitle}>Últimos eventos de auditoría</Text>
+                <Text style={estilos.panelTitle}>{t('admin.dashboard.activity.title')}</Text>
+                <Text style={estilos.panelSubtitle}>{t('admin.dashboard.activity.subtitle')}</Text>
               </View>
-              <IconWrapper tono="blue"><ShieldCheck size={20} color={BRAND.iconBright} /></IconWrapper>
+              <IconWrapper tono="blue"><ShieldCheck size={20} color={theme.isDark ? '#60A5FA' : '#2563EB'} /></IconWrapper>
             </View>
             <View style={estilos.timeline}>
               {metricas.actividad.length > 0 ? metricas.actividad.slice(0, 5).map((log) => (
                 <View key={log.id} style={estilos.timelineItem}>
                   <View style={[estilos.timelineDot, { backgroundColor: log.estado === 'Error' ? BRAND.error : log.estado === 'Warning' ? BRAND.warning : BRAND.success }]} />
                   <View style={estilos.timelineContent}>
-                    <Text style={estilos.timelineTitle}>{log.accion || 'Evento del sistema'}</Text>
-                    <Text style={estilos.timelineMeta}>{log.usuarioNombre || 'Sistema'} · {log.modulo || 'General'}</Text>
+                    <Text style={estilos.timelineTitle}>{log.accion || t('admin.dashboard.activity.system_event')}</Text>
+                    <Text style={estilos.timelineMeta}>{log.usuarioNombre || t('common.system')} · {log.modulo || t('common.general')}</Text>
                   </View>
                 </View>
               )) : (
-                <EmptyState texto="Sin actividad reciente" />
+                <EmptyState texto={t('admin.dashboard.activity.empty')} />
               )}
             </View>
           </PremiumCard>
@@ -1049,7 +1251,7 @@ const EmptyState = ({ texto }: { texto: string }) => (
   </View>
 );
 
-export default DashboardAdmin;
+
 
 const PerformanceLineChart = ({ datos }: { datos: PuntoGrafico[] }) => {
   const animacion = useRef(new Animated.Value(1)).current;
@@ -1087,17 +1289,44 @@ const PerformanceLineChart = ({ datos }: { datos: PuntoGrafico[] }) => {
   }, [avanceAnimado, datosSeguros]);
 
   const obtenerXVisible = (indice: number) => margen.left + (datosSeguros.length === 1 ? anchoInterno / 2 : (indice / (datosSeguros.length - 1)) * anchoInterno);
-  const puntosSerie = (clave: keyof Omit<PuntoGrafico, 'label'>) => datosVisibles.map((punto, indice) => `${obtenerXVisible(indice)},${obtenerY(punto[clave])}`).join(' ');
+  const puntosSerie = (clave: keyof Omit<PuntoGrafico, 'label'>) => datosVisibles.map((punto, indice) => ({
+    x: obtenerXVisible(indice),
+    y: obtenerY(punto[clave]),
+  }));
+
+  const crearCurvaSuave = (puntos: { x: number; y: number }[]) => {
+    if (puntos.length === 0) return '';
+    if (puntos.length === 1) return `M ${puntos[0].x} ${puntos[0].y}`;
+
+    const comandos = [`M ${puntos[0].x} ${puntos[0].y}`];
+    for (let i = 0; i < puntos.length - 1; i += 1) {
+      const actual = puntos[i];
+      const siguiente = puntos[i + 1];
+      const anterior = puntos[i - 1] || actual;
+      const posterior = puntos[i + 2] || siguiente;
+      const tension = 0.18;
+      const cp1x = actual.x + (siguiente.x - anterior.x) * tension;
+      const cp1y = actual.y + (siguiente.y - anterior.y) * tension;
+      const cp2x = siguiente.x - (posterior.x - actual.x) * tension;
+      const cp2y = siguiente.y - (posterior.y - actual.y) * tension;
+      comandos.push(`C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${siguiente.x} ${siguiente.y}`);
+    }
+    return comandos.join(' ');
+  };
+
   const areaSerie = (clave: keyof Omit<PuntoGrafico, 'label'>) => {
-    const ultimoIndice = Math.max(datosVisibles.length - 1, 0);
-    const ultimoX = obtenerXVisible(ultimoIndice);
-    return `${margen.left},${margen.top + altoInterno} ${puntosSerie(clave)} ${ultimoX},${margen.top + altoInterno}`;
+    const puntos = puntosSerie(clave);
+    if (puntos.length === 0) return '';
+    const baseline = margen.top + altoInterno;
+    const primero = puntos[0];
+    const ultimo = puntos[puntos.length - 1];
+    return `M ${primero.x} ${baseline} L ${primero.x} ${primero.y} ${crearCurvaSuave(puntos).replace(/^M [^C]+/, '')} L ${ultimo.x} ${baseline} Z`;
   };
 
   const renderSerie = (clave: keyof Omit<PuntoGrafico, 'label'>, color: string, gradiente: string) => (
     <>
-      <Polygon points={areaSerie(clave)} fill={`url(#${gradiente})`} />
-      <Polyline points={puntosSerie(clave)} fill="none" stroke={color} strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" />
+      <Path d={areaSerie(clave)} fill={`url(#${gradiente})`} />
+      <Path d={crearCurvaSuave(puntosSerie(clave))} fill="none" stroke={color} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
       {datosVisibles.map((punto, indice) => (
         <Circle
           key={`${clave}-${punto.label}-${indice}`}
@@ -1131,13 +1360,13 @@ const PerformanceLineChart = ({ datos }: { datos: PuntoGrafico[] }) => {
           </SvgLinearGradient>
         </Defs>
 
-        <Line x1={margen.left} y1={margen.top} x2={margen.left} y2={margen.top + altoInterno} stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
+        <Line x1={margen.left} y1={margen.top} x2={margen.left} y2={margen.top + altoInterno} stroke={ADMIN.borde} strokeWidth="1" strokeDasharray="10 12" />
         {valoresY.map((valor) => {
           const y = obtenerY(valor);
           return (
             <React.Fragment key={valor}>
-              <Line x1={margen.left} y1={y} x2={margen.left + anchoInterno} y2={y} stroke={valor === 0 ? 'rgba(255,255,255,0.18)' : 'rgba(96,165,250,0.16)'} strokeWidth="1" />
-              <SvgText x={margen.left - 18} y={y + 5} fill={BRAND.textMain} fontSize="14" fontWeight="900" textAnchor="end">{valor}</SvgText>
+              <Line x1={margen.left} y1={y} x2={margen.left + anchoInterno} y2={y} stroke={valor === 0 ? ADMIN.bordeFuerte : 'rgba(96,165,250,0.22)'} strokeWidth="2" strokeDasharray={valor === 0 ? '1 0' : '18 22'} strokeLinecap="round" />
+              <SvgText x={margen.left - 18} y={y + 5} fill={BRAND.textSec} fontSize="12" fontWeight="800" fontFamily={CHART_FONT} textAnchor="end">{valor}</SvgText>
             </React.Fragment>
           );
         })}
@@ -1147,10 +1376,10 @@ const PerformanceLineChart = ({ datos }: { datos: PuntoGrafico[] }) => {
         {renderSerie('estres', BRAND.error, 'estresFill')}
 
         {datosSeguros.map((punto, indice) => {
-          const mostrar = datosSeguros.length <= 8 || indice % 2 === 0 || indice === datosSeguros.length - 1;
+          const mostrar = datosSeguros.length <= 14 || indice % 2 === 0 || indice === datosSeguros.length - 1;
           if (!mostrar) return null;
           return (
-            <SvgText key={`${punto.label}-${indice}`} x={obtenerX(indice)} y={alto - 18} fill={BRAND.textMain} fontSize="13" fontWeight="900" textAnchor="middle">
+            <SvgText key={`${punto.label}-${indice}`} x={obtenerX(indice)} y={alto - 18} fill={BRAND.textMain} fontSize={datosSeguros.length > 10 ? '11' : '12'} fontWeight="800" fontFamily={CHART_FONT} textAnchor="middle">
               {punto.label}
             </SvgText>
           );
@@ -1165,6 +1394,94 @@ const PerformanceLineChart = ({ datos }: { datos: PuntoGrafico[] }) => {
         </View>
       </View>
     </Animated.View>
+  );
+};
+
+const ChartEventsPanel = ({ eventos }: { eventos: any[] }) => {
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  const proximosEventos = useMemo(() => {
+    return (eventos || [])
+      .filter((evento) => {
+        const fecha = obtenerFecha(evento.inicio || evento.fechaInicio);
+        return fecha && fecha >= hoy;
+      })
+      .sort((a, b) => {
+        const dateA = obtenerFecha(a.inicio || a.fechaInicio)?.getTime() || 0;
+        const dateB = obtenerFecha(b.inicio || b.fechaInicio)?.getTime() || 0;
+        return dateA - dateB;
+      })
+      .slice(0, 3);
+  }, [eventos]);
+
+  return (
+    <View style={estilos.chartDetailPanel}>
+      <Text style={estilos.chartDetailEyebrow}>Agenda Corporativa</Text>
+      <Text style={estilos.chartDetailTitle}>Próximas Fechas</Text>
+      
+      <View style={estilos.chartEventsList}>
+        {proximosEventos.length > 0 ? (
+          proximosEventos.map((evento) => {
+            const fecha = obtenerFecha(evento.inicio || evento.fechaInicio);
+            const dia = fecha ? fecha.getDate().toString() : '1';
+            const mes = fecha ? fecha.toLocaleDateString('es-ES', { month: 'short' }).substring(0, 3).toUpperCase().replace('.', '') : 'ENE';
+            const hora = fecha ? fecha.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '00:00';
+
+            return (
+              <View key={evento.id} style={estilos.chartEventRowBig}>
+                <View style={estilos.chartEventDateBoxBig}>
+                  <Text style={estilos.chartEventDateDayBig}>{dia}</Text>
+                  <Text style={estilos.chartEventDateMonthBig}>{mes}</Text>
+                </View>
+                <View style={estilos.chartEventInfo}>
+                  <Text style={estilos.chartEventNameBig} numberOfLines={1}>{evento.titulo}</Text>
+                  <Text style={estilos.chartEventTimeBig} numberOfLines={2}>{evento.descripcion || 'Sin descripción adicional'}</Text>
+                  <Text style={estilos.chartEventMetaBig}>{hora} · {evento.tipo || 'General'}</Text>
+                </View>
+              </View>
+            );
+          })
+        ) : (
+          <View style={estilos.chartEventsEmptyBoxBig}>
+            <CalendarClock size={24} color={BRAND.textSec} style={{ marginBottom: 8, opacity: 0.5 }} />
+            <Text style={estilos.chartEventsEmpty}>Sin eventos programados para los próximos días</Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+};
+
+const ChartDetailPanel = ({ datos }: { datos: PuntoGrafico[] }) => {
+  const actual = datos[datos.length - 1] || { label: 'Periodo', rendimiento: 0, carga: 0, estres: 0 };
+  const anterior = datos[datos.length - 2] || actual;
+  const rows = [
+    { label: 'Rendimiento', value: actual.rendimiento, prev: anterior.rendimiento, color: BRAND.success },
+    { label: 'Carga', value: actual.carga, prev: anterior.carga, color: BRAND.warning },
+    { label: 'Estrés', value: actual.estres, prev: anterior.estres, color: BRAND.error },
+  ];
+
+  return (
+    <View style={estilos.chartDetailPanel}>
+      <Text style={estilos.chartDetailEyebrow}>Detalle del periodo</Text>
+      <Text style={estilos.chartDetailTitle}>{actual.label}</Text>
+      <View style={estilos.chartDetailRows}>
+        {rows.map((row) => {
+          const delta = row.value - row.prev;
+          return (
+            <View key={row.label} style={estilos.chartDetailRow}>
+              <View style={[estilos.chartDetailDot, { backgroundColor: row.color }]} />
+              <View style={estilos.chartDetailCopy}>
+                <Text style={estilos.chartDetailLabel}>{row.label}</Text>
+                <Text style={estilos.chartDetailDelta}>{delta === 0 ? 'Sin variación' : `${delta > 0 ? '+' : ''}${delta} pts vs anterior`}</Text>
+              </View>
+              <Text style={[estilos.chartDetailValue, { color: row.color }]}>{row.value}%</Text>
+            </View>
+          );
+        })}
+      </View>
+    </View>
   );
 };
 
@@ -1191,7 +1508,7 @@ const estilos = StyleSheet.create({
   },
   scrollViewContent: {
     padding: 20,
-    paddingTop: 88,
+    paddingTop: 260,
     paddingBottom: 64,
   },
   header: {
@@ -1221,8 +1538,8 @@ const estilos = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoCampo,
   },
   liveDot: {
     width: 9,
@@ -1238,10 +1555,10 @@ const estilos = StyleSheet.create({
     textTransform: 'uppercase',
   },
   premiumCard: {
-    backgroundColor: 'rgba(13,11,30,0.62)',
+    backgroundColor: ADMIN.fondoElevado,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(210,198,255,0.12)',
+    borderColor: ADMIN.borde,
     overflow: 'hidden',
     ...sombraAdmin,
   },
@@ -1346,8 +1663,8 @@ const estilos = StyleSheet.create({
     marginBottom: 18,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(210,198,255,0.16)',
-    backgroundColor: 'rgba(13,9,27,0.54)',
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoVidrio,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1379,17 +1696,20 @@ const estilos = StyleSheet.create({
     fontWeight: '900',
   },
   detalleOperativoContenido: {
-    gap: 0,
+    gap: 10,
   },
   advancedGrid: {
     flexDirection: 'row',
-    gap: 14,
-    marginBottom: 14,
+    gap: 10,
+    marginBottom: 10,
+  },
+  advancedGridCompact: {
+    flexWrap: 'wrap',
   },
   advancedCard: {
     flex: 1,
-    minWidth: 320,
-    padding: 16,
+    minWidth: 260,
+    padding: 14,
   },
   topGridMobile: {
     flexDirection: 'column',
@@ -1405,13 +1725,227 @@ const estilos = StyleSheet.create({
   },
   barChartCard: {
     padding: 18,
-    minHeight: 340,
+    minHeight: 430,
   },
   chartHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 18,
+  },
+  chartInsightRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 14,
+  },
+  chartInsightCard: {
+    flex: 1,
+    minHeight: 74,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoCampo,
+    padding: 13,
+    justifyContent: 'space-between',
+  },
+  chartInsightLabel: {
+    color: BRAND.textSec,
+    fontSize: 9,
+    fontWeight: '900',
+    fontFamily: CHART_FONT,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  chartInsightValue: {
+    fontSize: 22,
+    fontWeight: '900',
+    fontFamily: CHART_FONT,
+    letterSpacing: 0,
+  },
+  chartBody: {
+    flexDirection: 'row',
+    gap: 32,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+  },
+  chartBodyMobile: {
+    flexDirection: 'column',
+    gap: 20,
+  },
+  chartGraphArea: {
+    flex: 1.5,
+    maxWidth: 720,
+    minWidth: 500,
+  },
+  chartMediumLayout: {
+    width: '100%',
+    alignItems: 'center',
+    gap: 24,
+  },
+  chartBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    gap: 32,
+    width: '100%',
+    flexWrap: 'wrap',
+  },
+  chartDetailPanel: {
+    width: 510,
+    minWidth: 320,
+    maxWidth: '100%',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoCampo,
+    padding: 14,
+  },
+  chartDetailEyebrow: {
+    color: BRAND.textSec,
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+  },
+  chartDetailTitle: {
+    color: BRAND.textMain,
+    fontSize: 22,
+    fontWeight: '900',
+    marginTop: 8,
+    marginBottom: 14,
+  },
+  chartDetailRows: {
+    gap: 10,
+  },
+  chartDetailRow: {
+    minHeight: 58,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoVidrio,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 10,
+  },
+  chartDetailDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 999,
+  },
+  chartDetailCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  chartDetailLabel: {
+    color: BRAND.textMain,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  chartDetailDelta: {
+    color: BRAND.textSec,
+    fontSize: 9,
+    fontWeight: '700',
+    marginTop: 3,
+  },
+  chartEventsSection: {
+    marginTop: 18,
+    borderTopWidth: 1,
+    borderTopColor: ADMIN.borde,
+    paddingTop: 16,
+  },
+  chartEventsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  chartEventsTitle: {
+    color: BRAND.textMain,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+  },
+  chartEventsList: {
+    gap: 10,
+  },
+  chartEventRowBig: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: ADMIN.fondoVidrio,
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    borderRadius: 10,
+    padding: 10,
+  },
+  chartEventDateBoxBig: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(168,85,247,0.3)',
+    backgroundColor: 'rgba(124,58,237,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chartEventDateDayBig: {
+    color: BRAND.violet,
+    fontSize: 16,
+    fontWeight: '900',
+    lineHeight: 16,
+  },
+  chartEventDateMonthBig: {
+    color: BRAND.violet,
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  chartEventInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  chartEventNameBig: {
+    color: BRAND.textMain,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  chartEventTimeBig: {
+    color: BRAND.textSec,
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 2,
+    lineHeight: 13,
+  },
+  chartEventMetaBig: {
+    color: BRAND.violet,
+    fontSize: 9,
+    fontWeight: '900',
+    marginTop: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  chartEventsEmptyBoxBig: {
+    minHeight: 180,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: ADMIN.borde,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  chartEventsEmpty: {
+    color: BRAND.textSec,
+    fontSize: 10,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  chartDetailValue: {
+    fontSize: 18,
+    fontWeight: '900',
   },
   chartTitleContainer: {
     flexDirection: 'row',
@@ -1451,8 +1985,8 @@ const estilos = StyleSheet.create({
     padding: 4,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
-    backgroundColor: 'rgba(13,9,27,0.64)',
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoCampo,
   },
   chartToggle: {
     paddingHorizontal: 12,
@@ -1468,6 +2002,7 @@ const estilos = StyleSheet.create({
     color: BRAND.textSec,
     fontSize: 10,
     fontWeight: '900',
+    fontFamily: CHART_FONT,
     textTransform: 'uppercase',
     letterSpacing: 1.4,
   },
@@ -1475,11 +2010,11 @@ const estilos = StyleSheet.create({
     color: BRAND.textMain,
   },
   lineChartShell: {
-    height: 300,
+    height: 330,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(210,198,255,0.16)',
-    backgroundColor: 'rgba(5,3,12,0.42)',
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoVidrio,
     overflow: 'hidden',
   },
   chartTooltip: {
@@ -1488,8 +2023,8 @@ const estilos = StyleSheet.create({
     right: 14,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(196,181,253,0.16)',
-    backgroundColor: 'rgba(5,3,12,0.78)',
+    borderColor: ADMIN.bordeFuerte,
+    backgroundColor: ADMIN.fondoVidrioFuerte,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
@@ -1497,6 +2032,7 @@ const estilos = StyleSheet.create({
     color: BRAND.textSec,
     fontSize: 9,
     fontWeight: '900',
+    fontFamily: CHART_FONT,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 4,
@@ -1509,6 +2045,7 @@ const estilos = StyleSheet.create({
   chartTooltipValue: {
     fontSize: 10,
     fontWeight: '900',
+    fontFamily: CHART_FONT,
   },
   chartLegend: {
     flexDirection: 'row',
@@ -1524,8 +2061,8 @@ const estilos = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
-    backgroundColor: 'rgba(255,255,255,0.025)',
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoCampo,
   },
   legendChartDot: {
     width: 9,
@@ -1536,12 +2073,14 @@ const estilos = StyleSheet.create({
     color: BRAND.textSec,
     fontSize: 10,
     fontWeight: '900',
+    fontFamily: CHART_FONT,
     textTransform: 'uppercase',
     letterSpacing: 1.1,
   },
   legendChartValue: {
     fontSize: 11,
     fontWeight: '900',
+    fontFamily: CHART_FONT,
   },
   barChartArea: {
     height: 250,
@@ -1740,7 +2279,7 @@ const estilos = StyleSheet.create({
   },
   progressTrack: {
     height: 8,
-    backgroundColor: 'rgba(255,255,255,0.055)',
+    backgroundColor: ADMIN.fondoCampo,
     borderRadius: 999,
     overflow: 'hidden',
   },
@@ -1757,8 +2296,8 @@ const estilos = StyleSheet.create({
     minHeight: 112,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(196,181,253,0.12)',
-    backgroundColor: 'rgba(255,255,255,0.025)',
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoCampo,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 12,
@@ -1800,9 +2339,9 @@ const estilos = StyleSheet.create({
     gap: 12,
     padding: 12,
     borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.025)',
+    backgroundColor: ADMIN.fondoCampo,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.055)',
+    borderColor: ADMIN.borde,
   },
   listAvatar: {
     width: 40,
@@ -1851,9 +2390,9 @@ const estilos = StyleSheet.create({
     gap: 12,
     padding: 12,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.025)',
+    backgroundColor: ADMIN.fondoCampo,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.055)',
+    borderColor: ADMIN.borde,
   },
   approvalInfo: {
     flex: 1,
@@ -1883,9 +2422,9 @@ const estilos = StyleSheet.create({
     gap: 10,
     padding: 12,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.025)',
+    backgroundColor: ADMIN.fondoCampo,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.055)',
+    borderColor: ADMIN.borde,
   },
   departmentTop: {
     flexDirection: 'row',
@@ -1909,8 +2448,8 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.055)',
-    backgroundColor: 'rgba(255,255,255,0.018)',
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoCampo,
   },
   emptyText: {
     color: BRAND.textSec,
@@ -1931,9 +2470,9 @@ const estilos = StyleSheet.create({
     gap: 14,
     padding: 14,
     borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.025)',
+    backgroundColor: ADMIN.fondoCampo,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.055)',
+    borderColor: ADMIN.borde,
   },
   timelineDot: {
     width: 10,
@@ -1963,28 +2502,29 @@ const estilos = StyleSheet.create({
     letterSpacing: 1,
   },
   heroPanel: {
-    minHeight: 246,
-    marginBottom: 18,
-    borderRadius: 12,
+    minHeight: 320,
+    marginBottom: 20,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(210,198,255,0.16)',
-    backgroundColor: 'rgba(13,11,30,0.58)',
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoVidrio,
     overflow: 'hidden',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 20,
-    gap: 22,
+    justifyContent: 'center',
+    paddingHorizontal: 38,
+    paddingVertical: 32,
+    gap: 300,
     ...sombraVioleta,
   },
   heroGlowA: {
     position: 'absolute',
-    right: 180,
-    top: -110,
-    width: 340,
-    height: 340,
-    borderRadius: 170,
-    backgroundColor: 'rgba(37,99,235,0.30)',
+    right: 240,
+    top: -140,
+    width: 380,
+    height: 380,
+    borderRadius: 190,
+    backgroundColor: 'rgba(37,99,235,0.18)',
   },
   heroGlowB: {
     position: 'absolute',
@@ -1993,12 +2533,14 @@ const estilos = StyleSheet.create({
     width: 360,
     height: 280,
     borderRadius: 120,
-    backgroundColor: 'rgba(168,85,247,0.26)',
+    backgroundColor: 'rgba(168,85,247,0.18)',
   },
   heroCopy: {
-    flex: 1,
-    maxWidth: 640,
+    flex: 1.4,
+    maxWidth: 800,
+    minWidth: 360,
     zIndex: 2,
+    paddingRight: 8,
   },
   heroKicker: {
     flexDirection: 'row',
@@ -2017,7 +2559,7 @@ const estilos = StyleSheet.create({
     shadowRadius: 20,
   },
   heroEyebrow: {
-    color: '#D8CAFF',
+    color: BRAND.violet,
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 1.8,
@@ -2025,17 +2567,18 @@ const estilos = StyleSheet.create({
   },
   heroTitle: {
     color: BRAND.textMain,
-    fontSize: 31,
+    fontSize: 40,
     fontWeight: '900',
-    letterSpacing: 0,
-    lineHeight: 36,
+    letterSpacing: -0.8,
+    lineHeight: 48,
+    fontStyle: 'italic',
   },
   heroText: {
     color: BRAND.textSec,
     fontSize: 14,
     fontWeight: '700',
     lineHeight: 24,
-    maxWidth: 620,
+    maxWidth: 560,
     marginTop: 12,
   },
   heroActions: {
@@ -2065,37 +2608,77 @@ const estilos = StyleSheet.create({
     fontWeight: '900',
   },
   heroMetricPill: {
-    borderRadius: 12,
+    flex: 1,
+    minWidth: 120,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    paddingVertical: 12,
     paddingHorizontal: 14,
-    paddingVertical: 11,
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderColor: 'rgba(255,255,255,0.06)',
   },
-  heroMetricValue: {
-    color: BRAND.textMain,
-    fontSize: 15,
-    fontWeight: '900',
+  heroMetricPillBlue: {
+    borderColor: 'rgba(59,130,246,0.18)',
+    backgroundColor: 'rgba(59,130,246,0.03)',
+  },
+  heroMetricPillViolet: {
+    borderColor: 'rgba(168,85,247,0.18)',
+    backgroundColor: 'rgba(168,85,247,0.03)',
+  },
+  heroMetricPillEmerald: {
+    borderColor: 'rgba(16,185,129,0.18)',
+    backgroundColor: 'rgba(16,185,129,0.03)',
+  },
+  heroMetricHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  heroMetricIconBg: {
+    width: 22,
+    height: 22,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   heroMetricLabel: {
     color: BRAND.textSec,
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: '900',
-    letterSpacing: 1,
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
+  heroMetricBody: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+  },
+  heroMetricValue: {
+    color: BRAND.textMain,
+    fontSize: 24,
+    fontWeight: '900',
+    lineHeight: 28,
+  },
+  heroMetricTrend: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
   heroDashboardShell: {
-    width: 390,
-    borderRadius: 12,
+    flex: 0.75,
+    maxWidth: 420,
+    minWidth: 340,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(210,198,255,0.16)',
-    backgroundColor: 'rgba(255,255,255,0.055)',
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoVidrioFuerte,
     overflow: 'hidden',
     zIndex: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 28 },
-    shadowOpacity: 0.262,
-    shadowRadius: 90,
+    shadowOpacity: 0.18,
+    shadowRadius: 54,
   },
   heroWindowBar: {
     minHeight: 38,
@@ -2104,8 +2687,8 @@ const estilos = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(210,198,255,0.16)',
-    backgroundColor: 'rgba(6,5,18,0.72)',
+    borderBottomColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoVidrio,
   },
   heroWindowDot: {
     width: 10,
@@ -2119,23 +2702,28 @@ const estilos = StyleSheet.create({
     fontWeight: '800',
   },
   heroDashboardGrid: {
-    padding: 12,
+    padding: 14,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 10,
   },
   heroPanelCard: {
-    width: '48%',
-    minHeight: 82,
+    width: '48.4%',
+    minHeight: 76,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(210,198,255,0.14)',
-    backgroundColor: 'rgba(13,9,27,0.68)',
-    padding: 14,
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoVidrioFuerte,
+    padding: 13,
   },
   heroPanelMain: {
     width: '100%',
-    minHeight: 112,
+    minHeight: 138,
+    paddingRight: 178,
+  },
+  heroPanelMainCopy: {
+    maxWidth: 178,
+    zIndex: 2,
   },
   heroPanelLabel: {
     color: BRAND.textSec,
@@ -2144,7 +2732,7 @@ const estilos = StyleSheet.create({
   },
   heroPanelValue: {
     color: BRAND.textMain,
-    fontSize: 33,
+    fontSize: 34,
     fontWeight: '900',
     marginTop: 4,
   },
@@ -2163,12 +2751,12 @@ const estilos = StyleSheet.create({
   heroChart: {
     position: 'absolute',
     right: 16,
-    bottom: 14,
-    height: 82,
-    width: 150,
+    bottom: 16,
+    height: 96,
+    width: 154,
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 9,
+    gap: 8,
   },
   heroChartBar: {
     flex: 1,

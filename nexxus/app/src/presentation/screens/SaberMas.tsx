@@ -3,11 +3,13 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, Platf
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { COLORES, RADIOS, SOMBRAS, ESPACIADO } from '@/shared/constants/diseno';
 
 const { width: ancho } = Dimensions.get('window');
 
 export default function SaberMas({ navigation }: { navigation: any }) {
+  const { t } = useTranslation();
   const margenesSeguros = useSafeAreaInsets();
 
   return (
@@ -29,36 +31,36 @@ export default function SaberMas({ navigation }: { navigation: any }) {
         showsVerticalScrollIndicator={false}
       >
         <View style={estilos.cabecera}>
-          <Text style={estilos.titulo}>Bienestar Inteligente en <Text style={estilos.tituloPrimario}>Nexxus</Text></Text>
-          <Text style={estilos.subtitulo}>Sinergia avanzada entre IA predictiva y soporte humano para eliminar el burnout y potenciar el talento.</Text>
+          <Text style={estilos.titulo}>{t('saberMas.title_prefix')}<Text style={estilos.tituloPrimario}>Nexxus</Text></Text>
+          <Text style={estilos.subtitulo}>{t('saberMas.subtitle')}</Text>
         </View>
 
         <View style={estilos.seccion}>
-          <Text style={estilos.seccionTitulo}>Nuestra Visión</Text>
+          <Text style={estilos.seccionTitulo}>{t('saberMas.vision_title')}</Text>
           <View style={estilos.tarjetaDestaque}>
             <LinearGradient colors={['#500088', '#2d0050']} style={estilos.gradienteTarjeta}>
               <MaterialIcons name="wb-sunny" size={30} color="#dfb7ff" />
               <Text style={estilos.textoCuerpoDestaque}>
-                Nuestra visión es transformar la cultura laboral global, haciendo de la salud mental el motor del éxito empresarial. Creamos entornos donde el talento humano prospera en equilibrio, reduciendo la rotación y el agotamiento.
+                {t('saberMas.vision_text')}
               </Text>
             </LinearGradient>
           </View>
         </View>
 
         <View style={estilos.seccion}>
-          <Text style={estilos.seccionTitulo}>Nuestra Misión</Text>
+          <Text style={estilos.seccionTitulo}>{t('saberMas.mission_title')}</Text>
           <View style={estilos.tarjetaBlanca}>
             <View style={estilos.iconoCaja}>
               <MaterialIcons name="psychology" size={30} color="#500088" />
             </View>
             <Text style={estilos.textoCuerpo}>
-              Fusionamos IA de vanguardia con soporte experto para detectar patrones de estrés y fatiga en tiempo real. Nuestra misión es prevenir crisis antes de que afecten la productividad y el bienestar, conectando a los colaboradores con herramientas de autocuidado efectivas.
+              {t('saberMas.mission_text')}
             </Text>
           </View>
         </View>
 
         <View style={estilos.seccion}>
-          <Text style={estilos.seccionTitulo}>Pilares Fundamentales</Text>
+          <Text style={estilos.seccionTitulo}>{t('saberMas.pillars_title')}</Text>
 
           <View style={estilos.gridPilares}>
             <View style={estilos.tarjetaPilar}>
@@ -68,8 +70,8 @@ export default function SaberMas({ navigation }: { navigation: any }) {
               <View style={estilos.iconoPilarContenedor}>
                 <MaterialIcons name="security" size={20} color="#500088" />
               </View>
-              <Text style={estilos.pilarTitulo}>Privacidad Absoluta</Text>
-              <Text style={estilos.pilarTexto}>Implementamos cifrado de grado militar y protocolos de anonimización avanzados. Garantizamos un espacio seguro, protegiendo tu información en cada momento.</Text>
+              <Text style={estilos.pilarTitulo}>{t('saberMas.pillar_1_title')}</Text>
+              <Text style={estilos.pilarTexto}>{t('saberMas.pillar_1_text')}</Text>
             </View>
 
             <View style={estilos.tarjetaPilar}>
@@ -79,8 +81,8 @@ export default function SaberMas({ navigation }: { navigation: any }) {
               <View style={estilos.iconoPilarContenedor}>
                 <MaterialIcons name="auto-awesome" size={20} color="#500088" />
               </View>
-              <Text style={estilos.pilarTitulo}>IA Predictiva</Text>
-              <Text style={estilos.pilarTexto}>Modelos avanzados que analizan patrones de fatiga y estrés, permitiendo mitigar el agotamiento antes de que se convierta en una crisis de rendimiento.</Text>
+              <Text style={estilos.pilarTitulo}>{t('saberMas.pillar_2_title')}</Text>
+              <Text style={estilos.pilarTexto}>{t('saberMas.pillar_2_text')}</Text>
             </View>
 
             <View style={estilos.tarjetaPilar}>
@@ -90,8 +92,8 @@ export default function SaberMas({ navigation }: { navigation: any }) {
               <View style={estilos.iconoPilarContenedor}>
                 <MaterialIcons name="people" size={20} color="#500088" />
               </View>
-              <Text style={estilos.pilarTitulo}>Enfoque Humano</Text>
-              <Text style={estilos.pilarTexto}>La tecnología facilita el camino, pero la conexión es real. Contamos con una red de profesionales empáticos listos para brindarte apoyo integral.</Text>
+              <Text style={estilos.pilarTitulo}>{t('saberMas.pillar_3_title')}</Text>
+              <Text style={estilos.pilarTexto}>{t('saberMas.pillar_3_text')}</Text>
             </View>
 
             <View style={estilos.tarjetaPilar}>
@@ -101,21 +103,21 @@ export default function SaberMas({ navigation }: { navigation: any }) {
               <View style={estilos.iconoPilarContenedor}>
                 <MaterialIcons name="insights" size={20} color="#500088" />
               </View>
-              <Text style={estilos.pilarTitulo}>Análisis de Pulso</Text>
-              <Text style={estilos.pilarTexto}>Métricas de salud organizacional en tiempo real que otorgan visibilidad profunda para construir estrategias efectivas y centradas en el talento humano.</Text>
+              <Text style={estilos.pilarTitulo}>{t('saberMas.pillar_4_title')}</Text>
+              <Text style={estilos.pilarTexto}>{t('saberMas.pillar_4_text')}</Text>
             </View>
           </View>
         </View>
 
         <View style={estilos.seccionFinal}>
-          <Text style={estilos.tituloFinal}>¿Por qué elegir Nexxus?</Text>
+          <Text style={estilos.tituloFinal}>{t('saberMas.why_title')}</Text>
           <Text style={estilos.textoFinal}>
-            Mientras otros miden solo resultados, nosotros cuidamos el origen de los mismos: las personas. Nexxus asegura que el crecimiento de tu empresa vaya de la mano con el bienestar integral de cada colaborador.
+            {t('saberMas.why_text')}
           </Text>
         </View>
 
         <View style={estilos.piePagina}>
-          <Text style={estilos.textoPie}>NEXXUS • BIENESTAR INTELIGENTE</Text>
+          <Text style={estilos.textoPie}>{t('saberMas.footer_text')}</Text>
         </View>
       </ScrollView>
     </View>

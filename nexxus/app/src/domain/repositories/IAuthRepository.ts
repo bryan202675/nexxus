@@ -8,6 +8,9 @@ export interface IAuthRepository {
   /** Inicia sesión y devuelve el usuario autenticado. */
   login(correo: string, password: string): Promise<User>;
 
+  /** Inicia sesión empresarial para empleados. */
+  loginEmpresarial(codigoEmpresa: string, usuario: string, password: string): Promise<User>;
+
   /** Cierra la sesión activa. */
   logout(): Promise<void>;
 

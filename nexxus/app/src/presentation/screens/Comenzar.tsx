@@ -4,13 +4,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import FondoAurora from '@/presentation/components/FondoAurora';
 import MarcaNexxus from '@/presentation/components/MarcaNexxus';
 import { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/constants/diseno';
+import AuraOrb from '@/presentation/components/AuraOrb';
 
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 
 export default function Comenzar() {
+  const { t } = useTranslation();
   const margenesSeguros = useSafeAreaInsets();
   const navegacion = useNavigation<any>();
   const { login, cargando, error: errorAuth } = useContextoUsuario();
@@ -19,7 +22,7 @@ export default function Comenzar() {
 
   const manejarIngreso = async () => {
     if (!correo.trim() || !contrasena.trim()) {
-      Alert.alert('Datos requeridos', 'Por favor ingresa un correo y contraseña.');
+      Alert.alert(t('comenzar.alert_missing_data_title'), t('comenzar.alert_missing_data_msg'));
       return;
     }
 
@@ -35,7 +38,7 @@ export default function Comenzar() {
         navegacion.reset({ index: 0, routes: [{ name: 'AppEmpleado' }] });
       }
     } catch (err: any) {
-      Alert.alert('Error', err.userMessage || 'No se pudo iniciar sesión.');
+      Alert.alert(t('comenzar.alert_error_title'), err.userMessage || t('comenzar.alert_error_msg'));
     }
   };
 
@@ -46,17 +49,18 @@ export default function Comenzar() {
         <MarcaNexxus tamano={28} />
 
         <View style={estilos.cabecera}>
-          <Text style={estilos.titulo}>Accede con una interfaz más clara y ligera.</Text>
-          <Text style={estilos.subtitulo}>Mantuvimos el flujo actual y simplificamos la capa visual para que el inicio se sienta directo.</Text>
+          <AuraOrb size={130} style={estilos.orbeLogin} />
+          <Text style={estilos.titulo}>{t('comenzar.title')}</Text>
+          <Text style={estilos.subtitulo}>{t('comenzar.subtitle')}</Text>
         </View>
 
         <View style={estilos.tarjeta}>
           <View style={estilos.campo}>
-            <Text style={estilos.etiqueta}>Correo corporativo</Text>
+            <Text style={estilos.etiqueta}>{t('comenzar.email_label')}</Text>
             <View style={estilos.entradaContenedor}>
               <MaterialIcons name="alternate-email" size={18} color={COLORES.textoSuave} />
               <TextInput
-                placeholder="nombre@empresa.com"
+                placeholder={t('comenzar.email_placeholder')}
                 placeholderTextColor={COLORES.textoSuave}
                 style={estilos.entrada}
                 value={correo}
@@ -68,7 +72,7 @@ export default function Comenzar() {
           </View>
 
           <View style={estilos.campo}>
-            <Text style={estilos.etiqueta}>Contraseña</Text>
+            <Text style={estilos.etiqueta}>{t('comenzar.password_label')}</Text>
             <View style={estilos.entradaContenedor}>
               <MaterialIcons name="lock-outline" size={18} color={COLORES.textoSuave} />
               <TextInput
@@ -84,13 +88,13 @@ export default function Comenzar() {
 
           <TouchableOpacity style={estilos.botonPrincipal} onPress={manejarIngreso} activeOpacity={0.88} disabled={cargando}>
             <LinearGradient colors={[COLORES.primario, COLORES.primarioFuerte, COLORES.secundario]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.gradienteBoton}>
-              <Text style={estilos.textoBoton}>{cargando ? 'Iniciando...' : 'Continuar'}</Text>
+              <Text style={estilos.textoBoton}>{cargando ? t('comenzar.btn_loading') : t('comenzar.btn_continue')}</Text>
               <MaterialIcons name={cargando ? "sync" : "arrow-forward"} size={18} color={COLORES.textoInverso} />
             </LinearGradient>
           </TouchableOpacity>
 
           <TouchableOpacity style={estilos.botonSecundario} activeOpacity={0.82}>
-            <Text style={estilos.textoSecundario}>No tengo una cuenta corporativa</Text>
+            <Text style={estilos.textoSecundario}>{t('comenzar.btn_no_account')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -111,14 +115,20 @@ const estilos = StyleSheet.create({
   cabecera: {
     gap: ESPACIADO.md,
     marginTop: ESPACIADO.xl,
+    alignItems: 'center',
+  },
+  orbeLogin: {
+    marginBottom: ESPACIADO.lg,
   },
   titulo: {
     ...TIPOGRAFIA.tituloPantalla,
     color: COLORES.texto,
+    textAlign: 'center',
   },
   subtitulo: {
     ...TIPOGRAFIA.cuerpoGrande,
     color: COLORES.textoSecundario,
+    textAlign: 'center',
   },
   tarjeta: {
     borderRadius: RADIOS.xxl,

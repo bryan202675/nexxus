@@ -2,7 +2,7 @@ import React from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, ScrollView, FlatList,
 } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import FondoAurora from '@/presentation/components/FondoAurora';
 import { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/constants/diseno';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
@@ -11,6 +11,7 @@ import { Task } from '@/domain/entities/Task';
 interface Props { navigation: any; }
 
 export default function PlanificadorJornada({ navigation }: Props) {
+  const { t } = useTranslation();
   const { tareas, metrics } = useContextoUsuario();
 
   const urgentes = tareas.filter(t => t.prioridad === 'Urgente' && t.estado !== 'completada');
@@ -36,32 +37,32 @@ export default function PlanificadorJornada({ navigation }: Props) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={estilos.botonRegresar}>
           <MaterialIcons name="arrow-back" size={24} color={COLORES.texto} />
         </TouchableOpacity>
-        <Text style={estilos.tituloPantalla}>Productividad Diaria</Text>
+        <Text style={estilos.tituloPantalla}>{t('planificadorJornada.title')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={estilos.scroll}>
         <View style={estilos.tarjetaResumen}>
-          <Text style={estilos.tituloResumen}>Resumen del Día</Text>
+          <Text style={estilos.tituloResumen}>{t('planificadorJornada.summary_title')}</Text>
           <View style={estilos.gridResumen}>
             <View style={estilos.itemResumen}>
               <Text style={estilos.valorResumen}>{hoy.length}</Text>
-              <Text style={estilos.labelResumen}>Pendientes</Text>
+              <Text style={estilos.labelResumen}>{t('planificadorJornada.pending')}</Text>
             </View>
             <View style={estilos.itemResumen}>
               <Text style={estilos.valorResumen}>{completadas.length}</Text>
-              <Text style={estilos.labelResumen}>Completadas</Text>
+              <Text style={estilos.labelResumen}>{t('planificadorJornada.completed')}</Text>
             </View>
             <View style={estilos.itemResumen}>
               <Text style={[estilos.valorResumen, { color: COLORES.primario }]}>{rendimiento}%</Text>
-              <Text style={estilos.labelResumen}>Rendimiento</Text>
+              <Text style={estilos.labelResumen}>{t('planificadorJornada.performance')}</Text>
             </View>
           </View>
         </View>
 
         <View style={estilos.seccion}>
           <View style={estilos.cabeceraSeccion}>
-            <Text style={estilos.tituloSeccion}>Prioridades Críticas</Text>
+            <Text style={estilos.tituloSeccion}>{t('planificadorJornada.critical_priorities')}</Text>
             <MaterialIcons name="warning" size={20} color={COLORES.error} />
           </View>
           {urgentes.length > 0 ? (
@@ -72,18 +73,18 @@ export default function PlanificadorJornada({ navigation }: Props) {
               </View>
             ))
           ) : (
-            <Text style={estilos.textoVacio}>No hay tareas urgentes para hoy.</Text>
+            <Text style={estilos.textoVacio}>{t('planificadorJornada.no_urgent')}</Text>
           )}
         </View>
 
         <View style={estilos.seccion}>
-          <Text style={estilos.tituloSeccion}>Plan del Día</Text>
+          <Text style={estilos.tituloSeccion}>{t('planificadorJornada.day_plan')}</Text>
           <FlatList
             data={hoy}
             keyExtractor={item => item.id}
             renderItem={renderTareaBreve}
             scrollEnabled={false}
-            ListEmptyComponent={<Text style={estilos.textoVacio}>Tu jornada está libre por ahora.</Text>}
+            ListEmptyComponent={<Text style={estilos.textoVacio}>{t('planificadorJornada.empty_plan')}</Text>}
           />
         </View>
       </ScrollView>

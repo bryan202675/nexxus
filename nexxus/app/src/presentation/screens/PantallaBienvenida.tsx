@@ -11,11 +11,14 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import FondoAurora from '@/presentation/components/FondoAurora';
 import MarcaNexxus from '@/presentation/components/MarcaNexxus';
 import { COLORES, ESPACIADO, GRADIENTES, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/constants/diseno';
+import AuraOrb from '@/presentation/components/AuraOrb';
 
 export default function PantallaBienvenida() {
+  const { t } = useTranslation();
   const navegacion = useNavigation<any>();
   const animacionEntrada = useRef(new Animated.Value(0)).current;
 
@@ -51,45 +54,48 @@ export default function PantallaBienvenida() {
           <MarcaNexxus tamano={30} />
 
           <View style={estilos.bloqueHero}>
-            <View style={estilos.orbita}>
-              <LinearGradient colors={GRADIENTES.principal} style={estilos.orbitaInterna}>
-                <View style={estilos.circuloCentral}>
-                  <MaterialIcons name="auto-awesome" size={34} color={COLORES.primario} />
-                </View>
-              </LinearGradient>
-            </View>
+            <AuraOrb size={184} style={estilos.orbita} />
 
-            <Text style={estilos.titulo}>Bienestar con criterio visual limpio y foco real.</Text>
+            <Text style={estilos.titulo}>{t('pantallaBienvenida.title')}</Text>
             <Text style={estilos.subtitulo}>
-              Nexxus concentra bienestar, seguimiento y apoyo en una experiencia más clara, amable y útil para el día a día.
+              {t('pantallaBienvenida.subtitle')}
             </Text>
           </View>
 
           <View style={estilos.tarjetaResumen}>
             <View style={estilos.filaResumen}>
               <View style={estilos.puntoResumen} />
-              <Text style={estilos.textoResumen}>Seguimiento diario</Text>
+              <Text style={estilos.textoResumen}>{t('pantallaBienvenida.feature_1')}</Text>
             </View>
             <View style={estilos.filaResumen}>
               <View style={[estilos.puntoResumen, estilos.puntoSecundario]} />
-              <Text style={estilos.textoResumen}>Apoyo guiado por IA</Text>
+              <Text style={estilos.textoResumen}>{t('pantallaBienvenida.feature_2')}</Text>
             </View>
             <View style={estilos.filaResumen}>
               <View style={[estilos.puntoResumen, estilos.puntoSuave]} />
-              <Text style={estilos.textoResumen}>Privacidad y claridad</Text>
+              <Text style={estilos.textoResumen}>{t('pantallaBienvenida.feature_3')}</Text>
             </View>
           </View>
 
           <View style={estilos.grupoBotones}>
             <TouchableOpacity activeOpacity={0.88} onPress={() => navegacion.navigate('Comenzar')}>
               <LinearGradient colors={GRADIENTES.principal} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.botonPrincipal}>
-                <Text style={estilos.textoBotonPrincipal}>Comenzar</Text>
+                <Text style={estilos.textoBotonPrincipal}>{t('pantallaBienvenida.btn_start')}</Text>
                 <MaterialIcons name="arrow-forward" size={18} color={COLORES.textoInverso} />
               </LinearGradient>
             </TouchableOpacity>
 
             <TouchableOpacity activeOpacity={0.82} style={estilos.botonSecundario} onPress={() => navegacion.navigate('SaberMas')}>
-              <Text style={estilos.textoBotonSecundario}>Conocer más</Text>
+              <Text style={estilos.textoBotonSecundario}>{t('pantallaBienvenida.btn_learn_more')}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={estilos.botonEnlaceEmpresarial}
+              onPress={() => navegacion.navigate('LoginEmpresarial')}
+            >
+              <MaterialIcons name="business" size={16} color={COLORES.primarioClaro} />
+              <Text style={estilos.textoEnlaceEmpresarial}>ACCESO EMPRESARIAL PARA EMPLEADOS</Text>
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -117,29 +123,8 @@ const estilos = StyleSheet.create({
     gap: ESPACIADO.lg,
   },
   orbita: {
-    width: 220,
-    height: 220,
-    borderRadius: 220,
     alignSelf: 'center',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.34)',
-    ...SOMBRAS.tarjeta,
-  },
-  orbitaInterna: {
-    width: 176,
-    height: 176,
-    borderRadius: 176,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  circuloCentral: {
-    width: 100,
-    height: 100,
-    borderRadius: 100,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    marginBottom: ESPACIADO.lg,
   },
   titulo: {
     ...TIPOGRAFIA.hero,
@@ -207,8 +192,24 @@ const estilos = StyleSheet.create({
     borderColor: COLORES.borde,
   },
   textoBotonSecundario: {
-    fontSize: 15,
+    color: COLORES.texto,
+    fontSize: 14,
     fontWeight: '700',
-    color: COLORES.primario,
+    letterSpacing: 0.5,
+  },
+  botonEnlaceEmpresarial: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    marginTop: 8,
+    gap: 8,
+  },
+  textoEnlaceEmpresarial: {
+    color: COLORES.primarioClaro,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
 });

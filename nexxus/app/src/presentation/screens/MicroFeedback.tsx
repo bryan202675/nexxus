@@ -5,10 +5,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import FondoAurora from '@/presentation/components/FondoAurora';
 import { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/constants/diseno';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
+import { useTranslation } from 'react-i18next';
 
 interface Props { navigation: any; }
 
 export default function MicroFeedback({ navigation }: Props) {
+  const { t } = useTranslation();
   const { enviarFeedback, perfil } = useContextoUsuario();
   const [tipo, setTipo] = useState<'problema' | 'sugerencia' | 'satisfaccion' | 'dificultad'>('sugerencia');
   const [mensaje, setMensaje] = useState('');
@@ -17,7 +19,7 @@ export default function MicroFeedback({ navigation }: Props) {
 
   const submit = async () => {
     if (!mensaje.trim()) {
-      Alert.alert('Vacio', 'Por favor escribe un mensaje.');
+      Alert.alert(t('microFeedback.empty_alert'), t('microFeedback.empty_msg'));
       return;
     }
     setEnviando(true);
@@ -30,12 +32,12 @@ export default function MicroFeedback({ navigation }: Props) {
           mensaje,
           nivelSatisfaccion: tipo === 'satisfaccion' ? satisfaccion : undefined,
         });
-        Alert.alert('¡Gracias!', 'Tu feedback ha sido enviado de forma segura a Recursos Humanos.', [
-          { text: 'Aceptar', onPress: () => navigation.goBack() }
+        Alert.alert(t('microFeedback.thanks_alert'), t('microFeedback.thanks_msg'), [
+          { text: t('microFeedback.accept'), onPress: () => navigation.goBack() }
         ]);
       }
     } catch (e) {
-      Alert.alert('Error', 'No se pudo enviar.');
+      Alert.alert(t('microFeedback.error_alert'), t('microFeedback.error_msg'));
     } finally {
       setEnviando(false);
     }
@@ -49,26 +51,26 @@ export default function MicroFeedback({ navigation }: Props) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={estilos.botonRegresar}>
           <MaterialIcons name="close" size={24} color={COLORES.texto} />
         </TouchableOpacity>
-        <Text style={estilos.tituloPantalla}>Feedback Rápido</Text>
+        <Text style={estilos.tituloPantalla}>{t('microFeedback.title')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={estilos.scroll}>
-          <Text style={estilos.intro}>Ayúdanos a mejorar el ambiente laboral. Este feedback es confidencial.</Text>
+          <Text style={estilos.intro}>{t('microFeedback.intro')}</Text>
           
-          <Text style={estilos.label}>¿Qué deseas reportar?</Text>
+          <Text style={estilos.label}>{t('microFeedback.report_label')}</Text>
           <View style={estilos.gridTipos}>
-            {['sugerencia', 'problema', 'dificultad', 'satisfaccion'].map(t => (
-              <TouchableOpacity key={t} style={[estilos.chip, tipo === t && estilos.chipActivo]} onPress={() => setTipo(t as any)}>
-                <Text style={[estilos.textoChip, tipo === t && estilos.textoChipActivo]}>{t.toUpperCase()}</Text>
+            {['sugerencia', 'problema', 'dificultad', 'satisfaccion'].map(tipoItem => (
+              <TouchableOpacity key={tipoItem} style={[estilos.chip, tipo === tipoItem && estilos.chipActivo]} onPress={() => setTipo(tipoItem as any)}>
+                <Text style={[estilos.textoChip, tipo === tipoItem && estilos.textoChipActivo]}>{t(`microFeedback.types.${tipoItem}`)}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
           {tipo === 'satisfaccion' && (
             <View style={estilos.seccionRating}>
-              <Text style={estilos.label}>Nivel general (1-5)</Text>
+              <Text style={estilos.label}>{t('microFeedback.rating_label')}</Text>
               <View style={estilos.filaRating}>
                 {[1, 2, 3, 4, 5].map(num => (
                   <TouchableOpacity key={num} onPress={() => setSatisfaccion(num)} style={estilos.btnRating}>
@@ -79,10 +81,10 @@ export default function MicroFeedback({ navigation }: Props) {
             </View>
           )}
 
-          <Text style={estilos.label}>Mensaje</Text>
+          <Text style={estilos.label}>{t('microFeedback.message_label')}</Text>
           <TextInput
             style={estilos.input}
-            placeholder="Escribe tus comentarios aquí..."
+            placeholder={t('microFeedback.message_placeholder')}
             multiline
             numberOfLines={5}
             value={mensaje}
@@ -92,7 +94,7 @@ export default function MicroFeedback({ navigation }: Props) {
 
           <TouchableOpacity style={estilos.botonEnviar} onPress={submit} disabled={enviando}>
             <LinearGradient colors={[COLORES.primario, COLORES.primarioFuerte]} style={estilos.gradiente}>
-              <Text style={estilos.textoBoton}>{enviando ? 'Enviando...' : 'Enviar de forma segura'}</Text>
+              <Text style={estilos.textoBoton}>{enviando ? t('microFeedback.sending') : t('microFeedback.send_securely')}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </ScrollView>

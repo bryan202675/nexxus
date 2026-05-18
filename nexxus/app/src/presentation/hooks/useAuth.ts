@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useCases } from '@/infrastructure/firebase/container';
 import { User } from '@/domain/entities/User';
-import { LoginDTO } from '@/application/dtos/AuthDTO';
+import { LoginDTO, LoginEmpresarialDTO } from '@/application/dtos/AuthDTO';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -37,6 +37,21 @@ export function useAuth() {
     }
   };
 
+  const loginEmpresarial = async (dto: LoginEmpresarialDTO) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await useCases.auth.loginEmpresarial.execute(dto);
+      setUser(response.user);
+      return response.user;
+    } catch (err: any) {
+      setError(err.userMessage || 'Error en el acceso empresarial');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = async () => {
     setLoading(true);
     try {
@@ -49,12 +64,18 @@ export function useAuth() {
     }
   };
 
+  const updateUser = (updatedUser: User) => {
+    setUser(updatedUser);
+  };
+
   return {
     user,
     loading,
     error,
     isAuthenticated: !!user,
     login,
-    logout
+    loginEmpresarial,
+    logout,
+    updateUser
   };
 }

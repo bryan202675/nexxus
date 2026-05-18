@@ -14,17 +14,20 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { useTranslation } from 'react-i18next';
 import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
 import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA } from '@/shared/constants/diseno';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import { Task } from '@/domain/entities/Task';
+import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
 
 interface Props {
   navigation: any;
 }
 
 export default function MisTareas({ navigation }: Props) {
+  const { t } = useTranslation();
   const { tareas, actualizarTarea, cambiarEstadoTarea } = useContextoUsuario();
   const [tabActiva, setTabActiva] = useState<'pendiente' | 'en_progreso' | 'completada'>('pendiente');
   const [tareaSeleccionada, setTareaSeleccionada] = useState<Task | null>(null);
@@ -51,7 +54,7 @@ export default function MisTareas({ navigation }: Props) {
         await cambiarEstadoTarea(tarea.id, 'en_progreso');
       }
     } catch (e) {
-      Alert.alert('Error', 'No se pudo actualizar el progreso.');
+      Alert.alert('Error', t('misTareas.error_update'));
     }
   };
 
@@ -73,9 +76,11 @@ export default function MisTareas({ navigation }: Props) {
       <BlurView intensity={20} tint="dark" style={estilos.tarjetaTareaBlur}>
         <View style={estilos.headerTarea}>
           <View style={[estilos.badgePrioridad, { backgroundColor: obtenerColorPrioridad(item.prioridad) + '20' }]}>
-            <Text style={[estilos.textoPrioridad, { color: obtenerColorPrioridad(item.prioridad) }]}>{item.prioridad.toUpperCase()}</Text>
+            <Text style={[estilos.textoPrioridad, { color: obtenerColorPrioridad(item.prioridad) }]}>
+              {t(`misTareas.priority.${item.prioridad.toUpperCase()}`)}
+            </Text>
           </View>
-          <Text style={estilos.fechaLimite}>{item.fecha_limite ? `Límite: ${item.fecha_limite}` : 'Sin límite'}</Text>
+          <Text style={estilos.fechaLimite}>{item.fecha_limite ? t('misTareas.due_date_label', { date: item.fecha_limite }) : t('misTareas.no_due_date')}</Text>
         </View>
 
         <Text style={estilos.tituloTarea}>{item.titulo}</Text>
@@ -83,7 +88,7 @@ export default function MisTareas({ navigation }: Props) {
 
         <View style={estilos.contenedorProgreso}>
           <View style={estilos.filaProgreso}>
-            <Text style={estilos.labelProgreso}>Progreso</Text>
+            <Text style={estilos.labelProgreso}>{t('misTareas.progress')}</Text>
             <Text style={estilos.valorProgreso}>{item.progreso || 0}%</Text>
           </View>
           <View style={estilos.barraFondo}>
@@ -94,7 +99,7 @@ export default function MisTareas({ navigation }: Props) {
         <View style={estilos.metaRow}>
           <View style={estilos.metaChip}>
             <MaterialIcons name="timer" size={14} color={COLORES.textoSuave} />
-            <Text style={estilos.metaTexto}>{item.tiempoEstimado ? `${item.tiempoEstimado} min` : 'Sin estimación'}</Text>
+            <Text style={estilos.metaTexto}>{item.tiempoEstimado ? `${item.tiempoEstimado} min` : t('misTareas.no_estimation')}</Text>
           </View>
           {item.proyecto ? (
             <View style={estilos.metaChip}>
@@ -119,8 +124,8 @@ export default function MisTareas({ navigation }: Props) {
   const cabeceraLista = (
     <View>
       <View style={estilos.headerMensaje}>
-        <Text style={estilos.saludo}>Tu flujo de trabajo</Text>
-        <Text style={estilos.subtituloSaludo}>{pendientes + enProgreso} tareas activas para organizar tu jornada.</Text>
+        <Text style={estilos.saludo}>{t('misTareas.greeting')}</Text>
+        <Text style={estilos.subtituloSaludo}>{t('misTareas.active_tasks_msg', { count: pendientes + enProgreso })}</Text>
       </View>
 
       <View style={estilos.bentoGrid}>
@@ -129,11 +134,11 @@ export default function MisTareas({ navigation }: Props) {
             <View style={estilos.bentoHeaderRow}>
               <MaterialIcons name="auto-graph" size={20} color={COLORES.acento} />
               <View style={estilos.badgeBento}>
-                <Text style={estilos.badgeTexto}>Progreso Global</Text>
+                <Text style={estilos.badgeTexto}>{t('misTareas.global_progress')}</Text>
               </View>
             </View>
             <Text style={estilos.valorGrande}>{promedioProgreso}%</Text>
-            <Text style={estilos.bentoDesc}>Avance promedio de todas tus tareas asignadas.</Text>
+            <Text style={estilos.bentoDesc}>{t('misTareas.global_progress_desc')}</Text>
             <View style={estilos.barraFondoResumen}>
               <View style={[estilos.barraProgreso, { width: `${promedioProgreso}%`, backgroundColor: COLORES.primarioClaro }]} />
             </View>
@@ -145,21 +150,21 @@ export default function MisTareas({ navigation }: Props) {
             <BlurView intensity={20} tint="dark" style={estilos.metricaContent}>
               <MaterialIcons name="pending-actions" size={18} color={COLORES.alerta} />
               <Text style={estilos.metricaValor}>{pendientes}</Text>
-              <Text style={estilos.metricaLabel}>Pendientes</Text>
+              <Text style={estilos.metricaLabel}>{t('misTareas.pending')}</Text>
             </BlurView>
           </View>
           <View style={[estilos.bentoCard, estilos.metricaCard]}>
             <BlurView intensity={20} tint="dark" style={estilos.metricaContent}>
               <MaterialIcons name="bolt" size={18} color={COLORES.primarioClaro} />
               <Text style={estilos.metricaValor}>{enProgreso}</Text>
-              <Text style={estilos.metricaLabel}>En progreso</Text>
+              <Text style={estilos.metricaLabel}>{t('misTareas.in_progress')}</Text>
             </BlurView>
           </View>
           <View style={[estilos.bentoCard, estilos.metricaCard]}>
             <BlurView intensity={20} tint="dark" style={estilos.metricaContent}>
               <MaterialIcons name="warning-amber" size={18} color={urgentes > 0 ? COLORES.error : COLORES.textoSuave} />
               <Text style={estilos.metricaValor}>{urgentes}</Text>
-              <Text style={estilos.metricaLabel}>Urgentes</Text>
+              <Text style={estilos.metricaLabel}>{t('misTareas.urgent')}</Text>
             </BlurView>
           </View>
         </View>
@@ -169,8 +174,8 @@ export default function MisTareas({ navigation }: Props) {
             <BlurView intensity={20} tint="dark" style={estilos.operativoContent}>
               <MaterialIcons name="schedule" size={20} color={COLORES.texto} />
               <View style={estilos.operativoTexto}>
-                <Text style={estilos.operativoTitulo}>Carga estimada</Text>
-                <Text style={estilos.operativoDesc}>{minutosEstimados} minutos pendientes</Text>
+                <Text style={estilos.operativoTitulo}>{t('misTareas.estimated_load')}</Text>
+                <Text style={estilos.operativoDesc}>{t('misTareas.estimated_load_desc', { count: minutosEstimados })}</Text>
               </View>
             </BlurView>
           </View>
@@ -178,8 +183,8 @@ export default function MisTareas({ navigation }: Props) {
             <BlurView intensity={20} tint="dark" style={estilos.operativoContent}>
               <MaterialIcons name="event-busy" size={20} color={vencidas > 0 ? COLORES.error : COLORES.exito} />
               <View style={estilos.operativoTexto}>
-                <Text style={estilos.operativoTitulo}>Vencimientos</Text>
-                <Text style={estilos.operativoDesc}>{vencidas} tareas vencidas</Text>
+                <Text style={estilos.operativoTitulo}>{t('misTareas.due_dates')}</Text>
+                <Text style={estilos.operativoDesc}>{t('misTareas.due_dates_desc', { count: vencidas })}</Text>
               </View>
             </BlurView>
           </View>
@@ -187,8 +192,8 @@ export default function MisTareas({ navigation }: Props) {
       </View>
 
       <View style={estilos.cabeceraLista}>
-        <Text style={estilos.tituloSeccion}>Bandeja de Tareas</Text>
-        <Text style={estilos.linkVerTodo}>{completadas} completadas</Text>
+        <Text style={estilos.tituloSeccion}>{t('misTareas.task_inbox')}</Text>
+        <Text style={estilos.linkVerTodo}>{t('misTareas.completed_count', { count: completadas })}</Text>
       </View>
 
       <View style={estilos.tabs}>
@@ -199,7 +204,7 @@ export default function MisTareas({ navigation }: Props) {
             onPress={() => setTabActiva(tab)}
           >
             <Text style={[estilos.textoTab, tabActiva === tab && estilos.textoTabActivo]}>
-              {tab.replace('_', ' ').toUpperCase()}
+              {t(`misTareas.${tab}`)}
             </Text>
           </TouchableOpacity>
         ))}
@@ -211,11 +216,9 @@ export default function MisTareas({ navigation }: Props) {
     <SafeAreaView style={estilos.contenedor}>
       <StatusBar barStyle="light-content" />
       <View style={estilos.fondoAbsoluto}>
-        <LinearGradient colors={[COLORES.fondoOscuro, COLORES.fondo]} style={StyleSheet.absoluteFill} />
-        <View style={estilos.luzFondo1} />
-        <View style={estilos.luzFondo2} />
+        <FondoMobilePremium />
       </View>
-      <NavbarEnterprise titulo="Mis Tareas" />
+      <NavbarEnterprise titulo={t('misTareas.title')} />
 
       <FlatList
         data={tareasFiltradas}
@@ -226,7 +229,7 @@ export default function MisTareas({ navigation }: Props) {
         ListEmptyComponent={
           <View style={estilos.vacio}>
             <MaterialIcons name="assignment" size={64} color={COLORES.borde} />
-            <Text style={estilos.textoVacio}>No hay tareas en esta sección.</Text>
+            <Text style={estilos.textoVacio}>{t('misTareas.no_tasks')}</Text>
           </View>
         }
       />
@@ -243,10 +246,10 @@ export default function MisTareas({ navigation }: Props) {
             </View>
             
             <ScrollView style={estilos.modalScroll}>
-              <Text style={estilos.modalLabel}>Descripción</Text>
+              <Text style={estilos.modalLabel}>{t('misTareas.description')}</Text>
               <Text style={estilos.modalDesc}>{tareaSeleccionada?.descripcion}</Text>
               
-              <Text style={estilos.modalLabel}>Comentarios</Text>
+              <Text style={estilos.modalLabel}>{t('misTareas.comments')}</Text>
               {tareaSeleccionada?.comentarios?.length ? (
                 tareaSeleccionada.comentarios.map((c, i) => (
                   <View key={i} style={estilos.comentario}>
@@ -254,7 +257,7 @@ export default function MisTareas({ navigation }: Props) {
                   </View>
                 ))
               ) : (
-                <Text style={estilos.textoVacioP}>No hay comentarios aún.</Text>
+                <Text style={estilos.textoVacioP}>{t('misTareas.no_comments')}</Text>
               )}
             </ScrollView>
 
@@ -262,7 +265,7 @@ export default function MisTareas({ navigation }: Props) {
               style={estilos.botonCerrarModal}
               onPress={() => setTareaSeleccionada(null)}
             >
-              <Text style={estilos.textoBotonCerrar}>Cerrar</Text>
+              <Text style={estilos.textoBotonCerrar}>{t('common.close')}</Text>
             </TouchableOpacity>
           </BlurView>
         </View>
@@ -274,8 +277,6 @@ export default function MisTareas({ navigation }: Props) {
 const estilos = StyleSheet.create({
   contenedor: { flex: 1, backgroundColor: COLORES.fondo },
   fondoAbsoluto: { ...StyleSheet.absoluteFillObject, zIndex: -1, overflow: 'hidden' },
-  luzFondo1: { position: 'absolute', top: -100, left: -100, width: 300, height: 300, borderRadius: 150, backgroundColor: COLORES.primario, opacity: 0.15, filter: 'blur(80px)' },
-  luzFondo2: { position: 'absolute', top: '30%', right: -150, width: 400, height: 400, borderRadius: 200, backgroundColor: COLORES.secundario, opacity: 0.1, filter: 'blur(100px)' },
   headerMensaje: { marginTop: ESPACIADO.xl, marginBottom: ESPACIADO.xxl, paddingHorizontal: ESPACIADO.xs },
   saludo: { ...TIPOGRAFIA.tituloPantalla, color: COLORES.texto, fontSize: 32 },
   subtituloSaludo: { ...TIPOGRAFIA.cuerpo, color: COLORES.textoSecundario, marginTop: 4 },

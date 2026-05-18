@@ -456,3 +456,63 @@ El sistema actual ha superado una fase crítica de debugging, resolviendo bugs f
     - Se incorporaron acciones rápidas hacia Chat IA, reserva de sesión, solicitudes internas y feedback.
     - Se añadieron secciones de próximas citas, especialistas disponibles, solicitudes de soporte e indicador de ayuda inmediata.
     - Se agregaron estados vacíos informativos sin usar datos simulados.
+
+## Rediseño Mobile UI/UX
+
+- **[2026-05-17]** Sistema visual mobile premium Aura/Nexxus:
+    - **Pantallas rediseñadas:** se centralizó el lenguaje visual mobile para login empresarial, shell de empleado/jefe, dashboard, tareas, recursos, IA, notificaciones, documentos, historial, solicitudes, apoyo, check-in y perfil mediante tokens y fondo premium compartido.
+    - **Componentes actualizados:** se agregó `TemaMobileContext`, `FondoMobilePremium` y se refinó `NavbarEnterprise` con avatar/foto de perfil a la izquierda, título, fecha actual, notificaciones y configuración en cápsula glass flotante.
+    - **Mejoras glassmorphism:** los fondos planos oscuros de pantallas mobile principales fueron reemplazados por una base aurora compartida con capas translúcidas, blur controlado, bordes suaves y profundidad coherente.
+    - **Mejoras responsive:** se ajustó la bottom navigation flotante para tamaños móviles/tablet, reduciendo altura, radios y estados activos para evitar saturación y mejorar ergonomía táctil.
+    - **Mejoras animaciones:** se preservaron microinteracciones existentes de `BotonAnimado`, entradas suaves de pantallas y feedback táctil, alineándolas con el nuevo sistema visual sin animaciones agresivas.
+    - **Problemas corregidos:** `LoginEmpresarial` dejó de depender del tema admin; `ControlAsistencia` restaura sesión activa desde `AsyncStorage`, conserva pausa y evita reinicio visual del contador al recargar.
+    - **Optimizaciones:** el modo claro/oscuro mobile ahora se persiste con `AsyncStorage` desde configuración y mantiene el mismo lenguaje glass premium sin afectar admin ni landing.
+    - **Validación:** `npm run build:web` completó correctamente; `npx tsc --noEmit` no produjo diagnóstico de app porque TypeScript falló internamente con `RangeError: Maximum call stack size exceeded` en Node 25.
+    - **Siguientes pasos:** revisar sesión autenticada en dispositivo Expo o simulador con datos Firebase reales para validar todas las rutas secundarias, modo claro completo y navegación de jefe/empleado con credenciales reales.
+
+- **[2026-05-17]** Segunda pasada Aura idéntica a referencias:
+    - **Fondo animado:** `FondoMobilePremium` ahora usa capas animadas con deriva, pulso, halo rotatorio y resplandor central para replicar el fondo Aura de las imágenes en modo oscuro y claro.
+    - **Orbe visual:** se agregó `AuraOrb` como esfera animada reutilizable con gradientes magenta, cian y violeta, aplicada a bienvenida, login, selección de rol, Mi Pulso y Chat IA.
+    - **Login móvil:** `LoginEmpresarial` se reorganizó con estructura de asistente personal: marca superior, etiqueta beta, orbe central, copy breve, puntos de paginación, formulario glass y botón primario brillante.
+    - **Dashboard empleado/jefe:** `MiPulso` recibió hero tipo Aura con headline corto, barra de entrada glass, chips de acción rápidos y orbe mini en la tarjeta IA.
+    - **Chat e IA:** `ChatIA` incorporó el orbe central sobre el panel contextual para acercarse a las pantallas de voz/chat de referencia.
+    - **Bottom navigation:** `UserNavigator` ahora usa una sola cápsula glass flotante con iconos, estado activo circular y acceso IA integrado como micrófono.
+    - **Consistencia mobile:** `CentroTareas` pasó al navbar premium común para reducir headers antiguos en la navegación principal.
+    - **Validación:** se corrigió un error runtime del fondo animado (`opacity is not defined`) detectado con browser visual y se validó nuevamente con `npm run build:web`.
+
+- **[2026-05-17]** Ajuste estructural fiel a la referencia Aura:
+    - **Fondo:** se eliminaron las bolas grandes heredadas de pantallas mobile y el fondo compartido pasó a vetas diagonales suaves, halo atmosférico y profundidad sin círculos invasivos.
+    - **Navbar:** `NavbarEnterprise` fue reestructurado como la referencia: menú plano a la izquierda, pill central `Aura 12 BETA`, notificaciones y avatar compacto a la derecha.
+    - **Tareas:** `CentroTareas` dejó la lista plana y adoptó composición tipo `Training program`: título grande, chips de días, card principal morada, panel de progreso, panel de programa e historial compacto.
+    - **Home:** `MiPulso` mantiene la estructura Aura con headline grande, barra de entrada, chips rápidos y cards compactas glass.
+    - **Consistencia:** se removieron comentarios visuales nuevos y se mantuvo la lógica Firebase existente intacta.
+    - **Validación:** `npm run build:web` completó correctamente después de la eliminación de las bolas y la nueva estructura de Tareas.
+
+- **[2026-05-17]** Fondo Plasma aplicado solo en app y login:
+    - **Alcance:** se limitó el ajuste al fondo compartido de la app móvil y al login que lo consume, sin tocar admin, landing ni lógica Firebase.
+    - **Fondo animado:** se integró `Plasma` inspirado en React Bits con WebGL/OGL para web y fallback nativo liviano para Expo, eliminando por completo las bolas grandes del fondo anterior.
+    - **Optimizaciones:** el render web mantiene objetivo de 60 FPS, reduce coste por DPR/resolution scale, desactiva interacción de mouse, pausa por visibilidad/intersección y limpia contexto WebGL al desmontar.
+    - **Modo oscuro/claro:** ambos modos usan el mismo plasma con velos de legibilidad distintos para conservar estética premium sin romper contraste en formularios y cards.
+    - **Siguientes pasos:** validar en dispositivo físico gama baja la suavidad percibida del fondo con sesión real y ajustar solo `resolutionScale` si hiciera falta.
+
+- **[2026-05-17]** Intensidad Plasma morada distribuida:
+    - **Fondo:** se incrementó la presencia visual del Plasma para que la animación sea notoria en toda la pantalla y no quede concentrada en una zona.
+    - **Paleta:** el fondo se ajustó a morados propios de la app con acentos violeta/magenta y menor velo superior para que la animación se perciba más.
+    - **Optimización:** se mantiene objetivo de 60 FPS y se sube la definición de forma moderada mediante `resolutionScale`, sin activar interacción de mouse ni efectos costosos.
+    - **Cobertura:** el cambio sigue centralizado en `FondoMobilePremium`, por lo que se reparte automáticamente en las pantallas mobile que usan el fondo común y en el login.
+
+- **[2026-05-17]** Plasma real en móvil nativo:
+    - **Corrección:** se eliminó el fallback nativo de vetas animadas que todavía recordaba al fondo anterior.
+    - **Implementación:** se agregó `expo-gl` y `Plasma.tsx` ahora renderiza el shader Plasma real en `GLView` para móvil nativo.
+    - **Visibilidad:** se redujeron los velos superiores y se subió la escala/opacidad del Plasma para que la animación sea claramente visible en login y pantallas mobile.
+    - **Alcance:** el ajuste permanece centralizado en el fondo de la app; admin y landing no forman parte de este cambio.
+
+- **[2026-05-17]** Plasma sin capas que lo apaguen:
+    - **Corrección:** se retiraron los velos y gradientes posteriores al Plasma dentro de `FondoMobilePremium` para que no oculten la animación.
+    - **Shader:** se elevó el alpha mínimo del Plasma en web y móvil nativo, evitando que el efecto quede casi invisible.
+    - **Fondo:** se conserva solo un gradiente base de seguridad detrás del Plasma; la capa visual activa es el shader Plasma.
+
+- **[2026-05-17]** Navbars mobile redondeadas restauradas:
+    - **Navbar superior:** se recuperó el formato redondeado con avatar, nombre del apartado, fecha, notificaciones y configuración, manteniendo blur/glass y paleta morada actual.
+    - **Bottom navigation:** se ajustó la navegación inferior a una cápsula flotante redondeada con estado activo tipo pill, icono y etiqueta, conservando el estilo premium vigente.
+    - **Alcance:** solo se modificaron navbars de la app móvil; admin, landing, Firebase y navegación funcional permanecen sin cambios.

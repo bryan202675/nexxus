@@ -29,6 +29,6 @@ export class AuthError extends AppError {
       'auth/invalid-credential': AuthError.invalidCredentials(),
       'auth/session-cookie-expired': AuthError.sessionExpired(),
     };
-    return map[code] ?? new AuthError(code, 'Error de autenticación.');
+    return map[code] ?? new AuthError(code, `Error de autenticación. (${code})`);
   }
 }

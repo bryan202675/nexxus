@@ -1,4 +1,6 @@
 import { createElement, ReactNode, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { changeLanguage } from '../shared/i18n/config';
 import BorderGlow from './BorderGlow';
 import DarkVeil from './DarkVeil';
 import StarBorder from './StarBorder';
@@ -10,47 +12,47 @@ type BillingCycle = 'monthly' | 'annual';
 type IconName = 'activity' | 'ai' | 'analytics' | 'automation' | 'briefcase' | 'building' | 'chart' | 'check' | 'clock' | 'command' | 'database' | 'file' | 'lock' | 'message' | 'payroll' | 'shield' | 'spark' | 'users' | 'workflow' | 'zap';
 
 const modules: [string, string, IconName][] = [
-  ['Dashboard empresarial', 'Visibilidad ejecutiva de productividad, clima laboral, asistencia y operación diaria.', 'command'],
-  ['Gestión de empleados', 'Directorio multiempresa con roles, permisos, estados y trazabilidad laboral.', 'users'],
-  ['Tareas inteligentes', 'Prioridades, progreso, dependencias, seguimiento y señales de carga en tiempo real.', 'check'],
-  ['IA integrada', 'Resúmenes operativos, alertas de riesgo, automatización y asistencia contextual.', 'ai'],
-  ['Nómina', 'Control de pagos, estados, deducciones, reportes y auditoría financiera.', 'payroll'],
-  ['Asistencia', 'Entradas, salidas, pausas, estado laboral y cobertura por equipo.', 'clock'],
-  ['Analytics', 'Métricas ejecutivas, tendencias, estrés, rendimiento y alertas de RRHH.', 'analytics'],
-  ['Comunicación interna', 'Anuncios segmentados, inbox unificado y colaboración contextual.', 'message'],
-  ['Multiempresa', 'Arquitectura preparada para organizaciones, sedes, departamentos y escalamiento.', 'building'],
+  ['landing.module_dashboard_title', 'landing.module_dashboard_desc', 'command'],
+  ['landing.module_employees_title', 'landing.module_employees_desc', 'users'],
+  ['landing.module_tasks_title', 'landing.module_tasks_desc', 'check'],
+  ['landing.module_ai_title', 'landing.module_ai_desc', 'ai'],
+  ['landing.module_payroll_title', 'landing.module_payroll_desc', 'payroll'],
+  ['landing.module_attendance_title', 'landing.module_attendance_desc', 'clock'],
+  ['landing.module_analytics_title', 'landing.module_analytics_desc', 'analytics'],
+  ['landing.module_communication_title', 'landing.module_communication_desc', 'message'],
+  ['landing.module_multi_title', 'landing.module_multi_desc', 'building'],
 ];
 
 const plans = [
   {
     name: 'Starter',
     monthly: 20,
-    badge: 'Para equipos en crecimiento',
-    users: 'Hasta 40 empleados',
-    benefits: ['Dashboard base', 'Tareas y asistencia', 'Centro de documentos', 'Soporte estándar'],
+    badge: 'landing.starter_badge',
+    users: 'landing.starter_users',
+    benefits: ['landing.starter_benefit1', 'landing.starter_benefit2', 'landing.starter_benefit3', 'landing.starter_benefit4'],
   },
   {
     name: 'Business',
     monthly: 50,
-    badge: 'Más elegido',
-    users: 'Hasta 180 empleados',
-    benefits: ['IA operativa', 'Nómina y auditoría', 'Analytics avanzado', 'Automatizaciones'],
+    badge: 'landing.business_badge',
+    users: 'landing.business_users',
+    benefits: ['landing.business_benefit1', 'landing.business_benefit2', 'landing.business_benefit3', 'landing.business_benefit4'],
     featured: true,
   },
   {
     name: 'Enterprise',
     monthly: 200,
-    badge: 'Operación corporativa',
-    users: 'Usuarios y sedes escalables',
-    benefits: ['Multiempresa', 'SLA prioritario', 'Onboarding guiado', 'Gobernanza avanzada'],
+    badge: 'landing.enterprise_badge',
+    users: 'landing.enterprise_users',
+    benefits: ['landing.enterprise_benefit1', 'landing.enterprise_benefit2', 'landing.enterprise_benefit3', 'landing.enterprise_benefit4'],
   },
 ];
 
 const metrics = [
-  ['34%', 'menos tiempo operativo'],
-  ['4.8x', 'más trazabilidad'],
-  ['72h', 'para activar equipos'],
-  ['99.9%', 'visión centralizada'],
+  ['34%', 'landing.less_ops_time'],
+  ['4.8x', 'landing.more_traceability'],
+  ['72h', 'landing.to_activate_teams'],
+  ['99.9%', 'landing.centralized_vision'],
 ];
 
 const iconPaths: Record<IconName, string[]> = {
@@ -140,6 +142,7 @@ function priceFor(monthly: number, cycle: BillingCycle) {
 }
 
 export default function Landing() {
+  const { t, i18n } = useTranslation();
   const [billing, setBilling] = useState<BillingCycle>('annual');
   const [selectedPlan, setSelectedPlan] = useState('Business');
   const [menuMovilAbierto, setMenuMovilAbierto] = useState(false);
@@ -172,11 +175,11 @@ export default function Landing() {
   };
 
   const enlacesNav: [string, string][] = [
-    ['Sistema', 'sistema'],
-    ['Módulos', 'modulos'],
-    ['Admin', 'admin'],
-    ['Planes', 'planes'],
-    ['IA', 'ia'],
+    [t('landing.nav_system'), 'sistema'],
+    [t('landing.nav_modules'), 'modulos'],
+    [t('landing.nav_admin'), 'admin'],
+    [t('landing.nav_plans'), 'planes'],
+    [t('landing.nav_ia'), 'ia'],
   ];
 
   const navegarA = (id: string) => {
@@ -207,14 +210,14 @@ export default function Landing() {
       h(
         'div',
         { className: 'nx-nav-actions' },
-        h('button', { className: 'nx-nav-login', onClick: () => abrirAuth('login', selectedPlan) }, 'Iniciar sesión'),
-        h(StarButton, { className: 'nx-nav-cta', onClick: () => abrirAuth('registro', selectedPlan) }, 'Crear empresa')
+        h('button', { className: 'nx-nav-login', onClick: () => abrirAuth('login', selectedPlan) }, t('landing.login')),
+        h(StarButton, { className: 'nx-nav-cta', onClick: () => abrirAuth('registro', selectedPlan) }, t('landing.create_company'))
       ),
       h(
         'button',
         {
           'aria-expanded': menuMovilAbierto,
-          'aria-label': menuMovilAbierto ? 'Cerrar menú' : 'Abrir menú',
+          'aria-label': menuMovilAbierto ? t('common.cancel') : t('landing.hero_kicker'),
           className: `nx-menu-toggle ${menuMovilAbierto ? 'is-open' : ''}`,
           onClick: () => setMenuMovilAbierto((abierto) => !abierto),
         },
@@ -225,7 +228,7 @@ export default function Landing() {
         'div',
         { className: `nx-mobile-menu ${menuMovilAbierto ? 'is-open' : ''}` },
         enlacesNav.map(([label, id]) => h('button', { key: label, onClick: () => navegarA(id) }, label)),
-        h('button', { onClick: () => abrirAuth('login', selectedPlan) }, 'Iniciar sesión')
+        h('button', { onClick: () => abrirAuth('login', selectedPlan) }, t('landing.login'))
       )
     ),
     h(
@@ -234,20 +237,20 @@ export default function Landing() {
       h(
         'div',
         { className: 'nx-hero-copy nx-reveal is-visible' },
-        h('div', { className: 'nx-kicker' }, h('span', null), 'Sistema operativo empresarial con IA'),
-        h('h1', null, 'Transforma la gestión de tu empresa en un centro de control inteligente.'),
-        h('p', null, 'Nexxus conecta administración, empleados, tareas, asistencia, nómina, bienestar e IA en una plataforma SaaS premium para operar con claridad y velocidad.'),
+        h('div', { className: 'nx-kicker' }, h('span', null), t('landing.hero_kicker')),
+        h('h1', null, t('landing.hero_title')),
+        h('p', null, t('landing.hero_subtitle')),
         h(
           'div',
           { className: 'nx-hero-actions' },
-          h(StarButton, { className: 'nx-btn nx-btn-primary', onClick: () => abrirAuth('registro', selectedPlan) }, h(Icon, { name: 'building' }), 'Crear Empresa'),
-          h('button', { className: 'nx-btn nx-btn-ghost', onClick: () => scrollToId('sistema') }, h(Icon, { name: 'chart' }), 'Ver Demo'),
-          h('button', { className: 'nx-btn nx-btn-minimal', onClick: () => scrollToId('planes') }, h(Icon, { name: 'briefcase' }), 'Conocer Planes')
+          h(StarButton, { className: 'nx-btn nx-btn-primary', onClick: () => abrirAuth('registro', selectedPlan) }, h(Icon, { name: 'building' }), t('landing.create_company')),
+          h('button', { className: 'nx-btn nx-btn-ghost', onClick: () => scrollToId('sistema') }, h(Icon, { name: 'chart' }), t('landing.view_demo')),
+          h('button', { className: 'nx-btn nx-btn-minimal', onClick: () => scrollToId('planes') }, h(Icon, { name: 'briefcase' }), t('landing.know_plans'))
         ),
         h(
           'div',
           { className: 'nx-trust-row' },
-          metrics.map(([value, label], index) => h(GlowCard, { className: 'nx-metric-card', key: label }, h(Icon, { name: index === 0 ? 'zap' : index === 1 ? 'shield' : index === 2 ? 'clock' : 'activity' }), h('strong', null, value), h('span', null, label)))
+          metrics.map(([value, label], index) => h(GlowCard, { className: 'nx-metric-card', key: label }, h(Icon, { name: index === 0 ? 'zap' : index === 1 ? 'shield' : index === 2 ? 'clock' : 'activity' }), h('strong', null, value), h('span', null, t(label))))
         )
       ),
       h(
@@ -257,68 +260,68 @@ export default function Landing() {
         h(
           'div',
           { className: 'nx-dashboard-grid' },
-          h('div', { className: 'nx-panel nx-panel-main' }, h('span', null, 'Productividad'), h('strong', null, '87%'), h('div', { className: 'nx-chart' }, h('i'), h('i'), h('i'), h('i'), h('i'))),
-          h('div', { className: 'nx-panel' }, h('span', null, 'Nexus IA'), h('strong', null, '12 alertas resueltas'), h('p', null, 'Riesgo operativo bajo')),
-          h('div', { className: 'nx-panel' }, h('span', null, 'Asistencia'), h('strong', null, '142 activos'), h('p', null, '3 sedes sincronizadas')),
-          h('div', { className: 'nx-panel nx-table-panel' }, h('span', null, 'Operación'), ['Nómina lista', 'Tareas críticas', 'Check-ins pendientes'].map((item) => h('b', { key: item }, item, h('em', null))))
+          h('div', { className: 'nx-panel nx-panel-main' }, h('span', null, t('landing.productivity')), h('strong', null, '87%'), h('div', { className: 'nx-chart' }, h('i'), h('i'), h('i'), h('i'), h('i'))),
+          h('div', { className: 'nx-panel' }, h('span', null, 'Nexus IA'), h('strong', null, `12 ${t('landing.ai_alerts_resolved')}`), h('p', null, t('landing.low_ops_risk'))),
+          h('div', { className: 'nx-panel' }, h('span', null, t('landing.attendance')), h('strong', null, `142 ${t('landing.active_employees')}`), h('p', null, `3 ${t('landing.synced_locations')}`)),
+          h('div', { className: 'nx-panel nx-table-panel' }, h('span', null, t('landing.operation')), [t('landing.payroll_ready'), t('landing.critical_tasks'), t('landing.pending_checkins')].map((item) => h('b', { key: item }, item, h('em', null))))
         )
       )
     ),
     h(
       'section',
       { className: 'nx-section nx-reveal', id: 'sistema' },
-      h('div', { className: 'nx-section-head' }, h('span', null, 'Sistema'), h('h2', null, 'Una plataforma para operar personas, procesos y decisiones.'), h('p', null, 'Nexxus reduce el ruido operativo y convierte cada señal de la empresa en acción: productividad, bienestar, asistencia, nómina, documentos y comunicación.')),
+      h('div', { className: 'nx-section-head' }, h('span', null, t('landing.section_system_title')), h('h2', null, t('landing.section_system_h2')), h('p', null, t('landing.section_system_p'))),
       h(
         'div',
         { className: 'nx-value-grid' },
         [
-          ['Automatización diaria', 'Flujos que eliminan tareas repetitivas y mantienen al administrador informado.', 'automation'],
-          ['Tiempo real', 'Datos vivos de empleados, solicitudes, pagos, tareas y actividad operativa.', 'activity'],
-          ['Decision intelligence', 'IA para detectar riesgo, resumir jornadas y priorizar lo que importa.', 'ai'],
+          [t('landing.value_auto_title'), t('landing.value_auto_desc'), 'automation'],
+          [t('landing.value_realtime_title'), t('landing.value_realtime_desc'), 'activity'],
+          [t('landing.value_ai_title'), t('landing.value_ai_desc'), 'ai'],
         ].map(([title, text, icon], index) => h(GlowCard, { animated: index === 0, className: 'nx-value-card', key: title }, h('div', { className: 'nx-card-topline' }, h(Icon, { name: icon as IconName }), h('span', null, `0${index + 1}`)), h('h3', null, title), h('p', null, text)))
       )
     ),
     h(
       'section',
       { className: 'nx-section nx-reveal', id: 'modulos' },
-      h('div', { className: 'nx-section-head' }, h('span', null, 'Módulos'), h('h2', null, 'Todo el stack empresarial en una sola experiencia.'), h('p', null, 'Cada módulo fue pensado para que la operación sea medible, auditable y fácil de escalar.')),
-      h('div', { className: 'nx-module-grid' }, modules.map(([title, text, icon]) => h(GlowCard, { className: 'nx-module-card', key: title }, h('div', { className: 'nx-module-icon' }, h(Icon, { name: icon })), h('h3', null, title), h('p', null, text))))
+      h('div', { className: 'nx-section-head' }, h('span', null, t('landing.section_modules_title')), h('h2', null, t('landing.section_modules_h2')), h('p', null, t('landing.section_modules_p'))),
+      h('div', { className: 'nx-module-grid' }, modules.map(([title, text, icon]) => h(GlowCard, { className: 'nx-module-card', key: title }, h('div', { className: 'nx-module-icon' }, h(Icon, { name: icon })), h('h3', null, t(title)), h('p', null, t(text)))))
     ),
     h(
       'section',
       { className: 'nx-admin-section nx-reveal', id: 'admin' },
-      h('div', { className: 'nx-admin-copy' }, h('span', null, 'Administrador'), h('h2', null, 'Control total sin fricción operativa.'), h('p', null, 'El administrador obtiene un cockpit empresarial: métricas, permisos, nómina, auditoría, reportes, automatizaciones y monitoreo de equipos desde una vista premium.')),
+      h('div', { className: 'nx-admin-copy' }, h('span', null, t('landing.section_admin_title')), h('h2', null, t('landing.section_admin_h2')), h('p', null, t('landing.section_admin_p'))),
       h(
         GlowCard,
         { className: 'nx-admin-console' },
-        h('div', null, h('strong', null, 'Live Operations      '), h('span', null, ' Sistema activo')),
-        h('ul', null, ['Plantilla', 'Nómina', 'Auditoría', 'Comunicación'].map((item, index) => h('li', { key: item }, h('span', null, item), h('b', null, `${92 - index * 7}%`)))),
+        h('div', null, h('strong', null, `${t('landing.live_operations')}      `), h('span', null, t('landing.system_active'))),
+        h('ul', null, [t('landing.team'), t('landing.payroll'), t('landing.audit'), t('landing.communication')].map((item, index) => h('li', { key: item }, h('span', null, item), h('b', null, `${92 - index * 7}%`)))),
         h('div', { className: 'nx-radar' }, h('i'), h('i'), h('i'))
       )
     ),
     h(
       'section',
       { className: 'nx-section nx-reveal', id: 'seguridad' },
-      h('div', { className: 'nx-section-head' }, h('span', null, 'Seguridad y operación'), h('h2', null, 'Gobernanza preparada para empresas reales.'), h('p', null, 'Nexxus no solo se ve premium: estructura permisos, auditoría, datos y procesos para que el crecimiento no rompa la operación.')),
+      h('div', { className: 'nx-section-head' }, h('span', null, t('landing.section_security_title')), h('h2', null, t('landing.section_security_h2')), h('p', null, t('landing.section_security_p'))),
       h(
         'div',
         { className: 'nx-ops-grid' },
         [
-          ['Auditoría continua', 'Historial de acciones, cambios críticos y trazabilidad por usuario.', 'shield'],
-          ['Datos centralizados', 'Usuarios, tareas, pagos, documentos y check-ins conectados por empresa.', 'database'],
-          ['Workflows claros', 'Flujos de aprobación para solicitudes, soporte, ausencias y tareas.', 'workflow'],
-          ['Documentos seguros', 'Centro documental para contratos, certificados, nómina y políticas internas.', 'file'],
+          [t('landing.ops_audit_title'), t('landing.ops_audit_desc'), 'shield'],
+          [t('landing.ops_data_title'), t('landing.ops_data_desc'), 'database'],
+          [t('landing.ops_workflows_title'), t('landing.ops_workflows_desc'), 'workflow'],
+          [t('landing.ops_docs_title'), t('landing.ops_docs_desc'), 'file'],
         ].map(([title, text, icon]) => h(GlowCard, { className: 'nx-ops-card', key: title }, h(Icon, { name: icon as IconName }), h('h3', null, title), h('p', null, text)))
       )
     ),
     h(
       'section',
       { className: 'nx-integrations nx-reveal' },
-      h('div', null, h('span', null, 'Implementación'), h('h2', null, 'Listo para conectarse al ritmo de tu operación.'), h('p', null, 'Diseñado para convivir con procesos existentes: RRHH, reportes, comunicación, documentos y tableros ejecutivos.')),
+      h('div', null, h('span', null, t('landing.section_impl_title')), h('h2', null, t('landing.section_impl_h2')), h('p', null, t('landing.section_impl_p'))),
       h(
         'div',
         { className: 'nx-integration-rail' },
-        ['Datos en la nube', 'RRHH', 'Nómina', 'Datos reales', 'Docs', 'Inbox'].map((item, index) => h('span', { key: item }, h(Icon, { name: index === 0 ? 'database' : index === 1 ? 'users' : index === 2 ? 'payroll' : index === 3 ? 'analytics' : index === 4 ? 'file' : 'message' }), item))
+        [t('landing.cloud_data'), t('landing.hr'), t('landing.payroll'), t('landing.real_data'), t('landing.docs'), t('landing.inbox')].map((item, index) => h('span', { key: item }, h(Icon, { name: index === 0 ? 'database' : index === 1 ? 'users' : index === 2 ? 'payroll' : index === 3 ? 'analytics' : index === 4 ? 'file' : 'message' }), item))
       )
     ),
     h(
@@ -327,8 +330,8 @@ export default function Landing() {
       h(
         'div',
         { className: 'nx-pricing-head' },
-        h('div', null, h('span', null, 'Planes'), h('h2', null, 'Escala desde un equipo hasta una organización completa.')),
-        h('div', { className: 'nx-toggle', role: 'group', 'aria-label': 'Facturación' }, h('button', { className: billing === 'monthly' ? 'active' : '', onClick: () => setBilling('monthly') }, 'Mensual'), h('button', { className: billing === 'annual' ? 'active' : '', onClick: () => setBilling('annual') }, 'Anual -20%'))
+        h('div', null, h('span', null, t('landing.section_plans_title')), h('h2', null, t('landing.section_plans_h2'))),
+        h('div', { className: 'nx-toggle', role: 'group', 'aria-label': 'Facturación' }, h('button', { className: billing === 'monthly' ? 'active' : '', onClick: () => setBilling('monthly') }, t('landing.billing_monthly')), h('button', { className: billing === 'annual' ? 'active' : '', onClick: () => setBilling('annual') }, t('landing.billing_annual')))
       ),
       h(
         'div',
@@ -337,12 +340,12 @@ export default function Landing() {
           h(
             GlowCard,
             { className: `nx-plan ${plan.featured ? 'featured' : ''} ${selectedPlan === plan.name ? 'selected' : ''}`, key: plan.name },
-            h('div', { className: 'nx-plan-header' }, h(Icon, { name: plan.name === 'Starter' ? 'briefcase' : plan.name === 'Business' ? 'zap' : 'shield' }), h('span', { className: 'nx-plan-badge' }, plan.badge)),
+            h('div', { className: 'nx-plan-header' }, h(Icon, { name: plan.name === 'Starter' ? 'briefcase' : plan.name === 'Business' ? 'zap' : 'shield' }), h('span', { className: 'nx-plan-badge' }, t(plan.badge))),
             h('h3', null, plan.name),
-            h('div', { className: 'nx-price' }, '$', priceFor(plan.monthly, billing), h('small', null, billing === 'annual' ? '/año' : '/mes')),
-            h('p', null, plan.users),
-            h('ul', null, plan.benefits.map((benefit) => h('li', { key: benefit }, benefit))),
-            h('button', { className: 'nx-btn nx-btn-plan', onClick: () => { choosePlan(plan.name); abrirAuth('registro', plan.name); } }, selectedPlan === plan.name ? 'Crear con este plan' : 'Elegir plan')
+            h('div', { className: 'nx-price' }, '$', priceFor(plan.monthly, billing), h('small', null, billing === 'annual' ? `/${t('common.year')}` : `/${t('common.month')}`)),
+            h('p', null, t(plan.users)),
+            h('ul', null, plan.benefits.map((benefit) => h('li', { key: benefit }, t(benefit)))),
+            h('button', { className: 'nx-btn nx-btn-plan', onClick: () => { choosePlan(plan.name); abrirAuth('registro', plan.name); } }, selectedPlan === plan.name ? t('landing.create_with_this_plan') : t('landing.choose_plan'))
           )
         )
       )
@@ -350,28 +353,40 @@ export default function Landing() {
     h(
       'section',
       { className: 'nx-ai-section nx-reveal', id: 'ia' },
-      h('div', { className: 'nx-ai-core' }, h('span', null, 'IA'), h('h2', null, 'Automatizaciones que entienden el pulso de tu empresa.'), h('p', null, 'Nexxus IA resume jornadas, detecta sobrecarga, anticipa riesgos de RRHH y convierte datos dispersos en decisiones accionables.')),
-      h('div', { className: 'nx-ai-stream' }, ['Análisis de productividad', 'Alertas de bienestar', 'Resumen ejecutivo', 'Prioridad operativa'].map((item) => h('div', { key: item }, h('span', null), item)))
+      h('div', { className: 'nx-ai-core' }, h('span', null, t('landing.section_ai_title')), h('h2', null, t('landing.section_ai_h2')), h('p', null, t('landing.section_ai_p'))),
+      h('div', { className: 'nx-ai-stream' }, [t('landing.ai_stream_item1'), t('landing.ai_stream_item2'), t('landing.ai_stream_item3'), t('landing.ai_stream_item4')].map((item) => h('div', { key: item }, h('span', null), item)))
     ),
     h(
       'section',
       { className: 'nx-testimonials nx-reveal' },
-      metrics.map(([value, label], index) => h(GlowCard, { className: 'nx-testimonial-metric', key: label }, h(Icon, { name: index === 0 ? 'zap' : index === 1 ? 'shield' : index === 2 ? 'clock' : 'activity' }), h('strong', null, value), h('span', null, label))),
-      h('blockquote', null, 'Nexxus convierte la administración diaria en una operación medible, elegante y lista para crecer.')
+      metrics.map(([value, label], index) => h(GlowCard, { className: 'nx-testimonial-metric', key: label }, h(Icon, { name: index === 0 ? 'zap' : index === 1 ? 'shield' : index === 2 ? 'clock' : 'activity' }), h('strong', null, value), h('span', null, t(label)))),
+      h('blockquote', null, t('landing.testimonial_quote'))
     ),
     h(
       'section',
       { className: 'nx-final-cta nx-reveal' },
-      h('h2', null, 'Tu empresa no necesita más hojas sueltas. Necesita un sistema vivo.'),
-      h('p', null, 'Activa Nexxus y convierte tu operación en una plataforma inteligente, auditable y lista para escalar.'),
-      h(StarButton, { className: 'nx-btn nx-btn-primary', onClick: () => abrirAuth('registro', selectedPlan) }, 'Crear mi empresa')
+      h('h2', null, t('landing.final_cta_h2')),
+      h('p', null, t('landing.final_cta_p')),
+      h(StarButton, { className: 'nx-btn nx-btn-primary', onClick: () => abrirAuth('registro', selectedPlan) }, t('landing.create_company'))
     ),
     h(
       'footer',
       { className: 'nx-footer' },
       h('strong', null, 'Nexxus'),
-      h('div', null, ['Producto', 'Planes', 'Seguridad', 'Contacto', 'Privacidad'].map((item) => h('button', { key: item, onClick: () => item === 'Planes' ? scrollToId('planes') : scrollToId('hero') }, item))),
-      h('span', null, 'Inteligencia para operaciones modernas')
+      h('div', null, [t('landing.footer_product'), t('landing.footer_plans'), t('landing.footer_security'), t('landing.footer_contact'), t('landing.footer_privacy')].map((item) => h('button', { key: item, onClick: () => item === t('landing.footer_plans') ? scrollToId('planes') : scrollToId('hero') }, item))),
+      h('div', { className: 'nx-lang-selector', style: { display: 'flex', gap: '8px', alignItems: 'center', marginTop: '12px' } },
+        h('span', { style: { color: 'rgba(255,255,255,0.5)', fontSize: '12px' } }, t('common.language') + ':'),
+        h('button', { 
+          onClick: () => changeLanguage('es'), 
+          style: { background: 'none', border: 'none', color: i18n.language === 'es' ? '#fff' : 'rgba(255,255,255,0.5)', cursor: 'pointer', fontWeight: i18n.language === 'es' ? 'bold' : 'normal' }
+        }, 'ES'),
+        h('span', { style: { color: 'rgba(255,255,255,0.2)' } }, '|'),
+        h('button', { 
+          onClick: () => changeLanguage('en'), 
+          style: { background: 'none', border: 'none', color: i18n.language === 'en' ? '#fff' : 'rgba(255,255,255,0.5)', cursor: 'pointer', fontWeight: i18n.language === 'en' ? 'bold' : 'normal' }
+        }, 'EN')
+      ),
+      h('span', null, t('landing.footer_tagline'))
     )
   );
 }

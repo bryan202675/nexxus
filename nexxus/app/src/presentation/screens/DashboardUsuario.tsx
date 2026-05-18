@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/constants/diseno';
 
@@ -30,13 +31,14 @@ const COLORES_LOC = {
 };
 
 export default function DashboardUsuario({ navigation }: { navigation: any }) {
+  const { t } = useTranslation();
   const { perfil, metrics, cargando, cerrarSesion } = useContextoUsuario();
   const [menuVisible, setMenuVisible] = useState(false);
 
   // Datos locales para la UI que aún no están en el dominio
   const logros = [
-    { id: 1, texto: `${metrics?.racha || 0} días de racha de bienestar`, icono: 'wb-sunny' },
-    { id: 2, texto: 'Perfil completado al 100%', icono: 'check-circle' },
+    { id: 1, texto: t('miPulso.streak_days', { count: metrics?.racha || 0 }), icono: 'wb-sunny' },
+    { id: 2, texto: t('dashboardUsuario.profile_complete'), icono: 'check-circle' },
   ];
 
   const animacionDesvanecimiento = useRef(new Animated.Value(0)).current;
@@ -68,7 +70,7 @@ export default function DashboardUsuario({ navigation }: { navigation: any }) {
   if (cargando && !perfil) {
     return (
       <View style={[styles.areaSegura, { justifyContent: 'center', alignItems: 'center' }]}>
-        <Text>Cargando...</Text>
+        <Text>{t('common.loading')}</Text>
       </View>
     );
   }
@@ -92,19 +94,23 @@ export default function DashboardUsuario({ navigation }: { navigation: any }) {
 
         {menuVisible && (
           <View style={styles.menuUsuario}>
-            <TouchableOpacity 
-              style={styles.itemMenu} 
+            <TouchableOpacity
+              style={styles.itemMenu}
               onPress={handleLogout}
             >
               <MaterialIcons name="logout" size={20} color="#ef4444" />
-              <Text style={styles.textoCerrarSesion}>Cerrar Sesión</Text>
+              <Text style={styles.textoCerrarSesion}>{t('dashboardUsuario.logout')}</Text>
             </TouchableOpacity>
           </View>
         )}
 
         <Animated.View style={[styles.cabecera, { opacity: animacionDesvanecimiento, transform: [{ translateY: animacionDeslizamiento }] }]}>
-          <Text style={styles.saludo}>¡Hola, {perfil?.nombre || 'Usuario'}! ✨</Text>
-          <Text style={styles.subtitulo}>{metrics?.insightIA || 'Optimiza tu jornada laboral manteniendo el equilibrio entre rendimiento y bienestar.'}</Text>
+          <Text style={styles.saludo}>{t('dashboardUsuario.greeting', { name: perfil?.nombre?.split(' ')[0] || t('miPulso.user_default') })}</Text>
+          <Text style={styles.subtitulo}>
+            {metrics?.insightIA
+              ? t(metrics.insightIA, { name: perfil?.nombre?.split(' ')[0] || t('miPulso.user_default') })
+              : t('dashboardUsuario.default_insight')}
+          </Text>
         </Animated.View>
 
         <View style={styles.cuadricula}>
@@ -112,17 +118,17 @@ export default function DashboardUsuario({ navigation }: { navigation: any }) {
           <Animated.View style={[styles.tarjeta, styles.tarjetaAncha, { opacity: animacionDesvanecimiento, transform: [{ translateY: animacionDeslizamiento }] }]}>
             <View style={styles.cabeceraTarjeta}>
               <View>
-                <Text style={styles.tituloTarjeta}>Pulso Laboral Semanal</Text>
-                <Text style={styles.subtituloTarjeta}>Tendencia de rendimiento y fatiga</Text>
+                <Text style={styles.tituloTarjeta}>{t('dashboardUsuario.weekly_pulse')}</Text>
+                <Text style={styles.subtituloTarjeta}>{t('dashboardUsuario.performance_fatigue_trend')}</Text>
               </View>
               <View style={styles.leyendaGrafico}>
                 <View style={styles.elementoLeyenda}>
                   <View style={[styles.punto, { backgroundColor: COLORES_LOC.primario[0] }]} />
-                  <Text style={styles.textoLeyenda}>Rendimiento</Text>
+                  <Text style={styles.textoLeyenda}>{t('dashboardUsuario.performance')}</Text>
                 </View>
                 <View style={styles.elementoLeyenda}>
                   <View style={[styles.punto, { backgroundColor: '#1d4ed8' }]} />
-                  <Text style={styles.textoLeyenda}>Fatiga</Text>
+                  <Text style={styles.textoLeyenda}>{t('dashboardUsuario.fatigue')}</Text>
                 </View>
               </View>
             </View>
@@ -150,15 +156,15 @@ export default function DashboardUsuario({ navigation }: { navigation: any }) {
             <Animated.View style={[styles.tarjeta, styles.tarjetaPequena, { opacity: animacionDesvanecimiento, transform: [{ translateY: animacionDeslizamiento }] }]}>
               <LinearGradient colors={[COLORES_LOC.primario[0], COLORES_LOC.primario[1]]} style={styles.tarjetaGradiente}>
                 <MaterialIcons name="auto-awesome" size={24} color={COLORES_LOC.blanco} style={styles.iconoIA} />
-                <Text style={styles.tituloIA}>Sugerencia IA</Text>
-                <Text style={styles.textoIA}>Prioriza pausas activas hoy. Reducir la fatiga visual mejorará tu concentración.</Text>
+                <Text style={styles.tituloIA}>{t('dashboardUsuario.ai_suggestion_title')}</Text>
+                <Text style={styles.textoIA}>{t('dashboardUsuario.ai_suggestion_msg')}</Text>
               </LinearGradient>
             </Animated.View>
             <Animated.View style={[styles.tarjeta, styles.tarjetaPequena, { opacity: animacionDesvanecimiento, transform: [{ translateY: animacionDeslizamiento }] }]}>
               <View style={[styles.tarjetaSecundaria, { backgroundColor: COLORES_LOC.acento }]}>
                 <MaterialIcons name="self-improvement" size={24} color={COLORES_LOC.primario[0]} style={styles.iconoIA} />
-                <Text style={[styles.tituloIA, { color: COLORES_LOC.primario[0] }]}>Tú Puedes</Text>
-                <Text style={[styles.textoIA, { color: COLORES_LOC.textoSecundario }]}>Has gestionado bien tu carga esta semana. ¡Mantén ese ritmo saludable!</Text>
+                <Text style={[styles.tituloIA, { color: COLORES_LOC.primario[0] }]}>{t('dashboardUsuario.you_can_do_it')}</Text>
+                <Text style={[styles.textoIA, { color: COLORES_LOC.textoSecundario }]}>{t('dashboardUsuario.you_can_do_it_msg')}</Text>
               </View>
             </Animated.View>
           </View>
@@ -166,7 +172,7 @@ export default function DashboardUsuario({ navigation }: { navigation: any }) {
           <Animated.View style={[styles.tarjeta, styles.tarjetaAncha, { opacity: animacionDesvanecimiento, transform: [{ translateY: animacionDeslizamiento }] }]}>
             <View style={styles.cabeceraSeccion}>
               <MaterialIcons name="emoji-events" size={24} color={COLORES_LOC.primario[0]} />
-              <Text style={styles.tituloSeccion}>Tus Logros</Text>
+              <Text style={styles.tituloSeccion}>{t('dashboardUsuario.your_achievements')}</Text>
             </View>
             <View style={styles.listaLogros}>
               {logros.map((logro) => (
@@ -179,26 +185,26 @@ export default function DashboardUsuario({ navigation }: { navigation: any }) {
 
             <View style={styles.cabeceraSeccion}>
               <MaterialIcons name="library-books" size={24} color={COLORES_LOC.primario[0]} />
-              <Text style={styles.tituloSeccion}>Recursos Rápidos</Text>
+              <Text style={styles.tituloSeccion}>{t('dashboardUsuario.quick_resources')}</Text>
             </View>
             <View style={styles.filaRecursos}>
               <TouchableOpacity style={styles.recursoBoton}>
                 <MaterialIcons name="self-improvement" size={20} color={COLORES_LOC.primario[0]} />
-                <Text style={styles.recursoTexto}>Manejo de Estrés</Text>
+                <Text style={styles.recursoTexto}>{t('dashboardUsuario.stress_management')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.recursoBoton}>
                 <MaterialIcons name="psychology" size={20} color={COLORES_LOC.primario[0]} />
-                <Text style={styles.recursoTexto}>Pausa Activa</Text>
+                <Text style={styles.recursoTexto}>{t('dashboardUsuario.active_pause')}</Text>
               </TouchableOpacity>
             </View>
           </Animated.View>
 
           <Animated.View style={[styles.tarjeta, styles.tarjetaAncha, { opacity: animacionDesvanecimiento, transform: [{ translateY: animacionDeslizamiento }] }]}>
-            <Text style={styles.tituloTarjeta}>Evaluaciones Recientes</Text>
+            <Text style={styles.tituloTarjeta}>{t('dashboardUsuario.recent_evaluations')}</Text>
             <View style={styles.listaHistorial}>
               {[
-                { title: 'Check-in Semanal', date: 'Ayer, 4:30 PM', score: '8.5/10', color: COLORES_LOC.acento },
-                { title: 'Evaluación Burnout', date: 'Hace 5 días', score: 'Bajo Riesgo', color: '#dce1ff' },
+                { title: t('dashboardUsuario.weekly_checkin'), date: t('common.yesterday_at', { time: '4:30 PM' }), score: '8.5/10', color: COLORES_LOC.acento },
+                { title: t('dashboardUsuario.burnout_eval'), date: t('common.days_ago', { count: 5 }), score: t('dashboardUsuario.low_risk'), color: '#dce1ff' },
               ].map((item, idx) => (
                 <View key={idx} style={styles.elementoHistorial}>
                   <View style={[styles.iconoHistorial, { backgroundColor: item.color }]}>

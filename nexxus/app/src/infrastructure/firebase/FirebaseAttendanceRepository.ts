@@ -5,12 +5,20 @@ import { IAttendanceRepository } from '@/domain/repositories/IAttendanceReposito
 
 export class FirebaseAttendanceRepository implements IAttendanceRepository {
   async record(userId: string, data: NuevaEntradaAsistencia): Promise<Attendance> {
-    const docData = {
+    const docData: any = {
       ...data,
       userId,
       timestamp: new Date().toISOString(),
       offline_sync: false, // Default to false when recording live
     };
+    
+    // Clean undefined fields to prevent Firestore crashes
+    Object.keys(docData).forEach(key => {
+      if (docData[key] === undefined) {
+        delete docData[key];
+      }
+    });
+
     const docRef = await addDoc(collection(db, 'asistencias'), docData);
     return { id: docRef.id, ...docData } as Attendance;
   }

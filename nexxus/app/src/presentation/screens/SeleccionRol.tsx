@@ -11,10 +11,12 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import FondoAurora from '@/presentation/components/FondoAurora';
 import MarcaNexxus from '@/presentation/components/MarcaNexxus';
 import { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/constants/diseno';
+import AuraOrb from '@/presentation/components/AuraOrb';
 
 type RolSeleccionado = 'empleado' | 'jefe' | 'admin';
 
@@ -23,6 +25,7 @@ interface Props {
 }
 
 export default function SeleccionRol({ navigation }: Props) {
+  const { t } = useTranslation();
   const [rolActivo, setRolActivo] = useState<RolSeleccionado>('admin');
   const animacionOpacidad = useRef(new Animated.Value(0)).current;
   const animacionTraslado = useRef(new Animated.Value(20)).current;
@@ -37,22 +40,22 @@ export default function SeleccionRol({ navigation }: Props) {
   const roles = [
     {
       id: 'empleado' as RolSeleccionado,
-      titulo: 'Empleado',
-      descripcion: 'Monitorea tu bienestar personal y accede a recursos de apoyo.',
+      titulo: t('seleccionRol.role_employee_title'),
+      descripcion: t('seleccionRol.role_employee_desc'),
       icono: 'person' as const,
       acento: COLORES.primario,
     },
     {
       id: 'jefe' as RolSeleccionado,
-      titulo: 'Jefe',
-      descripcion: 'Visualiza el pulso de tu equipo y recibe alertas tempranas.',
+      titulo: t('seleccionRol.role_manager_title'),
+      descripcion: t('seleccionRol.role_manager_desc'),
       icono: 'groups' as const,
       acento: COLORES.secundario,
     },
     {
       id: 'admin' as RolSeleccionado,
-      titulo: 'Administrador',
-      descripcion: 'Gestión completa de la empresa, nóminas y estructura organizativa.',
+      titulo: t('seleccionRol.role_admin_title'),
+      descripcion: t('seleccionRol.role_admin_desc'),
       icono: 'admin-panel-settings' as const,
       acento: '#3B82F6', // Blue from admin mockup
     }
@@ -84,8 +87,9 @@ export default function SeleccionRol({ navigation }: Props) {
           <MarcaNexxus tamano={28} />
 
           <View style={estilos.cuerpoTexto}>
-            <Text style={estilos.titulo}>Selecciona el contexto de tu experiencia.</Text>
-            <Text style={estilos.subtitulo}>La navegación y la lógica se mantienen. Sólo refinamos la presentación para que el flujo arranque con más claridad.</Text>
+            <AuraOrb size={112} style={estilos.orbeRol} />
+            <Text style={estilos.titulo}>{t('seleccionRol.title')}</Text>
+            <Text style={estilos.subtitulo}>{t('seleccionRol.subtitle')}</Text>
           </View>
 
           <View style={estilos.listaRoles}>
@@ -116,7 +120,7 @@ export default function SeleccionRol({ navigation }: Props) {
 
           <TouchableOpacity onPress={manejarContinuar} activeOpacity={0.88} style={estilos.botonContinuar}>
             <LinearGradient colors={[COLORES.primario, COLORES.primarioFuerte, COLORES.secundario]} style={estilos.gradiente} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-              <Text style={estilos.textoBoton}>Continuar</Text>
+              <Text style={estilos.textoBoton}>{t('comenzar.btn_continue')}</Text>
               <MaterialIcons name="arrow-forward" size={18} color={COLORES.textoInverso} />
             </LinearGradient>
           </TouchableOpacity>
@@ -140,14 +144,20 @@ const estilos = StyleSheet.create({
     marginTop: ESPACIADO.xxxl,
     marginBottom: ESPACIADO.xl,
     gap: ESPACIADO.md,
+    alignItems: 'center',
+  },
+  orbeRol: {
+    marginBottom: ESPACIADO.md,
   },
   titulo: {
     ...TIPOGRAFIA.tituloPantalla,
     color: COLORES.texto,
+    textAlign: 'center',
   },
   subtitulo: {
     ...TIPOGRAFIA.cuerpoGrande,
     color: COLORES.textoSecundario,
+    textAlign: 'center',
   },
   listaRoles: {
     gap: ESPACIADO.md,

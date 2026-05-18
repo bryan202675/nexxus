@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 import Svg, { Circle } from 'react-native-svg';
 import FondoAurora from '@/presentation/components/FondoAurora';
 import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
@@ -22,6 +23,7 @@ interface Props {
 }
 
 export default function ModoEnfoque({ navigation }: Props) {
+  const { t } = useTranslation();
   const { guardarSesionEnfoque, marcarEstadoTrabajo, perfil, focusSessions } = useContextoUsuario();
   const [minutosSeleccionados, setMinutosSeleccionados] = useState(25);
   const [segundos, setSegundos] = useState(0);
@@ -84,9 +86,9 @@ export default function ModoEnfoque({ navigation }: Props) {
             nivelConcentracion: 4,
           });
         }
-        Alert.alert('¡Excelente trabajo!', `Has completado ${minutosSeleccionados} minutos de enfoque profundo.`);
+        Alert.alert(t('modoEnfoque.great_work_title'), t('modoEnfoque.completed_msg', { count: minutosSeleccionados }));
       } catch (e) {
-        Alert.alert('Error', 'No se pudo guardar la sesión de enfoque.');
+        Alert.alert('Error', t('modoEnfoque.error_save'));
       }
     }
   };
@@ -102,9 +104,9 @@ export default function ModoEnfoque({ navigation }: Props) {
   const strokeDashoffset = circunferencia - (progreso / 100) * circunferencia;
 
   const sonidos = [
-    { id: 'lluvia', nombre: 'Lluvia', icono: 'water-drop' },
-    { id: 'cafe', nombre: 'Cafetería', icono: 'local-cafe' },
-    { id: 'bosque', nombre: 'Bosque', icono: 'park' },
+    { id: 'lluvia', nombre: t('modoEnfoque.sounds.lluvia'), icono: 'water-drop' },
+    { id: 'cafe', nombre: t('modoEnfoque.sounds.cafe'), icono: 'local-cafe' },
+    { id: 'bosque', nombre: t('modoEnfoque.sounds.bosque'), icono: 'park' },
   ];
 
   return (
@@ -112,16 +114,16 @@ export default function ModoEnfoque({ navigation }: Props) {
       <StatusBar barStyle="light-content" />
       <FondoAurora />
       
-      <NavbarEnterprise titulo="Modo Enfoque" />
+      <NavbarEnterprise titulo={t('modoEnfoque.title')} />
 
       <View style={estilos.cuerpo}>
         {!activo && (
           <View style={estilos.tabs}>
             <TouchableOpacity style={[estilos.tab, pestaña === 'sesion' && estilos.tabActivo]} onPress={() => setPestaña('sesion')}>
-              <Text style={[estilos.textoTab, pestaña === 'sesion' && estilos.textoTabActivo]}>Nueva Sesión</Text>
+              <Text style={[estilos.textoTab, pestaña === 'sesion' && estilos.textoTabActivo]}>{t('modoEnfoque.new_session')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[estilos.tab, pestaña === 'stats' && estilos.tabActivo]} onPress={() => setPestaña('stats')}>
-              <Text style={[estilos.textoTab, pestaña === 'stats' && estilos.textoTabActivo]}>Mis Estadísticas</Text>
+              <Text style={[estilos.textoTab, pestaña === 'stats' && estilos.textoTabActivo]}>{t('modoEnfoque.my_stats')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -131,33 +133,33 @@ export default function ModoEnfoque({ navigation }: Props) {
             <View style={estilos.statsContainer}>
               <View style={estilos.statCard}>
                 <MaterialIcons name="local-fire-department" size={28} color={COLORES.alerta} />
-                <Text style={estilos.statValor}>3 días</Text>
-                <Text style={estilos.statLabel}>Racha actual</Text>
+                <Text style={estilos.statValor}>{t('modoEnfoque.days', { count: 3 })}</Text>
+                <Text style={estilos.statLabel}>{t('modoEnfoque.current_streak')}</Text>
               </View>
               <View style={estilos.statCard}>
                 <MaterialIcons name="timer" size={28} color={COLORES.primario} />
-                <Text style={estilos.statValor}>{focusSessions.length * 25} min</Text>
-                <Text style={estilos.statLabel}>Enfoque total</Text>
+                <Text style={estilos.statValor}>{focusSessions.length * 25} {t('modoEnfoque.min_suffix')}</Text>
+                <Text style={estilos.statLabel}>{t('modoEnfoque.total_focus')}</Text>
               </View>
             </View>
-            <Text style={[estilos.subtitulo, { textAlign: 'left', marginTop: ESPACIADO.lg }]}>Sesiones Recientes</Text>
+            <Text style={[estilos.subtitulo, { textAlign: 'left', marginTop: ESPACIADO.lg }]}>{t('modoEnfoque.recent_sessions')}</Text>
             {focusSessions.slice(0, 3).map((sesion, i) => (
               <View key={i} style={estilos.sesionItem}>
                 <MaterialIcons name="check-circle" size={20} color={COLORES.exito} />
-                <Text style={estilos.sesionTexto}>Sesión completada ({sesion.duracionMinutos} min)</Text>
+                <Text style={estilos.sesionTexto}>{t('modoEnfoque.session_completed', { count: sesion.duracionMinutos })}</Text>
               </View>
             ))}
             {focusSessions.length === 0 && (
-              <Text style={estilos.textoVacio}>Aún no tienes sesiones registradas.</Text>
+              <Text style={estilos.textoVacio}>{t('modoEnfoque.no_sessions')}</Text>
             )}
           </View>
         )}
 
         {pestaña === 'sesion' && !activo ? (
           <View style={estilos.selectorContainer}>
-            <Text style={estilos.subtitulo}>Bloquea distracciones y mejora tu productividad</Text>
+            <Text style={estilos.subtitulo}>{t('modoEnfoque.block_distractions')}</Text>
             
-            <Text style={estilos.label}>Selecciona la duración (minutos):</Text>
+            <Text style={estilos.label}>{t('modoEnfoque.select_duration')}</Text>
             <View style={estilos.filaOpciones}>
               {[15, 25, 45, 60].map(min => (
                 <TouchableOpacity
@@ -172,7 +174,7 @@ export default function ModoEnfoque({ navigation }: Props) {
               ))}
             </View>
 
-            <Text style={[estilos.label, { marginTop: ESPACIADO.lg }]}>Sonido ambiental (opcional):</Text>
+            <Text style={[estilos.label, { marginTop: ESPACIADO.lg }]}>{t('modoEnfoque.ambient_sound')}</Text>
             <View style={estilos.filaSonidos}>
               {sonidos.map(s => (
                 <TouchableOpacity
@@ -191,7 +193,7 @@ export default function ModoEnfoque({ navigation }: Props) {
             <TouchableOpacity style={estilos.botonIniciar} onPress={iniciarSesion}>
               <LinearGradient colors={[COLORES.primario, COLORES.primarioFuerte]} style={estilos.gradienteBoton}>
                 <MaterialIcons name="play-arrow" size={24} color="#fff" />
-                <Text style={estilos.textoBotonIniciar}>Iniciar Sesión de Enfoque</Text>
+                <Text style={estilos.textoBotonIniciar}>{t('modoEnfoque.start_session')}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -214,15 +216,15 @@ export default function ModoEnfoque({ navigation }: Props) {
               </Svg>
               <Animated.View style={[estilos.circuloEnfoque, { transform: [{ scale: scaleAnim }] }]}>
                 <Text style={estilos.textoTimer} numberOfLines={1} adjustsFontSizeToFit>{formatearTiempo(segundos)}</Text>
-                <Text style={estilos.textoFase}>Inmersión profunda</Text>
+                <Text style={estilos.textoFase}>{t('modoEnfoque.deep_immersion')}</Text>
               </Animated.View>
             </View>
 
-            <Text style={estilos.textoEstado}>Tu estado ahora es "Ocupado". Las notificaciones internas se silenciarán automáticamente.</Text>
+            <Text style={estilos.textoEstado}>{t('modoEnfoque.status_busy_msg')}</Text>
             
             <TouchableOpacity style={estilos.botonDetener} onPress={() => finalizarSesion(false)}>
               <MaterialIcons name="stop" size={24} color={COLORES.error} />
-              <Text style={estilos.textoBotonDetener}>Detener Sesión</Text>
+              <Text style={estilos.textoBotonDetener}>{t('modoEnfoque.stop_session')}</Text>
             </TouchableOpacity>
           </View>
         ) : null}

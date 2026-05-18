@@ -6,6 +6,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle } from 'react-native-svg';
+import { useTranslation } from 'react-i18next';
 import { COLORES, RADIOS, SOMBRAS, ESPACIADO } from '@/shared/constants/diseno';
 
 interface Props { navigation: any; }
@@ -18,6 +19,7 @@ const DEPARTAMENTOS = [
 ];
 
 export default function PulsoEquipo({ navigation }: Props) {
+  const { t } = useTranslation();
   const [menuVisible, setMenuVisible] = useState(false);
   const satisfaccion = 84;
   const anchoGraf = 260;
@@ -59,7 +61,7 @@ export default function PulsoEquipo({ navigation }: Props) {
             }}
           >
             <MaterialIcons name="logout" size={20} color={COLORES.error} />
-            <Text style={estilos.textoCerrarSesion}>Cerrar Sesión</Text>
+            <Text style={estilos.textoCerrarSesion}>{t('dashboardUsuario.logout')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -67,11 +69,11 @@ export default function PulsoEquipo({ navigation }: Props) {
       <ScrollView contentContainerStyle={estilos.scroll} showsVerticalScrollIndicator={false}>
         <View style={estilos.cabecera}>
           <View>
-            <Text style={estilos.titulo}>Pulso Organizacional</Text>
-            <Text style={estilos.subtitulo}>Estado del bienestar colectivo en los últimos 7 días</Text>
+            <Text style={estilos.titulo}>{t('pulsoEquipo.org_pulse')}</Text>
+            <Text style={estilos.subtitulo}>{t('pulsoEquipo.collective_wellbeing_state')}</Text>
           </View>
           <TouchableOpacity style={estilos.botonFiltro}>
-            <Text style={estilos.textoFiltro}>Filtrar</Text>
+            <Text style={estilos.textoFiltro}>{t('pulsoEquipo.filter')}</Text>
             <MaterialIcons name="filter-list" size={16} color={COLORES.contenedorPrimario} />
           </TouchableOpacity>
         </View>
@@ -80,7 +82,7 @@ export default function PulsoEquipo({ navigation }: Props) {
           <View style={estilos.decorCirculo} />
           <View style={estilos.filaEtiqueta}>
             <MaterialIcons name="mood" size={20} color={COLORES.contenedorSecundario} />
-            <Text style={estilos.etiquetaSat}>SATISFACCIÓN GENERAL</Text>
+            <Text style={estilos.etiquetaSat}>{t('pulsoEquipo.general_satisfaction')}</Text>
           </View>
           <View style={estilos.filaSat}>
             <Text style={estilos.valorSat}>{satisfaccion}%</Text>
@@ -93,8 +95,8 @@ export default function PulsoEquipo({ navigation }: Props) {
             <View style={[estilos.rellenoSat, { width: `${satisfaccion}%` }]} />
           </View>
           <View style={estilos.etiquetasBarra}>
-            <Text style={estilos.textoEtBarra}>Bajo</Text>
-            <Text style={estilos.textoEtBarra}>Alto</Text>
+            <Text style={estilos.textoEtBarra}>{t('pulsoEquipo.low')}</Text>
+            <Text style={estilos.textoEtBarra}>{t('pulsoEquipo.high')}</Text>
           </View>
 
           <View style={{ marginTop: 16 }}>
@@ -110,15 +112,15 @@ export default function PulsoEquipo({ navigation }: Props) {
         <View style={estilos.tarjetaAlerta}>
           <View style={estilos.filaAlerta}>
             <MaterialIcons name="warning" size={20} color={COLORES.error} />
-            <Text style={estilos.etiquetaAlerta}>ALERTAS DE RIESGO</Text>
+            <Text style={estilos.etiquetaAlerta}>{t('pulsoEquipo.risk_alerts')}</Text>
           </View>
           <View style={estilos.itemAlerta}>
             <View style={estilos.contadorAlerta}>
               <Text style={estilos.textoContador}>3</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={estilos.tituloAlerta}>Miembros en alto riesgo de burnout</Text>
-              <Text style={estilos.descAlerta}>En Ingeniería y Ventas</Text>
+              <Text style={estilos.tituloAlerta}>{t('pulsoEquipo.high_burnout_risk_members')}</Text>
+              <Text style={estilos.descAlerta}>{t('pulsoEquipo.in_engineering_sales')}</Text>
             </View>
             <MaterialIcons name="chevron-right" size={20} color={COLORES.contenedorPrimario} />
           </View>
@@ -128,26 +130,26 @@ export default function PulsoEquipo({ navigation }: Props) {
           <View style={estilos.decorIA} />
           <View style={estilos.filaIA}>
             <MaterialIcons name="smart-toy" size={20} color={COLORES.contenedorPrimario} />
-            <Text style={estilos.etiquetaIA}>INSIGHT IA</Text>
+            <Text style={estilos.etiquetaIA}>{t('pulsoEquipo.ai_insight')}</Text>
           </View>
           <Text style={estilos.textoIA}>"Sugerencia: Reducir reuniones semanales para el equipo de Ingeniería."</Text>
           <View style={estilos.botonesIA}>
             <TouchableOpacity style={estilos.botonIAPrinc}>
               <LinearGradient colors={[COLORES.primario, COLORES.contenedorPrimario]} style={estilos.gradIA} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                <Text style={estilos.textoBotonIAPrinc}>Revisar Plan</Text>
+                <Text style={estilos.textoBotonIAPrinc}>{t('pulsoEquipo.review_plan')}</Text>
               </LinearGradient>
             </TouchableOpacity>
             <TouchableOpacity style={estilos.botonIASec}>
-              <Text style={estilos.textoBotonIASec}>Descartar</Text>
+              <Text style={estilos.textoBotonIASec}>{t('pulsoEquipo.discard')}</Text>
             </TouchableOpacity>
           </View>
         </LinearGradient>
 
         <View style={estilos.seccionDepto}>
           <View style={estilos.cabeceraSec}>
-            <Text style={estilos.tituloSec}>Departamentos</Text>
+            <Text style={estilos.tituloSec}>{t('pulsoEquipo.departments')}</Text>
             <TouchableOpacity>
-              <Text style={estilos.verTodos}>Ver todos</Text>
+              <Text style={estilos.verTodos}>{t('pulsoEquipo.see_all')}</Text>
             </TouchableOpacity>
           </View>
           {DEPARTAMENTOS.map((dep, idx) => (
@@ -157,7 +159,7 @@ export default function PulsoEquipo({ navigation }: Props) {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={estilos.nombreDep}>{dep.nombre}</Text>
-                <Text style={estilos.miembrosDep}>{dep.miembros} miembros</Text>
+                <Text style={estilos.miembrosDep}>{t('pulsoEquipo.members', { count: dep.miembros })}</Text>
               </View>
               <View style={[estilos.chipEstado, { backgroundColor: `${dep.color}18`, borderColor: `${dep.color}40` }]}>
                 <MaterialIcons name={dep.tendencia as any} size={12} color={dep.color} />

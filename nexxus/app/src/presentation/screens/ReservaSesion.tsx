@@ -1,34 +1,23 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, SafeAreaView, Dimensions, Platform, Alert, TextInput, ActivityIndicator
+  StatusBar, SafeAreaView, useWindowDimensions, Platform, Alert, TextInput, ActivityIndicator
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORES, RADIOS, SOMBRAS, ESPACIADO, TIPOGRAFIA } from '@/shared/constants/diseno';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 
 interface Props { navigation: any; }
 
-const DIAS_SEMANA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-const HORARIOS = ['08:00 AM', '09:00 AM', '11:30 AM', '02:00 PM', '04:30 PM', '06:00 PM'];
 type TipoSesion = 'video' | 'chat' | 'presencial';
 
-const { width } = Dimensions.get('window');
-
-function generarDiasCalendario(mes: number, anio: number): number[] {
-  const inicio = new Date(anio, mes, 1);
-  const diasEnMes = new Date(anio, mes + 1, 0).getDate();
-  const offsetInicio = inicio.getDay();
-  const dias: number[] = [];
-  for (let i = 0; i < offsetInicio; i++) dias.push(0);
-  for (let i = 1; i <= diasEnMes; i++) dias.push(i);
-  return dias;
-}
-
 export default function ReservaSesion({ navigation }: Props) {
+  const { t, i18n } = useTranslation();
   const { especialistas, registrarCita } = useContextoUsuario();
-  
+  const { width } = useWindowDimensions();
+
   const hoyReal = new Date();
   const [especialista, setEspecialista] = useState(especialistas[0] || null);
   const [diaSeleccionado, setDiaSeleccionado] = useState(hoyReal.getDate() + 2);
@@ -40,7 +29,7 @@ export default function ReservaSesion({ navigation }: Props) {
   const [enviando, setEnviando] = useState(false);
 
   const dias = generarDiasCalendario(mesVisual, anioVisual);
-  const mesActualLabel = new Date(anioVisual, mesVisual).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' }).toUpperCase();
+  const mesActualLabel = new Date(anioVisual, mesVisual).toLocaleDateString(i18n?.language === 'es' ? 'es-MX' : 'en-US', { month: 'long', year: 'numeric' }).toUpperCase();
 
   const cambiarMes = (dir: number) => {
     let nuevoMes = mesVisual + dir;
@@ -53,10 +42,10 @@ export default function ReservaSesion({ navigation }: Props) {
 
   const manejarReserva = async () => {
     if (!especialista || !motivo) {
-      Alert.alert('Incompleto', 'Por favor selecciona un especialista y escribe el motivo de la sesión.');
+      Alert.alert(t('reservaSesion.alert_incomplete'), t('reservaSesion.alert_incomplete_msg'));
       return;
     }
-    
+
     setEnviando(true);
     try {
       const fechaCita = `${anioVisual}-${String(mesVisual + 1).padStart(2, '0')}-${String(diaSeleccionado).padStart(2, '0')}`;
@@ -69,20 +58,24 @@ export default function ReservaSesion({ navigation }: Props) {
         motivo,
         estado: 'programada'
       });
-      Alert.alert('Cita Confirmada', 'Tu sesión ha sido agendada con éxito. Recibirás un recordatorio pronto.', [
-        { text: 'Aceptar', onPress: () => navigation.goBack() }
+      Alert.alert(t('reservaSesion.alert_success'), t('reservaSesion.alert_success_msg'), [
+        { text: t('common.accept'), onPress: () => navigation.goBack() }
       ]);
     } catch (e) {
-      Alert.alert('Error', 'No se pudo agendar la cita. Intenta de nuevo.');
+      Alert.alert(t('common.error'), t('reservaSesion.alert_error_msg'));
     } finally {
       setEnviando(false);
     }
   };
 
   const tiposSesion: { id: TipoSesion; etiqueta: string; desc: string; icono: string }[] = [
-    { id: 'video', etiqueta: 'Videollamada', desc: 'Sesión online segura', icono: 'videocam' },
-    { id: 'chat', etiqueta: 'Chat', desc: 'Consulta por texto', icono: 'chat' },
-    { id: 'presencial', etiqueta: 'Presencial', desc: 'Visita en consultorio', icono: 'apartment' },
+    { id: 'video', etiqueta: t('reservaSesion.video_call'), desc: t('reservaSesion.video_call_desc'), icono: 'videocam' },
+    { id: 'chat', etiqueta: t('reservaSesion.chat'), desc: t('reservaSesion.chat_desc'), icono: 'chat' },
+    { id: 'presencial', etiqueta: t('reservaSesion.presencial'), desc: t('reservaSesion.presencial_desc'), icono: 'apartment' },
+  ];
+
+  const DIAS_SEMANA_TRAD = [
+    t('common.days.dom'), t('common.days.lun'), t('common.days.mar'), t('common.days.mie'), t('common.days.jue'), t('common.days.vie'), t('common.days.sab')
   ];
 
   return (
@@ -92,18 +85,18 @@ export default function ReservaSesion({ navigation }: Props) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={estilos.botonVolver}>
           <MaterialIcons name="arrow-back" size={22} color={COLORES.texto} />
         </TouchableOpacity>
-        <Text style={estilos.tituloBarra}>Reservar Cita</Text>
+        <Text style={estilos.tituloBarra}>{t('reservaSesion.title')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={estilos.scroll} showsVerticalScrollIndicator={false}>
-        
+
         <View style={estilos.seccion}>
-          <Text style={estilos.tituloSeccion}>Seleccionar Especialista</Text>
+          <Text style={estilos.tituloSeccion}>{t('reservaSesion.select_specialist')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={estilos.listaEsp}>
             {especialistas.map((esp) => (
-              <TouchableOpacity 
-                key={esp.id} 
+              <TouchableOpacity
+                key={esp.id}
                 style={[estilos.tarjetaEsp, especialista?.id === esp.id && estilos.tarjetaEspActiva]}
                 onPress={() => setEspecialista(esp)}
               >
@@ -116,7 +109,7 @@ export default function ReservaSesion({ navigation }: Props) {
         </View>
 
         <View style={estilos.seccion}>
-          <Text style={estilos.tituloSeccion}>Seleccionar Fecha</Text>
+          <Text style={estilos.tituloSeccion}>{t('reservaSesion.select_date')}</Text>
           <View style={estilos.calendario}>
             <View style={estilos.cabeceraCal}>
               <Text style={estilos.mesLabel}>{mesActualLabel}</Text>
@@ -130,7 +123,7 @@ export default function ReservaSesion({ navigation }: Props) {
               </View>
             </View>
             <View style={estilos.gridDiasNombre}>
-              {DIAS_SEMANA.map(d => <Text key={d} style={estilos.nombreDia}>{d}</Text>)}
+              {DIAS_SEMANA_TRAD.map((d, i) => <Text key={i} style={estilos.nombreDia}>{d}</Text>)}
             </View>
             <View style={estilos.gridDias}>
               {dias.map((dia, idx) => {
@@ -143,7 +136,11 @@ export default function ReservaSesion({ navigation }: Props) {
                     key={idx}
                     disabled={dia === 0 || pasado}
                     onPress={() => dia > 0 && setDiaSeleccionado(dia)}
-                    style={[estilos.celdaDia, seleccionado && estilos.celdaDiaActiva]}
+                    style={[
+                      estilos.celdaDia,
+                      { width: (width - 72) / 7 },
+                      seleccionado && estilos.celdaDiaActiva
+                    ]}
                   >
                     <Text style={[estilos.textoDia, seleccionado && { color: '#fff' }, pasado && { opacity: 0.2 }]}>
                       {dia > 0 ? dia : ''}
@@ -156,13 +153,13 @@ export default function ReservaSesion({ navigation }: Props) {
         </View>
 
         <View style={estilos.seccion}>
-          <Text style={estilos.tituloSeccion}>Horarios Disponibles</Text>
+          <Text style={estilos.tituloSeccion}>{t('reservaSesion.available_times')}</Text>
           <View style={estilos.gridHorarios}>
             {HORARIOS.map((h) => (
               <TouchableOpacity
                 key={h}
                 onPress={() => setHorarioSeleccionado(h)}
-                style={[estilos.botonHorario, horarioSeleccionado === h && estilos.botonHorarioActivo]}
+                style={[estilos.botonHorario, horarioSeleccionado === h && estilos.botonHorarioActiva]}
               >
                 <Text style={[estilos.textoHorario, horarioSeleccionado === h && { color: '#fff' }]}>{h}</Text>
               </TouchableOpacity>
@@ -171,7 +168,7 @@ export default function ReservaSesion({ navigation }: Props) {
         </View>
 
         <View style={estilos.seccion}>
-          <Text style={estilos.tituloSeccion}>Tipo de Sesión</Text>
+          <Text style={estilos.tituloSeccion}>{t('reservaSesion.session_type')}</Text>
           {tiposSesion.map((tipo) => (
             <TouchableOpacity
               key={tipo.id}
@@ -188,10 +185,11 @@ export default function ReservaSesion({ navigation }: Props) {
         </View>
 
         <View style={estilos.seccion}>
-          <Text style={estilos.tituloSeccion}>Motivo de la Cita</Text>
+          <Text style={estilos.tituloSeccion}>{t('reservaSesion.reason_label')}</Text>
           <TextInput
             style={estilos.inputMotivo}
-            placeholder="Escribe brevemente por qué solicitas la sesión..."
+            placeholder={t('reservaSesion.reason_placeholder')}
+            placeholderTextColor={COLORES.textoSuave}
             multiline
             numberOfLines={3}
             value={motivo}
@@ -204,13 +202,24 @@ export default function ReservaSesion({ navigation }: Props) {
       <View style={estilos.pie}>
         <TouchableOpacity style={estilos.botonConfirmar} onPress={manejarReserva} disabled={enviando}>
           <LinearGradient colors={[COLORES.primario, COLORES.primarioFuerte]} style={estilos.gradiente}>
-            {enviando ? <ActivityIndicator color="#fff" /> : <Text style={estilos.textoConfirmar}>Confirmar Reserva</Text>}
+            {enviando ? <ActivityIndicator color="#fff" /> : <Text style={estilos.textoConfirmar}>{t('reservaSesion.confirm_btn')}</Text>}
           </LinearGradient>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 }
+
+function generarDiasCalendario(mes: number, anio: number) {
+  const primerDia = new Date(anio, mes, 1).getDay();
+  const ultimoDia = new Date(anio, mes + 1, 0).getDate();
+  const dias = [];
+  for (let i = 0; i < primerDia; i++) { dias.push(0); }
+  for (let i = 1; i <= ultimoDia; i++) { dias.push(i); }
+  return dias;
+}
+
+const HORARIOS = ['08:00 AM', '09:00 AM', '10:00 AM', '11:00 AM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM'];
 
 const estilos = StyleSheet.create({
   contenedor: { flex: 1, backgroundColor: COLORES.fondo },
@@ -233,12 +242,12 @@ const estilos = StyleSheet.create({
   gridDiasNombre: { flexDirection: 'row', marginBottom: ESPACIADO.sm },
   nombreDia: { flex: 1, textAlign: 'center', fontSize: 11, color: COLORES.textoSuave, fontWeight: '700' },
   gridDias: { flexDirection: 'row', flexWrap: 'wrap' },
-  celdaDia: { width: (width - 72) / 7, height: 36, alignItems: 'center', justifyContent: 'center', marginVertical: 2 },
+  celdaDia: { height: 36, alignItems: 'center', justifyContent: 'center', marginVertical: 2 },
   celdaDiaActiva: { backgroundColor: COLORES.primario, borderRadius: 18 },
   textoDia: { fontSize: 14, fontWeight: '600', color: COLORES.texto },
   gridHorarios: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   botonHorario: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: RADIOS.md, backgroundColor: COLORES.superficieVidrio, borderWidth: 1, borderColor: COLORES.borde },
-  botonHorarioActivo: { backgroundColor: COLORES.primario, borderColor: COLORES.primario },
+  botonHorarioActiva: { backgroundColor: COLORES.primario, borderColor: COLORES.primario },
   textoHorario: { fontSize: 12, fontWeight: '600' },
   tarjetaTipo: { flexDirection: 'row', alignItems: 'center', padding: ESPACIADO.md, backgroundColor: COLORES.superficieVidrio, borderRadius: RADIOS.lg, marginBottom: 8, borderWidth: 1, borderColor: COLORES.borde },
   tarjetaTipoActiva: { borderColor: COLORES.primario, backgroundColor: COLORES.primarioClaro },

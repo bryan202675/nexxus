@@ -1,14 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, Easing, Image, Modal, View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { Clipboard, Alert, Animated, Easing, Image, Modal, View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, Platform } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { addDoc, collection, doc, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
+import { addDoc, collection, doc, getDocs, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useCases } from '@/infrastructure/firebase/container';
 import { db, functions } from '@/infrastructure/firebase/firebaseConfig';
 import { useAuth } from '@/presentation/hooks/useAuth';
 import { obtenerEmpresaIdAdmin } from './adminUtils';
-import { ADMIN } from './adminTheme';
+import { ADMIN, sombraAdmin, sombraVioleta } from './adminTheme';
 
 const BRAND = {
   richBlack: ADMIN.fondo,
@@ -120,7 +122,7 @@ type SelectorActivo = 'cargo' | 'departamento' | 'sede' | 'rol' | null;
 
 type FormularioEmpleado = {
   nombre: string;
-  correo: string;
+  usuarioInterno: string;
   contrasena: string;
   rol: string;
   cargoId: string;
@@ -143,12 +145,12 @@ type FormularioTarea = {
 
 const formularioInicial: FormularioEmpleado = {
   nombre: '',
-  correo: '',
+  usuarioInterno: '',
   contrasena: '',
   rol: 'empleado',
-  cargoId: '',
-  departamentoId: '',
-  sedeId: '',
+  cargoId: 'base',
+  departamentoId: 'general',
+  sedeId: 'global',
   jefeId: '',
   telefono: '',
   salarioBase: '',
@@ -182,7 +184,7 @@ const normalizarSalarioUSD = (valor: string) => valor.replace(/[^\d.,]/g, '').sp
 const conTiempoLimite = async <T,>(promesa: Promise<T>, milisegundos = 25000): Promise<T> => {
   let temporizador: ReturnType<typeof setTimeout>;
   const limite = new Promise<T>((_, rechazar) => {
-    temporizador = setTimeout(() => rechazar(new Error('La creaciÃ³n tardÃ³ demasiado. Verifica que la Cloud Function crearUsuarioEmpresa estÃ© desplegada y vuelve a intentar.')), milisegundos);
+    temporizador = setTimeout(() => rechazar(new Error('La creación tardó demasiado. Verifica que la Cloud Function crearUsuarioEmpresa esté desplegada y vuelve a intentar.')), milisegundos);
   });
   try {
     return await Promise.race([promesa, limite]);
@@ -198,7 +200,7 @@ const PremiumBadge = ({ variant, children }: { variant: 'success' | 'warning' | 
     error: { color: BRAND.error, bgColor: 'rgba(239,68,68,0.1)', borderColor: 'rgba(239,68,68,0.2)' },
     blue: { color: ADMIN.iconos.personas, bgColor: 'rgba(96,165,250,0.1)', borderColor: 'rgba(96,165,250,0.2)' },
     violet: { color: ADMIN.iconos.seguridad, bgColor: 'rgba(167,139,250,0.1)', borderColor: 'rgba(167,139,250,0.2)' },
-    default: { color: BRAND.textSec, bgColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(196,181,253,0.10)' },
+    default: { color: BRAND.textSec, bgColor: ADMIN.fondoCampo, borderColor: ADMIN.borde },
   }[variant];
 
   return (
@@ -331,6 +333,7 @@ const SelectorOpciones = ({
 };
 
 export default function GestionPlantilla() {
+  const { t } = useTranslation();
   const [usuarios, setUsuarios] = useState<UsuarioPlantilla[]>([]);
   const [tareas, setTareas] = useState<TareaPlantilla[]>([]);
   const [checkIns, setCheckIns] = useState<CheckInPlantilla[]>([]);
@@ -339,6 +342,7 @@ export default function GestionPlantilla() {
   const [sedesCatalogo, setSedesCatalogo] = useState<SedeCatalogo[]>([]);
   const [cargosCatalogo, setCargosCatalogo] = useState<CargoCatalogo[]>([]);
   const [rolesPersonalizados, setRolesPersonalizados] = useState<RolCatalogo[]>([]);
+  const [empresa, setEmpresa] = useState<any>(null);
   const [cargando, setCargando] = useState(true);
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('todos');
@@ -363,13 +367,15 @@ export default function GestionPlantilla() {
       toValue: 1,
       duration: 680,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
     }).start();
   }, [entrada]);
 
   useEffect(() => {
     const empresaId = obtenerEmpresaIdAdmin(user);
+    console.log('[GestionPlantilla] useEffect Iniciado. User:', user?.correo, 'EmpresaId:', empresaId);
     if (!empresaId) {
+      console.warn('[GestionPlantilla] No se detectó EmpresaId. Limpiando catálogos.');
       setUsuarios([]);
       setTareas([]);
       setCheckIns([]);
@@ -441,6 +447,84 @@ export default function GestionPlantilla() {
     const unsubSedes = crearListener<SedeCatalogo>('sedes', 'sedes', setSedesCatalogo);
     const unsubCargos = crearListener<CargoCatalogo>('cargos', 'cargos', setCargosCatalogo);
     const unsubRoles = crearListener<RolCatalogo>('roles', 'roles_personalizados', setRolesPersonalizados);
+    
+    const unsubEmpresa = onSnapshot(doc(db, 'empresas', empresaId), async (snapshotDoc) => {
+      if (snapshotDoc.exists()) {
+        const data = snapshotDoc.data();
+        setEmpresa({ id: snapshotDoc.id, ...data });
+
+        // Si la empresa no tiene un código asignado, generar uno único
+        if (!data.codigo) {
+          let uniqueCode = '';
+          let isUnique = false;
+          let attempts = 0;
+          const cleanName = (data.nombre || 'EMP').replace(/[^a-zA-Z]/g, '').substring(0, 3).toUpperCase() || 'EMP';
+
+          while (!isUnique && attempts < 10) {
+            const randomDigits = Math.floor(1000 + Math.random() * 9000);
+            uniqueCode = `${cleanName}-${randomDigits}`;
+
+            // Verificar si ya existe el código en alguna otra empresa
+            const q = query(collection(db, 'empresas'), where('codigo', '==', uniqueCode));
+            const checkSnap = await getDocs(q);
+            if (checkSnap.empty) {
+              isUnique = true;
+            }
+            attempts++;
+          }
+
+          if (isUnique) {
+            await updateDoc(doc(db, 'empresas', empresaId), { codigo: uniqueCode });
+            console.log(`[GestionPlantilla] Código de empresa único generado de forma retroactiva: ${uniqueCode}`);
+            
+            // Propagar el nuevo código de acceso a todos los usuarios existentes de esta empresa
+            try {
+              const qUsers = query(collection(db, 'usuarios'), where('empresaId', '==', empresaId));
+              const snapUsers = await getDocs(qUsers);
+              const batchPromises = snapUsers.docs.map(userDoc => 
+                updateDoc(doc(db, 'usuarios', userDoc.id), { codigoEmpresa: uniqueCode })
+              );
+              await Promise.all(batchPromises);
+              console.log(`[GestionPlantilla] Migración: ${batchPromises.length} usuarios actualizados con el nuevo código.`);
+            } catch (err) {
+              console.error('[GestionPlantilla] Error al migrar códigos a usuarios:', err);
+            }
+          }
+        } else {
+          // Si el código ya existe, verificar de manera defensiva que todos los usuarios de la empresa lo tengan sincronizado
+          try {
+            const qUsers = query(collection(db, 'usuarios'), where('empresaId', '==', empresaId));
+            const snapUsers = await getDocs(qUsers);
+            const batchPromises: Promise<any>[] = [];
+            
+            snapUsers.docs.forEach(userDoc => {
+              const uData = userDoc.data();
+              if (uData.codigoEmpresa !== data.codigo) {
+                batchPromises.push(updateDoc(doc(db, 'usuarios', userDoc.id), { codigoEmpresa: data.codigo }));
+              }
+            });
+
+            // Compatibilidad por si hay usuarios mapeados con el campo legacy empresa_id
+            const qUsersLegacy = query(collection(db, 'usuarios'), where('empresa_id', '==', empresaId));
+            const snapUsersLegacy = await getDocs(qUsersLegacy);
+            snapUsersLegacy.docs.forEach(userDoc => {
+              const uData = userDoc.data();
+              if (uData.codigoEmpresa !== data.codigo && !snapUsers.docs.some(d => d.id === userDoc.id)) {
+                batchPromises.push(updateDoc(doc(db, 'usuarios', userDoc.id), { codigoEmpresa: data.codigo }));
+              }
+            });
+
+            if (batchPromises.length > 0) {
+              await Promise.all(batchPromises);
+              console.log(`[GestionPlantilla] Sincronización: ${batchPromises.length} usuarios actualizados con el código existente ${data.codigo}.`);
+            }
+          } catch (err) {
+            console.error('[GestionPlantilla] Error al sincronizar códigos a usuarios:', err);
+          }
+        }
+      }
+      marcarCarga('empresa');
+    });
 
     return () => {
       unsubUsuarios();
@@ -451,31 +535,41 @@ export default function GestionPlantilla() {
       unsubSedes();
       unsubCargos();
       unsubRoles();
+      unsubEmpresa();
     };
   }, [user]);
 
   const catalogos = useMemo(() => {
-    const departamentos = departamentosCatalogo
-      .filter((departamento) => departamento.activo !== false && departamento.nombre)
-      .map((departamento) => ({
-        id: departamento.id || departamento.nombre || '',
-        nombre: departamento.nombre || '',
-        detalle: departamento.sedeNombre || 'Global',
-      }));
-    const sedes = sedesCatalogo
-      .filter((sede) => sede.activa !== false && sede.nombre)
-      .map((sede) => ({
-        id: sede.id || sede.nombre || '',
-        nombre: sede.nombre || '',
-        detalle: sede.ciudad || 'Sucursal',
-      }));
-    const cargos = cargosCatalogo
-      .filter((cargo) => cargo.activo !== false && cargo.nombre)
-      .map((cargo) => ({
-        id: cargo.id || cargo.nombre || '',
-        nombre: cargo.nombre || '',
-        detalle: cargo.departamentoNombre || cargo.nivel || 'Cargo',
-      }));
+    const departamentos = [
+      { id: 'general', nombre: t('common.general'), detalle: t('common.global') },
+      ...departamentosCatalogo
+        .filter((departamento) => departamento.activo !== false && departamento.nombre)
+        .map((departamento) => ({
+          id: departamento.id || departamento.nombre || '',
+          nombre: departamento.nombre || '',
+          detalle: (departamento.sedeNombre && departamento.sedeNombre.toLowerCase().trim() !== 'global.global') ? departamento.sedeNombre : t('common.global'),
+        }))
+    ];
+    const sedes = [
+      { id: 'global', nombre: t('admin.plantilla.no_branch', { defaultValue: 'Sin sede asignada' }), detalle: 'Empresa' },
+      ...sedesCatalogo
+        .filter((sede) => sede.activa !== false && sede.nombre)
+        .map((sede) => ({
+          id: sede.id || sede.nombre || '',
+          nombre: sede.nombre || '',
+          detalle: sede.ciudad || 'Sucursal',
+        }))
+    ];
+    const cargos = [
+      { id: 'base', nombre: t('common.employee'), detalle: t('common.general') },
+      ...cargosCatalogo
+        .filter((cargo) => cargo.activo !== false && cargo.nombre)
+        .map((cargo) => ({
+          id: cargo.id || cargo.nombre || '',
+          nombre: cargo.nombre || '',
+          detalle: (cargo.departamentoNombre && cargo.departamentoNombre.toLowerCase().trim() !== 'global.global') ? cargo.departamentoNombre : (cargo.nivel || t('common.general')),
+        }))
+    ];
     const rolesBase = ['empleado', 'jefe', 'admin'];
     const rolesEmpresa = rolesPersonalizados
       .filter((rol) => rol.activo !== false && rol.nombre)
@@ -534,6 +628,7 @@ export default function GestionPlantilla() {
   };
 
   const abrirCrear = () => {
+    console.log('[GestionPlantilla] Abriendo modal de creación...');
     setModoFormulario('crear');
     setEmpleadoSeleccionado(null);
     setFormulario(formularioInicial);
@@ -549,7 +644,7 @@ export default function GestionPlantilla() {
     setEmpleadoSeleccionado(empleado);
     setFormulario({
       nombre: empleado.nombre || '',
-      correo: empleado.correo || '',
+      usuarioInterno: (empleado as any).usuarioInterno || '',
       contrasena: '',
       rol: empleado.rol || 'empleado',
       cargoId: empleado.cargoId || cargo?.id || '',
@@ -572,12 +667,14 @@ export default function GestionPlantilla() {
   };
 
   const construirPayloadEmpleado = () => {
+    console.log('[GestionPlantilla] Construyendo payload para:', formulario.nombre);
     const jefe = usuarios.find((usuario) => usuario.id === formulario.jefeId);
     const cargo = cargosCatalogo.find((item) => item.id === formulario.cargoId);
     const departamento = departamentosCatalogo.find((item) => item.id === formulario.departamentoId);
     const sede = sedesCatalogo.find((item) => item.id === formulario.sedeId);
     const rolPersonalizado = rolesPersonalizados.find((item) => item.nombre === formulario.rol);
-    const salarioBase = Number(normalizarSalarioUSD(formulario.salarioBase));
+    const salarioBase = Number(normalizarSalarioUSD(formulario.salarioBase || '0'));
+    console.log('[GestionPlantilla] Referencias encontradas:', { cargo: cargo?.nombre, depto: departamento?.nombre, sede: sede?.nombre });
     const modulosRol = rolPersonalizado?.permisos
       ? Object.entries(rolPersonalizado.permisos).filter(([, activo]) => activo).map(([modulo]) => modulo)
       : formulario.rol === 'admin'
@@ -585,16 +682,22 @@ export default function GestionPlantilla() {
         : formulario.rol === 'jefe'
           ? ['equipo', 'tareas', 'aprobaciones', 'mensajeria']
           : ['empleado'];
+    
+    const codigoEmpresa = (empresa?.codigo || empresa?.nombre_normalizado || 'EMPRESA').toUpperCase();
+    
     return {
       nombre: formulario.nombre.trim(),
-      correo: formulario.correo.trim().toLowerCase(),
+      usuarioInterno: formulario.usuarioInterno.trim().toLowerCase(),
+      codigoEmpresa,
       rol: formulario.rol,
       cargoId: cargo?.id || '',
-      cargo: cargo?.nombre || '',
-      departamentoId: departamento?.id || '',
-      departamento: departamento?.nombre || 'General',
-      sede: sede?.nombre || '',
-      sedeId: sede?.id || '',
+      cargo: cargo?.nombre || (formulario.cargoId === 'base' ? t('common.employee') : ''),
+      departamentoId: departamento?.id || (formulario.departamentoId === 'general' ? 'general' : ''),
+      departamento: (departamento?.nombre && departamento?.nombre.toLowerCase().trim() !== 'global.global') 
+        ? departamento.nombre 
+        : (formulario.departamentoId === 'general' ? t('common.general') : t('common.general')),
+      sede: sede?.nombre || (formulario.sedeId === 'global' ? t('common.global') : ''),
+      sedeId: sede?.id || (formulario.sedeId === 'global' ? 'global' : ''),
       jefeId: formulario.jefeId || null,
       jefeNombre: jefe?.nombre || '',
       telefono: formulario.telefono.trim(),
@@ -606,6 +709,7 @@ export default function GestionPlantilla() {
         sedes: sede?.id ? [sede.id] : [],
       },
       fecha_actualizacion: new Date().toISOString(),
+      ...(modoFormulario === 'crear' ? { passwordInterno: formulario.contrasena } : {})
     };
   };
 
@@ -715,17 +819,40 @@ export default function GestionPlantilla() {
   });
 
   const guardarEmpleado = async () => {
+    console.log('[GestionPlantilla] Iniciando guardarEmpleado...');
     const empresaId = obtenerEmpresaIdAdmin(user);
     const nombre = formulario.nombre.trim();
-    const correo = formulario.correo.trim().toLowerCase();
-    if (!empresaId || !nombre || !correo || guardando) return;
-    if (modoFormulario === 'crear' && formulario.contrasena.trim().length < 6) {
-      Alert.alert('ContraseÃ±a requerida', 'La contraseÃ±a debe tener al menos 6 caracteres.');
+    const usuarioInterno = formulario.usuarioInterno.trim().toLowerCase();
+    const codigoEmpresa = (empresa?.codigo || empresa?.nombre_normalizado || 'EMPRESA').toUpperCase();
+    
+    if (!empresaId) {
+      console.error('[GestionPlantilla] Error: No se encontró empresaId para el usuario.');
+      Alert.alert('Error de sesión', 'No se detectó el ID de tu empresa. Por favor, cierra sesión y vuelve a entrar.');
       return;
     }
-    if (!formulario.cargoId || !formulario.departamentoId || !formulario.sedeId) {
-      Alert.alert('Datos laborales requeridos', 'Selecciona cargo, departamento y sede desde los catÃ¡logos creados en Estructura.');
+
+    if (!nombre) {
+      console.warn('[GestionPlantilla] Validación fallida: Nombre vacío');
+      Alert.alert('Datos requeridos', 'El nombre es obligatorio.');
       return;
+    }
+
+    if (guardando) {
+      console.warn('[GestionPlantilla] Ya se está guardando, ignorando click.');
+      return;
+    }
+    
+    if (modoFormulario === 'crear') {
+      if (!usuarioInterno) {
+        console.warn('[GestionPlantilla] Validación fallida: Usuario vacío');
+        Alert.alert('Datos requeridos', 'El usuario es obligatorio para crear un empleado.');
+        return;
+      }
+      if (formulario.contrasena.trim().length < 6) {
+        console.warn('[GestionPlantilla] Validación fallida: Contraseña corta');
+        Alert.alert('Contraseña requerida', 'La contraseña debe tener al menos 6 caracteres.');
+        return;
+      }
     }
 
     setGuardando(true);
@@ -733,14 +860,19 @@ export default function GestionPlantilla() {
       const payload = construirPayloadEmpleado();
       if (modoFormulario === 'crear') {
         const crearUsuarioEmpresa = httpsCallable(functions, 'crearUsuarioEmpresa');
+        // Generamos un correo interno para Firebase Auth basado en el usuario y empresa
+        const correoInterno = `${usuarioInterno}@${codigoEmpresa.toLowerCase()}.nexxus`;
+        
+        console.log('[GestionPlantilla] Llamando a crearUsuarioEmpresa con:', { nombre, usuarioInterno, rol: formulario.rol });
         const resultado = await conTiempoLimite(crearUsuarioEmpresa({
           nombre,
-          correo,
+          correo: correoInterno,
           contrasena: formulario.contrasena.trim(),
           rol: formulario.rol,
           departamento_id: payload.departamentoId || payload.departamento,
           empleado: {
             ...payload,
+            correo: correoInterno,
             empresaId,
             empresa_id: empresaId,
             createdAt: new Date().toISOString(),
@@ -749,11 +881,12 @@ export default function GestionPlantilla() {
         }));
         const uid = (resultado.data as { uid?: string })?.uid;
         if (!uid) {
-          throw new Error('Firebase no devolviÃ³ el identificador del empleado creado.');
+          throw new Error('Firebase no devolvió el identificador del empleado creado.');
         }
         try {
           await updateDoc(doc(db, 'usuarios', uid), {
             ...payload,
+            correo: correoInterno,
             empresaId,
             empresa_id: empresaId,
             createdAt: new Date().toISOString(),
@@ -765,14 +898,14 @@ export default function GestionPlantilla() {
             empresaId,
             usuario_id: uid,
             titulo: 'Bienvenido a NexusHR',
-            mensaje: 'Tu cuenta empresarial fue creada por administraciÃ³n. Completa tu perfil y primer check-in.',
+            mensaje: 'Tu cuenta empresarial fue creada por administración. Usa tu código de empresa, usuario y contraseña.',
             tipo: 'info',
             leida: false,
             fecha: new Date().toISOString(),
           }), 8000);
         } catch {}
         try {
-          await registrarAuditoria('CreaciÃ³n de Empleado', `${nombre} Â· ${correo}`);
+          await registrarAuditoria('Creación de Empleado', `${nombre} · ${usuarioInterno}`);
         } catch {}
       } else if (empleadoSeleccionado?.id) {
         try {
@@ -780,13 +913,25 @@ export default function GestionPlantilla() {
         } catch (error: any) {
           throw new Error(error?.message || 'No se pudo actualizar el empleado en Firestore.');
         }
-        await registrarAuditoria('EdiciÃ³n de Empleado', `${nombre} Â· ${correo}`);
+        await registrarAuditoria('Edición de Empleado', `${nombre} · ${usuarioInterno}`);
       }
       cerrarModal();
     } catch (error: any) {
-      Alert.alert('No se pudo guardar', error?.message || 'Firebase no confirmÃ³ la operaciÃ³n.');
+      console.error('Error al guardar empleado:', error);
+      let mensajeError = error?.message || 'Firebase no confirmó la operación.';
+      const codigo = error?.code || 'unknown';
+      
+      if (codigo === 'functions/internal') {
+        mensajeError = 'Error interno en el servidor. Verifica que la Cloud Function esté correctamente desplegada.';
+      } else if (codigo === 'functions/permission-denied') {
+        mensajeError = 'No tienes permisos suficientes para crear empleados (Verifica tu rol en el sistema).';
+      } else if (codigo === 'functions/not-found') {
+        mensajeError = 'La función de creación no fue encontrada. Revisa la región de despliegue.';
+      }
+      
+      Alert.alert('No se pudo guardar', `${mensajeError}\n\nDetalle técnico: ${codigo}`);
       try {
-        await registrarAuditoria('Error al Guardar Empleado', `${nombre} Â· ${correo}`, 'Error');
+        await registrarAuditoria('Error al Guardar Empleado', `${nombre} · ${usuarioInterno}`, 'Error');
       } catch {}
     } finally {
       setGuardando(false);
@@ -809,7 +954,7 @@ export default function GestionPlantilla() {
     });
 
     if (destinatarios.length === 0) {
-      Alert.alert('Sin destinatarios', 'Selecciona una sede, departamento o empleado con colaboradores activos.');
+      Alert.alert(t('admin.plantilla.modal_task.alert_no_dest_title'), t('admin.plantilla.modal_task.alert_no_dest_msg'));
       return;
     }
 
@@ -836,9 +981,9 @@ export default function GestionPlantilla() {
       setModalTareaVisible(false);
       setFormularioTarea(formularioTareaInicial);
     } catch (error: any) {
-      Alert.alert('No se pudo asignar', error?.message || 'Firebase no confirmó la asignación de tareas.');
+      Alert.alert(t('admin.plantilla.modal_task.alert_error'), error?.message || t('admin.plantilla.modal_task.alert_error_msg'));
       try {
-        await registrarAuditoria('Error al Asignar Tareas', titulo, 'Error');
+        await registrarAuditoria(t('admin.plantilla.modal_task.audit_error'), titulo, 'Error');
       } catch {}
     } finally {
       setGuardando(false);
@@ -866,11 +1011,11 @@ export default function GestionPlantilla() {
     };
 
     Alert.alert(
-      'Eliminar empleado',
-      `Se darÃ¡ de baja operativa a ${empleado.nombre || 'este empleado'} y dejarÃ¡ de aparecer en Plantilla.`,
+      t('admin.plantilla.employee_card.alert_delete_title'),
+      t('admin.plantilla.employee_card.alert_delete_msg', { name: empleado.nombre || 'este empleado' }),
       [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Eliminar', style: 'destructive', onPress: ejecutar },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.delete'), style: 'destructive', onPress: ejecutar },
       ]
     );
   };
@@ -883,14 +1028,14 @@ export default function GestionPlantilla() {
     );
   }
 
-  const resumen = [
-    { label: 'Total Plantilla', valor: usuarios.length, detalle: `${datos.activos} activos`, icono: 'groups' as const, color: ADMIN.iconos.personas },
-    { label: 'Check-in Hoy', valor: `${datos.coberturaCheckIn}%`, detalle: `${datos.checkInsHoy} registros`, icono: 'timer' as const, color: ADMIN.iconos.calendario },
-    { label: 'En Seguimiento', valor: datos.riesgo, detalle: 'riesgo operativo', icono: 'warning' as const, color: datos.riesgo > 0 ? ADMIN.iconos.peligro : ADMIN.iconos.exito },
-    { label: 'Jefaturas', valor: datos.jefes, detalle: `${datos.admins} admins`, icono: 'verified-user' as const, color: ADMIN.iconos.seguridad },
+  const stats = [
+    { label: t('admin.plantilla.stats.total_employees'), val: datos.usuariosEnriquecidos.length, trend: "historial activo", icon: "groups" as const, color: ADMIN.iconos.personas },
+    { label: t('admin.plantilla.stats.active'), val: datos.activos, trend: `${porcentaje(datos.activos, datos.usuariosEnriquecidos.length)}% del total`, icon: "check-circle" as const, color: ADMIN.iconos.exito },
+    { label: t('admin.plantilla.stats.risk'), val: datos.riesgo, trend: "requiere atención", icon: "warning" as const, color: datos.riesgo > 0 ? ADMIN.iconos.peligro : ADMIN.iconos.seguridad },
+    { label: t('admin.plantilla.stats.checkin_coverage'), val: `${datos.coberturaCheckIn}%`, trend: `${datos.checkInsHoy} hoy`, icon: "analytics" as const, color: ADMIN.iconos.auditoria },
   ];
 
-  const usuariosSinSede = datos.usuariosEnriquecidos.filter(u => !u.sedeId && (!u.sede || u.sede === ''));
+  const usuariosSinSede = datos.usuariosEnriquecidos.filter(u => !u.sedeId || u.sedeId === 'global' || (!u.sede || u.sede === ''));
 
   const renderEmployeeRow = (emp: UsuarioPlantilla, i: number) => {
     const activo = emp.activo !== false && emp.estado_activo !== false;
@@ -907,17 +1052,17 @@ export default function GestionPlantilla() {
           )}
           <View style={estilos.empInfo}>
             <Text style={estilos.empName} numberOfLines={1}>{emp.nombre || 'Sin nombre'}</Text>
-            <Text style={estilos.empEmail} numberOfLines={1}>{emp.correo || 'Sin correo'}</Text>
+            <Text style={estilos.empEmail} numberOfLines={1}>{(emp as any).usuarioInterno || emp.correo || 'Sin usuario'}</Text>
           </View>
         </View>
         <View style={[estilos.tdCell, { flex: 1.15, alignItems: 'center' }]}>
-          <PremiumBadge variant={emp.rol === 'admin' ? 'violet' : emp.rol === 'jefe' ? 'blue' : 'default'}>{emp.rol || 'EMPLEADO'}</PremiumBadge>
+          <PremiumBadge variant={emp.rol === 'admin' ? 'violet' : emp.rol === 'jefe' ? 'blue' : 'default'}>{emp.rol ? t(`admin.roles.${emp.rol}`, { defaultValue: emp.rol.toUpperCase() }) : t('admin.roles.empleado')}</PremiumBadge>
         </View>
         <View style={[estilos.tdCell, { flex: 1.35, alignItems: 'center' }]}>
-          <Text style={estilos.empRole} numberOfLines={1}>{emp.departamento || 'N/A'}</Text>
+          <Text style={estilos.empRole} numberOfLines={1}>{(emp.departamento && emp.departamento.toLowerCase().trim() !== 'global.global') ? emp.departamento : t('common.general')}</Text>
         </View>
         <View style={[estilos.tdCell, { flex: 1, alignItems: 'center' }]}>
-          <PremiumBadge variant={activo ? 'success' : 'warning'}>{activo ? 'ACTIVO' : 'INACTIVO'}</PremiumBadge>
+          <PremiumBadge variant={activo ? 'success' : 'warning'}>{activo ? t('admin.plantilla.employee_card.active') : t('admin.plantilla.employee_card.inactive')}</PremiumBadge>
         </View>
         <View style={[estilos.tdCell, estilos.actionsCell]}>
           <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnTask]} onPress={() => abrirAsignarTarea('individual', emp)}>
@@ -948,20 +1093,102 @@ export default function GestionPlantilla() {
     <ScrollView style={estilos.contenedor} contentContainerStyle={estilos.scrollContent} showsVerticalScrollIndicator={false}>
       <View style={estilos.header}>
         <View>
-          <Text style={estilos.titulo}>Gestión de Plantilla</Text>
-          <Text style={estilos.subtitulo}>Organiza sedes, filtra colaboradores y asigna tareas sin salir del directorio.</Text>
+          <Text style={estilos.titulo}>{t('admin.plantilla.title')}</Text>
+          <Text style={estilos.subtitulo}>{t('admin.plantilla.subtitle')}</Text>
         </View>
         <View style={estilos.headerActions}>
-          <TouchableOpacity style={estilos.btnSecondaryTop} onPress={() => abrirAsignarTarea(sedeSeleccionadaId ? 'sede' : 'individual')}>
-            <MaterialIcons name="assignment-add" size={18} color={ADMIN.iconos.tareas} style={estilos.btnIcon} />
-            <Text style={estilos.btnSecondaryTopText}>Asignar tarea</Text>
+          <TouchableOpacity style={estilos.btnSecondary}>
+            <MaterialIcons name="file-download" size={18} color="#fff" style={estilos.btnIcon} />
+            <Text style={estilos.btnSecondaryText}>{t('admin.plantilla.btn_export_data')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={estilos.btnPrimary} onPress={abrirCrear}>
-            <LinearGradient colors={[BRAND.bangladeshBlue, BRAND.caribbeanBlue]} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.btnGradient}>
-              <MaterialIcons name="person-add" size={18} color="#fff" style={estilos.btnIcon} />
-              <Text style={estilos.btnPrimaryText}>Agregar</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+          <View style={{ backgroundColor: 'transparent', borderWidth: 0 }}>
+            <TouchableOpacity style={estilos.btnPrimary} onPress={abrirCrear}>
+              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} colors={['#A855F7', '#9333EA']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.btnGradient}>
+                <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.btnPrimaryText}>{t('admin.plantilla.btn_new_employee').toUpperCase()}</Text>
+                <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={[estilos.btnPrimaryText, estilos.btnIconRight, { fontSize: 18, marginTop: -1 }]}>→</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+
+      {/* Tarjeta del Código de Acceso de la Empresa */}
+      {empresa && (
+        <BlurView intensity={20} tint="dark" style={estilos.keyCard}>
+          <LinearGradient
+            colors={['rgba(168, 85, 247, 0.12)', 'rgba(147, 51, 234, 0.04)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={estilos.keyGradient}
+          >
+            <View style={estilos.keyIconWrapper}>
+              <MaterialIcons name="vpn-key" size={20} color="#A855F7" />
+            </View>
+            <View style={estilos.keyTextContainer}>
+              <Text style={estilos.keyTitle}>CÓDIGO DE ACCESO DE LA EMPRESA</Text>
+              <Text style={estilos.keySubtitle}>
+                Los nuevos colaboradores deben colocar esta clave única al ingresar por primera vez para unirse automáticamente a {empresa.nombre || 'tu empresa'}.
+              </Text>
+            </View>
+            <TouchableOpacity 
+              style={estilos.keyBadge} 
+              activeOpacity={0.8}
+              onPress={() => {
+                const codigo = empresa.codigo || '';
+                if (Platform.OS === 'web') {
+                  if (navigator.clipboard) {
+                    navigator.clipboard.writeText(codigo);
+                    Alert.alert('Copiado', 'El código de acceso de la empresa ha sido copiado al portapapeles.');
+                  } else {
+                    Alert.alert('Código de Empresa', `El código de tu empresa es: ${codigo}`);
+                  }
+                } else {
+                  Clipboard.setString(codigo);
+                  Alert.alert('Copiado', 'El código de acceso de la empresa ha sido copiado al portapapeles.');
+                }
+              }}
+            >
+              <Text style={estilos.keyBadgeText}>{empresa.codigo || 'Generando...'}</Text>
+              <MaterialIcons name="content-copy" size={14} color="#A855F7" />
+            </TouchableOpacity>
+          </LinearGradient>
+        </BlurView>
+      )}
+
+      <View style={estilos.statsRow}>
+        {stats.map((item, idx) => (
+          <View key={idx} style={estilos.statCard}>
+            <IconPanel icon={item.icon} color={item.color} />
+            <View>
+              <Text style={estilos.statValue}>{item.val}</Text>
+              <Text style={estilos.statLabel}>{item.label}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      <View style={estilos.toolbarCard}>
+        <View style={estilos.searchContainer}>
+          <MaterialIcons name="search" size={20} color={BRAND.textSec} style={estilos.searchIcon} />
+          <TextInput
+            style={estilos.searchInput}
+            placeholder={t('admin.plantilla.search_placeholder')}
+            placeholderTextColor={BRAND.textSec}
+            value={busqueda}
+            onChangeText={setBusqueda}
+          />
+        </View>
+        <View style={estilos.filterRow}>
+            {[
+              { id: 'todos', label: t('admin.plantilla.filters.todos') },
+              { id: 'activos', label: t('admin.plantilla.filters.status_active') },
+              { id: 'inactivos', label: t('admin.plantilla.filters.status_inactive') },
+              { id: 'riesgo', label: t('admin.plantilla.filters.risk') },
+            ].map((item) => (
+              <TouchableOpacity key={item.id} onPress={() => setFiltroEstado(item.id as FiltroEstado)} style={[estilos.filterChip, filtroEstado === item.id && estilos.filterChipActivo]}>
+                <Text style={[estilos.filterChipText, filtroEstado === item.id && estilos.filterChipTextActivo]}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
         </View>
       </View>
 
@@ -978,7 +1205,7 @@ export default function GestionPlantilla() {
               </View>
               <View style={estilos.sedeMeta}>
                 <Text style={estilos.sedeTotal}>{sede.colaboradores.length}</Text>
-                <Text style={estilos.sedeLabel}>personas</Text>
+                <Text style={estilos.sedeLabel}>{t('common.employee').toLowerCase()}</Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -988,15 +1215,15 @@ export default function GestionPlantilla() {
       {catalogos.sedes.length > 1 && !sedeSeleccionadaId && usuariosSinSede.length > 0 && (
         <View style={[estilos.premiumCard, { marginTop: 24 }]}>
           <View style={[estilos.cardHeader, { paddingVertical: 14 }]}>
-            <Text style={estilos.sedeActualNombre}>Empleados sin sede asignada</Text>
+            <Text style={estilos.sedeActualNombre}>{t('admin.plantilla.no_sede_assigned', { defaultValue: 'Empleados sin sede asignada' })}</Text>
           </View>
           <View style={estilos.tableContainer}>
             <View style={estilos.tableHeader}>
-              <Text style={[estilos.thText, { flex: 2.2 }]}>COLABORADOR</Text>
-              <Text style={[estilos.thText, { flex: 1.15, textAlign: 'center' }]}>ROL</Text>
-              <Text style={[estilos.thText, { flex: 1.35, textAlign: 'center' }]}>DEPARTAMENTO</Text>
-              <Text style={[estilos.thText, { flex: 1, textAlign: 'center' }]}>ESTADO</Text>
-              <Text style={[estilos.thText, { flex: 1, textAlign: 'right' }]}>ACCIONES</Text>
+              <Text style={[estilos.thText, { flex: 2.2 }]}>{t('common.employee').toUpperCase()}</Text>
+              <Text style={[estilos.thText, { flex: 1.15, textAlign: 'center' }]}>{t('admin.plantilla.filters.role').toUpperCase()}</Text>
+              <Text style={[estilos.thText, { flex: 1.35, textAlign: 'center' }]}>{t('admin.plantilla.filters.dept').toUpperCase()}</Text>
+              <Text style={[estilos.thText, { flex: 1, textAlign: 'center' }]}>{t('common.status', { defaultValue: 'ESTADO' }).toUpperCase()}</Text>
+              <Text style={[estilos.thText, { flex: 1.25, textAlign: 'center' }]}>{t('common.actions', { defaultValue: 'ACCIONES' }).toUpperCase()}</Text>
             </View>
             {usuariosSinSede.map((emp, i) => renderEmployeeRow(emp, i))}
           </View>
@@ -1010,92 +1237,65 @@ export default function GestionPlantilla() {
             <View style={estilos.sedeBar}>
               <TouchableOpacity onPress={() => setSedeSeleccionadaId(null)} style={estilos.volverSedes}>
                 <MaterialIcons name="arrow-back" size={16} color={BRAND.textSec} />
-                <Text style={estilos.volverSedesText}>Sedes</Text>
+                <Text style={estilos.volverSedesText}>{t('admin.estructura.catalog.sedes.title')}</Text>
               </TouchableOpacity>
               <View>
-                <Text style={estilos.sedeActualLabel}>Sede seleccionada</Text>
-                <Text style={estilos.sedeActualNombre}>{catalogos.sedes.find((sede) => sede.id === sedeSeleccionadaId)?.nombre || 'Plantilla'}</Text>
+                <Text style={estilos.sedeActualLabel}>{t('admin.estructura.modal_dept.label_sede')}</Text>
+                <Text style={estilos.sedeActualNombre}>{catalogos.sedes.find((sede) => sede.id === sedeSeleccionadaId)?.nombre || t('admin.team')}</Text>
               </View>
             </View>
           )}
-          <View style={estilos.searchContainer}>
-            <MaterialIcons name="search" size={20} color={BRAND.textSec} style={estilos.searchIcon} />
-            <TextInput
-              style={estilos.searchInput}
-              placeholder="Buscar por nombre, correo, rol o departamento..."
-              placeholderTextColor={BRAND.textSec}
-              value={busqueda}
-              onChangeText={setBusqueda}
-            />
-          </View>
           <View style={estilos.filterRow}>
-            <Text style={estilos.filterLabel}>Estado</Text>
-            {[
-              { id: 'todos', label: 'Todos' },
-              { id: 'activos', label: 'Activos' },
-              { id: 'inactivos', label: 'Inactivos' },
-              { id: 'riesgo', label: 'Seguimiento' },
-            ].map((filtro) => (
-              <TouchableOpacity key={filtro.id} onPress={() => setFiltroEstado(filtro.id as FiltroEstado)} style={[estilos.filterChip, filtroEstado === filtro.id && estilos.filterChipActivo]}>
-                <Text style={[estilos.filterChipText, filtroEstado === filtro.id && estilos.filterChipTextActivo]}>{filtro.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <View style={estilos.filterRow}>
-            <Text style={estilos.filterLabel}>Rol</Text>
+            <Text style={estilos.filterLabel}>{t('admin.plantilla.filters.role')}</Text>
             {['todos', ...catalogos.roles].map((rol) => (
               <TouchableOpacity key={rol} onPress={() => setFiltroRol(rol)} style={[estilos.filterChip, filtroRol === rol && estilos.filterChipActivo]}>
-                <Text style={[estilos.filterChipText, filtroRol === rol && estilos.filterChipTextActivo]}>{rol === 'todos' ? 'Todos' : rol}</Text>
+                <Text style={[estilos.filterChipText, filtroRol === rol && estilos.filterChipTextActivo]}>{rol === 'todos' ? t('admin.plantilla.filters.status_all') : rol}</Text>
               </TouchableOpacity>
             ))}
           </View>
           <View style={estilos.filterRow}>
-            <Text style={estilos.filterLabel}>Departamento</Text>
-            {[{ id: 'todos', nombre: 'Todos' }, ...catalogos.departamentos].map((departamento) => (
+            <Text style={estilos.filterLabel}>{t('admin.plantilla.filters.dept')}</Text>
+            {[{ id: 'todos', nombre: t('admin.plantilla.filters.status_all') }, ...catalogos.departamentos].map((departamento) => (
               <TouchableOpacity key={departamento.id} onPress={() => setFiltroDepartamento(departamento.id)} style={[estilos.filterChip, filtroDepartamento === departamento.id && estilos.filterChipActivo]}>
                 <Text style={[estilos.filterChipText, filtroDepartamento === departamento.id && estilos.filterChipTextActivo]}>{departamento.nombre}</Text>
               </TouchableOpacity>
             ))}
           </View>
-          <View style={estilos.quickAssignRow}>
-            <TouchableOpacity style={estilos.quickAssignButton} onPress={() => abrirAsignarTarea('sede')}>
-              <MaterialIcons name="business" size={16} color={ADMIN.iconos.calendario} />
-              <Text style={estilos.quickAssignText}>Tarea a sede</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={estilos.quickAssignButton} onPress={() => abrirAsignarTarea('departamento')}>
-              <MaterialIcons name="domain" size={16} color={ADMIN.iconos.organizacion} />
-              <Text style={estilos.quickAssignText}>Tarea a departamento</Text>
-            </TouchableOpacity>
-          </View>
         </View>
 
         <View style={estilos.tableContainer}>
           <View style={estilos.tableHeader}>
-            <Text style={[estilos.thText, { flex: 2.2 }]}>COLABORADOR</Text>
-            <Text style={[estilos.thText, { flex: 1.15, textAlign: 'center' }]}>ROL</Text>
-            <Text style={[estilos.thText, { flex: 1.35, textAlign: 'center' }]}>DEPARTAMENTO</Text>
-            <Text style={[estilos.thText, { flex: 1, textAlign: 'center' }]}>ESTADO</Text>
-            <Text style={[estilos.thText, { flex: 1, textAlign: 'right' }]}>ACCIONES</Text>
+            <Text style={[estilos.thText, { flex: 2.2 }]}>{t('common.employee').toUpperCase()}</Text>
+            <Text style={[estilos.thText, { flex: 1.15, textAlign: 'center' }]}>{t('admin.plantilla.filters.role').toUpperCase()}</Text>
+            <Text style={[estilos.thText, { flex: 1.35, textAlign: 'center' }]}>{t('admin.plantilla.filters.dept').toUpperCase()}</Text>
+            <Text style={[estilos.thText, { flex: 1, textAlign: 'center' }]}>{t('common.status', { defaultValue: 'ESTADO' }).toUpperCase()}</Text>
+            <Text style={[estilos.thText, { flex: 1.25, textAlign: 'center' }]}>{t('common.actions', { defaultValue: 'ACCIONES' }).toUpperCase()}</Text>
           </View>
 
           {usuariosFiltrados.map((emp, i) => renderEmployeeRow(emp, i))}
           {usuariosFiltrados.length === 0 && (
             <View style={estilos.emptyTable}>
               <MaterialIcons name="group-off" size={48} color={BRAND.textSec} style={estilos.emptyIcon} />
-              <Text style={estilos.emptyText}>No se encontraron colaboradores.</Text>
+              <Text style={estilos.emptyText}>{t('admin.plantilla.empty_msg', { defaultValue: 'No se encontraron colaboradores.' })}</Text>
             </View>
           )}
         </View>
       </View>
       )}
     </ScrollView>
+
     <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={cerrarModal}>
+      {Platform.OS === 'web' ? (
+        <View {...({ className: 'nx-admin-blur-bg' } as any)} style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(6,5,18,0.25)' }]} />
+      ) : (
+        <BlurView intensity={24} tint="dark" style={StyleSheet.absoluteFill} />
+      )}
       <View style={estilos.modalOverlay}>
         <View style={estilos.modalCard}>
           <View style={estilos.modalHeader}>
             <View>
-              <Text style={estilos.modalTitle}>{modoFormulario === 'crear' ? 'Crear Empleado' : 'Editar Empleado'}</Text>
-              <Text style={estilos.modalSubtitle}>Cuenta, rol, sede, jefe y permisos operativos</Text>
+              <Text style={estilos.modalTitle}>{modoFormulario === 'crear' ? t('admin.plantilla.modal_employee.title_create') : t('admin.plantilla.modal_employee.title_edit')}</Text>
+              <Text style={estilos.modalSubtitle}>{t('admin.plantilla.modal_employee.subtitle', { defaultValue: 'Cuenta, rol, sede, jefe y permisos operativos' })}</Text>
             </View>
             <TouchableOpacity style={estilos.modalClose} onPress={cerrarModal}>
               <MaterialIcons name="close" size={20} color={BRAND.textSec} />
@@ -1104,57 +1304,48 @@ export default function GestionPlantilla() {
 
           <ScrollView style={estilos.modalBody} showsVerticalScrollIndicator={false}>
             <View style={estilos.formGrid}>
-              <FormField label="Nombre completo" value={formulario.nombre} onChangeText={(valor) => actualizarFormulario('nombre', valor)} placeholder="Nombre del empleado" />
-              <FormField label="Correo empresarial" value={formulario.correo} onChangeText={(valor) => actualizarFormulario('correo', valor)} placeholder="correo@empresa.com" editable={modoFormulario === 'crear'} />
+              <FormField label={t('admin.plantilla.modal_employee.label_name')} value={formulario.nombre} onChangeText={(valor) => actualizarFormulario('nombre', valor)} placeholder={t('admin.plantilla.modal_employee.placeholder_name')} />
+              <FormField label="Usuario" value={formulario.usuarioInterno} onChangeText={(valor) => actualizarFormulario('usuarioInterno', valor)} placeholder="Ej. juan.perez" editable={modoFormulario === 'crear'} />
               {modoFormulario === 'crear' && (
-                <FormField label="ContraseÃ±a temporal" value={formulario.contrasena} onChangeText={(valor) => actualizarFormulario('contrasena', valor)} placeholder="MÃ­nimo 6 caracteres" secureTextEntry />
+                <FormField label={t('admin.plantilla.modal_employee.label_pass')} value={formulario.contrasena} onChangeText={(valor) => actualizarFormulario('contrasena', valor)} placeholder={t('admin.plantilla.modal_employee.placeholder_pass')} secureTextEntry />
               )}
               <SelectorOpciones
-                label="Cargo"
+                label={t('admin.plantilla.modal_employee.label_position')}
                 value={formulario.cargoId}
                 opciones={catalogos.cargos}
-                placeholder="Crea cargos en Estructura"
+                placeholder={t('admin.plantilla.modal_employee.placeholder_position')}
                 abierto={selectorActivo === 'cargo'}
                 onAlternar={() => alternarSelector('cargo')}
-                onSeleccionar={(valor) => {
-                  actualizarFormulario('cargoId', valor);
-                  setSelectorActivo(null);
-                }}
+                onSeleccionar={(v) => { actualizarFormulario('cargoId', v); setSelectorActivo(null); }}
               />
               <SelectorOpciones
-                label="Departamento"
+                label={t('admin.plantilla.modal_employee.label_dept')}
                 value={formulario.departamentoId}
                 opciones={catalogos.departamentos}
-                placeholder="Crea departamentos en Estructura"
+                placeholder={t('admin.plantilla.modal_employee.placeholder_dept')}
                 abierto={selectorActivo === 'departamento'}
                 onAlternar={() => alternarSelector('departamento')}
-                onSeleccionar={(valor) => {
-                  actualizarFormulario('departamentoId', valor);
-                  setSelectorActivo(null);
-                }}
+                onSeleccionar={(v) => { actualizarFormulario('departamentoId', v); setSelectorActivo(null); }}
               />
               <SelectorOpciones
-                label="Sede o sucursal"
+                label={t('admin.plantilla.modal_employee.label_sede')}
                 value={formulario.sedeId}
                 opciones={catalogos.sedes}
-                placeholder="Crea sedes en Estructura"
+                placeholder={t('admin.plantilla.modal_employee.placeholder_sede')}
                 abierto={selectorActivo === 'sede'}
                 onAlternar={() => alternarSelector('sede')}
-                onSeleccionar={(valor) => {
-                  actualizarFormulario('sedeId', valor);
-                  setSelectorActivo(null);
-                }}
+                onSeleccionar={(v) => { actualizarFormulario('sedeId', v); setSelectorActivo(null); }}
               />
-              <FormField label="TelÃ©fono" value={formulario.telefono} onChangeText={(valor) => actualizarFormulario('telefono', valor)} placeholder="+503 0000 0000" />
-              <FormField label="Salario base USD" value={formulario.salarioBase ? `$${formulario.salarioBase}` : ''} onChangeText={(valor) => actualizarFormulario('salarioBase', normalizarSalarioUSD(valor))} placeholder="$0" />
+              <FormField label={t('admin.plantilla.modal_employee.label_phone')} value={formulario.telefono} onChangeText={(valor) => actualizarFormulario('telefono', valor)} placeholder={t('admin.plantilla.modal_employee.placeholder_phone')} />
+              <FormField label={t('admin.plantilla.modal_employee.label_salary')} value={formulario.salarioBase ? `$${formulario.salarioBase}` : ''} onChangeText={(valor) => actualizarFormulario('salarioBase', normalizarSalarioUSD(valor))} placeholder="$0" />
             </View>
 
             <View style={estilos.formSection}>
               <SelectorOpciones
-                label="Rol y permisos"
+                label={t('admin.plantilla.modal_employee.label_role')}
                 value={formulario.rol}
-                opciones={catalogos.roles.map((rol) => ({ id: rol, nombre: rol, detalle: ['empleado', 'jefe', 'admin'].includes(rol) ? 'Rol base' : 'Rol personalizado' }))}
-                placeholder="Selecciona rol"
+                opciones={catalogos.roles.map((rol) => ({ id: rol, nombre: rol, detalle: ['empleado', 'jefe', 'admin'].includes(rol) ? t('common.base_role', { defaultValue: 'Rol base' }) : t('common.custom_role', { defaultValue: 'Rol personalizado' }) }))}
+                placeholder={t('admin.plantilla.modal_employee.placeholder_role')}
                 abierto={selectorActivo === 'rol'}
                 onAlternar={() => alternarSelector('rol')}
                 onSeleccionar={(valor) => {
@@ -1165,10 +1356,10 @@ export default function GestionPlantilla() {
             </View>
 
             <View style={estilos.formSection}>
-              <Text style={estilos.formLabel}>Jefe directo</Text>
+              <Text style={estilos.formLabel}>{t('admin.plantilla.modal_employee.label_manager')}</Text>
               <View style={estilos.selectorGrid}>
                 <TouchableOpacity onPress={() => actualizarFormulario('jefeId', '')} style={[estilos.selectorChip, !formulario.jefeId && estilos.selectorChipActivo]}>
-                  <Text style={[estilos.selectorText, !formulario.jefeId && estilos.selectorTextActivo]}>Sin jefe</Text>
+                  <Text style={[estilos.selectorText, !formulario.jefeId && estilos.selectorTextActivo]}>{t('admin.plantilla.modal_employee.no_manager', { defaultValue: 'Sin jefe' })}</Text>
                 </TouchableOpacity>
                 {catalogos.jefes.map((jefe) => (
                   <TouchableOpacity key={jefe.id} onPress={() => actualizarFormulario('jefeId', jefe.id || '')} style={[estilos.selectorChip, formulario.jefeId === jefe.id && estilos.selectorChipActivo]}>
@@ -1181,25 +1372,31 @@ export default function GestionPlantilla() {
 
           <View style={estilos.modalFooter}>
             <TouchableOpacity style={estilos.btnModalSecondary} onPress={cerrarModal}>
-              <Text style={estilos.btnModalSecondaryText}>Cancelar</Text>
+              <Text style={estilos.btnModalSecondaryText}>{t('common.cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={estilos.btnModalPrimary} onPress={guardarEmpleado} disabled={guardando}>
               <LinearGradient colors={[BRAND.bangladeshBlue, BRAND.caribbeanBlue]} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.btnModalGradient}>
                 <MaterialIcons name={modoFormulario === 'crear' ? 'person-add' : 'save'} size={18} color="#fff" style={estilos.btnIcon} />
-                <Text style={estilos.btnPrimaryText}>{guardando ? 'GUARDANDO...' : modoFormulario === 'crear' ? 'CREAR EMPLEADO' : 'GUARDAR CAMBIOS'}</Text>
+                <Text style={estilos.btnPrimaryText}>{guardando ? t('admin.plantilla.modal_employee.btn_saving').toUpperCase() : modoFormulario === 'crear' ? t('admin.plantilla.modal_employee.btn_save').toUpperCase() : t('common.save').toUpperCase()}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
         </View>
       </View>
     </Modal>
+
     <Modal visible={modalTareaVisible} transparent animationType="fade" onRequestClose={() => setModalTareaVisible(false)}>
+      {Platform.OS === 'web' ? (
+        <View {...({ className: 'nx-admin-blur-bg' } as any)} style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(6,5,18,0.25)' }]} />
+      ) : (
+        <BlurView intensity={24} tint="dark" style={StyleSheet.absoluteFill} />
+      )}
       <View style={estilos.modalOverlay}>
         <View style={[estilos.modalCard, estilos.modalTareaCard]}>
           <View style={estilos.modalHeader}>
             <View>
-              <Text style={estilos.modalTitle}>Asignar tarea</Text>
-              <Text style={estilos.modalSubtitle}>Sede, departamento o colaborador individual</Text>
+              <Text style={estilos.modalTitle}>{t('admin.plantilla.modal_task.title')}</Text>
+              <Text style={estilos.modalSubtitle}>{t('admin.plantilla.modal_task.subtitle', { defaultValue: 'Sede, departamento o colaborador individual' })}</Text>
             </View>
             <TouchableOpacity style={estilos.modalClose} onPress={() => setModalTareaVisible(false)}>
               <MaterialIcons name="close" size={20} color={BRAND.textSec} />
@@ -1211,24 +1408,24 @@ export default function GestionPlantilla() {
               {(['sede', 'departamento', 'individual'] as AlcanceTarea[]).map((alcance) => (
                 <TouchableOpacity key={alcance} onPress={() => setAlcanceTarea(alcance)} style={[estilos.selectorChip, alcanceTarea === alcance && estilos.selectorChipActivo]}>
                   <Text style={[estilos.selectorText, alcanceTarea === alcance && estilos.selectorTextActivo]}>
-                    {alcance === 'sede' ? 'Sede completa' : alcance === 'departamento' ? 'Departamento' : 'Individual'}
+                    {alcance === 'sede' ? t('admin.estructura.btn_sede') : alcance === 'departamento' ? t('admin.estructura.btn_dept') : t('common.individual', { defaultValue: 'Individual' })}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
 
             <View style={[estilos.formGrid, estilos.formGridTarea]}>
-              <FormField label="Título" value={formularioTarea.titulo} onChangeText={(valor) => actualizarFormularioTarea('titulo', valor)} placeholder="Ej. Actualizar expediente" />
-              <FormField label="Fecha límite" value={formularioTarea.fecha_limite} onChangeText={(valor) => actualizarFormularioTarea('fecha_limite', valor)} placeholder="YYYY-MM-DD" />
-              <FormField label="Descripción" value={formularioTarea.descripcion} onChangeText={(valor) => actualizarFormularioTarea('descripcion', valor)} placeholder="Contexto breve de la tarea" />
+              <FormField label={t('admin.plantilla.modal_task.label_title')} value={formularioTarea.titulo} onChangeText={(valor) => actualizarFormularioTarea('titulo', valor)} placeholder={t('admin.plantilla.modal_task.placeholder_title')} />
+              <FormField label={t('admin.plantilla.modal_task.label_due_date')} value={formularioTarea.fecha_limite} onChangeText={(valor) => actualizarFormularioTarea('fecha_limite', valor)} placeholder="YYYY-MM-DD" />
+              <FormField label={t('admin.plantilla.modal_task.label_desc')} value={formularioTarea.descripcion} onChangeText={(valor) => actualizarFormularioTarea('descripcion', valor)} placeholder={t('admin.plantilla.modal_task.placeholder_desc')} />
             </View>
 
             <View style={estilos.formSection}>
-              <Text style={estilos.formLabel}>Prioridad</Text>
+              <Text style={estilos.formLabel}>{t('admin.plantilla.modal_task.label_priority')}</Text>
               <View style={estilos.selectorGrid}>
                 {(['Baja', 'Media', 'Alta', 'Urgente'] as FormularioTarea['prioridad'][]).map((prioridad) => (
                   <TouchableOpacity key={prioridad} onPress={() => actualizarFormularioTarea('prioridad', prioridad)} style={[estilos.selectorChip, formularioTarea.prioridad === prioridad && estilos.selectorChipActivo]}>
-                    <Text style={[estilos.selectorText, formularioTarea.prioridad === prioridad && estilos.selectorTextActivo]}>{prioridad}</Text>
+                    <Text style={[estilos.selectorText, formularioTarea.prioridad === prioridad && estilos.selectorTextActivo]}>{t(`common.priority.${prioridad.toLowerCase()}`, { defaultValue: prioridad })}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -1236,7 +1433,7 @@ export default function GestionPlantilla() {
 
             {alcanceTarea === 'sede' && (
               <View style={estilos.formSection}>
-                <Text style={estilos.formLabel}>Sede destino</Text>
+                <Text style={estilos.formLabel}>{t('admin.estructura.modal_dept.label_sede')}</Text>
                 <View style={estilos.selectorGrid}>
                   {catalogos.sedes.map((sede) => (
                     <TouchableOpacity key={sede.id} onPress={() => actualizarFormularioTarea('sedeId', sede.id)} style={[estilos.selectorChip, formularioTarea.sedeId === sede.id && estilos.selectorChipActivo]}>
@@ -1249,7 +1446,7 @@ export default function GestionPlantilla() {
 
             {alcanceTarea === 'departamento' && (
               <View style={estilos.formSection}>
-                <Text style={estilos.formLabel}>Departamento destino</Text>
+                <Text style={estilos.formLabel}>{t('admin.estructura.modal_cargo.label_dept')}</Text>
                 <View style={estilos.selectorGrid}>
                   {catalogos.departamentos.map((departamento) => (
                     <TouchableOpacity key={departamento.id} onPress={() => actualizarFormularioTarea('departamentoId', departamento.id)} style={[estilos.selectorChip, formularioTarea.departamentoId === departamento.id && estilos.selectorChipActivo]}>
@@ -1262,7 +1459,7 @@ export default function GestionPlantilla() {
 
             {alcanceTarea === 'individual' && (
               <View style={estilos.formSection}>
-                <Text style={estilos.formLabel}>Colaborador destino</Text>
+                <Text style={estilos.formLabel}>{t('admin.plantilla.modal_task.target_employee', { defaultValue: 'Colaborador destino' })}</Text>
                 <View style={estilos.selectorGrid}>
                   {usuariosFiltrados.map((empleado) => (
                     <TouchableOpacity key={empleado.id} onPress={() => actualizarFormularioTarea('usuarioId', empleado.id || '')} style={[estilos.selectorChip, formularioTarea.usuarioId === empleado.id && estilos.selectorChipActivo]}>
@@ -1276,12 +1473,12 @@ export default function GestionPlantilla() {
 
           <View style={estilos.modalFooter}>
             <TouchableOpacity style={estilos.btnModalSecondary} onPress={() => setModalTareaVisible(false)}>
-              <Text style={estilos.btnModalSecondaryText}>Cancelar</Text>
+              <Text style={estilos.btnModalSecondaryText}>{t('common.cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={estilos.btnModalPrimary} onPress={guardarAsignacionTarea} disabled={guardando}>
               <LinearGradient colors={[BRAND.bangladeshBlue, BRAND.caribbeanBlue]} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.btnModalGradient}>
                 <MaterialIcons name="assignment-add" size={18} color="#fff" style={estilos.btnIcon} />
-                <Text style={estilos.btnPrimaryText}>{guardando ? 'ASIGNANDO...' : 'ASIGNAR TAREA'}</Text>
+                <Text style={estilos.btnPrimaryText}>{guardando ? t('admin.plantilla.modal_task.btn_assigning').toUpperCase() : t('admin.plantilla.modal_task.btn_assign').toUpperCase()}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -1306,7 +1503,7 @@ const estilos = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     padding: 24,
-    paddingTop: 88,
+    paddingTop: 260,
     paddingBottom: 64,
   },
   header: {
@@ -1318,7 +1515,7 @@ const estilos = StyleSheet.create({
   titulo: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#fff',
+    color: BRAND.textMain,
     letterSpacing: 0,
   },
   subtitulo: {
@@ -1329,13 +1526,9 @@ const estilos = StyleSheet.create({
     letterSpacing: 0.4,
   },
   btnPrimary: {
-    borderRadius: 12,
+    borderRadius: 999,
     overflow: 'hidden',
-    shadowColor: BRAND.iconBright,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 25,
-    elevation: 10,
+    backgroundColor: 'transparent',
   },
   headerActions: {
     flexDirection: 'row',
@@ -1362,7 +1555,7 @@ const estilos = StyleSheet.create({
   },
   btnGradient: {
     flexDirection: 'row',
-    paddingHorizontal: 24,
+    paddingHorizontal: 28,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1370,11 +1563,71 @@ const estilos = StyleSheet.create({
   btnIcon: {
     marginRight: 8,
   },
+  btnIconRight: {
+    marginLeft: 8,
+  },
   btnPrimaryText: {
-    color: '#fff',
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textDecorationLine: 'none',
+  },
+  btnSecondary: {
+    flexDirection: 'row',
+    backgroundColor: ADMIN.fondoCampo,
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    borderRadius: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnSecondaryText: {
+    color: BRAND.textMain,
     fontSize: 12,
     fontWeight: '900',
-    letterSpacing: 0,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    marginBottom: 24,
+  },
+  statCard: {
+    flex: 1,
+    minWidth: 200,
+    backgroundColor: ADMIN.fondoElevado,
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    ...sombraAdmin,
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: BRAND.textMain,
+  },
+  statLabel: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: BRAND.textSec,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+  },
+  toolbarCard: {
+    backgroundColor: ADMIN.fondoElevado,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    padding: 24,
+    marginBottom: 24,
+    ...sombraAdmin,
   },
   sedesGrid: {
     flexDirection: 'row',
@@ -1539,9 +1792,9 @@ const estilos = StyleSheet.create({
     minHeight: 86,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.025)',
+    backgroundColor: ADMIN.fondoCampo,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.055)',
+    borderColor: ADMIN.borde,
   },
   miniRoleValue: {
     fontSize: 26,
@@ -1603,7 +1856,7 @@ const estilos = StyleSheet.create({
   },
   progressTrack: {
     height: 8,
-    backgroundColor: 'rgba(255,255,255,0.055)',
+    backgroundColor: ADMIN.fondoCampo,
     borderRadius: 999,
     overflow: 'hidden',
   },
@@ -1626,8 +1879,8 @@ const estilos = StyleSheet.create({
   cardHeader: {
     padding: 18,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
-    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderBottomColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoCampo,
     gap: 18,
   },
   sedeBar: {
@@ -1641,7 +1894,7 @@ const estilos = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: ADMIN.borde,
-    backgroundColor: 'rgba(255,255,255,0.035)',
+    backgroundColor: ADMIN.fondoCampo,
     paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1667,19 +1920,20 @@ const estilos = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.045)',
+    backgroundColor: ADMIN.fondoCampo,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: ADMIN.borde,
     borderRadius: 12,
     paddingHorizontal: 20,
-    height: 46,
+    height: 52,
+    marginBottom: 16,
   },
   searchIcon: {
     marginRight: 12,
   },
   searchInput: {
     flex: 1,
-    color: '#fff',
+    color: BRAND.textMain,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -1701,8 +1955,8 @@ const estilos = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
-    backgroundColor: 'rgba(255,255,255,0.025)',
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoCampo,
   },
   filterChipActivo: {
     backgroundColor: 'rgba(96,165,250,0.14)',
@@ -1747,7 +2001,7 @@ const estilos = StyleSheet.create({
     paddingHorizontal: 22,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
+    borderBottomColor: ADMIN.borde,
   },
   thText: {
     fontSize: 10,
@@ -1761,7 +2015,7 @@ const estilos = StyleSheet.create({
     paddingHorizontal: 22,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
+    borderBottomColor: ADMIN.borde,
     alignItems: 'center',
   },
   tdCell: {
@@ -1789,8 +2043,8 @@ const estilos = StyleSheet.create({
     height: 50,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(196,181,253,0.18)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoCampo,
   },
   avatarText: {
     color: '#fff',
@@ -1805,7 +2059,7 @@ const estilos = StyleSheet.create({
   empName: {
     fontSize: 14,
     fontWeight: '900',
-    color: '#fff',
+    color: BRAND.textMain,
     textTransform: 'uppercase',
     letterSpacing: -0.3,
     marginBottom: 4,
@@ -1819,7 +2073,7 @@ const estilos = StyleSheet.create({
   empRole: {
     fontSize: 10,
     fontWeight: '900',
-    color: '#9CA3AF',
+    color: BRAND.textSec,
     textTransform: 'uppercase',
     letterSpacing: 1.2,
     maxWidth: '92%',
@@ -1835,9 +2089,9 @@ const estilos = StyleSheet.create({
     textAlign: 'center',
   },
   actionsCell: {
-    alignItems: 'flex-end',
+    alignItems: 'center',
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
     gap: 10,
     flex: 1.25,
     minWidth: 184,
@@ -1845,10 +2099,10 @@ const estilos = StyleSheet.create({
   actionBtn: {
     width: 38,
     height: 38,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: ADMIN.fondoCampo,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(196,181,253,0.10)',
+    borderColor: ADMIN.borde,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -1898,7 +2152,7 @@ const estilos = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(6,5,18,0.92)',
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 28,
@@ -1910,7 +2164,7 @@ const estilos = StyleSheet.create({
     backgroundColor: ADMIN.fondoElevado,
     borderRadius: ADMIN.radio,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: ADMIN.borde,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 24 },
@@ -1924,8 +2178,8 @@ const estilos = StyleSheet.create({
   modalHeader: {
     padding: 28,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
-    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderBottomColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoCampo,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -1952,9 +2206,9 @@ const estilos = StyleSheet.create({
     borderRadius: ADMIN.radio,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: ADMIN.fondoCampo,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
+    borderColor: ADMIN.borde,
   },
   modalBody: {
     padding: 28,
@@ -1987,8 +2241,8 @@ const estilos = StyleSheet.create({
     height: 56,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: 'rgba(255,255,255,0.045)',
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoCampo,
     color: BRAND.textMain,
     paddingHorizontal: 16,
     fontSize: 13,
@@ -2001,8 +2255,8 @@ const estilos = StyleSheet.create({
     minHeight: 56,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: 'rgba(255,255,255,0.045)',
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoCampo,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -2028,7 +2282,7 @@ const estilos = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(96,165,250,0.22)',
-    backgroundColor: BRAND.richBlack,
+    backgroundColor: ADMIN.fondoElevado,
     overflow: 'hidden',
     shadowColor: BRAND.iconBright,
     shadowOffset: { width: 0, height: 12 },
@@ -2044,7 +2298,7 @@ const estilos = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.045)',
+    borderBottomColor: ADMIN.borde,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -2111,8 +2365,8 @@ const estilos = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
-    backgroundColor: 'rgba(255,255,255,0.025)',
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoCampo,
   },
   selectorChipActivo: {
     backgroundColor: 'rgba(96,165,250,0.14)',
@@ -2139,11 +2393,11 @@ const estilos = StyleSheet.create({
   modalFooter: {
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.06)',
+    borderTopColor: ADMIN.borde,
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: 12,
-    backgroundColor: 'rgba(255,255,255,0.035)',
+    backgroundColor: ADMIN.fondoCampo,
   },
   btnModalSecondary: {
     paddingHorizontal: 22,
@@ -2151,9 +2405,9 @@ const estilos = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: ADMIN.fondoCampo,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: ADMIN.borde,
   },
   btnModalSecondaryText: {
     color: BRAND.textSec,
@@ -2172,5 +2426,66 @@ const estilos = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  keyCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(168, 85, 247, 0.22)',
+    overflow: 'hidden',
+    marginBottom: 24,
+    shadowColor: '#A855F7',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    elevation: 4,
+  },
+  keyGradient: {
+    padding: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  keyIconWrapper: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(168, 85, 247, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(168, 85, 247, 0.3)',
+  },
+  keyTextContainer: {
+    flex: 1,
+    gap: 4,
+  },
+  keyTitle: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#A855F7',
+    letterSpacing: 1.5,
+  },
+  keySubtitle: {
+    fontSize: 12,
+    color: BRAND.textSec,
+    lineHeight: 18,
+    fontWeight: '600',
+  },
+  keyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(168, 85, 247, 0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(168, 85, 247, 0.26)',
+    gap: 8,
+  },
+  keyBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 1,
   },
 });
