@@ -1,35 +1,75 @@
+/**
+ * Documentacion Nexxus - nexxus/app/src/Landing/AuthPage.tsx
+ * Capa: landing.
+ * Proposito: Pantalla o recurso visual del flujo publico de autenticacion/landing. Centraliza la presentacion inicial antes de entrar a la app privada.
+ * Dependencias clave: imports superiores y contratos tipados del propio modulo.
+ * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras Firebase al extender este archivo.
+ */
+
+// Importa { createElement, useEffect } desde React; habilita componentes, hooks y tipos base para esta pieza.
 import { createElement, useEffect } from 'react';
+// Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
+// Importa DarkVeil; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import DarkVeil from './DarkVeil';
+// Importa LandingAuth; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import LandingAuth from './LandingAuth';
+// Importa StarButton; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import StarButton from './StarButton';
+// Importa { changeLanguage }; inicializa o consume configuracion de internacionalizacion.
 import { changeLanguage } from '../shared/i18n/config';
+// Importa estilos CSS; aplica clases, animaciones o efectos visuales usados por este componente web.
 import './Landing.css';
+// Importa estilos CSS; aplica clases, animaciones o efectos visuales usados por este componente web.
 import './AuthPage.css';
 
+/**
+ * Declaracion h. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 const h = createElement;
 
+/**
+ * Declaracion parametroPlan. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 function parametroPlan() {
+  // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
   if (typeof window === 'undefined') return 'Business';
+  // Devuelve el valor final calculado para esta funcion o caso de uso.
   return new URLSearchParams(window.location.search).get('plan') || 'Business';
 }
 
+/**
+ * Declaracion modoInicial. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 function modoInicial() {
+  // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
   if (typeof window !== 'undefined' && window.location.pathname.includes('/login')) return 'login';
+  // Devuelve el valor final calculado para esta funcion o caso de uso.
   return 'registro';
 }
 
+/**
+ * Declaracion irLanding. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 function irLanding() {
+  // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
   window.location.assign('/landing');
 }
 
+/**
+ * Componente AuthPage. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
+ */
 export default function AuthPage() {
+  // Inicializa { t, i18n }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { t, i18n } = useTranslation();
 
+  // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
   useEffect(() => {
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     document.title = modoInicial() === 'login' ? t('landing_auth.page_title_login') : t('landing_auth.page_title_register');
   }, [t]);
 
+  // Devuelve el valor final calculado para esta funcion o caso de uso.
   return h(
     'main',
     { className: 'nx-auth-page' },

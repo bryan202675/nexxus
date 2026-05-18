@@ -1,3 +1,12 @@
+/*
+ * Documentacion Nexxus - nexxus/app/src/Landing/StarBorder.css
+ * Capa: landing.
+ * Proposito: Pantalla o recurso visual del flujo publico de autenticacion/landing. Centraliza la presentacion inicial antes de entrar a la app privada.
+ * Nota: Estos estilos controlan presentacion; cambiar nombres de clases exige actualizar los componentes que los consumen.
+ */
+
+/* Documentacion de estilos: las reglas siguientes definen clases consumidas por componentes React; mantener nombres estables evita romper el render web. */
+/* .star-border-container: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .star-border-container {
   background: transparent;
   border: 0;
@@ -8,6 +17,7 @@
   position: relative;
 }
 
+/* .border-gradient-bottom: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .border-gradient-bottom {
   animation: star-movement-bottom linear infinite alternate;
   border-radius: 50%;
@@ -20,6 +30,7 @@
   z-index: 0;
 }
 
+/* .border-gradient-top: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .border-gradient-top {
   animation: star-movement-top linear infinite alternate;
   border-radius: 50%;
@@ -32,6 +43,7 @@
   z-index: 0;
 }
 
+/* .star-inner-content: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .star-inner-content {
   align-items: center;
   background:
@@ -55,22 +67,28 @@
   z-index: 1;
 }
 
+/* Animacion star-movement-bottom: define pasos de movimiento/transicion reutilizados por clases CSS. */
 @keyframes star-movement-bottom {
+  /* 0% define estilos visuales para los elementos que usan este selector. */
   0% {
     opacity: 1;
     transform: translate(0%, 0%);
   }
+  /* 100% define estilos visuales para los elementos que usan este selector. */
   100% {
     opacity: 0;
     transform: translate(-100%, 0%);
   }
 }
 
+/* Animacion star-movement-top: define pasos de movimiento/transicion reutilizados por clases CSS. */
 @keyframes star-movement-top {
+  /* 0% define estilos visuales para los elementos que usan este selector. */
   0% {
     opacity: 1;
     transform: translate(0%, 0%);
   }
+  /* 100% define estilos visuales para los elementos que usan este selector. */
   100% {
     opacity: 0;
     transform: translate(100%, 0%);
@@ -78,6 +96,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* .border-gradient-top: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .border-gradient-bottom,
   .border-gradient-top {
     animation: none;

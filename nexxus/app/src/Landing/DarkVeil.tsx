@@ -1,13 +1,31 @@
+/**
+ * Documentacion Nexxus - nexxus/app/src/Landing/DarkVeil.tsx
+ * Capa: landing.
+ * Proposito: Pantalla o recurso visual del flujo publico de autenticacion/landing. Centraliza la presentacion inicial antes de entrar a la app privada.
+ * Dependencias clave: imports superiores y contratos tipados del propio modulo.
+ * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras Firebase al extender este archivo.
+ */
+
+// Importa { useEffect, useRef } desde React; habilita componentes, hooks y tipos base para esta pieza.
 import { useEffect, useRef } from 'react';
+// Importa { createElement } desde React; habilita componentes, hooks y tipos base para esta pieza.
 import { createElement } from 'react';
+// Importa { Mesh, Program, Renderer, Triangle, Vec2 } desde ogl; agrega una dependencia externa necesaria para este modulo.
 import { Mesh, Program, Renderer, Triangle, Vec2 } from 'ogl';
+// Importa estilos CSS; aplica clases, animaciones o efectos visuales usados por este componente web.
 import './DarkVeil.css';
 
+/**
+ * Declaracion vertex. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 const vertex = `
 attribute vec2 position;
 void main(){gl_Position=vec4(position,0.0,1.0);}
 `;
 
+/**
+ * Declaracion fragment. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 const fragment = `
 #ifdef GL_ES
 precision highp float;
@@ -75,6 +93,9 @@ void main(){
 }
 `;
 
+/**
+ * Describe la forma tipada DarkVeilProps; ayuda a que estados, props o respuestas mantengan una estructura predecible.
+ */
 type DarkVeilProps = {
   hueShift?: number;
   noiseIntensity?: number;
@@ -85,6 +106,9 @@ type DarkVeilProps = {
   resolutionScale?: number;
 };
 
+/**
+ * Componente DarkVeil. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
+ */
 export default function DarkVeil({
   hueShift = 0,
   noiseIntensity = 0,
@@ -94,24 +118,34 @@ export default function DarkVeil({
   warpAmount = 0,
   resolutionScale = 1,
 }: DarkVeilProps) {
+  // Inicializa ref; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const ref = useRef<HTMLCanvasElement | null>(null);
 
+  // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
   useEffect(() => {
+    // Declara canvas; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const canvas = ref.current;
+    // Declara parent; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const parent = canvas?.parentElement;
 
+    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!canvas || !parent) {
+      // Devuelve el valor final calculado para esta funcion o caso de uso.
       return;
     }
 
+    // Declara renderer; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const renderer = new Renderer({
       dpr: Math.max(Math.min(window.devicePixelRatio, 2) * resolutionScale, 0.1),
       canvas,
     });
 
+    // Declara gl; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const gl = renderer.gl;
+    // Declara geometry; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const geometry = new Triangle(gl);
 
+    // Declara program; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const program = new Program(gl, {
       vertex,
       fragment,
@@ -126,43 +160,70 @@ export default function DarkVeil({
       },
     });
 
+    // Declara mesh; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const mesh = new Mesh(gl, { geometry, program });
 
+    // Declara resize; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const resize = () => {
+      // Declara rect; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const rect = parent.getBoundingClientRect();
+      // Declara w; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const w = Math.max(rect.width, window.innerWidth, 1);
+      // Declara h; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const h = Math.max(rect.height, window.innerHeight, 1);
+      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       renderer.setSize(w, h);
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       canvas.style.width = '100vw';
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       canvas.style.height = '100dvh';
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       program.uniforms.uResolution.value.set(w, h);
     };
 
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     window.addEventListener('resize', resize);
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     resize();
 
+    // Declara start; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const start = performance.now();
+    // Declara frame; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     let frame = 0;
 
+    // Declara loop; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const loop = () => {
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       program.uniforms.uTime.value = ((performance.now() - start) / 1000) * speed;
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       program.uniforms.uHueShift.value = hueShift;
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       program.uniforms.uNoise.value = noiseIntensity;
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       program.uniforms.uScan.value = scanlineIntensity;
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       program.uniforms.uScanFreq.value = scanlineFrequency;
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       program.uniforms.uWarp.value = warpAmount;
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       renderer.render({ scene: mesh });
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       frame = requestAnimationFrame(loop);
     };
 
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     loop();
 
+    // Devuelve el valor final calculado para esta funcion o caso de uso.
     return () => {
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       cancelAnimationFrame(frame);
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       window.removeEventListener('resize', resize);
     };
   }, [hueShift, noiseIntensity, scanlineIntensity, speed, scanlineFrequency, warpAmount, resolutionScale]);
 
+  // Devuelve el valor final calculado para esta funcion o caso de uso.
   return createElement('canvas', {
     ref,
     className: 'darkveil-canvas',

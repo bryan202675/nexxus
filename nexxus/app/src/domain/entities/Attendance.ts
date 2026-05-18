@@ -1,3 +1,11 @@
+/**
+ * Documentacion Nexxus - nexxus/app/src/domain/entities/Attendance.ts
+ * Capa: dominio.
+ * Proposito: Entidad de dominio. Define la estructura de datos principal que usa Nexxus sin acoplarla a Firebase o React.
+ * Dependencias clave: imports superiores y contratos tipados del propio modulo.
+ * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras Firebase al extender este archivo.
+ */
+
 export interface Attendance {
   id: string;
   userId: string;
@@ -14,4 +22,7 @@ export interface Attendance {
   offline_sync: boolean;
 }
 
+/**
+ * Describe la forma tipada NuevaEntradaAsistencia; ayuda a que estados, props o respuestas mantengan una estructura predecible.
+ */
 export type NuevaEntradaAsistencia = Omit<Attendance, 'id' | 'timestamp' | 'offline_sync'>;

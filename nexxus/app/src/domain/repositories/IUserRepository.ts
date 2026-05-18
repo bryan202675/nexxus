@@ -1,3 +1,12 @@
+/**
+ * Documentacion Nexxus - nexxus/app/src/domain/repositories/IUserRepository.ts
+ * Capa: dominio.
+ * Proposito: Contrato de repositorio. Describe las operaciones esperadas para persistencia sin imponer una implementacion concreta.
+ * Dependencias clave: imports superiores y contratos tipados del propio modulo.
+ * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras Firebase al extender este archivo.
+ */
+
+// Importa { User }; usa tipos de dominio para que los datos mantengan estructura consistente.
 import { User } from '@/domain/entities/User';
 
 /**

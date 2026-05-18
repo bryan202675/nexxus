@@ -1,3 +1,11 @@
+/**
+ * Documentacion Nexxus - nexxus/app/src/shared/constants/diseno.ts
+ * Capa: compartido.
+ * Proposito: Constantes compartidas. Centraliza tokens visuales y valores comunes para evitar estilos duplicados.
+ * Dependencias clave: imports superiores y contratos tipados del propio modulo.
+ * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras Firebase al extender este archivo.
+ */
+
 export const ANIMACIONES = {
   spring: {
     bouncy: { tension: 60, friction: 5, useNativeDriver: true },
@@ -11,6 +19,9 @@ export const ANIMACIONES = {
   }
 };
 
+/**
+ * Declaracion COLORES. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 export const COLORES = {
   primario: '#7C3AED',
   primarioFuerte: '#6D28D9',
@@ -57,6 +68,9 @@ export const COLORES = {
   terciarioDim: '#8B5CF6',
 };
 
+/**
+ * Declaracion GRADIENTES. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 export const GRADIENTES = {
   principal: ['#7C3AED', '#8B5CF6', '#38BDF8'] as const,
   premium: ['#6D28D9', '#A78BFA', '#2563EB'] as const,
@@ -68,6 +82,9 @@ export const GRADIENTES = {
   peligro: ['#F87171', '#EF4444'] as const,
 };
 
+/**
+ * Declaracion TIPOGRAFIA. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 export const TIPOGRAFIA = {
   hero: { fontSize: 40, fontWeight: '900' as const, lineHeight: 48, letterSpacing: 0 },
   tituloPantalla: { fontSize: 32, fontWeight: '800' as const, lineHeight: 40, letterSpacing: 0 },
@@ -80,6 +97,9 @@ export const TIPOGRAFIA = {
   micro: { fontSize: 11, fontWeight: '700' as const, lineHeight: 14, textTransform: 'uppercase' as const },
 };
 
+/**
+ * Declaracion ESPACIADO. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 export const ESPACIADO = {
   none: 0,
   xxs: 4,
@@ -93,6 +113,9 @@ export const ESPACIADO = {
   huge: 64,
 };
 
+/**
+ * Declaracion RADIOS. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 export const RADIOS = {
   xs: 8,
   sm: 12,
@@ -103,6 +126,9 @@ export const RADIOS = {
   completo: 999,
 };
 
+/**
+ * Declaracion SOMBRAS. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 export const SOMBRAS = {
   suave: {
     shadowColor: COLORES.sombra,

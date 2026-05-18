@@ -1,4 +1,12 @@
 /**
+ * Documentacion Nexxus - nexxus/app/src/domain/entities/User.ts
+ * Capa: dominio.
+ * Proposito: Entidad de dominio. Define la estructura de datos principal que usa Nexxus sin acoplarla a Firebase o React.
+ * Dependencias clave: imports superiores y contratos tipados del propio modulo.
+ * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras Firebase al extender este archivo.
+ */
+
+/**
  * Entidad pura de Usuario.
  * No depende de Firebase, React, ni ninguna librería externa.
  */

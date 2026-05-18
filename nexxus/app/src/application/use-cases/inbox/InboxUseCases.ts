@@ -1,23 +1,48 @@
+/**
+ * Documentacion Nexxus - nexxus/app/src/application/use-cases/inbox/InboxUseCases.ts
+ * Capa: aplicacion.
+ * Proposito: Caso de uso de aplicacion. Traduce una accion de negocio en llamadas a repositorios o servicios concretos.
+ * Dependencias clave: imports superiores y contratos tipados del propio modulo.
+ * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras Firebase al extender este archivo.
+ */
+
+// Importa { IInboxRepository }; depende de contratos de repositorio sin acoplarse a una implementacion concreta.
 import { IInboxRepository } from '@/domain/repositories/IInboxRepository';
+// Importa { InboxItem }; usa tipos de dominio para que los datos mantengan estructura consistente.
 import { InboxItem } from '@/domain/entities/Inbox';
 
+/**
+ * Implementa GetInbox; agrupa comportamiento con estado interno o dependencias de infraestructura.
+ */
 export class GetInbox {
   constructor(private repo: IInboxRepository) {}
+  // execute ejecuta una accion de negocio y delega lecturas o escrituras en repositorios/servicios.
   execute(userId: string) {
+    // Devuelve el valor final calculado para esta funcion o caso de uso.
     return this.repo.getByUser(userId);
   }
 }
 
+/**
+ * Implementa ResolveInboxItem; agrupa comportamiento con estado interno o dependencias de infraestructura.
+ */
 export class ResolveInboxItem {
   constructor(private repo: IInboxRepository) {}
+  // execute ejecuta una accion de negocio y delega lecturas o escrituras en repositorios/servicios.
   execute(itemId: string) {
+    // Devuelve el valor final calculado para esta funcion o caso de uso.
     return this.repo.resolveItem(itemId);
   }
 }
 
+/**
+ * Implementa SubscribeToInbox; agrupa comportamiento con estado interno o dependencias de infraestructura.
+ */
 export class SubscribeToInbox {
   constructor(private repo: IInboxRepository) {}
+  // execute ejecuta una accion de negocio y delega lecturas o escrituras en repositorios/servicios.
   execute(userId: string, callback: (items: InboxItem[]) => void) {
+    // Devuelve el valor final calculado para esta funcion o caso de uso.
     return this.repo.subscribeToInbox(userId, callback);
   }
 }

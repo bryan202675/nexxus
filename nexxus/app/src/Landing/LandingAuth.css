@@ -1,8 +1,18 @@
+/*
+ * Documentacion Nexxus - nexxus/app/src/Landing/LandingAuth.css
+ * Capa: landing.
+ * Proposito: Pantalla o recurso visual del flujo publico de autenticacion/landing. Centraliza la presentacion inicial antes de entrar a la app privada.
+ * Nota: Estos estilos controlan presentacion; cambiar nombres de clases exige actualizar los componentes que los consumen.
+ */
+
+/* Documentacion de estilos: las reglas siguientes definen clases consumidas por componentes React; mantener nombres estables evita romper el render web. */
+/* .nx-auth-shell: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-shell {
   border-radius: 34px;
   margin-top: 8px;
 }
 
+/* .nx-auth-layout: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-layout {
   display: grid;
   gap: 22px;
@@ -10,6 +20,7 @@
   padding: 22px;
 }
 
+/* .nx-auth-aside: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-aside {
   background:
     radial-gradient(circle at 30% 20%, rgba(168, 85, 247, 0.24), transparent 36%),
@@ -19,6 +30,7 @@
   padding: 26px;
 }
 
+/* .nx-company-head span: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-eyebrow,
 .nx-company-head span {
   color: #d8b4fe;
@@ -28,6 +40,7 @@
   text-transform: uppercase;
 }
 
+/* .nx-auth-aside h3: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-aside h3 {
   color: white;
   font-size: clamp(1.9rem, 3vw, 3.2rem);
@@ -36,11 +49,13 @@
   margin: 18px 0 16px;
 }
 
+/* .nx-auth-aside p: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-aside p {
   color: #b7acd8;
   line-height: 1.7;
 }
 
+/* .nx-password-meter: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-progress,
 .nx-password-meter {
   background: rgba(255, 255, 255, 0.08);
@@ -50,6 +65,7 @@
   overflow: hidden;
 }
 
+/* .nx-password-meter i: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-progress i,
 .nx-password-meter i {
   background: linear-gradient(90deg, #7c3aed, #c084fc, #4f46e5);
@@ -59,11 +75,13 @@
   transition: width 260ms ease;
 }
 
+/* .nx-auth-steps: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-steps {
   display: grid;
   gap: 10px;
 }
 
+/* .nx-auth-steps span: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-steps span {
   align-items: center;
   color: #80749f;
@@ -73,6 +91,7 @@
   gap: 9px;
 }
 
+/* .nx-auth-steps span::before: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-steps span::before {
   background: rgba(255, 255, 255, 0.15);
   border-radius: 999px;
@@ -81,19 +100,23 @@
   width: 8px;
 }
 
+/* .nx-auth-steps span.is-active: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-steps span.is-active {
   color: white;
 }
 
+/* .nx-auth-steps span.is-active::before: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-steps span.is-active::before {
   background: #c084fc;
   box-shadow: 0 0 18px rgba(192, 132, 252, 0.72);
 }
 
+/* .nx-auth-panel: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-panel {
   min-width: 0;
 }
 
+/* .nx-auth-tabs: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-tabs {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -105,6 +128,7 @@
   width: 100%;
 }
 
+/* .nx-auth-secondary: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-tabs button,
 .nx-auth-secondary {
   background: transparent;
@@ -117,15 +141,18 @@
   padding: 11px 16px;
 }
 
+/* .nx-auth-tabs button: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-tabs button {
   flex: 1;
 }
 
+/* .nx-auth-tabs button.active: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-tabs button.active {
   background: #f4efff;
   color: #21113c;
 }
 
+/* .nx-google-button: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-google-button {
   align-items: center;
   background: rgba(255, 255, 255, 0.08);
@@ -143,6 +170,7 @@
   width: 100%;
 }
 
+/* .nx-google-button span: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-google-button span {
   align-items: center;
   background: white;
@@ -154,27 +182,32 @@
   width: 28px;
 }
 
+/* .nx-auth-form: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-form {
   animation: nx-auth-enter 360ms ease both;
   display: grid;
   gap: 13px;
 }
 
+/* .nx-company-form: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-company-form {
   gap: 10px;
 }
 
+/* .nx-auth-field: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-field {
   display: grid;
   gap: 8px;
 }
 
+/* .nx-auth-field span: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-field span {
   color: #eee8ff;
   font-size: 0.84rem;
   font-weight: 900;
 }
 
+/* .nx-auth-field select: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-field input,
 .nx-auth-field select {
   background: rgba(4, 3, 14, 0.68);
@@ -188,58 +221,69 @@
   width: 100%;
 }
 
+/* .nx-company-form .nx-auth-field: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-company-form .nx-auth-field {
   gap: 6px;
 }
 
+/* .nx-company-form .nx-auth-field select: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-company-form .nx-auth-field input,
 .nx-company-form .nx-auth-field select {
   padding: 13px 14px;
 }
 
+/* .nx-auth-field select option: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-field select option {
   background: #140f22;
 }
 
+/* .nx-auth-field select:focus: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-field input:focus,
 .nx-auth-field select:focus {
   border-color: rgba(192, 132, 252, 0.62);
   box-shadow: 0 0 0 4px rgba(192, 132, 252, 0.1);
 }
 
+/* .nx-auth-field.is-invalid select: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-field.is-invalid input,
 .nx-auth-field.is-invalid select {
   border-color: rgba(255, 105, 135, 0.72);
 }
 
+/* .nx-logo-error: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-field small,
 .nx-logo-error {
   color: #ff9eb2;
   font-size: 0.78rem;
 }
 
+/* .nx-password-meter: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-password-meter {
   height: 7px;
   margin: 0;
 }
 
+/* .nx-password-list: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-password-list {
   display: grid;
   gap: 8px;
   grid-template-columns: repeat(2, 1fr);
 }
 
+/* .nx-password-list span: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-password-list span {
   color: #8f82b0;
   font-size: 0.8rem;
   transition: color 180ms ease, transform 180ms ease;
 }
 
+/* .nx-password-list span.valid: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-password-list span.valid {
   color: #d8b4fe;
   transform: translateX(2px);
 }
 
+/* .nx-auth-error: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-error {
   background: rgba(255, 105, 135, 0.12);
   border: 1px solid rgba(255, 105, 135, 0.28);
@@ -248,25 +292,30 @@
   padding: 13px;
 }
 
+/* .nx-auth-submit: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-submit {
   margin-top: 4px;
   width: 100%;
 }
 
+/* .nx-auth-submit .star-inner-content: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-submit .star-inner-content {
   width: 100%;
 }
 
+/* .nx-company-head: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-company-head {
   align-items: center;
   display: flex;
   justify-content: space-between;
 }
 
+/* .nx-company-head strong: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-company-head strong {
   color: white;
 }
 
+/* .nx-logo-drop: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-logo-drop {
   align-items: center;
   background: rgba(255, 255, 255, 0.06);
@@ -283,10 +332,12 @@
   text-align: center;
 }
 
+/* .nx-logo-drop.is-invalid: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-logo-drop.is-invalid {
   border-color: rgba(255, 105, 135, 0.72);
 }
 
+/* .nx-logo-drop img: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-logo-drop img {
   border-radius: 18px;
   max-height: 74px;
@@ -294,11 +345,13 @@
   object-fit: contain;
 }
 
+/* .nx-logo-drop span: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-logo-drop span {
   color: #a99cc9;
   font-size: 0.78rem;
 }
 
+/* .nx-logo-drop input: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-logo-drop input {
   cursor: pointer;
   inset: 0;
@@ -306,12 +359,14 @@
   position: absolute;
 }
 
+/* .nx-company-grid: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-company-grid {
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(2, 1fr);
 }
 
+/* .nx-company-actions: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-company-actions {
   align-items: center;
   display: grid;
@@ -319,17 +374,21 @@
   grid-template-columns: 0.36fr 0.64fr;
 }
 
+/* .nx-auth-secondary: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-secondary {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
   min-height: 52px;
 }
 
+/* Animacion nx-auth-enter: define pasos de movimiento/transicion reutilizados por clases CSS. */
 @keyframes nx-auth-enter {
+  /* from define estilos visuales para los elementos que usan este selector. */
   from {
     opacity: 0;
     transform: translateY(12px);
   }
+  /* to define estilos visuales para los elementos que usan este selector. */
   to {
     opacity: 1;
     transform: translateY(0);
@@ -337,89 +396,107 @@
 }
 
 @media (max-width: 940px) {
+  /* .nx-auth-layout: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-auth-layout {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 640px) {
+  /* .nx-auth-shell: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-auth-shell {
     border-radius: 24px;
     margin-top: 0;
   }
 
+  /* .nx-auth-layout: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-auth-layout {
     gap: 14px;
     padding: 12px;
   }
 
+  /* .nx-auth-aside: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-auth-aside {
     border-radius: 20px;
     padding: 14px;
   }
 
+  /* .nx-company-head span: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-auth-eyebrow,
   .nx-company-head span {
     font-size: 10px;
     letter-spacing: 0.12em;
   }
 
+  /* .nx-auth-aside h3: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-auth-aside h3 {
     display: none;
   }
 
+  /* .nx-auth-aside p: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-auth-aside p {
     display: none;
   }
 
+  /* .nx-password-meter: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-auth-progress,
   .nx-password-meter {
     margin: 10px 0 0;
   }
 
+  /* .nx-auth-steps: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-auth-steps {
     display: none;
   }
 
+  /* .nx-auth-steps span: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-auth-steps span {
     font-size: 0.78rem;
     gap: 7px;
   }
 
+  /* .nx-auth-tabs: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-auth-tabs {
     margin-bottom: 10px;
     padding: 4px;
   }
 
+  /* .nx-auth-secondary: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-auth-tabs button,
   .nx-auth-secondary {
     font-size: 0.9rem;
     padding: 10px 12px;
   }
 
+  /* .nx-google-button: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-google-button {
     border-radius: 16px;
     margin-bottom: 12px;
     min-height: 46px;
   }
 
+  /* .nx-google-button span: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-google-button span {
     height: 24px;
     width: 24px;
   }
 
+  /* .nx-auth-form: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-auth-form {
     gap: 10px;
   }
 
+  /* .nx-auth-field: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-auth-field {
     gap: 6px;
   }
 
+  /* .nx-auth-field span: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-auth-field span {
     font-size: 0.8rem;
   }
 
+  /* .nx-company-form .nx-auth-field select: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-auth-field input,
   .nx-auth-field select,
   .nx-company-form .nx-auth-field input,
@@ -429,76 +506,91 @@
     padding: 12px 13px;
   }
 
+  /* .nx-password-list: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-password-list {
     gap: 6px;
   }
 
+  /* .nx-logo-error: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-password-list span,
   .nx-auth-field small,
   .nx-logo-error {
     font-size: 0.76rem;
   }
 
+  /* .star-border-container.nx-auth-submit: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-auth-submit,
   .nx-auth-submit .star-inner-content,
   .star-border-container.nx-auth-submit {
     width: 100%;
   }
 
+  /* .nx-auth-submit .star-inner-content: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-auth-submit .star-inner-content {
     min-height: 44px;
     padding: 0 14px;
   }
 
+  /* .nx-company-head: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-company-head {
     align-items: flex-start;
     flex-direction: column;
     gap: 4px;
   }
 
+  /* .nx-logo-drop: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-logo-drop {
     border-radius: 18px;
     min-height: 104px;
     padding: 14px;
   }
 
+  /* .nx-logo-drop img: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-logo-drop img {
     max-height: 58px;
     max-width: 132px;
   }
 
+  /* .nx-logo-drop span: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-logo-drop span {
     font-size: 0.74rem;
   }
 
+  /* .nx-password-list: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-company-grid,
   .nx-company-actions,
   .nx-password-list {
     grid-template-columns: 1fr;
   }
 
+  /* .nx-company-actions: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-company-actions {
     gap: 10px;
   }
 
+  /* .nx-auth-secondary: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-auth-secondary {
     min-height: 44px;
   }
 }
 
 @media (max-width: 380px) {
+  /* .nx-auth-layout: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-auth-layout {
     padding: 10px;
   }
 
+  /* .nx-auth-aside: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-auth-aside {
     padding: 14px;
   }
 
+  /* .nx-auth-aside p: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-auth-aside p {
     display: none;
   }
 
+  /* .nx-auth-progress: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-auth-progress {
     margin-top: 12px;
   }

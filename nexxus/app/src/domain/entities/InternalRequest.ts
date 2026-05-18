@@ -1,3 +1,11 @@
+/**
+ * Documentacion Nexxus - nexxus/app/src/domain/entities/InternalRequest.ts
+ * Capa: dominio.
+ * Proposito: Entidad de dominio. Define la estructura de datos principal que usa Nexxus sin acoplarla a Firebase o React.
+ * Dependencias clave: imports superiores y contratos tipados del propio modulo.
+ * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras Firebase al extender este archivo.
+ */
+
 export interface InternalRequest {
   id: string;
   userId: string;
@@ -20,4 +28,7 @@ export interface InternalRequest {
   timestamp: string;
 }
 
+/**
+ * Describe la forma tipada NuevaSolicitudInterna; ayuda a que estados, props o respuestas mantengan una estructura predecible.
+ */
 export type NuevaSolicitudInterna = Omit<InternalRequest, 'id' | 'estado' | 'timestamp' | 'flujo_aprobacion'>;

@@ -1,16 +1,43 @@
+/**
+ * Documentacion Nexxus - nexxus/app/src/Landing/Index.tsx
+ * Capa: landing.
+ * Proposito: Pantalla o recurso visual del flujo publico de autenticacion/landing. Centraliza la presentacion inicial antes de entrar a la app privada.
+ * Dependencias clave: imports superiores y contratos tipados del propio modulo.
+ * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras Firebase al extender este archivo.
+ */
+
+// Importa { createElement, ReactNode, useEffect, useState } desde React; habilita componentes, hooks y tipos base para esta pieza.
 import { createElement, ReactNode, useEffect, useState } from 'react';
+// Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
+// Importa { changeLanguage }; inicializa o consume configuracion de internacionalizacion.
 import { changeLanguage } from '../shared/i18n/config';
+// Importa BorderGlow; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import BorderGlow from './BorderGlow';
+// Importa DarkVeil; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import DarkVeil from './DarkVeil';
+// Importa StarBorder; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import StarBorder from './StarBorder';
+// Importa estilos CSS; aplica clases, animaciones o efectos visuales usados por este componente web.
 import './Landing.css';
 
+/**
+ * Declaracion h. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 const h = createElement;
 
+/**
+ * Describe la forma tipada BillingCycle; ayuda a que estados, props o respuestas mantengan una estructura predecible.
+ */
 type BillingCycle = 'monthly' | 'annual';
+/**
+ * Describe la forma tipada IconName; ayuda a que estados, props o respuestas mantengan una estructura predecible.
+ */
 type IconName = 'activity' | 'ai' | 'analytics' | 'automation' | 'briefcase' | 'building' | 'chart' | 'check' | 'clock' | 'command' | 'database' | 'file' | 'lock' | 'message' | 'payroll' | 'shield' | 'spark' | 'users' | 'workflow' | 'zap';
 
+/**
+ * Declaracion modules. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 const modules: [string, string, IconName][] = [
   ['landing.module_dashboard_title', 'landing.module_dashboard_desc', 'command'],
   ['landing.module_employees_title', 'landing.module_employees_desc', 'users'],
@@ -23,6 +50,9 @@ const modules: [string, string, IconName][] = [
   ['landing.module_multi_title', 'landing.module_multi_desc', 'building'],
 ];
 
+/**
+ * Declaracion plans. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 const plans = [
   {
     name: 'Starter',
@@ -48,6 +78,9 @@ const plans = [
   },
 ];
 
+/**
+ * Declaracion metrics. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 const metrics = [
   ['34%', 'landing.less_ops_time'],
   ['4.8x', 'landing.more_traceability'],
@@ -55,6 +88,9 @@ const metrics = [
   ['99.9%', 'landing.centralized_vision'],
 ];
 
+/**
+ * Declaracion iconPaths. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 const iconPaths: Record<IconName, string[]> = {
   activity: ['M22 12h-4l-3 8-6-16-3 8H2'],
   ai: ['M12 2l1.6 5.2L19 8.8l-5.4 1.6L12 16l-1.6-5.6L5 8.8l5.4-1.6L12 2z', 'M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z'],
@@ -78,7 +114,11 @@ const iconPaths: Record<IconName, string[]> = {
   zap: ['M13 2L3 14h8l-1 8 10-12h-8l1-8z'],
 };
 
+/**
+ * Componente Icon. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
+ */
 function Icon({ name }: { name: IconName }) {
+  // Devuelve el valor final calculado para esta funcion o caso de uso.
   return h(
     'svg',
     { className: 'nx-icon', fill: 'none', viewBox: '0 0 24 24', 'aria-hidden': true },
@@ -86,7 +126,11 @@ function Icon({ name }: { name: IconName }) {
   );
 }
 
+/**
+ * Componente GlowCard. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
+ */
 function GlowCard({ children, className, animated = false }: { animated?: boolean; children?: ReactNode; className: string }) {
+  // Devuelve el valor final calculado para esta funcion o caso de uso.
   return h(
     BorderGlow,
     {
@@ -102,6 +146,9 @@ function GlowCard({ children, className, animated = false }: { animated?: boolea
   );
 }
 
+/**
+ * Componente StarButton. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
+ */
 function StarButton({
   children,
   className = '',
@@ -113,6 +160,7 @@ function StarButton({
   onClick?: () => void;
   type?: 'button' | 'submit';
 }) {
+  // Devuelve el valor final calculado para esta funcion o caso de uso.
   return h(
     StarBorder,
     {
@@ -128,52 +176,89 @@ function StarButton({
   );
 }
 
+/**
+ * Declaracion scrollToId. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 function scrollToId(id: string) {
+  // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+/**
+ * Declaracion abrirAuth. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 function abrirAuth(modo: 'registro' | 'login', plan = 'Business') {
+  // Declara ruta; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const ruta = modo === 'login' ? '/landing/login' : '/landing/registro';
+  // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
   window.location.assign(`${ruta}?plan=${encodeURIComponent(plan)}`);
 }
 
+/**
+ * Declaracion priceFor. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 function priceFor(monthly: number, cycle: BillingCycle) {
+  // Devuelve el valor final calculado para esta funcion o caso de uso.
   return cycle === 'annual' ? Math.round(monthly * 12 * 0.6) : monthly;
 }
 
+/**
+ * Componente Landing. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
+ */
 export default function Landing() {
+  // Inicializa { t, i18n }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { t, i18n } = useTranslation();
+  // Inicializa [billing, setBilling]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [billing, setBilling] = useState<BillingCycle>('annual');
+  // Inicializa [selectedPlan, setSelectedPlan]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [selectedPlan, setSelectedPlan] = useState('Business');
+  // Inicializa [menuMovilAbierto, setMenuMovilAbierto]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [menuMovilAbierto, setMenuMovilAbierto] = useState(false);
 
+  // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
   useEffect(() => {
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     document.title = 'Nexxus | Impulsa tu empresa con rendimiento real';
+    // Declara description; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const description = 'Nexxus centraliza empleados, tareas, asistencia, nómina, IA y analytics para empresas modernas.';
+    // Declara meta; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     let meta = document.querySelector('meta[name="description"]');
+    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!meta) {
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       meta = document.createElement('meta');
+      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       meta.setAttribute('name', 'description');
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       document.head.appendChild(meta);
     }
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     meta.setAttribute('content', description);
 
+    // Declara revealItems; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const revealItems = Array.from(document.querySelectorAll('.nx-reveal'));
+    // Declara observer; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const observer = new IntersectionObserver(
       (entries) => entries.forEach((entry) => entry.isIntersecting && entry.target.classList.add('is-visible')),
       { threshold: 0.16 }
     );
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     revealItems.forEach((item) => observer.observe(item));
 
+    // Devuelve el valor final calculado para esta funcion o caso de uso.
     return () => {
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       observer.disconnect();
     };
   }, []);
 
+  // Declara choosePlan; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const choosePlan = (plan: string) => {
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setSelectedPlan(plan);
   };
 
+  // Declara enlacesNav; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const enlacesNav: [string, string][] = [
     [t('landing.nav_system'), 'sistema'],
     [t('landing.nav_modules'), 'modulos'],
@@ -182,11 +267,15 @@ export default function Landing() {
     [t('landing.nav_ia'), 'ia'],
   ];
 
+  // Declara navegarA; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const navegarA = (id: string) => {
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setMenuMovilAbierto(false);
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     scrollToId(id);
   };
 
+  // Devuelve el valor final calculado para esta funcion o caso de uso.
   return h(
     'main',
     { className: 'nx-landing' },

@@ -1,17 +1,43 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Clipboard, Alert, Animated, Easing, Image, Modal, View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, Platform } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
-import { addDoc, collection, doc, getDocs, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
-import { useCases } from '@/infrastructure/firebase/container';
-import { db, functions } from '@/infrastructure/firebase/firebaseConfig';
-import { useAuth } from '@/presentation/hooks/useAuth';
-import { obtenerEmpresaIdAdmin } from './adminUtils';
-import { ADMIN, sombraAdmin, sombraVioleta } from './adminTheme';
+/**
+ * Documentacion Nexxus - nexxus/app/src/presentation/screens/admin/GestionPlantilla.tsx
+ * Capa: presentacion.
+ * Proposito: Pantalla o utilidad del panel administrativo. Coordina datos empresariales reales y los presenta para decisiones de gestion.
+ * Dependencias clave: imports superiores y contratos tipados del propio modulo.
+ * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras Firebase al extender este archivo.
+ */
 
+// Importa React, { useEffect, useMemo, useRef, useState } desde React; habilita componentes, hooks y tipos base para esta pieza.
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+// Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
+import { useTranslation } from 'react-i18next';
+// Importa { Clipboard, Alert, Animated, Easing, Image, Modal, View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
+import { Clipboard, Alert, Animated, Easing, Image, Modal, View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, Platform } from 'react-native';
+// Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
+import { MaterialIcons } from '@expo/vector-icons';
+// Importa { BlurView } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
+import { BlurView } from 'expo-blur';
+// Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
+import { LinearGradient } from 'expo-linear-gradient';
+// Importa { addDoc, collection, doc, getDocs, onSnapshot, query, updateDoc, where } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
+import { addDoc, collection, doc, getDocs, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
+// Importa { httpsCallable } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
+import { httpsCallable } from 'firebase/functions';
+// Importa { useCases } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
+import { useCases } from '@/infrastructure/firebase/container';
+// Importa { db, functions } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
+import { db, functions } from '@/infrastructure/firebase/firebaseConfig';
+// Importa { useAuth }; reutiliza hooks propios que encapsulan estado, auth o consultas.
+import { useAuth } from '@/presentation/hooks/useAuth';
+// Importa { obtenerEmpresaIdAdmin }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
+import { obtenerEmpresaIdAdmin } from './adminUtils';
+// Importa { ADMIN, sombraAdmin, sombraVioleta }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
+import { ADMIN, sombraAdmin, sombraVioleta } from './adminTheme';
+// Importa { useAdminToast }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
+import { useAdminToast } from './adminToast';
+
+/**
+ * Componente BRAND. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
+ */
 const BRAND = {
   richBlack: ADMIN.fondo,
   darkBlue: ADMIN.fondoElevado,
@@ -27,6 +53,9 @@ const BRAND = {
   cyan: ADMIN.azul
 };
 
+/**
+ * Describe la forma tipada UsuarioPlantilla; ayuda a que estados, props o respuestas mantengan una estructura predecible.
+ */
 type UsuarioPlantilla = {
   id?: string;
   nombre?: string;
@@ -53,6 +82,9 @@ type UsuarioPlantilla = {
   photoURL?: string;
 };
 
+/**
+ * Describe la forma tipada DepartamentoCatalogo; ayuda a que estados, props o respuestas mantengan una estructura predecible.
+ */
 type DepartamentoCatalogo = {
   id?: string;
   nombre?: string;
@@ -62,6 +94,9 @@ type DepartamentoCatalogo = {
   empresaId?: string;
 };
 
+/**
+ * Describe la forma tipada SedeCatalogo; ayuda a que estados, props o respuestas mantengan una estructura predecible.
+ */
 type SedeCatalogo = {
   id?: string;
   nombre?: string;
@@ -70,6 +105,9 @@ type SedeCatalogo = {
   empresaId?: string;
 };
 
+/**
+ * Describe la forma tipada CargoCatalogo; ayuda a que estados, props o respuestas mantengan una estructura predecible.
+ */
 type CargoCatalogo = {
   id?: string;
   nombre?: string;
@@ -80,6 +118,9 @@ type CargoCatalogo = {
   empresaId?: string;
 };
 
+/**
+ * Describe la forma tipada RolCatalogo; ayuda a que estados, props o respuestas mantengan una estructura predecible.
+ */
 type RolCatalogo = {
   id?: string;
   nombre?: string;
@@ -88,6 +129,9 @@ type RolCatalogo = {
   empresaId?: string;
 };
 
+/**
+ * Describe la forma tipada TareaPlantilla; ayuda a que estados, props o respuestas mantengan una estructura predecible.
+ */
 type TareaPlantilla = {
   asignado_a?: string;
   estado?: string;
@@ -95,6 +139,9 @@ type TareaPlantilla = {
   empresaId?: string;
 };
 
+/**
+ * Describe la forma tipada CheckInPlantilla; ayuda a que estados, props o respuestas mantengan una estructura predecible.
+ */
 type CheckInPlantilla = {
   id?: string;
   userId?: string;
@@ -108,6 +155,9 @@ type CheckInPlantilla = {
   empresa_id?: string;
 };
 
+/**
+ * Describe la forma tipada AusenciaPlantilla; ayuda a que estados, props o respuestas mantengan una estructura predecible.
+ */
 type AusenciaPlantilla = {
   usuario_id?: string;
   estado?: string;
@@ -115,11 +165,26 @@ type AusenciaPlantilla = {
   empresaId?: string;
 };
 
+/**
+ * Describe la forma tipada FiltroEstado; ayuda a que estados, props o respuestas mantengan una estructura predecible.
+ */
 type FiltroEstado = 'todos' | 'activos' | 'inactivos' | 'riesgo';
+/**
+ * Describe la forma tipada AlcanceTarea; ayuda a que estados, props o respuestas mantengan una estructura predecible.
+ */
 type AlcanceTarea = 'sede' | 'departamento' | 'individual';
+/**
+ * Describe la forma tipada ModoFormulario; ayuda a que estados, props o respuestas mantengan una estructura predecible.
+ */
 type ModoFormulario = 'crear' | 'editar';
+/**
+ * Describe la forma tipada SelectorActivo; ayuda a que estados, props o respuestas mantengan una estructura predecible.
+ */
 type SelectorActivo = 'cargo' | 'departamento' | 'sede' | 'rol' | null;
 
+/**
+ * Describe la forma tipada FormularioEmpleado; ayuda a que estados, props o respuestas mantengan una estructura predecible.
+ */
 type FormularioEmpleado = {
   nombre: string;
   usuarioInterno: string;
@@ -133,6 +198,9 @@ type FormularioEmpleado = {
   salarioBase: string;
 };
 
+/**
+ * Describe la forma tipada FormularioTarea; ayuda a que estados, props o respuestas mantengan una estructura predecible.
+ */
 type FormularioTarea = {
   titulo: string;
   descripcion: string;
@@ -143,6 +211,9 @@ type FormularioTarea = {
   usuarioId: string;
 };
 
+/**
+ * Declaracion formularioInicial. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 const formularioInicial: FormularioEmpleado = {
   nombre: '',
   usuarioInterno: '',
@@ -156,6 +227,9 @@ const formularioInicial: FormularioEmpleado = {
   salarioBase: '',
 };
 
+/**
+ * Declaracion formularioTareaInicial. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 const formularioTareaInicial: FormularioTarea = {
   titulo: '',
   descripcion: '',
@@ -166,34 +240,66 @@ const formularioTareaInicial: FormularioTarea = {
   usuarioId: '',
 };
 
+/**
+ * Declaracion obtenerFecha. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 const obtenerFecha = (valor: any): Date | null => {
+  // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
   if (!valor) return null;
+  // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
   if (typeof valor?.toDate === 'function') return valor.toDate();
+  // Calcula fecha; normaliza fechas para comparaciones, filtros o etiquetas visibles.
   const fecha = new Date(valor);
+  // Devuelve el valor final calculado para esta funcion o caso de uso.
   return Number.isNaN(fecha.getTime()) ? null : fecha;
 };
 
+/**
+ * Declaracion mismoDia. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 const mismoDia = (fecha: Date | null) => {
+  // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
   if (!fecha) return false;
+  // Calcula hoy; normaliza fechas para comparaciones, filtros o etiquetas visibles.
   const hoy = new Date();
+  // Devuelve el valor final calculado para esta funcion o caso de uso.
   return fecha.getFullYear() === hoy.getFullYear() && fecha.getMonth() === hoy.getMonth() && fecha.getDate() === hoy.getDate();
 };
 
+/**
+ * Declaracion porcentaje. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 const porcentaje = (valor: number, total: number) => total > 0 ? Math.round((valor / total) * 100) : 0;
+/**
+ * Declaracion normalizarSalarioUSD. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 const normalizarSalarioUSD = (valor: string) => valor.replace(/[^\d.,]/g, '').split(/[.,]/)[0].replace(/\D/g, '');
+/**
+ * Declaracion conTiempoLimite. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 const conTiempoLimite = async <T,>(promesa: Promise<T>, milisegundos = 25000): Promise<T> => {
+  // Declara temporizador; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   let temporizador: ReturnType<typeof setTimeout>;
+  // Declara limite; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const limite = new Promise<T>((_, rechazar) => {
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     temporizador = setTimeout(() => rechazar(new Error('La creación tardó demasiado. Verifica que la Cloud Function crearUsuarioEmpresa esté desplegada y vuelve a intentar.')), milisegundos);
   });
+  // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
   try {
+    // Devuelve el valor final calculado para esta funcion o caso de uso.
     return await Promise.race([promesa, limite]);
   } finally {
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     clearTimeout(temporizador!);
   }
 };
 
+/**
+ * Componente PremiumBadge. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
+ */
 const PremiumBadge = ({ variant, children }: { variant: 'success' | 'warning' | 'error' | 'default' | 'blue' | 'violet', children: React.ReactNode }) => {
+  // Declara estilosBadge; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const estilosBadge = {
     success: { color: BRAND.success, bgColor: 'rgba(34,197,94,0.1)', borderColor: 'rgba(34,197,94,0.2)' },
     warning: { color: BRAND.warning, bgColor: 'rgba(245,158,11,0.1)', borderColor: 'rgba(245,158,11,0.2)' },
@@ -203,41 +309,69 @@ const PremiumBadge = ({ variant, children }: { variant: 'success' | 'warning' | 
     default: { color: BRAND.textSec, bgColor: ADMIN.fondoCampo, borderColor: ADMIN.borde },
   }[variant];
 
+  // Devuelve el JSX que React Native renderiza en pantalla.
   return (
+    // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
     <View style={[estilos.badge, { backgroundColor: estilosBadge.bgColor, borderColor: estilosBadge.borderColor }]}>
+      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
       <Text style={[estilos.badgeText, { color: estilosBadge.color }]}>{children}</Text>
     </View>
   );
 };
 
+/**
+ * Componente IconPanel. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
+ */
 const IconPanel = ({ icon, color }: { icon: keyof typeof MaterialIcons.glyphMap; color: string }) => (
+  // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
   <View style={[estilos.iconPanel, { borderColor: `${color}33`, backgroundColor: `${color}14` }]}>
+    {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
     <MaterialIcons name={icon} size={22} color={color} />
   </View>
 );
 
+/**
+ * Componente MiniRole. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
+ */
 const MiniRole = ({ label, value, color }: { label: string; value: number; color: string }) => (
+  // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
   <View style={estilos.miniRole}>
+    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
     <Text style={[estilos.miniRoleValue, { color }]}>{value}</Text>
+    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
     <Text style={estilos.miniRoleLabel}>{label}</Text>
   </View>
 );
 
+/**
+ * Componente MetricRow. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
+ */
 const MetricRow = ({ label, value, total, color }: { label: string; value: number; total: number; color: string }) => {
+  // Declara avance; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const avance = porcentaje(value, total);
+  // Devuelve el JSX que React Native renderiza en pantalla.
   return (
+    // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
     <View style={estilos.metricRow}>
+      {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
       <View style={estilos.metricTop}>
+        {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
         <Text style={estilos.metricLabel}>{label}</Text>
+        {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
         <Text style={estilos.metricValue}>{value}</Text>
       </View>
+      {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
       <View style={estilos.progressTrack}>
+        {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={[estilos.progressFill, { width: `${Math.max(avance, value > 0 ? 6 : 0)}%`, backgroundColor: color }]} />
       </View>
     </View>
   );
 };
 
+/**
+ * Componente FormField. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
+ */
 const FormField = ({
   label,
   value,
@@ -257,8 +391,11 @@ const FormField = ({
   sugerencias?: string[];
   onSeleccionar?: (valor: string) => void;
 }) => (
+  // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
   <View style={estilos.formField}>
+    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
     <Text style={estilos.formLabel}>{label}</Text>
+    {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
     <TextInput
       style={[estilos.formInput, !editable && estilos.formInputDisabled]}
       value={value}
@@ -269,9 +406,12 @@ const FormField = ({
       secureTextEntry={secureTextEntry}
     />
     {sugerencias.length > 0 && (
+      // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
       <View style={estilos.suggestionRow}>
         {sugerencias.slice(0, 4).map((sugerencia) => (
+          // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
           <TouchableOpacity key={sugerencia} onPress={() => onSeleccionar?.(sugerencia)} style={estilos.suggestionChip}>
+            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={estilos.suggestionText}>{sugerencia}</Text>
           </TouchableOpacity>
         ))}
@@ -280,6 +420,9 @@ const FormField = ({
   </View>
 );
 
+/**
+ * Componente SelectorOpciones. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
+ */
 const SelectorOpciones = ({
   label,
   value,
@@ -297,32 +440,45 @@ const SelectorOpciones = ({
   onAlternar: () => void;
   onSeleccionar: (valor: string) => void;
 }) => {
+  // Declara seleccion; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const seleccion = opciones.find((opcion) => opcion.id === value);
+  // Devuelve el JSX que React Native renderiza en pantalla.
   return (
+    // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
     <View style={estilos.formField}>
+      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
       <Text style={estilos.formLabel}>{label}</Text>
+      {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
       <TouchableOpacity style={[estilos.selectorSelectBox, abierto && estilos.selectorSelectBoxActivo]} onPress={onAlternar} activeOpacity={0.82}>
+        {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
         <Text style={[estilos.selectorSelectText, !seleccion && estilos.selectorSelectPlaceholder]} numberOfLines={1}>
           {seleccion ? seleccion.nombre : placeholder}
         </Text>
+        {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
         <MaterialIcons name={abierto ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} size={22} color={ADMIN.iconos.organizacion} />
       </TouchableOpacity>
       {abierto && (
+        // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
         <View style={estilos.dropdownPanel}>
+          {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
           <ScrollView nestedScrollEnabled style={estilos.dropdownScroll} showsVerticalScrollIndicator={false}>
             {opciones.length > 0 ? opciones.map((opcion) => (
+              // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
               <TouchableOpacity
                 key={opcion.id}
                 onPress={() => onSeleccionar(opcion.id)}
                 style={[estilos.dropdownItem, value === opcion.id && estilos.dropdownItemActivo]}
               >
+                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
                 <View style={estilos.dropdownItemTextos}>
+                  {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
                   <Text style={[estilos.dropdownItemTitulo, value === opcion.id && estilos.selectorTextActivo]} numberOfLines={1}>{opcion.nombre}</Text>
                   {opcion.detalle ? <Text style={estilos.dropdownItemDetalle} numberOfLines={1}>{opcion.detalle}</Text> : null}
                 </View>
                 {value === opcion.id ? <MaterialIcons name="check-circle" size={18} color={ADMIN.iconos.exito} /> : null}
               </TouchableOpacity>
             )) : (
+              // Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario.
               <Text style={estilos.dropdownEmpty}>{placeholder}</Text>
             )}
           </ScrollView>
@@ -332,37 +488,71 @@ const SelectorOpciones = ({
   );
 };
 
+/**
+ * Componente GestionPlantilla. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
+ */
 export default function GestionPlantilla() {
+  // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { t } = useTranslation();
+  // Inicializa toast; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
+  const toast = useAdminToast();
+  // Inicializa [usuarios, setUsuarios]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [usuarios, setUsuarios] = useState<UsuarioPlantilla[]>([]);
+  // Inicializa [tareas, setTareas]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [tareas, setTareas] = useState<TareaPlantilla[]>([]);
+  // Inicializa [checkIns, setCheckIns]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [checkIns, setCheckIns] = useState<CheckInPlantilla[]>([]);
+  // Inicializa [ausencias, setAusencias]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [ausencias, setAusencias] = useState<AusenciaPlantilla[]>([]);
+  // Inicializa [departamentosCatalogo, setDepartamentosCatalogo]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [departamentosCatalogo, setDepartamentosCatalogo] = useState<DepartamentoCatalogo[]>([]);
+  // Inicializa [sedesCatalogo, setSedesCatalogo]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [sedesCatalogo, setSedesCatalogo] = useState<SedeCatalogo[]>([]);
+  // Inicializa [cargosCatalogo, setCargosCatalogo]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [cargosCatalogo, setCargosCatalogo] = useState<CargoCatalogo[]>([]);
+  // Inicializa [rolesPersonalizados, setRolesPersonalizados]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [rolesPersonalizados, setRolesPersonalizados] = useState<RolCatalogo[]>([]);
+  // Inicializa [empresa, setEmpresa]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [empresa, setEmpresa] = useState<any>(null);
+  // Inicializa [cargando, setCargando]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [cargando, setCargando] = useState(true);
+  // Inicializa [busqueda, setBusqueda]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [busqueda, setBusqueda] = useState('');
+  // Inicializa [filtroEstado, setFiltroEstado]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('todos');
+  // Inicializa [filtroRol, setFiltroRol]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [filtroRol, setFiltroRol] = useState('todos');
+  // Inicializa [filtroDepartamento, setFiltroDepartamento]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [filtroDepartamento, setFiltroDepartamento] = useState('todos');
+  // Inicializa [sedeSeleccionadaId, setSedeSeleccionadaId]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [sedeSeleccionadaId, setSedeSeleccionadaId] = useState<string | null>(null);
+  // Inicializa [modalVisible, setModalVisible]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [modalVisible, setModalVisible] = useState(false);
+  // Inicializa [modalTareaVisible, setModalTareaVisible]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [modalTareaVisible, setModalTareaVisible] = useState(false);
+  // Inicializa [alcanceTarea, setAlcanceTarea]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [alcanceTarea, setAlcanceTarea] = useState<AlcanceTarea>('individual');
+  // Inicializa [formularioTarea, setFormularioTarea]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [formularioTarea, setFormularioTarea] = useState<FormularioTarea>(formularioTareaInicial);
+  // Inicializa [modoFormulario, setModoFormulario]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [modoFormulario, setModoFormulario] = useState<ModoFormulario>('crear');
+  // Inicializa [empleadoSeleccionado, setEmpleadoSeleccionado]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [empleadoSeleccionado, setEmpleadoSeleccionado] = useState<UsuarioPlantilla | null>(null);
+  // Inicializa [formulario, setFormulario]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [formulario, setFormulario] = useState<FormularioEmpleado>(formularioInicial);
+  // Inicializa [guardando, setGuardando]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [guardando, setGuardando] = useState(false);
+  // Inicializa [selectorActivo, setSelectorActivo]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [selectorActivo, setSelectorActivo] = useState<SelectorActivo>(null);
+  // Inicializa entrada; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const entrada = useRef(new Animated.Value(0)).current;
 
+  // Inicializa { user }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { user } = useAuth();
 
+  // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
   useEffect(() => {
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     Animated.timing(entrada, {
       toValue: 1,
       duration: 680,
@@ -371,175 +561,279 @@ export default function GestionPlantilla() {
     }).start();
   }, [entrada]);
 
+  // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
   useEffect(() => {
+    // Declara empresaId; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const empresaId = obtenerEmpresaIdAdmin(user);
+    // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
     console.log('[GestionPlantilla] useEffect Iniciado. User:', user?.correo, 'EmpresaId:', empresaId);
+    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!empresaId) {
+      // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
       console.warn('[GestionPlantilla] No se detectó EmpresaId. Limpiando catálogos.');
+      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setUsuarios([]);
+      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setTareas([]);
+      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setCheckIns([]);
+      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setAusencias([]);
+      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setDepartamentosCatalogo([]);
+      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setSedesCatalogo([]);
+      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setCargosCatalogo([]);
+      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setRolesPersonalizados([]);
+      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setCargando(false);
+      // Devuelve el valor final calculado para esta funcion o caso de uso.
       return;
     }
 
+    // Declara cargadas; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const cargadas = new Set<string>();
+    // Declara marcarCarga; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const marcarCarga = (clave: string) => {
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       cargadas.add(clave);
+      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (cargadas.size >= 8) setCargando(false);
     };
 
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setCargando(true);
 
+    // Calcula unsubUsuarios; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const unsubUsuarios = useCases.admin.getAllUsers.subscribe(empresaId, (users) => {
+      // Calcula filtrados; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
       const filtrados = Array.isArray(users) ? users.filter(u => u.empresaId === empresaId && u.eliminado !== true) : [];
+      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setUsuarios(filtrados);
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       marcarCarga('usuarios');
     });
 
+    // Calcula crearListener; transforma la lista original en datos listos para renderizar o guardar.
     const crearListener = <T,>(clave: string, coleccion: string, actualizar: (datos: T[]) => void) => onSnapshot(
       query(collection(db, coleccion), where('empresaId', '==', empresaId)),
       (snapshot) => {
+        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
         actualizar(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as T));
+        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
         marcarCarga(clave);
       },
       () => {
+        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
         actualizar([]);
+        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
         marcarCarga(clave);
       }
     );
 
+    // Declara unsubTareas; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const unsubTareas = crearListener<TareaPlantilla>('tareas', 'tareas', setTareas);
+    // Declara mapasCheckIns; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const mapasCheckIns = new Map<string, Map<string, CheckInPlantilla>>();
+    // Declara publicarCheckIns; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const publicarCheckIns = () => {
+      // Declara combinados; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const combinados = new Map<string, CheckInPlantilla>();
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       mapasCheckIns.forEach((mapa) => mapa.forEach((checkIn, id) => combinados.set(id, checkIn)));
+      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setCheckIns(Array.from(combinados.values()));
     };
+    // Prepara escucharCheckIns; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
     const escucharCheckIns = (campo: 'empresaId' | 'empresa_id', clave: string) => onSnapshot(
       query(collection(db, 'checkins'), where(campo, '==', empresaId)),
       (snapshot) => {
+        // Declara mapa; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
         const mapa = new Map<string, CheckInPlantilla>();
+        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
         snapshot.docs.forEach((documento) => {
+          // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
           mapa.set(documento.id, { id: documento.id, ...documento.data() } as CheckInPlantilla);
         });
+        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
         mapasCheckIns.set(clave, mapa);
+        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
         publicarCheckIns();
+        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
         marcarCarga('checkins');
       },
       () => {
+        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
         mapasCheckIns.set(clave, new Map());
+        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
         publicarCheckIns();
+        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
         marcarCarga('checkins');
       }
     );
+    // Declara unsubCheckIns; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const unsubCheckIns = [
       escucharCheckIns('empresaId', 'actual'),
       escucharCheckIns('empresa_id', 'legacy'),
     ];
+    // Declara unsubAusencias; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const unsubAusencias = crearListener<AusenciaPlantilla>('ausencias', 'solicitudes_ausencia', setAusencias);
+    // Declara unsubDepartamentos; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const unsubDepartamentos = crearListener<DepartamentoCatalogo>('departamentos', 'departments', setDepartamentosCatalogo);
+    // Declara unsubSedes; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const unsubSedes = crearListener<SedeCatalogo>('sedes', 'sedes', setSedesCatalogo);
+    // Declara unsubCargos; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const unsubCargos = crearListener<CargoCatalogo>('cargos', 'cargos', setCargosCatalogo);
+    // Declara unsubRoles; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const unsubRoles = crearListener<RolCatalogo>('roles', 'roles_personalizados', setRolesPersonalizados);
     
+    // Calcula unsubEmpresa; transforma la lista original en datos listos para renderizar o guardar.
     const unsubEmpresa = onSnapshot(doc(db, 'empresas', empresaId), async (snapshotDoc) => {
+      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (snapshotDoc.exists()) {
+        // Declara data; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
         const data = snapshotDoc.data();
+        // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
         setEmpresa({ id: snapshotDoc.id, ...data });
 
         // Si la empresa no tiene un código asignado, generar uno único
         if (!data.codigo) {
+          // Declara uniqueCode; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
           let uniqueCode = '';
+          // Declara isUnique; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
           let isUnique = false;
+          // Declara attempts; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
           let attempts = 0;
+          // Declara cleanName; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
           const cleanName = (data.nombre || 'EMP').replace(/[^a-zA-Z]/g, '').substring(0, 3).toUpperCase() || 'EMP';
 
+          // Repite el bloque hasta cumplir la condicion; se usa para buscar o construir un valor valido.
           while (!isUnique && attempts < 10) {
+            // Declara randomDigits; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
             const randomDigits = Math.floor(1000 + Math.random() * 9000);
+            // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
             uniqueCode = `${cleanName}-${randomDigits}`;
 
             // Verificar si ya existe el código en alguna otra empresa
             const q = query(collection(db, 'empresas'), where('codigo', '==', uniqueCode));
+            // Declara checkSnap; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
             const checkSnap = await getDocs(q);
+            // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
             if (checkSnap.empty) {
+              // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
               isUnique = true;
             }
+            // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
             attempts++;
           }
 
+          // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
           if (isUnique) {
+            // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
             await updateDoc(doc(db, 'empresas', empresaId), { codigo: uniqueCode });
+            // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
             console.log(`[GestionPlantilla] Código de empresa único generado de forma retroactiva: ${uniqueCode}`);
             
             // Propagar el nuevo código de acceso a todos los usuarios existentes de esta empresa
             try {
+              // Prepara qUsers; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
               const qUsers = query(collection(db, 'usuarios'), where('empresaId', '==', empresaId));
+              // Declara snapUsers; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
               const snapUsers = await getDocs(qUsers);
+              // Calcula batchPromises; transforma la lista original en datos listos para renderizar o guardar.
               const batchPromises = snapUsers.docs.map(userDoc => 
                 updateDoc(doc(db, 'usuarios', userDoc.id), { codigoEmpresa: uniqueCode })
               );
+              // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
               await Promise.all(batchPromises);
+              // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
               console.log(`[GestionPlantilla] Migración: ${batchPromises.length} usuarios actualizados con el nuevo código.`);
             } catch (err) {
+              // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
               console.error('[GestionPlantilla] Error al migrar códigos a usuarios:', err);
             }
           }
         } else {
           // Si el código ya existe, verificar de manera defensiva que todos los usuarios de la empresa lo tengan sincronizado
           try {
+            // Prepara qUsers; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
             const qUsers = query(collection(db, 'usuarios'), where('empresaId', '==', empresaId));
+            // Declara snapUsers; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
             const snapUsers = await getDocs(qUsers);
+            // Declara batchPromises; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
             const batchPromises: Promise<any>[] = [];
             
+            // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
             snapUsers.docs.forEach(userDoc => {
+              // Declara uData; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
               const uData = userDoc.data();
+              // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
               if (uData.codigoEmpresa !== data.codigo) {
+                // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
                 batchPromises.push(updateDoc(doc(db, 'usuarios', userDoc.id), { codigoEmpresa: data.codigo }));
               }
             });
 
             // Compatibilidad por si hay usuarios mapeados con el campo legacy empresa_id
             const qUsersLegacy = query(collection(db, 'usuarios'), where('empresa_id', '==', empresaId));
+            // Declara snapUsersLegacy; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
             const snapUsersLegacy = await getDocs(qUsersLegacy);
+            // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
             snapUsersLegacy.docs.forEach(userDoc => {
+              // Declara uData; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
               const uData = userDoc.data();
+              // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
               if (uData.codigoEmpresa !== data.codigo && !snapUsers.docs.some(d => d.id === userDoc.id)) {
+                // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
                 batchPromises.push(updateDoc(doc(db, 'usuarios', userDoc.id), { codigoEmpresa: data.codigo }));
               }
             });
 
+            // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
             if (batchPromises.length > 0) {
+              // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
               await Promise.all(batchPromises);
+              // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
               console.log(`[GestionPlantilla] Sincronización: ${batchPromises.length} usuarios actualizados con el código existente ${data.codigo}.`);
             }
           } catch (err) {
+            // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
             console.error('[GestionPlantilla] Error al sincronizar códigos a usuarios:', err);
           }
         }
       }
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       marcarCarga('empresa');
     });
 
+    // Devuelve el valor final calculado para esta funcion o caso de uso.
     return () => {
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       unsubUsuarios();
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       unsubTareas();
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       unsubCheckIns.forEach((unsubscribe) => unsubscribe());
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       unsubAusencias();
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       unsubDepartamentos();
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       unsubSedes();
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       unsubCargos();
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       unsubRoles();
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       unsubEmpresa();
     };
   }, [user]);
 
+  // Inicializa catalogos; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const catalogos = useMemo(() => {
+    // Calcula departamentos; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const departamentos = [
       { id: 'general', nombre: t('common.general'), detalle: t('common.global') },
       ...departamentosCatalogo
@@ -550,6 +844,7 @@ export default function GestionPlantilla() {
           detalle: (departamento.sedeNombre && departamento.sedeNombre.toLowerCase().trim() !== 'global.global') ? departamento.sedeNombre : t('common.global'),
         }))
     ];
+    // Calcula sedes; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const sedes = [
       { id: 'global', nombre: t('admin.plantilla.no_branch', { defaultValue: 'Sin sede asignada' }), detalle: 'Empresa' },
       ...sedesCatalogo
@@ -560,6 +855,7 @@ export default function GestionPlantilla() {
           detalle: sede.ciudad || 'Sucursal',
         }))
     ];
+    // Calcula cargos; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const cargos = [
       { id: 'base', nombre: t('common.employee'), detalle: t('common.general') },
       ...cargosCatalogo
@@ -570,26 +866,39 @@ export default function GestionPlantilla() {
           detalle: (cargo.departamentoNombre && cargo.departamentoNombre.toLowerCase().trim() !== 'global.global') ? cargo.departamentoNombre : (cargo.nivel || t('common.general')),
         }))
     ];
+    // Declara rolesBase; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const rolesBase = ['empleado', 'jefe', 'admin'];
+    // Calcula rolesEmpresa; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const rolesEmpresa = rolesPersonalizados
       .filter((rol) => rol.activo !== false && rol.nombre)
       .map((rol) => rol.nombre as string);
+    // Declara roles; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const roles = Array.from(new Set([...rolesBase, ...rolesEmpresa]));
+    // Calcula jefes; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const jefes = usuarios.filter((usuario) => usuario.rol === 'jefe' || usuario.rol === 'admin' || usuario.rol === 'supervisor' || usuario.rol === 'RRHH');
+    // Devuelve el valor final calculado para esta funcion o caso de uso.
     return { departamentos, sedes, cargos, roles, jefes };
   }, [usuarios, departamentosCatalogo, sedesCatalogo, cargosCatalogo, rolesPersonalizados]);
 
+  // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
   useEffect(() => {
+    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (catalogos.sedes.length <= 1) {
+      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setSedeSeleccionadaId(catalogos.sedes[0]?.id || null);
     } else if (sedeSeleccionadaId && !catalogos.sedes.some((sede) => sede.id === sedeSeleccionadaId)) {
+      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setSedeSeleccionadaId(null);
     }
   }, [catalogos.sedes, sedeSeleccionadaId]);
 
+  // Prepara registrarAuditoria; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
   const registrarAuditoria = async (accion: string, detalles: string, estado: 'Success' | 'Warning' | 'Error' = 'Success') => {
+    // Declara empresaId; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const empresaId = obtenerEmpresaIdAdmin(user);
+    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!empresaId || !user) return;
+    // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
     await addDoc(collection(db, 'audit_logs'), {
       empresaId,
       usuarioId: user.id,
@@ -604,44 +913,68 @@ export default function GestionPlantilla() {
     });
   };
 
+  // Declara actualizarFormulario; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const actualizarFormulario = (campo: keyof FormularioEmpleado, valor: string) => {
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setFormulario((actual) => ({ ...actual, [campo]: valor }));
   };
 
+  // Declara alternarSelector; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const alternarSelector = (selector: SelectorActivo) => {
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setSelectorActivo((actual) => actual === selector ? null : selector);
   };
 
+  // Declara actualizarFormularioTarea; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const actualizarFormularioTarea = (campo: keyof FormularioTarea, valor: string) => {
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setFormularioTarea((actual) => ({ ...actual, [campo]: valor }));
   };
 
+  // Declara abrirAsignarTarea; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const abrirAsignarTarea = (alcance: AlcanceTarea = 'individual', usuario?: UsuarioPlantilla) => {
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setAlcanceTarea(alcance);
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setFormularioTarea({
       ...formularioTareaInicial,
       sedeId: alcance === 'sede' ? (sedeSeleccionadaId || catalogos.sedes[0]?.id || '') : (usuario?.sedeId || sedeSeleccionadaId || ''),
       departamentoId: alcance === 'departamento' ? (usuario?.departamentoId || (filtroDepartamento !== 'todos' ? filtroDepartamento : '')) : (usuario?.departamentoId || ''),
       usuarioId: usuario?.id || '',
     });
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setModalTareaVisible(true);
   };
 
+  // Declara abrirCrear; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const abrirCrear = () => {
+    // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
     console.log('[GestionPlantilla] Abriendo modal de creación...');
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setModoFormulario('crear');
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setEmpleadoSeleccionado(null);
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setFormulario(formularioInicial);
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setSelectorActivo(null);
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setModalVisible(true);
   };
 
+  // Declara abrirEditar; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const abrirEditar = (empleado: UsuarioPlantilla) => {
+    // Declara cargo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const cargo = cargosCatalogo.find((item) => item.id === empleado.cargoId || item.nombre === empleado.cargo);
+    // Declara departamento; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const departamento = departamentosCatalogo.find((item) => item.id === empleado.departamentoId || item.nombre === empleado.departamento);
+    // Declara sede; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const sede = sedesCatalogo.find((item) => item.id === empleado.sedeId || item.nombre === empleado.sede);
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setModoFormulario('editar');
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setEmpleadoSeleccionado(empleado);
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setFormulario({
       nombre: empleado.nombre || '',
       usuarioInterno: (empleado as any).usuarioInterno || '',
@@ -654,27 +987,45 @@ export default function GestionPlantilla() {
       telefono: empleado.telefono || '',
       salarioBase: empleado.salarioBase ? String(Math.round(Number(empleado.salarioBase))) : '',
     });
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setSelectorActivo(null);
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setModalVisible(true);
   };
 
+  // Declara cerrarModal; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const cerrarModal = () => {
+    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (guardando) return;
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setModalVisible(false);
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setEmpleadoSeleccionado(null);
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setFormulario(formularioInicial);
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setSelectorActivo(null);
   };
 
+  // Calcula construirPayloadEmpleado; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
   const construirPayloadEmpleado = () => {
+    // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
     console.log('[GestionPlantilla] Construyendo payload para:', formulario.nombre);
+    // Declara jefe; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const jefe = usuarios.find((usuario) => usuario.id === formulario.jefeId);
+    // Declara cargo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const cargo = cargosCatalogo.find((item) => item.id === formulario.cargoId);
+    // Declara departamento; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const departamento = departamentosCatalogo.find((item) => item.id === formulario.departamentoId);
+    // Declara sede; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const sede = sedesCatalogo.find((item) => item.id === formulario.sedeId);
+    // Declara rolPersonalizado; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const rolPersonalizado = rolesPersonalizados.find((item) => item.nombre === formulario.rol);
+    // Declara salarioBase; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const salarioBase = Number(normalizarSalarioUSD(formulario.salarioBase || '0'));
+    // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
     console.log('[GestionPlantilla] Referencias encontradas:', { cargo: cargo?.nombre, depto: departamento?.nombre, sede: sede?.nombre });
+    // Calcula modulosRol; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const modulosRol = rolPersonalizado?.permisos
       ? Object.entries(rolPersonalizado.permisos).filter(([, activo]) => activo).map(([modulo]) => modulo)
       : formulario.rol === 'admin'
@@ -683,8 +1034,10 @@ export default function GestionPlantilla() {
           ? ['equipo', 'tareas', 'aprobaciones', 'mensajeria']
           : ['empleado'];
     
+    // Declara codigoEmpresa; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const codigoEmpresa = (empresa?.codigo || empresa?.nombre_normalizado || 'EMPRESA').toUpperCase();
     
+    // Devuelve el valor final calculado para esta funcion o caso de uso.
     return {
       nombre: formulario.nombre.trim(),
       usuarioInterno: formulario.usuarioInterno.trim().toLowerCase(),
@@ -713,25 +1066,40 @@ export default function GestionPlantilla() {
     };
   };
 
+  // Inicializa datos; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const datos = useMemo(() => {
+    // Calcula usuariosEnriquecidos; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const usuariosEnriquecidos = usuarios.map((usuario) => {
+      // Calcula tareasUsuario; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
       const tareasUsuario = tareas.filter((tarea) => tarea.asignado_a === usuario.id);
+      // Calcula tareasPendientes; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
       const tareasPendientes = tareasUsuario.filter((tarea) => tarea.estado !== 'completada').length;
+      // Calcula tareasCompletadas; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
       const tareasCompletadas = tareasUsuario.filter((tarea) => tarea.estado === 'completada').length;
+      // Declara productividad; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const productividad = porcentaje(tareasCompletadas, tareasUsuario.length);
+      // Calcula ultimoCheckIn; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
       const ultimoCheckIn = checkIns
         .filter((checkIn) => checkIn.userId === usuario.id)
         .sort((a, b) => (obtenerFecha(b.fecha || b.timestamp)?.getTime() || 0) - (obtenerFecha(a.fecha || a.timestamp)?.getTime() || 0))[0];
+      // Declara estres; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const estres = Number(ultimoCheckIn?.estres) || 0;
+      // Declara carga; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const carga = Number(ultimoCheckIn?.cargaLaboral) || 0;
+      // Declara balance; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const balance = Number(ultimoCheckIn?.balanceEmocional) || 0;
+      // Declara bienestar; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const bienestar = ultimoCheckIn
         ? Math.max(0, Math.min(100, Math.round(((balance + (5 - estres) + (5 - carga)) / 15) * 100)))
         : 0;
+      // Declara checkInHoy; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const checkInHoy = mismoDia(obtenerFecha(ultimoCheckIn?.fecha || ultimoCheckIn?.timestamp || usuario.ultimoCheckIn));
+      // Calcula ausenciasPendientes; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
       const ausenciasPendientes = ausencias.filter((ausencia) => ausencia.usuario_id === usuario.id && ausencia.estado === 'pendiente').length;
+      // Declara riesgo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const riesgo = estres >= 4 || carga >= 4 || tareasPendientes >= 5 || !checkInHoy;
 
+      // Devuelve el valor final calculado para esta funcion o caso de uso.
       return {
         ...usuario,
         tareasPendientes,
@@ -748,25 +1116,39 @@ export default function GestionPlantilla() {
       };
     });
 
+    // Calcula activos; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const activos = usuariosEnriquecidos.filter(u => u.activo !== false && u.estado_activo !== false).length;
+    // Declara inactivos; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const inactivos = usuariosEnriquecidos.length - activos;
+    // Calcula admins; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const admins = usuariosEnriquecidos.filter(u => u.rol === 'admin').length;
+    // Calcula jefes; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const jefes = usuariosEnriquecidos.filter(u => u.rol === 'jefe').length;
+    // Calcula empleados; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const empleados = usuariosEnriquecidos.filter(u => u.rol === 'empleado').length;
+    // Calcula psicologos; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const psicologos = usuariosEnriquecidos.filter(u => u.rol === 'psicologo').length;
+    // Calcula checkInsHoy; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const checkInsHoy = usuariosEnriquecidos.filter(u => u.checkInHoy).length;
+    // Calcula riesgo; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const riesgo = usuariosEnriquecidos.filter(u => u.riesgo).length;
+    // Declara departamentos; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const departamentos = usuariosEnriquecidos.reduce<Record<string, number>>((acc, usuario) => {
+      // Declara depto; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const depto = usuario.departamento || 'Sin departamento';
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       acc[depto] = (acc[depto] || 0) + 1;
+      // Devuelve el valor final calculado para esta funcion o caso de uso.
       return acc;
     }, {});
 
+    // Calcula topDepartamentos; transforma la lista original en datos listos para renderizar o guardar.
     const topDepartamentos = Object.entries(departamentos)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map(([nombre, total]) => ({ nombre, total, share: porcentaje(total, usuariosEnriquecidos.length) }));
 
+    // Devuelve el valor final calculado para esta funcion o caso de uso.
     return {
       usuariosEnriquecidos,
       activos,
@@ -782,88 +1164,143 @@ export default function GestionPlantilla() {
     };
   }, [usuarios, tareas, checkIns, ausencias]);
 
+  // Inicializa sedesResumen; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const sedesResumen = useMemo(() => {
+    // Declara sedesBase; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const sedesBase = catalogos.sedes.length > 0
       ? catalogos.sedes
       : [{ id: 'sin-sede', nombre: 'Plantilla', detalle: 'Sede principal' }];
+    // Devuelve el valor final calculado para esta funcion o caso de uso.
     return sedesBase.map((sede) => {
+      // Calcula colaboradores; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
       const colaboradores = datos.usuariosEnriquecidos.filter((usuario) => {
+        // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
         if (sede.id === 'sin-sede') return !usuario.sedeId;
+        // Devuelve el valor final calculado para esta funcion o caso de uso.
         return usuario.sedeId === sede.id || usuario.sede === sede.nombre;
       });
+      // Calcula activos; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
       const activos = colaboradores.filter((usuario) => usuario.activo !== false && usuario.estado_activo !== false).length;
+      // Calcula departamentos; transforma la lista original en datos listos para renderizar o guardar.
       const departamentos = new Set(colaboradores.map((usuario) => usuario.departamento || 'General'));
+      // Devuelve el valor final calculado para esta funcion o caso de uso.
       return { ...sede, colaboradores, activos, departamentos: departamentos.size };
     });
   }, [catalogos.sedes, datos.usuariosEnriquecidos]);
 
+  // Calcula usuariosFiltrados; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
   const usuariosFiltrados = datos.usuariosEnriquecidos.filter((usuario) => {
+    // Declara texto; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const texto = busqueda.toLowerCase();
+    // Declara coincideBusqueda; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const coincideBusqueda =
       usuario.nombre?.toLowerCase().includes(texto) ||
       usuario.correo?.toLowerCase().includes(texto) ||
       usuario.rol?.toLowerCase().includes(texto) ||
       usuario.departamento?.toLowerCase().includes(texto);
 
+    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!coincideBusqueda) return false;
+    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (catalogos.sedes.length > 1 && sedeSeleccionadaId) {
+      // Declara sede; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const sede = catalogos.sedes.find((item) => item.id === sedeSeleccionadaId);
+      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (usuario.sedeId !== sedeSeleccionadaId && usuario.sede !== sede?.nombre) return false;
     }
+    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (filtroRol !== 'todos' && usuario.rol !== filtroRol) return false;
+    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (filtroDepartamento !== 'todos' && usuario.departamentoId !== filtroDepartamento && usuario.departamento !== departamentosCatalogo.find((item) => item.id === filtroDepartamento)?.nombre) return false;
+    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (filtroEstado === 'activos') return usuario.activo !== false && usuario.estado_activo !== false;
+    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (filtroEstado === 'inactivos') return usuario.activo === false || usuario.estado_activo === false;
+    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (filtroEstado === 'riesgo') return usuario.riesgo;
+    // Devuelve el valor final calculado para esta funcion o caso de uso.
     return true;
   });
 
+  // Prepara guardarEmpleado; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
   const guardarEmpleado = async () => {
+    // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
     console.log('[GestionPlantilla] Iniciando guardarEmpleado...');
+    // Declara empresaId; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const empresaId = obtenerEmpresaIdAdmin(user);
+    // Declara nombre; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const nombre = formulario.nombre.trim();
+    // Declara usuarioInterno; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const usuarioInterno = formulario.usuarioInterno.trim().toLowerCase();
+    // Declara codigoEmpresa; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const codigoEmpresa = (empresa?.codigo || empresa?.nombre_normalizado || 'EMPRESA').toUpperCase();
     
+    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!empresaId) {
+      // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
       console.error('[GestionPlantilla] Error: No se encontró empresaId para el usuario.');
-      Alert.alert('Error de sesión', 'No se detectó el ID de tu empresa. Por favor, cierra sesión y vuelve a entrar.');
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+      toast.error({ title: 'Error de sesión', description: 'No se detectó el ID de tu empresa. Por favor, cierra sesión y vuelve a entrar.' });
+      // Devuelve el valor final calculado para esta funcion o caso de uso.
       return;
     }
 
+    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!nombre) {
+      // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
       console.warn('[GestionPlantilla] Validación fallida: Nombre vacío');
-      Alert.alert('Datos requeridos', 'El nombre es obligatorio.');
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+      toast.warning({ title: 'Datos requeridos', description: 'El nombre es obligatorio.' });
+      // Devuelve el valor final calculado para esta funcion o caso de uso.
       return;
     }
 
+    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (guardando) {
+      // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
       console.warn('[GestionPlantilla] Ya se está guardando, ignorando click.');
+      // Devuelve el valor final calculado para esta funcion o caso de uso.
       return;
     }
     
+    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (modoFormulario === 'crear') {
+      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (!usuarioInterno) {
+        // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
         console.warn('[GestionPlantilla] Validación fallida: Usuario vacío');
-        Alert.alert('Datos requeridos', 'El usuario es obligatorio para crear un empleado.');
+        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+        toast.warning({ title: 'Datos requeridos', description: 'El usuario es obligatorio para crear un empleado.' });
+        // Devuelve el valor final calculado para esta funcion o caso de uso.
         return;
       }
+      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (formulario.contrasena.trim().length < 6) {
+        // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
         console.warn('[GestionPlantilla] Validación fallida: Contraseña corta');
-        Alert.alert('Contraseña requerida', 'La contraseña debe tener al menos 6 caracteres.');
+        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+        toast.warning({ title: 'Contraseña requerida', description: 'La contraseña debe tener al menos 6 caracteres.' });
+        // Devuelve el valor final calculado para esta funcion o caso de uso.
         return;
       }
     }
 
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setGuardando(true);
+    // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
     try {
+      // Declara payload; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const payload = construirPayloadEmpleado();
+      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (modoFormulario === 'crear') {
+        // Declara crearUsuarioEmpresa; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
         const crearUsuarioEmpresa = httpsCallable(functions, 'crearUsuarioEmpresa');
         // Generamos un correo interno para Firebase Auth basado en el usuario y empresa
         const correoInterno = `${usuarioInterno}@${codigoEmpresa.toLowerCase()}.nexxus`;
         
+        // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
         console.log('[GestionPlantilla] Llamando a crearUsuarioEmpresa con:', { nombre, usuarioInterno, rol: formulario.rol });
+        // Calcula resultado; normaliza fechas para comparaciones, filtros o etiquetas visibles.
         const resultado = await conTiempoLimite(crearUsuarioEmpresa({
           nombre,
           correo: correoInterno,
@@ -879,11 +1316,16 @@ export default function GestionPlantilla() {
             estado_onboarding: 'pendiente',
           },
         }));
+        // Declara uid; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
         const uid = (resultado.data as { uid?: string })?.uid;
+        // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
         if (!uid) {
+          // Interrumpe el flujo con un error controlado para que la capa superior lo maneje.
           throw new Error('Firebase no devolvió el identificador del empleado creado.');
         }
+        // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
         try {
+          // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
           await updateDoc(doc(db, 'usuarios', uid), {
             ...payload,
             correo: correoInterno,
@@ -893,7 +1335,9 @@ export default function GestionPlantilla() {
             estado_onboarding: 'pendiente',
           });
         } catch {}
+        // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
         try {
+          // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
           await conTiempoLimite(addDoc(collection(db, 'notificaciones'), {
             empresaId,
             usuario_id: uid,
@@ -904,62 +1348,102 @@ export default function GestionPlantilla() {
             fecha: new Date().toISOString(),
           }), 8000);
         } catch {}
+        // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
         try {
+          // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
           await registrarAuditoria('Creación de Empleado', `${nombre} · ${usuarioInterno}`);
         } catch {}
+        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+        toast.success({ title: 'Empleado añadido', description: 'Se ha añadido un empleado correctamente.' });
       } else if (empleadoSeleccionado?.id) {
+        // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
         try {
+          // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
           await conTiempoLimite(updateDoc(doc(db, 'usuarios', empleadoSeleccionado.id), payload));
         } catch (error: any) {
+          // Interrumpe el flujo con un error controlado para que la capa superior lo maneje.
           throw new Error(error?.message || 'No se pudo actualizar el empleado en Firestore.');
         }
+        // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
         await registrarAuditoria('Edición de Empleado', `${nombre} · ${usuarioInterno}`);
+        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+        toast.success({ title: 'Empleado actualizado', description: 'Los cambios del empleado se guardaron correctamente.' });
       }
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       cerrarModal();
     } catch (error: any) {
+      // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
       console.error('Error al guardar empleado:', error);
+      // Declara mensajeError; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       let mensajeError = error?.message || 'Firebase no confirmó la operación.';
+      // Declara codigo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const codigo = error?.code || 'unknown';
       
+      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (codigo === 'functions/internal') {
+        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
         mensajeError = 'Error interno en el servidor. Verifica que la Cloud Function esté correctamente desplegada.';
       } else if (codigo === 'functions/permission-denied') {
+        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
         mensajeError = 'No tienes permisos suficientes para crear empleados (Verifica tu rol en el sistema).';
       } else if (codigo === 'functions/not-found') {
+        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
         mensajeError = 'La función de creación no fue encontrada. Revisa la región de despliegue.';
       }
       
-      Alert.alert('No se pudo guardar', `${mensajeError}\n\nDetalle técnico: ${codigo}`);
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+      toast.error({ title: 'No se pudo guardar', description: `${mensajeError} Detalle técnico: ${codigo}` });
+      // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
       try {
+        // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
         await registrarAuditoria('Error al Guardar Empleado', `${nombre} · ${usuarioInterno}`, 'Error');
       } catch {}
     } finally {
+      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setGuardando(false);
     }
   };
 
+  // Calcula guardarAsignacionTarea; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
   const guardarAsignacionTarea = async () => {
+    // Declara empresaId; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const empresaId = obtenerEmpresaIdAdmin(user);
+    // Declara titulo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const titulo = formularioTarea.titulo.trim();
+    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!empresaId || !titulo || guardando) return;
 
+    // Declara sede; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const sede = catalogos.sedes.find((item) => item.id === formularioTarea.sedeId);
+    // Declara departamento; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const departamento = departamentosCatalogo.find((item) => item.id === formularioTarea.departamentoId);
+    // Calcula destinatarios; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const destinatarios = datos.usuariosEnriquecidos.filter((usuario) => {
+      // Declara activo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const activo = usuario.activo !== false && usuario.estado_activo !== false;
+      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (!activo || !usuario.id) return false;
+      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (alcanceTarea === 'individual') return usuario.id === formularioTarea.usuarioId;
+      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (alcanceTarea === 'sede') return usuario.sedeId === formularioTarea.sedeId || usuario.sede === sede?.nombre;
+      // Devuelve el valor final calculado para esta funcion o caso de uso.
       return usuario.departamentoId === formularioTarea.departamentoId || usuario.departamento === departamento?.nombre;
     });
 
+    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (destinatarios.length === 0) {
-      Alert.alert(t('admin.plantilla.modal_task.alert_no_dest_title'), t('admin.plantilla.modal_task.alert_no_dest_msg'));
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+      toast.warning({ title: t('admin.plantilla.modal_task.alert_no_dest_title'), description: t('admin.plantilla.modal_task.alert_no_dest_msg') });
+      // Devuelve el valor final calculado para esta funcion o caso de uso.
       return;
     }
 
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setGuardando(true);
+    // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
     try {
+      // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
       await Promise.all(destinatarios.map((empleado) => addDoc(collection(db, 'tareas'), {
         empresaId,
         titulo,
@@ -977,29 +1461,58 @@ export default function GestionPlantilla() {
         jefe: user?.nombre || user?.correo || 'Administrador',
         alcance: alcanceTarea,
       })));
+      // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
       await registrarAuditoria('Asignación de Tareas', `${titulo} · ${destinatarios.length} destinatarios`);
+      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setModalTareaVisible(false);
+      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setFormularioTarea(formularioTareaInicial);
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+      toast.success({ title: 'Tarea asignada', description: `Se asignó la tarea a ${destinatarios.length} destinatario${destinatarios.length === 1 ? '' : 's'}.` });
     } catch (error: any) {
-      Alert.alert(t('admin.plantilla.modal_task.alert_error'), error?.message || t('admin.plantilla.modal_task.alert_error_msg'));
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+      toast.error({ title: t('admin.plantilla.modal_task.alert_error'), description: error?.message || t('admin.plantilla.modal_task.alert_error_msg') });
+      // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
       try {
+        // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
         await registrarAuditoria(t('admin.plantilla.modal_task.audit_error'), titulo, 'Error');
       } catch {}
     } finally {
+      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setGuardando(false);
     }
   };
 
+  // Declara actualizarActivo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const actualizarActivo = async (id?: string, activo = true) => {
+    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!id) return;
-    await useCases.admin.updateUserProfile.execute(id, { activo });
+    // Declara empleado; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const empleado = usuarios.find((usuario) => usuario.id === id);
-    await registrarAuditoria(activo ? 'ActivaciÃ³n de Empleado' : 'DesactivaciÃ³n de Empleado', empleado?.nombre || id);
+    // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
+    try {
+      // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
+      await useCases.admin.updateUserProfile.execute(id, { activo });
+      // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
+      await registrarAuditoria(activo ? 'Activación de Empleado' : 'Desactivación de Empleado', empleado?.nombre || id);
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+      toast.success({
+        title: activo ? 'Empleado activado' : 'Empleado desactivado',
+        description: `${empleado?.nombre || 'El empleado'} se ${activo ? 'activó' : 'desactivó'} correctamente.`,
+      });
+    } catch (error: any) {
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+      toast.error({ title: 'No se pudo actualizar', description: error?.message || 'Intenta nuevamente.' });
+    }
   };
 
+  // Prepara eliminarEmpleado; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
   const eliminarEmpleado = async (empleado: UsuarioPlantilla) => {
+    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!empleado.id) return;
+    // Prepara ejecutar; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
     const ejecutar = async () => {
+      // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
       await updateDoc(doc(db, 'usuarios', empleado.id as string), {
         activo: false,
         estado_activo: false,
@@ -1007,9 +1520,13 @@ export default function GestionPlantilla() {
         fecha_eliminacion: new Date().toISOString(),
         eliminado_por: user?.id || '',
       });
+      // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
       await registrarAuditoria('Baja Operativa de Empleado', empleado.nombre || empleado.correo || empleado.id || '', 'Warning');
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+      toast.warning({ title: 'Empleado dado de baja', description: `${empleado.nombre || 'El empleado'} fue marcado como baja operativa.` });
     };
 
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     Alert.alert(
       t('admin.plantilla.employee_card.alert_delete_title'),
       t('admin.plantilla.employee_card.alert_delete_msg', { name: empleado.nombre || 'este empleado' }),
@@ -1020,14 +1537,19 @@ export default function GestionPlantilla() {
     );
   };
 
+  // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
   if (cargando) {
+    // Devuelve el JSX que React Native renderiza en pantalla.
     return (
+      // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
       <View style={[estilos.contenedor, { justifyContent: 'center', alignItems: 'center' }]}>
+        {/* Indicador de carga; comunica que hay una operacion asincrona en progreso. */}
         <ActivityIndicator size="large" color={ADMIN.iconos.organizacion} />
       </View>
     );
   }
 
+  // Declara stats; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const stats = [
     { label: t('admin.plantilla.stats.total_employees'), val: datos.usuariosEnriquecidos.length, trend: "historial activo", icon: "groups" as const, color: ADMIN.iconos.personas },
     { label: t('admin.plantilla.stats.active'), val: datos.activos, trend: `${porcentaje(datos.activos, datos.usuariosEnriquecidos.length)}% del total`, icon: "check-circle" as const, color: ADMIN.iconos.exito },
@@ -1035,52 +1557,82 @@ export default function GestionPlantilla() {
     { label: t('admin.plantilla.stats.checkin_coverage'), val: `${datos.coberturaCheckIn}%`, trend: `${datos.checkInsHoy} hoy`, icon: "analytics" as const, color: ADMIN.iconos.auditoria },
   ];
 
+  // Calcula usuariosSinSede; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
   const usuariosSinSede = datos.usuariosEnriquecidos.filter(u => !u.sedeId || u.sedeId === 'global' || (!u.sede || u.sede === ''));
 
+  // Declara renderEmployeeRow; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const renderEmployeeRow = (emp: UsuarioPlantilla, i: number) => {
+    // Declara activo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const activo = emp.activo !== false && emp.estado_activo !== false;
+    // Devuelve el JSX que React Native renderiza en pantalla.
     return (
+      // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
       <View key={emp.id || i} style={estilos.tableRow}>
+        {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={[estilos.tdCell, estilos.colaboradorCell, { flex: 2.2 }]}>
           {emp.foto_perfil || emp.fotoPerfil || emp.photoURL ? (
+            // Imagen visual; muestra foto, avatar, logo o recurso asociado a los datos de la pantalla.
             <Image source={{ uri: emp.foto_perfil || emp.fotoPerfil || emp.photoURL }} style={estilos.avatarImagen} />
           ) : (
+            // Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza.
             <LinearGradient colors={[BRAND.bangladeshBlue, BRAND.caribbeanBlue]} style={estilos.avatar}>
+              {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <MaterialIcons name="person" size={17} color="rgba(255,255,255,0.92)" />
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.avatarText}>{(emp.nombre || '?')[0].toUpperCase()}</Text>
             </LinearGradient>
           )}
+          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={estilos.empInfo}>
+            {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
             <Text style={estilos.empName} numberOfLines={1}>{emp.nombre || 'Sin nombre'}</Text>
+            {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
             <Text style={estilos.empEmail} numberOfLines={1}>{(emp as any).usuarioInterno || emp.correo || 'Sin usuario'}</Text>
           </View>
         </View>
+        {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={[estilos.tdCell, { flex: 1.15, alignItems: 'center' }]}>
+          {/* PremiumBadge renderiza una pieza visual reutilizable dentro de esta pantalla. */}
           <PremiumBadge variant={emp.rol === 'admin' ? 'violet' : emp.rol === 'jefe' ? 'blue' : 'default'}>{emp.rol ? t(`admin.roles.${emp.rol}`, { defaultValue: emp.rol.toUpperCase() }) : t('admin.roles.empleado')}</PremiumBadge>
         </View>
+        {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={[estilos.tdCell, { flex: 1.35, alignItems: 'center' }]}>
+          {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
           <Text style={estilos.empRole} numberOfLines={1}>{(emp.departamento && emp.departamento.toLowerCase().trim() !== 'global.global') ? emp.departamento : t('common.general')}</Text>
         </View>
+        {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={[estilos.tdCell, { flex: 1, alignItems: 'center' }]}>
+          {/* PremiumBadge renderiza una pieza visual reutilizable dentro de esta pantalla. */}
           <PremiumBadge variant={activo ? 'success' : 'warning'}>{activo ? t('admin.plantilla.employee_card.active') : t('admin.plantilla.employee_card.inactive')}</PremiumBadge>
         </View>
+        {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={[estilos.tdCell, estilos.actionsCell]}>
+          {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
           <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnTask]} onPress={() => abrirAsignarTarea('individual', emp)}>
+            {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
             <MaterialIcons name="assignment-add" size={17} color={ADMIN.iconos.tareas} />
           </TouchableOpacity>
+          {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
           <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnEdit]} onPress={() => abrirEditar(emp)}>
+            {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
             <MaterialIcons name="edit" size={17} color={ADMIN.iconos.documentos} />
           </TouchableOpacity>
           {activo ? (
+            // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
             <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnDanger]} onPress={() => actualizarActivo(emp.id, false)}>
+              {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <MaterialIcons name="block" size={17} color={ADMIN.iconos.peligro} />
             </TouchableOpacity>
           ) : (
+            // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
             <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnSuccess]} onPress={() => actualizarActivo(emp.id, true)}>
+              {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <MaterialIcons name="check-circle" size={17} color={ADMIN.iconos.exito} />
             </TouchableOpacity>
           )}
+          {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
           <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnDanger]} onPress={() => eliminarEmpleado(emp)}>
+            {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
             <MaterialIcons name="delete-outline" size={17} color={ADMIN.iconos.peligro} />
           </TouchableOpacity>
         </View>
@@ -1088,23 +1640,39 @@ export default function GestionPlantilla() {
     );
   };
 
+  // Devuelve el JSX que React Native renderiza en pantalla.
   return (
+    // Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla.
     <Animated.View style={[estilos.animatedScreen, { transform: [{ translateY: entrada.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }] }]}>
+    {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
     <ScrollView style={estilos.contenedor} contentContainerStyle={estilos.scrollContent} showsVerticalScrollIndicator={false}>
+      {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
       <View style={estilos.header}>
+        {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View>
+          {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
           <Text style={estilos.titulo}>{t('admin.plantilla.title')}</Text>
+          {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
           <Text style={estilos.subtitulo}>{t('admin.plantilla.subtitle')}</Text>
         </View>
+        {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={estilos.headerActions}>
+          {/* Elemento tactil; envuelve contenido que puede responder a interacciones del usuario. */}
           <TouchableOpacity style={estilos.btnSecondary}>
+            {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
             <MaterialIcons name="file-download" size={18} color="#fff" style={estilos.btnIcon} />
+            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={estilos.btnSecondaryText}>{t('admin.plantilla.btn_export_data')}</Text>
           </TouchableOpacity>
+          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={{ backgroundColor: 'transparent', borderWidth: 0 }}>
+            {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
             <TouchableOpacity style={estilos.btnPrimary} onPress={abrirCrear}>
+              {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
               <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} colors={['#A855F7', '#9333EA']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.btnGradient}>
+                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.btnPrimaryText}>{t('admin.plantilla.btn_new_employee').toUpperCase()}</Text>
+                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={[estilos.btnPrimaryText, estilos.btnIconRight, { fontSize: 18, marginTop: -1 }]}>→</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -1114,62 +1682,90 @@ export default function GestionPlantilla() {
 
       {/* Tarjeta del Código de Acceso de la Empresa */}
       {empresa && (
+        // Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo.
         <BlurView intensity={20} tint="dark" style={estilos.keyCard}>
+          {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
           <LinearGradient
             colors={['rgba(168, 85, 247, 0.12)', 'rgba(147, 51, 234, 0.04)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={estilos.keyGradient}
           >
+            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.keyIconWrapper}>
+              {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <MaterialIcons name="vpn-key" size={20} color="#A855F7" />
             </View>
+            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.keyTextContainer}>
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.keyTitle}>CÓDIGO DE ACCESO DE LA EMPRESA</Text>
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.keySubtitle}>
                 Los nuevos colaboradores deben colocar esta clave única al ingresar por primera vez para unirse automáticamente a {empresa.nombre || 'tu empresa'}.
               </Text>
             </View>
+            {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
             <TouchableOpacity 
               style={estilos.keyBadge} 
               activeOpacity={0.8}
               onPress={() => {
+                // Declara codigo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
                 const codigo = empresa.codigo || '';
+                // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
                 if (Platform.OS === 'web') {
+                  // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
                   if (navigator.clipboard) {
+                    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
                     navigator.clipboard.writeText(codigo);
-                    Alert.alert('Copiado', 'El código de acceso de la empresa ha sido copiado al portapapeles.');
+                    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+                    toast.success({ title: 'Copiado', description: 'El código de acceso de la empresa ha sido copiado al portapapeles.' });
                   } else {
-                    Alert.alert('Código de Empresa', `El código de tu empresa es: ${codigo}`);
+                    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+                    toast.info({ title: 'Código de Empresa', description: `El código de tu empresa es: ${codigo}` });
                   }
                 } else {
+                  // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
                   Clipboard.setString(codigo);
-                  Alert.alert('Copiado', 'El código de acceso de la empresa ha sido copiado al portapapeles.');
+                  // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+                  toast.success({ title: 'Copiado', description: 'El código de acceso de la empresa ha sido copiado al portapapeles.' });
                 }
               }}
             >
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.keyBadgeText}>{empresa.codigo || 'Generando...'}</Text>
+              {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <MaterialIcons name="content-copy" size={14} color="#A855F7" />
             </TouchableOpacity>
           </LinearGradient>
         </BlurView>
       )}
 
+      {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
       <View style={estilos.statsRow}>
         {stats.map((item, idx) => (
+          // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
           <View key={idx} style={estilos.statCard}>
+            {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
             <IconPanel icon={item.icon} color={item.color} />
+            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View>
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.statValue}>{item.val}</Text>
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.statLabel}>{item.label}</Text>
             </View>
           </View>
         ))}
       </View>
 
+      {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
       <View style={estilos.toolbarCard}>
+        {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={estilos.searchContainer}>
+          {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
           <MaterialIcons name="search" size={20} color={BRAND.textSec} style={estilos.searchIcon} />
+          {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
           <TextInput
             style={estilos.searchInput}
             placeholder={t('admin.plantilla.search_placeholder')}
@@ -1178,6 +1774,7 @@ export default function GestionPlantilla() {
             onChangeText={setBusqueda}
           />
         </View>
+        {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={estilos.filterRow}>
             {[
               { id: 'todos', label: t('admin.plantilla.filters.todos') },
@@ -1185,7 +1782,9 @@ export default function GestionPlantilla() {
               { id: 'inactivos', label: t('admin.plantilla.filters.status_inactive') },
               { id: 'riesgo', label: t('admin.plantilla.filters.risk') },
             ].map((item) => (
+              // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
               <TouchableOpacity key={item.id} onPress={() => setFiltroEstado(item.id as FiltroEstado)} style={[estilos.filterChip, filtroEstado === item.id && estilos.filterChipActivo]}>
+                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={[estilos.filterChipText, filtroEstado === item.id && estilos.filterChipTextActivo]}>{item.label}</Text>
               </TouchableOpacity>
             ))}
@@ -1193,18 +1792,28 @@ export default function GestionPlantilla() {
       </View>
 
       {catalogos.sedes.length > 1 && !sedeSeleccionadaId && (
+        // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
         <View style={estilos.sedesGrid}>
           {sedesResumen.map((sede) => (
+            // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
             <TouchableOpacity key={sede.id} style={estilos.sedeCard} activeOpacity={0.88} onPress={() => setSedeSeleccionadaId(sede.id)}>
+              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
               <View style={estilos.sedeIcono}>
+                {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                 <MaterialIcons name="business" size={22} color={ADMIN.iconos.calendario} />
               </View>
+              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
               <View style={estilos.sedeInfo}>
+                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.sedeNombre}>{sede.nombre}</Text>
+                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.sedeDetalle}>{sede.detalle}</Text>
               </View>
+              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
               <View style={estilos.sedeMeta}>
+                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.sedeTotal}>{sede.colaboradores.length}</Text>
+                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.sedeLabel}>{t('common.employee').toLowerCase()}</Text>
               </View>
             </TouchableOpacity>
@@ -1213,16 +1822,26 @@ export default function GestionPlantilla() {
       )}
 
       {catalogos.sedes.length > 1 && !sedeSeleccionadaId && usuariosSinSede.length > 0 && (
+        // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
         <View style={[estilos.premiumCard, { marginTop: 24 }]}>
+          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={[estilos.cardHeader, { paddingVertical: 14 }]}>
+            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={estilos.sedeActualNombre}>{t('admin.plantilla.no_sede_assigned', { defaultValue: 'Empleados sin sede asignada' })}</Text>
           </View>
+          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={estilos.tableContainer}>
+            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.tableHeader}>
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={[estilos.thText, { flex: 2.2 }]}>{t('common.employee').toUpperCase()}</Text>
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={[estilos.thText, { flex: 1.15, textAlign: 'center' }]}>{t('admin.plantilla.filters.role').toUpperCase()}</Text>
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={[estilos.thText, { flex: 1.35, textAlign: 'center' }]}>{t('admin.plantilla.filters.dept').toUpperCase()}</Text>
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={[estilos.thText, { flex: 1, textAlign: 'center' }]}>{t('common.status', { defaultValue: 'ESTADO' }).toUpperCase()}</Text>
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={[estilos.thText, { flex: 1.25, textAlign: 'center' }]}>{t('common.actions', { defaultValue: 'ACCIONES' }).toUpperCase()}</Text>
             </View>
             {usuariosSinSede.map((emp, i) => renderEmployeeRow(emp, i))}
@@ -1231,51 +1850,78 @@ export default function GestionPlantilla() {
       )}
 
       {(catalogos.sedes.length <= 1 || sedeSeleccionadaId) && (
+      // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
       <View style={estilos.premiumCard}>
+        {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={estilos.cardHeader}>
           {catalogos.sedes.length > 1 && (
+            // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
             <View style={estilos.sedeBar}>
+              {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
               <TouchableOpacity onPress={() => setSedeSeleccionadaId(null)} style={estilos.volverSedes}>
+                {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                 <MaterialIcons name="arrow-back" size={16} color={BRAND.textSec} />
+                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.volverSedesText}>{t('admin.estructura.catalog.sedes.title')}</Text>
               </TouchableOpacity>
+              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
               <View>
+                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.sedeActualLabel}>{t('admin.estructura.modal_dept.label_sede')}</Text>
+                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.sedeActualNombre}>{catalogos.sedes.find((sede) => sede.id === sedeSeleccionadaId)?.nombre || t('admin.team')}</Text>
               </View>
             </View>
           )}
+          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={estilos.filterRow}>
+            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={estilos.filterLabel}>{t('admin.plantilla.filters.role')}</Text>
             {['todos', ...catalogos.roles].map((rol) => (
+              // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
               <TouchableOpacity key={rol} onPress={() => setFiltroRol(rol)} style={[estilos.filterChip, filtroRol === rol && estilos.filterChipActivo]}>
+                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={[estilos.filterChipText, filtroRol === rol && estilos.filterChipTextActivo]}>{rol === 'todos' ? t('admin.plantilla.filters.status_all') : rol}</Text>
               </TouchableOpacity>
             ))}
           </View>
+          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={estilos.filterRow}>
+            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={estilos.filterLabel}>{t('admin.plantilla.filters.dept')}</Text>
             {[{ id: 'todos', nombre: t('admin.plantilla.filters.status_all') }, ...catalogos.departamentos].map((departamento) => (
+              // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
               <TouchableOpacity key={departamento.id} onPress={() => setFiltroDepartamento(departamento.id)} style={[estilos.filterChip, filtroDepartamento === departamento.id && estilos.filterChipActivo]}>
+                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={[estilos.filterChipText, filtroDepartamento === departamento.id && estilos.filterChipTextActivo]}>{departamento.nombre}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
+        {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={estilos.tableContainer}>
+          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={estilos.tableHeader}>
+            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={[estilos.thText, { flex: 2.2 }]}>{t('common.employee').toUpperCase()}</Text>
+            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={[estilos.thText, { flex: 1.15, textAlign: 'center' }]}>{t('admin.plantilla.filters.role').toUpperCase()}</Text>
+            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={[estilos.thText, { flex: 1.35, textAlign: 'center' }]}>{t('admin.plantilla.filters.dept').toUpperCase()}</Text>
+            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={[estilos.thText, { flex: 1, textAlign: 'center' }]}>{t('common.status', { defaultValue: 'ESTADO' }).toUpperCase()}</Text>
+            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={[estilos.thText, { flex: 1.25, textAlign: 'center' }]}>{t('common.actions', { defaultValue: 'ACCIONES' }).toUpperCase()}</Text>
           </View>
 
           {usuariosFiltrados.map((emp, i) => renderEmployeeRow(emp, i))}
           {usuariosFiltrados.length === 0 && (
+            // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
             <View style={estilos.emptyTable}>
+              {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <MaterialIcons name="group-off" size={48} color={BRAND.textSec} style={estilos.emptyIcon} />
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.emptyText}>{t('admin.plantilla.empty_msg', { defaultValue: 'No se encontraron colaboradores.' })}</Text>
             </View>
           )}
@@ -1284,31 +1930,48 @@ export default function GestionPlantilla() {
       )}
     </ScrollView>
 
+    {/* Ventana modal; separa una accion o detalle sin abandonar la pantalla actual. */}
     <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={cerrarModal}>
       {Platform.OS === 'web' ? (
+        // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
         <View {...({ className: 'nx-admin-blur-bg' } as any)} style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(6,5,18,0.25)' }]} />
       ) : (
+        // Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo.
         <BlurView intensity={24} tint="dark" style={StyleSheet.absoluteFill} />
       )}
+      {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
       <View style={estilos.modalOverlay}>
+        {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={estilos.modalCard}>
+          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={estilos.modalHeader}>
+            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View>
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.modalTitle}>{modoFormulario === 'crear' ? t('admin.plantilla.modal_employee.title_create') : t('admin.plantilla.modal_employee.title_edit')}</Text>
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.modalSubtitle}>{t('admin.plantilla.modal_employee.subtitle', { defaultValue: 'Cuenta, rol, sede, jefe y permisos operativos' })}</Text>
             </View>
+            {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
             <TouchableOpacity style={estilos.modalClose} onPress={cerrarModal}>
+              {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <MaterialIcons name="close" size={20} color={BRAND.textSec} />
             </TouchableOpacity>
           </View>
 
+          {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
           <ScrollView style={estilos.modalBody} showsVerticalScrollIndicator={false}>
+            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.formGrid}>
+              {/* FormField renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <FormField label={t('admin.plantilla.modal_employee.label_name')} value={formulario.nombre} onChangeText={(valor) => actualizarFormulario('nombre', valor)} placeholder={t('admin.plantilla.modal_employee.placeholder_name')} />
+              {/* FormField renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <FormField label="Usuario" value={formulario.usuarioInterno} onChangeText={(valor) => actualizarFormulario('usuarioInterno', valor)} placeholder="Ej. juan.perez" editable={modoFormulario === 'crear'} />
               {modoFormulario === 'crear' && (
+                // FormField renderiza una pieza visual reutilizable dentro de esta pantalla.
                 <FormField label={t('admin.plantilla.modal_employee.label_pass')} value={formulario.contrasena} onChangeText={(valor) => actualizarFormulario('contrasena', valor)} placeholder={t('admin.plantilla.modal_employee.placeholder_pass')} secureTextEntry />
               )}
+              {/* SelectorOpciones renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <SelectorOpciones
                 label={t('admin.plantilla.modal_employee.label_position')}
                 value={formulario.cargoId}
@@ -1318,6 +1981,7 @@ export default function GestionPlantilla() {
                 onAlternar={() => alternarSelector('cargo')}
                 onSeleccionar={(v) => { actualizarFormulario('cargoId', v); setSelectorActivo(null); }}
               />
+              {/* SelectorOpciones renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <SelectorOpciones
                 label={t('admin.plantilla.modal_employee.label_dept')}
                 value={formulario.departamentoId}
@@ -1327,6 +1991,7 @@ export default function GestionPlantilla() {
                 onAlternar={() => alternarSelector('departamento')}
                 onSeleccionar={(v) => { actualizarFormulario('departamentoId', v); setSelectorActivo(null); }}
               />
+              {/* SelectorOpciones renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <SelectorOpciones
                 label={t('admin.plantilla.modal_employee.label_sede')}
                 value={formulario.sedeId}
@@ -1336,11 +2001,15 @@ export default function GestionPlantilla() {
                 onAlternar={() => alternarSelector('sede')}
                 onSeleccionar={(v) => { actualizarFormulario('sedeId', v); setSelectorActivo(null); }}
               />
+              {/* FormField renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <FormField label={t('admin.plantilla.modal_employee.label_phone')} value={formulario.telefono} onChangeText={(valor) => actualizarFormulario('telefono', valor)} placeholder={t('admin.plantilla.modal_employee.placeholder_phone')} />
+              {/* FormField renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <FormField label={t('admin.plantilla.modal_employee.label_salary')} value={formulario.salarioBase ? `$${formulario.salarioBase}` : ''} onChangeText={(valor) => actualizarFormulario('salarioBase', normalizarSalarioUSD(valor))} placeholder="$0" />
             </View>
 
+            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.formSection}>
+              {/* SelectorOpciones renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <SelectorOpciones
                 label={t('admin.plantilla.modal_employee.label_role')}
                 value={formulario.rol}
@@ -1349,20 +2018,29 @@ export default function GestionPlantilla() {
                 abierto={selectorActivo === 'rol'}
                 onAlternar={() => alternarSelector('rol')}
                 onSeleccionar={(valor) => {
+                  // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
                   actualizarFormulario('rol', valor);
+                  // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
                   setSelectorActivo(null);
                 }}
               />
             </View>
 
+            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.formSection}>
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.formLabel}>{t('admin.plantilla.modal_employee.label_manager')}</Text>
+              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
               <View style={estilos.selectorGrid}>
+                {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
                 <TouchableOpacity onPress={() => actualizarFormulario('jefeId', '')} style={[estilos.selectorChip, !formulario.jefeId && estilos.selectorChipActivo]}>
+                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                   <Text style={[estilos.selectorText, !formulario.jefeId && estilos.selectorTextActivo]}>{t('admin.plantilla.modal_employee.no_manager', { defaultValue: 'Sin jefe' })}</Text>
                 </TouchableOpacity>
                 {catalogos.jefes.map((jefe) => (
+                  // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
                   <TouchableOpacity key={jefe.id} onPress={() => actualizarFormulario('jefeId', jefe.id || '')} style={[estilos.selectorChip, formulario.jefeId === jefe.id && estilos.selectorChipActivo]}>
+                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                     <Text style={[estilos.selectorText, formulario.jefeId === jefe.id && estilos.selectorTextActivo]}>{jefe.nombre || jefe.correo}</Text>
                   </TouchableOpacity>
                 ))}
@@ -1370,13 +2048,20 @@ export default function GestionPlantilla() {
             </View>
           </ScrollView>
 
+          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={estilos.modalFooter}>
+            {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
             <TouchableOpacity style={estilos.btnModalSecondary} onPress={cerrarModal}>
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.btnModalSecondaryText}>{t('common.cancel')}</Text>
             </TouchableOpacity>
+            {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
             <TouchableOpacity style={estilos.btnModalPrimary} onPress={guardarEmpleado} disabled={guardando}>
+              {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
               <LinearGradient colors={[BRAND.bangladeshBlue, BRAND.caribbeanBlue]} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.btnModalGradient}>
+                {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                 <MaterialIcons name={modoFormulario === 'crear' ? 'person-add' : 'save'} size={18} color="#fff" style={estilos.btnIcon} />
+                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.btnPrimaryText}>{guardando ? t('admin.plantilla.modal_employee.btn_saving').toUpperCase() : modoFormulario === 'crear' ? t('admin.plantilla.modal_employee.btn_save').toUpperCase() : t('common.save').toUpperCase()}</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -1385,28 +2070,43 @@ export default function GestionPlantilla() {
       </View>
     </Modal>
 
+    {/* Ventana modal; separa una accion o detalle sin abandonar la pantalla actual. */}
     <Modal visible={modalTareaVisible} transparent animationType="fade" onRequestClose={() => setModalTareaVisible(false)}>
       {Platform.OS === 'web' ? (
+        // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
         <View {...({ className: 'nx-admin-blur-bg' } as any)} style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(6,5,18,0.25)' }]} />
       ) : (
+        // Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo.
         <BlurView intensity={24} tint="dark" style={StyleSheet.absoluteFill} />
       )}
+      {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
       <View style={estilos.modalOverlay}>
+        {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={[estilos.modalCard, estilos.modalTareaCard]}>
+          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={estilos.modalHeader}>
+            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View>
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.modalTitle}>{t('admin.plantilla.modal_task.title')}</Text>
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.modalSubtitle}>{t('admin.plantilla.modal_task.subtitle', { defaultValue: 'Sede, departamento o colaborador individual' })}</Text>
             </View>
+            {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
             <TouchableOpacity style={estilos.modalClose} onPress={() => setModalTareaVisible(false)}>
+              {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <MaterialIcons name="close" size={20} color={BRAND.textSec} />
             </TouchableOpacity>
           </View>
 
+          {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
           <ScrollView style={estilos.modalBody} showsVerticalScrollIndicator={false}>
+            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.selectorGrid}>
               {(['sede', 'departamento', 'individual'] as AlcanceTarea[]).map((alcance) => (
+                // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
                 <TouchableOpacity key={alcance} onPress={() => setAlcanceTarea(alcance)} style={[estilos.selectorChip, alcanceTarea === alcance && estilos.selectorChipActivo]}>
+                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                   <Text style={[estilos.selectorText, alcanceTarea === alcance && estilos.selectorTextActivo]}>
                     {alcance === 'sede' ? t('admin.estructura.btn_sede') : alcance === 'departamento' ? t('admin.estructura.btn_dept') : t('common.individual', { defaultValue: 'Individual' })}
                   </Text>
@@ -1414,17 +2114,26 @@ export default function GestionPlantilla() {
               ))}
             </View>
 
+            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={[estilos.formGrid, estilos.formGridTarea]}>
+              {/* FormField renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <FormField label={t('admin.plantilla.modal_task.label_title')} value={formularioTarea.titulo} onChangeText={(valor) => actualizarFormularioTarea('titulo', valor)} placeholder={t('admin.plantilla.modal_task.placeholder_title')} />
+              {/* FormField renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <FormField label={t('admin.plantilla.modal_task.label_due_date')} value={formularioTarea.fecha_limite} onChangeText={(valor) => actualizarFormularioTarea('fecha_limite', valor)} placeholder="YYYY-MM-DD" />
+              {/* FormField renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <FormField label={t('admin.plantilla.modal_task.label_desc')} value={formularioTarea.descripcion} onChangeText={(valor) => actualizarFormularioTarea('descripcion', valor)} placeholder={t('admin.plantilla.modal_task.placeholder_desc')} />
             </View>
 
+            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.formSection}>
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.formLabel}>{t('admin.plantilla.modal_task.label_priority')}</Text>
+              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
               <View style={estilos.selectorGrid}>
                 {(['Baja', 'Media', 'Alta', 'Urgente'] as FormularioTarea['prioridad'][]).map((prioridad) => (
+                  // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
                   <TouchableOpacity key={prioridad} onPress={() => actualizarFormularioTarea('prioridad', prioridad)} style={[estilos.selectorChip, formularioTarea.prioridad === prioridad && estilos.selectorChipActivo]}>
+                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                     <Text style={[estilos.selectorText, formularioTarea.prioridad === prioridad && estilos.selectorTextActivo]}>{t(`common.priority.${prioridad.toLowerCase()}`, { defaultValue: prioridad })}</Text>
                   </TouchableOpacity>
                 ))}
@@ -1432,11 +2141,16 @@ export default function GestionPlantilla() {
             </View>
 
             {alcanceTarea === 'sede' && (
+              // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
               <View style={estilos.formSection}>
+                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.formLabel}>{t('admin.estructura.modal_dept.label_sede')}</Text>
+                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
                 <View style={estilos.selectorGrid}>
                   {catalogos.sedes.map((sede) => (
+                    // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
                     <TouchableOpacity key={sede.id} onPress={() => actualizarFormularioTarea('sedeId', sede.id)} style={[estilos.selectorChip, formularioTarea.sedeId === sede.id && estilos.selectorChipActivo]}>
+                      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                       <Text style={[estilos.selectorText, formularioTarea.sedeId === sede.id && estilos.selectorTextActivo]}>{sede.nombre}</Text>
                     </TouchableOpacity>
                   ))}
@@ -1445,11 +2159,16 @@ export default function GestionPlantilla() {
             )}
 
             {alcanceTarea === 'departamento' && (
+              // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
               <View style={estilos.formSection}>
+                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.formLabel}>{t('admin.estructura.modal_cargo.label_dept')}</Text>
+                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
                 <View style={estilos.selectorGrid}>
                   {catalogos.departamentos.map((departamento) => (
+                    // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
                     <TouchableOpacity key={departamento.id} onPress={() => actualizarFormularioTarea('departamentoId', departamento.id)} style={[estilos.selectorChip, formularioTarea.departamentoId === departamento.id && estilos.selectorChipActivo]}>
+                      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                       <Text style={[estilos.selectorText, formularioTarea.departamentoId === departamento.id && estilos.selectorTextActivo]}>{departamento.nombre}</Text>
                     </TouchableOpacity>
                   ))}
@@ -1458,11 +2177,16 @@ export default function GestionPlantilla() {
             )}
 
             {alcanceTarea === 'individual' && (
+              // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
               <View style={estilos.formSection}>
+                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.formLabel}>{t('admin.plantilla.modal_task.target_employee', { defaultValue: 'Colaborador destino' })}</Text>
+                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
                 <View style={estilos.selectorGrid}>
                   {usuariosFiltrados.map((empleado) => (
+                    // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
                     <TouchableOpacity key={empleado.id} onPress={() => actualizarFormularioTarea('usuarioId', empleado.id || '')} style={[estilos.selectorChip, formularioTarea.usuarioId === empleado.id && estilos.selectorChipActivo]}>
+                      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                       <Text style={[estilos.selectorText, formularioTarea.usuarioId === empleado.id && estilos.selectorTextActivo]}>{empleado.nombre || empleado.correo}</Text>
                     </TouchableOpacity>
                   ))}
@@ -1471,13 +2195,20 @@ export default function GestionPlantilla() {
             )}
           </ScrollView>
 
+          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={estilos.modalFooter}>
+            {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
             <TouchableOpacity style={estilos.btnModalSecondary} onPress={() => setModalTareaVisible(false)}>
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.btnModalSecondaryText}>{t('common.cancel')}</Text>
             </TouchableOpacity>
+            {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
             <TouchableOpacity style={estilos.btnModalPrimary} onPress={guardarAsignacionTarea} disabled={guardando}>
+              {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
               <LinearGradient colors={[BRAND.bangladeshBlue, BRAND.caribbeanBlue]} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.btnModalGradient}>
+                {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                 <MaterialIcons name="assignment-add" size={18} color="#fff" style={estilos.btnIcon} />
+                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.btnPrimaryText}>{guardando ? t('admin.plantilla.modal_task.btn_assigning').toUpperCase() : t('admin.plantilla.modal_task.btn_assign').toUpperCase()}</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -1491,1001 +2222,1848 @@ export default function GestionPlantilla() {
 
 
 
+/**
+ * Mapa de estilos estilos. Centraliza reglas visuales para que el JSX se mantenga legible y consistente.
+ */
 const estilos = StyleSheet.create({
+  // animatedScreen: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   animatedScreen: {
+    // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
     flex: 1,
+    // backgroundColor define el fondo del bloque.
     backgroundColor: BRAND.richBlack,
   },
+  // contenedor: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
   contenedor: {
+    // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
     flex: 1,
+    // backgroundColor define el fondo del bloque.
     backgroundColor: BRAND.richBlack,
   },
+  // scrollContent: estilo del area de contenido; controla padding, distribucion y separacion interna.
   scrollContent: {
+    // flexGrow ajusta una propiedad visual especifica de este estilo.
     flexGrow: 1,
+    // padding agrega espacio interno alrededor del contenido.
     padding: 24,
+    // paddingTop separa el contenido del borde superior.
     paddingTop: 260,
+    // paddingBottom separa el contenido del borde inferior.
     paddingBottom: 64,
   },
+  // header: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
   header: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'space-between',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'flex-end',
+    // marginBottom separa este bloque del siguiente elemento.
     marginBottom: 20,
   },
+  // titulo: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
   titulo: {
+    // fontSize controla el tamanio del texto.
     fontSize: 28,
+    // fontWeight define el peso visual del texto.
     fontWeight: '800',
+    // color define el color del texto o icono.
     color: BRAND.textMain,
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 0,
   },
+  // subtitulo: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
   subtitulo: {
+    // fontSize controla el tamanio del texto.
     fontSize: 14,
+    // color define el color del texto o icono.
     color: BRAND.textSec,
+    // fontWeight define el peso visual del texto.
     fontWeight: '600',
+    // marginTop separa este bloque del elemento anterior.
     marginTop: 4,
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 0.4,
   },
+  // btnPrimary: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   btnPrimary: {
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 999,
+    // overflow controla si el contenido se recorta o puede sobresalir.
     overflow: 'hidden',
+    // backgroundColor define el fondo del bloque.
     backgroundColor: 'transparent',
   },
+  // headerActions: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
   headerActions: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // gap define separacion uniforme entre elementos hijos.
     gap: 10,
+    // flexWrap ajusta una propiedad visual especifica de este estilo.
     flexWrap: 'wrap',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'flex-end',
   },
+  // btnSecondaryTop: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   btnSecondaryTop: {
+    // minHeight asegura una altura minima util para lectura o area tactil.
     minHeight: 46,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 12,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // borderColor define el color del borde.
     borderColor: 'rgba(245,158,11,0.24)',
+    // backgroundColor define el fondo del bloque.
     backgroundColor: 'rgba(245,158,11,0.08)',
+    // paddingHorizontal agrega espacio interno a izquierda y derecha.
     paddingHorizontal: 16,
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
   },
+  // btnSecondaryTopText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   btnSecondaryTopText: {
+    // color define el color del texto o icono.
     color: ADMIN.iconos.tareas,
+    // fontSize controla el tamanio del texto.
     fontSize: 12,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
   },
+  // btnGradient: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   btnGradient: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // paddingHorizontal agrega espacio interno a izquierda y derecha.
     paddingHorizontal: 28,
+    // paddingVertical agrega espacio interno arriba y abajo.
     paddingVertical: 14,
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
   },
+  // btnIcon: estilo de icono; ajusta tamanio, posicion o fondo del indicador visual.
   btnIcon: {
+    // marginRight ajusta una propiedad visual especifica de este estilo.
     marginRight: 8,
   },
+  // btnIconRight: estilo de icono; ajusta tamanio, posicion o fondo del indicador visual.
   btnIconRight: {
+    // marginLeft ajusta una propiedad visual especifica de este estilo.
     marginLeft: 8,
   },
+  // btnPrimaryText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   btnPrimaryText: {
+    // color define el color del texto o icono.
     color: '#FFFFFF',
+    // fontSize controla el tamanio del texto.
     fontSize: 16,
+    // fontWeight define el peso visual del texto.
     fontWeight: '700',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 0.5,
+    // textDecorationLine ajusta una propiedad visual especifica de este estilo.
     textDecorationLine: 'none',
   },
+  // btnSecondary: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   btnSecondary: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoCampo,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // borderColor define el color del borde.
     borderColor: ADMIN.borde,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 12,
+    // paddingHorizontal agrega espacio interno a izquierda y derecha.
     paddingHorizontal: 24,
+    // paddingVertical agrega espacio interno arriba y abajo.
     paddingVertical: 14,
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
   },
+  // btnSecondaryText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   btnSecondaryText: {
+    // color define el color del texto o icono.
     color: BRAND.textMain,
+    // fontSize controla el tamanio del texto.
     fontSize: 12,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
   },
+  // statsRow: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   statsRow: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // flexWrap ajusta una propiedad visual especifica de este estilo.
     flexWrap: 'wrap',
+    // gap define separacion uniforme entre elementos hijos.
     gap: 16,
+    // marginBottom separa este bloque del siguiente elemento.
     marginBottom: 24,
   },
+  // statCard: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
   statCard: {
+    // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
     flex: 1,
+    // minWidth ajusta una propiedad visual especifica de este estilo.
     minWidth: 200,
+    // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoElevado,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 20,
+    // padding agrega espacio interno alrededor del contenido.
     padding: 20,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // borderColor define el color del borde.
     borderColor: ADMIN.borde,
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // gap define separacion uniforme entre elementos hijos.
     gap: 16,
+    // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
     ...sombraAdmin,
   },
+  // statValue: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   statValue: {
+    // fontSize controla el tamanio del texto.
     fontSize: 24,
+    // fontWeight define el peso visual del texto.
     fontWeight: '800',
+    // color define el color del texto o icono.
     color: BRAND.textMain,
   },
+  // statLabel: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
   statLabel: {
+    // fontSize controla el tamanio del texto.
     fontSize: 10,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // color define el color del texto o icono.
     color: BRAND.textSec,
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 1.5,
   },
+  // toolbarCard: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
   toolbarCard: {
+    // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoElevado,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 20,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // borderColor define el color del borde.
     borderColor: ADMIN.borde,
+    // padding agrega espacio interno alrededor del contenido.
     padding: 24,
+    // marginBottom separa este bloque del siguiente elemento.
     marginBottom: 24,
+    // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
     ...sombraAdmin,
   },
+  // sedesGrid: estilo de grilla; organiza elementos en filas o columnas con separacion controlada.
   sedesGrid: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // flexWrap ajusta una propiedad visual especifica de este estilo.
     flexWrap: 'wrap',
+    // gap define separacion uniforme entre elementos hijos.
     gap: 14,
   },
+  // sedeCard: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
   sedeCard: {
+    // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
     flex: 1,
+    // minWidth ajusta una propiedad visual especifica de este estilo.
     minWidth: 280,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 14,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // borderColor define el color del borde.
     borderColor: ADMIN.borde,
+    // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoVidrio,
+    // padding agrega espacio interno alrededor del contenido.
     padding: 16,
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // gap define separacion uniforme entre elementos hijos.
     gap: 14,
   },
+  // sedeIcono: estilo de icono; ajusta tamanio, posicion o fondo del indicador visual.
   sedeIcono: {
+    // width fija o calcula el ancho del elemento.
     width: 46,
+    // height fija o calcula el alto del elemento.
     height: 46,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 12,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // borderColor define el color del borde.
     borderColor: 'rgba(96,165,250,0.22)',
+    // backgroundColor define el fondo del bloque.
     backgroundColor: 'rgba(96,165,250,0.08)',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
   },
+  // sedeInfo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   sedeInfo: {
+    // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
     flex: 1,
+    // minWidth ajusta una propiedad visual especifica de este estilo.
     minWidth: 0,
   },
+  // sedeNombre: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   sedeNombre: {
+    // color define el color del texto o icono.
     color: BRAND.textMain,
+    // fontSize controla el tamanio del texto.
     fontSize: 15,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
   },
+  // sedeDetalle: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   sedeDetalle: {
+    // color define el color del texto o icono.
     color: BRAND.textSec,
+    // fontSize controla el tamanio del texto.
     fontSize: 11,
+    // fontWeight define el peso visual del texto.
     fontWeight: '700',
+    // marginTop separa este bloque del elemento anterior.
     marginTop: 3,
   },
+  // sedeMeta: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   sedeMeta: {
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'flex-end',
   },
+  // sedeTotal: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   sedeTotal: {
+    // color define el color del texto o icono.
     color: BRAND.textMain,
+    // fontSize controla el tamanio del texto.
     fontSize: 24,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
   },
+  // sedeLabel: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
   sedeLabel: {
+    // color define el color del texto o icono.
     color: BRAND.textSec,
+    // fontSize controla el tamanio del texto.
     fontSize: 9,
+    // fontWeight define el peso visual del texto.
     fontWeight: '800',
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
   },
+  // resumenGrid: estilo de grilla; organiza elementos en filas o columnas con separacion controlada.
   resumenGrid: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // flexWrap ajusta una propiedad visual especifica de este estilo.
     flexWrap: 'wrap',
+    // gap define separacion uniforme entre elementos hijos.
     gap: 18,
+    // marginBottom separa este bloque del siguiente elemento.
     marginBottom: 24,
   },
+  // resumenCard: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
   resumenCard: {
+    // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
     flex: 1,
+    // minWidth ajusta una propiedad visual especifica de este estilo.
     minWidth: 230,
+    // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoElevado,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 26,
+    // padding agrega espacio interno alrededor del contenido.
     padding: 22,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // borderColor define el color del borde.
     borderColor: ADMIN.borde,
+    // shadowColor define el color base de sombra.
     shadowColor: '#000',
+    // shadowOffset define direccion y distancia de sombra.
     shadowOffset: { width: 0, height: 18 },
+    // shadowOpacity controla intensidad de sombra.
     shadowOpacity: 0.24,
+    // shadowRadius suaviza o expande la sombra.
     shadowRadius: 28,
+    // elevation agrega sombra en Android.
     elevation: 14,
   },
+  // resumenTop: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   resumenTop: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'space-between',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // gap define separacion uniforme entre elementos hijos.
     gap: 16,
   },
+  // resumenLabel: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
   resumenLabel: {
+    // color define el color del texto o icono.
     color: BRAND.textSec,
+    // fontSize controla el tamanio del texto.
     fontSize: 10,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 2,
+    // marginBottom separa este bloque del siguiente elemento.
     marginBottom: 8,
   },
+  // resumenValor: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   resumenValor: {
+    // color define el color del texto o icono.
     color: BRAND.textMain,
+    // fontSize controla el tamanio del texto.
     fontSize: 30,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: -0.7,
   },
+  // resumenDetalle: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   resumenDetalle: {
+    // fontSize controla el tamanio del texto.
     fontSize: 10,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 1.3,
+    // marginTop separa este bloque del elemento anterior.
     marginTop: 6,
   },
+  // iconPanel: estilo de icono; ajusta tamanio, posicion o fondo del indicador visual.
   iconPanel: {
+    // width fija o calcula el ancho del elemento.
     width: 50,
+    // height fija o calcula el alto del elemento.
     height: 50,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 12,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
   },
+  // panelGrid: estilo de grilla; organiza elementos en filas o columnas con separacion controlada.
   panelGrid: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // flexWrap ajusta una propiedad visual especifica de este estilo.
     flexWrap: 'wrap',
+    // gap define separacion uniforme entre elementos hijos.
     gap: 20,
+    // marginBottom separa este bloque del siguiente elemento.
     marginBottom: 24,
   },
+  // panelCard: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
   panelCard: {
+    // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
     flex: 1,
+    // minWidth ajusta una propiedad visual especifica de este estilo.
     minWidth: 320,
+    // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoElevado,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: ADMIN.radio,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // borderColor define el color del borde.
     borderColor: ADMIN.borde,
+    // padding agrega espacio interno alrededor del contenido.
     padding: 20,
+    // shadowColor define el color base de sombra.
     shadowColor: '#000',
+    // shadowOffset define direccion y distancia de sombra.
     shadowOffset: { width: 0, height: 18 },
+    // shadowOpacity controla intensidad de sombra.
     shadowOpacity: 0.24,
+    // shadowRadius suaviza o expande la sombra.
     shadowRadius: 28,
+    // elevation agrega sombra en Android.
     elevation: 14,
   },
+  // panelHeader: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
   panelHeader: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'space-between',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // marginBottom separa este bloque del siguiente elemento.
     marginBottom: 20,
+    // gap define separacion uniforme entre elementos hijos.
     gap: 16,
   },
+  // panelTitle: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
   panelTitle: {
+    // color define el color del texto o icono.
     color: BRAND.textMain,
+    // fontSize controla el tamanio del texto.
     fontSize: 15,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
   },
+  // panelSubtitle: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
   panelSubtitle: {
+    // color define el color del texto o icono.
     color: BRAND.textSec,
+    // fontSize controla el tamanio del texto.
     fontSize: 10,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 1.3,
+    // marginTop separa este bloque del elemento anterior.
     marginTop: 4,
   },
+  // roleGrid: estilo de grilla; organiza elementos en filas o columnas con separacion controlada.
   roleGrid: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // gap define separacion uniforme entre elementos hijos.
     gap: 12,
   },
+  // miniRole: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   miniRole: {
+    // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
     flex: 1,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 12,
+    // padding agrega espacio interno alrededor del contenido.
     padding: 14,
+    // minHeight asegura una altura minima util para lectura o area tactil.
     minHeight: 86,
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
+    // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoCampo,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // borderColor define el color del borde.
     borderColor: ADMIN.borde,
   },
+  // miniRoleValue: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   miniRoleValue: {
+    // fontSize controla el tamanio del texto.
     fontSize: 26,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
   },
+  // miniRoleLabel: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
   miniRoleLabel: {
+    // color define el color del texto o icono.
     color: BRAND.textSec,
+    // fontSize controla el tamanio del texto.
     fontSize: 9,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 1,
+    // marginTop separa este bloque del elemento anterior.
     marginTop: 4,
+    // textAlign alinea el texto dentro de su contenedor.
     textAlign: 'center',
   },
+  // departmentList: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   departmentList: {
+    // gap define separacion uniforme entre elementos hijos.
     gap: 12,
   },
+  // departmentRow: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   departmentRow: {
+    // gap define separacion uniforme entre elementos hijos.
     gap: 9,
   },
+  // departmentTop: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   departmentTop: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'space-between',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
   },
+  // departmentName: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   departmentName: {
+    // color define el color del texto o icono.
     color: BRAND.textMain,
+    // fontSize controla el tamanio del texto.
     fontSize: 11,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
   },
+  // departmentValue: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   departmentValue: {
+    // color define el color del texto o icono.
     color: ADMIN.iconos.calendario,
+    // fontSize controla el tamanio del texto.
     fontSize: 13,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
   },
+  // metricRows: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   metricRows: {
+    // gap define separacion uniforme entre elementos hijos.
     gap: 17,
   },
+  // metricRow: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   metricRow: {
+    // gap define separacion uniforme entre elementos hijos.
     gap: 9,
   },
+  // metricTop: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   metricTop: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'space-between',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
   },
+  // metricLabel: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
   metricLabel: {
+    // color define el color del texto o icono.
     color: BRAND.textSec,
+    // fontSize controla el tamanio del texto.
     fontSize: 10,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 1.2,
   },
+  // metricValue: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   metricValue: {
+    // color define el color del texto o icono.
     color: BRAND.textMain,
+    // fontSize controla el tamanio del texto.
     fontSize: 13,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
   },
+  // progressTrack: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   progressTrack: {
+    // height fija o calcula el alto del elemento.
     height: 8,
+    // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoCampo,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 999,
+    // overflow controla si el contenido se recorta o puede sobresalir.
     overflow: 'hidden',
   },
+  // progressFill: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   progressFill: {
+    // height fija o calcula el alto del elemento.
     height: '100%',
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 999,
   },
+  // premiumCard: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
   premiumCard: {
+    // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoElevado,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: ADMIN.radio,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // borderColor define el color del borde.
     borderColor: 'rgba(196,181,253,0.10)',
+    // overflow controla si el contenido se recorta o puede sobresalir.
     overflow: 'hidden',
+    // shadowColor define el color base de sombra.
     shadowColor: '#000',
+    // shadowOffset define direccion y distancia de sombra.
     shadowOffset: { width: 0, height: 20 },
+    // shadowOpacity controla intensidad de sombra.
     shadowOpacity: 0.26,
+    // shadowRadius suaviza o expande la sombra.
     shadowRadius: 30,
+    // elevation agrega sombra en Android.
     elevation: 15,
   },
+  // cardHeader: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
   cardHeader: {
+    // padding agrega espacio interno alrededor del contenido.
     padding: 18,
+    // borderBottomWidth ajusta una propiedad visual especifica de este estilo.
     borderBottomWidth: 1,
+    // borderBottomColor ajusta una propiedad visual especifica de este estilo.
     borderBottomColor: ADMIN.borde,
+    // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoCampo,
+    // gap define separacion uniforme entre elementos hijos.
     gap: 18,
   },
+  // sedeBar: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   sedeBar: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // gap define separacion uniforme entre elementos hijos.
     gap: 14,
+    // paddingBottom separa el contenido del borde inferior.
     paddingBottom: 2,
   },
+  // volverSedes: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   volverSedes: {
+    // minHeight asegura una altura minima util para lectura o area tactil.
     minHeight: 38,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 10,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // borderColor define el color del borde.
     borderColor: ADMIN.borde,
+    // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoCampo,
+    // paddingHorizontal agrega espacio interno a izquierda y derecha.
     paddingHorizontal: 12,
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // gap define separacion uniforme entre elementos hijos.
     gap: 7,
   },
+  // volverSedesText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   volverSedesText: {
+    // color define el color del texto o icono.
     color: BRAND.textSec,
+    // fontSize controla el tamanio del texto.
     fontSize: 11,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
   },
+  // sedeActualLabel: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
   sedeActualLabel: {
+    // color define el color del texto o icono.
     color: BRAND.textSec,
+    // fontSize controla el tamanio del texto.
     fontSize: 9,
+    // fontWeight define el peso visual del texto.
     fontWeight: '800',
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
   },
+  // sedeActualNombre: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   sedeActualNombre: {
+    // color define el color del texto o icono.
     color: BRAND.textMain,
+    // fontSize controla el tamanio del texto.
     fontSize: 15,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // marginTop separa este bloque del elemento anterior.
     marginTop: 2,
   },
+  // searchContainer: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
   searchContainer: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoCampo,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // borderColor define el color del borde.
     borderColor: ADMIN.borde,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 12,
+    // paddingHorizontal agrega espacio interno a izquierda y derecha.
     paddingHorizontal: 20,
+    // height fija o calcula el alto del elemento.
     height: 52,
+    // marginBottom separa este bloque del siguiente elemento.
     marginBottom: 16,
   },
+  // searchIcon: estilo de icono; ajusta tamanio, posicion o fondo del indicador visual.
   searchIcon: {
+    // marginRight ajusta una propiedad visual especifica de este estilo.
     marginRight: 12,
   },
+  // searchInput: estilo de campo de formulario; controla contenedor, texto y distribucion de la entrada.
   searchInput: {
+    // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
     flex: 1,
+    // color define el color del texto o icono.
     color: BRAND.textMain,
+    // fontSize controla el tamanio del texto.
     fontSize: 14,
+    // fontWeight define el peso visual del texto.
     fontWeight: '700',
   },
+  // filterRow: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   filterRow: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // flexWrap ajusta una propiedad visual especifica de este estilo.
     flexWrap: 'wrap',
+    // gap define separacion uniforme entre elementos hijos.
     gap: 10,
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
   },
+  // filterLabel: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
   filterLabel: {
+    // color define el color del texto o icono.
     color: BRAND.textSec,
+    // fontSize controla el tamanio del texto.
     fontSize: 10,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // minWidth ajusta una propiedad visual especifica de este estilo.
     minWidth: 92,
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
   },
+  // filterChip: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   filterChip: {
+    // paddingHorizontal agrega espacio interno a izquierda y derecha.
     paddingHorizontal: 16,
+    // paddingVertical agrega espacio interno arriba y abajo.
     paddingVertical: 10,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 999,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // borderColor define el color del borde.
     borderColor: ADMIN.borde,
+    // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoCampo,
   },
+  // filterChipActivo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   filterChipActivo: {
+    // backgroundColor define el fondo del bloque.
     backgroundColor: 'rgba(96,165,250,0.14)',
+    // borderColor define el color del borde.
     borderColor: 'rgba(96,165,250,0.25)',
   },
+  // filterChipText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   filterChipText: {
+    // color define el color del texto o icono.
     color: BRAND.textSec,
+    // fontSize controla el tamanio del texto.
     fontSize: 10,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'capitalize',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 0,
   },
+  // filterChipTextActivo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   filterChipTextActivo: {
+    // color define el color del texto o icono.
     color: ADMIN.iconos.personas,
   },
+  // quickAssignRow: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   quickAssignRow: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // flexWrap ajusta una propiedad visual especifica de este estilo.
     flexWrap: 'wrap',
+    // gap define separacion uniforme entre elementos hijos.
     gap: 10,
   },
+  // quickAssignButton: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
   quickAssignButton: {
+    // minHeight asegura una altura minima util para lectura o area tactil.
     minHeight: 40,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 10,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // borderColor define el color del borde.
     borderColor: 'rgba(245,158,11,0.22)',
+    // backgroundColor define el fondo del bloque.
     backgroundColor: 'rgba(245,158,11,0.075)',
+    // paddingHorizontal agrega espacio interno a izquierda y derecha.
     paddingHorizontal: 12,
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // gap define separacion uniforme entre elementos hijos.
     gap: 8,
   },
+  // quickAssignText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   quickAssignText: {
+    // color define el color del texto o icono.
     color: ADMIN.iconos.tareas,
+    // fontSize controla el tamanio del texto.
     fontSize: 11,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
   },
+  // tableContainer: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
   tableContainer: {
+    // width fija o calcula el ancho del elemento.
     width: '100%',
   },
+  // tableHeader: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
   tableHeader: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // paddingHorizontal agrega espacio interno a izquierda y derecha.
     paddingHorizontal: 22,
+    // paddingVertical agrega espacio interno arriba y abajo.
     paddingVertical: 16,
+    // borderBottomWidth ajusta una propiedad visual especifica de este estilo.
     borderBottomWidth: 1,
+    // borderBottomColor ajusta una propiedad visual especifica de este estilo.
     borderBottomColor: ADMIN.borde,
   },
+  // thText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   thText: {
+    // fontSize controla el tamanio del texto.
     fontSize: 10,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // color define el color del texto o icono.
     color: BRAND.textSec,
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 2,
   },
+  // tableRow: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   tableRow: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // paddingHorizontal agrega espacio interno a izquierda y derecha.
     paddingHorizontal: 22,
+    // paddingVertical agrega espacio interno arriba y abajo.
     paddingVertical: 14,
+    // borderBottomWidth ajusta una propiedad visual especifica de este estilo.
     borderBottomWidth: 1,
+    // borderBottomColor ajusta una propiedad visual especifica de este estilo.
     borderBottomColor: ADMIN.borde,
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
   },
+  // tdCell: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   tdCell: {
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
+    // minWidth ajusta una propiedad visual especifica de este estilo.
     minWidth: 0,
   },
+  // colaboradorCell: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   colaboradorCell: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // gap define separacion uniforme entre elementos hijos.
     gap: 14,
   },
+  // avatar: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   avatar: {
+    // width fija o calcula el ancho del elemento.
     width: 50,
+    // height fija o calcula el alto del elemento.
     height: 50,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 12,
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
+    // shadowColor define el color base de sombra.
     shadowColor: BRAND.iconBright,
+    // shadowOffset define direccion y distancia de sombra.
     shadowOffset: { width: 0, height: 0 },
+    // shadowOpacity controla intensidad de sombra.
     shadowOpacity: 0.3,
+    // shadowRadius suaviza o expande la sombra.
     shadowRadius: 15,
   },
+  // avatarImagen: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   avatarImagen: {
+    // width fija o calcula el ancho del elemento.
     width: 50,
+    // height fija o calcula el alto del elemento.
     height: 50,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 12,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // borderColor define el color del borde.
     borderColor: ADMIN.borde,
+    // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoCampo,
   },
+  // avatarText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   avatarText: {
+    // color define el color del texto o icono.
     color: '#fff',
+    // fontSize controla el tamanio del texto.
     fontSize: 11,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // marginTop separa este bloque del elemento anterior.
     marginTop: -1,
   },
+  // empInfo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   empInfo: {
+    // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
     flex: 1,
+    // minWidth ajusta una propiedad visual especifica de este estilo.
     minWidth: 0,
   },
+  // empName: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   empName: {
+    // fontSize controla el tamanio del texto.
     fontSize: 14,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // color define el color del texto o icono.
     color: BRAND.textMain,
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: -0.3,
+    // marginBottom separa este bloque del siguiente elemento.
     marginBottom: 4,
   },
+  // empEmail: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   empEmail: {
+    // fontSize controla el tamanio del texto.
     fontSize: 10,
+    // fontWeight define el peso visual del texto.
     fontWeight: '700',
+    // color define el color del texto o icono.
     color: BRAND.textSec,
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 1,
   },
+  // empRole: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   empRole: {
+    // fontSize controla el tamanio del texto.
     fontSize: 10,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // color define el color del texto o icono.
     color: BRAND.textSec,
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 1.2,
+    // maxWidth limita el ancho para mantener lectura y composicion.
     maxWidth: '92%',
   },
+  // productividadBox: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   productividadBox: {
+    // gap define separacion uniforme entre elementos hijos.
     gap: 8,
+    // paddingHorizontal agrega espacio interno a izquierda y derecha.
     paddingHorizontal: 8,
   },
+  // productividadText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   productividadText: {
+    // color define el color del texto o icono.
     color: BRAND.textMain,
+    // fontSize controla el tamanio del texto.
     fontSize: 11,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // textAlign alinea el texto dentro de su contenedor.
     textAlign: 'center',
   },
+  // actionsCell: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   actionsCell: {
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
+    // gap define separacion uniforme entre elementos hijos.
     gap: 10,
+    // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
     flex: 1.25,
+    // minWidth ajusta una propiedad visual especifica de este estilo.
     minWidth: 184,
   },
+  // actionBtn: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   actionBtn: {
+    // width fija o calcula el ancho del elemento.
     width: 38,
+    // height fija o calcula el alto del elemento.
     height: 38,
+    // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoCampo,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 12,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // borderColor define el color del borde.
     borderColor: ADMIN.borde,
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
+    // flexShrink ajusta una propiedad visual especifica de este estilo.
     flexShrink: 0,
   },
+  // actionBtnEdit: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   actionBtnEdit: {
+    // borderColor define el color del borde.
     borderColor: 'rgba(96,165,250,0.24)',
+    // backgroundColor define el fondo del bloque.
     backgroundColor: 'rgba(96,165,250,0.08)',
   },
+  // actionBtnTask: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   actionBtnTask: {
+    // borderColor define el color del borde.
     borderColor: 'rgba(245,158,11,0.30)',
+    // backgroundColor define el fondo del bloque.
     backgroundColor: 'rgba(245,158,11,0.10)',
   },
+  // actionBtnSuccess: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   actionBtnSuccess: {
+    // borderColor define el color del borde.
     borderColor: 'rgba(34,197,94,0.24)',
+    // backgroundColor define el fondo del bloque.
     backgroundColor: 'rgba(34,197,94,0.08)',
   },
+  // actionBtnDanger: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   actionBtnDanger: {
+    // borderColor define el color del borde.
     borderColor: 'rgba(239,68,68,0.2)',
+    // backgroundColor define el fondo del bloque.
     backgroundColor: 'rgba(239,68,68,0.05)',
   },
+  // badge: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   badge: {
+    // paddingHorizontal agrega espacio interno a izquierda y derecha.
     paddingHorizontal: 11,
+    // paddingVertical agrega espacio interno arriba y abajo.
     paddingVertical: 5,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 100,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
   },
+  // badgeText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   badgeText: {
+    // fontSize controla el tamanio del texto.
     fontSize: 9,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 1.2,
   },
+  // emptyTable: estilo de estado vacio; presenta mensajes cuando no hay datos disponibles.
   emptyTable: {
+    // padding agrega espacio interno alrededor del contenido.
     padding: 48,
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
   },
+  // emptyIcon: estilo de icono; ajusta tamanio, posicion o fondo del indicador visual.
   emptyIcon: {
+    // marginBottom separa este bloque del siguiente elemento.
     marginBottom: 16,
   },
+  // emptyText: estilo de estado vacio; presenta mensajes cuando no hay datos disponibles.
   emptyText: {
+    // color define el color del texto o icono.
     color: BRAND.textSec,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // fontSize controla el tamanio del texto.
     fontSize: 12,
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 1.2,
+    // textAlign alinea el texto dentro de su contenedor.
     textAlign: 'center',
   },
+  // modalOverlay: estilo de modal; define presentacion de contenido flotante sobre la pantalla actual.
   modalOverlay: {
+    // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
     flex: 1,
+    // backgroundColor define el fondo del bloque.
     backgroundColor: 'transparent',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
+    // padding agrega espacio interno alrededor del contenido.
     padding: 28,
   },
+  // modalCard: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
   modalCard: {
+    // width fija o calcula el ancho del elemento.
     width: '100%',
+    // maxWidth limita el ancho para mantener lectura y composicion.
     maxWidth: 980,
+    // maxHeight ajusta una propiedad visual especifica de este estilo.
     maxHeight: '92%',
+    // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoElevado,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: ADMIN.radio,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // borderColor define el color del borde.
     borderColor: ADMIN.borde,
+    // overflow controla si el contenido se recorta o puede sobresalir.
     overflow: 'hidden',
+    // shadowColor define el color base de sombra.
     shadowColor: '#000',
+    // shadowOffset define direccion y distancia de sombra.
     shadowOffset: { width: 0, height: 24 },
+    // shadowOpacity controla intensidad de sombra.
     shadowOpacity: 0.55,
+    // shadowRadius suaviza o expande la sombra.
     shadowRadius: 70,
+    // elevation agrega sombra en Android.
     elevation: 24,
   },
+  // modalTareaCard: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
   modalTareaCard: {
+    // maxWidth limita el ancho para mantener lectura y composicion.
     maxWidth: 780,
   },
+  // modalHeader: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
   modalHeader: {
+    // padding agrega espacio interno alrededor del contenido.
     padding: 28,
+    // borderBottomWidth ajusta una propiedad visual especifica de este estilo.
     borderBottomWidth: 1,
+    // borderBottomColor ajusta una propiedad visual especifica de este estilo.
     borderBottomColor: ADMIN.borde,
+    // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoCampo,
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'space-between',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // gap define separacion uniforme entre elementos hijos.
     gap: 20,
   },
+  // modalTitle: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
   modalTitle: {
+    // color define el color del texto o icono.
     color: BRAND.textMain,
+    // fontSize controla el tamanio del texto.
     fontSize: 24,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: -0.4,
   },
+  // modalSubtitle: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
   modalSubtitle: {
+    // color define el color del texto o icono.
     color: BRAND.textSec,
+    // fontSize controla el tamanio del texto.
     fontSize: 10,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 1.6,
+    // marginTop separa este bloque del elemento anterior.
     marginTop: 5,
   },
+  // modalClose: estilo de modal; define presentacion de contenido flotante sobre la pantalla actual.
   modalClose: {
+    // width fija o calcula el ancho del elemento.
     width: 42,
+    // height fija o calcula el alto del elemento.
     height: 42,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: ADMIN.radio,
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
+    // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoCampo,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // borderColor define el color del borde.
     borderColor: ADMIN.borde,
   },
+  // modalBody: estilo de modal; define presentacion de contenido flotante sobre la pantalla actual.
   modalBody: {
+    // padding agrega espacio interno alrededor del contenido.
     padding: 28,
   },
+  // formGrid: estilo de grilla; organiza elementos en filas o columnas con separacion controlada.
   formGrid: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // flexWrap ajusta una propiedad visual especifica de este estilo.
     flexWrap: 'wrap',
+    // gap define separacion uniforme entre elementos hijos.
     gap: 16,
   },
+  // formGridTarea: estilo de grilla; organiza elementos en filas o columnas con separacion controlada.
   formGridTarea: {
+    // marginTop separa este bloque del elemento anterior.
     marginTop: 18,
   },
+  // formField: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   formField: {
+    // flexGrow ajusta una propiedad visual especifica de este estilo.
     flexGrow: 1,
+    // flexBasis ajusta una propiedad visual especifica de este estilo.
     flexBasis: 280,
+    // gap define separacion uniforme entre elementos hijos.
     gap: 8,
   },
+  // formSection: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   formSection: {
+    // marginTop separa este bloque del elemento anterior.
     marginTop: 22,
+    // gap define separacion uniforme entre elementos hijos.
     gap: 12,
   },
+  // formLabel: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
   formLabel: {
+    // color define el color del texto o icono.
     color: BRAND.textSec,
+    // fontSize controla el tamanio del texto.
     fontSize: 10,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 1.5,
   },
+  // formInput: estilo de campo de formulario; controla contenedor, texto y distribucion de la entrada.
   formInput: {
+    // height fija o calcula el alto del elemento.
     height: 56,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 12,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // borderColor define el color del borde.
     borderColor: ADMIN.borde,
+    // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoCampo,
+    // color define el color del texto o icono.
     color: BRAND.textMain,
+    // paddingHorizontal agrega espacio interno a izquierda y derecha.
     paddingHorizontal: 16,
+    // fontSize controla el tamanio del texto.
     fontSize: 13,
+    // fontWeight define el peso visual del texto.
     fontWeight: '800',
   },
+  // formInputDisabled: estilo de campo de formulario; controla contenedor, texto y distribucion de la entrada.
   formInputDisabled: {
+    // opacity controla la transparencia del elemento.
     opacity: 0.55,
   },
+  // selectorSelectBox: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   selectorSelectBox: {
+    // minHeight asegura una altura minima util para lectura o area tactil.
     minHeight: 56,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 12,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // borderColor define el color del borde.
     borderColor: ADMIN.borde,
+    // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoCampo,
+    // paddingHorizontal agrega espacio interno a izquierda y derecha.
     paddingHorizontal: 16,
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'space-between',
+    // gap define separacion uniforme entre elementos hijos.
     gap: 12,
   },
+  // selectorSelectBoxActivo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   selectorSelectBoxActivo: {
+    // borderColor define el color del borde.
     borderColor: 'rgba(96,165,250,0.35)',
+    // backgroundColor define el fondo del bloque.
     backgroundColor: 'rgba(96,165,250,0.08)',
   },
+  // selectorSelectText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   selectorSelectText: {
+    // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
     flex: 1,
+    // color define el color del texto o icono.
     color: BRAND.textMain,
+    // fontSize controla el tamanio del texto.
     fontSize: 13,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
   },
+  // selectorSelectPlaceholder: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   selectorSelectPlaceholder: {
+    // color define el color del texto o icono.
     color: BRAND.textSec,
   },
+  // dropdownPanel: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   dropdownPanel: {
+    // marginTop separa este bloque del elemento anterior.
     marginTop: 8,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 12,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // borderColor define el color del borde.
     borderColor: 'rgba(96,165,250,0.22)',
+    // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoElevado,
+    // overflow controla si el contenido se recorta o puede sobresalir.
     overflow: 'hidden',
+    // shadowColor define el color base de sombra.
     shadowColor: BRAND.iconBright,
+    // shadowOffset define direccion y distancia de sombra.
     shadowOffset: { width: 0, height: 12 },
+    // shadowOpacity controla intensidad de sombra.
     shadowOpacity: 0.18,
+    // shadowRadius suaviza o expande la sombra.
     shadowRadius: 24,
+    // elevation agrega sombra en Android.
     elevation: 16,
   },
+  // dropdownScroll: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   dropdownScroll: {
+    // maxHeight ajusta una propiedad visual especifica de este estilo.
     maxHeight: 210,
   },
+  // dropdownItem: estilo de lista o item; mantiene espaciado y lectura consistente en elementos repetidos.
   dropdownItem: {
+    // minHeight asegura una altura minima util para lectura o area tactil.
     minHeight: 52,
+    // paddingHorizontal agrega espacio interno a izquierda y derecha.
     paddingHorizontal: 16,
+    // paddingVertical agrega espacio interno arriba y abajo.
     paddingVertical: 12,
+    // borderBottomWidth ajusta una propiedad visual especifica de este estilo.
     borderBottomWidth: 1,
+    // borderBottomColor ajusta una propiedad visual especifica de este estilo.
     borderBottomColor: ADMIN.borde,
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'space-between',
+    // gap define separacion uniforme entre elementos hijos.
     gap: 12,
   },
+  // dropdownItemActivo: estilo de lista o item; mantiene espaciado y lectura consistente en elementos repetidos.
   dropdownItemActivo: {
+    // backgroundColor define el fondo del bloque.
     backgroundColor: 'rgba(96,165,250,0.12)',
   },
+  // dropdownItemTextos: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
   dropdownItemTextos: {
+    // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
     flex: 1,
+    // minWidth ajusta una propiedad visual especifica de este estilo.
     minWidth: 0,
   },
+  // dropdownItemTitulo: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
   dropdownItemTitulo: {
+    // color define el color del texto o icono.
     color: BRAND.textMain,
+    // fontSize controla el tamanio del texto.
     fontSize: 11,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 1,
   },
+  // dropdownItemDetalle: estilo de lista o item; mantiene espaciado y lectura consistente en elementos repetidos.
   dropdownItemDetalle: {
+    // color define el color del texto o icono.
     color: BRAND.textSec,
+    // fontSize controla el tamanio del texto.
     fontSize: 9,
+    // fontWeight define el peso visual del texto.
     fontWeight: '800',
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 0.8,
+    // marginTop separa este bloque del elemento anterior.
     marginTop: 4,
   },
+  // dropdownEmpty: estilo de estado vacio; presenta mensajes cuando no hay datos disponibles.
   dropdownEmpty: {
+    // color define el color del texto o icono.
     color: BRAND.textSec,
+    // fontSize controla el tamanio del texto.
     fontSize: 10,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 1,
+    // padding agrega espacio interno alrededor del contenido.
     padding: 16,
+    // textAlign alinea el texto dentro de su contenedor.
     textAlign: 'center',
   },
+  // suggestionRow: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   suggestionRow: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // flexWrap ajusta una propiedad visual especifica de este estilo.
     flexWrap: 'wrap',
+    // gap define separacion uniforme entre elementos hijos.
     gap: 8,
   },
+  // suggestionChip: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   suggestionChip: {
+    // paddingHorizontal agrega espacio interno a izquierda y derecha.
     paddingHorizontal: 10,
+    // paddingVertical agrega espacio interno arriba y abajo.
     paddingVertical: 6,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 999,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // borderColor define el color del borde.
     borderColor: 'rgba(96,165,250,0.2)',
+    // backgroundColor define el fondo del bloque.
     backgroundColor: 'rgba(96,165,250,0.08)',
   },
+  // suggestionText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   suggestionText: {
+    // color define el color del texto o icono.
     color: ADMIN.iconos.personas,
+    // fontSize controla el tamanio del texto.
     fontSize: 9,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 1,
   },
+  // selectorGrid: estilo de grilla; organiza elementos en filas o columnas con separacion controlada.
   selectorGrid: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // flexWrap ajusta una propiedad visual especifica de este estilo.
     flexWrap: 'wrap',
+    // gap define separacion uniforme entre elementos hijos.
     gap: 10,
   },
+  // selectorChip: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   selectorChip: {
+    // paddingHorizontal agrega espacio interno a izquierda y derecha.
     paddingHorizontal: 14,
+    // paddingVertical agrega espacio interno arriba y abajo.
     paddingVertical: 10,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 999,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // borderColor define el color del borde.
     borderColor: ADMIN.borde,
+    // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoCampo,
   },
+  // selectorChipActivo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   selectorChipActivo: {
+    // backgroundColor define el fondo del bloque.
     backgroundColor: 'rgba(96,165,250,0.14)',
+    // borderColor define el color del borde.
     borderColor: 'rgba(96,165,250,0.28)',
   },
+  // selectorText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   selectorText: {
+    // color define el color del texto o icono.
     color: BRAND.textSec,
+    // fontSize controla el tamanio del texto.
     fontSize: 10,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 1.2,
   },
+  // selectorTextActivo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   selectorTextActivo: {
+    // color define el color del texto o icono.
     color: BRAND.textMain,
   },
+  // selectorDetalle: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   selectorDetalle: {
+    // color define el color del texto o icono.
     color: BRAND.textSec,
+    // fontSize controla el tamanio del texto.
     fontSize: 8,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 0.9,
+    // marginTop separa este bloque del elemento anterior.
     marginTop: 3,
   },
+  // modalFooter: estilo de modal; define presentacion de contenido flotante sobre la pantalla actual.
   modalFooter: {
+    // padding agrega espacio interno alrededor del contenido.
     padding: 20,
+    // borderTopWidth ajusta una propiedad visual especifica de este estilo.
     borderTopWidth: 1,
+    // borderTopColor ajusta una propiedad visual especifica de este estilo.
     borderTopColor: ADMIN.borde,
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'flex-end',
+    // gap define separacion uniforme entre elementos hijos.
     gap: 12,
+    // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoCampo,
   },
+  // btnModalSecondary: estilo de modal; define presentacion de contenido flotante sobre la pantalla actual.
   btnModalSecondary: {
+    // paddingHorizontal agrega espacio interno a izquierda y derecha.
     paddingHorizontal: 22,
+    // minHeight asegura una altura minima util para lectura o area tactil.
     minHeight: 50,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 12,
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
+    // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoCampo,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // borderColor define el color del borde.
     borderColor: ADMIN.borde,
   },
+  // btnModalSecondaryText: estilo de modal; define presentacion de contenido flotante sobre la pantalla actual.
   btnModalSecondaryText: {
+    // color define el color del texto o icono.
     color: BRAND.textSec,
+    // fontSize controla el tamanio del texto.
     fontSize: 11,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 1.5,
   },
+  // btnModalPrimary: estilo de modal; define presentacion de contenido flotante sobre la pantalla actual.
   btnModalPrimary: {
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 12,
+    // overflow controla si el contenido se recorta o puede sobresalir.
     overflow: 'hidden',
   },
+  // btnModalGradient: estilo de modal; define presentacion de contenido flotante sobre la pantalla actual.
   btnModalGradient: {
+    // minHeight asegura una altura minima util para lectura o area tactil.
     minHeight: 50,
+    // paddingHorizontal agrega espacio interno a izquierda y derecha.
     paddingHorizontal: 22,
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
   },
+  // keyCard: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
   keyCard: {
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 20,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // borderColor define el color del borde.
     borderColor: 'rgba(168, 85, 247, 0.22)',
+    // overflow controla si el contenido se recorta o puede sobresalir.
     overflow: 'hidden',
+    // marginBottom separa este bloque del siguiente elemento.
     marginBottom: 24,
+    // shadowColor define el color base de sombra.
     shadowColor: '#A855F7',
+    // shadowOffset define direccion y distancia de sombra.
     shadowOffset: { width: 0, height: 12 },
+    // shadowOpacity controla intensidad de sombra.
     shadowOpacity: 0.1,
+    // shadowRadius suaviza o expande la sombra.
     shadowRadius: 24,
+    // elevation agrega sombra en Android.
     elevation: 4,
   },
+  // keyGradient: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   keyGradient: {
+    // padding agrega espacio interno alrededor del contenido.
     padding: 18,
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // gap define separacion uniforme entre elementos hijos.
     gap: 14,
   },
+  // keyIconWrapper: estilo de icono; ajusta tamanio, posicion o fondo del indicador visual.
   keyIconWrapper: {
+    // width fija o calcula el ancho del elemento.
     width: 42,
+    // height fija o calcula el alto del elemento.
     height: 42,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 12,
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
+    // backgroundColor define el fondo del bloque.
     backgroundColor: 'rgba(168, 85, 247, 0.18)',
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // borderColor define el color del borde.
     borderColor: 'rgba(168, 85, 247, 0.3)',
   },
+  // keyTextContainer: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
   keyTextContainer: {
+    // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
     flex: 1,
+    // gap define separacion uniforme entre elementos hijos.
     gap: 4,
   },
+  // keyTitle: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
   keyTitle: {
+    // fontSize controla el tamanio del texto.
     fontSize: 10,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // color define el color del texto o icono.
     color: '#A855F7',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 1.5,
   },
+  // keySubtitle: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
   keySubtitle: {
+    // fontSize controla el tamanio del texto.
     fontSize: 12,
+    // color define el color del texto o icono.
     color: BRAND.textSec,
+    // lineHeight ajusta una propiedad visual especifica de este estilo.
     lineHeight: 18,
+    // fontWeight define el peso visual del texto.
     fontWeight: '600',
   },
+  // keyBadge: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   keyBadge: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // paddingHorizontal agrega espacio interno a izquierda y derecha.
     paddingHorizontal: 14,
+    // paddingVertical agrega espacio interno arriba y abajo.
     paddingVertical: 10,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 12,
+    // backgroundColor define el fondo del bloque.
     backgroundColor: 'rgba(168, 85, 247, 0.14)',
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // borderColor define el color del borde.
     borderColor: 'rgba(168, 85, 247, 0.26)',
+    // gap define separacion uniforme entre elementos hijos.
     gap: 8,
   },
+  // keyBadgeText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   keyBadgeText: {
+    // color define el color del texto o icono.
     color: '#FFFFFF',
+    // fontSize controla el tamanio del texto.
     fontSize: 13,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 1,
   },
 });

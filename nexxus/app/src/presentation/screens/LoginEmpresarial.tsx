@@ -1,3 +1,12 @@
+/**
+ * Documentacion Nexxus - nexxus/app/src/presentation/screens/LoginEmpresarial.tsx
+ * Capa: presentacion.
+ * Proposito: Pantalla de la experiencia del empleado. Lee contexto de usuario, muestra informacion operativa y conserva las acciones de navegacion existentes.
+ * Dependencias clave: imports superiores y contratos tipados del propio modulo.
+ * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras Firebase al extender este archivo.
+ */
+
+// Importa React, { useState, useRef, useEffect } desde React; habilita componentes, hooks y tipos base para esta pieza.
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -12,35 +21,58 @@ import {
   ActivityIndicator,
   StatusBar,
 } from 'react-native';
+// Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import { LinearGradient } from 'expo-linear-gradient';
+// Importa { BlurView } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import { BlurView } from 'expo-blur';
+// Importa { MaterialIcons, Ionicons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+// Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
+// Importa { useContextoUsuario }; accede a contexto compartido de usuario, tema o estado global.
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
+// Importa FondoAurora; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
 import FondoAurora from '@/presentation/components/FondoAurora';
+// Importa MarcaNexxus; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
 import MarcaNexxus from '@/presentation/components/MarcaNexxus';
+// Importa { useTemaMobile }; accede a contexto compartido de usuario, tema o estado global.
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
+// Importa AuraOrb; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
 import AuraOrb from '@/presentation/components/AuraOrb';
 
+/**
+ * Componente LoginEmpresarial. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
+ */
 export default function LoginEmpresarial({ navigation }: { navigation: any }) {
+  // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { t } = useTranslation();
+  // Inicializa { loginEmpresarial }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { loginEmpresarial } = useContextoUsuario();
+  // Declara { colores, blurTint, intensidadBlur, esOscuro }; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
   
+  // Inicializa [loading, setLoading]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [loading, setLoading] = useState(false);
+  // Inicializa [error, setError]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [error, setError] = useState<string | null>(null);
 
+  // Inicializa [form, setForm]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [form, setForm] = useState({
     codigoEmpresa: '',
     usuario: '',
     password: '',
   });
+  // Inicializa [showPassword, setShowPassword]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [showPassword, setShowPassword] = useState(false);
 
+  // Inicializa fadeAnim; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  // Inicializa slideAnim; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const slideAnim = useRef(new Animated.Value(20)).current;
 
+  // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
   useEffect(() => {
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -56,50 +88,80 @@ export default function LoginEmpresarial({ navigation }: { navigation: any }) {
     ]).start();
   }, []);
 
+  // Inicializa handleLogin; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const handleLogin = async () => {
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setLoading(true);
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setError(null);
+    // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
     try {
+      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (!loginEmpresarial) throw new Error('Contexto de autenticación no disponible');
+      // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
       await loginEmpresarial(form);
       // La navegación se maneja automáticamente en App.tsx vía useContextoUsuario
     } catch (e: any) {
+      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setError(e.userMessage || 'Error en el acceso empresarial');
     } finally {
+      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setLoading(false);
     }
   };
 
+  // Devuelve el JSX que React Native renderiza en pantalla.
   return (
+    // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
     <View style={estilos.container}>
+      {/* Configura la barra de estado del sistema para que combine con el fondo de esta pantalla. */}
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      {/* Elemento de fondo visual; construye la atmosfera grafica de la pantalla sin cambiar los datos. */}
       <FondoAurora />
+      {/* Contenedor que ajusta el layout cuando aparece el teclado. */}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={estilos.keyboardView}
       >
+        {/* Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla. */}
         <Animated.View style={[
           estilos.content,
           { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
         ]}>
+          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={estilos.header}>
+            {/* MarcaNexxus renderiza una pieza visual reutilizable dentro de esta pantalla. */}
             <MarcaNexxus tamano={28} />
+            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={[estilos.kicker, { color: colores.textoSecundario }]}>Nexxus 12  BETA</Text>
+            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={[estilos.title, { color: colores.texto }]}>Tu asistente empresarial</Text>
+            {/* AuraOrb renderiza una pieza visual reutilizable dentro de esta pantalla. */}
             <AuraOrb size={156} style={estilos.orbe} />
+            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={[estilos.subtitle, { color: colores.textoSecundario }]}>{t('landing_auth.workspace_login.subtitle')}</Text>
+            {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
             <View style={estilos.puntos}>
+              {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
               <View style={[estilos.punto, { backgroundColor: colores.texto }]} />
+              {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
               <View style={[estilos.punto, { backgroundColor: colores.textoSuave }]} />
+              {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
               <View style={[estilos.punto, { backgroundColor: colores.textoSuave }]} />
             </View>
           </View>
 
+          {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
           <BlurView intensity={intensidadBlur} tint={blurTint} style={[estilos.form, { backgroundColor: esOscuro ? 'rgba(10,10,24,0.48)' : 'rgba(255,255,255,0.58)', borderColor: colores.borde }]}>
+            {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
             <View style={estilos.inputGroup}>
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={[estilos.label, { color: colores.textoSuave }]}>{t('landing_auth.workspace_login.field_company_code')}</Text>
+              {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
               <View style={[estilos.inputWrapper, { backgroundColor: colores.vidrio, borderColor: colores.borde }]}>
+                {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                 <MaterialIcons name="business" size={20} color={colores.textoSuave} style={estilos.inputIcon} />
+                {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
                 <TextInput
                   style={[estilos.input, { color: colores.texto }]}
                   placeholder={t('landing_auth.workspace_login.field_company_code_placeholder')}
@@ -111,10 +173,15 @@ export default function LoginEmpresarial({ navigation }: { navigation: any }) {
               </View>
             </View>
 
+            {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
             <View style={estilos.inputGroup}>
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={[estilos.label, { color: colores.textoSuave }]}>{t('landing_auth.workspace_login.field_user')}</Text>
+              {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
               <View style={[estilos.inputWrapper, { backgroundColor: colores.vidrio, borderColor: colores.borde }]}>
+                {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                 <Ionicons name="person-outline" size={18} color={colores.textoSuave} style={estilos.inputIcon} />
+                {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
                 <TextInput
                   style={[estilos.input, { color: colores.texto }]}
                   placeholder={t('landing_auth.workspace_login.field_user_placeholder')}
@@ -126,10 +193,15 @@ export default function LoginEmpresarial({ navigation }: { navigation: any }) {
               </View>
             </View>
 
+            {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
             <View style={estilos.inputGroup}>
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={[estilos.label, { color: colores.textoSuave }]}>{t('landing_auth.workspace_login.field_pass')}</Text>
+              {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
               <View style={[estilos.inputWrapper, { backgroundColor: colores.vidrio, borderColor: colores.borde }]}>
+                {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                 <Ionicons name="lock-closed-outline" size={18} color={colores.textoSuave} style={estilos.inputIcon} />
+                {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
                 <TextInput
                   style={[estilos.input, { color: colores.texto }]}
                   placeholder={t('landing_auth.workspace_login.field_pass_placeholder')}
@@ -138,7 +210,9 @@ export default function LoginEmpresarial({ navigation }: { navigation: any }) {
                   onChangeText={(v) => setForm({ ...form, password: v })}
                   secureTextEntry={!showPassword}
                 />
+                {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={estilos.eyeBtn}>
+                  {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                   <Ionicons 
                     name={showPassword ? "eye-off-outline" : "eye-outline"} 
                     size={18} 
@@ -149,18 +223,23 @@ export default function LoginEmpresarial({ navigation }: { navigation: any }) {
             </View>
 
             {error && (
+              // Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla.
               <Animated.View style={estilos.errorContainer}>
+                {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                 <MaterialIcons name="error-outline" size={16} color="#EF4444" />
+                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.errorText}>{error}</Text>
               </Animated.View>
             )}
 
+            {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
             <TouchableOpacity
               style={estilos.loginBtn}
               onPress={handleLogin}
               disabled={loading}
               activeOpacity={0.8}
             >
+              {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
               <LinearGradient
                 colors={[colores.primario, colores.primarioClaro]}
                 start={{ x: 0, y: 0 }}
@@ -168,26 +247,33 @@ export default function LoginEmpresarial({ navigation }: { navigation: any }) {
                 style={estilos.btnGradient}
               >
                 {loading ? (
+                  // Indicador de carga; comunica que hay una operacion asincrona en progreso.
                   <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
                   <>
+                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                     <Text style={estilos.btnText}>{t('landing_auth.workspace_login.btn_login')}</Text>
+                    {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                     <MaterialIcons name="arrow-forward" size={18} color="#FFFFFF" />
                   </>
                 )}
               </LinearGradient>
             </TouchableOpacity>
 
+            {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
             <TouchableOpacity
               style={estilos.backBtn}
               onPress={() => navigation.goBack()}
             >
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={[estilos.backBtnText, { color: colores.textoSecundario }]}>{t('landing_auth.workspace_login.back')}</Text>
             </TouchableOpacity>
           </BlurView>
         </Animated.View>
 
+        {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
         <View style={estilos.footer}>
+          {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
           <Text style={estilos.footerText}>Nexxus Enterprise System · v1.2</Text>
         </View>
       </KeyboardAvoidingView>
@@ -195,153 +281,278 @@ export default function LoginEmpresarial({ navigation }: { navigation: any }) {
   );
 }
 
+/**
+ * Mapa de estilos estilos. Centraliza reglas visuales para que el JSX se mantenga legible y consistente.
+ */
 const estilos = StyleSheet.create({
+  // container: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
   container: {
+    // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
     flex: 1,
+    // backgroundColor define el fondo del bloque.
     backgroundColor: '#070712',
   },
+  // keyboardView: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   keyboardView: {
+    // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
     flex: 1,
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
+    // paddingHorizontal agrega espacio interno a izquierda y derecha.
     paddingHorizontal: 24,
+    // paddingVertical agrega espacio interno arriba y abajo.
     paddingVertical: 18,
   },
+  // content: estilo del area de contenido; controla padding, distribucion y separacion interna.
   content: {
+    // width fija o calcula el ancho del elemento.
     width: '100%',
+    // maxWidth limita el ancho para mantener lectura y composicion.
     maxWidth: 400,
+    // alignSelf ajusta una propiedad visual especifica de este estilo.
     alignSelf: 'center',
   },
+  // header: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
   header: {
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // marginBottom separa este bloque del siguiente elemento.
     marginBottom: 20,
   },
+  // kicker: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   kicker: {
+    // fontSize controla el tamanio del texto.
     fontSize: 10,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 2,
+    // marginTop separa este bloque del elemento anterior.
     marginTop: 18,
+    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
   },
+  // title: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
   title: {
+    // fontSize controla el tamanio del texto.
     fontSize: 28,
+    // fontWeight define el peso visual del texto.
     fontWeight: '700',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 0,
+    // marginTop separa este bloque del elemento anterior.
     marginTop: 8,
+    // textAlign alinea el texto dentro de su contenedor.
     textAlign: 'center',
+    // maxWidth limita el ancho para mantener lectura y composicion.
     maxWidth: 300,
   },
+  // subtitle: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
   subtitle: {
+    // fontSize controla el tamanio del texto.
     fontSize: 12,
+    // textAlign alinea el texto dentro de su contenedor.
     textAlign: 'center',
+    // marginTop separa este bloque del elemento anterior.
     marginTop: 16,
+    // lineHeight ajusta una propiedad visual especifica de este estilo.
     lineHeight: 18,
+    // paddingHorizontal agrega espacio interno a izquierda y derecha.
     paddingHorizontal: 20,
+    // maxWidth limita el ancho para mantener lectura y composicion.
     maxWidth: 300,
   },
+  // orbe: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   orbe: {
+    // marginTop separa este bloque del elemento anterior.
     marginTop: 28,
   },
+  // puntos: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   puntos: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // gap define separacion uniforme entre elementos hijos.
     gap: 6,
+    // marginTop separa este bloque del elemento anterior.
     marginTop: 14,
   },
+  // punto: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   punto: {
+    // width fija o calcula el ancho del elemento.
     width: 5,
+    // height fija o calcula el alto del elemento.
     height: 5,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 3,
   },
+  // form: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   form: {
+    // gap define separacion uniforme entre elementos hijos.
     gap: 14,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 24,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // overflow controla si el contenido se recorta o puede sobresalir.
     overflow: 'hidden',
+    // padding agrega espacio interno alrededor del contenido.
     padding: 16,
+    // shadowColor define el color base de sombra.
     shadowColor: '#7C3AED',
+    // shadowOffset define direccion y distancia de sombra.
     shadowOffset: { width: 0, height: 24 },
+    // shadowOpacity controla intensidad de sombra.
     shadowOpacity: 0.22,
+    // shadowRadius suaviza o expande la sombra.
     shadowRadius: 36,
+    // elevation agrega sombra en Android.
     elevation: 10,
   },
+  // inputGroup: estilo de campo de formulario; controla contenedor, texto y distribucion de la entrada.
   inputGroup: {
+    // gap define separacion uniforme entre elementos hijos.
     gap: 10,
   },
+  // label: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
   label: {
+    // fontSize controla el tamanio del texto.
     fontSize: 10,
+    // fontWeight define el peso visual del texto.
     fontWeight: '800',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 1.5,
   },
+  // inputWrapper: estilo de campo de formulario; controla contenedor, texto y distribucion de la entrada.
   inputWrapper: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 16,
+    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
+    // paddingHorizontal agrega espacio interno a izquierda y derecha.
     paddingHorizontal: 16,
+    // height fija o calcula el alto del elemento.
     height: 52,
   },
+  // inputIcon: estilo de campo de formulario; controla contenedor, texto y distribucion de la entrada.
   inputIcon: {
+    // marginRight ajusta una propiedad visual especifica de este estilo.
     marginRight: 12,
   },
+  // input: estilo de campo de formulario; controla contenedor, texto y distribucion de la entrada.
   input: {
+    // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
     flex: 1,
+    // fontSize controla el tamanio del texto.
     fontSize: 15,
+    // fontWeight define el peso visual del texto.
     fontWeight: '600',
   },
+  // eyeBtn: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   eyeBtn: {
+    // padding agrega espacio interno alrededor del contenido.
     padding: 8,
   },
+  // errorContainer: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
   errorContainer: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // backgroundColor define el fondo del bloque.
     backgroundColor: 'rgba(239,68,68,0.1)',
+    // padding agrega espacio interno alrededor del contenido.
     padding: 12,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 12,
+    // gap define separacion uniforme entre elementos hijos.
     gap: 8,
   },
+  // errorText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   errorText: {
+    // color define el color del texto o icono.
     color: '#EF4444',
+    // fontSize controla el tamanio del texto.
     fontSize: 13,
+    // fontWeight define el peso visual del texto.
     fontWeight: '600',
   },
+  // loginBtn: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   loginBtn: {
+    // marginTop separa este bloque del elemento anterior.
     marginTop: 6,
+    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 18,
+    // overflow controla si el contenido se recorta o puede sobresalir.
     overflow: 'hidden',
+    // elevation agrega sombra en Android.
     elevation: 8,
+    // shadowColor define el color base de sombra.
     shadowColor: '#7C3AED',
+    // shadowOffset define direccion y distancia de sombra.
     shadowOffset: { width: 0, height: 4 },
+    // shadowOpacity controla intensidad de sombra.
     shadowOpacity: 0.3,
+    // shadowRadius suaviza o expande la sombra.
     shadowRadius: 12,
   },
+  // btnGradient: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   btnGradient: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
+    // height fija o calcula el alto del elemento.
     height: 54,
+    // gap define separacion uniforme entre elementos hijos.
     gap: 10,
   },
+  // btnText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   btnText: {
+    // color define el color del texto o icono.
     color: '#FFFFFF',
+    // fontSize controla el tamanio del texto.
     fontSize: 14,
+    // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 1,
   },
+  // backBtn: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   backBtn: {
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
+    // padding agrega espacio interno alrededor del contenido.
     padding: 12,
   },
+  // backBtnText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   backBtnText: {
+    // fontSize controla el tamanio del texto.
     fontSize: 14,
+    // fontWeight define el peso visual del texto.
     fontWeight: '600',
   },
+  // footer: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   footer: {
+    // marginTop separa este bloque del elemento anterior.
     marginTop: 14,
+    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
   },
+  // footerText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   footerText: {
+    // color define el color del texto o icono.
     color: 'rgba(255,255,255,0.2)',
+    // fontSize controla el tamanio del texto.
     fontSize: 11,
+    // fontWeight define el peso visual del texto.
     fontWeight: '600',
+    // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 1,
   },
 });

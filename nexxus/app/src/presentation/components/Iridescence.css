@@ -1,3 +1,12 @@
+/*
+ * Documentacion Nexxus - nexxus/app/src/presentation/components/Iridescence.css
+ * Capa: presentacion.
+ * Proposito: Componente reutilizable de interfaz. Encapsula una pieza visual o interactiva para mantener consistencia entre pantallas.
+ * Nota: Estos estilos controlan presentacion; cambiar nombres de clases exige actualizar los componentes que los consumen.
+ */
+
+/* Documentacion de estilos: las reglas siguientes definen clases consumidas por componentes React; mantener nombres estables evita romper el render web. */
+/* .iridescence-container: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .iridescence-container {
   border-radius: inherit;
   height: 100%;
@@ -6,12 +15,14 @@
   width: 100%;
 }
 
+/* .iridescence-container canvas: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .iridescence-container canvas {
   display: block;
   height: 100% !important;
   width: 100% !important;
 }
 
+/* .nx-admin-banner-iridescence: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-admin-banner-iridescence {
   height: max(720px, 100vh) !important;
   left: 50% !important;

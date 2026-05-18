@@ -1,3 +1,12 @@
+/*
+ * Documentacion Nexxus - nexxus/app/src/Landing/BorderGlow.css
+ * Capa: landing.
+ * Proposito: Pantalla o recurso visual del flujo publico de autenticacion/landing. Centraliza la presentacion inicial antes de entrar a la app privada.
+ * Nota: Estos estilos controlan presentacion; cambiar nombres de clases exige actualizar los componentes que los consumen.
+ */
+
+/* Documentacion de estilos: las reglas siguientes definen clases consumidas por componentes React; mantener nombres estables evita romper el render web. */
+/* .border-glow-card: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .border-glow-card {
   --edge-proximity: 0;
   --cursor-angle: 45deg;
@@ -21,6 +30,7 @@
   transform: translate3d(0, 0, 0.01px);
 }
 
+/* .border-glow-card>.edge-light: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .border-glow-card::before,
 .border-glow-card::after,
 .border-glow-card>.edge-light {
@@ -32,6 +42,7 @@
   z-index: -1;
 }
 
+/* .border-glow-card:not(:hover):not(.sweep-active)>.edge-light: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .border-glow-card:not(:hover):not(.sweep-active)::before,
 .border-glow-card:not(:hover):not(.sweep-active)::after,
 .border-glow-card:not(:hover):not(.sweep-active)>.edge-light {
@@ -39,6 +50,7 @@
   transition: opacity 0.75s ease-in-out;
 }
 
+/* .border-glow-card::before: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .border-glow-card::before {
   background:
     linear-gradient(var(--card-bg, rgba(18, 15, 23, 0.78)) 0 100%) padding-box,
@@ -63,10 +75,12 @@
   opacity: calc((var(--edge-proximity) - var(--color-sensitivity)) / (100 - var(--color-sensitivity)));
 }
 
+/* .border-glow-card::after: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .border-glow-card::after {
   display: none;
 }
 
+/* .border-glow-card>.edge-light: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .border-glow-card>.edge-light {
   inset: calc(var(--glow-padding) * -1);
   mask-image: conic-gradient(from var(--cursor-angle) at center, black 2.5%, transparent 10%, transparent 90%, black 97.5%);
@@ -76,6 +90,7 @@
   z-index: 1;
 }
 
+/* .border-glow-card>.edge-light::before: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .border-glow-card>.edge-light::before {
   border-radius: inherit;
   box-shadow:
@@ -91,6 +106,7 @@
   position: absolute;
 }
 
+/* .border-glow-inner: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .border-glow-inner {
   display: flex;
   flex-direction: column;

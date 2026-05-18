@@ -1,6 +1,19 @@
+/**
+ * Documentacion Nexxus - nexxus/app/src/presentation/screens/admin/adminTheme.ts
+ * Capa: presentacion.
+ * Proposito: Pantalla o utilidad del panel administrativo. Coordina datos empresariales reales y los presenta para decisiones de gestion.
+ * Dependencias clave: imports superiores y contratos tipados del propio modulo.
+ * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras Firebase al extender este archivo.
+ */
+
+// Importa { createContext, useContext } desde React; habilita componentes, hooks y tipos base para esta pieza.
 import { createContext, useContext } from 'react';
+// Importa { Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
 import { Platform } from 'react-native';
 
+/**
+ * Declaracion ADMIN. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 export const ADMIN = {
   fondo: 'var(--nx-admin-fondo, #05030C)',
   fondoProfundo: 'var(--nx-admin-fondo-profundo, #03020A)',
@@ -49,6 +62,9 @@ export const ADMIN = {
   radioGrande: 16,
 };
 
+/**
+ * Declaracion sombraAdmin. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 export const sombraAdmin = {
   ...Platform.select({
     ios: {
@@ -66,8 +82,14 @@ export const sombraAdmin = {
   }),
 };
 
+/**
+ * Describe la forma tipada AdminMode; ayuda a que estados, props o respuestas mantengan una estructura predecible.
+ */
 export type AdminMode = 'dark' | 'light';
 
+/**
+ * Describe la forma tipada AdminPalette; ayuda a que estados, props o respuestas mantengan una estructura predecible.
+ */
 export type AdminPalette = {
   mode: AdminMode;
   isDark: boolean;
@@ -97,6 +119,9 @@ export type AdminPalette = {
   adminVars: Record<string, string>;
 };
 
+/**
+ * Declaracion ADMIN_THEMES. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 export const ADMIN_THEMES: Record<AdminMode, AdminPalette> = {
   dark: {
     mode: 'dark',
@@ -198,6 +223,9 @@ export const ADMIN_THEMES: Record<AdminMode, AdminPalette> = {
   },
 };
 
+/**
+ * Describe la forma tipada AdminAppearanceContextValue; ayuda a que estados, props o respuestas mantengan una estructura predecible.
+ */
 export type AdminAppearanceContextValue = {
   theme: AdminPalette;
   mode: AdminMode;
@@ -205,6 +233,9 @@ export type AdminAppearanceContextValue = {
   setMode: (mode: AdminMode) => void;
 };
 
+/**
+ * Declaracion AdminAppearanceContext. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 export const AdminAppearanceContext = createContext<AdminAppearanceContextValue>({
   theme: ADMIN_THEMES.dark,
   mode: 'dark',
@@ -212,8 +243,14 @@ export const AdminAppearanceContext = createContext<AdminAppearanceContextValue>
   setMode: () => {},
 });
 
+/**
+ * Hook useAdminAppearance. Expone estado derivado y acciones reutilizables para componentes React.
+ */
 export const useAdminAppearance = () => useContext(AdminAppearanceContext);
 
+/**
+ * Declaracion sombraVioleta. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 export const sombraVioleta = {
   ...Platform.select({
     ios: {

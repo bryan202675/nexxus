@@ -1,15 +1,37 @@
+/**
+ * Documentacion Nexxus - nexxus/app/src/presentation/components/Grainient.tsx
+ * Capa: presentacion.
+ * Proposito: Componente reutilizable de interfaz. Encapsula una pieza visual o interactiva para mantener consistencia entre pantallas.
+ * Dependencias clave: imports superiores y contratos tipados del propio modulo.
+ * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras Firebase al extender este archivo.
+ */
+
+// Importa React, { useEffect, useRef } desde React; habilita componentes, hooks y tipos base para esta pieza.
 import React, { useEffect, useRef } from 'react';
+// Importa { Renderer, Program, Mesh, Triangle } desde ogl; agrega una dependencia externa necesaria para este modulo.
 import { Renderer, Program, Mesh, Triangle } from 'ogl';
+// Importa { View, Platform, StyleSheet, Animated } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
 import { View, Platform, StyleSheet, Animated } from 'react-native';
+// Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import { LinearGradient } from 'expo-linear-gradient';
+// Importa estilos CSS; aplica clases, animaciones o efectos visuales usados por este componente web.
 import './Grainient.css';
 
+/**
+ * Declaracion hexToRgb. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 const hexToRgb = (hex: string): [number, number, number] => {
+  // Declara result; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
   if (!result) return [1, 1, 1];
+  // Devuelve el valor final calculado para esta funcion o caso de uso.
   return [parseInt(result[1], 16) / 255, parseInt(result[2], 16) / 255, parseInt(result[3], 16) / 255];
 };
 
+/**
+ * Declaracion vertex. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 const vertex = `
 attribute vec2 position;
 void main() {
@@ -17,6 +39,9 @@ void main() {
 }
 `;
 
+/**
+ * Declaracion fragment. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 const fragment = `
 precision highp float;
 uniform vec2 iResolution;
@@ -98,8 +123,14 @@ void main() {
 }
 `;
 
+/**
+ * Declaracion ctxMap. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
 const ctxMap = new WeakMap();
 
+/**
+ * Define el contrato de datos GrainientProps; documenta campos esperados y evita pasar objetos ambiguos entre capas.
+ */
 interface GrainientProps {
   timeSpeed?: number;
   colorBalance?: number;
@@ -127,6 +158,9 @@ interface GrainientProps {
   style?: any;
 }
 
+/**
+ * Componente Grainient. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
+ */
 const Grainient = ({
   timeSpeed = 0.25,
   colorBalance = 0.0,
@@ -153,37 +187,54 @@ const Grainient = ({
   className = '',
   style
 }: GrainientProps) => {
+  // Inicializa containerRef; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const containerRef = useRef<any>(null);
+  // Inicializa nativeAnim; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const nativeAnim = useRef(new Animated.Value(0)).current;
 
+  // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
   useEffect(() => {
+    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (Platform.OS !== 'web') {
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       Animated.loop(
         Animated.sequence([
           Animated.timing(nativeAnim, { toValue: 1, duration: 2000, useNativeDriver: false }),
           Animated.timing(nativeAnim, { toValue: 0, duration: 2000, useNativeDriver: false }),
         ])
       ).start();
+      // Devuelve el valor final calculado para esta funcion o caso de uso.
       return;
     }
     
+    // Declara container; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const container = containerRef.current;
+    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!container) return;
 
+    // Declara renderer; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const renderer = new Renderer({
       alpha: true,
       antialias: false,
       dpr: Math.min(window.devicePixelRatio || 1, 2)
     });
 
+    // Declara gl; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const gl = renderer.gl;
+    // Declara canvas; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const canvas = gl.canvas;
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     canvas.style.width = '100%';
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     canvas.style.height = '100%';
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     canvas.style.display = 'block';
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     container.appendChild(canvas);
 
+    // Declara geometry; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const geometry = new Triangle(gl);
+    // Declara program; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const program = new Program(gl, {
       vertex,
       fragment,
@@ -214,87 +265,151 @@ const Grainient = ({
       }
     });
 
+    // Declara mesh; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const mesh = new Mesh(gl, { geometry, program });
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     ctxMap.set(container, { renderer, program, mesh });
 
+    // Declara setSize; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const setSize = () => {
+      // Declara rect; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const rect = container.getBoundingClientRect();
+      // Declara w; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const w = Math.max(1, Math.floor(rect.width));
+      // Declara h; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const h = Math.max(1, Math.floor(rect.height));
+      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       renderer.setSize(w, h);
+      // Declara res; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const res = program.uniforms.iResolution.value;
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       res[0] = gl.drawingBufferWidth;
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       res[1] = gl.drawingBufferHeight;
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       renderer.render({ scene: mesh });
     };
 
+    // Declara ro; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const ro = new ResizeObserver(setSize);
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     ro.observe(container);
+    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setSize();
 
+    // Declara raf; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     let raf = 0;
+    // Declara t0; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const t0 = performance.now();
 
+    // Declara loop; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const loop = (t: number) => {
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       program.uniforms.iTime.value = (t - t0) * 0.001;
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       renderer.render({ scene: mesh });
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       raf = requestAnimationFrame(loop);
     };
 
+    // Declara tryStart; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const tryStart = () => {
+      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (raf === 0) raf = requestAnimationFrame(loop);
     };
+    // Declara tryStop; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const tryStop = () => {
+      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (raf !== 0) { cancelAnimationFrame(raf); raf = 0; }
     };
 
+    // Declara onVisibility; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const onVisibility = () => {
+      // Declara isPageVisible; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const isPageVisible = !document.hidden;
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       isPageVisible ? tryStart() : tryStop();
     };
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     document.addEventListener('visibilitychange', onVisibility);
 
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     tryStart();
 
+    // Devuelve el valor final calculado para esta funcion o caso de uso.
     return () => {
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       tryStop();
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       ro.disconnect();
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       document.removeEventListener('visibilitychange', onVisibility);
+      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       ctxMap.delete(container);
+      // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
       try { container.removeChild(canvas); } catch { /* ignore */ }
     };
   }, []);
 
+  // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
   useEffect(() => {
+    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (Platform.OS !== 'web') return;
 
+    // Declara container; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const container = containerRef.current;
+    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!container) return;
+    // Declara ctx; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const ctx = ctxMap.get(container);
+    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!ctx) return;
+    // Declara { program }; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const { program } = ctx;
+    // Declara u; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const u = program.uniforms;
 
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     u.uTimeSpeed.value      = timeSpeed;
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     u.uColorBalance.value   = colorBalance;
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     u.uWarpStrength.value   = warpStrength;
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     u.uWarpFrequency.value  = warpFrequency;
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     u.uWarpSpeed.value      = warpSpeed;
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     u.uWarpAmplitude.value  = warpAmplitude;
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     u.uBlendAngle.value     = blendAngle;
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     u.uBlendSoftness.value  = blendSoftness;
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     u.uRotationAmount.value = rotationAmount;
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     u.uNoiseScale.value     = noiseScale;
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     u.uGrainAmount.value    = grainAmount;
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     u.uGrainScale.value     = grainScale;
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     u.uGrainAnimated.value  = grainAnimated ? 1.0 : 0.0;
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     u.uContrast.value       = contrast;
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     u.uGamma.value          = gamma;
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     u.uSaturation.value     = saturation;
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     u.uCenterOffset.value   = new Float32Array([centerX, centerY]);
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     u.uZoom.value           = zoom;
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     u.uColor1.value         = new Float32Array(hexToRgb(color1));
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     u.uColor2.value         = new Float32Array(hexToRgb(color2));
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     u.uColor3.value         = new Float32Array(hexToRgb(color3));
   }, [
     timeSpeed, colorBalance, warpStrength, warpFrequency, warpSpeed,
@@ -303,16 +418,21 @@ const Grainient = ({
     centerX, centerY, zoom, color1, color2, color3
   ]);
 
+  // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
   if (Platform.OS !== 'web') {
+    // Declara animatedStart; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const animatedStart = {
       x: nativeAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.5] }),
       y: nativeAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.3] }),
     };
 
+    // Devuelve el JSX que React Native renderiza en pantalla.
     return (
+      // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
       <View style={[estilos.fallback, style]}>
         {/* Usamos dos capas con opacidad animada para simular movimiento de gradiente */}
         <Animated.View style={[StyleSheet.absoluteFill, { opacity: nativeAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0.3] }) }]}>
+          {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
           <LinearGradient
             colors={[color1, color2]}
             start={{ x: 0, y: 0 }}
@@ -320,7 +440,9 @@ const Grainient = ({
             style={StyleSheet.absoluteFill}
           />
         </Animated.View>
+        {/* Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla. */}
         <Animated.View style={[StyleSheet.absoluteFill, { opacity: nativeAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }) }]}>
+          {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
           <LinearGradient
             colors={[color2, color3]}
             start={{ x: 1, y: 0 }}
@@ -332,7 +454,9 @@ const Grainient = ({
     );
   }
 
+  // Devuelve el JSX que React Native renderiza en pantalla.
   return (
+    // div renderiza una pieza visual reutilizable dentro de esta pantalla.
     <div 
       ref={containerRef} 
       className={`grainient-container ${className}`.trim()} 
@@ -349,8 +473,13 @@ const Grainient = ({
   );
 };
 
+/**
+ * Mapa de estilos estilos. Centraliza reglas visuales para que el JSX se mantenga legible y consistente.
+ */
 const estilos = StyleSheet.create({
+  // fallback: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   fallback: {
+    // backgroundColor define el fondo del bloque.
     backgroundColor: '#05030C',
   }
 });
