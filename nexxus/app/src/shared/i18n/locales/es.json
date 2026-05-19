@@ -605,8 +605,11 @@
   "app": {
     "home": "Inicio",
     "tasks": "Tareas",
+    "ai": "IA",
     "resources": "Recursos",
     "settings_title": "Tus Ajustes",
+    "privacy": "Privacidad",
+    "support_help": "Soporte y Ayuda",
     "calendario": {
       "title": "Calendario Personal",
       "subtitle": "Tus compromisos y agenda",
@@ -670,7 +673,12 @@
     "title": "Mi Pulso",
     "greeting": "Hola {{name}}",
     "user_default": "Usuario",
+    "flow_title": "Tu jornada está en flujo.",
     "pending_tasks_msg": "Tienes {{count}} tareas pendientes para hoy.",
+    "search_placeholder": "Buscar, crear o preguntarle a Nexxus",
+    "quick_checkin": "Check-in",
+    "quick_data": "Datos",
+    "quick_ai": "IA",
     "daily_action": "ACCIÓN DIARIA",
     "checkin_title": "Check-in de Pulso",
     "checkin_desc": "Registra cómo te sientes hoy para optimizar tu jornada.",
@@ -749,6 +757,7 @@
     "vacations": "Vacaciones",
     "base_salary": "Salario Base",
     "last_checkin": "Último Check-in",
+    "central_headquarters": "Sede central",
     "my_profile": "Mi Perfil",
     "labor_record": "EXPEDIENTE LABORAL",
     "active": "ACTIVO",
@@ -1222,8 +1231,12 @@
     },
     "types": {
       "tarea": "TAREA",
+      "anuncio": "ANUNCIO",
+      "privada": "PRIVADA",
+      "info": "INFO",
       "ausencia": "AUSENCIA",
       "bienestar": "BIENESTAR",
+      "aprobacion": "APROBACIÓN",
       "general": "GENERAL"
     }
   },

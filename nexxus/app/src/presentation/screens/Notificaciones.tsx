@@ -6,8 +6,8 @@
  * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras Firebase al extender este archivo.
  */
 
-// Importa React, { useState } desde React; habilita componentes, hooks y tipos base para esta pieza.
-import React, { useState } from 'react';
+// Importa React, { useEffect, useState } desde React; habilita componentes, hooks y tipos base para esta pieza.
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -40,6 +40,7 @@ import { Notification } from '@/domain/entities/Notification';
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
 // Importa { useTemaMobile }; accede a contexto compartido de usuario, tema o estado global.
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
+import { translateWithApi } from '@/shared/i18n/translatorApi';
 
 /**
  * Define el contrato de datos Props; documenta campos esperados y evita pasar objetos ambiguos entre capas.
@@ -47,6 +48,24 @@ import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 interface Props {
   navigation: any;
 }
+
+const normalizarTipo = (tipo?: string) => (tipo || 'general').toLowerCase();
+
+const crearFechaNotificacion = (fecha: any) => {
+  if (!fecha) return null;
+  if (typeof fecha?.toDate === 'function') return fecha.toDate();
+  if (typeof fecha?.seconds === 'number') return new Date(fecha.seconds * 1000);
+  const date = new Date(fecha);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const formatearFechaNotificacion = (fecha: any, language: string, fallback: string) => {
+  const date = crearFechaNotificacion(fecha);
+  if (!date) return fallback;
+
+  const locale = language === 'es' ? 'es-SV' : 'en-US';
+  return `${date.toLocaleDateString(locale)} • ${date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}`;
+};
 
 /**
  * Componente Notificaciones. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
@@ -61,13 +80,14 @@ export default function Notificaciones({ navigation }: Props) {
   // Declara estilos; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const estilos = crearEstilosNotif(colores, esOscuro);
   // Inicializa [filtro, setFiltro]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const [filtro, setFiltro] = useState<'todas' | 'no_leidas' | Notification['tipo']>('todas');
+  const [filtro, setFiltro] = useState<string>('todas');
+  const [traduccionesDinamicas, setTraduccionesDinamicas] = useState<Record<string, { titulo: string; mensaje: string }>>({});
   // Calcula noLeidas; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
   const noLeidas = notificaciones.filter((notif) => !notif.leida).length;
   // Declara leidas; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const leidas = notificaciones.length - noLeidas;
   // Calcula tiposActivos; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
-  const tiposActivos = Array.from(new Set(notificaciones.map((notif) => notif.tipo))).filter(tipo => !!tipo);
+  const tiposActivos = Array.from(new Set(notificaciones.map((notif) => normalizarTipo(notif.tipo)))).filter(tipo => !!tipo);
   // Calcula notificacionesFiltradas; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
   const notificacionesFiltradas = notificaciones.filter((notif) => {
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
@@ -75,8 +95,34 @@ export default function Notificaciones({ navigation }: Props) {
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (filtro === 'no_leidas') return !notif.leida;
     // Devuelve el valor final calculado para esta funcion o caso de uso.
-    return notif.tipo === filtro;
+    return normalizarTipo(notif.tipo) === filtro;
   });
+
+  useEffect(() => {
+    let activo = true;
+
+    const traducirContenido = async () => {
+      if (!i18n.language.startsWith('en')) {
+        setTraduccionesDinamicas({});
+        return;
+      }
+
+      const pares = await Promise.all(notificaciones.map(async (notif) => {
+        const [titulo, mensaje] = await Promise.all([
+          translateWithApi(notif.titulo || '', i18n.language),
+          translateWithApi(notif.mensaje || '', i18n.language),
+        ]);
+        return [notif.id, { titulo, mensaje }] as const;
+      }));
+
+      if (activo) setTraduccionesDinamicas(Object.fromEntries(pares));
+    };
+
+    traducirContenido();
+    return () => {
+      activo = false;
+    };
+  }, [i18n.language, notificaciones]);
 
   // Declara manejarPresionarNotificacion; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const manejarPresionarNotificacion = async (notif: Notification) => {
@@ -96,7 +142,13 @@ export default function Notificaciones({ navigation }: Props) {
   };
 
   // Calcula renderNotificacion; normaliza fechas para comparaciones, filtros o etiquetas visibles.
-  const renderNotificacion = ({ item }: { item: Notification }) => (
+  const renderNotificacion = ({ item }: { item: Notification }) => {
+    const tipo = normalizarTipo(item.tipo);
+    const contenidoTraducido = traduccionesDinamicas[item.id];
+    const titulo = contenidoTraducido?.titulo || item.titulo;
+    const mensaje = contenidoTraducido?.mensaje || item.mensaje;
+
+    return (
     // BotonAnimado renderiza una pieza visual reutilizable dentro de esta pantalla.
     <BotonAnimado
       style={[estilos.tarjeta, !item.leida && estilos.tarjetaNoLeida]}
@@ -108,35 +160,36 @@ export default function Notificaciones({ navigation }: Props) {
         <View style={[
           estilos.iconoContenedor,
           {
-            backgroundColor: !esOscuro && (item.tipo !== 'tarea' && item.tipo !== 'ausencia' && item.tipo !== 'bienestar')
+            backgroundColor: !esOscuro && (tipo !== 'tarea' && tipo !== 'ausencia' && tipo !== 'bienestar')
               ? '#ffffff'
-              : obtenerColorIcono(item.tipo) + '20'
+              : obtenerColorIcono(tipo) + '20'
           }
         ]}>
           {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-          <MaterialIcons name={obtenerIcono(item.tipo) as any} size={24} color={obtenerColorIcono(item.tipo)} />
+          <MaterialIcons name={obtenerIcono(tipo) as any} size={24} color={obtenerColorIcono(tipo)} />
         </View>
         {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
         <View style={estilos.contenido}>
           {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={estilos.filaTitulo}>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={[estilos.titulo, !item.leida && estilos.textoNoLeido]}>{item.titulo}</Text>
+            <Text style={[estilos.titulo, !item.leida && estilos.textoNoLeido]}>{titulo}</Text>
             {!item.leida && <View style={estilos.puntoAzul} />}
           </View>
           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={estilos.mensaje}>{item.mensaje}</Text>
+          <Text style={estilos.mensaje}>{mensaje}</Text>
           {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={estilos.metaFila}>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.fecha}>{new Date(item.fecha).toLocaleDateString(i18n.language === 'es' ? 'es-SV' : 'en-US')} • {new Date(item.fecha).toLocaleTimeString(i18n.language === 'es' ? 'es-SV' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</Text>
+            <Text style={estilos.fecha}>{formatearFechaNotificacion(item.fecha, i18n.language, t('perfilLaboral.no_date'))}</Text>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.tipoBadge}>{t(`notificaciones.types.${item.tipo || 'general'}`)}</Text>
+            <Text style={estilos.tipoBadge}>{t(`notificaciones.types.${tipo}`, { defaultValue: tipo.toUpperCase() })}</Text>
           </View>
         </View>
       </BlurView>
     </BotonAnimado>
-  );
+    );
+  };
 
   // Declara obtenerIcono; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const obtenerIcono = (tipo: string) => {
@@ -243,7 +296,7 @@ export default function Notificaciones({ navigation }: Props) {
               {[
                 { id: 'todas', label: t('notificaciones.all') },
                 { id: 'no_leidas', label: t('notificaciones.unread') },
-                ...tiposActivos.map((tipo) => ({ id: tipo, label: t(`notificaciones.types.${tipo || 'general'}`) })),
+                ...tiposActivos.map((tipo) => ({ id: tipo, label: t(`notificaciones.types.${tipo}`, { defaultValue: tipo.toUpperCase() }) })),
               ].map((item) => (
                 // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
                 <TouchableOpacity key={item.id} onPress={() => setFiltro(item.id as any)} style={[estilos.chip, filtro === item.id && estilos.chipActivo]}>
@@ -345,5 +398,4 @@ function crearEstilosNotif(c: any, esOscuro: boolean) {
     textoChipActivo: { color: '#fff' },
   });
 }
-
 

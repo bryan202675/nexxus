@@ -91,7 +91,7 @@ const FILTROS: { id: FiltroRecurso; etiqueta: string; icono: string }[] = [
  */
 export default function Recursos({ navigation }: Props) {
   // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   // Declara { colores, blurTint, intensidadBlur, esOscuro }; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
   // Declara estilos; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -115,7 +115,7 @@ export default function Recursos({ navigation }: Props) {
   // Declara resumen; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const resumen = [
     { label: t('recursos.summary.documents'), valor: documentos.length.toString(), icono: 'folder' as const, color: '#3B82F6' },
-    { label: t('recursos.summary.pending'), valor: documentosPendientes.length.toString(), icono: 'bell' as const, color: COLORES.alerta },
+    { label: i18n.language.startsWith('en') ? 'Pending' : t('recursos.summary.pending'), valor: documentosPendientes.length.toString(), icono: 'bell' as const, color: COLORES.alerta },
     { label: t('recursos.summary.categories'), valor: totalCategorias.toString(), icono: 'layers' as const, color: '#06B6D4' },
   ];
 
@@ -341,6 +341,5 @@ function crearEstilosRecursos(c: any, esOscuro: boolean) {
     textoAtajo: { fontSize: 11, fontWeight: '700', color: c.textoSuave, marginTop: 4 },
   });
 }
-
 
 

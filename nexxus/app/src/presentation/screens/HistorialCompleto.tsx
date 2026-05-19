@@ -6,8 +6,8 @@
  * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras Firebase al extender este archivo.
  */
 
-// Importa React, { useMemo, useState } desde React; habilita componentes, hooks y tipos base para esta pieza.
-import React, { useMemo, useState } from 'react';
+// Importa React, { useEffect, useMemo, useState } desde React; habilita componentes, hooks y tipos base para esta pieza.
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   Platform,
@@ -35,6 +35,7 @@ import { useTranslation } from 'react-i18next';
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
 // Importa { useTemaMobile }; accede a contexto compartido de usuario, tema o estado global.
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
+import { translateWithApi } from '@/shared/i18n/translatorApi';
 
 /**
  * Define el contrato de datos Props; documenta campos esperados y evita pasar objetos ambiguos entre capas.
@@ -73,6 +74,59 @@ interface ActividadHistorial {
   prioridad?: string;
 }
 
+const esIngles = (language: string) => language.startsWith('en');
+
+const textoIdioma = (language: string, es: string, en: string) => esIngles(language) ? en : es;
+
+const traducirEnergia = (valor: string, language: string) => {
+  if (!esIngles(language)) return valor;
+
+  const normalizado = (valor || '').toLowerCase().trim();
+  const mapa: Record<string, string> = {
+    bajo: 'low',
+    baja: 'low',
+    medio: 'medium',
+    media: 'medium',
+    alto: 'high',
+    alta: 'high',
+  };
+
+  return mapa[normalizado] || valor;
+};
+
+const traducirEstadoTrabajo = (valor: string, language: string) => {
+  const limpio = (valor || '').replace(/_/g, ' ').trim();
+  if (!esIngles(language)) return limpio;
+
+  const mapa: Record<string, string> = {
+    disponible: 'available',
+    ocupado: 'busy',
+    ocupada: 'busy',
+    'en pausa': 'on break',
+    'en reunion': 'in a meeting',
+    'en reunión': 'in a meeting',
+    'fuera oficina': 'out of office',
+  };
+
+  return mapa[limpio.toLowerCase()] || limpio;
+};
+
+const traducirPrioridad = (valor: string, language: string) => {
+  if (!esIngles(language)) return valor;
+
+  const mapa: Record<string, string> = {
+    baja: 'Low',
+    bajo: 'Low',
+    media: 'Medium',
+    medio: 'Medium',
+    alta: 'High',
+    alto: 'High',
+    urgente: 'Urgent',
+  };
+
+  return mapa[(valor || '').toLowerCase().trim()] || valor;
+};
+
 /**
  * Componente HistorialCompleto. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
@@ -97,6 +151,8 @@ export default function HistorialCompleto({ navigation }: Props) {
   } = useContextoUsuario();
   // Inicializa [categoria, setCategoria]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [categoria, setCategoria] = useState<CategoriaHistorial>('todo');
+  const [traduccionesDinamicas, setTraduccionesDinamicas] = useState<Record<string, { titulo: string; detalle: string }>>({});
+  const language = i18n.language;
 
   // Inicializa actividades; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const actividades = useMemo<ActividadHistorial[]>(() => {
@@ -107,7 +163,7 @@ export default function HistorialCompleto({ navigation }: Props) {
     tareas.forEach((tarea) => eventos.push({
       id: `tarea_${tarea.id}`,
       titulo: tarea.titulo,
-      detalle: tarea.descripcion || tarea.proyecto || 'Actividad de tarea registrada',
+      detalle: tarea.descripcion || tarea.proyecto || textoIdioma(language, 'Actividad de tarea registrada', 'Registered task activity'),
       tipo: t('historialCompleto.activity_types.tarea'),
       tipoKey: 'tarea',
       categoria: 'tareas',
@@ -152,7 +208,11 @@ export default function HistorialCompleto({ navigation }: Props) {
     focusSessions.forEach((sesion) => eventos.push({
       id: `focus_${sesion.id}`,
       titulo: `${t('historialCompleto.activity_types.bienestar')} (${sesion.duracionMinutos} min)`,
-      detalle: `${sesion.tareasCompletadas} tareas completadas • concentración ${sesion.nivelConcentracion}/5`,
+      detalle: textoIdioma(
+        language,
+        `${sesion.tareasCompletadas} tareas completadas • concentración ${sesion.nivelConcentracion}/5`,
+        `${sesion.tareasCompletadas} completed tasks • focus ${sesion.nivelConcentracion}/5`,
+      ),
       tipo: t('historialCompleto.activity_types.bienestar'),
       tipoKey: 'bienestar',
       categoria: 'bienestar',
@@ -166,7 +226,7 @@ export default function HistorialCompleto({ navigation }: Props) {
     (metrics?.recentCheckIns || []).forEach((checkIn) => eventos.push({
       id: `checkin_${checkIn.id}`,
       titulo: t('historialCompleto.activity_types.pulso'),
-      detalle: `Energía: ${checkIn.energia}`,
+      detalle: textoIdioma(language, `Energía: ${checkIn.energia}`, `Energy: ${traducirEnergia(checkIn.energia, language)}`),
       tipo: t('historialCompleto.activity_types.pulso'),
       tipoKey: 'pulso',
       categoria: 'bienestar',
@@ -182,7 +242,13 @@ export default function HistorialCompleto({ navigation }: Props) {
       eventos.push({
         id: `asistencia_${perfil.id}_${perfil.ultimoCheckIn}`,
         titulo: t('historialCompleto.activity_types.asistencia'),
-        detalle: perfil.estado_trabajo ? `Estado actual: ${perfil.estado_trabajo.replace('_', ' ')}` : 'Registro de asistencia del usuario',
+        detalle: perfil.estado_trabajo
+          ? textoIdioma(
+            language,
+            `Estado actual: ${traducirEstadoTrabajo(perfil.estado_trabajo, language)}`,
+            `Current status: ${traducirEstadoTrabajo(perfil.estado_trabajo, language)}`,
+          )
+          : textoIdioma(language, 'Registro de asistencia del usuario', 'User attendance record'),
         tipo: t('historialCompleto.activity_types.asistencia'),
         tipoKey: 'asistencia',
         categoria: 'asistencias',
@@ -197,7 +263,7 @@ export default function HistorialCompleto({ navigation }: Props) {
     documentos.forEach((documento) => eventos.push({
       id: `documento_${documento.id}`,
       titulo: documento.titulo,
-      detalle: `Documento ${documento.tipo}`,
+      detalle: textoIdioma(language, `Documento ${documento.tipo}`, `Document ${documento.tipo}`),
       tipo: t('historialCompleto.activity_types.documento'),
       tipoKey: 'documento',
       categoria: 'documentos',
@@ -211,7 +277,7 @@ export default function HistorialCompleto({ navigation }: Props) {
     pagos.forEach((pago) => eventos.push({
       id: `pago_${pago.id}`,
       titulo: `${t('historialCompleto.activity_types.nomina')} ${pago.periodo}`,
-      detalle: `${pago.moneda || 'USD'} ${Math.round(pago.salario_neto).toLocaleString('en-US')} neto`,
+      detalle: `${pago.moneda || 'USD'} ${Math.round(pago.salario_neto).toLocaleString('en-US')} ${textoIdioma(language, 'neto', 'net')}`,
       tipo: t('historialCompleto.activity_types.nomina'),
       tipoKey: 'nomina',
       categoria: 'nomina',
@@ -224,7 +290,7 @@ export default function HistorialCompleto({ navigation }: Props) {
     // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     citas.forEach((cita) => eventos.push({
       id: `cita_${cita.id}`,
-      titulo: `Sesión con ${cita.especialista}`,
+      titulo: textoIdioma(language, `Sesión con ${cita.especialista}`, `Session with ${cita.especialista}`),
       detalle: `${cita.especialidad} • ${cita.tipoSesion}`,
       tipo: t('historialCompleto.activity_types.cita'),
       tipoKey: 'cita',
@@ -265,7 +331,42 @@ export default function HistorialCompleto({ navigation }: Props) {
 
     // Devuelve el valor final calculado para esta funcion o caso de uso.
     return eventos.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-  }, [tareas, solicitudes, solicitudesInternas, metrics, focusSessions, perfil, documentos, pagos, citas, notificaciones, feedbacks, t]);
+  }, [tareas, solicitudes, solicitudesInternas, metrics, focusSessions, perfil, documentos, pagos, citas, notificaciones, feedbacks, t, language]);
+
+  useEffect(() => {
+    let activo = true;
+
+    const traducirContenidoDinamico = async () => {
+      if (!esIngles(language)) {
+        setTraduccionesDinamicas({});
+        return;
+      }
+
+      const tiposDinamicos = new Set(['tarea', 'ausencia', 'solicitud_interna', 'notificacion', 'feedback', 'cita']);
+      const pares = await Promise.all(actividades.map(async (actividad) => {
+        if (!tiposDinamicos.has(actividad.tipoKey)) {
+          return [actividad.id, { titulo: actividad.titulo, detalle: actividad.detalle }] as const;
+        }
+
+        const [titulo, detalle] = await Promise.all([
+          translateWithApi(actividad.titulo || '', language),
+          translateWithApi(actividad.detalle || '', language),
+        ]);
+
+        return [actividad.id, { titulo, detalle }] as const;
+      }));
+
+      if (activo) {
+        setTraduccionesDinamicas(Object.fromEntries(pares));
+      }
+    };
+
+    traducirContenidoDinamico();
+
+    return () => {
+      activo = false;
+    };
+  }, [actividades, language]);
 
   // Calcula actividadesFiltradas; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
   const actividadesFiltradas = categoria === 'todo'
@@ -304,9 +405,12 @@ export default function HistorialCompleto({ navigation }: Props) {
   const estilos = crearEstilosHistorial(colores, esOscuro);
 
   // Declara renderItem; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const renderItem = ({ item, index }: { item: ActividadHistorial; index: number }) => (
-    // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
-    <View style={estilos.itemHistorial}>
+  const renderItem = ({ item, index }: { item: ActividadHistorial; index: number }) => {
+    const contenido = traduccionesDinamicas[item.id] || item;
+
+    return (
+      // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
+      <View style={estilos.itemHistorial}>
       {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
       <View style={estilos.ejeHistorial}>
         {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
@@ -343,23 +447,24 @@ export default function HistorialCompleto({ navigation }: Props) {
               </View>
             </View>
             {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-            <Text style={estilos.tituloHist} numberOfLines={2}>{item.titulo}</Text>
+            <Text style={estilos.tituloHist} numberOfLines={2}>{contenido.titulo}</Text>
             {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-            <Text style={estilos.detalleHist} numberOfLines={3}>{item.detalle}</Text>
+            <Text style={estilos.detalleHist} numberOfLines={3}>{contenido.detalle}</Text>
             {item.prioridad && (
               // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
               <View style={estilos.metaFila}>
                 {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                 <Feather name="flag" size={12} color={colores.textoSuave} />
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.metaTexto}>{t('historialCompleto.priority_label', { prioridad: item.prioridad })}</Text>
+                <Text style={estilos.metaTexto}>{t('historialCompleto.priority_label', { prioridad: traducirPrioridad(item.prioridad, language) })}</Text>
               </View>
             )}
           </BlurView>
         </View>
       </View>
     </View>
-  );
+    );
+  };
 
   // Devuelve el JSX que React Native renderiza en pantalla.
   return (
@@ -470,7 +575,7 @@ function formatearFecha(fecha: string, locale: string) {
   // Calcula valor; normaliza fechas para comparaciones, filtros o etiquetas visibles.
   const valor = new Date(fecha);
   // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-  if (Number.isNaN(valor.getTime())) return 'Sin fecha';
+  if (Number.isNaN(valor.getTime())) return esIngles(locale) ? 'No date' : 'Sin fecha';
   // Declara loc; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const loc = locale === 'es' ? 'es-SV' : 'en-US';
   // Devuelve el valor final calculado para esta funcion o caso de uso.
@@ -581,4 +686,3 @@ function crearEstilosHistorial(c: any, esOscuro: boolean) {
     textoVacioDetalle: { ...TIPOGRAFIA.cuerpoPequeno, color: c.textoSuave, textAlign: 'center', marginTop: ESPACIADO.xs },
   });
 }
-

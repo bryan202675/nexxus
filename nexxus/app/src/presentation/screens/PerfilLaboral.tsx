@@ -55,6 +55,19 @@ interface Props {
  */
 type IconoFeather = React.ComponentProps<typeof Feather>['name'];
 
+const crearFechaValida = (fecha: any) => {
+  if (!fecha) return null;
+  if (typeof fecha?.toDate === 'function') return fecha.toDate();
+  if (typeof fecha?.seconds === 'number') return new Date(fecha.seconds * 1000);
+  const date = new Date(fecha);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const formatearFechaPerfil = (fecha: any, language: string, fallback: string) => {
+  const date = crearFechaValida(fecha);
+  return date ? date.toLocaleDateString(language === 'es' ? 'es-SV' : 'en-US') : fallback;
+};
+
 /**
  * Componente PerfilLaboral. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
@@ -107,15 +120,33 @@ export default function PerfilLaboral({ navigation }: Props) {
     : t('perfilLaboral.no_defined');
   // Declara vacaciones; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const vacaciones = typeof perfil.dias_vacaciones_disponibles === 'number'
-    ? `${perfil.dias_vacaciones_disponibles} días`
+    ? `${perfil.dias_vacaciones_disponibles} ${i18n.language === 'es' ? 'días' : 'days'}`
     : t('perfilLaboral.no_defined');
+  const traducirRol = (rol?: string) => {
+    const normalizado = (rol || '').toLowerCase();
+    if (normalizado === 'empleado') return t('common.employee');
+    if (normalizado === 'admin') return t('admin.roles.admin', { defaultValue: 'Admin' });
+    if (normalizado === 'jefe') return t('admin.roles.jefe', { defaultValue: i18n.language === 'es' ? 'Jefe' : 'Manager' });
+    return rol || t('common.employee');
+  };
+  const traducirValorLaboral = (valor?: string) => {
+    const limpio = (valor || '').trim();
+    const normalizado = limpio.toLowerCase();
+
+    if (!limpio) return '';
+    if (normalizado === 'empleado') return t('common.employee');
+    if (normalizado === 'sede central') return t('perfilLaboral.central_headquarters');
+    if (normalizado === 'general') return t('common.general');
+
+    return limpio;
+  };
 
   // Declara datosLaborales; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const datosLaborales: { label: string; valor: string; icono: IconoFeather }[] = [
-    { label: t('perfilLaboral.role'), valor: perfil.rol || t('common.employee'), icono: 'shield' },
-    { label: t('perfilLaboral.position'), valor: perfil.cargo || t('perfilLaboral.no_defined'), icono: 'briefcase' },
-    { label: t('perfilLaboral.department'), valor: perfil.departamento || t('perfilLaboral.no_assigned'), icono: 'grid' },
-    { label: t('perfilLaboral.location'), valor: perfil.sede || t('perfilLaboral.no_assigned'), icono: 'map-pin' },
+    { label: t('perfilLaboral.role'), valor: traducirRol(perfil.rol), icono: 'shield' },
+    { label: t('perfilLaboral.position'), valor: traducirValorLaboral(perfil.cargo) || t('perfilLaboral.no_defined'), icono: 'briefcase' },
+    { label: t('perfilLaboral.department'), valor: traducirValorLaboral(perfil.departamento) || t('perfilLaboral.no_assigned'), icono: 'grid' },
+    { label: t('perfilLaboral.location'), valor: traducirValorLaboral(perfil.sede) || t('perfilLaboral.no_assigned'), icono: 'map-pin' },
   ];
 
   // Declara datosContacto; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -131,7 +162,7 @@ export default function PerfilLaboral({ navigation }: Props) {
     { label: t('perfilLaboral.schedule'), valor: perfil.horario_laboral || t('perfilLaboral.no_defined'), icono: 'clock' },
     { label: t('perfilLaboral.vacations'), valor: vacaciones, icono: 'calendar' },
     { label: t('perfilLaboral.base_salary'), valor: salario, icono: 'credit-card' },
-    { label: t('perfilLaboral.last_checkin'), valor: perfil.ultimoCheckIn ? new Date(perfil.ultimoCheckIn).toLocaleDateString(i18n?.language === 'es' ? 'es-SV' : 'en-US') : t('perfilLaboral.no_registered'), icono: 'check-circle' },
+    { label: t('perfilLaboral.last_checkin'), valor: formatearFechaPerfil(perfil.ultimoCheckIn, i18n?.language, t('perfilLaboral.no_registered')), icono: 'check-circle' },
   ];
 
   // Declara cerrarSesionPerfil; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -303,7 +334,7 @@ export default function PerfilLaboral({ navigation }: Props) {
                 {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
                 <Text style={estilos.nombre} numberOfLines={2}>{perfil.nombre}</Text>
                 {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-                <Text style={estilos.puesto} numberOfLines={1}>{perfil.cargo || perfil.departamento || perfil.rol}</Text>
+                <Text style={estilos.puesto} numberOfLines={1}>{traducirValorLaboral(perfil.cargo) || traducirValorLaboral(perfil.departamento) || traducirRol(perfil.rol)}</Text>
                 {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
                 <View style={estilos.filaBadges}>
                   {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
@@ -514,7 +545,7 @@ export default function PerfilLaboral({ navigation }: Props) {
                       <Text style={estilos.historialAccion}>{hist.accion}</Text>
                       {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                       <Text style={estilos.historialFecha}>
-                        {hist.fecha ? new Date(hist.fecha).toLocaleDateString(i18n?.language === 'es' ? 'es-SV' : 'en-US') : t('perfilLaboral.no_date')}
+                        {formatearFechaPerfil(hist.fecha, i18n?.language, t('perfilLaboral.no_date'))}
                       </Text>
                     </View>
                   </View>
@@ -744,6 +775,3 @@ function crearEstilosPerfil(c: any, esOscuro: boolean) {
     subtituloCerrarSesion: { ...TIPOGRAFIA.cuerpoPequeno, color: c.textoSuave, marginTop: 2 },
   });
 }
-
-
-

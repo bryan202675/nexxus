@@ -16,6 +16,7 @@ import { BlurView } from 'expo-blur';
 import { StyleSheet, Platform, View, TouchableOpacity, Text } from 'react-native';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 
 // Importa MiPulso; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import MiPulso from '../screens/MiPulso';
@@ -38,14 +39,15 @@ const Tab = createBottomTabNavigator();
  * Componente CustomTabBar. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 function CustomTabBar({ state, navigation }: BottomTabBarProps) {
+  const { t } = useTranslation();
   // Declara { colores, blurTint, intensidadBlur, esOscuro }; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
   // Declara etiquetas; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const etiquetas: Record<string, string> = {
-    Home: 'Inicio',
-    Tareas: 'Tareas',
-    ChatIA: 'IA',
-    Recursos: 'Recursos',
+    Home: t('app.home'),
+    Tareas: t('app.tasks'),
+    ChatIA: t('app.ai'),
+    Recursos: t('app.resources'),
   };
 
   // Devuelve el JSX que React Native renderiza en pantalla.

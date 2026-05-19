@@ -115,7 +115,7 @@ export default function MiPulso({ navigation }: { navigation: any }) {
           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
           <Text style={estilos.saludo}>{t('miPulso.greeting', { name: perfil?.nombre?.split(' ')[0] || t('miPulso.user_default') })}</Text>
           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={estilos.tituloAura}>Tu jornada esta en flujo.</Text>
+          <Text style={estilos.tituloAura}>{t('miPulso.flow_title')}</Text>
           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
           <Text style={estilos.subtituloSaludo}>{t('miPulso.pending_tasks_msg', { count: tareasPendientes.length })}</Text>
           {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
@@ -123,7 +123,7 @@ export default function MiPulso({ navigation }: { navigation: any }) {
             {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
             <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.barraAuraBlur}>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.textoBarraAura}>Buscar, crear o preguntarle a Nexxus</Text>
+              <Text style={estilos.textoBarraAura}>{t('miPulso.search_placeholder')}</Text>
               {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <Feather name="arrow-up-right" size={16} color={colores.textoSuave} />
             </BlurView>
@@ -131,9 +131,9 @@ export default function MiPulso({ navigation }: { navigation: any }) {
           {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={estilos.chipsAura}>
             {[
-              { label: 'Check-in', icono: 'activity' as const, destino: 'CheckInDiario' },
-              { label: 'Datos', icono: 'bar-chart-2' as const, destino: 'HistorialCompleto' },
-              { label: 'IA', icono: 'cpu' as const, destino: 'ChatIA' },
+              { label: t('miPulso.quick_checkin'), icono: 'activity' as const, destino: 'CheckInDiario' },
+              { label: t('miPulso.quick_data'), icono: 'bar-chart-2' as const, destino: 'HistorialCompleto' },
+              { label: t('miPulso.quick_ai'), icono: 'cpu' as const, destino: 'ChatIA' },
             ].map((item) => (
               // BotonAnimado renderiza una pieza visual reutilizable dentro de esta pantalla.
               <BotonAnimado key={item.label} onPress={() => navigation.navigate(item.destino)} style={estilos.chipAuraContenedor}>

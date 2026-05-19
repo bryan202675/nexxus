@@ -210,9 +210,9 @@ export default function ConfiguracionApp({ navigation }: { navigation: any }) {
         {/* SeccionConfig renderiza una pieza visual reutilizable dentro de esta pantalla. */}
         <SeccionConfig titulo={t('common.advanced_options')}>
           {/* ItemConfig renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <ItemConfig icono="shield" label="Privacidad" />
+          <ItemConfig icono="shield" label={t('app.privacy')} />
           {/* ItemConfig renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <ItemConfig icono="headphones" label="Soporte y Ayuda" onPress={() => navigation.navigate('CentroApoyo')} esUltimo />
+          <ItemConfig icono="headphones" label={t('app.support_help')} onPress={() => navigation.navigate('CentroApoyo')} esUltimo />
         </SeccionConfig>
 
         {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
@@ -296,4 +296,3 @@ function crearEstilosConfig(c: any, esOscuro: boolean) {
     textoCopyright: { fontSize: 11, color: c.textoSuave, opacity: 0.6 },
   });
 }
-
