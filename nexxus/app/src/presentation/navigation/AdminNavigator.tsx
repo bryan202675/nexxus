@@ -11,11 +11,12 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
+  Image,
   Modal,
   Platform,
   StyleSheet,
-  Text,
-  TextInput,
+  Text as NativeText,
+  TextInput as NativeTextInput,
   TouchableOpacity,
   View,
   useWindowDimensions,
@@ -32,8 +33,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
-// Importa { collection, onSnapshot, query, where } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { useApiTranslate } from '@/shared/i18n/useApiTranslate';
+// Importa { collection, doc, onSnapshot, query, where } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
+import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 // Importa { db } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
 import { db } from '@/infrastructure/firebase/firebaseConfig';
 // Importa { useAuth }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
@@ -66,6 +68,11 @@ import {
 } from '../screens/admin/adminTheme';
 // Importa { AdminToastProvider }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import { AdminToastProvider } from '../screens/admin/adminToast';
+import { AdminTranslatedText, AdminTranslatedTextInput, AdminTranslationProvider } from '@/shared/i18n/AdminTranslatedText';
+
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
+
 
 /**
  * Componente Tab. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
@@ -234,6 +241,67 @@ html[data-nexxus-admin-theme="light"] #root .nx-force-white div {
   color: #FFFFFF !important;
   text-decoration: none !important;
 }
+@keyframes nxAdminButtonShimmer {
+  from { background-position: 0 0; }
+  to { background-position: -200% 0; }
+}
+.nx-admin-shimmer-button {
+  display: inline-flex !important;
+  min-height: 48px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(233, 213, 255, 0.22) !important;
+  background: #6320a6 !important;
+  padding: 14px 28px !important;
+  color: #ffffff !important;
+  transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease, border-color 180ms ease !important;
+  cursor: pointer !important;
+  outline: none !important;
+  font-family: inherit !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.5px !important;
+  box-shadow:
+    0 14px 28px rgba(54, 15, 96, 0.30),
+    0 2px 0 rgba(255,255,255,0.14) inset,
+    0 -2px 0 rgba(28, 8, 52, 0.18) inset !important;
+  gap: 8px !important;
+  text-decoration: none !important;
+}
+.nx-admin-shimmer-button,
+.nx-admin-shimmer-button * {
+  color: #ffffff !important;
+  text-decoration: none !important;
+}
+.nx-admin-shimmer-button:hover {
+  background: #7430c4 !important;
+  color: #ffffff !important;
+  border-color: rgba(233, 213, 255, 0.34) !important;
+  box-shadow:
+    0 18px 34px rgba(54, 15, 96, 0.36),
+    0 2px 0 rgba(255,255,255,0.18) inset,
+    0 -2px 0 rgba(28, 8, 52, 0.20) inset !important;
+  transform: translateY(-2px) !important;
+}
+.nx-admin-shimmer-button:hover,
+.nx-admin-shimmer-button:hover * {
+  color: #ffffff !important;
+}
+.nx-admin-shimmer-button:active {
+  background: #581c93 !important;
+  box-shadow:
+    0 8px 18px rgba(54, 15, 96, 0.24),
+    0 1px 0 rgba(255,255,255,0.10) inset,
+    0 2px 6px rgba(28, 8, 52, 0.22) inset !important;
+  transform: translateY(1px) scale(0.99) !important;
+}
+.nx-admin-shimmer-button:focus {
+  box-shadow:
+    0 0 0 2px #090514,
+    0 0 0 4px rgba(168, 85, 247, 0.78),
+    0 14px 28px rgba(54, 15, 96, 0.30) !important;
+}
 @keyframes nxBannerAurora {
   0% { transform: translate3d(-8%, -8%, 0) rotate(0deg) scale(1); }
   50% { transform: translate3d(8%, 4%, 0) rotate(7deg) scale(1.08); }
@@ -391,11 +459,65 @@ function CampoParticulas({ theme }: { theme: AdminPalette }) {
 }
 
 /**
+ * Describe la forma tipada SignalItem; ayuda a que estados, props o respuestas mantengan una estructura predecible.
+ */
+type SignalItem = {
+  id: string;
+  title: string;
+  detail: string;
+  type: 'approval' | 'alert' | 'audit';
+  tone: 'success' | 'warning' | 'danger' | 'info';
+};
+
+/**
+ * Componente SidebarMenuText.
+ */
+function SidebarMenuText({ label, isFocused, estilos }: { label: string; isFocused: boolean; estilos: any }) {
+  return (
+    <Text style={[estilos.menuTexto, isFocused && estilos.menuTextoActivo]}>
+      {label}
+    </Text>
+  );
+}
+
+/**
+ * Componente NotificationItemComponent.
+ */
+function NotificationItemComponent({
+  item,
+  onNavigate,
+  colorFor,
+  iconFor,
+  routeFor,
+  estilos,
+}: {
+  item: SignalItem;
+  onNavigate: (route: string) => void;
+  colorFor: (item: SignalItem) => string;
+  iconFor: (item: SignalItem) => string;
+  routeFor: (item: SignalItem) => string;
+  estilos: any;
+}) {
+  const title = useApiTranslate(item.title);
+  const detail = useApiTranslate(item.detail);
+
+  return (
+    <TouchableOpacity activeOpacity={0.86} onPress={() => onNavigate(routeFor(item))} style={estilos.notificationItem}>
+      <View style={[estilos.notificationIcon, { borderColor: colorFor(item), backgroundColor: `${colorFor(item)}22` }]}>
+        <MaterialIcons name={iconFor(item) as any} size={16} color={colorFor(item)} />
+      </View>
+      <View style={estilos.notificationCopy}>
+        <Text style={estilos.notificationTitle} numberOfLines={1}>{title}</Text>
+        <Text style={estilos.notificationDetail} numberOfLines={1}>{detail}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+/**
  * Componente Sidebar. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 function Sidebar({ state, navigation }: BottomTabBarProps) {
-  // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const { t } = useTranslation();
   // Inicializa { user }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { user } = useAuth();
   // Inicializa { theme }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -404,6 +526,37 @@ function Sidebar({ state, navigation }: BottomTabBarProps) {
   const estilos = useMemo(() => crearEstilos(theme), [theme]);
   // Inicializa entrada; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const entrada = useRef(new Animated.Value(0)).current;
+  // Inicializa [logoUrl, setLogoUrl]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
+  useEffect(() => {
+    // Declara empresaId; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
+    const empresaId = obtenerEmpresaId(user);
+    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
+    if (!empresaId) return;
+
+    // Calcula unsubscribe; se suscribe a los cambios del documento de la empresa para reaccionar ante cambios en tiempo real.
+    const unsubscribe = onSnapshot(
+      doc(db, 'empresas', empresaId),
+      (docSnap) => {
+        // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
+        if (docSnap.exists()) {
+          // Declara data; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
+          const data = docSnap.data();
+          // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
+          setLogoUrl(data?.logo_url || null);
+        }
+      },
+      (error) => {
+        // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
+        console.error('Error fetching company logo:', error);
+      }
+    );
+
+    // Devuelve el valor final calculado para esta funcion o caso de uso.
+    return () => unsubscribe();
+  }, [user]);
 
   // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
   useEffect(() => {
@@ -420,18 +573,19 @@ function Sidebar({ state, navigation }: BottomTabBarProps) {
   return (
     // Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla.
     <Animated.View style={[estilos.sidebar, { opacity: entrada, transform: [{ translateX: entrada.interpolate({ inputRange: [0, 1], outputRange: [-24, 0] }) }] }]}>
-      {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-      <LinearGradient pointerEvents="none" colors={[theme.glowA, theme.glowB, 'transparent']} style={estilos.sidebarGlow} />
-
       {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
       <View style={estilos.logoContainer}>
         {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
         <View style={estilos.logoHeader}>
-          {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-          <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} colors={theme.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.logoIconBg}>
-            {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-            <MaterialIcons name="hub" size={22} color="#FEFEFE" />
-          </LinearGradient>
+          {/* Gradiente visual o Imagen del logo de la empresa. */}
+          {logoUrl ? (
+            <Image source={{ uri: logoUrl }} style={[estilos.logoIconBg, { overflow: 'hidden' }]} resizeMode="cover" />
+          ) : (
+            <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} colors={theme.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.logoIconBg}>
+              {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
+              <MaterialIcons name="hub" size={22} color="#FEFEFE" />
+            </LinearGradient>
+          )}
           {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -483,9 +637,7 @@ function Sidebar({ state, navigation }: BottomTabBarProps) {
               {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <MaterialIcons name={menuItem.icon as any} size={19} color={isFocused ? '#FEFEFE' : theme.muted} />
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={[estilos.menuTexto, isFocused && estilos.menuTextoActivo]}>
-                {t(`admin.menu.${menuItem.name.toLowerCase()}`, { defaultValue: menuItem.label })}
-              </Text>
+              <SidebarMenuText label={menuItem.label} isFocused={isFocused} estilos={estilos} />
             </View>
           );
 
@@ -493,12 +645,7 @@ function Sidebar({ state, navigation }: BottomTabBarProps) {
           return (
             // BotonAnimado renderiza una pieza visual reutilizable dentro de esta pantalla.
             <BotonAnimado key={route.key} style={[estilos.menuItem, isFocused && estilos.menuItemActivo]} onPress={onPress}>
-              {isFocused ? (
-                // Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza.
-                <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast' } as any : {})} colors={theme.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.menuItemGradient}>
-                  {content}
-                </LinearGradient>
-              ) : content}
+              {content}
             </BotonAnimado>
           );
         })}
@@ -533,6 +680,8 @@ function Sidebar({ state, navigation }: BottomTabBarProps) {
  * Componente BannerPantalla. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 function BannerPantalla({ routeName }: { routeName: string }) {
+  // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
+  const { t } = useTranslation();
   // Inicializa { theme }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { theme } = useAdminAppearance();
   // Inicializa { user }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -543,10 +692,15 @@ function BannerPantalla({ routeName }: { routeName: string }) {
   const entrada = useRef(new Animated.Value(0)).current;
   // Declara data; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const data = SCREEN_BANNERS[routeName] || SCREEN_BANNERS.DashboardGeneral;
+
+  // Declara eyebrow; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
+  const eyebrow = data.eyebrow;
   // Declara title; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const title = routeName === 'DashboardGeneral' ? obtenerNombreEmpresa(user) : data.title;
   // Declara description; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const description = routeName === 'DashboardGeneral' ? 'Centro operativo de actividad, riesgo, productividad y señales vivas.' : data.description;
+  const description = routeName === 'DashboardGeneral'
+    ? t('admin.dashboard.subtitle', { defaultValue: 'Lo esencial para decidir y actuar sin ruido.' })
+    : data.description;
 
   // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
   useEffect(() => {
@@ -600,7 +754,7 @@ function BannerPantalla({ routeName }: { routeName: string }) {
           {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View {...(Platform.OS === 'web' ? { className: 'nx-admin-banner-text-fade' } as any : {})} pointerEvents="none" style={estilos.bannerTextBlur} />
           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={estilos.bannerEyebrow}>{data.eyebrow}</Text>
+          <Text style={estilos.bannerEyebrow}>{eyebrow}</Text>
           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
           <Text style={estilos.bannerTitle}>{title}</Text>
           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -615,17 +769,6 @@ function BannerPantalla({ routeName }: { routeName: string }) {
     </Animated.View>
   );
 }
-
-/**
- * Describe la forma tipada SignalItem; ayuda a que estados, props o respuestas mantengan una estructura predecible.
- */
-type SignalItem = {
-  id: string;
-  title: string;
-  detail: string;
-  type: 'approval' | 'alert' | 'audit';
-  tone: 'success' | 'warning' | 'danger' | 'info';
-};
 
 /**
  * Hook useAdminSignals. Expone estado derivado y acciones reutilizables para componentes React.
@@ -721,6 +864,11 @@ function NotificationPanel({ visible, items, onNavigate, onClose }: { visible: b
   // Inicializa anim; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const anim = useRef(new Animated.Value(0)).current;
 
+  // Declaraciones de traducción
+  const panelTitle = 'Centro de señales';
+  const emptyTitle = 'Sin señales pendientes';
+  const emptyDetail = 'Aprobaciones, alertas y auditoría aparecerán aquí.';
+
   // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
   useEffect(() => {
     // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
@@ -776,7 +924,7 @@ function NotificationPanel({ visible, items, onNavigate, onClose }: { visible: b
           {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.notificationsTitle}>Centro de señales</Text>
+            <Text style={estilos.notificationsTitle}>{panelTitle}</Text>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={estilos.notificationsCount}>{items.length}</Text>
           </View>
@@ -789,28 +937,22 @@ function NotificationPanel({ visible, items, onNavigate, onClose }: { visible: b
         {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
         <View style={estilos.notificationsList}>
           {items.length > 0 ? items.slice(0, 7).map((item) => (
-            // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-            <TouchableOpacity key={item.id} activeOpacity={0.86} onPress={() => onNavigate(routeFor(item))} style={estilos.notificationItem}>
-              {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-              <View style={[estilos.notificationIcon, { borderColor: colorFor(item), backgroundColor: `${colorFor(item)}22` }]}>
-                {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                <MaterialIcons name={iconFor(item) as any} size={16} color={colorFor(item)} />
-              </View>
-              {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-              <View style={estilos.notificationCopy}>
-                {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-                <Text style={estilos.notificationTitle} numberOfLines={1}>{item.title}</Text>
-                {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-                <Text style={estilos.notificationDetail} numberOfLines={1}>{item.detail}</Text>
-              </View>
-            </TouchableOpacity>
+            <NotificationItemComponent
+              key={item.id}
+              item={item}
+              onNavigate={onNavigate}
+              colorFor={colorFor}
+              iconFor={iconFor}
+              routeFor={routeFor}
+              estilos={estilos}
+            />
           )) : (
             // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
             <View style={estilos.notificationEmpty}>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.notificationTitle}>Sin señales pendientes</Text>
+              <Text style={estilos.notificationTitle}>{emptyTitle}</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.notificationDetail}>Aprobaciones, alertas y auditoría aparecerán aquí.</Text>
+              <Text style={estilos.notificationDetail}>{emptyDetail}</Text>
             </View>
           )}
         </View>
@@ -845,6 +987,11 @@ function NavbarHeader({ routeName }: { routeName: string }) {
   const entrada = useRef(new Animated.Value(0)).current;
   // Inicializa pulso; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const pulso = useRef(new Animated.Value(0)).current;
+
+  // Declaraciones de traducción dinámicas
+  const welcomeMsgBase = `${t('common.welcome')}, {name}`;
+  const syncStatus = 'Datos vivos y módulos sincronizados';
+  const searchPlaceholder = 'Buscar en admin';
 
   // Devuelve el resultado de la operacion para que quien llama pueda continuar el flujo.
   useEffect(() => {
@@ -911,9 +1058,9 @@ function NavbarHeader({ routeName }: { routeName: string }) {
             {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
             <View>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.statusText}>{t('admin.welcome_msg', { name: user?.nombre?.split(' ')[0] || 'Admin', defaultValue: `Bienvenido, ${user?.nombre?.split(' ')[0] || 'Admin'}` })}</Text>
+              <Text style={estilos.statusText}>{welcomeMsgBase.replace('{name}', user?.nombre?.split(' ')[0] || 'Admin')}</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.statusSubtext}>{t('admin.sync_status', { defaultValue: 'Datos vivos y módulos sincronizados' })}</Text>
+              <Text style={estilos.statusSubtext}>{syncStatus}</Text>
             </View>
           </View>
 
@@ -927,7 +1074,7 @@ function NavbarHeader({ routeName }: { routeName: string }) {
                 onChangeText={setSearchValue}
                 onFocus={() => setSearchFocused(true)}
                 onSubmitEditing={submitSearch}
-                placeholder={t('admin.search_placeholder', { defaultValue: 'Buscar en admin' })}
+                placeholder={searchPlaceholder}
                 placeholderTextColor={theme.soft}
                 style={estilos.searchInput}
               />
@@ -992,10 +1139,14 @@ function NavbarHeader({ routeName }: { routeName: string }) {
  * Componente AdminNavigator. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 export default function AdminNavigator() {
+  // Inicializa { user }; obtiene datos de empresa para proteger nombres propios de la traduccion automatica.
+  const { user } = useAuth();
   // Calcula { height }; adapta el comportamiento o diseno segun plataforma/tamano disponible.
   const { height } = useWindowDimensions();
   // Inicializa [mode, setMode]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [mode, setMode] = useState<AdminMode>('dark');
+  // Inicializa [currentRoute, setCurrentRoute] para controlar el encabezado estatico fuera del navegador.
+  const [currentRoute, setCurrentRoute] = useState('DashboardGeneral');
   // Declara theme; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const theme = ADMIN_THEMES[mode];
   // Inicializa estilos; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -1009,6 +1160,11 @@ export default function AdminNavigator() {
       toggleMode: () => setMode(actual => actual === 'dark' ? 'light' : 'dark'),
     }),
     [mode, theme]
+  );
+  // Declara protectedTranslationTerms; evita traducir nombres de empresa y marcas dentro del admin.
+  const protectedTranslationTerms = useMemo(
+    () => [obtenerNombreEmpresa(user)],
+    [user]
   );
 
   // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
@@ -1041,14 +1197,11 @@ export default function AdminNavigator() {
     <AdminAppearanceContext.Provider value={providerValue}>
       {/* Proveedor de contexto; entrega estado o servicios compartidos a sus componentes hijos. */}
       <AdminToastProvider>
+        <AdminTranslationProvider protectedTerms={protectedTranslationTerms}>
         {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
         <View style={[estilos.contenedorPrincipal, { height, maxHeight: height }]}>
           {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
           <LinearGradient colors={[theme.bg, theme.bgDeep, theme.bg]} style={StyleSheet.absoluteFill} />
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-          <View pointerEvents="none" style={estilos.fondoGlowUno} />
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-          <View pointerEvents="none" style={estilos.fondoGlowDos} />
           {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View pointerEvents="none" style={estilos.gridOverlay} />
           {/* CampoParticulas renderiza una pieza visual reutilizable dentro de esta pantalla. */}
@@ -1057,11 +1210,14 @@ export default function AdminNavigator() {
           <Tab.Navigator
             tabBar={(props) => <Sidebar {...props} />}
             screenOptions={{
-              header: ({ route }: any) => <NavbarHeader routeName={route.name} />,
-              headerShown: true,
+              headerShown: false,
               sceneStyle: estilos.contenidoPrincipal,
-              headerTransparent: true,
             }}
+            screenListeners={({ route }) => ({
+              focus: () => {
+                setCurrentRoute(route.name);
+              },
+            })}
           >
             {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
             <Tab.Screen name="DashboardGeneral" component={DashboardAdmin} />
@@ -1080,7 +1236,10 @@ export default function AdminNavigator() {
             {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
             <Tab.Screen name="ConfiguracionAdmin" component={ConfiguracionAdmin} />
           </Tab.Navigator>
+          {/* Renderizado de cabecera fija y estatica a nivel raiz del modulo de administracion */}
+          <NavbarHeader routeName={currentRoute} />
         </View>
+        </AdminTranslationProvider>
       </AdminToastProvider>
     </AdminAppearanceContext.Provider>
   );
@@ -1203,21 +1362,6 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
     overflow: 'hidden',
     // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
     ...crearSombra(theme),
-  },
-  // sidebarGlow: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  sidebarGlow: {
-    // position define como se posiciona el elemento respecto al layout.
-    position: 'absolute',
-    // top desplaza el elemento desde el borde superior cuando usa posicionamiento.
-    top: -108,
-    // left desplaza el elemento desde el borde izquierdo cuando usa posicionamiento.
-    left: -128,
-    // width fija o calcula el ancho del elemento.
-    width: 380,
-    // height fija o calcula el alto del elemento.
-    height: 380,
-    // borderRadius redondea esquinas para definir la forma visual.
-    borderRadius: 190,
   },
   // contenidoPrincipal: estilo del area de contenido; controla padding, distribucion y separacion interna.
   contenidoPrincipal: {
@@ -1386,7 +1530,7 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
   // menuItemActivo: estilo de lista o item; mantiene espaciado y lectura consistente en elementos repetidos.
   menuItemActivo: {
     // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
-    ...crearSombra(theme, theme.primary),
+    ...crearSombra(theme, theme.purple),
   },
   // menuItemGradient: estilo de lista o item; mantiene espaciado y lectura consistente en elementos repetidos.
   menuItemGradient: {
@@ -1411,7 +1555,7 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
   // menuItemInnerActivo: estilo de lista o item; mantiene espaciado y lectura consistente en elementos repetidos.
   menuItemInnerActivo: {
     // backgroundColor define el fondo del bloque.
-    backgroundColor: 'transparent',
+    backgroundColor: theme.purple,
   },
   // menuTexto: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
   menuTexto: {
@@ -1441,7 +1585,7 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
     // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 999,
     // backgroundColor define el fondo del bloque.
-    backgroundColor: '#F8FBFF',
+    backgroundColor: '#F3E8FF',
   },
   // menuTextoActivo: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
   menuTextoActivo: {
@@ -1641,11 +1785,11 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
   // headerLayer: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
   headerLayer: {
     // position define como se posiciona el elemento respecto al layout.
-    position: 'absolute',
+    position: (Platform.OS === 'web' ? 'fixed' : 'absolute') as any,
     // top desplaza el elemento desde el borde superior cuando usa posicionamiento.
     top: 0,
     // left desplaza el elemento desde el borde izquierdo cuando usa posicionamiento.
-    left: 0,
+    left: Platform.OS === 'web' ? 336 : 0,
     // right desplaza el elemento desde el borde derecho cuando usa posicionamiento.
     right: 0,
     // height fija o calcula el alto del elemento.

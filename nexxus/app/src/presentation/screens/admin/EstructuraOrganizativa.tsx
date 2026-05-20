@@ -10,8 +10,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
-// Importa { Alert, Animated, Easing, Modal, View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, Image, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { Alert, Animated, Easing, Modal, View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, Image, Platform } from 'react-native';
+// Importa { Alert, Animated, Easing, Modal, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Image, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
+import { Alert, Animated, Easing, Modal, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Image, Platform } from 'react-native';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
 // Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
@@ -32,6 +32,11 @@ import { obtenerEmpresaIdAdmin } from './adminUtils';
 import { ADMIN } from './adminTheme';
 // Importa { useAdminToast }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import { useAdminToast } from './adminToast';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
+
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
+
 
 /**
  * Componente BRAND. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
@@ -1125,7 +1130,7 @@ export default function EstructuraOrganizativa() {
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
             <TouchableOpacity style={estilos.btnPrimary} onPress={() => abrirCrear('rol')}>
               {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} colors={['#A855F7', '#9333EA']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.btnGradient}>
+              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white nx-admin-shimmer-button' } as any : {})} colors={['#6320a6', '#6320a6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.btnGradient}>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.btnPrimaryText}>{t('admin.estructura.btn_create_role')}</Text>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -1476,11 +1481,11 @@ export default function EstructuraOrganizativa() {
               disabled={guardando}
             >
               {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-              <LinearGradient colors={[BRAND.bangladeshBlue, BRAND.caribbeanBlue]} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.btnModalGradient}>
+              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white nx-admin-shimmer-button' } as any : {})} colors={['#6320a6', '#6320a6']} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.btnModalGradient}>
                 {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                 <MaterialIcons name="save" size={18} color="#fff" style={estilos.btnIcon} />
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.btnPrimaryText}>{guardando ? t('common.saving').toUpperCase() : t('common.save').toUpperCase()}</Text>
+                <Text style={estilos.btnPrimaryText}>{guardando ? t('common.saving') : t('common.save')}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -3283,10 +3288,10 @@ const estilos = StyleSheet.create({
   },
   // btnModalGradient: estilo de modal; define presentacion de contenido flotante sobre la pantalla actual.
   btnModalGradient: {
-    // minHeight asegura una altura minima util para lectura o area tactil.
-    minHeight: 50,
     // paddingHorizontal agrega espacio interno a izquierda y derecha.
-    paddingHorizontal: 22,
+    paddingHorizontal: 28,
+    // paddingVertical agrega espacio interno arriba y abajo.
+    paddingVertical: 14,
     // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
     // alignItems alinea los hijos en el eje transversal del contenedor.

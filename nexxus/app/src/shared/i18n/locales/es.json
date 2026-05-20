@@ -178,7 +178,17 @@
     "module_chat_title": "Chat Contextual",
     "module_chat_desc": "Comunicación interna conectada a tareas y proyectos para no perder el enfoque.",
     "module_docs_title": "Gestor Documental",
-    "module_docs_desc": "Centraliza contratos, recibos y políticas con acceso seguro y organizado."
+    "module_docs_desc": "Centraliza contratos, recibos y políticas con acceso seguro y organizado.",
+    "module_tasks_title": "Gestión de tareas",
+    "module_tasks_desc": "Asigna, monitorea y completa responsabilidades individuales o por departamento con facilidad.",
+    "module_ai_title": "Inteligencia Artificial",
+    "module_ai_desc": "Optimiza decisiones con resúmenes diarios, alertas de riesgo y sugerencias automáticas.",
+    "module_attendance_title": "Control de asistencia",
+    "module_attendance_desc": "Registra entradas, salidas, turnos y ubicaciones en tiempo real de forma geolocalizada.",
+    "module_analytics_title": "Analytics avanzado",
+    "module_analytics_desc": "Visualiza métricas clave de rendimiento, carga de trabajo y bienestar con gráficos interactivos.",
+    "module_multi_title": "Multisede y Gobernanza",
+    "module_multi_desc": "Controla múltiples ubicaciones, asigna permisos granulares y audita cambios críticos."
   },
   "admin": {
     "dashboard": {
@@ -195,11 +205,37 @@
       },
       "chart": {
         "title": "Rendimiento, Carga y Estrés",
+        "subtitle_diario": "Lectura diaria de los últimos 14 días",
         "subtitle_semanal": "Promedio general de empleados por semana",
         "subtitle_mensual": "Promedio general de empleados por mes",
         "performance": "Rendimiento",
         "load": "Carga",
-        "stress": "Estrés"
+        "stress": "Estrés",
+        "days": "Días",
+        "period": "Periodo",
+        "corporate_agenda": "Agenda corporativa",
+        "next_dates": "Próximas fechas",
+        "no_description": "Sin descripción adicional",
+        "no_events": "Sin eventos programados para los próximos días",
+        "period_detail": "Detalle del periodo",
+        "no_variation": "Sin variación",
+        "delta_vs_previous": "{{delta}} pts vs anterior"
+      },
+      "hero": {
+        "eyebrow": "Inteligencia Nexxus",
+        "title": "Pulso operativo de última generación",
+        "active": "Activos",
+        "online": "En línea",
+        "productivity": "Productividad",
+        "checkins": "Check-ins",
+        "completed": "Completados",
+        "live_ops": "Operación en vivo",
+        "health_score": "Salud operativa",
+        "health_detail": "Balance de rendimiento, riesgo y participación diaria.",
+        "load": "Carga",
+        "active_capacity": "Capacidad activa",
+        "stress": "Estrés",
+        "emotional_signal": "Señal emocional"
       },
       "priorities": {
         "title": "Prioridades de hoy",
@@ -312,13 +348,13 @@
     "comunicacion": {
       "title": "Mensajería Central",
       "subtitle": "Difusión masiva, comunicación segmentada y trazabilidad de anuncios",
-      "btn_publish": "PUBLICAR",
+      "btn_publish": "Publicar",
       "channels_title": "Canales",
       "channels_subtitle": "Audiencias reales",
       "new_announcement_title": "Nuevo Anuncio",
       "new_announcement_placeholder": "Redactar nuevo anuncio...",
       "destination": "Destino",
-      "btn_send_now": "ENVIAR AHORA",
+      "btn_send_now": "Enviar ahora",
       "feed_title": "Feed",
       "search_placeholder": "Buscar anuncios...",
       "empty_feed": "Sin anuncios para este canal",
@@ -336,7 +372,7 @@
     "nomina": {
       "title": "Gestión de Nómina",
       "subtitle": "Control financiero, deducciones legales y dispersión del periodo {{periodo}}",
-      "btn_generate_pdf": "GENERAR BOLETAS PDF",
+      "btn_generate_pdf": "Generar boletas PDF",
       "search_placeholder": "Buscar colaborador...",
       "filters": {
         "todos": "Todos",
@@ -363,8 +399,8 @@
     "auditoria": {
       "title": "Auditoría del Sistema",
       "subtitle": "Seguridad, trazabilidad, anomalías y actividad operativa",
-      "btn_backup": "BACKUP",
-      "btn_export": "EXPORTAR LOGS",
+      "btn_backup": "Backup",
+      "btn_export": "Exportar logs",
       "search_placeholder": "Filtrar logs por usuario, acción, módulo o IP...",
       "filters": {
         "todos": "Todos",
@@ -479,7 +515,7 @@
         "audit_error": "Error al Asignar Tareas"
       },
       "btn_new_employee": "Nuevo Empleado",
-      "btn_export_data": "EXPORTAR DATOS",
+      "btn_export_data": "Exportar datos",
       "no_sede_assigned": "Empleados sin sede asignada",
       "empty_msg": "No se encontraron colaboradores.",
       "empty_state": "Sin empleados para mostrar"
@@ -487,7 +523,7 @@
     "estructura": {
       "title": "Estructura Organizativa",
       "subtitle": "Mapa jerárquico, sectores, nodos y carga operativa",
-      "btn_create_role": "CREAR ROL",
+      "btn_create_role": "Crear rol",
       "btn_sede": "Sede",
       "btn_dept": "Depto",
       "btn_cargo": "Cargo",
@@ -1486,7 +1522,7 @@
     "field_address_label": "Dirección",
     "field_address_placeholder": "Colonia, avenida, edificio",
     "field_phone_label": "Teléfono empresarial",
-    "field_phone_placeholder": "+503 2222 2222",
+    "field_phone_placeholder": "Ej. 7000-0000",
     "field_hq_label": "Sede principal",
     "field_hq_placeholder": "Casa matriz",
     "btn_back": "Volver",
@@ -1539,8 +1575,10 @@
       "city": "Ingresa la ciudad.",
       "address": "Ingresa una dirección más específica.",
       "phone": "Ingresa un teléfono empresarial válido.",
+      "phone_too_short": "El número de teléfono es muy corto para el prefijo seleccionado.",
+      "phone_too_long": "El número de teléfono es muy largo para el prefijo seleccionado.",
       "hq": "Ingresa el nombre de la sede principal.",
-      "logo": "Sube el logo de la empresa.",
+      "logo": "Por favor, sube el logotipo de la empresa para continuar.",
       "company_duplicate": "Ya existe una empresa registrada con ese nombre.",
       "auth_pending": "Primero completa el registro o inicio de sesión.",
       "storage_error": "Firebase Storage rechazó la subida. Ya se ajustó la ruta a usuarios/{uid}; si persiste, publica las reglas de Storage del proyecto.",

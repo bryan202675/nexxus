@@ -13,7 +13,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Text,
+  Text as NativeText,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -31,6 +31,11 @@ import { useAuth } from '../../hooks/useAuth';
 import { changeLanguage } from '@/shared/i18n/config';
 // Importa { useAdminAppearance }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import { useAdminAppearance } from './adminTheme';
+import { useApiTranslate } from '@/shared/i18n/useApiTranslate';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
+
+const Text = AdminTranslatedText;
+
 
 /**
  * Componente CONTRAST_TEXT. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
@@ -105,6 +110,9 @@ function OptionRow({
   // Declara press; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const press = usePressScale();
 
+  const translatedLabel = useApiTranslate(label);
+  const translatedSublabel = sublabel ? useApiTranslate(sublabel) : undefined;
+
   // Devuelve el JSX que React Native renderiza en pantalla.
   return (
     // Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla.
@@ -125,8 +133,8 @@ function OptionRow({
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={styles.rowText}>
           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={[styles.rowLabel, danger && { color: theme.danger }, active && { color: theme.text }]}>{label}</Text>
-          {sublabel ? <Text style={styles.rowSublabel}>{sublabel}</Text> : null}
+          <Text style={[styles.rowLabel, danger && { color: theme.danger }, active && { color: theme.text }]}>{translatedLabel}</Text>
+          {translatedSublabel ? <Text style={styles.rowSublabel}>{translatedSublabel}</Text> : null}
         </View>
         {right}
       </TouchableOpacity>
@@ -184,6 +192,9 @@ function InsightTile({ icon, label, value, accent }: { icon: string; label: stri
   // Inicializa styles; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const styles = useMemo(() => crearEstilos(theme), [theme]);
 
+  const translatedLabel = useApiTranslate(label);
+  const translatedValue = useApiTranslate(value);
+
   // Devuelve el JSX que React Native renderiza en pantalla.
   return (
     // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
@@ -194,9 +205,9 @@ function InsightTile({ icon, label, value, accent }: { icon: string; label: stri
         <MaterialIcons {...({ className: 'nx-force-white' } as any)} name={icon as any} size={18} color={CONTRAST_TEXT} />
       </View>
       {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-      <Text style={styles.insightLabel}>{label}</Text>
+      <Text style={styles.insightLabel}>{translatedLabel}</Text>
       {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-      <Text style={styles.insightValue}>{value}</Text>
+      <Text style={styles.insightValue}>{translatedValue}</Text>
     </View>
   );
 }
@@ -226,6 +237,9 @@ function ThemeChoice({
   // Declara press; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const press = usePressScale();
 
+  const translatedTitle = useApiTranslate(title);
+  const translatedSubtitle = useApiTranslate(subtitle);
+
   // Devuelve el JSX que React Native renderiza en pantalla.
   return (
     // Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla.
@@ -242,9 +256,9 @@ function ThemeChoice({
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={{ flex: 1 }}>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={styles.themeChoiceTitle}>{title}</Text>
+            <Text style={styles.themeChoiceTitle}>{translatedTitle}</Text>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={styles.themeChoiceSubtitle}>{subtitle}</Text>
+            <Text style={styles.themeChoiceSubtitle}>{translatedSubtitle}</Text>
           </View>
           {active ? <MaterialIcons name="check-circle" size={20} color={theme.purple} /> : null}
         </View>
@@ -322,14 +336,13 @@ export default function ConfiguracionAdmin() {
           ) : null}
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={styles.overviewHeader}>
-            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={styles.overviewEyebrow}>Workspace settings</Text>
+              <Text style={styles.overviewEyebrow}>{useApiTranslate('Workspace settings')}</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={styles.overviewTitle}>Control visual y operativo del admin</Text>
+              <Text style={styles.overviewTitle}>{useApiTranslate('Control visual y operativo del admin')}</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={styles.overviewText}>Ajusta apariencia, idioma, seguridad y preferencias del panel administrativo.</Text>
+              <Text style={styles.overviewText}>{useApiTranslate('Ajusta apariencia, idioma, seguridad y preferencias del panel administrativo.')}</Text>
             </View>
           </View>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
@@ -344,7 +357,7 @@ export default function ConfiguracionAdmin() {
         </View>
 
         {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-        <Text style={styles.sectionLabel}>{t('common.language', { defaultValue: 'Idioma' })}</Text>
+        <Text style={styles.sectionLabel}>{useApiTranslate('Idioma')}</Text>
         {/* SectionCard renderiza una pieza visual reutilizable dentro de esta pantalla. */}
         <SectionCard>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
@@ -357,13 +370,13 @@ export default function ConfiguracionAdmin() {
         </SectionCard>
 
         {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-        <Text style={styles.sectionLabel}>{t('common.theme', { defaultValue: 'Tema' })}</Text>
+        <Text style={styles.sectionLabel}>{useApiTranslate('Tema')}</Text>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={styles.themeGrid}>
           {/* ThemeChoice renderiza una pieza visual reutilizable dentro de esta pantalla. */}
           <ThemeChoice
             icon="dark-mode"
-            title={t('common.dark_mode', { defaultValue: 'Modo oscuro' })}
+            title="Modo oscuro"
             subtitle="Cristal oscuro, alto contraste y acentos de landing"
             active={mode === 'dark'}
             onPress={() => setMode('dark')}
@@ -372,7 +385,7 @@ export default function ConfiguracionAdmin() {
           {/* ThemeChoice renderiza una pieza visual reutilizable dentro de esta pantalla. */}
           <ThemeChoice
             icon="light-mode"
-            title={t('common.light_mode', { defaultValue: 'Modo claro' })}
+            title="Modo claro"
             subtitle="Superficies claras, texto fuerte y navegación limpia"
             active={mode === 'light'}
             onPress={() => setMode('light')}
@@ -381,7 +394,7 @@ export default function ConfiguracionAdmin() {
         </View>
 
         {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-        <Text style={styles.sectionLabel}>Cuenta</Text>
+        <Text style={styles.sectionLabel}>{useApiTranslate('Cuenta')}</Text>
         {/* SectionCard renderiza una pieza visual reutilizable dentro de esta pantalla. */}
         <SectionCard>
           {/* OptionRow renderiza una pieza visual reutilizable dentro de esta pantalla. */}
@@ -397,7 +410,7 @@ export default function ConfiguracionAdmin() {
         </SectionCard>
 
         {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-        <Text style={styles.sectionLabel}>Sistema</Text>
+        <Text style={styles.sectionLabel}>{useApiTranslate('Sistema')}</Text>
         {/* SectionCard renderiza una pieza visual reutilizable dentro de esta pantalla. */}
         <SectionCard>
           {/* OptionRow renderiza una pieza visual reutilizable dentro de esta pantalla. */}
@@ -411,12 +424,12 @@ export default function ConfiguracionAdmin() {
             {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
             <MaterialIcons name="logout" size={20} color={theme.danger} />
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={styles.logoutText}>{t('admin.logout', { defaultValue: 'Cerrar sesión' })}</Text>
+            <Text style={styles.logoutText}>{useApiTranslate('Cerrar sesión')}</Text>
           </LinearGradient>
         </TouchableOpacity>
 
         {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-        <Text style={styles.footer}>Nexxus Enterprise Platform · 2026</Text>
+        <Text style={styles.footer}>{useApiTranslate('Nexxus Enterprise Platform · 2026')}</Text>
       </ScrollView>
     </View>
   );

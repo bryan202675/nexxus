@@ -28,17 +28,13 @@ export default function StarButton({
   type?: 'button' | 'submit';
 }) {
   // Devuelve el valor final calculado para esta funcion o caso de uso.
-  return createElement(
-    StarBorder,
-    {
-      as: 'button',
-      className: `nx-star-button ${className}`,
-      color: '#d8b4fe',
-      onClick,
-      speed: '5s',
-      thickness: 1,
-      type,
-    },
-    children
+  return (
+    <button
+      className={`nx-btn-shimmer ${className}`}
+      onClick={onClick}
+      type={type}
+    >
+      {children}
+    </button>
   );
 }

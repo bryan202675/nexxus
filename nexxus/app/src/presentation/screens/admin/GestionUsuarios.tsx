@@ -8,9 +8,9 @@
 
 // Importa React, { useState, useEffect, useRef } desde React; habilita componentes, hooks y tipos base para esta pieza.
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  View, Text, StyleSheet, TouchableOpacity, 
-  TextInput, ActivityIndicator, SafeAreaView, StatusBar, Animated, Platform
+import {
+  View, Text as NativeText, StyleSheet, TouchableOpacity,
+  TextInput as NativeTextInput, ActivityIndicator, SafeAreaView, StatusBar, Animated, Platform
 } from 'react-native';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
@@ -30,6 +30,11 @@ import { useAuth } from '@/presentation/hooks/useAuth';
 import { obtenerEmpresaIdAdmin } from './adminUtils';
 // Importa { ADMIN }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import { ADMIN } from './adminTheme';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
+
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
+
 
 /**
  * Componente GestionUsuarios. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.

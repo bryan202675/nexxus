@@ -15,8 +15,8 @@ import { Platform } from 'react-native';
  * Declaracion ADMIN. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
  */
 export const ADMIN = {
-  fondo: 'var(--nx-admin-fondo, #05030C)',
-  fondoProfundo: 'var(--nx-admin-fondo-profundo, #03020A)',
+  fondo: 'var(--nx-admin-fondo, #000000)',
+  fondoProfundo: 'var(--nx-admin-fondo-profundo, #000000)',
   fondoElevado: 'var(--nx-admin-fondo-elevado, rgba(12, 10, 26, 0.86))',
   fondoVidrio: 'var(--nx-admin-fondo-vidrio, rgba(13, 11, 30, 0.60))',
   fondoVidrioFuerte: 'var(--nx-admin-fondo-vidrio-fuerte, rgba(13, 11, 30, 0.92))',
@@ -126,10 +126,10 @@ export const ADMIN_THEMES: Record<AdminMode, AdminPalette> = {
   dark: {
     mode: 'dark',
     isDark: true,
-    bg: '#05030C',
-    bgDeep: '#03020A',
-    sidebar: 'rgba(6, 5, 18, 0.90)',
-    sidebarStrong: 'rgba(9, 7, 24, 0.96)',
+    bg: '#000000',
+    bgDeep: '#000000',
+    sidebar: '#000000',
+    sidebarStrong: '#000000',
     panel: 'rgba(13, 9, 27, 0.72)',
     panelStrong: 'rgba(15, 11, 34, 0.92)',
     chip: 'rgba(255,255,255,0.045)',
@@ -150,8 +150,8 @@ export const ADMIN_THEMES: Record<AdminMode, AdminPalette> = {
     navTint: 'dark',
     gradient: ['#7C3AED', '#A855F7', '#2563EB'],
     adminVars: {
-      '--nx-admin-fondo': '#05030C',
-      '--nx-admin-fondo-profundo': '#03020A',
+      '--nx-admin-fondo': '#000000',
+      '--nx-admin-fondo-profundo': '#000000',
       '--nx-admin-fondo-elevado': 'rgba(12, 10, 26, 0.86)',
       '--nx-admin-fondo-vidrio': 'rgba(13, 11, 30, 0.60)',
       '--nx-admin-fondo-vidrio-fuerte': 'rgba(13, 11, 30, 0.92)',
@@ -177,8 +177,8 @@ export const ADMIN_THEMES: Record<AdminMode, AdminPalette> = {
     isDark: false,
     bg: '#F7F5FF',
     bgDeep: '#ECE8FF',
-    sidebar: 'rgba(255,255,255,0.86)',
-    sidebarStrong: 'rgba(255,255,255,0.96)',
+    sidebar: '#FFFFFF',
+    sidebarStrong: '#FFFFFF',
     panel: 'rgba(255,255,255,0.72)',
     panelStrong: 'rgba(255,255,255,0.94)',
     chip: 'rgba(82,58,150,0.07)',

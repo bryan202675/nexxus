@@ -2,7 +2,7 @@
  * Documentacion Nexxus - nexxus/app/src/presentation/screens/admin/GestionNomina.tsx
  * Capa: presentacion.
  * Proposito: Pantalla o utilidad del panel administrativo. Coordina datos empresariales reales y los presenta para decisiones de gestion.
- * Dependencias clave: imports superiores y contratos tipados del propio modulo.
+ * Dependencias clave: imports superiores and contratos tipados del propio modulo.
  * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras Firebase al extender este archivo.
  */
 
@@ -10,8 +10,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
-// Importa { Animated, Easing, View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, Alert, Platform, Modal, KeyboardAvoidingView } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { Animated, Easing, View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, Alert, Platform, Modal, KeyboardAvoidingView } from 'react-native';
+import { useApiTranslate } from '@/shared/i18n/useApiTranslate';
+// Importa { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Alert, Platform, Modal, KeyboardAvoidingView } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
+import { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Alert, Platform, Modal, KeyboardAvoidingView } from 'react-native';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
 // Importa { addDoc, collection, onSnapshot, query, where, getDocs, doc, updateDoc, writeBatch } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
@@ -34,6 +35,11 @@ import { calcularNomina } from '@/application/use-cases/admin/AdminPaymentUseCas
 import { User } from '@/domain/entities/User';
 // Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import { LinearGradient } from 'expo-linear-gradient';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
+
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
+
 
 /**
  * Componente BRAND. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
@@ -108,6 +114,65 @@ export default function GestionNomina() {
   const [modalVisible, setModalVisible] = useState(false);
   // Inicializa [guardandoPerfil, setGuardandoPerfil]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [guardandoPerfil, setGuardandoPerfil] = useState(false);
+
+  // Traducciones dinámicas por API
+  const title = useApiTranslate('Gestión de Nómina');
+  const btnExportLabel = useApiTranslate('Exportar');
+  const btnGeneratePayroll = useApiTranslate('Generar nómina');
+  const labelTotalPayroll = useApiTranslate('Total Planilla (Bruto)');
+  const labelNetCost = useApiTranslate('Costo Neto');
+  const searchPlaceholder = useApiTranslate('Buscar por nombre...');
+
+  const filterTodos = useApiTranslate('Todos');
+  const filterPagado = useApiTranslate('Pagado');
+  const filterPendiente = useApiTranslate('Pendiente');
+  const filterProcesando = useApiTranslate('Procesando');
+
+  const colColaborador = useApiTranslate('Colaborador');
+  const colBrutoNeto = useApiTranslate('Bruto / Neto');
+  const colEstado = useApiTranslate('Estado');
+  const colAcciones = useApiTranslate('Acciones');
+
+  const modalTitle = useApiTranslate('Perfil Salarial');
+  const labelSalarioBase = useApiTranslate('Salario Base (USD)');
+  const labelBanco = useApiTranslate('Banco');
+  const labelCuenta = useApiTranslate('Cuenta');
+  const labelAfp = useApiTranslate('AFP');
+  const btnSaveChanges = useApiTranslate('Guardar cambios');
+
+  const alertFormatTitle = useApiTranslate('Exportar');
+  const alertFormatMessage = useApiTranslate('¿En qué formato?');
+
+  const toastProfileSuccessTitle = useApiTranslate('Perfil actualizado');
+  const toastProfileSuccessDesc = useApiTranslate('Perfil salarial actualizado correctamente.');
+  const toastProfileErrorTitle = useApiTranslate('No se pudo actualizar');
+  const toastProfileErrorDesc = useApiTranslate('No se pudo actualizar el perfil salarial.');
+  const toastPayrollSuccessTitle = useApiTranslate('Nómina generada');
+  const toastPayrollSuccessDescBase = useApiTranslate('Se han generado {count} recibos de nómina.');
+  const toastPayrollInfoTitle = useApiTranslate('Sin nuevos recibos');
+  const toastPayrollInfoDesc = useApiTranslate('No hay nuevos empleados para procesar en este periodo.');
+  const toastPayrollErrorTitle = useApiTranslate('No se pudo generar');
+  const toastPayrollErrorDesc = useApiTranslate('No se pudo generar la nómina.');
+  const toastStatusSuccessTitle = useApiTranslate('Pago actualizado');
+  const toastStatusSuccessDescBase = useApiTranslate('{name} quedó en estado {status}.');
+  const toastStatusErrorTitle = useApiTranslate('No se pudo actualizar el pago');
+  const toastStatusErrorDescBase = useApiTranslate('Intenta nuevamente.');
+  const labelColaborador = useApiTranslate('Colaborador');
+  const labelEmpleado = useApiTranslate('Empleado');
+  const labelPerfilNoEncontrado = useApiTranslate('Perfil no encontrado');
+  const labelNoSeEncontroPerfil = useApiTranslate('No se encontró el perfil.');
+
+  const filterLabels: Record<string, string> = useMemo(() => ({
+    todos: filterTodos,
+    pagado: filterPagado,
+    pendiente: filterPendiente
+  }), [filterTodos, filterPagado, filterPendiente]);
+
+  const stateLabels: Record<string, string> = useMemo(() => ({
+    Pagado: filterPagado,
+    Pendiente: filterPendiente,
+    Procesando: filterProcesando
+  }), [filterPagado, filterPendiente, filterProcesando]);
   
   // Inicializa [formPerfil, setFormPerfil]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [formPerfil, setFormPerfil] = useState({
@@ -228,10 +293,10 @@ export default function GestionNomina() {
         afp_pertenece: formPerfil.afp_pertenece,
         updatedAt: new Date().toISOString()
       };
-      
+
       // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
       await updateDoc(userRef, updates);
-      
+
       // Declara empresaId; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const empresaId = obtenerEmpresaIdAdmin(user);
       // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
@@ -249,16 +314,16 @@ export default function GestionNomina() {
           timestamp: new Date().toISOString()
         });
       }
-      
+
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setModalVisible(false);
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      toast.success({ title: 'Perfil actualizado', description: 'Perfil salarial actualizado correctamente.' });
+      toast.success({ title: toastProfileSuccessTitle, description: toastProfileSuccessDesc });
     } catch (error) {
       // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
       console.error("Error updating salary profile:", error);
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      toast.error({ title: 'No se pudo actualizar', description: 'No se pudo actualizar el perfil salarial.' });
+      toast.error({ title: toastProfileErrorTitle, description: toastProfileErrorDesc });
     } finally {
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setGuardandoPerfil(false);
@@ -350,16 +415,16 @@ export default function GestionNomina() {
           timestamp: new Date().toISOString()
         });
         // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-        toast.success({ title: 'Nómina generada', description: `Se han generado ${creados} recibos de nómina.` });
+        toast.success({ title: toastPayrollSuccessTitle, description: toastPayrollSuccessDescBase.replace('{count}', creados.toString()) });
       } else {
         // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-        toast.info({ title: 'Sin nuevos recibos', description: 'No hay nuevos empleados para procesar en este periodo.' });
+        toast.info({ title: toastPayrollInfoTitle, description: toastPayrollInfoDesc });
       }
     } catch (error) {
       // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
       console.error("Error generating payroll:", error);
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      toast.error({ title: 'No se pudo generar', description: 'No se pudo generar la nómina.' });
+      toast.error({ title: toastPayrollErrorTitle, description: toastPayrollErrorDesc });
     } finally {
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setProcesandoMasivo(false);
@@ -395,10 +460,11 @@ export default function GestionNomina() {
         });
       }
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      toast.success({ title: 'Pago actualizado', description: `${pago?.usuarioNombre || 'Colaborador'} quedó en estado ${estado}.` });
+      const statusText = stateLabels[estado] || estado;
+      toast.success({ title: toastStatusSuccessTitle, description: toastStatusSuccessDescBase.replace('{name}', pago?.usuarioNombre || labelColaborador).replace('{status}', statusText) });
     } catch (error: any) {
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      toast.error({ title: 'No se pudo actualizar el pago', description: error?.message || 'Intenta nuevamente.' });
+      toast.error({ title: toastStatusErrorTitle, description: error?.message || toastStatusErrorDescBase });
     }
   };
 
@@ -457,24 +523,24 @@ export default function GestionNomina() {
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.titulo}>{t('admin.nomina.title')}</Text>
+            <Text style={estilos.titulo}>{title}</Text>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={estilos.subtitulo}>{periodoActual}</Text>
           </View>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={estilos.headerActions}>
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-            <TouchableOpacity style={estilos.btnSecondary} onPress={() => Alert.alert("Exportar", "¿En qué formato?", [{text: "Excel"}, {text: "PDF"}, {text: "CSV"}])}>
+            <TouchableOpacity style={estilos.btnSecondary} onPress={() => Alert.alert(alertFormatTitle, alertFormatMessage, [{text: "Excel"}, {text: "PDF"}, {text: "CSV"}])}>
               {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <MaterialIcons name="file-download" size={18} color={BRAND.textMain} style={estilos.btnIcon} />
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.btnSecondaryText}>Exportar</Text>
+              <Text style={estilos.btnSecondaryText}>{btnExportLabel}</Text>
             </TouchableOpacity>
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
             <TouchableOpacity style={estilos.btnPrimary} onPress={generarNominaMasiva} disabled={procesandoMasivo}>
               {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} colors={['#A855F7', '#9333EA']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.btnGradient}>
-                {procesandoMasivo ? <ActivityIndicator size="small" color={CONTRAST_TEXT} /> : <><Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.btnPrimaryText}>GENERAR NÓMINA</Text><Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={[estilos.btnPrimaryText, estilos.btnIconRight, { fontSize: 18, marginTop: -1 }]}>→</Text></>}
+              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white nx-admin-shimmer-button' } as any : {})} colors={['#6320a6', '#6320a6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.btnGradient}>
+                {procesandoMasivo ? <ActivityIndicator size="small" color={CONTRAST_TEXT} /> : <><Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.btnPrimaryText}>{btnGeneratePayroll}</Text><Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={[estilos.btnPrimaryText, estilos.btnIconRight, { fontSize: 18, marginTop: -1 }]}>→</Text></>}
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -485,14 +551,14 @@ export default function GestionNomina() {
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={estilos.resumenCard}>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.resumenLabel}>Total Planilla (Bruto)</Text>
+            <Text style={estilos.resumenLabel}>{labelTotalPayroll}</Text>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={estilos.resumenValor}>{moneda(totales.bruto)}</Text>
           </View>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={estilos.resumenCard}>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.resumenLabel}>Costo Neto</Text>
+            <Text style={estilos.resumenLabel}>{labelNetCost}</Text>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={[estilos.resumenValor, { color: BRAND.success }]}>{moneda(totales.neto)}</Text>
           </View>
@@ -509,7 +575,7 @@ export default function GestionNomina() {
               {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
               <TextInput
                 style={estilos.searchInput}
-                placeholder="Buscar por nombre..."
+                placeholder={searchPlaceholder}
                 placeholderTextColor={BRAND.textSec}
                 value={busqueda}
                 onChangeText={setBusqueda}
@@ -517,13 +583,16 @@ export default function GestionNomina() {
             </View>
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.filtrosRow}>
-              {['todos', 'pagado', 'pendiente'].map((f) => (
-                // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-                <TouchableOpacity key={f} onPress={() => setFiltro(f as any)} style={[estilos.filtroChip, filtro === f && estilos.filtroChipActivo]}>
-                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={[estilos.filtroText, filtro === f && estilos.filtroTextActivo]}>{f.charAt(0).toUpperCase() + f.slice(1)}</Text>
-                </TouchableOpacity>
-              ))}
+              {['todos', 'pagado', 'pendiente'].map((f) => {
+                const label = filterLabels[f] || f;
+                return (
+                  // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
+                  <TouchableOpacity key={f} onPress={() => setFiltro(f as any)} style={[estilos.filtroChip, filtro === f && estilos.filtroChipActivo]}>
+                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                    <Text style={[estilos.filtroText, filtro === f && estilos.filtroTextActivo]}>{label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
 
@@ -532,73 +601,76 @@ export default function GestionNomina() {
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.thRow}>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={[estilos.thText, { flex: 2 }]}>Colaborador</Text>
+              <Text style={[estilos.thText, { flex: 2 }]}>{colColaborador}</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={[estilos.thText, { flex: 1.5 }]}>Bruto / Neto</Text>
+              <Text style={[estilos.thText, { flex: 1.5 }]}>{colBrutoNeto}</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={[estilos.thText, { flex: 1, textAlign: 'center' }]}>Estado</Text>
+              <Text style={[estilos.thText, { flex: 1, textAlign: 'center' }]}>{colEstado}</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={[estilos.thText, { flex: 1.5, textAlign: 'center' }]}>Acciones</Text>
+              <Text style={[estilos.thText, { flex: 1.5, textAlign: 'center' }]}>{colAcciones}</Text>
             </View>
 
-            {pagosFiltrados.map((p, i) => (
-              // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
-              <View key={p.id || i} style={estilos.tdRow}>
-                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                <View style={{ flex: 2 }}>
-                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={estilos.nombreEmp}>{p.usuarioNombre || 'Empleado'}</Text>
-                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={{ fontSize: 10, color: BRAND.textSec }}>{p.id ? `ID: ${p.id.slice(-6)}` : ''}</Text>
-                </View>
-                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                <View style={{ flex: 1.5 }}>
-                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={estilos.montoBruto}>{moneda(p.salario_bruto || 0)}</Text>
-                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={estilos.montoNeto}>{moneda(p.salario_neto || 0)}</Text>
-                </View>
-                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                <View style={{ flex: 1, alignItems: 'center' }}>
+            {pagosFiltrados.map((p, i) => {
+              const statusText = stateLabels[p.estado || 'Pendiente'] || p.estado || 'Pendiente';
+              return (
+                // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
+                <View key={p.id || i} style={estilos.tdRow}>
                   {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                  <View style={[estilos.estadoBadge, { backgroundColor: p.estado === 'Pagado' ? BRAND.success + '22' : BRAND.warning + '22' }]}>
+                  <View style={{ flex: 2 }}>
                     {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                    <Text style={[estilos.estadoTexto, { color: p.estado === 'Pagado' ? BRAND.success : BRAND.warning }]}>{p.estado || 'Pendiente'}</Text>
+                    <Text style={estilos.nombreEmp}>{p.usuarioNombre || labelEmpleado}</Text>
+                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                    <Text style={{ fontSize: 10, color: BRAND.textSec }}>{p.id ? `ID: ${p.id.slice(-6)}` : ''}</Text>
+                  </View>
+                  {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                  <View style={{ flex: 1.5 }}>
+                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                    <Text style={estilos.montoBruto}>{moneda(p.salario_bruto || 0)}</Text>
+                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                    <Text style={estilos.montoNeto}>{moneda(p.salario_neto || 0)}</Text>
+                  </View>
+                  {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                  <View style={{ flex: 1, alignItems: 'center' }}>
+                    {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                    <View style={[estilos.estadoBadge, { backgroundColor: p.estado === 'Pagado' ? BRAND.success + '22' : BRAND.warning + '22' }]}>
+                      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                      <Text style={[estilos.estadoTexto, { color: p.estado === 'Pagado' ? BRAND.success : BRAND.warning }]}>{statusText}</Text>
+                    </View>
+                  </View>
+                  {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                  <View style={estilos.accionesCell}>
+                    {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
+                    <TouchableOpacity style={estilos.accionBtn} onPress={() => actualizarEstado(p.id, 'Pagado')}>
+                      {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
+                      <MaterialIcons name="check-circle" size={18} color={BRAND.success} />
+                    </TouchableOpacity>
+                    {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
+                    <TouchableOpacity style={estilos.accionBtn} onPress={() => actualizarEstado(p.id, 'Pendiente')}>
+                      {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
+                      <MaterialIcons name="pause-circle" size={18} color={BRAND.warning} />
+                    </TouchableOpacity>
+                    {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
+                    <TouchableOpacity style={estilos.accionBtn} onPress={() => {
+                      // Declara userObj; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
+                      const userObj = usuarios.find(u => u.id === p.usuario_id);
+                      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
+                      if (userObj) {
+                        // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
+                        setUsuarioSeleccionado(userObj);
+                        // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
+                        setModalVisible(true);
+                      } else {
+                        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+                        toast.error({ title: labelPerfilNoEncontrado, description: labelNoSeEncontroPerfil });
+                      }
+                    }}>
+                      {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
+                      <MaterialIcons name="settings" size={18} color={BRAND.iconBright} />
+                    </TouchableOpacity>
                   </View>
                 </View>
-                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                <View style={estilos.accionesCell}>
-                  {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-                  <TouchableOpacity style={estilos.accionBtn} onPress={() => actualizarEstado(p.id, 'Pagado')}>
-                    {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                    <MaterialIcons name="check-circle" size={18} color={BRAND.success} />
-                  </TouchableOpacity>
-                  {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-                  <TouchableOpacity style={estilos.accionBtn} onPress={() => actualizarEstado(p.id, 'Pendiente')}>
-                    {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                    <MaterialIcons name="pause-circle" size={18} color={BRAND.warning} />
-                  </TouchableOpacity>
-                  {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-                  <TouchableOpacity style={estilos.accionBtn} onPress={() => {
-                    // Declara userObj; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-                    const userObj = usuarios.find(u => u.id === p.usuario_id);
-                    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-                    if (userObj) {
-                      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-                      setUsuarioSeleccionado(userObj);
-                      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-                      setModalVisible(true);
-                    } else {
-                      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-                      toast.error({ title: 'Perfil no encontrado', description: 'No se encontró el perfil.' });
-                    }
-                  }}>
-                    {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                    <MaterialIcons name="settings" size={18} color={BRAND.iconBright} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
         </View>
       </ScrollView>
@@ -614,7 +686,7 @@ export default function GestionNomina() {
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
               <View>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.modalTitle}>Perfil Salarial</Text>
+                <Text style={estilos.modalTitle}>{modalTitle}</Text>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.modalSubtitle}>{usuarioSeleccionado?.nombre}</Text>
               </View>
@@ -630,7 +702,7 @@ export default function GestionNomina() {
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
               <View style={estilos.inputGroup}>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.inputLabel}>Salario Base (USD)</Text>
+                <Text style={estilos.inputLabel}>{labelSalarioBase}</Text>
                 {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
                 <TextInput
                   style={estilos.modalInput}
@@ -646,14 +718,14 @@ export default function GestionNomina() {
                 {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
                 <View style={{ flex: 1, marginRight: 10 }}>
                   {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={estilos.inputLabel}>Banco</Text>
+                  <Text style={estilos.inputLabel}>{labelBanco}</Text>
                   {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
                   <TextInput style={estilos.modalInput} value={formPerfil.banco} onChangeText={(v) => setFormPerfil({ ...formPerfil, banco: v })} placeholder="Banco" placeholderTextColor={BRAND.textSec} />
                 </View>
                 {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
                 <View style={{ flex: 1 }}>
                   {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={estilos.inputLabel}>Cuenta</Text>
+                  <Text style={estilos.inputLabel}>{labelCuenta}</Text>
                   {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
                   <TextInput style={estilos.modalInput} value={formPerfil.cuenta_bancaria} onChangeText={(v) => setFormPerfil({ ...formPerfil, cuenta_bancaria: v })} placeholder="Cuenta" placeholderTextColor={BRAND.textSec} />
                 </View>
@@ -661,7 +733,7 @@ export default function GestionNomina() {
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
               <View style={estilos.inputGroup}>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.inputLabel}>AFP</Text>
+                <Text style={estilos.inputLabel}>{labelAfp}</Text>
                 {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
                 <View style={{ flexDirection: 'row', gap: 10 }}>
                   {['Crecer', 'Confía', 'IPSFA'].map((afp) => (
@@ -676,8 +748,8 @@ export default function GestionNomina() {
               {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
               <TouchableOpacity style={estilos.saveBtn} onPress={guardarPerfilSalarial} disabled={guardandoPerfil}>
                 {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-                <LinearGradient {...({ className: 'nx-admin-contrast nx-force-white' } as any)} colors={[BRAND.bangladeshBlue, BRAND.caribbeanBlue]} style={estilos.saveBtnGradient}>
-                  {guardandoPerfil ? <ActivityIndicator size="small" color={CONTRAST_TEXT} /> : <Text {...({ className: 'nx-force-white' } as any)} style={estilos.saveBtnText}>GUARDAR CAMBIOS</Text>}
+                <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white nx-admin-shimmer-button' } as any : {})} colors={['#6320a6', '#6320a6']} style={estilos.saveBtnGradient}>
+                  {guardandoPerfil ? <ActivityIndicator size="small" color={CONTRAST_TEXT} /> : <Text {...({ className: 'nx-force-white' } as any)} style={estilos.saveBtnText}>{btnSaveChanges}</Text>}
                 </LinearGradient>
               </TouchableOpacity>
             </ScrollView>
@@ -692,10 +764,10 @@ export default function GestionNomina() {
  * Mapa de estilos estilos. Centraliza reglas visuales para que el JSX se mantenga legible y consistente.
  */
 const estilos = StyleSheet.create({
-  // animatedScreen: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  animatedScreen: { flex: 1 },
   // contenedor: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
   contenedor: { flex: 1, backgroundColor: BRAND.richBlack },
+  // animatedScreen: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
+  animatedScreen: { flex: 1 },
   // scrollContent: estilo del area de contenido; controla padding, distribucion y separacion interna.
   scrollContent: { padding: 24, paddingTop: 260 },
   // header: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
@@ -804,7 +876,7 @@ const estilos = StyleSheet.create({
   // saveBtn: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   saveBtn: { marginTop: 20, borderRadius: 12, overflow: 'hidden', marginBottom: 40 },
   // saveBtnGradient: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  saveBtnGradient: { paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
+  saveBtnGradient: { paddingHorizontal: 28, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
   // saveBtnText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  saveBtnText: { color: CONTRAST_TEXT, fontSize: 14, fontWeight: '900' },
+  saveBtnText: { color: CONTRAST_TEXT, fontSize: 16, fontWeight: '700', letterSpacing: 0.5, textDecorationLine: 'none' },
 });

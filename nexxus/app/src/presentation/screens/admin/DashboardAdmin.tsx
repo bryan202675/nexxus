@@ -10,8 +10,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
-// Importa { Animated, Easing, View, Text, ScrollView, Dimensions, StyleSheet, ActivityIndicator, TouchableOpacity, Platform, useWindowDimensions } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { Animated, Easing, View, Text, ScrollView, Dimensions, StyleSheet, ActivityIndicator, TouchableOpacity, Platform, useWindowDimensions } from 'react-native';
+// Importa { Animated, Easing, View, Text as NativeText, ScrollView, Dimensions, StyleSheet, ActivityIndicator, TouchableOpacity, Platform, useWindowDimensions } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
+import { Animated, Easing, View, Text as NativeText, ScrollView, Dimensions, StyleSheet, ActivityIndicator, TouchableOpacity, Platform, useWindowDimensions } from 'react-native';
 // Importa Svg, { Circle, Defs, Line, LinearGradient as SvgLinearGradient, Path, Stop, Text as SvgText } desde react-native-svg; agrega una dependencia externa necesaria para este modulo.
 import Svg, { Circle, Defs, Line, LinearGradient as SvgLinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg';
 // Importa { addDoc, collection, doc, onSnapshot, query, updateDoc, where } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
@@ -52,6 +52,10 @@ import { obtenerEmpresaIdAdmin } from './adminUtils';
 import { ADMIN, sombraAdmin, sombraVioleta, useAdminAppearance } from './adminTheme';
 // Importa { useAdminToast }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import { useAdminToast } from './adminToast';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
+
+const Text = AdminTranslatedText;
+
 
 /**
  * Componente BRAND. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
@@ -1265,7 +1269,7 @@ export default function DashboardAdmin() {
   const datosGrafico = modoGrafico === 'diario' ? metricas.serieDiaria : modoGrafico === 'semanal' ? metricas.serieSemanal : metricas.serieMensual;
   // Declara subtituloGrafico; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const subtituloGrafico = modoGrafico === 'diario'
-    ? 'Lectura diaria de los últimos 14 días'
+    ? t('admin.dashboard.chart.subtitle_diario')
     : t(`admin.dashboard.chart.subtitle_${modoGrafico}`);
 
   // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
@@ -1293,7 +1297,7 @@ export default function DashboardAdmin() {
           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
           <Text style={estilos.headerTitle}>{nombreEmpresa}</Text>
           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={estilos.headerSubtitle}>Centro operativo</Text>
+          <Text style={estilos.headerSubtitle}>{t('admin.dashboard.title')}</Text>
         </View>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={estilos.livePill}>
@@ -1361,10 +1365,10 @@ export default function DashboardAdmin() {
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.heroKickerDot} />
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.heroEyebrow}>Nexxus Intelligence</Text>
+            <Text style={estilos.heroEyebrow}>{t('admin.dashboard.hero.eyebrow')}</Text>
           </View>
           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={estilos.heroTitle}>Pulso operativo de última generación</Text>
+          <Text style={estilos.heroTitle}>{t('admin.dashboard.hero.title')}</Text>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={estilos.heroActions}>
             {/* Activos */}
@@ -1377,14 +1381,14 @@ export default function DashboardAdmin() {
                   <Users size={12} color="#60A5FA" />
                 </View>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.heroMetricLabel}>Activos</Text>
+                <Text style={estilos.heroMetricLabel}>{t('admin.dashboard.hero.active')}</Text>
               </View>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
               <View style={estilos.heroMetricBody}>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.heroMetricValue}>{metricas.activos}</Text>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={[estilos.heroMetricTrend, { color: '#60A5FA' }]}>En línea</Text>
+                <Text style={[estilos.heroMetricTrend, { color: '#60A5FA' }]}>{t('admin.dashboard.hero.online')}</Text>
               </View>
             </View>
 
@@ -1398,7 +1402,7 @@ export default function DashboardAdmin() {
                   <Zap size={12} color="#C084FC" />
                 </View>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.heroMetricLabel}>Productividad</Text>
+                <Text style={estilos.heroMetricLabel}>{t('admin.dashboard.hero.productivity')}</Text>
               </View>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
               <View style={estilos.heroMetricBody}>
@@ -1419,14 +1423,14 @@ export default function DashboardAdmin() {
                   <UserCheck size={12} color="#34D399" />
                 </View>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.heroMetricLabel}>Check-ins</Text>
+                <Text style={estilos.heroMetricLabel}>{t('admin.dashboard.hero.checkins')}</Text>
               </View>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
               <View style={estilos.heroMetricBody}>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.heroMetricValue}>{metricas.checkInsHoy}</Text>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={[estilos.heroMetricTrend, { color: '#34D399' }]}>Completados</Text>
+                <Text style={[estilos.heroMetricTrend, { color: '#34D399' }]}>{t('admin.dashboard.hero.completed')}</Text>
               </View>
             </View>
           </View>
@@ -1442,7 +1446,7 @@ export default function DashboardAdmin() {
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={[estilos.heroWindowDot, { backgroundColor: BRAND.success }]} />
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.heroWindowTitle}>Live Ops</Text>
+            <Text style={estilos.heroWindowTitle}>{t('admin.dashboard.hero.live_ops')}</Text>
           </View>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={estilos.heroDashboardGrid}>
@@ -1451,11 +1455,11 @@ export default function DashboardAdmin() {
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
               <View style={estilos.heroPanelMainCopy}>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.heroPanelLabel}>Health score</Text>
+                <Text style={estilos.heroPanelLabel}>{t('admin.dashboard.hero.health_score')}</Text>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.heroPanelValue}>{Math.max(0, Math.min(100, metricas.productividad - Math.round(metricas.riesgo / 3)))}%</Text>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.heroPanelText}>Balance de rendimiento, riesgo y participación diaria.</Text>
+                <Text style={estilos.heroPanelText}>{t('admin.dashboard.hero.health_detail')}</Text>
               </View>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
               <View style={estilos.heroChart}>
@@ -1468,20 +1472,20 @@ export default function DashboardAdmin() {
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.heroPanelCard}>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.heroPanelLabel}>Carga</Text>
+              <Text style={estilos.heroPanelLabel}>{t('admin.dashboard.hero.load')}</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.heroPanelStrong}>{datosGrafico[datosGrafico.length - 1]?.carga || 0}%</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.heroPanelText}>Capacidad activa</Text>
+              <Text style={estilos.heroPanelText}>{t('admin.dashboard.hero.active_capacity')}</Text>
             </View>
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.heroPanelCard}>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.heroPanelLabel}>Estrés</Text>
+              <Text style={estilos.heroPanelLabel}>{t('admin.dashboard.hero.stress')}</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.heroPanelStrong}>{datosGrafico[datosGrafico.length - 1]?.estres || 0}%</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.heroPanelText}>Señal emocional</Text>
+              <Text style={estilos.heroPanelText}>{t('admin.dashboard.hero.emotional_signal')}</Text>
             </View>
           </View>
         </View>
@@ -1512,7 +1516,7 @@ export default function DashboardAdmin() {
                 {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
                 <TouchableOpacity onPress={() => setModoGrafico('diario')} style={[estilos.chartToggle, modoGrafico === 'diario' && estilos.chartToggleActivo]}>
                   {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={[estilos.chartToggleText, modoGrafico === 'diario' && estilos.chartToggleTextActivo]}>Días</Text>
+                  <Text style={[estilos.chartToggleText, modoGrafico === 'diario' && estilos.chartToggleTextActivo]}>{t('admin.dashboard.chart.days')}</Text>
                 </TouchableOpacity>
                 {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
                 <TouchableOpacity onPress={() => setModoGrafico('semanal')} style={[estilos.chartToggle, modoGrafico === 'semanal' && estilos.chartToggleActivo]}>
@@ -1817,6 +1821,8 @@ const EmptyState = ({ texto }: { texto: string }) => (
  * Componente PerformanceLineChart. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 const PerformanceLineChart = ({ datos }: { datos: PuntoGrafico[] }) => {
+  // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
+  const { t } = useTranslation();
   // Inicializa animacion; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const animacion = useRef(new Animated.Value(1)).current;
   // Inicializa [avanceAnimado, setAvanceAnimado]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -2026,7 +2032,7 @@ const PerformanceLineChart = ({ datos }: { datos: PuntoGrafico[] }) => {
       {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
       <View style={estilos.chartTooltip}>
         {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-        <Text style={estilos.chartTooltipLabel}>{puntoActivo?.label || datosSeguros[datosSeguros.length - 1]?.label || 'Periodo'}</Text>
+        <Text style={estilos.chartTooltipLabel}>{puntoActivo?.label || datosSeguros[datosSeguros.length - 1]?.label || t('admin.dashboard.chart.period')}</Text>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={estilos.chartTooltipValues}>
           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -2045,6 +2051,8 @@ const PerformanceLineChart = ({ datos }: { datos: PuntoGrafico[] }) => {
  * Componente ChartEventsPanel. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 const ChartEventsPanel = ({ eventos }: { eventos: any[] }) => {
+  // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
+  const { t } = useTranslation();
   // Calcula hoy; normaliza fechas para comparaciones, filtros o etiquetas visibles.
   const hoy = new Date();
   // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
@@ -2076,9 +2084,9 @@ const ChartEventsPanel = ({ eventos }: { eventos: any[] }) => {
     // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
     <View style={estilos.chartDetailPanel}>
       {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-      <Text style={estilos.chartDetailEyebrow}>Agenda Corporativa</Text>
+      <Text style={estilos.chartDetailEyebrow}>{t('admin.dashboard.chart.corporate_agenda')}</Text>
       {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-      <Text style={estilos.chartDetailTitle}>Próximas Fechas</Text>
+      <Text style={estilos.chartDetailTitle}>{t('admin.dashboard.chart.next_dates')}</Text>
       
       {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
       <View style={estilos.chartEventsList}>
@@ -2109,9 +2117,9 @@ const ChartEventsPanel = ({ eventos }: { eventos: any[] }) => {
                   {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
                   <Text style={estilos.chartEventNameBig} numberOfLines={1}>{evento.titulo}</Text>
                   {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-                  <Text style={estilos.chartEventTimeBig} numberOfLines={2}>{evento.descripcion || 'Sin descripción adicional'}</Text>
+                  <Text style={estilos.chartEventTimeBig} numberOfLines={2}>{evento.descripcion || t('admin.dashboard.chart.no_description')}</Text>
                   {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={estilos.chartEventMetaBig}>{hora} · {evento.tipo || 'General'}</Text>
+                  <Text style={estilos.chartEventMetaBig}>{hora} · {evento.tipo || t('common.general')}</Text>
                 </View>
               </View>
             );
@@ -2122,7 +2130,7 @@ const ChartEventsPanel = ({ eventos }: { eventos: any[] }) => {
             {/* CalendarClock renderiza una pieza visual reutilizable dentro de esta pantalla. */}
             <CalendarClock size={24} color={BRAND.textSec} style={{ marginBottom: 8, opacity: 0.5 }} />
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.chartEventsEmpty}>Sin eventos programados para los próximos días</Text>
+            <Text style={estilos.chartEventsEmpty}>{t('admin.dashboard.chart.no_events')}</Text>
           </View>
         )}
       </View>
@@ -2134,15 +2142,17 @@ const ChartEventsPanel = ({ eventos }: { eventos: any[] }) => {
  * Componente ChartDetailPanel. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 const ChartDetailPanel = ({ datos }: { datos: PuntoGrafico[] }) => {
+  // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
+  const { t } = useTranslation();
   // Declara actual; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const actual = datos[datos.length - 1] || { label: 'Periodo', rendimiento: 0, carga: 0, estres: 0 };
+  const actual = datos[datos.length - 1] || { label: t('admin.dashboard.chart.period'), rendimiento: 0, carga: 0, estres: 0 };
   // Declara anterior; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const anterior = datos[datos.length - 2] || actual;
   // Declara rows; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const rows = [
-    { label: 'Rendimiento', value: actual.rendimiento, prev: anterior.rendimiento, color: BRAND.success },
-    { label: 'Carga', value: actual.carga, prev: anterior.carga, color: BRAND.warning },
-    { label: 'Estrés', value: actual.estres, prev: anterior.estres, color: BRAND.error },
+    { label: t('admin.dashboard.chart.performance'), value: actual.rendimiento, prev: anterior.rendimiento, color: BRAND.success },
+    { label: t('admin.dashboard.chart.load'), value: actual.carga, prev: anterior.carga, color: BRAND.warning },
+    { label: t('admin.dashboard.chart.stress'), value: actual.estres, prev: anterior.estres, color: BRAND.error },
   ];
 
   // Devuelve el JSX que React Native renderiza en pantalla.
@@ -2150,7 +2160,7 @@ const ChartDetailPanel = ({ datos }: { datos: PuntoGrafico[] }) => {
     // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
     <View style={estilos.chartDetailPanel}>
       {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-      <Text style={estilos.chartDetailEyebrow}>Detalle del periodo</Text>
+      <Text style={estilos.chartDetailEyebrow}>{t('admin.dashboard.chart.period_detail')}</Text>
       {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
       <Text style={estilos.chartDetailTitle}>{actual.label}</Text>
       {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
@@ -2169,7 +2179,11 @@ const ChartDetailPanel = ({ datos }: { datos: PuntoGrafico[] }) => {
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.chartDetailLabel}>{row.label}</Text>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.chartDetailDelta}>{delta === 0 ? 'Sin variación' : `${delta > 0 ? '+' : ''}${delta} pts vs anterior`}</Text>
+                <Text style={estilos.chartDetailDelta}>
+                  {delta === 0
+                    ? t('admin.dashboard.chart.no_variation')
+                    : t('admin.dashboard.chart.delta_vs_previous', { delta: `${delta > 0 ? '+' : ''}${delta}` })}
+                </Text>
               </View>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={[estilos.chartDetailValue, { color: row.color }]}>{row.value}%</Text>

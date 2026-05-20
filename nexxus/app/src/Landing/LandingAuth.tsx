@@ -7,7 +7,7 @@
  */
 
 // Importa React, { DragEvent, FormEvent, useMemo, useState } desde React; habilita componentes, hooks y tipos base para esta pieza.
-import React, { DragEvent, FormEvent, useMemo, useState } from 'react';
+import React, { DragEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
 import {
@@ -194,12 +194,70 @@ function seguridadPassword(password: string) {
   return reglasPassword(password).filter(([, valido]) => valido).length;
 }
 
-/**
- * Declaracion validarTelefono. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
- */
-function validarTelefono(telefono: string) {
-  // Devuelve el valor final calculado para esta funcion o caso de uso.
-  return /^[+\d][\d\s()+-]{7,}$/.test(telefono.trim()) ? undefined : 'landing_auth.errors.phone';
+interface PhoneFormatConfig {
+  minLength: number;
+  maxLength: number;
+  hyphenPositions: number[];
+  placeholder: string;
+}
+
+const PHONE_CONFIGS: Record<string, PhoneFormatConfig> = {
+  '+503': { minLength: 8, maxLength: 8, hyphenPositions: [4], placeholder: 'Ej. 7000-0000' }, // El Salvador
+  '+502': { minLength: 8, maxLength: 8, hyphenPositions: [4], placeholder: 'Ej. 5000-0000' }, // Guatemala
+  '+504': { minLength: 8, maxLength: 8, hyphenPositions: [4], placeholder: 'Ej. 9000-0000' }, // Honduras
+  '+505': { minLength: 8, maxLength: 8, hyphenPositions: [4], placeholder: 'Ej. 8000-0000' }, // Nicaragua
+  '+506': { minLength: 8, maxLength: 8, hyphenPositions: [4], placeholder: 'Ej. 8000-0000' }, // Costa Rica
+  '+507': { minLength: 8, maxLength: 8, hyphenPositions: [4], placeholder: 'Ej. 6000-0000' }, // Panama
+  '+52':  { minLength: 10, maxLength: 10, hyphenPositions: [2, 6], placeholder: 'Ej. 55-1234-5678' }, // Mexico
+  '+57':  { minLength: 10, maxLength: 10, hyphenPositions: [3, 6], placeholder: 'Ej. 300-123-4567' }, // Colombia
+  '+1':   { minLength: 10, maxLength: 10, hyphenPositions: [3, 6], placeholder: 'Ej. 202-555-0143' }, // USA/Canada
+  '+34':  { minLength: 9, maxLength: 9, hyphenPositions: [3, 6], placeholder: 'Ej. 600-123-456' }, // Spain
+  '+54':  { minLength: 10, maxLength: 10, hyphenPositions: [2, 6], placeholder: 'Ej. 11-1234-5678' }, // Argentina
+  '+56':  { minLength: 9, maxLength: 9, hyphenPositions: [1, 5], placeholder: 'Ej. 9-1234-5678' }, // Chile
+  '+51':  { minLength: 9, maxLength: 9, hyphenPositions: [3, 6], placeholder: 'Ej. 912-345-678' }, // Peru
+  '+593': { minLength: 9, maxLength: 9, hyphenPositions: [2, 5], placeholder: 'Ej. 09-123-4567' }, // Ecuador
+  '+591': { minLength: 8, maxLength: 8, hyphenPositions: [4], placeholder: 'Ej. 7000-0000' }, // Bolivia
+  '+58':  { minLength: 10, maxLength: 10, hyphenPositions: [3, 6], placeholder: 'Ej. 412-123-4567' }, // Venezuela
+};
+
+const FALLBACK_PHONE_CONFIG: PhoneFormatConfig = {
+  minLength: 7,
+  maxLength: 15,
+  hyphenPositions: [],
+  placeholder: 'Ej. 12345678'
+};
+
+function formatPhoneNumber(rawDigits: string, prefix: string): string {
+  const config = PHONE_CONFIGS[prefix] || FALLBACK_PHONE_CONFIG;
+  const clean = rawDigits.replace(/\D/g, '').slice(0, config.maxLength);
+  
+  let formatted = '';
+  for (let i = 0; i < clean.length; i++) {
+    formatted += clean[i];
+    if (config.hyphenPositions.includes(i + 1) && i < clean.length - 1) {
+      formatted += '-';
+    }
+  }
+  return formatted;
+}
+
+function validarTelefono(telefono: string, prefix: string) {
+  const config = PHONE_CONFIGS[prefix] || FALLBACK_PHONE_CONFIG;
+  const digitsOnly = telefono.replace(/\D/g, '');
+  
+  if (digitsOnly.length === 0) {
+    return 'landing_auth.errors.phone';
+  }
+  
+  if (digitsOnly.length < config.minLength) {
+    return 'landing_auth.errors.phone_too_short';
+  }
+  
+  if (digitsOnly.length > config.maxLength) {
+    return 'landing_auth.errors.phone_too_long';
+  }
+  
+  return undefined;
 }
 
 /**
@@ -355,6 +413,137 @@ function Selector({
   );
 }
 
+const normalizarTexto = (texto: string) => {
+  return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+};
+
+interface CountryData {
+  name: string;
+  englishName: string;
+  code: string;
+  flag: string;
+  dialCode: string;
+}
+
+/**
+ * Componente CustomSelect. Un selector autocompletable con soporte para banderas y búsqueda.
+ */
+function CustomSelect({
+  label,
+  error,
+  placeholder,
+  value,
+  onSelect,
+  items,
+  searchQuery,
+  onSearchChange,
+  isOpen,
+  setIsOpen,
+  loading = false,
+  emptyText = 'No hay resultados',
+  hasFlags = false,
+}: {
+  label: string;
+  error?: string;
+  placeholder: string;
+  value: string;
+  onSelect: (item: any) => void;
+  items: any[];
+  searchQuery: string;
+  onSearchChange: (q: string) => void;
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+  loading?: boolean;
+  emptyText?: string;
+  hasFlags?: boolean;
+}) {
+  const { t } = useTranslation();
+  
+  const selectedItem = hasFlags 
+    ? (items as CountryData[]).find(x => x.name === value)
+    : undefined;
+
+  return (
+    <label className={`nx-auth-field ${error ? 'is-invalid' : ''}`}>
+      <span>{label}</span>
+      <div className={`nx-custom-dropdown ${isOpen ? 'active' : ''}`}>
+        <div 
+          className="nx-dropdown-trigger" 
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsOpen(!isOpen);
+          }}
+          tabIndex={0}
+        >
+          <div className="nx-dropdown-trigger-content">
+            {loading ? (
+              <span style={{ opacity: 0.5 }}>{t('landing_auth.loading')}...</span>
+            ) : hasFlags && selectedItem ? (
+              <>
+                {selectedItem.flag && (
+                  <img 
+                    src={selectedItem.flag} 
+                    alt="" 
+                    className="nx-dropdown-flag" 
+                  />
+                )}
+                <span>{selectedItem.name}</span>
+              </>
+            ) : !hasFlags && value ? (
+              <span>{value}</span>
+            ) : (
+              <span style={{ opacity: 0.5 }}>{placeholder}</span>
+            )}
+          </div>
+          <span className="nx-dropdown-chevron" />
+        </div>
+        
+        {isOpen && (
+          <div className="nx-dropdown-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="nx-dropdown-search-wrapper">
+              <input
+                type="text"
+                className="nx-dropdown-search"
+                placeholder={t('landing_auth.search_placeholder') || 'Buscar...'}
+                value={searchQuery}
+                onChange={(e) => onSearchChange(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="nx-dropdown-options-list">
+              {items.length === 0 ? (
+                <div className="nx-dropdown-empty">{loading ? `${t('landing_auth.loading')}...` : emptyText}</div>
+              ) : (
+                items.map((item, idx) => {
+                  const itemName = hasFlags ? (item as CountryData).name : (item as string);
+                  const isSelected = value === itemName;
+                  return (
+                    <div 
+                      key={idx}
+                      className={`nx-dropdown-item ${isSelected ? 'active' : ''}`}
+                      onClick={() => onSelect(item)}
+                    >
+                      {hasFlags && (item as CountryData).flag && (
+                        <img 
+                          src={(item as CountryData).flag} 
+                          alt="" 
+                          className="nx-dropdown-flag" 
+                        />
+                      )}
+                      <span>{itemName}</span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+      {error ? <small>{t(error)}</small> : null}
+    </label>
+  );
+}
+
 /**
  * Componente LandingAuth. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
@@ -383,6 +572,132 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
   const [logoPreview, setLogoPreview] = useState('');
   // Inicializa [pasoEmpresa, setPasoEmpresa]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [pasoEmpresa, setPasoEmpresa] = useState(1);
+
+  const [paises, setPaises] = useState<CountryData[]>([]);
+  const [ciudades, setCiudades] = useState<string[]>([]);
+  const [cargandoPaises, setCargandoPaises] = useState(false);
+  const [cargandoCiudades, setCargandoCiudades] = useState(false);
+
+  const [paisAbierto, setPaisAbierto] = useState(false);
+  const [ciudadAbierto, setCiudadAbierto] = useState(false);
+  const [prefijoAbierto, setPrefijoAbierto] = useState(false);
+
+  const [buscarPais, setBuscarPais] = useState('');
+  const [buscarCiudad, setBuscarCiudad] = useState('');
+  const [buscarPrefijo, setBuscarPrefijo] = useState('');
+
+  const [prefijoSeleccionado, setPrefijoSeleccionado] = useState('+503');
+
+  const cerrarDropdowns = () => {
+    setPaisAbierto(false);
+    setCiudadAbierto(false);
+    setPrefijoAbierto(false);
+  };
+
+  useEffect(() => {
+    const handleDocumentClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.nx-custom-dropdown')) {
+        cerrarDropdowns();
+      }
+    };
+    document.addEventListener('click', handleDocumentClick);
+    return () => {
+      document.removeEventListener('click', handleDocumentClick);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (vista !== 'empresa') return;
+
+    const cargarPaises = async () => {
+      setCargandoPaises(true);
+      try {
+        const res = await fetch("https://restcountries.com/v3.1/all?fields=name,translations,cca2,flags,idd");
+        if (!res.ok) throw new Error("Error fetching countries");
+        const data = await res.json();
+
+        const lista: CountryData[] = data.map((c: any) => {
+          const root = c.idd?.root || '';
+          const suffixes = c.idd?.suffixes || [];
+          let dialCode = '';
+          if (suffixes.length === 1) {
+            dialCode = root + suffixes[0];
+          } else if (suffixes.length > 1) {
+            dialCode = root;
+          } else {
+            dialCode = root;
+          }
+          return {
+            name: c.translations?.spa?.common || c.name.common,
+            englishName: c.name.common,
+            code: c.cca2,
+            flag: c.flags.png,
+            dialCode: dialCode || '+1'
+          };
+        });
+
+        lista.sort((a, b) => a.name.localeCompare(b.name));
+        setPaises(lista);
+      } catch (err) {
+        console.error("Error loading countries:", err);
+      } finally {
+        setCargandoPaises(false);
+      }
+    };
+
+    cargarPaises();
+  }, [vista]);
+
+  useEffect(() => {
+    setCiudades([]);
+    if (empresa.ciudad) {
+      actualizarEmpresa('ciudad', '');
+    }
+
+    if (!empresa.pais) {
+      return;
+    }
+
+    let active = true;
+
+    const paisSeleccionado = paises.find(p => p.name === empresa.pais);
+    const nombreIngles = paisSeleccionado ? paisSeleccionado.englishName : empresa.pais;
+
+    const cargarCiudades = async () => {
+      setCargandoCiudades(true);
+      try {
+        const res = await fetch(`https://countriesnow.space/api/v0.1/countries/cities/q?country=${encodeURIComponent(nombreIngles)}`);
+        if (!res.ok) throw new Error("Error fetching cities");
+        const data = await res.json();
+        if (active) {
+          if (data.error === false && data.data) {
+            const listaCiudades: string[] = data.data;
+            listaCiudades.sort((a, b) => a.localeCompare(b));
+            setCiudades(listaCiudades);
+          } else {
+            setCiudades([]);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading cities:", err);
+        if (active) {
+          setCiudades([]);
+        }
+      } finally {
+        if (active) {
+          setCargandoCiudades(false);
+        }
+      }
+    };
+
+    cargarCiudades();
+
+    return () => {
+      active = false;
+    };
+  }, [empresa.pais, paises]);
+
 
   // Inicializa passwordScore; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const passwordScore = useMemo(() => seguridadPassword(registro.password), [registro.password]);
@@ -475,7 +790,7 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (limpiarTexto(empresa.direccion).length < 6) nuevos.direccion = 'landing_auth.errors.address';
     // Declara errorTelefono; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const errorTelefono = validarTelefono(empresa.telefono);
+    const errorTelefono = validarTelefono(empresa.telefono, prefijoSeleccionado);
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (errorTelefono) nuevos.telefono = errorTelefono;
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
@@ -704,7 +1019,7 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
         rangoEmpleados: empresa.tamano,
         sedes: [],
         tamano: empresa.tamano,
-        telefono: limpiarTexto(empresa.telefono),
+        telefono: `${prefijoSeleccionado.trim()} ${limpiarTexto(empresa.telefono)}`.trim(),
         tipo: empresa.tipo,
         updatedAt: serverTimestamp(),
       };
@@ -808,10 +1123,10 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
 
   // Devuelve el JSX que React Native renderiza en pantalla.
   return (
-    // BorderGlow renderiza una pieza visual reutilizable dentro de esta pantalla.
-    <BorderGlow className="nx-auth-shell" backgroundColor="rgba(10, 7, 24, 0.82)" glowColor="268 88 72" glowIntensity={0.55}>
-      {/* div renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <div className="nx-auth-layout">
+    <>
+      <BorderGlow className={`nx-auth-shell ${vista === 'empresa' ? 'nx-auth-shell-wide' : ''}`} backgroundColor="rgba(10, 7, 24, 0.82)" glowColor="268 88 72" glowIntensity={0.55}>
+        {/* div renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+        <div className="nx-auth-layout">
         {/* aside renderiza una pieza visual reutilizable dentro de esta pantalla. */}
         <aside className="nx-auth-aside">
           {/* span renderiza una pieza visual reutilizable dentro de esta pantalla. */}
@@ -851,7 +1166,7 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
                 <button className={vista === 'login' ? 'active' : ''} onClick={() => setVista('login')} type="button">{t('landing_auth.tab_login')}</button>
               </div>
               {/* button renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <button className="nx-google-button" disabled={cargando} onClick={loginGoogle} type="button">
+              <button className="nx-btn-ghost nx-google-button" disabled={cargando} onClick={loginGoogle} type="button">
                 {/* svg renderiza una pieza visual reutilizable dentro de esta pantalla. */}
                 <svg viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
                   {/* path renderiza una pieza visual reutilizable dentro de esta pantalla. */}
@@ -934,7 +1249,7 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
                 {/* input renderiza una pieza visual reutilizable dentro de esta pantalla. */}
                 <input accept="image/png,image/jpeg,image/webp" onChange={(event) => seleccionarLogo(event.target.files?.[0])} type="file" />
               </div>
-              {errores.logo ? <small className="nx-logo-error">{errores.logo}</small> : null}
+              {errores.logo ? <small className="nx-logo-error">{t(errores.logo)}</small> : null}
 
               {/* div renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <div className="nx-company-grid">
@@ -946,14 +1261,156 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
                 <Selector error={errores.industria} label={t('landing_auth.field_industry_label')} onChange={(valor) => actualizarEmpresa('industria', valor)} opciones={industrias.map(v => ({ value: v, label: t(`landing_auth.industries.${v}`) }))} value={empresa.industria} />
                 {/* Selector renderiza una pieza visual reutilizable dentro de esta pantalla. */}
                 <Selector error={errores.tamano} label={t('landing_auth.field_size_label')} onChange={(valor) => actualizarEmpresa('tamano', valor)} opciones={tamanos.map(v => ({ value: v, label: v }))} value={empresa.tamano} />
-                {/* Campo renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                <Campo error={errores.pais} label={t('landing_auth.field_country_label')} onChange={(valor) => actualizarEmpresa('pais', valor)} placeholder={t('landing_auth.field_country_placeholder')} value={empresa.pais} />
-                {/* Campo renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                <Campo error={errores.ciudad} label={t('landing_auth.field_city_label')} onChange={(valor) => actualizarEmpresa('ciudad', valor)} placeholder={t('landing_auth.field_city_placeholder')} value={empresa.ciudad} />
+                <CustomSelect
+                  label={t('landing_auth.field_country_label')}
+                  error={errores.pais}
+                  placeholder={t('landing_auth.field_country_placeholder')}
+                  value={empresa.pais}
+                  onSelect={(item) => {
+                    actualizarEmpresa('pais', item.name);
+                    if (item.dialCode) {
+                      setPrefijoSeleccionado(item.dialCode);
+                      actualizarEmpresa('telefono', formatPhoneNumber(empresa.telefono, item.dialCode));
+                    }
+                    actualizarEmpresa('ciudad', ''); // reset city
+                    setCiudades([]);
+                    setPaisAbierto(false);
+                    setBuscarPais('');
+                  }}
+                  items={paises.filter(p => normalizarTexto(p.name).includes(normalizarTexto(buscarPais)))}
+                  searchQuery={buscarPais}
+                  onSearchChange={setBuscarPais}
+                  isOpen={paisAbierto}
+                  setIsOpen={(val) => {
+                    cerrarDropdowns();
+                    setPaisAbierto(val);
+                  }}
+                  loading={cargandoPaises}
+                  hasFlags={true}
+                  emptyText="No se encontraron países"
+                />
+
+                {/* CustomSelect para Ciudad con autocompletado o fallback a Campo de texto libre si no hay resultados de API */}
+                {ciudades.length === 0 && !cargandoCiudades ? (
+                  <Campo 
+                    error={errores.ciudad} 
+                    label={t('landing_auth.field_city_label')} 
+                    onChange={(valor) => actualizarEmpresa('ciudad', valor)} 
+                    placeholder={t('landing_auth.field_city_placeholder')} 
+                    value={empresa.ciudad} 
+                  />
+                ) : (
+                  <CustomSelect
+                    label={t('landing_auth.field_city_label')}
+                    error={errores.ciudad}
+                    placeholder={t('landing_auth.field_city_placeholder')}
+                    value={empresa.ciudad}
+                    onSelect={(item) => {
+                      actualizarEmpresa('ciudad', item);
+                      setCiudadAbierto(false);
+                      setBuscarCiudad('');
+                    }}
+                    items={ciudades.filter(c => normalizarTexto(c).includes(normalizarTexto(buscarCiudad)))}
+                    searchQuery={buscarCiudad}
+                    onSearchChange={setBuscarCiudad}
+                    isOpen={ciudadAbierto}
+                    setIsOpen={(val) => {
+                      cerrarDropdowns();
+                      setCiudadAbierto(val);
+                    }}
+                    loading={cargandoCiudades}
+                    emptyText="No se encontraron ciudades"
+                  />
+                )}
+
                 {/* Campo renderiza una pieza visual reutilizable dentro de esta pantalla. */}
                 <Campo error={errores.direccion} label={t('landing_auth.field_address_label')} onChange={(valor) => actualizarEmpresa('direccion', valor)} placeholder={t('landing_auth.field_address_placeholder')} value={empresa.direccion} />
-                {/* Campo renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                <Campo error={errores.telefono} label={t('landing_auth.field_phone_label')} onChange={(valor) => actualizarEmpresa('telefono', valor)} placeholder={t('landing_auth.field_phone_placeholder')} value={empresa.telefono} />
+
+                {/* Campo personalizado para Teléfono con prefijo del país seleccionado y banderas */}
+                <div className="nx-auth-field">
+                  <span>{t('landing_auth.field_phone_label')}</span>
+                  <div className="nx-phone-input-wrapper">
+                    <div className={`nx-custom-dropdown nx-phone-prefix-select ${prefijoAbierto ? 'active' : ''}`}>
+                      <div 
+                        className="nx-dropdown-trigger nx-dropdown-trigger-prefix" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          cerrarDropdowns();
+                          setPrefijoAbierto(!prefijoAbierto);
+                        }}
+                        tabIndex={0}
+                      >
+                        <div className="nx-dropdown-trigger-content">
+                          {(() => {
+                            const countryWithPrefix = paises.find(p => p.dialCode === prefijoSeleccionado);
+                            return (
+                              <>
+                                {countryWithPrefix && (
+                                  <img src={countryWithPrefix.flag} alt="" className="nx-dropdown-flag" style={{ margin: 0 }} />
+                                )}
+                                <span>{prefijoSeleccionado}</span>
+                              </>
+                            );
+                          })()}
+                        </div>
+                        <span className="nx-dropdown-chevron" style={{ margin: 0 }} />
+                      </div>
+                      
+                      {prefijoAbierto && (
+                        <div className="nx-dropdown-panel" style={{ width: '240px', left: 0 }} onClick={(e) => e.stopPropagation()}>
+                          <div className="nx-dropdown-search-wrapper">
+                            <input
+                              type="text"
+                              className="nx-dropdown-search"
+                              placeholder={t('landing_auth.search_placeholder') || 'Buscar...'}
+                              value={buscarPrefijo}
+                              onChange={(e) => setBuscarPrefijo(e.target.value)}
+                              autoFocus
+                            />
+                          </div>
+                          <div className="nx-dropdown-options-list">
+                            {paises
+                              .filter(p => normalizarTexto(p.name).includes(normalizarTexto(buscarPrefijo)) || p.dialCode.includes(buscarPrefijo))
+                              .map((p, idx) => (
+                                <div 
+                                  key={idx}
+                                  className={`nx-dropdown-item ${prefijoSeleccionado === p.dialCode ? 'active' : ''}`}
+                                  onClick={() => {
+                                    setPrefijoSeleccionado(p.dialCode);
+                                    setPrefijoAbierto(false);
+                                    setBuscarPrefijo('');
+                                    actualizarEmpresa('telefono', formatPhoneNumber(empresa.telefono, p.dialCode));
+                                  }}
+                                >
+                                  <img src={p.flag} alt="" className="nx-dropdown-flag" />
+                                  <span style={{ fontWeight: 'bold' }}>{p.dialCode}</span>
+                                  <span style={{ opacity: 0.7, fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {p.name}
+                                  </span>
+                                </div>
+                              ))
+                            }
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="nx-phone-number-field">
+                      <input
+                        type="text"
+                        aria-invalid={Boolean(errores.telefono)}
+                        placeholder={PHONE_CONFIGS[prefijoSeleccionado]?.placeholder || t('landing_auth.field_phone_placeholder')}
+                        value={empresa.telefono}
+                        onChange={(event) => {
+                          const formatted = formatPhoneNumber(event.target.value, prefijoSeleccionado);
+                          actualizarEmpresa('telefono', formatted);
+                        }}
+                      />
+                    </div>
+                  </div>
+                  {errores.telefono ? <small style={{ color: '#ff9eb2', fontSize: '0.78rem' }}>{t(errores.telefono)}</small> : null}
+                </div>
+
                 {/* Campo renderiza una pieza visual reutilizable dentro de esta pantalla. */}
                 <Campo error={errores.sedePrincipal} label={t('landing_auth.field_hq_label')} onChange={(valor) => actualizarEmpresa('sedePrincipal', valor)} placeholder={t('landing_auth.field_hq_placeholder')} value={empresa.sedePrincipal} />
               </div>
@@ -961,7 +1418,7 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
               {/* div renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <div className="nx-company-actions">
                 {/* button renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                <button className="nx-auth-secondary" onClick={() => setVista('registro')} type="button">{t('landing_auth.btn_back')}</button>
+                <button className="nx-btn-ghost nx-auth-secondary" onClick={() => setVista('registro')} type="button">{t('landing_auth.btn_back')}</button>
                 {/* StarButton renderiza una pieza visual reutilizable dentro de esta pantalla. */}
                 <StarButton className="nx-auth-submit" type="submit">{cargando ? t('landing_auth.btn_create_loading') : t('landing_auth.btn_create')}</StarButton>
               </div>
@@ -970,5 +1427,6 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
         </section>
       </div>
     </BorderGlow>
+  </>
   );
 }

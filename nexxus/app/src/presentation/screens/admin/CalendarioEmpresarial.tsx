@@ -10,8 +10,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
-// Importa { Alert, Animated, Easing, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { Alert, Animated, Easing, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Platform } from 'react-native';
+// Importa { Alert, Animated, Easing, Modal, ScrollView, StyleSheet, Text as NativeText, TextInput as NativeTextInput, TouchableOpacity, View, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
+import { Alert, Animated, Easing, Modal, ScrollView, StyleSheet, Text as NativeText, TextInput as NativeTextInput, TouchableOpacity, View, Platform } from 'react-native';
 // Importa { BlurView } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import { BlurView } from 'expo-blur';
 // Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
@@ -30,6 +30,11 @@ import { ADMIN, sombraAdmin, sombraVioleta, useAdminAppearance } from './adminTh
 import { obtenerEmpresaIdAdmin } from './adminUtils';
 // Importa { useAdminToast }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import { useAdminToast } from './adminToast';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
+
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
+
 
 /**
  * Describe la forma tipada VistaCalendario; ayuda a que estados, props o respuestas mantengan una estructura predecible.
@@ -639,7 +644,7 @@ const CalendarioEmpresarial: React.FC = () => {
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
             <TouchableOpacity onPress={() => abrirCrear()} activeOpacity={0.9} style={estilos.botonCrear}>
               {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} colors={['#A855F7', '#9333EA']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.botonCrearGradiente}>
+              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white nx-admin-shimmer-button' } as any : {})} colors={['#6320a6', '#6320a6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.botonCrearGradiente}>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.botonCrearTexto}>{t('admin.calendario.btn_new_event')}</Text>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}

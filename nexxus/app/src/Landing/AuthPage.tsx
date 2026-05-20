@@ -14,8 +14,6 @@ import { useTranslation } from 'react-i18next';
 import DarkVeil from './DarkVeil';
 // Importa LandingAuth; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import LandingAuth from './LandingAuth';
-// Importa StarButton; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
-import StarButton from './StarButton';
 // Importa { changeLanguage }; inicializa o consume configuracion de internacionalizacion.
 import { changeLanguage } from '../shared/i18n/config';
 // Importa estilos CSS; aplica clases, animaciones o efectos visuales usados por este componente web.
@@ -99,7 +97,7 @@ export default function AuthPage() {
         )
       ),
       h('button', { 'aria-label': t('landing_auth.nav_back_home'), className: 'nx-auth-mobile-back', onClick: irLanding }, h('span', null)),
-      h(StarButton, { className: 'nx-auth-back', onClick: irLanding }, t('landing_auth.nav_back_home'))
+      h('button', { className: 'nx-btn-ghost nx-auth-back', onClick: irLanding }, t('landing_auth.nav_back_home'))
     ),
     h(
       'section',

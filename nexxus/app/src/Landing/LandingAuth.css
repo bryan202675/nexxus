@@ -518,17 +518,10 @@
     font-size: 0.76rem;
   }
 
-  /* .star-border-container.nx-auth-submit: define reglas visuales para los elementos que usan este selector en la interfaz. */
-  .nx-auth-submit,
-  .nx-auth-submit .star-inner-content,
-  .star-border-container.nx-auth-submit {
+  /* .nx-auth-submit: define reglas visuales para los elementos que usan este selector en la interfaz. */
+  .nx-auth-submit {
     width: 100%;
-  }
-
-  /* .nx-auth-submit .star-inner-content: define reglas visuales para los elementos que usan este selector en la interfaz. */
-  .nx-auth-submit .star-inner-content {
-    min-height: 44px;
-    padding: 0 14px;
+    height: 44px !important;
   }
 
   /* .nx-company-head: define reglas visuales para los elementos que usan este selector en la interfaz. */
@@ -595,3 +588,203 @@
     margin-top: 12px;
   }
 }
+
+/* -------------------------------------------------------------
+ * ESTILOS DE SELECTOR DE PAIS/CIUDAD PERSONALIZADOS (DROPDOWN)
+ * ------------------------------------------------------------- */
+
+/* Contenedor principal del custom select */
+.nx-custom-dropdown {
+  position: relative;
+  width: 100%;
+}
+
+.nx-custom-dropdown.active {
+  z-index: 110;
+}
+
+/* El disparador (trigger) que simula el input/select */
+.nx-dropdown-trigger {
+  background: rgba(4, 3, 14, 0.68);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 14px;
+  font: inherit;
+  font-size: 0.94rem;
+  width: 100%;
+  cursor: pointer;
+  user-select: none;
+  transition: 180ms ease;
+  min-height: 48px;
+}
+
+.nx-dropdown-trigger:focus,
+.nx-custom-dropdown.active .nx-dropdown-trigger {
+  border-color: rgba(192, 132, 252, 0.62);
+  box-shadow: 0 0 0 4px rgba(192, 132, 252, 0.1);
+  outline: none;
+}
+
+.nx-auth-field.is-invalid .nx-dropdown-trigger {
+  border-color: rgba(255, 105, 135, 0.72);
+}
+
+/* El contenido del trigger (bandera + texto) */
+.nx-dropdown-trigger-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nx-dropdown-flag {
+  width: 22px;
+  height: 15px;
+  object-fit: cover;
+  border-radius: 2px;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nx-dropdown-chevron {
+  border-bottom: 2px solid currentColor;
+  border-right: 2px solid currentColor;
+  content: "";
+  display: inline-block;
+  height: 7px;
+  width: 7px;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 0.2s ease;
+  margin-left: 8px;
+  opacity: 0.6;
+}
+
+.nx-custom-dropdown.active .nx-dropdown-chevron {
+  transform: translateY(2px) rotate(-135deg);
+}
+
+/* El panel flotante que se despliega */
+.nx-dropdown-panel {
+  background: #100a20;
+  border: 1px solid rgba(192, 132, 252, 0.25);
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.66);
+  display: flex;
+  flex-direction: column;
+  margin-top: 6px;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  z-index: 100;
+  max-height: 280px;
+  overflow: hidden;
+}
+
+/* Buscador dentro del panel */
+.nx-dropdown-search-wrapper {
+  padding: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.nx-dropdown-search {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 10px !important;
+  color: white !important;
+  font-size: 0.88rem !important;
+  padding: 8px 12px !important;
+  width: 100% !important;
+  outline: none;
+}
+
+.nx-dropdown-search:focus {
+  border-color: rgba(192, 132, 252, 0.5) !important;
+}
+
+/* Lista de opciones */
+.nx-dropdown-options-list {
+  overflow-y: auto;
+  max-height: 220px;
+  flex: 1;
+}
+
+/* Item de la lista */
+.nx-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  color: #eee8ff;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: 150ms ease;
+  user-select: none;
+}
+
+.nx-dropdown-item:hover,
+.nx-dropdown-item.active {
+  background: rgba(168, 85, 247, 0.16);
+  color: white;
+}
+
+.nx-dropdown-empty {
+  padding: 16px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.88rem;
+}
+
+/* Contenedor del campo del teléfono con prefijo al lado izquierdo */
+.nx-phone-input-wrapper {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.nx-phone-prefix-select {
+  flex: 0 0 110px; /* Ancho fijo para el selector de prefijo */
+}
+
+.nx-phone-number-field {
+  flex: 1;
+}
+
+.nx-phone-number-field input {
+  height: 48px !important;
+  box-sizing: border-box !important;
+}
+
+.nx-dropdown-trigger-prefix {
+  padding: 13px 10px !important;
+  justify-content: center;
+  gap: 6px;
+  min-height: 48px;
+  height: 48px !important;
+  box-sizing: border-box !important;
+}
+
+.nx-dropdown-trigger-prefix .nx-dropdown-trigger-content {
+  gap: 6px;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+/* Estilos específicos para la sección en pantalla ancha */
+.nx-auth-shell-wide .nx-auth-layout {
+  grid-template-columns: 280px 1fr !important;
+  gap: 32px !important;
+}
+
+.nx-auth-shell-wide .nx-company-grid {
+  grid-template-columns: 1fr 1fr !important;
+  gap: 20px 24px !important;
+}
+

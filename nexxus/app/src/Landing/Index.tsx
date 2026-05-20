@@ -18,6 +18,8 @@ import BorderGlow from './BorderGlow';
 import DarkVeil from './DarkVeil';
 // Importa StarBorder; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import StarBorder from './StarBorder';
+// Importa StarButton; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
+import StarButton from './StarButton';
 // Importa estilos CSS; aplica clases, animaciones o efectos visuales usados por este componente web.
 import './Landing.css';
 
@@ -40,13 +42,13 @@ type IconName = 'activity' | 'ai' | 'analytics' | 'automation' | 'briefcase' | '
  */
 const modules: [string, string, IconName][] = [
   ['landing.module_dashboard_title', 'landing.module_dashboard_desc', 'command'],
-  ['landing.module_employees_title', 'landing.module_employees_desc', 'users'],
+  ['landing.module_users_title', 'landing.module_users_desc', 'users'],
   ['landing.module_tasks_title', 'landing.module_tasks_desc', 'check'],
   ['landing.module_ai_title', 'landing.module_ai_desc', 'ai'],
   ['landing.module_payroll_title', 'landing.module_payroll_desc', 'payroll'],
   ['landing.module_attendance_title', 'landing.module_attendance_desc', 'clock'],
   ['landing.module_analytics_title', 'landing.module_analytics_desc', 'analytics'],
-  ['landing.module_communication_title', 'landing.module_communication_desc', 'message'],
+  ['landing.module_chat_title', 'landing.module_chat_desc', 'message'],
   ['landing.module_multi_title', 'landing.module_multi_desc', 'building'],
 ];
 
@@ -147,34 +149,7 @@ function GlowCard({ children, className, animated = false }: { animated?: boolea
 }
 
 /**
- * Componente StarButton. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
- */
-function StarButton({
-  children,
-  className = '',
-  onClick,
-  type = 'button',
-}: {
-  children?: ReactNode;
-  className?: string;
-  onClick?: () => void;
-  type?: 'button' | 'submit';
-}) {
-  // Devuelve el valor final calculado para esta funcion o caso de uso.
-  return h(
-    StarBorder,
-    {
-      as: 'button',
-      className: `nx-star-button ${className}`,
-      color: '#d8b4fe',
-      onClick,
-      speed: '5s',
-      thickness: 1,
-      type,
-    },
-    children
-  );
-}
+
 
 /**
  * Declaracion scrollToId. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.

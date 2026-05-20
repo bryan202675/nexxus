@@ -10,8 +10,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
-// Importa { Animated, Easing, View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, Alert, Image, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { Animated, Easing, View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, Alert, Image, Platform } from 'react-native';
+// Importa { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Alert, Image, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
+import { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Alert, Image, Platform } from 'react-native';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
 // Importa { addDoc, collection, onSnapshot, query, where } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
@@ -30,6 +30,11 @@ import { obtenerEmpresaIdAdmin } from './adminUtils';
 import { ADMIN } from './adminTheme';
 // Importa { useAdminToast }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import { useAdminToast } from './adminToast';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
+
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
+
 
 /**
  * Componente BRAND. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
@@ -402,7 +407,7 @@ export default function ComunicacionAdmin() {
                 <TouchableOpacity key={canal.audiencia} onPress={() => setSelectedAudience(canal.audiencia)} style={estilos.audienceWrap}>
                   {selectedAudience === canal.audiencia ? (
                     // Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza.
-                    <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-force-white-always' } as any : {})} colors={['#A855F7', '#9333EA']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[estilos.audienceBtn, { opacity: 1 }]}>
+                    <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-force-white-always' } as any : {})} colors={['#6320a6', '#6320a6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[estilos.audienceBtn, { opacity: 1 }]}>
                       {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                       <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white-always' } as any : {})} style={[estilos.audienceBtnText, { color: '#FFFFFF' }]}>{canal.audiencia}</Text>
                       {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -448,7 +453,7 @@ export default function ComunicacionAdmin() {
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
             <TouchableOpacity style={estilos.publishBtn} onPress={crearAnuncio} disabled={enviando || !mensaje.trim()}>
               {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-force-white-always' } as any : {})} colors={['#A855F7', '#9333EA']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.publishGradient}>
+              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-force-white-always nx-admin-shimmer-button' } as any : {})} colors={['#6320a6', '#6320a6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.publishGradient}>
                 {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                 <MaterialIcons {...(Platform.OS === 'web' ? { className: 'nx-force-white-always' } as any : {})} name="send" size={18} color="#FFFFFF" style={{ color: '#FFFFFF' }} />
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -570,7 +575,7 @@ const estilos = StyleSheet.create({
   // btnIcon: estilo de icono; ajusta tamanio, posicion o fondo del indicador visual.
   btnIcon: { marginRight: 8 },
   // btnPrimaryText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  btnPrimaryText: { color: CONTRAST_TEXT, fontSize: 14, fontWeight: '900', letterSpacing: 2 },
+  btnPrimaryText: { color: CONTRAST_TEXT, fontSize: 16, fontWeight: '700', letterSpacing: 0.5, textDecorationLine: 'none' },
   // gridStats: estilo de grilla; organiza elementos en filas o columnas con separacion controlada.
   gridStats: { flexDirection: 'row', flexWrap: 'wrap', gap: 20, marginBottom: 24 },
   // statCard: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
@@ -616,9 +621,9 @@ const estilos = StyleSheet.create({
   // publishBtn: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   publishBtn: { borderRadius: 12, overflow: 'hidden', marginTop: 14 },
   // publishGradient: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  publishGradient: { flexDirection: 'row', gap: 10, justifyContent: 'center', alignItems: 'center', paddingVertical: 15 },
+  publishGradient: { flexDirection: 'row', gap: 10, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 28, paddingVertical: 14 },
   // publishText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  publishText: { color: CONTRAST_TEXT, fontSize: 12, fontWeight: '900', letterSpacing: 1.6 },
+  publishText: { color: CONTRAST_TEXT, fontSize: 16, fontWeight: '700', letterSpacing: 0.5, textDecorationLine: 'none' },
   // feedCard: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
   feedCard: { padding: 0, minHeight: 680 },
   // chatHeader: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.

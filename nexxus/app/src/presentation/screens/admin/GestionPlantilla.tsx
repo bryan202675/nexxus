@@ -8,10 +8,10 @@
 
 // Importa React, { useEffect, useMemo, useRef, useState } desde React; habilita componentes, hooks y tipos base para esta pieza.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-// Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
-import { useTranslation } from 'react-i18next';
-// Importa { Clipboard, Alert, Animated, Easing, Image, Modal, View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { Clipboard, Alert, Animated, Easing, Image, Modal, View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, Platform } from 'react-native';
+// Importa { useApiTranslate }; permite traducir textos visibles dinámicamente mediante la API.
+import { useApiTranslate } from '@/shared/i18n/useApiTranslate';
+// Importa { Clipboard, Alert, Animated, Easing, Image, Modal, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
+import { Clipboard, Alert, Animated, Easing, Image, Modal, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Platform } from 'react-native';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
 // Importa { BlurView } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
@@ -34,6 +34,11 @@ import { obtenerEmpresaIdAdmin } from './adminUtils';
 import { ADMIN, sombraAdmin, sombraVioleta } from './adminTheme';
 // Importa { useAdminToast }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import { useAdminToast } from './adminToast';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
+
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
+
 
 /**
  * Componente BRAND. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
@@ -492,8 +497,179 @@ const SelectorOpciones = ({
  * Componente GestionPlantilla. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 export default function GestionPlantilla() {
-  // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const { t } = useTranslation();
+  // Inicializa traducciones dinámicas vía API.
+  const titlePlantilla = useApiTranslate('Gestión de Plantilla');
+  const subtitlePlantilla = useApiTranslate('Colaboradores, roles, sedes y asignación de tareas');
+  const btnExportData = useApiTranslate('Exportar Datos');
+  const btnNewEmployee = useApiTranslate('Nuevo empleado');
+
+  // Tarjeta de Clave de Acceso
+  const keyCardTitle = useApiTranslate('CÓDIGO DE ACCESO DE LA EMPRESA');
+  const keyCardDescBase = useApiTranslate('Los nuevos colaboradores deben colocar esta clave única al ingresar por primera vez para unirse automáticamente a {empresa}.');
+  const toastCopiedTitle = useApiTranslate('Copiado');
+  const toastCopiedDesc = useApiTranslate('El código de acceso de la empresa ha sido copiado al portapapeles.');
+  const toastCompanyCodeTitle = useApiTranslate('Código de Empresa');
+  const toastCompanyCodeDescBase = useApiTranslate('El código de tu empresa es: {code}');
+  const labelGenerating = useApiTranslate('Generando...');
+  const labelCompany = useApiTranslate('tu empresa');
+
+  // Tarjetas Estadísticas
+  const statTotalEmployees = useApiTranslate('Total de colaboradores');
+  const statActive = useApiTranslate('Activos');
+  const statRisk = useApiTranslate('En Riesgo');
+  const statCheckinCoverage = useApiTranslate('Cobertura Check-In');
+  const trendActiveHistory = useApiTranslate('historial activo');
+  const trendOfTotal = useApiTranslate('del total');
+  const trendRequiresAttention = useApiTranslate('requiere atención');
+  const trendToday = useApiTranslate('hoy');
+
+  // Buscador y Filtros
+  const searchPlaceholder = useApiTranslate('Buscar por nombre o correo...');
+  const filterTodos = useApiTranslate('Todos');
+  const filterStatusActive = useApiTranslate('Activos');
+  const filterStatusInactive = useApiTranslate('Inactivos');
+  const filterRisk = useApiTranslate('En Riesgo');
+  const filterLabelRole = useApiTranslate('Rol');
+  const filterLabelDept = useApiTranslate('Departamento');
+
+  // Cabecera Sede
+  const labelColaboradorSede = useApiTranslate('colaborador');
+  const labelColaboradoresSede = useApiTranslate('colaboradores');
+  const labelUnassignedSede = useApiTranslate('Empleados sin sede asignada');
+
+  // Columnas de la Tabla
+  const colEmployee = useApiTranslate('COLABORADOR');
+  const colRole = useApiTranslate('ROL');
+  const colDept = useApiTranslate('DEPARTAMENTO');
+  const colStatus = useApiTranslate('ESTADO');
+  const colActions = useApiTranslate('ACCIONES');
+
+  // Navegación de Sedes
+  const labelVolverSedes = useApiTranslate('Ver todas las sedes');
+  const labelSedeTitle = useApiTranslate('Sede');
+  const labelTeam = useApiTranslate('Mi Equipo');
+  const labelEmptyMsg = useApiTranslate('No se encontraron colaboradores.');
+
+  // Formulario y Modal de Empleados
+  const modalCreateTitle = useApiTranslate('Nuevo Colaborador');
+  const modalEditTitle = useApiTranslate('Editar Colaborador');
+  const modalEmployeeSubtitle = useApiTranslate('Cuenta, rol, sede, jefe y permisos operativos');
+  const labelFullName = useApiTranslate('Nombre Completo');
+  const placeholderFullName = useApiTranslate('Ej. Juan Pérez');
+  const labelUsername = useApiTranslate('Usuario');
+  const placeholderUsername = useApiTranslate('Ej. juan.perez');
+  const labelInitialPass = useApiTranslate('Contraseña Inicial');
+  const placeholderInitialPass = useApiTranslate('Mínimo 6 caracteres');
+  const labelPosition = useApiTranslate('Cargo');
+  const placeholderPosition = useApiTranslate('Selecciona un cargo');
+  const labelDepartment = useApiTranslate('Departamento');
+  const placeholderDepartment = useApiTranslate('Selecciona un departamento');
+  const labelSede = useApiTranslate('Sede');
+  const placeholderSede = useApiTranslate('Selecciona una sede');
+  const labelPhone = useApiTranslate('Teléfono');
+  const placeholderPhone = useApiTranslate('Ej. +123456789');
+  const labelSalary = useApiTranslate('Salario Base');
+  const labelRoleSelector = useApiTranslate('Rol Operativo');
+  const placeholderRoleSelector = useApiTranslate('Selecciona un rol');
+  const labelBaseRole = useApiTranslate('Rol base');
+  const labelCustomRole = useApiTranslate('Rol personalizado');
+  const labelManager = useApiTranslate('Reporta a (Jefe)');
+  const labelNoManager = useApiTranslate('Sin jefe');
+  const btnCancel = useApiTranslate('Cancelar');
+  const btnSaving = useApiTranslate('Guardando...');
+  const btnSave = useApiTranslate('Guardar');
+  const btnSaveChanges = useApiTranslate('Guardar cambios');
+
+  // Modal de Asignación de Tareas
+  const modalTaskTitle = useApiTranslate('Asignar Nueva Tarea');
+  const modalTaskSubtitle = useApiTranslate('Sede, departamento o colaborador individual');
+  const btnScopeSede = useApiTranslate('Por Sede');
+  const btnScopeDept = useApiTranslate('Por Departamento');
+  const btnScopeIndividual = useApiTranslate('Individual');
+  const labelTaskTitle = useApiTranslate('Título de la Tarea');
+  const placeholderTaskTitle = useApiTranslate('Ej. Completar evaluación de desempeño');
+  const labelTaskDueDate = useApiTranslate('Fecha Límite');
+  const labelTaskDesc = useApiTranslate('Descripción');
+  const placeholderTaskDesc = useApiTranslate('Detalles de la tarea a realizar');
+  const labelTaskPriority = useApiTranslate('Prioridad');
+  const priorityBaja = useApiTranslate('Baja');
+  const priorityMedia = useApiTranslate('Media');
+  const priorityAlta = useApiTranslate('Alta');
+  const priorityUrgente = useApiTranslate('Urgente');
+  const labelSelectDept = useApiTranslate('Selecciona Departamento');
+  const labelTargetEmployee = useApiTranslate('Colaborador destino');
+  const btnAssigning = useApiTranslate('Asignando...');
+  const btnAssign = useApiTranslate('Asignar tarea');
+  const alertNoDestTitle = useApiTranslate('Sin destinatarios');
+  const alertNoDestMsg = useApiTranslate('No hay colaboradores activos en el grupo seleccionado.');
+  const alertTaskError = useApiTranslate('Error');
+  const alertTaskErrorMsg = useApiTranslate('No se pudo asignar la tarea.');
+  const auditTaskError = useApiTranslate('Error de Asignación');
+
+  // Catálogos e Items Reutilizados
+  const labelGeneral = useApiTranslate('General');
+  const labelGlobal = useApiTranslate('Global');
+  const labelSinSedeAsignada = useApiTranslate('Sin sede asignada');
+  const labelEmpresa = useApiTranslate('Empresa');
+  const labelEmpleado = useApiTranslate('Empleado');
+  const roleAdmin = useApiTranslate('Administrador');
+  const roleManager = useApiTranslate('Jefe');
+  const roleEmployee = useApiTranslate('Empleado');
+  const statusActive = useApiTranslate('Activo');
+  const statusInactive = useApiTranslate('Inactivo');
+
+  // Notificaciones y Toasts
+  const toastSessionErrorTitle = useApiTranslate('Error de sesión');
+  const toastSessionErrorDesc = useApiTranslate('No se detectó el ID de tu empresa. Por favor, cierra sesión y vuelve a entrar.');
+  const toastRequiredDataTitle = useApiTranslate('Datos requeridos');
+  const toastNameRequiredDesc = useApiTranslate('El nombre es obligatorio.');
+  const toastUserRequiredDesc = useApiTranslate('El usuario es obligatorio para crear un empleado.');
+  const toastPassRequiredTitle = useApiTranslate('Contraseña requerida');
+  const toastPassRequiredDesc = useApiTranslate('La contraseña debe tener al menos 6 caracteres.');
+  const toastEmpAddedTitle = useApiTranslate('Empleado añadido');
+  const toastEmpAddedDesc = useApiTranslate('Se ha añadido un empleado correctamente.');
+  const toastEmpUpdatedTitle = useApiTranslate('Empleado actualizado');
+  const toastEmpUpdatedDesc = useApiTranslate('Los cambios del empleado se guardaron correctamente.');
+  const toastSaveErrorTitle = useApiTranslate('No se pudo guardar');
+  const toastSaveErrorDescBase = useApiTranslate('{error} Detalle técnico: {code}');
+  const toastNoDestTitle = useApiTranslate('Sin destinatarios');
+  const toastNoDestMsg = useApiTranslate('No se encontraron colaboradores en la selección activa.');
+  const toastErrorTitle = useApiTranslate('Error');
+  const toastErrorMsg = useApiTranslate('Ocurrió un error al procesar la operación.');
+  const toastAuditError = useApiTranslate('Error en Plantilla');
+  const toastTaskAssignedTitle = useApiTranslate('Tarea asignada');
+  const toastTaskAssignedDescBase = useApiTranslate('Se asignó la tarea a {count} destinatarios.');
+  const toastTaskAssignedDescSingle = useApiTranslate('Se asignó la tarea a {count} destinatario.');
+  const toastEmpActivatedTitle = useApiTranslate('Empleado activado');
+  const toastEmpDeactivatedTitle = useApiTranslate('Empleado desactivado');
+  const toastEmpActivatedDescBase = useApiTranslate('{name} se activó correctamente.');
+  const toastEmpDeactivatedDescBase = useApiTranslate('{name} se desactivó correctamente.');
+  const toastUpdateErrorTitle = useApiTranslate('No se pudo actualizar');
+  const toastUpdateErrorDescBase = useApiTranslate('Intenta nuevamente.');
+
+  // Diálogo de Confirmación de Baja
+  const alertDeleteTitle = useApiTranslate('¿Dar de baja?');
+  const alertDeleteMsgBase = useApiTranslate('¿Estás seguro de que deseas dar de baja operativa a {name}?');
+  const btnDelete = useApiTranslate('Dar de baja');
+  const labelEmpBajaTitle = useApiTranslate('Empleado dado de baja');
+  const labelEmpBajaDescBase = useApiTranslate('{name} fue marcado como baja operativa.');
+
+  // Textos Varios
+  const labelSinNombre = useApiTranslate('Sin nombre');
+  const labelSinUsuario = useApiTranslate('Sin usuario');
+  const auditEmpActivation = useApiTranslate('Activación de Empleado');
+  const auditEmpDeactivation = useApiTranslate('Desactivación de Empleado');
+  const auditEmpCreated = useApiTranslate('Creación de Empleado');
+  const auditEmpEdited = useApiTranslate('Edición de Empleado');
+  const auditEmpSaveError = useApiTranslate('Error al Guardar Empleado');
+  const auditEmpBaja = useApiTranslate('Baja Operativa de Empleado');
+  const auditTaskAssigned = useApiTranslate('Asignación de Tareas');
+  const welcomeNotificationTitle = useApiTranslate('Bienvenido a NexusHR');
+  const welcomeNotificationMsg = useApiTranslate('Tu cuenta empresarial fue creada por administración. Usa tu código de empresa, usuario y contraseña.');
+  const labelEmpAccessCode = useApiTranslate('CÓDIGO DE ACCESO DE LA EMPRESA');
+  const labelEmpAccessCodeDesc = useApiTranslate('Los nuevos colaboradores deben colocar esta clave única al ingresar por primera vez para unirse automáticamente a {name}.');
+  const toastEmpCodeTitle = useApiTranslate('Código de Empresa');
+  const toastEmpCodeDescBase = useApiTranslate('El código de tu empresa es: {code}');
   // Inicializa toast; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const toast = useAdminToast();
   // Inicializa [usuarios, setUsuarios]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -835,18 +1011,18 @@ export default function GestionPlantilla() {
   const catalogos = useMemo(() => {
     // Calcula departamentos; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const departamentos = [
-      { id: 'general', nombre: t('common.general'), detalle: t('common.global') },
+      { id: 'general', nombre: labelGeneral, detalle: labelGlobal },
       ...departamentosCatalogo
         .filter((departamento) => departamento.activo !== false && departamento.nombre)
         .map((departamento) => ({
           id: departamento.id || departamento.nombre || '',
           nombre: departamento.nombre || '',
-          detalle: (departamento.sedeNombre && departamento.sedeNombre.toLowerCase().trim() !== 'global.global') ? departamento.sedeNombre : t('common.global'),
+          detalle: (departamento.sedeNombre && departamento.sedeNombre.toLowerCase().trim() !== 'global.global') ? departamento.sedeNombre : labelGlobal,
         }))
     ];
     // Calcula sedes; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const sedes = [
-      { id: 'global', nombre: t('admin.plantilla.no_branch', { defaultValue: 'Sin sede asignada' }), detalle: 'Empresa' },
+      { id: 'global', nombre: labelSinSedeAsignada, detalle: labelEmpresa },
       ...sedesCatalogo
         .filter((sede) => sede.activa !== false && sede.nombre)
         .map((sede) => ({
@@ -857,13 +1033,13 @@ export default function GestionPlantilla() {
     ];
     // Calcula cargos; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const cargos = [
-      { id: 'base', nombre: t('common.employee'), detalle: t('common.general') },
+      { id: 'base', nombre: labelEmpleado, detalle: labelGeneral },
       ...cargosCatalogo
         .filter((cargo) => cargo.activo !== false && cargo.nombre)
         .map((cargo) => ({
           id: cargo.id || cargo.nombre || '',
           nombre: cargo.nombre || '',
-          detalle: (cargo.departamentoNombre && cargo.departamentoNombre.toLowerCase().trim() !== 'global.global') ? cargo.departamentoNombre : (cargo.nivel || t('common.general')),
+          detalle: (cargo.departamentoNombre && cargo.departamentoNombre.toLowerCase().trim() !== 'global.global') ? cargo.departamentoNombre : (cargo.nivel || labelGeneral),
         }))
     ];
     // Declara rolesBase; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -878,7 +1054,7 @@ export default function GestionPlantilla() {
     const jefes = usuarios.filter((usuario) => usuario.rol === 'jefe' || usuario.rol === 'admin' || usuario.rol === 'supervisor' || usuario.rol === 'RRHH');
     // Devuelve el valor final calculado para esta funcion o caso de uso.
     return { departamentos, sedes, cargos, roles, jefes };
-  }, [usuarios, departamentosCatalogo, sedesCatalogo, cargosCatalogo, rolesPersonalizados]);
+  }, [usuarios, departamentosCatalogo, sedesCatalogo, cargosCatalogo, rolesPersonalizados, labelGeneral, labelGlobal, labelSinSedeAsignada, labelEmpresa, labelEmpleado]);
 
   // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
   useEffect(() => {
@@ -1044,12 +1220,12 @@ export default function GestionPlantilla() {
       codigoEmpresa,
       rol: formulario.rol,
       cargoId: cargo?.id || '',
-      cargo: cargo?.nombre || (formulario.cargoId === 'base' ? t('common.employee') : ''),
+      cargo: cargo?.nombre || (formulario.cargoId === 'base' ? labelEmpleado : ''),
       departamentoId: departamento?.id || (formulario.departamentoId === 'general' ? 'general' : ''),
       departamento: (departamento?.nombre && departamento?.nombre.toLowerCase().trim() !== 'global.global') 
         ? departamento.nombre 
-        : (formulario.departamentoId === 'general' ? t('common.general') : t('common.general')),
-      sede: sede?.nombre || (formulario.sedeId === 'global' ? t('common.global') : ''),
+        : (formulario.departamentoId === 'general' ? labelGeneral : labelGeneral),
+      sede: sede?.nombre || (formulario.sedeId === 'global' ? labelGlobal : ''),
       sedeId: sede?.id || (formulario.sedeId === 'global' ? 'global' : ''),
       jefeId: formulario.jefeId || null,
       jefeNombre: jefe?.nombre || '',
@@ -1240,7 +1416,7 @@ export default function GestionPlantilla() {
       // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
       console.error('[GestionPlantilla] Error: No se encontró empresaId para el usuario.');
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      toast.error({ title: 'Error de sesión', description: 'No se detectó el ID de tu empresa. Por favor, cierra sesión y vuelve a entrar.' });
+      toast.error({ title: toastSessionErrorTitle, description: toastSessionErrorDesc });
       // Devuelve el valor final calculado para esta funcion o caso de uso.
       return;
     }
@@ -1250,7 +1426,7 @@ export default function GestionPlantilla() {
       // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
       console.warn('[GestionPlantilla] Validación fallida: Nombre vacío');
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      toast.warning({ title: 'Datos requeridos', description: 'El nombre es obligatorio.' });
+      toast.warning({ title: toastRequiredDataTitle, description: toastNameRequiredDesc });
       // Devuelve el valor final calculado para esta funcion o caso de uso.
       return;
     }
@@ -1270,7 +1446,7 @@ export default function GestionPlantilla() {
         // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
         console.warn('[GestionPlantilla] Validación fallida: Usuario vacío');
         // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-        toast.warning({ title: 'Datos requeridos', description: 'El usuario es obligatorio para crear un empleado.' });
+        toast.warning({ title: toastRequiredDataTitle, description: toastUserRequiredDesc });
         // Devuelve el valor final calculado para esta funcion o caso de uso.
         return;
       }
@@ -1279,7 +1455,7 @@ export default function GestionPlantilla() {
         // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
         console.warn('[GestionPlantilla] Validación fallida: Contraseña corta');
         // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-        toast.warning({ title: 'Contraseña requerida', description: 'La contraseña debe tener al menos 6 caracteres.' });
+        toast.warning({ title: toastPassRequiredTitle, description: toastPassRequiredDesc });
         // Devuelve el valor final calculado para esta funcion o caso de uso.
         return;
       }
@@ -1341,8 +1517,8 @@ export default function GestionPlantilla() {
           await conTiempoLimite(addDoc(collection(db, 'notificaciones'), {
             empresaId,
             usuario_id: uid,
-            titulo: 'Bienvenido a NexusHR',
-            mensaje: 'Tu cuenta empresarial fue creada por administración. Usa tu código de empresa, usuario y contraseña.',
+            titulo: welcomeNotificationTitle,
+            mensaje: welcomeNotificationMsg,
             tipo: 'info',
             leida: false,
             fecha: new Date().toISOString(),
@@ -1351,10 +1527,10 @@ export default function GestionPlantilla() {
         // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
         try {
           // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-          await registrarAuditoria('Creación de Empleado', `${nombre} · ${usuarioInterno}`);
+          await registrarAuditoria(auditEmpCreated, `${nombre} · ${usuarioInterno}`);
         } catch {}
         // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-        toast.success({ title: 'Empleado añadido', description: 'Se ha añadido un empleado correctamente.' });
+        toast.success({ title: toastEmpAddedTitle, description: toastEmpAddedDesc });
       } else if (empleadoSeleccionado?.id) {
         // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
         try {
@@ -1365,9 +1541,9 @@ export default function GestionPlantilla() {
           throw new Error(error?.message || 'No se pudo actualizar el empleado en Firestore.');
         }
         // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-        await registrarAuditoria('Edición de Empleado', `${nombre} · ${usuarioInterno}`);
+        await registrarAuditoria(auditEmpEdited, `${nombre} · ${usuarioInterno}`);
         // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-        toast.success({ title: 'Empleado actualizado', description: 'Los cambios del empleado se guardaron correctamente.' });
+        toast.success({ title: toastEmpUpdatedTitle, description: toastEmpUpdatedDesc });
       }
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       cerrarModal();
@@ -1392,11 +1568,11 @@ export default function GestionPlantilla() {
       }
       
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      toast.error({ title: 'No se pudo guardar', description: `${mensajeError} Detalle técnico: ${codigo}` });
+      toast.error({ title: toastSaveErrorTitle, description: toastSaveErrorDescBase.replace('{error}', mensajeError).replace('{code}', codigo) });
       // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
       try {
         // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-        await registrarAuditoria('Error al Guardar Empleado', `${nombre} · ${usuarioInterno}`, 'Error');
+        await registrarAuditoria(auditEmpSaveError, `${nombre} · ${usuarioInterno}`, 'Error');
       } catch {}
     } finally {
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
@@ -1434,7 +1610,7 @@ export default function GestionPlantilla() {
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (destinatarios.length === 0) {
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      toast.warning({ title: t('admin.plantilla.modal_task.alert_no_dest_title'), description: t('admin.plantilla.modal_task.alert_no_dest_msg') });
+      toast.warning({ title: alertNoDestTitle, description: alertNoDestMsg });
       // Devuelve el valor final calculado para esta funcion o caso de uso.
       return;
     }
@@ -1468,14 +1644,14 @@ export default function GestionPlantilla() {
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setFormularioTarea(formularioTareaInicial);
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      toast.success({ title: 'Tarea asignada', description: `Se asignó la tarea a ${destinatarios.length} destinatario${destinatarios.length === 1 ? '' : 's'}.` });
+      toast.success({ title: toastTaskAssignedTitle, description: toastTaskAssignedDescBase.replace('{count}', String(destinatarios.length)) });
     } catch (error: any) {
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      toast.error({ title: t('admin.plantilla.modal_task.alert_error'), description: error?.message || t('admin.plantilla.modal_task.alert_error_msg') });
+      toast.error({ title: alertTaskError, description: error?.message || alertTaskErrorMsg });
       // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
       try {
         // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-        await registrarAuditoria(t('admin.plantilla.modal_task.audit_error'), titulo, 'Error');
+        await registrarAuditoria(auditTaskError, titulo, 'Error');
       } catch {}
     } finally {
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
@@ -1521,18 +1697,18 @@ export default function GestionPlantilla() {
         eliminado_por: user?.id || '',
       });
       // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-      await registrarAuditoria('Baja Operativa de Empleado', empleado.nombre || empleado.correo || empleado.id || '', 'Warning');
+      await registrarAuditoria(auditEmpBaja, empleado.nombre || empleado.correo || empleado.id || '', 'Warning');
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      toast.warning({ title: 'Empleado dado de baja', description: `${empleado.nombre || 'El empleado'} fue marcado como baja operativa.` });
+      toast.warning({ title: labelEmpBajaTitle, description: labelEmpBajaDescBase.replace('{name}', empleado.nombre || 'El empleado') });
     };
 
     // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     Alert.alert(
-      t('admin.plantilla.employee_card.alert_delete_title'),
-      t('admin.plantilla.employee_card.alert_delete_msg', { name: empleado.nombre || 'este empleado' }),
+      alertDeleteTitle,
+      alertDeleteMsgBase.replace('{name}', empleado.nombre || 'este empleado'),
       [
-        { text: t('common.cancel'), style: 'cancel' },
-        { text: t('common.delete'), style: 'destructive', onPress: ejecutar },
+        { text: btnCancel, style: 'cancel' },
+        { text: btnDelete, style: 'destructive', onPress: ejecutar },
       ]
     );
   };
@@ -1551,10 +1727,10 @@ export default function GestionPlantilla() {
 
   // Declara stats; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const stats = [
-    { label: t('admin.plantilla.stats.total_employees'), val: datos.usuariosEnriquecidos.length, trend: "historial activo", icon: "groups" as const, color: ADMIN.iconos.personas },
-    { label: t('admin.plantilla.stats.active'), val: datos.activos, trend: `${porcentaje(datos.activos, datos.usuariosEnriquecidos.length)}% del total`, icon: "check-circle" as const, color: ADMIN.iconos.exito },
-    { label: t('admin.plantilla.stats.risk'), val: datos.riesgo, trend: "requiere atención", icon: "warning" as const, color: datos.riesgo > 0 ? ADMIN.iconos.peligro : ADMIN.iconos.seguridad },
-    { label: t('admin.plantilla.stats.checkin_coverage'), val: `${datos.coberturaCheckIn}%`, trend: `${datos.checkInsHoy} hoy`, icon: "analytics" as const, color: ADMIN.iconos.auditoria },
+    { label: statTotalEmployees, val: datos.usuariosEnriquecidos.length, trend: trendActiveHistory, icon: "groups" as const, color: ADMIN.iconos.personas },
+    { label: statActive, val: datos.activos, trend: `${porcentaje(datos.activos, datos.usuariosEnriquecidos.length)}% ${trendOfTotal}`, icon: "check-circle" as const, color: ADMIN.iconos.exito },
+    { label: statRisk, val: datos.riesgo, trend: trendRequiresAttention, icon: "warning" as const, color: datos.riesgo > 0 ? ADMIN.iconos.peligro : ADMIN.iconos.seguridad },
+    { label: statCheckinCoverage, val: `${datos.coberturaCheckIn}%`, trend: `${datos.checkInsHoy} ${trendToday}`, icon: "analytics" as const, color: ADMIN.iconos.auditoria },
   ];
 
   // Calcula usuariosSinSede; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
@@ -1585,25 +1761,25 @@ export default function GestionPlantilla() {
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={estilos.empInfo}>
             {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-            <Text style={estilos.empName} numberOfLines={1}>{emp.nombre || 'Sin nombre'}</Text>
+            <Text style={estilos.empName} numberOfLines={1}>{emp.nombre || labelSinNombre}</Text>
             {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-            <Text style={estilos.empEmail} numberOfLines={1}>{(emp as any).usuarioInterno || emp.correo || 'Sin usuario'}</Text>
+            <Text style={estilos.empEmail} numberOfLines={1}>{(emp as any).usuarioInterno || emp.correo || labelSinUsuario}</Text>
           </View>
         </View>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={[estilos.tdCell, { flex: 1.15, alignItems: 'center' }]}>
           {/* PremiumBadge renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <PremiumBadge variant={emp.rol === 'admin' ? 'violet' : emp.rol === 'jefe' ? 'blue' : 'default'}>{emp.rol ? t(`admin.roles.${emp.rol}`, { defaultValue: emp.rol.toUpperCase() }) : t('admin.roles.empleado')}</PremiumBadge>
+          <PremiumBadge variant={emp.rol === 'admin' ? 'violet' : emp.rol === 'jefe' ? 'blue' : 'default'}>{emp.rol ? (emp.rol === 'admin' ? roleAdmin : emp.rol === 'jefe' ? roleManager : emp.rol === 'empleado' ? roleEmployee : emp.rol.toUpperCase()) : roleEmployee}</PremiumBadge>
         </View>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={[estilos.tdCell, { flex: 1.35, alignItems: 'center' }]}>
           {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-          <Text style={estilos.empRole} numberOfLines={1}>{(emp.departamento && emp.departamento.toLowerCase().trim() !== 'global.global') ? emp.departamento : t('common.general')}</Text>
+          <Text style={estilos.empRole} numberOfLines={1}>{(emp.departamento && emp.departamento.toLowerCase().trim() !== 'global.global') ? emp.departamento : labelGeneral}</Text>
         </View>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={[estilos.tdCell, { flex: 1, alignItems: 'center' }]}>
           {/* PremiumBadge renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <PremiumBadge variant={activo ? 'success' : 'warning'}>{activo ? t('admin.plantilla.employee_card.active') : t('admin.plantilla.employee_card.inactive')}</PremiumBadge>
+          <PremiumBadge variant={activo ? 'success' : 'warning'}>{activo ? statusActive : statusInactive}</PremiumBadge>
         </View>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={[estilos.tdCell, estilos.actionsCell]}>
@@ -1651,9 +1827,9 @@ export default function GestionPlantilla() {
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View>
           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={estilos.titulo}>{t('admin.plantilla.title')}</Text>
+          <Text style={estilos.titulo}>{titlePlantilla}</Text>
           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={estilos.subtitulo}>{t('admin.plantilla.subtitle')}</Text>
+          <Text style={estilos.subtitulo}>{subtitlePlantilla}</Text>
         </View>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={estilos.headerActions}>
@@ -1662,16 +1838,16 @@ export default function GestionPlantilla() {
             {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
             <MaterialIcons name="file-download" size={18} color="#fff" style={estilos.btnIcon} />
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.btnSecondaryText}>{t('admin.plantilla.btn_export_data')}</Text>
+            <Text style={estilos.btnSecondaryText}>{btnExportData}</Text>
           </TouchableOpacity>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={{ backgroundColor: 'transparent', borderWidth: 0 }}>
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
             <TouchableOpacity style={estilos.btnPrimary} onPress={abrirCrear}>
               {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} colors={['#A855F7', '#9333EA']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.btnGradient}>
+              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white nx-admin-shimmer-button' } as any : {})} colors={['#6320a6', '#6320a6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.btnGradient}>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.btnPrimaryText}>{t('admin.plantilla.btn_new_employee').toUpperCase()}</Text>
+                <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.btnPrimaryText}>{btnNewEmployee}</Text>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={[estilos.btnPrimaryText, estilos.btnIconRight, { fontSize: 18, marginTop: -1 }]}>→</Text>
               </LinearGradient>
@@ -1699,10 +1875,10 @@ export default function GestionPlantilla() {
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.keyTextContainer}>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.keyTitle}>CÓDIGO DE ACCESO DE LA EMPRESA</Text>
+              <Text style={estilos.keyTitle}>{labelEmpAccessCode}</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.keySubtitle}>
-                Los nuevos colaboradores deben colocar esta clave única al ingresar por primera vez para unirse automáticamente a {empresa.nombre || 'tu empresa'}.
+                {labelEmpAccessCodeDesc.replace('{name}', empresa.nombre || 'tu empresa')}
               </Text>
             </View>
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
@@ -1719,16 +1895,16 @@ export default function GestionPlantilla() {
                     // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
                     navigator.clipboard.writeText(codigo);
                     // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-                    toast.success({ title: 'Copiado', description: 'El código de acceso de la empresa ha sido copiado al portapapeles.' });
+                    toast.success({ title: toastCopiedTitle, description: toastCopiedDesc });
                   } else {
                     // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-                    toast.info({ title: 'Código de Empresa', description: `El código de tu empresa es: ${codigo}` });
+                    toast.info({ title: toastEmpCodeTitle, description: toastEmpCodeDescBase.replace('{code}', codigo) });
                   }
                 } else {
                   // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
                   Clipboard.setString(codigo);
                   // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-                  toast.success({ title: 'Copiado', description: 'El código de acceso de la empresa ha sido copiado al portapapeles.' });
+                  toast.success({ title: toastCopiedTitle, description: toastCopiedDesc });
                 }
               }}
             >
@@ -1768,7 +1944,7 @@ export default function GestionPlantilla() {
           {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
           <TextInput
             style={estilos.searchInput}
-            placeholder={t('admin.plantilla.search_placeholder')}
+            placeholder={searchPlaceholder}
             placeholderTextColor={BRAND.textSec}
             value={busqueda}
             onChangeText={setBusqueda}
@@ -1777,10 +1953,10 @@ export default function GestionPlantilla() {
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={estilos.filterRow}>
             {[
-              { id: 'todos', label: t('admin.plantilla.filters.todos') },
-              { id: 'activos', label: t('admin.plantilla.filters.status_active') },
-              { id: 'inactivos', label: t('admin.plantilla.filters.status_inactive') },
-              { id: 'riesgo', label: t('admin.plantilla.filters.risk') },
+              { id: 'todos', label: filterTodos },
+              { id: 'activos', label: filterStatusActive },
+              { id: 'inactivos', label: filterStatusInactive },
+              { id: 'riesgo', label: filterRisk },
             ].map((item) => (
               // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
               <TouchableOpacity key={item.id} onPress={() => setFiltroEstado(item.id as FiltroEstado)} style={[estilos.filterChip, filtroEstado === item.id && estilos.filterChipActivo]}>
@@ -1814,7 +1990,7 @@ export default function GestionPlantilla() {
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.sedeTotal}>{sede.colaboradores.length}</Text>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.sedeLabel}>{t('common.employee').toLowerCase()}</Text>
+                <Text style={estilos.sedeLabel}>{sede.colaboradores.length === 1 ? labelColaboradorSede : labelColaboradoresSede}</Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -1827,22 +2003,22 @@ export default function GestionPlantilla() {
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={[estilos.cardHeader, { paddingVertical: 14 }]}>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.sedeActualNombre}>{t('admin.plantilla.no_sede_assigned', { defaultValue: 'Empleados sin sede asignada' })}</Text>
+            <Text style={estilos.sedeActualNombre}>{labelUnassignedSede}</Text>
           </View>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={estilos.tableContainer}>
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.tableHeader}>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={[estilos.thText, { flex: 2.2 }]}>{t('common.employee').toUpperCase()}</Text>
+              <Text style={[estilos.thText, { flex: 2.2 }]}>{colEmployee}</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={[estilos.thText, { flex: 1.15, textAlign: 'center' }]}>{t('admin.plantilla.filters.role').toUpperCase()}</Text>
+              <Text style={[estilos.thText, { flex: 1.15, textAlign: 'center' }]}>{colRole}</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={[estilos.thText, { flex: 1.35, textAlign: 'center' }]}>{t('admin.plantilla.filters.dept').toUpperCase()}</Text>
+              <Text style={[estilos.thText, { flex: 1.35, textAlign: 'center' }]}>{colDept}</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={[estilos.thText, { flex: 1, textAlign: 'center' }]}>{t('common.status', { defaultValue: 'ESTADO' }).toUpperCase()}</Text>
+              <Text style={[estilos.thText, { flex: 1, textAlign: 'center' }]}>{colStatus}</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={[estilos.thText, { flex: 1.25, textAlign: 'center' }]}>{t('common.actions', { defaultValue: 'ACCIONES' }).toUpperCase()}</Text>
+              <Text style={[estilos.thText, { flex: 1.25, textAlign: 'center' }]}>{colActions}</Text>
             </View>
             {usuariosSinSede.map((emp, i) => renderEmployeeRow(emp, i))}
           </View>
@@ -1862,34 +2038,34 @@ export default function GestionPlantilla() {
                 {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                 <MaterialIcons name="arrow-back" size={16} color={BRAND.textSec} />
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.volverSedesText}>{t('admin.estructura.catalog.sedes.title')}</Text>
+                <Text style={estilos.volverSedesText}>{labelVolverSedes}</Text>
               </TouchableOpacity>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
               <View>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.sedeActualLabel}>{t('admin.estructura.modal_dept.label_sede')}</Text>
+                <Text style={estilos.sedeActualLabel}>{labelSedeTitle}</Text>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.sedeActualNombre}>{catalogos.sedes.find((sede) => sede.id === sedeSeleccionadaId)?.nombre || t('admin.team')}</Text>
+                <Text style={estilos.sedeActualNombre}>{catalogos.sedes.find((sede) => sede.id === sedeSeleccionadaId)?.nombre || labelTeam}</Text>
               </View>
             </View>
           )}
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={estilos.filterRow}>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.filterLabel}>{t('admin.plantilla.filters.role')}</Text>
+            <Text style={estilos.filterLabel}>{filterLabelRole}</Text>
             {['todos', ...catalogos.roles].map((rol) => (
               // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
               <TouchableOpacity key={rol} onPress={() => setFiltroRol(rol)} style={[estilos.filterChip, filtroRol === rol && estilos.filterChipActivo]}>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={[estilos.filterChipText, filtroRol === rol && estilos.filterChipTextActivo]}>{rol === 'todos' ? t('admin.plantilla.filters.status_all') : rol}</Text>
+                <Text style={[estilos.filterChipText, filtroRol === rol && estilos.filterChipTextActivo]}>{rol === 'todos' ? filterTodos : rol}</Text>
               </TouchableOpacity>
             ))}
           </View>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={estilos.filterRow}>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.filterLabel}>{t('admin.plantilla.filters.dept')}</Text>
-            {[{ id: 'todos', nombre: t('admin.plantilla.filters.status_all') }, ...catalogos.departamentos].map((departamento) => (
+            <Text style={estilos.filterLabel}>{filterLabelDept}</Text>
+            {[{ id: 'todos', nombre: filterTodos }, ...catalogos.departamentos].map((departamento) => (
               // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
               <TouchableOpacity key={departamento.id} onPress={() => setFiltroDepartamento(departamento.id)} style={[estilos.filterChip, filtroDepartamento === departamento.id && estilos.filterChipActivo]}>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -1904,15 +2080,15 @@ export default function GestionPlantilla() {
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={estilos.tableHeader}>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={[estilos.thText, { flex: 2.2 }]}>{t('common.employee').toUpperCase()}</Text>
+            <Text style={[estilos.thText, { flex: 2.2 }]}>{colEmployee}</Text>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={[estilos.thText, { flex: 1.15, textAlign: 'center' }]}>{t('admin.plantilla.filters.role').toUpperCase()}</Text>
+            <Text style={[estilos.thText, { flex: 1.15, textAlign: 'center' }]}>{colRole}</Text>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={[estilos.thText, { flex: 1.35, textAlign: 'center' }]}>{t('admin.plantilla.filters.dept').toUpperCase()}</Text>
+            <Text style={[estilos.thText, { flex: 1.35, textAlign: 'center' }]}>{colDept}</Text>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={[estilos.thText, { flex: 1, textAlign: 'center' }]}>{t('common.status', { defaultValue: 'ESTADO' }).toUpperCase()}</Text>
+            <Text style={[estilos.thText, { flex: 1, textAlign: 'center' }]}>{colStatus}</Text>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={[estilos.thText, { flex: 1.25, textAlign: 'center' }]}>{t('common.actions', { defaultValue: 'ACCIONES' }).toUpperCase()}</Text>
+            <Text style={[estilos.thText, { flex: 1.25, textAlign: 'center' }]}>{colActions}</Text>
           </View>
 
           {usuariosFiltrados.map((emp, i) => renderEmployeeRow(emp, i))}
@@ -1922,7 +2098,7 @@ export default function GestionPlantilla() {
               {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <MaterialIcons name="group-off" size={48} color={BRAND.textSec} style={estilos.emptyIcon} />
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.emptyText}>{t('admin.plantilla.empty_msg', { defaultValue: 'No se encontraron colaboradores.' })}</Text>
+              <Text style={estilos.emptyText}>{labelEmptyMsg}</Text>
             </View>
           )}
         </View>
@@ -1948,9 +2124,9 @@ export default function GestionPlantilla() {
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.modalTitle}>{modoFormulario === 'crear' ? t('admin.plantilla.modal_employee.title_create') : t('admin.plantilla.modal_employee.title_edit')}</Text>
+              <Text style={estilos.modalTitle}>{modoFormulario === 'crear' ? modalCreateTitle : modalEditTitle}</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.modalSubtitle}>{t('admin.plantilla.modal_employee.subtitle', { defaultValue: 'Cuenta, rol, sede, jefe y permisos operativos' })}</Text>
+              <Text style={estilos.modalSubtitle}>{modalEmployeeSubtitle}</Text>
             </View>
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
             <TouchableOpacity style={estilos.modalClose} onPress={cerrarModal}>
@@ -1964,57 +2140,57 @@ export default function GestionPlantilla() {
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.formGrid}>
               {/* FormField renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <FormField label={t('admin.plantilla.modal_employee.label_name')} value={formulario.nombre} onChangeText={(valor) => actualizarFormulario('nombre', valor)} placeholder={t('admin.plantilla.modal_employee.placeholder_name')} />
+              <FormField label={labelFullName} value={formulario.nombre} onChangeText={(valor) => actualizarFormulario('nombre', valor)} placeholder={placeholderFullName} />
               {/* FormField renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <FormField label="Usuario" value={formulario.usuarioInterno} onChangeText={(valor) => actualizarFormulario('usuarioInterno', valor)} placeholder="Ej. juan.perez" editable={modoFormulario === 'crear'} />
+              <FormField label={labelUsername} value={formulario.usuarioInterno} onChangeText={(valor) => actualizarFormulario('usuarioInterno', valor)} placeholder={placeholderUsername} editable={modoFormulario === 'crear'} />
               {modoFormulario === 'crear' && (
                 // FormField renderiza una pieza visual reutilizable dentro de esta pantalla.
-                <FormField label={t('admin.plantilla.modal_employee.label_pass')} value={formulario.contrasena} onChangeText={(valor) => actualizarFormulario('contrasena', valor)} placeholder={t('admin.plantilla.modal_employee.placeholder_pass')} secureTextEntry />
+                <FormField label={labelInitialPass} value={formulario.contrasena} onChangeText={(valor) => actualizarFormulario('contrasena', valor)} placeholder={placeholderInitialPass} secureTextEntry />
               )}
               {/* SelectorOpciones renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <SelectorOpciones
-                label={t('admin.plantilla.modal_employee.label_position')}
+                label={labelPosition}
                 value={formulario.cargoId}
                 opciones={catalogos.cargos}
-                placeholder={t('admin.plantilla.modal_employee.placeholder_position')}
+                placeholder={placeholderPosition}
                 abierto={selectorActivo === 'cargo'}
                 onAlternar={() => alternarSelector('cargo')}
                 onSeleccionar={(v) => { actualizarFormulario('cargoId', v); setSelectorActivo(null); }}
               />
               {/* SelectorOpciones renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <SelectorOpciones
-                label={t('admin.plantilla.modal_employee.label_dept')}
+                label={labelDepartment}
                 value={formulario.departamentoId}
                 opciones={catalogos.departamentos}
-                placeholder={t('admin.plantilla.modal_employee.placeholder_dept')}
+                placeholder={placeholderDepartment}
                 abierto={selectorActivo === 'departamento'}
                 onAlternar={() => alternarSelector('departamento')}
                 onSeleccionar={(v) => { actualizarFormulario('departamentoId', v); setSelectorActivo(null); }}
               />
               {/* SelectorOpciones renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <SelectorOpciones
-                label={t('admin.plantilla.modal_employee.label_sede')}
+                label={labelSede}
                 value={formulario.sedeId}
                 opciones={catalogos.sedes}
-                placeholder={t('admin.plantilla.modal_employee.placeholder_sede')}
+                placeholder={placeholderSede}
                 abierto={selectorActivo === 'sede'}
                 onAlternar={() => alternarSelector('sede')}
                 onSeleccionar={(v) => { actualizarFormulario('sedeId', v); setSelectorActivo(null); }}
               />
               {/* FormField renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <FormField label={t('admin.plantilla.modal_employee.label_phone')} value={formulario.telefono} onChangeText={(valor) => actualizarFormulario('telefono', valor)} placeholder={t('admin.plantilla.modal_employee.placeholder_phone')} />
+              <FormField label={labelPhone} value={formulario.telefono} onChangeText={(valor) => actualizarFormulario('telefono', valor)} placeholder={placeholderPhone} />
               {/* FormField renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <FormField label={t('admin.plantilla.modal_employee.label_salary')} value={formulario.salarioBase ? `$${formulario.salarioBase}` : ''} onChangeText={(valor) => actualizarFormulario('salarioBase', normalizarSalarioUSD(valor))} placeholder="$0" />
+              <FormField label={labelSalary} value={formulario.salarioBase ? `$${formulario.salarioBase}` : ''} onChangeText={(valor) => actualizarFormulario('salarioBase', normalizarSalarioUSD(valor))} placeholder="$0" />
             </View>
 
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.formSection}>
               {/* SelectorOpciones renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <SelectorOpciones
-                label={t('admin.plantilla.modal_employee.label_role')}
+                label={labelRoleSelector}
                 value={formulario.rol}
-                opciones={catalogos.roles.map((rol) => ({ id: rol, nombre: rol, detalle: ['empleado', 'jefe', 'admin'].includes(rol) ? t('common.base_role', { defaultValue: 'Rol base' }) : t('common.custom_role', { defaultValue: 'Rol personalizado' }) }))}
-                placeholder={t('admin.plantilla.modal_employee.placeholder_role')}
+                opciones={catalogos.roles.map((rol) => ({ id: rol, nombre: rol, detalle: ['empleado', 'jefe', 'admin'].includes(rol) ? labelBaseRole : labelCustomRole }))}
+                placeholder={placeholderRoleSelector}
                 abierto={selectorActivo === 'rol'}
                 onAlternar={() => alternarSelector('rol')}
                 onSeleccionar={(valor) => {
@@ -2029,13 +2205,13 @@ export default function GestionPlantilla() {
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.formSection}>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.formLabel}>{t('admin.plantilla.modal_employee.label_manager')}</Text>
+              <Text style={estilos.formLabel}>{labelManager}</Text>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
               <View style={estilos.selectorGrid}>
                 {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
                 <TouchableOpacity onPress={() => actualizarFormulario('jefeId', '')} style={[estilos.selectorChip, !formulario.jefeId && estilos.selectorChipActivo]}>
                   {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={[estilos.selectorText, !formulario.jefeId && estilos.selectorTextActivo]}>{t('admin.plantilla.modal_employee.no_manager', { defaultValue: 'Sin jefe' })}</Text>
+                  <Text style={[estilos.selectorText, !formulario.jefeId && estilos.selectorTextActivo]}>{labelNoManager}</Text>
                 </TouchableOpacity>
                 {catalogos.jefes.map((jefe) => (
                   // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
@@ -2053,16 +2229,16 @@ export default function GestionPlantilla() {
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
             <TouchableOpacity style={estilos.btnModalSecondary} onPress={cerrarModal}>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.btnModalSecondaryText}>{t('common.cancel')}</Text>
+              <Text style={estilos.btnModalSecondaryText}>{btnCancel}</Text>
             </TouchableOpacity>
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
             <TouchableOpacity style={estilos.btnModalPrimary} onPress={guardarEmpleado} disabled={guardando}>
               {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-              <LinearGradient colors={[BRAND.bangladeshBlue, BRAND.caribbeanBlue]} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.btnModalGradient}>
+              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white nx-admin-shimmer-button' } as any : {})} colors={['#6320a6', '#6320a6']} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.btnModalGradient}>
                 {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                 <MaterialIcons name={modoFormulario === 'crear' ? 'person-add' : 'save'} size={18} color="#fff" style={estilos.btnIcon} />
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.btnPrimaryText}>{guardando ? t('admin.plantilla.modal_employee.btn_saving').toUpperCase() : modoFormulario === 'crear' ? t('admin.plantilla.modal_employee.btn_save').toUpperCase() : t('common.save').toUpperCase()}</Text>
+                <Text style={estilos.btnPrimaryText}>{guardando ? btnSaving : (modoFormulario === 'crear' ? btnSave : btnSaveChanges)}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -2088,9 +2264,9 @@ export default function GestionPlantilla() {
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.modalTitle}>{t('admin.plantilla.modal_task.title')}</Text>
+              <Text style={estilos.modalTitle}>{modalTaskTitle}</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.modalSubtitle}>{t('admin.plantilla.modal_task.subtitle', { defaultValue: 'Sede, departamento o colaborador individual' })}</Text>
+              <Text style={estilos.modalSubtitle}>{modalTaskSubtitle}</Text>
             </View>
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
             <TouchableOpacity style={estilos.modalClose} onPress={() => setModalTareaVisible(false)}>
@@ -2108,7 +2284,7 @@ export default function GestionPlantilla() {
                 <TouchableOpacity key={alcance} onPress={() => setAlcanceTarea(alcance)} style={[estilos.selectorChip, alcanceTarea === alcance && estilos.selectorChipActivo]}>
                   {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                   <Text style={[estilos.selectorText, alcanceTarea === alcance && estilos.selectorTextActivo]}>
-                    {alcance === 'sede' ? t('admin.estructura.btn_sede') : alcance === 'departamento' ? t('admin.estructura.btn_dept') : t('common.individual', { defaultValue: 'Individual' })}
+                    {alcance === 'sede' ? btnScopeSede : alcance === 'departamento' ? btnScopeDept : btnScopeIndividual}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -2117,24 +2293,26 @@ export default function GestionPlantilla() {
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={[estilos.formGrid, estilos.formGridTarea]}>
               {/* FormField renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <FormField label={t('admin.plantilla.modal_task.label_title')} value={formularioTarea.titulo} onChangeText={(valor) => actualizarFormularioTarea('titulo', valor)} placeholder={t('admin.plantilla.modal_task.placeholder_title')} />
+              <FormField label={labelTaskTitle} value={formularioTarea.titulo} onChangeText={(valor) => actualizarFormularioTarea('titulo', valor)} placeholder={placeholderTaskTitle} />
               {/* FormField renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <FormField label={t('admin.plantilla.modal_task.label_due_date')} value={formularioTarea.fecha_limite} onChangeText={(valor) => actualizarFormularioTarea('fecha_limite', valor)} placeholder="YYYY-MM-DD" />
+              <FormField label={labelTaskDueDate} value={formularioTarea.fecha_limite} onChangeText={(valor) => actualizarFormularioTarea('fecha_limite', valor)} placeholder="YYYY-MM-DD" />
               {/* FormField renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <FormField label={t('admin.plantilla.modal_task.label_desc')} value={formularioTarea.descripcion} onChangeText={(valor) => actualizarFormularioTarea('descripcion', valor)} placeholder={t('admin.plantilla.modal_task.placeholder_desc')} />
+              <FormField label={labelTaskDesc} value={formularioTarea.descripcion} onChangeText={(valor) => actualizarFormularioTarea('descripcion', valor)} placeholder={placeholderTaskDesc} />
             </View>
 
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.formSection}>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.formLabel}>{t('admin.plantilla.modal_task.label_priority')}</Text>
+              <Text style={estilos.formLabel}>{labelTaskPriority}</Text>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
               <View style={estilos.selectorGrid}>
                 {(['Baja', 'Media', 'Alta', 'Urgente'] as FormularioTarea['prioridad'][]).map((prioridad) => (
                   // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
                   <TouchableOpacity key={prioridad} onPress={() => actualizarFormularioTarea('prioridad', prioridad)} style={[estilos.selectorChip, formularioTarea.prioridad === prioridad && estilos.selectorChipActivo]}>
                     {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                    <Text style={[estilos.selectorText, formularioTarea.prioridad === prioridad && estilos.selectorTextActivo]}>{t(`common.priority.${prioridad.toLowerCase()}`, { defaultValue: prioridad })}</Text>
+                    <Text style={[estilos.selectorText, formularioTarea.prioridad === prioridad && estilos.selectorTextActivo]}>
+                      {prioridad === 'Baja' ? priorityBaja : prioridad === 'Media' ? priorityMedia : prioridad === 'Alta' ? priorityAlta : priorityUrgente}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -2144,7 +2322,7 @@ export default function GestionPlantilla() {
               // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
               <View style={estilos.formSection}>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.formLabel}>{t('admin.estructura.modal_dept.label_sede')}</Text>
+                <Text style={estilos.formLabel}>{labelSedeTitle}</Text>
                 {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
                 <View style={estilos.selectorGrid}>
                   {catalogos.sedes.map((sede) => (
@@ -2162,7 +2340,7 @@ export default function GestionPlantilla() {
               // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
               <View style={estilos.formSection}>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.formLabel}>{t('admin.estructura.modal_cargo.label_dept')}</Text>
+                <Text style={estilos.formLabel}>{filterLabelDept}</Text>
                 {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
                 <View style={estilos.selectorGrid}>
                   {catalogos.departamentos.map((departamento) => (
@@ -2180,7 +2358,7 @@ export default function GestionPlantilla() {
               // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
               <View style={estilos.formSection}>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.formLabel}>{t('admin.plantilla.modal_task.target_employee', { defaultValue: 'Colaborador destino' })}</Text>
+                <Text style={estilos.formLabel}>{labelTargetEmployee}</Text>
                 {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
                 <View style={estilos.selectorGrid}>
                   {usuariosFiltrados.map((empleado) => (
@@ -2200,16 +2378,16 @@ export default function GestionPlantilla() {
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
             <TouchableOpacity style={estilos.btnModalSecondary} onPress={() => setModalTareaVisible(false)}>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.btnModalSecondaryText}>{t('common.cancel')}</Text>
+              <Text style={estilos.btnModalSecondaryText}>{btnCancel}</Text>
             </TouchableOpacity>
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
             <TouchableOpacity style={estilos.btnModalPrimary} onPress={guardarAsignacionTarea} disabled={guardando}>
               {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-              <LinearGradient colors={[BRAND.bangladeshBlue, BRAND.caribbeanBlue]} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.btnModalGradient}>
+              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white nx-admin-shimmer-button' } as any : {})} colors={['#6320a6', '#6320a6']} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.btnModalGradient}>
                 {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                 <MaterialIcons name="assignment-add" size={18} color="#fff" style={estilos.btnIcon} />
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.btnPrimaryText}>{guardando ? t('admin.plantilla.modal_task.btn_assigning').toUpperCase() : t('admin.plantilla.modal_task.btn_assign').toUpperCase()}</Text>
+                <Text style={estilos.btnPrimaryText}>{guardando ? btnAssigning : btnAssign}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -3633,9 +3811,9 @@ const estilos = StyleSheet.create({
     // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 12,
     // borderWidth define el grosor del borde visible.
-    borderWidth: 1,
+    borderWidth: 0,
     // borderColor define el color del borde.
-    borderColor: ADMIN.borde,
+    borderColor: 'transparent',
     // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoCampo,
     // paddingHorizontal agrega espacio interno a izquierda y derecha.
@@ -3652,7 +3830,7 @@ const estilos = StyleSheet.create({
   // selectorSelectBoxActivo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   selectorSelectBoxActivo: {
     // borderColor define el color del borde.
-    borderColor: 'rgba(96,165,250,0.35)',
+    borderColor: 'transparent',
     // backgroundColor define el fondo del bloque.
     backgroundColor: 'rgba(96,165,250,0.08)',
   },
@@ -3681,23 +3859,23 @@ const estilos = StyleSheet.create({
     // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 12,
     // borderWidth define el grosor del borde visible.
-    borderWidth: 1,
+    borderWidth: 0,
     // borderColor define el color del borde.
-    borderColor: 'rgba(96,165,250,0.22)',
+    borderColor: 'transparent',
     // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoElevado,
     // overflow controla si el contenido se recorta o puede sobresalir.
     overflow: 'hidden',
     // shadowColor define el color base de sombra.
-    shadowColor: BRAND.iconBright,
+    shadowColor: 'transparent',
     // shadowOffset define direccion y distancia de sombra.
     shadowOffset: { width: 0, height: 12 },
     // shadowOpacity controla intensidad de sombra.
-    shadowOpacity: 0.18,
+    shadowOpacity: 0,
     // shadowRadius suaviza o expande la sombra.
-    shadowRadius: 24,
+    shadowRadius: 0,
     // elevation agrega sombra en Android.
-    elevation: 16,
+    elevation: 0,
   },
   // dropdownScroll: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   dropdownScroll: {
@@ -3941,10 +4119,10 @@ const estilos = StyleSheet.create({
   },
   // btnModalGradient: estilo de modal; define presentacion de contenido flotante sobre la pantalla actual.
   btnModalGradient: {
-    // minHeight asegura una altura minima util para lectura o area tactil.
-    minHeight: 50,
     // paddingHorizontal agrega espacio interno a izquierda y derecha.
-    paddingHorizontal: 22,
+    paddingHorizontal: 28,
+    // paddingVertical agrega espacio interno arriba y abajo.
+    paddingVertical: 14,
     // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
     // alignItems alinea los hijos en el eje transversal del contenedor.

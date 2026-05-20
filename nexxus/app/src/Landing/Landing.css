@@ -82,7 +82,7 @@ body {
 }
 
 /* .nx-landing > *:not(.darkveil-canvas):not(.nx-orb): define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-landing > *:not(.darkveil-canvas):not(.nx-orb) {
+.nx-landing>*:not(.darkveil-canvas):not(.nx-orb) {
   position: relative;
   z-index: 3;
 }
@@ -298,11 +298,12 @@ body {
   color: white !important;
 }
 
-/* .nx-nav-cta .star-inner-content: define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-nav-cta .star-inner-content {
+/* .nx-nav-cta: define reglas visuales para los elementos que usan este selector en la interfaz. */
+.nx-nav-cta {
   font-size: 13px;
-  min-height: 40px;
+  height: 40px;
   padding: 0 18px;
+  border-radius: 999px;
 }
 
 /* .nx-hero: define reglas visuales para los elementos que usan este selector en la interfaz. */
@@ -323,7 +324,7 @@ body {
 .nx-admin-copy,
 .nx-ai-core,
 .nx-section-head,
-.nx-integrations > div,
+.nx-integrations>div,
 .nx-plan,
 .nx-value-card,
 .nx-module-card,
@@ -337,7 +338,7 @@ body {
 .nx-admin-copy span,
 .nx-pricing-head span,
 .nx-ai-core span,
-.nx-onboarding > span {
+.nx-onboarding>span {
   align-items: center;
   color: #d8caff;
   display: inline-flex;
@@ -369,7 +370,7 @@ body {
 }
 
 /* .nx-final-cta p: define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-hero-copy > p,
+.nx-hero-copy>p,
 .nx-section-head p,
 .nx-admin-copy p,
 .nx-ai-core p,
@@ -524,13 +525,26 @@ body {
 }
 
 /* .nx-window-bar span:nth-child(1): define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-window-bar span:nth-child(1) { background: #ff5f57; }
+.nx-window-bar span:nth-child(1) {
+  background: #ff5f57;
+}
+
 /* .nx-window-bar span:nth-child(2): define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-window-bar span:nth-child(2) { background: #ffbd2e; }
+.nx-window-bar span:nth-child(2) {
+  background: #ffbd2e;
+}
+
 /* .nx-window-bar span:nth-child(3): define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-window-bar span:nth-child(3) { background: #28c840; }
+.nx-window-bar span:nth-child(3) {
+  background: #28c840;
+}
+
 /* .nx-window-bar strong: define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-window-bar strong { color: var(--nx-muted); font-size: 12px; margin-left: auto; }
+.nx-window-bar strong {
+  color: var(--nx-muted);
+  font-size: 12px;
+  margin-left: auto;
+}
 
 /* .nx-dashboard-grid: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-dashboard-grid {
@@ -579,21 +593,44 @@ body {
 
 /* .nx-chart i: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-chart i {
-  animation: nx-bar 2.8s ease-in-out infinite;
+  animation: nx-bar 1.2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
   background: linear-gradient(180deg, #a855f7, #2563eb);
   border-radius: 999px;
   flex: 1;
   min-height: 44px;
+  transform: scaleY(0);
+  transform-origin: bottom;
+}
+
+/* .nx-chart i:nth-child(1): define reglas visuales para los elementos que usan este selector en la interfaz. */
+.nx-chart i:nth-child(1) {
+  animation-delay: 0.1s;
+  height: 45%;
 }
 
 /* .nx-chart i:nth-child(2): define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-chart i:nth-child(2) { animation-delay: 0.2s; height: 72%; }
+.nx-chart i:nth-child(2) {
+  animation-delay: 0.25s;
+  height: 58%;
+}
+
 /* .nx-chart i:nth-child(3): define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-chart i:nth-child(3) { animation-delay: 0.4s; height: 48%; }
+.nx-chart i:nth-child(3) {
+  animation-delay: 0.4s;
+  height: 72%;
+}
+
 /* .nx-chart i:nth-child(4): define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-chart i:nth-child(4) { animation-delay: 0.6s; height: 88%; }
+.nx-chart i:nth-child(4) {
+  animation-delay: 0.55s;
+  height: 85%;
+}
+
 /* .nx-chart i:nth-child(5): define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-chart i:nth-child(5) { animation-delay: 0.8s; height: 62%; }
+.nx-chart i:nth-child(5) {
+  animation-delay: 0.7s;
+  height: 96%;
+}
 
 /* .nx-table-panel b: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-table-panel b {
@@ -750,14 +787,14 @@ body {
 }
 
 /* .nx-admin-console > div:first-child: define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-admin-console > div:first-child {
+.nx-admin-console>div:first-child {
   align-items: center;
   display: flex;
   justify-content: space-between;
 }
 
 /* .nx-admin-console > div:first-child span: define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-admin-console > div:first-child span {
+.nx-admin-console>div:first-child span {
   color: #7fffdc;
 }
 
@@ -834,12 +871,12 @@ body {
 }
 
 /* .nx-integrations > div:first-child: define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-integrations > div:first-child {
+.nx-integrations>div:first-child {
   max-width: 880px;
 }
 
 /* .nx-integrations > div:first-child span: define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-integrations > div:first-child span {
+.nx-integrations>div:first-child span {
   color: #d8caff;
   font-size: 12px;
   font-weight: 800;
@@ -914,9 +951,14 @@ body {
 }
 
 /* .nx-radar i:nth-child(2): define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-radar i:nth-child(2) { animation-delay: 1s; }
+.nx-radar i:nth-child(2) {
+  animation-delay: 1s;
+}
+
 /* .nx-radar i:nth-child(3): define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-radar i:nth-child(3) { animation-delay: 2s; }
+.nx-radar i:nth-child(3) {
+  animation-delay: 2s;
+}
 
 /* .nx-pricing-head: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-pricing-head {
@@ -1272,37 +1314,68 @@ body {
 
 /* Animacion nx-float: define pasos de movimiento/transicion reutilizados por clases CSS. */
 @keyframes nx-float {
+
   /* 0%, 100%: define reglas visuales para los elementos que usan este selector en la interfaz. */
-  0%, 100% { transform: translate3d(0, 0, 0); }
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
   /* 50% define estilos visuales para los elementos que usan este selector. */
-  50% { transform: translate3d(0, -14px, 0); }
+  50% {
+    transform: translate3d(0, -14px, 0);
+  }
 }
 
 /* Animacion nx-pulse: define pasos de movimiento/transicion reutilizados por clases CSS. */
 @keyframes nx-pulse {
+
   /* 0%, 100%: define reglas visuales para los elementos que usan este selector en la interfaz. */
-  0%, 100% { opacity: 0.5; transform: scale(0.92); }
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(0.92);
+  }
+
   /* 50% define estilos visuales para los elementos que usan este selector. */
-  50% { opacity: 1; transform: scale(1.16); }
+  50% {
+    opacity: 1;
+    transform: scale(1.16);
+  }
 }
 
 /* Animacion nx-bar: define pasos de movimiento/transicion reutilizados por clases CSS. */
 @keyframes nx-bar {
-  /* 0%, 100%: define reglas visuales para los elementos que usan este selector en la interfaz. */
-  0%, 100% { height: 38%; }
-  /* 50% define estilos visuales para los elementos que usan este selector. */
-  50% { height: 92%; }
+
+  /* from: define el estado inicial con escala 0. */
+  from {
+    transform: scaleY(0);
+  }
+
+  /* to: define el estado final con escala completa. */
+  to {
+    transform: scaleY(1);
+  }
 }
 
 /* Animacion nx-radar: define pasos de movimiento/transicion reutilizados por clases CSS. */
 @keyframes nx-radar {
+
   /* from define estilos visuales para los elementos que usan este selector. */
-  from { opacity: 0.85; transform: scale(0.45); }
+  from {
+    opacity: 0.85;
+    transform: scale(0.45);
+  }
+
   /* to define estilos visuales para los elementos que usan este selector. */
-  to { opacity: 0; transform: scale(1.55); }
+  to {
+    opacity: 0;
+    transform: scale(1.55);
+  }
 }
 
 @media (max-width: 980px) {
+
   /* .nx-nav-links: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-nav-links {
     display: none;
@@ -1356,6 +1429,7 @@ body {
 }
 
 @media (max-width: 640px) {
+
   /* .nx-nav: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-nav {
     gap: 8px;
@@ -1403,10 +1477,10 @@ body {
   }
 
   /* .nx-integrations + .nx-section: define reglas visuales para los elementos que usan este selector en la interfaz. */
-  .nx-section + .nx-admin-section,
-  .nx-section + .nx-ai-section,
-  .nx-admin-section + .nx-section,
-  .nx-integrations + .nx-section {
+  .nx-section+.nx-admin-section,
+  .nx-section+.nx-ai-section,
+  .nx-admin-section+.nx-section,
+  .nx-integrations+.nx-section {
     padding-top: 10px;
   }
 
@@ -1434,7 +1508,7 @@ body {
   .nx-admin-copy span,
   .nx-pricing-head span,
   .nx-ai-core span,
-  .nx-onboarding > span {
+  .nx-onboarding>span {
     font-size: 10px;
     gap: 8px;
     letter-spacing: 0.12em;
@@ -1449,7 +1523,7 @@ body {
   }
 
   /* .nx-final-cta p: define reglas visuales para los elementos que usan este selector en la interfaz. */
-  .nx-hero-copy > p,
+  .nx-hero-copy>p,
   .nx-section-head p,
   .nx-admin-copy p,
   .nx-ai-core p,
@@ -1529,10 +1603,10 @@ body {
     width: 100%;
   }
 
-  /* .nx-nav-cta .star-inner-content: define reglas visuales para los elementos que usan este selector en la interfaz. */
-  .nx-nav-cta .star-inner-content {
+  /* .nx-nav-cta: define reglas visuales para los elementos que usan este selector en la interfaz. */
+  .nx-nav-cta {
     font-size: 12px;
-    min-height: 38px;
+    height: 38px;
     padding: 0 12px;
   }
 
@@ -1589,13 +1663,13 @@ body {
   }
 
   /* .nx-footer: define reglas visuales para los elementos que usan este selector en la interfaz. */
-  .nx-admin-console > div:first-child,
+  .nx-admin-console>div:first-child,
   .nx-footer {
     align-items: flex-start;
   }
 
   /* .nx-admin-console > div:first-child: define reglas visuales para los elementos que usan este selector en la interfaz. */
-  .nx-admin-console > div:first-child {
+  .nx-admin-console>div:first-child {
     gap: 10px;
   }
 
@@ -1648,6 +1722,7 @@ body {
 }
 
 @media (max-width: 380px) {
+
   /* .nx-brand: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-brand {
     font-size: 0;
@@ -1666,12 +1741,13 @@ body {
   }
 
   /* .nx-hero-copy > p: define reglas visuales para los elementos que usan este selector en la interfaz. */
-  .nx-hero-copy > p {
+  .nx-hero-copy>p {
     font-size: 0.92rem;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   /* *::after: define reglas visuales para los elementos que usan este selector en la interfaz. */
   *,
   *::before,
@@ -1679,5 +1755,102 @@ body {
     animation-duration: 0.001ms !important;
     scroll-behavior: auto !important;
     transition-duration: 0.001ms !important;
+  }
+}
+
+/* Custom Shimmer Button styling with a touch of purple (Fully rounded) */
+.nx-btn-shimmer {
+  display: inline-flex;
+  height: 48px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(168, 85, 247, 0.35) !important;
+  background-image: linear-gradient(110deg, #090514 45%, #6320a6 55%, #090514) !important;
+  background-size: 200% 100% !important;
+  background-position: 0% 0%;
+  padding: 0 24px;
+  font-weight: 600;
+  color: #e9d5ff !important;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  outline: none;
+  font-family: inherit;
+  font-size: 0.95rem;
+  box-shadow: 0 0 16px rgba(99, 32, 166, 0.25);
+  gap: 8px;
+  text-decoration: none;
+}
+
+.nx-btn-shimmer:hover {
+  animation: nx-shimmer 2.2s linear infinite !important;
+  color: #ffffff !important;
+  border-color: rgba(168, 85, 247, 0.7) !important;
+  box-shadow: 0 0 24px rgba(168, 85, 247, 0.45) !important;
+  transform: translateY(-2px);
+}
+
+.nx-btn-shimmer:active {
+  transform: translateY(1px);
+}
+
+.nx-btn-shimmer:focus {
+  box-shadow: 0 0 0 2px #090514, 0 0 0 4px #a855f7;
+}
+
+.nx-nav-cta.nx-btn-shimmer {
+  height: 40px !important;
+  padding: 0 16px !important;
+  font-size: 13px !important;
+  border-radius: 999px !important;
+}
+
+/* Secondary Shimmer Button style (subtle gradient, same animation on hover, but transparent base) */
+.nx-btn-ghost,
+.nx-btn-plan,
+.nx-nav-login {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px !important;
+  border: 1px solid rgba(168, 85, 247, 0.22) !important;
+  background-image: linear-gradient(110deg, rgba(255, 255, 255, 0.04) 45%, rgba(168, 85, 247, 0.16) 55%, rgba(255, 255, 255, 0.04)) !important;
+  background-size: 200% 100% !important;
+  background-position: 0% 0%;
+  color: #d8caff !important;
+  transition: all 0.3s ease !important;
+  cursor: pointer;
+  outline: none;
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.08) !important;
+  gap: 8px;
+  font-family: inherit;
+  font-weight: 600 !important;
+  text-decoration: none;
+}
+
+.nx-btn-ghost:hover,
+.nx-btn-plan:hover,
+.nx-nav-login:hover {
+  animation: nx-shimmer 2.2s linear infinite !important;
+  color: #ffffff !important;
+  border-color: rgba(168, 85, 247, 0.6) !important;
+  background-image: linear-gradient(110deg, rgba(255, 255, 255, 0.06) 45%, rgba(168, 85, 247, 0.25) 55%, rgba(255, 255, 255, 0.06)) !important;
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.3) !important;
+  transform: translateY(-2px) !important;
+}
+
+.nx-btn-ghost:active,
+.nx-btn-plan:active,
+.nx-nav-login:active {
+  transform: translateY(1px) !important;
+}
+
+@keyframes nx-shimmer {
+  from {
+    background-position: 0 0;
+  }
+
+  to {
+    background-position: -200% 0;
   }
 }

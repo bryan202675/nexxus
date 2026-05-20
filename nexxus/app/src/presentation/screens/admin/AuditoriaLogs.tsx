@@ -10,8 +10,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
-// Importa { Animated, Easing, View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { Animated, Easing, View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, Platform } from 'react-native';
+import { useApiTranslate } from '@/shared/i18n/useApiTranslate';
+// Importa { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
+import { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Platform } from 'react-native';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
 // Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
@@ -24,6 +25,11 @@ import { useAuth } from '@/presentation/hooks/useAuth';
 import { obtenerEmpresaIdAdmin } from './adminUtils';
 // Importa { ADMIN, useAdminAppearance, AdminPalette }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import { ADMIN, useAdminAppearance, AdminPalette } from './adminTheme';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
+
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
+
 
 /**
  * Componente CONTRAST_TEXT. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
@@ -58,6 +64,31 @@ export default function AuditoriaLogs() {
   const { t } = useTranslation();
   // Inicializa { theme }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { theme } = useAdminAppearance();
+
+  // Traducciones dinámicas por API
+  const translatedGeneral = useApiTranslate('General');
+  const translatedSystem = useApiTranslate('Sistema');
+  const translatedTotalEvents = useApiTranslate('Eventos totales');
+  const translatedLastRecords = useApiTranslate('Últimos registros');
+  const translatedSuccessRatio = useApiTranslate('Ratio de éxito');
+  const translatedIaWarnings = useApiTranslate('Alertas de IA');
+  const translatedMonitored = useApiTranslate('Monitoreado');
+  const translatedCriticalRisk = useApiTranslate('Riesgo crítico');
+  const translatedErrorLabel = useApiTranslate('Error');
+  const translatedTodos = useApiTranslate('Todos');
+  const translatedSuccess = useApiTranslate('Éxito');
+  const translatedWarning = useApiTranslate('Advertencia');
+  const title = useApiTranslate('Auditoría del Sistema');
+  const subtitle = useApiTranslate('Registro de actividad, seguridad y logs operativos en tiempo real');
+  const btnBackup = useApiTranslate('Respaldar');
+  const btnExport = useApiTranslate('Exportar logs');
+  const searchPlaceholder = useApiTranslate('Buscar por operador, acción, módulo o IP...');
+  const colTimestamp = useApiTranslate('Fecha y Hora');
+  const colOperator = useApiTranslate('Operador');
+  const colActivity = useApiTranslate('Actividad');
+  const colStatus = useApiTranslate('Estado');
+  const translatedOperacion = useApiTranslate('Operación');
+  const emptyStateText = useApiTranslate('No se encontraron registros de auditoría que coincidan con la búsqueda.');
 
   // Inicializa BRAND; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const BRAND = useMemo(() => ({
@@ -177,7 +208,7 @@ export default function AuditoriaLogs() {
       setLogs([]);
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setCargando(false);
-      // Devuelve el valor final calculado para esta funcion o caso de uso.
+      // Devuelve el valor final calculated para esta funcion o caso de uso.
       return;
     }
 
@@ -207,7 +238,7 @@ export default function AuditoriaLogs() {
     // Calcula modulos; transforma la lista original en datos listos para renderizar o guardar.
     const modulos = Object.entries(logs.reduce<Record<string, number>>((acc, log) => {
       // Declara modulo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const modulo = log.modulo || t('common.general');
+      const modulo = log.modulo || translatedGeneral;
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       acc[modulo] = (acc[modulo] || 0) + 1;
       // Devuelve el valor final calculado para esta funcion o caso de uso.
@@ -216,7 +247,7 @@ export default function AuditoriaLogs() {
     // Calcula operadores; transforma la lista original en datos listos para renderizar o guardar.
     const operadores = Object.entries(logs.reduce<Record<string, number>>((acc, log) => {
       // Declara operador; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const operador = log.usuarioNombre || t('common.system');
+      const operador = log.usuarioNombre || translatedSystem;
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       acc[operador] = (acc[operador] || 0) + 1;
       // Devuelve el valor final calculado para esta funcion o caso de uso.
@@ -226,7 +257,7 @@ export default function AuditoriaLogs() {
     const riesgo = Math.min(100, error * 25 + warning * 8);
     // Devuelve el valor final calculado para esta funcion o caso de uso.
     return { success, warning, error, total, ratio, modulos, operadores, riesgo };
-  }, [logs]);
+  }, [logs, translatedGeneral, translatedSystem]);
 
   // Calcula logsFiltrados; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
   const logsFiltrados = logs.filter((l) => {
@@ -263,10 +294,10 @@ export default function AuditoriaLogs() {
 
   // Declara stats; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const stats = [
-    { label: t('admin.auditoria.stats.total_events'), val: datos.total, trend: t('admin.auditoria.stats.last_records'), icon: "terminal" as const, color: ADMIN.iconos.auditoria },
-    { label: t('admin.auditoria.stats.success_ratio'), val: datos.success, trend: `${datos.ratio}% ratio`, icon: "security" as const, color: ADMIN.iconos.seguridad },
-    { label: t('admin.auditoria.stats.ia_warnings'), val: datos.warning, trend: t('admin.auditoria.stats.monitored'), icon: "warning" as const, color: ADMIN.iconos.advertencia },
-    { label: t('admin.auditoria.stats.critical_risk'), val: `${datos.riesgo}%`, trend: `${datos.error} ${t('admin.auditoria.filters.error').toLowerCase()}s`, icon: "shield" as const, color: datos.riesgo > 0 ? ADMIN.iconos.peligro : ADMIN.iconos.exito },
+    { label: translatedTotalEvents, val: datos.total, trend: translatedLastRecords, icon: "terminal" as const, color: ADMIN.iconos.auditoria },
+    { label: translatedSuccessRatio, val: datos.success, trend: `${datos.ratio}% ratio`, icon: "security" as const, color: ADMIN.iconos.seguridad },
+    { label: translatedIaWarnings, val: datos.warning, trend: translatedMonitored, icon: "warning" as const, color: ADMIN.iconos.advertencia },
+    { label: translatedCriticalRisk, val: `${datos.riesgo}%`, trend: `${datos.error} ${translatedErrorLabel.toLowerCase()}s`, icon: "shield" as const, color: datos.riesgo > 0 ? ADMIN.iconos.peligro : ADMIN.iconos.exito },
   ];
 
   // Devuelve el JSX que React Native renderiza en pantalla.
@@ -280,9 +311,9 @@ export default function AuditoriaLogs() {
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.titulo}>{t('admin.auditoria.title')}</Text>
+            <Text style={estilos.titulo}>{title}</Text>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.subtitulo}>{t('admin.auditoria.subtitle')}</Text>
+            <Text style={estilos.subtitulo}>{subtitle}</Text>
           </View>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={estilos.headerActions}>
@@ -291,16 +322,16 @@ export default function AuditoriaLogs() {
               {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <MaterialIcons name="storage" size={18} color={BRAND.textMain} style={estilos.btnIcon} />
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.btnSecondaryText}>{t('admin.auditoria.btn_backup')}</Text>
+              <Text style={estilos.btnSecondaryText}>{btnBackup}</Text>
             </TouchableOpacity>
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={{ backgroundColor: 'transparent', borderWidth: 0 }}>
               {/* Elemento tactil; envuelve contenido que puede responder a interacciones del usuario. */}
               <TouchableOpacity style={estilos.btnPrimary}>
                 {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-                <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} colors={['#A855F7', '#9333EA']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.btnGradient}>
+                <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white nx-admin-shimmer-button' } as any : {})} colors={['#6320a6', '#6320a6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.btnGradient}>
                   {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.btnPrimaryText}>{t('admin.auditoria.btn_export')}</Text>
+                  <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.btnPrimaryText}>{btnExport}</Text>
                   {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                   <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={[estilos.btnPrimaryText, estilos.btnIconRight, { fontSize: 18, marginTop: -1 }]}>→</Text>
                 </LinearGradient>
@@ -320,7 +351,7 @@ export default function AuditoriaLogs() {
               {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
               <TextInput
                 style={estilos.searchInput}
-                placeholder={t('admin.auditoria.search_placeholder')}
+                placeholder={searchPlaceholder}
                 placeholderTextColor={BRAND.textSec}
                 value={busqueda}
                 onChangeText={setBusqueda}
@@ -329,10 +360,10 @@ export default function AuditoriaLogs() {
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.filterRow}>
               {[
-                { id: 'todos', label: t('admin.auditoria.filters.todos') },
-                { id: 'success', label: t('admin.auditoria.filters.success') },
-                { id: 'warning', label: t('admin.auditoria.filters.warning') },
-                { id: 'error', label: t('admin.auditoria.filters.error') },
+                { id: 'todos', label: translatedTodos },
+                { id: 'success', label: translatedSuccess },
+                { id: 'warning', label: translatedWarning },
+                { id: 'error', label: translatedErrorLabel },
               ].map((item) => (
                 // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
                 <TouchableOpacity key={item.id} onPress={() => setFiltroEstado(item.id as FiltroEstado)} style={[estilos.filterChip, filtroEstado === item.id && estilos.filterChipActivo]}>
@@ -348,50 +379,60 @@ export default function AuditoriaLogs() {
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.tableHeader}>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={[estilos.thText, { flex: 1.45 }]}>{t('admin.auditoria.table.col_timestamp')}</Text>
+              <Text style={[estilos.thText, { flex: 1.45 }]}>{colTimestamp}</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={[estilos.thText, { flex: 1.7 }]}>{t('admin.auditoria.table.col_operator')}</Text>
+              <Text style={[estilos.thText, { flex: 1.7 }]}>{colOperator}</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={[estilos.thText, { flex: 3 }]}>{t('admin.auditoria.table.col_activity')}</Text>
+              <Text style={[estilos.thText, { flex: 3 }]}>{colActivity}</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={[estilos.thText, { flex: 1, textAlign: 'center' }]}>{t('admin.auditoria.table.col_status')}</Text>
+              <Text style={[estilos.thText, { flex: 1, textAlign: 'center' }]}>{colStatus}</Text>
             </View>
 
-            {logsFiltrados.map((log, i) => (
-              // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
-              <View key={log.id || i} style={estilos.tableRow}>
-                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                <View style={[estilos.tdCell, { flex: 1.45 }]}>
-                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={estilos.logId}>#{(log.id || i).toString().padStart(4, '0')}</Text>
-                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={estilos.logTime}>{log.timestamp || ''}</Text>
-                </View>
-                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                <View style={[estilos.tdCell, estilos.userCell, { flex: 1.7 }]}>
+            {logsFiltrados.map((log, i) => {
+              const mappedEstado = log.estado === 'Success'
+                ? translatedSuccess
+                : log.estado === 'Warning'
+                  ? translatedWarning
+                  : log.estado === 'Error'
+                    ? translatedErrorLabel
+                    : translatedSuccess;
+
+              return (
+                // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
+                <View key={log.id || i} style={estilos.tableRow}>
                   {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                  <View style={[estilos.userAvatar, { borderColor: `${colorEstado(log.estado)}44` }]}>
+                  <View style={[estilos.tdCell, { flex: 1.45 }]}>
                     {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                    <Text style={[estilos.userAvatarText, { color: colorEstado(log.estado) }]}>{(log.usuarioNombre || '?')[0]}</Text>
+                    <Text style={estilos.logId}>#{(log.id || i).toString().padStart(4, '0')}</Text>
+                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                    <Text style={estilos.logTime}>{log.timestamp || ''}</Text>
                   </View>
-                  {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-                  <Text style={estilos.userName} numberOfLines={1}>{log.usuarioNombre || t('common.system')}</Text>
+                  {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                  <View style={[estilos.tdCell, estilos.userCell, { flex: 1.7 }]}>
+                    {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                    <View style={[estilos.userAvatar, { borderColor: `${colorEstado(log.estado)}44` }]}>
+                      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                      <Text style={[estilos.userAvatarText, { color: colorEstado(log.estado) }]}>{(log.usuarioNombre || '?')[0]}</Text>
+                    </View>
+                    {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
+                    <Text style={estilos.userName} numberOfLines={1}>{log.usuarioNombre || translatedSystem}</Text>
+                  </View>
+                  {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                  <View style={[estilos.tdCell, { flex: 3 }]}>
+                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                    <Text style={estilos.logAction}>{log.accion || translatedOperacion}</Text>
+                    {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
+                    <Text style={estilos.logDetails} numberOfLines={1}>{`${log.modulo || translatedGeneral} · ${log.detalles || ''}`}</Text>
+                  </View>
+                  {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                  <View style={[estilos.tdCell, { flex: 1, alignItems: 'center' }]}>
+                    {/* PremiumBadge renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+                    <PremiumBadge variant={varianteEstado(log.estado)}>{mappedEstado}</PremiumBadge>
+                  </View>
                 </View>
-                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                <View style={[estilos.tdCell, { flex: 3 }]}>
-                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={estilos.logAction}>{log.accion || t('admin.auditoria.operacion')}</Text>
-                  {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-                  <Text style={estilos.logDetails} numberOfLines={1}>{`${log.modulo || t('common.general')} · ${log.detalles || ''}`}</Text>
-                </View>
-                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                <View style={[estilos.tdCell, { flex: 1, alignItems: 'center' }]}>
-                  {/* PremiumBadge renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                  <PremiumBadge variant={varianteEstado(log.estado)}>{log.estado || t('admin.auditoria.filters.success')}</PremiumBadge>
-                </View>
-              </View>
-            ))}
-            {logsFiltrados.length === 0 && <EmptyState texto={t('admin.auditoria.empty_state')} />}
+              );
+            })}
+            {logsFiltrados.length === 0 && <EmptyState texto={emptyStateText} />}
           </View>
         </View>
       </ScrollView>
