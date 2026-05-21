@@ -11,9 +11,10 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
 // Importa { Alert, Animated, Easing, Modal, ScrollView, StyleSheet, Text as NativeText, TextInput as NativeTextInput, TouchableOpacity, View, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { Alert, Animated, Easing, Modal, ScrollView, StyleSheet, Text as NativeText, TextInput as NativeTextInput, TouchableOpacity, View, Platform } from 'react-native';
-// Importa { BlurView } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
-import { BlurView } from 'expo-blur';
+import { Alert, Animated, Easing, ScrollView, StyleSheet, Text as NativeText, TextInput as NativeTextInput, TouchableOpacity, View, Platform } from 'react-native';
+// Importa AdminModalBackdrop; velo difuminado reutilizable para formularios modales.
+import { AdminModal } from './AdminModal';
+import { AdminModalFormGlass } from './AdminModalFormGlass';
 // Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import { LinearGradient } from 'expo-linear-gradient';
 // Importa { addDoc, collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, updateDoc, where } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
@@ -639,19 +640,13 @@ const CalendarioEmpresarial: React.FC = () => {
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={estilos.subtitulo}>{t('admin.calendario.subtitle')}</Text>
           </View>
-          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={{ backgroundColor: 'transparent', borderWidth: 0 }}>
-            {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-            <TouchableOpacity onPress={() => abrirCrear()} activeOpacity={0.9} style={estilos.botonCrear}>
-              {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white nx-admin-shimmer-button' } as any : {})} colors={['#6320a6', '#6320a6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.botonCrearGradiente}>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.botonCrearTexto}>{t('admin.calendario.btn_new_event')}</Text>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={[estilos.botonCrearTexto, estilos.btnIconRight, { fontSize: 18, marginTop: -1 }]}>→</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
+          {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
+          <TouchableOpacity {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} onPress={() => abrirCrear()} activeOpacity={0.9} style={estilos.botonCrear}>
+            {/* Plus renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+            <Plus {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} size={18} color="#FFFFFF" style={estilos.botonCrearIcono} />
+            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+            <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.botonCrearTexto}>{t('admin.calendario.btn_new_event')}</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
@@ -791,18 +786,18 @@ const CalendarioEmpresarial: React.FC = () => {
       </ScrollView>
 
       {/* Ventana modal; separa una accion o detalle sin abandonar la pantalla actual. */}
-      <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={() => setModalVisible(false)}>
-        {Platform.OS === 'web' ? (
-          // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
-          <View {...({ className: 'nx-admin-blur-bg' } as any)} style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(6,5,18,0.25)' }]} />
-        ) : (
-          // Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo.
-          <BlurView intensity={24} tint="dark" style={StyleSheet.absoluteFill} />
-        )}
-        {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+      <AdminModal visible={modalVisible} animationType="fade" onRequestClose={() => setModalVisible(false)}>
         <View style={estilos.modalFondo}>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={[estilos.modalTarjeta, { backgroundColor: theme.isDark ? ADMIN.fondoVidrioFuerte : 'rgba(255,255,255,0.96)', borderColor: theme.border }]}>
+          <AdminModalFormGlass
+            style={[
+              estilos.modalTarjeta,
+              {
+                borderColor: theme.border,
+                backgroundColor: theme.isDark ? ADMIN.fondoVidrioFuerte : 'rgba(255,255,255,0.96)',
+              },
+            ]}
+          >
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.modalHeader}>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
@@ -883,11 +878,18 @@ const CalendarioEmpresarial: React.FC = () => {
             </ScrollView>
 
             {/* Picker Modal for Entities and Dates */}
-            <Modal visible={!!pickerActivo} transparent animationType="fade">
-              {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
-              <BlurView intensity={20} tint="dark" style={estilos.modalFondo}>
-                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                <View style={[estilos.modalTarjeta, { height: '80%', backgroundColor: theme.isDark ? ADMIN.fondoVidrioFuerte : 'rgba(255,255,255,0.96)', borderColor: theme.border }]}>
+            <AdminModal visible={!!pickerActivo} animationType="fade">
+              <View style={estilos.modalFondo}>
+                <AdminModalFormGlass
+                  style={[
+                    estilos.modalTarjeta,
+                    {
+                      height: '80%',
+                      borderColor: theme.border,
+                      backgroundColor: theme.isDark ? ADMIN.fondoVidrioFuerte : 'rgba(255,255,255,0.96)',
+                    },
+                  ]}
+                >
                   {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
                   <View style={estilos.modalHeader}>
                     {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -1048,11 +1050,10 @@ const CalendarioEmpresarial: React.FC = () => {
                     {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                     <Text style={estilos.botonCerrarPickerTexto}>Cerrar</Text>
                   </TouchableOpacity>
-                </View>
-              </BlurView>
-            </Modal>
+                </AdminModalFormGlass>
+              </View>
+            </AdminModal>
 
-            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.modalAcciones}>
               {eventoEditando && (
                 // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
@@ -1074,9 +1075,9 @@ const CalendarioEmpresarial: React.FC = () => {
                 </LinearGradient>
               </TouchableOpacity>
             </View>
-          </View>
+          </AdminModalFormGlass>
         </View>
-      </Modal>
+      </AdminModal>
     </Animated.View>
   );
 };
@@ -1158,13 +1159,11 @@ const estilos = StyleSheet.create({
   // subtitulo: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
   subtitulo: { color: BRAND.textoSecundario, fontSize: 13, fontWeight: '600', marginTop: 8, maxWidth: 720 },
   // botonCrear: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
-  botonCrear: { borderRadius: 999, overflow: 'hidden', backgroundColor: 'transparent' },
-  // botonCrearGradiente: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
-  botonCrearGradiente: { flexDirection: 'row', paddingHorizontal: 28, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
-  // btnIconRight: estilo de icono; ajusta tamanio, posicion o fondo del indicador visual.
-  btnIconRight: { marginLeft: 8 },
+  botonCrear: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#6320A6', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: '#6320A6' },
+  // botonCrearIcono: estilo de icono; mantiene blanco el indicador dentro del boton principal.
+  botonCrearIcono: { marginRight: 8, color: '#FFFFFF' },
   // botonCrearTexto: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-  botonCrearTexto: { color: '#FFFFFF', fontSize: 16, fontWeight: '700', letterSpacing: 0.5, textDecorationLine: 'none' },
+  botonCrearTexto: { color: '#FFFFFF', fontSize: 13, fontWeight: '700', textDecorationLine: 'none' },
   // resumenGrid: estilo de grilla; organiza elementos en filas o columnas con separacion controlada.
   resumenGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginBottom: 18 },
   // resumenCard: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
@@ -1304,7 +1303,7 @@ const estilos = StyleSheet.create({
   // modalFondo: estilo de modal; define presentacion de contenido flotante sobre la pantalla actual.
   modalFondo: { flex: 1, backgroundColor: 'transparent', alignItems: 'center', justifyContent: 'center', padding: 20 },
   // modalTarjeta: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
-  modalTarjeta: { width: '100%', maxWidth: 720, maxHeight: '92%', borderRadius: 12, borderWidth: 1, borderColor: ADMIN.bordeFuerte, backgroundColor: ADMIN.fondoVidrioFuerte, padding: 18, ...sombraAdmin },
+  modalTarjeta: { width: '100%', maxWidth: 720, maxHeight: '92%', borderRadius: 12, borderWidth: 1, borderColor: ADMIN.bordeFuerte, backgroundColor: ADMIN.fondoVidrioFuerte, padding: 18, overflow: 'hidden', ...sombraAdmin },
   // modalHeader: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 14, marginBottom: 14 },
   // modalTitulo: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.

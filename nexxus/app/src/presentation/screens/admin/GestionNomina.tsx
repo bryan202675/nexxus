@@ -12,7 +12,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApiTranslate } from '@/shared/i18n/useApiTranslate';
 // Importa { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Alert, Platform, Modal, KeyboardAvoidingView } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Alert, Platform, Modal, KeyboardAvoidingView } from 'react-native';
+import { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Alert, Platform, KeyboardAvoidingView } from 'react-native';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
 // Importa { addDoc, collection, onSnapshot, query, where, getDocs, doc, updateDoc, writeBatch } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
@@ -25,6 +25,8 @@ import { useCases } from '@/infrastructure/firebase/container';
 import { useAuth } from '@/presentation/hooks/useAuth';
 // Importa { obtenerEmpresaIdAdmin }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import { obtenerEmpresaIdAdmin } from './adminUtils';
+import { AdminModal } from './AdminModal';
+import { AdminModalFormGlass } from './AdminModalFormGlass';
 // Importa { ADMIN, sombraAdmin }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import { ADMIN, sombraAdmin } from './adminTheme';
 // Importa { useAdminToast }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
@@ -537,11 +539,17 @@ export default function GestionNomina() {
               <Text style={estilos.btnSecondaryText}>{btnExportLabel}</Text>
             </TouchableOpacity>
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-            <TouchableOpacity style={estilos.btnPrimary} onPress={generarNominaMasiva} disabled={procesandoMasivo}>
-              {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white nx-admin-shimmer-button' } as any : {})} colors={['#6320a6', '#6320a6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.btnGradient}>
-                {procesandoMasivo ? <ActivityIndicator size="small" color={CONTRAST_TEXT} /> : <><Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.btnPrimaryText}>{btnGeneratePayroll}</Text><Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={[estilos.btnPrimaryText, estilos.btnIconRight, { fontSize: 18, marginTop: -1 }]}>→</Text></>}
-              </LinearGradient>
+            <TouchableOpacity {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} style={estilos.btnPrimary} onPress={generarNominaMasiva} disabled={procesandoMasivo}>
+              {procesandoMasivo ? (
+                <ActivityIndicator size="small" color={CONTRAST_TEXT} />
+              ) : (
+                <>
+                  {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
+                  <MaterialIcons {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} name="payments" size={18} color={CONTRAST_TEXT} style={[estilos.btnIcon, estilos.btnPrimaryIcon]} />
+                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                  <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.btnPrimaryText}>{btnGeneratePayroll}</Text>
+                </>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -676,11 +684,10 @@ export default function GestionNomina() {
       </ScrollView>
 
       {/* Modal de Perfil Salarial */}
-      <Modal visible={modalVisible} transparent animationType="slide">
-        {/* Contenedor que ajusta el layout cuando aparece el teclado. */}
+      <AdminModal visible={modalVisible} animationType="slide">
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={estilos.modalOverlay}>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={estilos.modalContent}>
+          <AdminModalFormGlass style={estilos.modalContent}>
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.modalHeaderModal}>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
@@ -753,9 +760,9 @@ export default function GestionNomina() {
                 </LinearGradient>
               </TouchableOpacity>
             </ScrollView>
-          </View>
+          </AdminModalFormGlass>
         </KeyboardAvoidingView>
-      </Modal>
+      </AdminModal>
     </Animated.View>
   );
 }
@@ -781,15 +788,13 @@ const estilos = StyleSheet.create({
   // btnSecondary: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   btnSecondary: { flexDirection: 'row', alignItems: 'center', backgroundColor: ADMIN.fondoCampo, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: ADMIN.borde },
   // btnPrimary: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  btnPrimary: { borderRadius: 999, overflow: 'hidden', backgroundColor: 'transparent' },
-  // btnGradient: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  btnGradient: { flexDirection: 'row', paddingHorizontal: 28, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
+  btnPrimary: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#6320A6', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: '#6320A6' },
   // btnIcon: estilo de icono; ajusta tamanio, posicion o fondo del indicador visual.
   btnIcon: { marginRight: 8 },
-  // btnIconRight: estilo de icono; ajusta tamanio, posicion o fondo del indicador visual.
-  btnIconRight: { marginLeft: 8 },
+  // btnPrimaryIcon: estilo de icono; mantiene blanco el indicador dentro del boton principal.
+  btnPrimaryIcon: { color: CONTRAST_TEXT },
   // btnPrimaryText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  btnPrimaryText: { color: CONTRAST_TEXT, fontSize: 16, fontWeight: '700', letterSpacing: 0.5, textDecorationLine: 'none' },
+  btnPrimaryText: { color: CONTRAST_TEXT, fontWeight: '700', fontSize: 13, textDecorationLine: 'none' },
   // btnSecondaryText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   btnSecondaryText: { color: BRAND.textMain, fontWeight: '700', fontSize: 13 },
   // resumenRow: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
@@ -844,9 +849,9 @@ const estilos = StyleSheet.create({
   accionBtn: { padding: 8, backgroundColor: ADMIN.fondoCampo, borderRadius: 8, borderWidth: 1, borderColor: ADMIN.borde },
 
   // Modal Styles
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' },
+  modalOverlay: { flex: 1, backgroundColor: 'transparent', justifyContent: 'flex-end' },
   // modalContent: estilo del area de contenido; controla padding, distribucion y separacion interna.
-  modalContent: { backgroundColor: ADMIN.fondoElevado, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, height: '70%', borderWidth: 1, borderColor: ADMIN.borde },
+  modalContent: { backgroundColor: ADMIN.fondoElevado, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, height: '70%', borderWidth: 1, borderColor: ADMIN.borde, overflow: 'hidden' },
   // modalHeaderModal: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
   modalHeaderModal: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
   // modalTitle: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.

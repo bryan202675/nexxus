@@ -297,7 +297,7 @@
       "configuracion": "Ajustes del Sistema"
     },
     "roles": {
-      "admin": "admin",
+      "admin": "Propietario",
       "sys_ops_01": "Operaciones Sistema"
     },
     "welcome_msg": "Hola, {{name}}",

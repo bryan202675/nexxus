@@ -11,13 +11,14 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
 // Importa { Alert, Animated, Easing, Modal, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Image, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { Alert, Animated, Easing, Modal, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Image, Platform } from 'react-native';
+import { Alert, Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Image, Platform } from 'react-native';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
 // Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import { LinearGradient } from 'expo-linear-gradient';
-// Importa { BlurView } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
-import { BlurView } from 'expo-blur';
+// Importa AdminModalBackdrop; velo difuminado reutilizable para formularios modales.
+import { AdminModal } from './AdminModal';
+import { AdminModalFormGlass } from './AdminModalFormGlass';
 // Importa { addDoc, collection, deleteDoc, doc, onSnapshot, query, setDoc, updateDoc, where } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
 import { addDoc, collection, deleteDoc, doc, onSnapshot, query, setDoc, updateDoc, where } from 'firebase/firestore';
 // Importa { useCases } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
@@ -349,10 +350,13 @@ const CatalogCard = ({ title, subtitle, icon, color, total, onPress }: { title: 
 const QuickCreateButton = ({ label, icon, color, onPress }: { label: string; icon: keyof typeof MaterialIcons.glyphMap; color: string; onPress: () => void }) => (
   // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
   <TouchableOpacity style={estilos.quickButton} onPress={onPress} activeOpacity={0.82}>
-    {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-    <MaterialIcons name={icon} size={17} color={color} style={estilos.btnIcon} />
+    {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+    <View style={[estilos.quickButtonIconShell, { backgroundColor: `${color}1A`, borderColor: `${color}33` }]}>
+      {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
+      <MaterialIcons name={icon} size={16} color={color} />
+    </View>
     {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-    <Text style={[estilos.quickButtonText, { color }]}>{label}</Text>
+    <Text style={estilos.quickButtonText}>{label}</Text>
   </TouchableOpacity>
 );
 
@@ -1125,19 +1129,13 @@ export default function EstructuraOrganizativa() {
           <QuickCreateButton label={t('admin.estructura.btn_dept')} icon="domain-add" color={SOFT_COLORS.deptos} onPress={() => abrirCrear('departamento')} />
           {/* QuickCreateButton renderiza una pieza visual reutilizable dentro de esta pantalla. */}
           <QuickCreateButton label={t('admin.estructura.btn_cargo')} icon="work" color={SOFT_COLORS.cargos} onPress={() => abrirCrear('cargo')} />
-          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={{ backgroundColor: 'transparent', borderWidth: 0 }}>
-            {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-            <TouchableOpacity style={estilos.btnPrimary} onPress={() => abrirCrear('rol')}>
-              {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white nx-admin-shimmer-button' } as any : {})} colors={['#6320a6', '#6320a6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.btnGradient}>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.btnPrimaryText}>{t('admin.estructura.btn_create_role')}</Text>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={[estilos.btnPrimaryText, estilos.btnIconRight, { fontSize: 18, marginTop: -1 }]}>→</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
+          {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
+          <TouchableOpacity {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} style={estilos.btnPrimary} onPress={() => abrirCrear('rol')}>
+            {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
+            <MaterialIcons {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} name="add" size={18} color={CONTRAST_TEXT} style={[estilos.btnIcon, estilos.btnPrimaryIcon]} />
+            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+            <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.btnPrimaryText}>{t('admin.estructura.btn_create_role')}</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -1363,18 +1361,10 @@ export default function EstructuraOrganizativa() {
       )}
     </ScrollView>
     {/* Ventana modal; separa una accion o detalle sin abandonar la pantalla actual. */}
-    <Modal visible={modalActivo !== null} transparent animationType="fade" onRequestClose={cerrarModal}>
-      {Platform.OS === 'web' ? (
-        // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
-        <View {...({ className: 'nx-admin-blur-bg' } as any)} style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(6,5,18,0.25)' }]} />
-      ) : (
-        // Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo.
-        <BlurView intensity={24} tint="dark" style={StyleSheet.absoluteFill} />
-      )}
-      {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+    <AdminModal visible={modalActivo !== null} animationType="fade" onRequestClose={cerrarModal}>
       <View style={estilos.modalOverlay}>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={estilos.modalCard}>
+        <AdminModalFormGlass style={estilos.modalCard}>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={estilos.modalHeader}>
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
@@ -1489,9 +1479,9 @@ export default function EstructuraOrganizativa() {
               </LinearGradient>
             </TouchableOpacity>
           </View>
-        </View>
+        </AdminModalFormGlass>
       </View>
-    </Modal>
+    </AdminModal>
     </Animated.View>
   );
 }
@@ -1579,55 +1569,52 @@ const estilos = StyleSheet.create({
   },
   // btnPrimary: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   btnPrimary: {
-    // borderRadius redondea esquinas para definir la forma visual.
-    borderRadius: 999,
-    // overflow controla si el contenido se recorta o puede sobresalir.
-    overflow: 'hidden',
-    // backgroundColor define el fondo del bloque.
-    backgroundColor: 'transparent',
-  },
-  // btnGradient: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  btnGradient: {
     // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
-    // paddingHorizontal agrega espacio interno a izquierda y derecha.
-    paddingHorizontal: 28,
-    // paddingVertical agrega espacio interno arriba y abajo.
-    paddingVertical: 14,
     // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
-    // justifyContent distribuye los hijos en el eje principal del contenedor.
-    justifyContent: 'center',
+    // backgroundColor define el fondo del bloque.
+    backgroundColor: '#6320A6',
+    // paddingHorizontal agrega espacio interno a izquierda y derecha.
+    paddingHorizontal: 16,
+    // paddingVertical agrega espacio interno arriba y abajo.
+    paddingVertical: 10,
+    // borderRadius redondea esquinas para definir la forma visual.
+    borderRadius: 12,
+    // borderWidth define el grosor del borde visible.
+    borderWidth: 1,
+    // borderColor define el color del borde.
+    borderColor: '#6320A6',
   },
   // btnIcon: estilo de icono; ajusta tamanio, posicion o fondo del indicador visual.
   btnIcon: {
     // marginRight ajusta una propiedad visual especifica de este estilo.
     marginRight: 8,
   },
-  // btnIconRight: estilo de icono; ajusta tamanio, posicion o fondo del indicador visual.
-  btnIconRight: {
-    // marginLeft ajusta una propiedad visual especifica de este estilo.
-    marginLeft: 8,
+  // btnPrimaryIcon: estilo de icono; mantiene blanco el indicador dentro del boton principal.
+  btnPrimaryIcon: {
+    // color define el color del texto o icono.
+    color: CONTRAST_TEXT,
   },
   // btnPrimaryText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   btnPrimaryText: {
     // color define el color del texto o icono.
     color: '#FFFFFF',
     // fontSize controla el tamanio del texto.
-    fontSize: 16,
+    fontSize: 13,
     // fontWeight define el peso visual del texto.
     fontWeight: '700',
-    // letterSpacing ajusta la separacion entre letras.
-    letterSpacing: 0.5,
     // textDecorationLine ajusta una propiedad visual especifica de este estilo.
     textDecorationLine: 'none',
   },
   // quickButton: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
   quickButton: {
     // minHeight asegura una altura minima util para lectura o area tactil.
-    minHeight: 50,
+    minHeight: 44,
     // paddingHorizontal agrega espacio interno a izquierda y derecha.
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
+    // paddingVertical agrega espacio interno arriba y abajo.
+    paddingVertical: 8,
     // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 12,
     // backgroundColor define el fondo del bloque.
@@ -1642,17 +1629,32 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
+    // gap define separacion uniforme entre elementos hijos.
+    gap: 8,
+  },
+  // quickButtonIconShell: estilo de boton; contiene el icono dentro de una capsula discreta.
+  quickButtonIconShell: {
+    // width fija el ancho del contenedor visual.
+    width: 26,
+    // height fija la altura del contenedor visual.
+    height: 26,
+    // borderRadius redondea esquinas para definir la forma visual.
+    borderRadius: 9,
+    // borderWidth define el grosor del borde visible.
+    borderWidth: 1,
+    // alignItems alinea los hijos en el eje transversal del contenedor.
+    alignItems: 'center',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
+    justifyContent: 'center',
   },
   // quickButtonText: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
   quickButtonText: {
+    // color define el color del texto o icono.
+    color: BRAND.textMain,
     // fontSize controla el tamanio del texto.
-    fontSize: 11,
+    fontSize: 13,
     // fontWeight define el peso visual del texto.
-    fontWeight: '900',
-    // textTransform ajusta una propiedad visual especifica de este estilo.
-    textTransform: 'uppercase',
-    // letterSpacing ajusta la separacion entre letras.
-    letterSpacing: 1.4,
+    fontWeight: '700',
   },
   // gridStats: estilo de grilla; organiza elementos en filas o columnas con separacion controlada.
   gridStats: {
@@ -2978,9 +2980,7 @@ const estilos = StyleSheet.create({
     maxWidth: 920,
     // maxHeight ajusta una propiedad visual especifica de este estilo.
     maxHeight: '92%',
-    // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoElevado,
-    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: ADMIN.radio,
     // borderWidth define el grosor del borde visible.
     borderWidth: 1,

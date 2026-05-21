@@ -442,6 +442,8 @@ function CustomSelect({
   loading = false,
   emptyText = 'No hay resultados',
   hasFlags = false,
+  getItemLabel,
+  getItemValue,
 }: {
   label: string;
   error?: string;
@@ -456,12 +458,15 @@ function CustomSelect({
   loading?: boolean;
   emptyText?: string;
   hasFlags?: boolean;
+  getItemLabel?: (item: any) => string;
+  getItemValue?: (item: any) => string;
 }) {
   const { t } = useTranslation();
+  const resolveItemValue = getItemValue ?? ((item: any) => hasFlags ? (item as CountryData).name : String(item));
+  const resolveItemLabel = getItemLabel ?? resolveItemValue;
   
-  const selectedItem = hasFlags 
-    ? (items as CountryData[]).find(x => x.name === value)
-    : undefined;
+  const selectedItem = items.find((item) => resolveItemValue(item) === value);
+  const selectedLabel = selectedItem ? resolveItemLabel(selectedItem) : value;
 
   return (
     <label className={`nx-auth-field ${error ? 'is-invalid' : ''}`}>
@@ -487,10 +492,10 @@ function CustomSelect({
                     className="nx-dropdown-flag" 
                   />
                 )}
-                <span>{selectedItem.name}</span>
+                <span>{selectedLabel}</span>
               </>
             ) : !hasFlags && value ? (
-              <span>{value}</span>
+              <span>{selectedLabel}</span>
             ) : (
               <span style={{ opacity: 0.5 }}>{placeholder}</span>
             )}
@@ -515,7 +520,8 @@ function CustomSelect({
                 <div className="nx-dropdown-empty">{loading ? `${t('landing_auth.loading')}...` : emptyText}</div>
               ) : (
                 items.map((item, idx) => {
-                  const itemName = hasFlags ? (item as CountryData).name : (item as string);
+                  const itemName = resolveItemValue(item);
+                  const itemLabel = resolveItemLabel(item);
                   const isSelected = value === itemName;
                   return (
                     <div 
@@ -530,7 +536,7 @@ function CustomSelect({
                           className="nx-dropdown-flag" 
                         />
                       )}
-                      <span>{itemName}</span>
+                      <span>{itemLabel}</span>
                     </div>
                   );
                 })
@@ -549,7 +555,7 @@ function CustomSelect({
  */
 export default function LandingAuth({ modoInicial = 'registro', planSeleccionado }: { modoInicial?: 'registro' | 'login'; planSeleccionado: string }) {
   // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   // Inicializa [vista, setVista]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [vista, setVista] = useState<VistaAuth>(modoInicial);
   // Inicializa [registro, setRegistro]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -587,6 +593,8 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
   const [buscarPrefijo, setBuscarPrefijo] = useState('');
 
   const [prefijoSeleccionado, setPrefijoSeleccionado] = useState('+503');
+  const mostrarPaisesEnIngles = i18n.language?.startsWith('en');
+  const obtenerEtiquetaPais = (pais: CountryData) => mostrarPaisesEnIngles ? pais.englishName : pais.name;
 
   const cerrarDropdowns = () => {
     setPaisAbierto(false);
@@ -1052,6 +1060,7 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
         salarioBase: 0,
         sede: limpiarTexto(empresa.sedePrincipal),
         sedeId: sedeRef.id,
+        telefono: `${prefijoSeleccionado.trim()} ${limpiarTexto(empresa.telefono)}`.trim(),
       });
       // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
       await batchInicial.commit();
@@ -1277,7 +1286,12 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
                     setPaisAbierto(false);
                     setBuscarPais('');
                   }}
-                  items={paises.filter(p => normalizarTexto(p.name).includes(normalizarTexto(buscarPais)))}
+                  items={paises.filter((p) => {
+                    const busqueda = normalizarTexto(buscarPais);
+                    return normalizarTexto(obtenerEtiquetaPais(p)).includes(busqueda)
+                      || normalizarTexto(p.name).includes(busqueda)
+                      || normalizarTexto(p.englishName).includes(busqueda);
+                  })}
                   searchQuery={buscarPais}
                   onSearchChange={setBuscarPais}
                   isOpen={paisAbierto}
@@ -1287,6 +1301,8 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
                   }}
                   loading={cargandoPaises}
                   hasFlags={true}
+                  getItemLabel={obtenerEtiquetaPais}
+                  getItemValue={(pais: CountryData) => pais.name}
                   emptyText="No se encontraron países"
                 />
 

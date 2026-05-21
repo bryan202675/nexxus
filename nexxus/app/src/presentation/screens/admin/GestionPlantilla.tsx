@@ -11,11 +11,12 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 // Importa { useApiTranslate }; permite traducir textos visibles dinámicamente mediante la API.
 import { useApiTranslate } from '@/shared/i18n/useApiTranslate';
 // Importa { Clipboard, Alert, Animated, Easing, Image, Modal, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { Clipboard, Alert, Animated, Easing, Image, Modal, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Platform } from 'react-native';
+import { Clipboard, Alert, Animated, Easing, Image, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Platform } from 'react-native';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
-// Importa { BlurView } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
-import { BlurView } from 'expo-blur';
+// Importa AdminModalBackdrop; velo difuminado reutilizable para formularios modales.
+import { AdminModal } from './AdminModal';
+import { AdminModalFormGlass } from './AdminModalFormGlass';
 // Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import { LinearGradient } from 'expo-linear-gradient';
 // Importa { addDoc, collection, doc, getDocs, onSnapshot, query, updateDoc, where } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
@@ -57,6 +58,11 @@ const BRAND = {
   violet: ADMIN.violeta,
   cyan: ADMIN.azul
 };
+
+/**
+ * Declaracion PLANTILLA_PURPLE. Mantiene el mismo morado oscuro en Plantilla para modo claro y oscuro.
+ */
+const PLANTILLA_PURPLE = '#6320A6';
 
 /**
  * Describe la forma tipada UsuarioPlantilla; ayuda a que estados, props o respuestas mantengan una estructura predecible.
@@ -1740,6 +1746,16 @@ export default function GestionPlantilla() {
   const renderEmployeeRow = (emp: UsuarioPlantilla, i: number) => {
     // Declara activo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const activo = emp.activo !== false && emp.estado_activo !== false;
+    // Declara avatarIcono; selecciona un pictograma distinto segun el rol cuando no hay foto real.
+    const avatarIcono = emp.rol === 'admin'
+      ? 'admin-panel-settings'
+      : emp.rol === 'jefe'
+        ? 'supervisor-account'
+        : emp.rol === 'psicologo'
+          ? 'psychology'
+          : 'badge';
+    // Declara avatarInicial; mantiene una referencia alfabetica del empleado dentro del fallback visual.
+    const avatarInicial = (emp.nombre || emp.correo || '?')[0].toUpperCase();
     // Devuelve el JSX que React Native renderiza en pantalla.
     return (
       // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
@@ -1751,11 +1767,17 @@ export default function GestionPlantilla() {
             <Image source={{ uri: emp.foto_perfil || emp.fotoPerfil || emp.photoURL }} style={estilos.avatarImagen} />
           ) : (
             // Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza.
-            <LinearGradient colors={[BRAND.bangladeshBlue, BRAND.caribbeanBlue]} style={estilos.avatar}>
-              {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-              <MaterialIcons name="person" size={17} color="rgba(255,255,255,0.92)" />
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.avatarText}>{(emp.nombre || '?')[0].toUpperCase()}</Text>
+            <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} colors={['#6320A6', '#6320A6']} style={estilos.avatar}>
+              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+              <View {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.avatarIconShell}>
+                {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
+                <MaterialIcons {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} name={avatarIcono} size={18} color="#FFFFFF" style={estilos.avatarIconoBlanco} />
+              </View>
+              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+              <View style={estilos.avatarInitialBadge}>
+                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.avatarText}>{avatarInicial}</Text>
+              </View>
             </LinearGradient>
           )}
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
@@ -1836,53 +1858,49 @@ export default function GestionPlantilla() {
           {/* Elemento tactil; envuelve contenido que puede responder a interacciones del usuario. */}
           <TouchableOpacity style={estilos.btnSecondary}>
             {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-            <MaterialIcons name="file-download" size={18} color="#fff" style={estilos.btnIcon} />
+            <MaterialIcons name="file-download" size={18} color={BRAND.textMain} style={estilos.btnIcon} />
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={estilos.btnSecondaryText}>{btnExportData}</Text>
           </TouchableOpacity>
-          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={{ backgroundColor: 'transparent', borderWidth: 0 }}>
-            {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-            <TouchableOpacity style={estilos.btnPrimary} onPress={abrirCrear}>
-              {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white nx-admin-shimmer-button' } as any : {})} colors={['#6320a6', '#6320a6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.btnGradient}>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.btnPrimaryText}>{btnNewEmployee}</Text>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={[estilos.btnPrimaryText, estilos.btnIconRight, { fontSize: 18, marginTop: -1 }]}>→</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
+          {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
+          <TouchableOpacity {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} style={estilos.btnPrimary} onPress={abrirCrear}>
+            {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
+            <MaterialIcons {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} name="person-add" size={18} color="#FFFFFF" style={[estilos.btnIcon, estilos.btnPrimaryIcon]} />
+            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+            <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.btnPrimaryText}>{btnNewEmployee}</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
       {/* Tarjeta del Código de Acceso de la Empresa */}
       {empresa && (
-        // Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo.
-        <BlurView intensity={20} tint="dark" style={estilos.keyCard}>
+        // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
+        <View {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} style={estilos.keyCard}>
           {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
           <LinearGradient
-            colors={['rgba(168, 85, 247, 0.12)', 'rgba(147, 51, 234, 0.04)']}
+            {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})}
+            colors={[PLANTILLA_PURPLE, PLANTILLA_PURPLE]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={estilos.keyGradient}
           >
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.keyIconWrapper}>
+            <View {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.keyIconWrapper}>
               {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-              <MaterialIcons name="vpn-key" size={20} color="#A855F7" />
+              <MaterialIcons {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} name="vpn-key" size={20} color="#FFFFFF" style={estilos.keyIconWhite} />
             </View>
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.keyTextContainer}>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.keyTitle}>{labelEmpAccessCode}</Text>
+              <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.keyTitle}>{labelEmpAccessCode}</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.keySubtitle}>
+              <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.keySubtitle}>
                 {labelEmpAccessCodeDesc.replace('{name}', empresa.nombre || 'tu empresa')}
               </Text>
             </View>
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
             <TouchableOpacity 
+              {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})}
               style={estilos.keyBadge} 
               activeOpacity={0.8}
               onPress={() => {
@@ -1909,12 +1927,12 @@ export default function GestionPlantilla() {
               }}
             >
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.keyBadgeText}>{empresa.codigo || 'Generando...'}</Text>
+              <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.keyBadgeText}>{empresa.codigo || 'Generando...'}</Text>
               {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-              <MaterialIcons name="content-copy" size={14} color="#A855F7" />
+              <MaterialIcons {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} name="content-copy" size={14} color="#FFFFFF" style={estilos.keyIconWhite} />
             </TouchableOpacity>
           </LinearGradient>
-        </BlurView>
+        </View>
       )}
 
       {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
@@ -2107,23 +2125,12 @@ export default function GestionPlantilla() {
     </ScrollView>
 
     {/* Ventana modal; separa una accion o detalle sin abandonar la pantalla actual. */}
-    <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={cerrarModal}>
-      {Platform.OS === 'web' ? (
-        // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
-        <View {...({ className: 'nx-admin-blur-bg' } as any)} style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(6,5,18,0.25)' }]} />
-      ) : (
-        // Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo.
-        <BlurView intensity={24} tint="dark" style={StyleSheet.absoluteFill} />
-      )}
-      {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+    <AdminModal visible={modalVisible} animationType="fade" onRequestClose={cerrarModal}>
       <View style={estilos.modalOverlay}>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={estilos.modalCard}>
-          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+        <AdminModalFormGlass style={estilos.modalCard}>
           <View style={estilos.modalHeader}>
-            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View>
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.modalTitle}>{modoFormulario === 'crear' ? modalCreateTitle : modalEditTitle}</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.modalSubtitle}>{modalEmployeeSubtitle}</Text>
@@ -2242,24 +2249,14 @@ export default function GestionPlantilla() {
               </LinearGradient>
             </TouchableOpacity>
           </View>
-        </View>
+        </AdminModalFormGlass>
       </View>
-    </Modal>
+    </AdminModal>
 
-    {/* Ventana modal; separa una accion o detalle sin abandonar la pantalla actual. */}
-    <Modal visible={modalTareaVisible} transparent animationType="fade" onRequestClose={() => setModalTareaVisible(false)}>
-      {Platform.OS === 'web' ? (
-        // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
-        <View {...({ className: 'nx-admin-blur-bg' } as any)} style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(6,5,18,0.25)' }]} />
-      ) : (
-        // Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo.
-        <BlurView intensity={24} tint="dark" style={StyleSheet.absoluteFill} />
-      )}
-      {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+    <AdminModal visible={modalTareaVisible} animationType="fade" onRequestClose={() => setModalTareaVisible(false)}>
       <View style={estilos.modalOverlay}>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={[estilos.modalCard, estilos.modalTareaCard]}>
-          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+        <AdminModalFormGlass style={[estilos.modalCard, estilos.modalTareaCard]}>
           <View style={estilos.modalHeader}>
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View>
@@ -2391,9 +2388,9 @@ export default function GestionPlantilla() {
               </LinearGradient>
             </TouchableOpacity>
           </View>
-        </View>
+        </AdminModalFormGlass>
       </View>
-    </Modal>
+    </AdminModal>
     </Animated.View>
   );
 }
@@ -2466,12 +2463,22 @@ const estilos = StyleSheet.create({
   },
   // btnPrimary: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   btnPrimary: {
-    // borderRadius redondea esquinas para definir la forma visual.
-    borderRadius: 999,
-    // overflow controla si el contenido se recorta o puede sobresalir.
-    overflow: 'hidden',
+    // flexDirection decide si los hijos se ordenan en fila o columna.
+    flexDirection: 'row',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
+    alignItems: 'center',
     // backgroundColor define el fondo del bloque.
-    backgroundColor: 'transparent',
+    backgroundColor: '#6320A6',
+    // paddingHorizontal agrega espacio interno a izquierda y derecha.
+    paddingHorizontal: 16,
+    // paddingVertical agrega espacio interno arriba y abajo.
+    paddingVertical: 10,
+    // borderRadius redondea esquinas para definir la forma visual.
+    borderRadius: 12,
+    // borderWidth define el grosor del borde visible.
+    borderWidth: 1,
+    // borderColor define el color del borde.
+    borderColor: '#6320A6',
   },
   // headerActions: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
   headerActions: {
@@ -2516,39 +2523,24 @@ const estilos = StyleSheet.create({
     // fontWeight define el peso visual del texto.
     fontWeight: '900',
   },
-  // btnGradient: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  btnGradient: {
-    // flexDirection decide si los hijos se ordenan en fila o columna.
-    flexDirection: 'row',
-    // paddingHorizontal agrega espacio interno a izquierda y derecha.
-    paddingHorizontal: 28,
-    // paddingVertical agrega espacio interno arriba y abajo.
-    paddingVertical: 14,
-    // alignItems alinea los hijos en el eje transversal del contenedor.
-    alignItems: 'center',
-    // justifyContent distribuye los hijos en el eje principal del contenedor.
-    justifyContent: 'center',
-  },
   // btnIcon: estilo de icono; ajusta tamanio, posicion o fondo del indicador visual.
   btnIcon: {
     // marginRight ajusta una propiedad visual especifica de este estilo.
     marginRight: 8,
   },
-  // btnIconRight: estilo de icono; ajusta tamanio, posicion o fondo del indicador visual.
-  btnIconRight: {
-    // marginLeft ajusta una propiedad visual especifica de este estilo.
-    marginLeft: 8,
+  // btnPrimaryIcon: estilo de icono; mantiene blanco el indicador dentro del boton principal.
+  btnPrimaryIcon: {
+    // color define el color del texto o icono.
+    color: '#FFFFFF',
   },
   // btnPrimaryText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   btnPrimaryText: {
     // color define el color del texto o icono.
     color: '#FFFFFF',
     // fontSize controla el tamanio del texto.
-    fontSize: 16,
+    fontSize: 13,
     // fontWeight define el peso visual del texto.
     fontWeight: '700',
-    // letterSpacing ajusta la separacion entre letras.
-    letterSpacing: 0.5,
     // textDecorationLine ajusta una propiedad visual especifica de este estilo.
     textDecorationLine: 'none',
   },
@@ -2556,31 +2548,29 @@ const estilos = StyleSheet.create({
   btnSecondary: {
     // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
+    alignItems: 'center',
     // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoCampo,
+    // paddingHorizontal agrega espacio interno a izquierda y derecha.
+    paddingHorizontal: 16,
+    // paddingVertical agrega espacio interno arriba y abajo.
+    paddingVertical: 10,
+    // borderRadius redondea esquinas para definir la forma visual.
+    borderRadius: 12,
     // borderWidth define el grosor del borde visible.
     borderWidth: 1,
     // borderColor define el color del borde.
     borderColor: ADMIN.borde,
-    // borderRadius redondea esquinas para definir la forma visual.
-    borderRadius: 12,
-    // paddingHorizontal agrega espacio interno a izquierda y derecha.
-    paddingHorizontal: 24,
-    // paddingVertical agrega espacio interno arriba y abajo.
-    paddingVertical: 14,
-    // alignItems alinea los hijos en el eje transversal del contenedor.
-    alignItems: 'center',
-    // justifyContent distribuye los hijos en el eje principal del contenedor.
-    justifyContent: 'center',
   },
   // btnSecondaryText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   btnSecondaryText: {
     // color define el color del texto o icono.
     color: BRAND.textMain,
     // fontSize controla el tamanio del texto.
-    fontSize: 12,
+    fontSize: 13,
     // fontWeight define el peso visual del texto.
-    fontWeight: '900',
+    fontWeight: '700',
   },
   // statsRow: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   statsRow: {
@@ -3404,13 +3394,62 @@ const estilos = StyleSheet.create({
     // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
     // shadowColor define el color base de sombra.
-    shadowColor: BRAND.iconBright,
+    shadowColor: 'transparent',
     // shadowOffset define direccion y distancia de sombra.
     shadowOffset: { width: 0, height: 0 },
     // shadowOpacity controla intensidad de sombra.
-    shadowOpacity: 0.3,
+    shadowOpacity: 0,
     // shadowRadius suaviza o expande la sombra.
-    shadowRadius: 15,
+    shadowRadius: 0,
+    // elevation agrega sombra en Android.
+    elevation: 0,
+    // overflow controla si el contenido se recorta o puede sobresalir.
+    overflow: 'hidden',
+  },
+  // avatarIconShell: estilo de icono; centra el pictograma del rol cuando el empleado no tiene foto.
+  avatarIconShell: {
+    // width fija o calcula el ancho del elemento.
+    width: 30,
+    // height fija o calcula el alto del elemento.
+    height: 30,
+    // borderRadius redondea esquinas para definir la forma visual.
+    borderRadius: 10,
+    // backgroundColor define el fondo del bloque.
+    backgroundColor: 'transparent',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
+    alignItems: 'center',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
+    justifyContent: 'center',
+  },
+  // avatarIconoBlanco: estilo de icono; fija blanco puro aunque el modo claro aplique reglas globales.
+  avatarIconoBlanco: {
+    // color define el color del texto o icono.
+    color: '#FFFFFF',
+  },
+  // avatarInitialBadge: estilo local de la pantalla; muestra una inicial pequena sin competir con el icono principal.
+  avatarInitialBadge: {
+    // position posiciona el badge dentro del avatar.
+    position: 'absolute',
+    // right separa este bloque del borde derecho.
+    right: 4,
+    // bottom separa este bloque del borde inferior.
+    bottom: 4,
+    // width fija o calcula el ancho del elemento.
+    width: 16,
+    // height fija o calcula el alto del elemento.
+    height: 16,
+    // borderRadius redondea esquinas para definir la forma visual.
+    borderRadius: 6,
+    // backgroundColor define el fondo del bloque.
+    backgroundColor: 'rgba(8,5,20,0.72)',
+    // borderWidth define el grosor del borde visible.
+    borderWidth: 1,
+    // borderColor define el color del borde.
+    borderColor: 'rgba(255,255,255,0.18)',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
+    alignItems: 'center',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
+    justifyContent: 'center',
   },
   // avatarImagen: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   avatarImagen: {
@@ -3432,11 +3471,11 @@ const estilos = StyleSheet.create({
     // color define el color del texto o icono.
     color: '#fff',
     // fontSize controla el tamanio del texto.
-    fontSize: 11,
+    fontSize: 9,
     // fontWeight define el peso visual del texto.
     fontWeight: '900',
-    // marginTop separa este bloque del elemento anterior.
-    marginTop: -1,
+    // lineHeight fija la altura de linea para centrar la inicial en el badge.
+    lineHeight: 11,
   },
   // empInfo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   empInfo: {
@@ -3638,15 +3677,10 @@ const estilos = StyleSheet.create({
     maxWidth: 980,
     // maxHeight ajusta una propiedad visual especifica de este estilo.
     maxHeight: '92%',
-    // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoElevado,
-    // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: ADMIN.radio,
-    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
-    // borderColor define el color del borde.
     borderColor: ADMIN.borde,
-    // overflow controla si el contenido se recorta o puede sobresalir.
     overflow: 'hidden',
     // shadowColor define el color base de sombra.
     shadowColor: '#000',
@@ -4137,17 +4171,19 @@ const estilos = StyleSheet.create({
     // borderWidth define el grosor del borde visible.
     borderWidth: 1,
     // borderColor define el color del borde.
-    borderColor: 'rgba(168, 85, 247, 0.22)',
+    borderColor: PLANTILLA_PURPLE,
+    // backgroundColor define el fondo del bloque.
+    backgroundColor: PLANTILLA_PURPLE,
     // overflow controla si el contenido se recorta o puede sobresalir.
     overflow: 'hidden',
     // marginBottom separa este bloque del siguiente elemento.
     marginBottom: 24,
     // shadowColor define el color base de sombra.
-    shadowColor: '#A855F7',
+    shadowColor: PLANTILLA_PURPLE,
     // shadowOffset define direccion y distancia de sombra.
     shadowOffset: { width: 0, height: 12 },
     // shadowOpacity controla intensidad de sombra.
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.16,
     // shadowRadius suaviza o expande la sombra.
     shadowRadius: 24,
     // elevation agrega sombra en Android.
@@ -4177,11 +4213,16 @@ const estilos = StyleSheet.create({
     // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
     // backgroundColor define el fondo del bloque.
-    backgroundColor: 'rgba(168, 85, 247, 0.18)',
+    backgroundColor: '#552094',
     // borderWidth define el grosor del borde visible.
     borderWidth: 1,
     // borderColor define el color del borde.
-    borderColor: 'rgba(168, 85, 247, 0.3)',
+    borderColor: '#552094',
+  },
+  // keyIconWhite: estilo de icono; fuerza color blanco estable dentro del bloque del codigo de empresa.
+  keyIconWhite: {
+    // color define el color del texto o icono.
+    color: '#FFFFFF',
   },
   // keyTextContainer: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
   keyTextContainer: {
@@ -4197,7 +4238,7 @@ const estilos = StyleSheet.create({
     // fontWeight define el peso visual del texto.
     fontWeight: '900',
     // color define el color del texto o icono.
-    color: '#A855F7',
+    color: '#FFFFFF',
     // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 1.5,
   },
@@ -4206,7 +4247,7 @@ const estilos = StyleSheet.create({
     // fontSize controla el tamanio del texto.
     fontSize: 12,
     // color define el color del texto o icono.
-    color: BRAND.textSec,
+    color: 'rgba(255,255,255,0.82)',
     // lineHeight ajusta una propiedad visual especifica de este estilo.
     lineHeight: 18,
     // fontWeight define el peso visual del texto.
@@ -4225,11 +4266,11 @@ const estilos = StyleSheet.create({
     // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 12,
     // backgroundColor define el fondo del bloque.
-    backgroundColor: 'rgba(168, 85, 247, 0.14)',
+    backgroundColor: '#552094',
     // borderWidth define el grosor del borde visible.
     borderWidth: 1,
     // borderColor define el color del borde.
-    borderColor: 'rgba(168, 85, 247, 0.26)',
+    borderColor: '#552094',
     // gap define separacion uniforme entre elementos hijos.
     gap: 8,
   },

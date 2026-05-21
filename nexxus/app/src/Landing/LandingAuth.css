@@ -788,3 +788,51 @@
   gap: 20px 24px !important;
 }
 
+@media (max-width: 940px) {
+  .nx-auth-shell-wide .nx-auth-layout {
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .nx-auth-shell-wide .nx-auth-layout {
+    gap: 14px !important;
+  }
+
+  .nx-auth-shell-wide .nx-company-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .nx-phone-input-wrapper {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: minmax(92px, 0.34fr) minmax(0, 0.66fr);
+  }
+
+  .nx-phone-prefix-select {
+    flex-basis: auto;
+    min-width: 0;
+  }
+
+  .nx-phone-number-field {
+    min-width: 0;
+  }
+
+  .nx-dropdown-trigger-prefix {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  .nx-phone-prefix-select .nx-dropdown-panel {
+    max-width: calc(100vw - 44px);
+    width: min(240px, calc(100vw - 44px)) !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .nx-phone-input-wrapper {
+    grid-template-columns: 1fr;
+  }
+}

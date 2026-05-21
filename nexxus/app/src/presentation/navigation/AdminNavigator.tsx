@@ -20,6 +20,7 @@ import {
   TouchableOpacity,
   View,
   useWindowDimensions,
+  DeviceEventEmitter,
 } from 'react-native';
 // Importa { createBottomTabNavigator, BottomTabBarProps }; permite declarar navegacion, rutas y transiciones entre pantallas.
 import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/bottom-tabs';
@@ -42,6 +43,8 @@ import { db } from '@/infrastructure/firebase/firebaseConfig';
 import { useAuth } from '../hooks/useAuth';
 // Importa Iridescence; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import Iridescence from '../components/Iridescence';
+// Importa AdminModalBackdrop; reutiliza el velo difuminado de modales en notificaciones.
+import { AdminModalBackdrop } from '../screens/admin/AdminModalBackdrop';
 
 // Importa DashboardAdmin; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import DashboardAdmin from '../screens/admin/DashboardAdmin';
@@ -102,6 +105,16 @@ const obtenerNombreEmpresa = (user: any) => {
   const nombre = user?.empresa || user?.empresaNombre || user?.nombreEmpresa || user?.companyName;
   // Devuelve el valor final calculado para esta funcion o caso de uso.
   return typeof nombre === 'string' && nombre.trim().length > 0 ? nombre.trim() : 'Nexxus Enterprise';
+};
+
+/**
+ * Declaracion obtenerFotoPerfil. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
+const obtenerFotoPerfil = (user: any) => {
+  // Declara foto; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
+  const foto = user?.foto_perfil || user?.fotoPerfil || user?.photoURL || user?.avatarUrl;
+  // Devuelve el valor final calculado para esta funcion o caso de uso.
+  return typeof foto === 'string' && foto.trim().length > 0 ? foto.trim() : '';
 };
 
 /**
@@ -352,16 +365,28 @@ html[data-nexxus-admin-theme="light"] #root .nx-force-white div {
   -webkit-mask-image: linear-gradient(90deg, #000 0%, rgba(0,0,0,0.66) 50%, rgba(0,0,0,0.18) 78%, transparent 100%);
 }
 .nx-admin-notifications-blur {
-  backdrop-filter: blur(24px) !important;
-  -webkit-backdrop-filter: blur(24px) !important;
+  backdrop-filter: blur(32px) saturate(1.22) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(1.22) !important;
   transform: translateZ(0) !important;
   will-change: transform, opacity !important;
 }
 .nx-admin-blur-bg {
-  backdrop-filter: blur(14px) !important;
-  -webkit-backdrop-filter: blur(14px) !important;
+  backdrop-filter: blur(28px) saturate(1.2) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(1.2) !important;
   transform: translateZ(0) !important;
   will-change: transform, opacity !important;
+}
+.nx-admin-scrim-blur {
+  backdrop-filter: blur(22px) saturate(1.15) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(1.15) !important;
+  transform: translateZ(0) !important;
+  will-change: transform, opacity !important;
+}
+.nx-admin-modal-glass {
+  backdrop-filter: blur(52px) saturate(1.4) !important;
+  -webkit-backdrop-filter: blur(52px) saturate(1.4) !important;
+  transform: translateZ(0) !important;
+  will-change: backdrop-filter !important;
 }
 `;
 
@@ -524,6 +549,8 @@ function Sidebar({ state, navigation }: BottomTabBarProps) {
   const { theme } = useAdminAppearance();
   // Inicializa estilos; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const estilos = useMemo(() => crearEstilos(theme), [theme]);
+  // Declara fotoPerfil; usa la imagen real del administrador cuando existe.
+  const fotoPerfil = obtenerFotoPerfil(user);
   // Inicializa entrada; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const entrada = useRef(new Animated.Value(0)).current;
   // Inicializa [logoUrl, setLogoUrl]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -659,16 +686,21 @@ function Sidebar({ state, navigation }: BottomTabBarProps) {
           <View style={estilos.avatarBorder}>
             {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
             <View style={estilos.avatarContainer}>
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.avatarTexto}>{(user?.nombre || 'AM').substring(0, 2).toUpperCase()}</Text>
+              {fotoPerfil ? (
+                // Imagen visual; muestra foto, avatar, logo o recurso asociado a los datos de la pantalla.
+                <Image source={{ uri: fotoPerfil }} style={estilos.avatarImagen} />
+              ) : (
+                // Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario.
+                <Text style={estilos.avatarTexto}>{(user?.nombre || 'AM').substring(0, 2).toUpperCase()}</Text>
+              )}
             </View>
           </View>
           {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={{ flex: 1, marginLeft: 12 }}>
             {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-            <Text style={estilos.usuarioNombre} numberOfLines={1}>{user?.nombre || 'Admin Master'}</Text>
+            <Text style={estilos.usuarioNombre} numberOfLines={1}>{user?.nombre || 'Propietario'}</Text>
             {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-            <Text style={estilos.usuarioRol} numberOfLines={1}>{user?.rol || 'Sys_Ops_01'}</Text>
+            <Text style={estilos.usuarioRol} numberOfLines={1}>{user?.rol === 'admin' ? 'Propietario' : (user?.rol || 'Propietario')}</Text>
           </View>
         </View>
       </View>
@@ -914,11 +946,18 @@ function NotificationPanel({ visible, items, onNavigate, onClose }: { visible: b
       ]}
     >
       {Platform.OS === 'web' ? (
-        // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
-        <View {...({ className: 'nx-admin-notifications-blur' } as any)} style={[StyleSheet.absoluteFill, { backgroundColor: theme.isDark ? 'rgba(13,9,27,0.72)' : 'rgba(255,255,255,0.72)', borderRadius: 16 }]} />
+        <View
+          {...({ className: 'nx-admin-notifications-blur' } as any)}
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: theme.isDark ? 'rgba(13,9,27,0.82)' : 'rgba(255,255,255,0.84)',
+              borderRadius: 16,
+            },
+          ]}
+        />
       ) : null}
-      {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
-      <BlurView intensity={Platform.OS === 'web' ? 0 : 60} tint={theme.navTint} style={estilos.notificationsBlur}>
+      <BlurView intensity={Platform.OS === 'web' ? 0 : 72} tint={theme.navTint} style={estilos.notificationsBlur}>
         {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
         <View style={estilos.notificationsHeader}>
           {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
@@ -962,6 +1001,172 @@ function NotificationPanel({ visible, items, onNavigate, onClose }: { visible: b
 }
 
 /**
+ * Componente AdminProfilePanel. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
+ */
+function AdminProfilePanel({ visible, user, onNavigate, onClose }: { visible: boolean; user: any; onNavigate: (route: string) => void; onClose: () => void }) {
+  // Inicializa { theme }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
+  const { theme } = useAdminAppearance();
+  // Inicializa { logout }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
+  const { logout } = useAuth();
+  // Inicializa estilos; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
+  const estilos = useMemo(() => crearEstilos(theme), [theme]);
+  // Inicializa anim; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
+  const anim = useRef(new Animated.Value(0)).current;
+
+  // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+  useEffect(() => {
+    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+    Animated.timing(anim, {
+      toValue: visible ? 1 : 0,
+      duration: visible ? 220 : 150,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [anim, visible]);
+
+  // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
+  if (!visible) return null;
+
+  // Declara fotoPerfil; usa la imagen real del administrador cuando existe.
+  const fotoPerfil = obtenerFotoPerfil(user);
+  // Declara avatar; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
+  const avatar = (user?.nombre || 'Propietario').substring(0, 1).toUpperCase();
+
+  // Devuelve el JSX que React Native renderiza en pantalla.
+  return (
+    // Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla.
+    <Animated.View
+      style={[
+        estilos.notificationsPanel,
+        {
+          opacity: anim,
+          transform: [
+            { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) },
+            { scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1] }) },
+          ],
+        },
+      ]}
+    >
+      {Platform.OS === 'web' ? (
+        <View
+          {...({ className: 'nx-admin-notifications-blur' } as any)}
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: theme.isDark ? 'rgba(13,9,27,0.82)' : 'rgba(255,255,255,0.84)',
+              borderRadius: 16,
+            },
+          ]}
+        />
+      ) : null}
+      <BlurView intensity={Platform.OS === 'web' ? 0 : 72} tint={theme.navTint} style={estilos.notificationsBlur}>
+        {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+        <View style={estilos.notificationsHeader}>
+          {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+          <Text style={estilos.notificationsTitle}>Perfil de administrador</Text>
+          {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
+          <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={estilos.notificationCloseButton}>
+            {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
+            <MaterialIcons name="close" size={15} color={theme.text} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+        <View style={[estilos.usuarioInfoRow, { marginBottom: 16, marginTop: 4 }]}>
+          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+          <View style={estilos.avatarBorder}>
+            {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+            <View style={estilos.avatarContainer}>
+              {fotoPerfil ? (
+                // Imagen visual; muestra foto, avatar, logo o recurso asociado a los datos de la pantalla.
+                <Image source={{ uri: fotoPerfil }} style={estilos.avatarImagen} />
+              ) : (
+                // Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario.
+                <Text style={estilos.avatarTexto}>{avatar}</Text>
+              )}
+            </View>
+          </View>
+          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
+            <Text style={estilos.usuarioNombre} numberOfLines={1}>{user?.nombre || 'Propietario'}</Text>
+            {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
+            <Text style={estilos.usuarioRol} numberOfLines={1}>{user?.rol === 'admin' ? 'Propietario' : (user?.rol || 'Propietario')}</Text>
+          </View>
+        </View>
+
+        {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+        <View style={[estilos.assetSystemCard, { marginTop: 0, marginBottom: 16, padding: 12 }]}>
+          {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+          <Text style={estilos.assetSystemLabel}>Nexxus OS</Text>
+          {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+          <Text style={estilos.assetSystemValue}>{obtenerNombreEmpresa(user)}</Text>
+          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+          <View style={estilos.assetSystemStatus}>
+            {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+            <View style={estilos.assetSystemDot} />
+            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+            <Text style={estilos.assetSystemStatusText}>Nexxus Cloud</Text>
+          </View>
+        </View>
+
+        {/* Sección de Contacto y Relación */}
+        <View style={{ marginBottom: 16, marginHorizontal: 4 }}>
+          {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+          <Text style={[estilos.assetSystemLabel, { marginBottom: 10, opacity: 0.8 }]}>Contacto y relación</Text>
+          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+          <View style={{ gap: 8 }}>
+            {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+              <View style={[estilos.iconCircle, { width: 26, height: 26, backgroundColor: theme.chip }]}>
+                {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
+                <MaterialIcons name="email" size={13} color={theme.text} />
+              </View>
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+              <Text style={{ color: theme.text, fontSize: 11, fontWeight: '700', flex: 1 }} numberOfLines={1}>{user?.correo || 'Sin correo registrado'}</Text>
+            </View>
+            {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+              <View style={[estilos.iconCircle, { width: 26, height: 26, backgroundColor: theme.chip }]}>
+                {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
+                <MaterialIcons name="phone" size={13} color={theme.text} />
+              </View>
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+              <Text style={{ color: theme.text, fontSize: 11, fontWeight: '700', flex: 1 }} numberOfLines={1}>{user?.telefono || 'Sin teléfono registrado'}</Text>
+            </View>
+            {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+              <View style={[estilos.iconCircle, { width: 26, height: 26, backgroundColor: theme.chip }]}>
+                {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
+                <MaterialIcons name="corporate-fare" size={13} color={theme.text} />
+              </View>
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+              <Text style={{ color: theme.text, fontSize: 11, fontWeight: '700', flex: 1 }} numberOfLines={1}>
+                {user?.departamento || 'Sin departamento'} • {user?.sede || 'Sede base'}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+        <View style={{ gap: 8 }}>
+          {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
+          <TouchableOpacity activeOpacity={0.8} onPress={() => { onClose(); logout(); }} style={[estilos.profileActionBtn, { borderColor: theme.danger + '40', backgroundColor: theme.danger + '10' }]}>
+            {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
+            <MaterialIcons name="logout" size={17} color={theme.danger} />
+            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+            <Text style={[estilos.profileActionText, { color: theme.danger }]}>Cerrar sesión</Text>
+          </TouchableOpacity>
+        </View>
+      </BlurView>
+    </Animated.View>
+  );
+}
+
+/**
  * Componente NavbarHeader. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 function NavbarHeader({ routeName }: { routeName: string }) {
@@ -971,6 +1176,24 @@ function NavbarHeader({ routeName }: { routeName: string }) {
   const { user } = useAuth();
   // Declara navigation; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const navigation = useNavigation<any>();
+  // Declara navigateAdmin; maneja la navegacion a pantallas del panel de admin (anidadas) o globales.
+  const navigateAdmin = (route: string) => {
+    const adminScreens = [
+      'DashboardGeneral',
+      'CalendarioEmpresarial',
+      'GestionPlantilla',
+      'EstructuraOrganizativa',
+      'GestionNomina',
+      'ComunicacionAdmin',
+      'AuditoriaLogs',
+      'ConfiguracionAdmin',
+    ];
+    if (adminScreens.includes(route)) {
+      navigation.navigate('AppAdmin', { screen: route });
+    } else {
+      navigation.navigate(route);
+    }
+  };
   // Inicializa { theme, mode, toggleMode }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { theme, mode, toggleMode } = useAdminAppearance();
   // Inicializa estilos; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -981,12 +1204,24 @@ function NavbarHeader({ routeName }: { routeName: string }) {
   const [searchFocused, setSearchFocused] = useState(false);
   // Inicializa [notificationsOpen, setNotificationsOpen]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  // Inicializa [profileOpen, setProfileOpen]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
+  const [profileOpen, setProfileOpen] = useState(false);
   // Inicializa adminSignals; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const adminSignals = useAdminSignals(user);
   // Inicializa entrada; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const entrada = useRef(new Animated.Value(0)).current;
   // Inicializa pulso; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const pulso = useRef(new Animated.Value(0)).current;
+
+  // Escuchar evento global para abrir el panel de perfil desde otras pantallas (ej. ConfiguracionAdmin)
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener('openAdminProfile', () => {
+      setProfileOpen(true);
+    });
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   // Declaraciones de traducción dinámicas
   const welcomeMsgBase = `${t('common.welcome')}, {name}`;
@@ -1017,6 +1252,8 @@ function NavbarHeader({ routeName }: { routeName: string }) {
 
   // Declara avatar; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const avatar = (user?.nombre || 'Admin').substring(0, 1).toUpperCase();
+  // Declara fotoPerfil; usa la imagen real del administrador cuando existe.
+  const fotoPerfil = obtenerFotoPerfil(user);
   // Inicializa searchResults; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const searchResults = useMemo(() => {
     // Declara term; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -1034,7 +1271,7 @@ function NavbarHeader({ routeName }: { routeName: string }) {
     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setSearchValue('');
     // Ejecuta navegacion; cambia la pantalla activa manteniendo el flujo definido por React Navigation.
-    navigation.navigate(route);
+    navigateAdmin(route);
   };
 
   // Declara submitSearch; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -1058,7 +1295,7 @@ function NavbarHeader({ routeName }: { routeName: string }) {
             {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
             <View>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.statusText}>{welcomeMsgBase.replace('{name}', user?.nombre?.split(' ')[0] || 'Admin')}</Text>
+              <Text style={estilos.statusText}>{welcomeMsgBase.replace('{name}', user?.nombre?.split(' ')[0] || 'Propietario')}</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.statusSubtext}>{syncStatus}</Text>
             </View>
@@ -1096,7 +1333,7 @@ function NavbarHeader({ routeName }: { routeName: string }) {
               )}
             </View>
             {/* BotonAnimado renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-            <BotonAnimado style={estilos.iconCircle} onPress={() => navigation.navigate('ConfiguracionAdmin')}>
+            <BotonAnimado style={estilos.iconCircle} onPress={() => navigateAdmin('ConfiguracionAdmin')}>
               {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <MaterialIcons name="settings" size={17} color={theme.text} />
             </BotonAnimado>
@@ -1112,22 +1349,41 @@ function NavbarHeader({ routeName }: { routeName: string }) {
               {adminSignals.length > 0 && <View style={estilos.notifDot} />}
             </BotonAnimado>
             {/* BotonAnimado renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-            <BotonAnimado style={estilos.avatarButton} onPress={() => navigation.navigate('PerfilLaboral')}>
-            {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-            <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast' } as any : {})} colors={theme.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.avatarButtonGradient}>
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.avatarButtonText}>{avatar}</Text>
-            </LinearGradient>
-          </BotonAnimado>
+            <BotonAnimado style={estilos.avatarButton} onPress={() => setProfileOpen((value) => !value)}>
+              {fotoPerfil ? (
+                // Imagen visual; muestra foto, avatar, logo o recurso asociado a los datos de la pantalla.
+                <Image source={{ uri: fotoPerfil }} style={estilos.avatarButtonImage} />
+              ) : (
+                // Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza.
+                <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast' } as any : {})} colors={theme.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.avatarButtonGradient}>
+                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                  <Text style={estilos.avatarButtonText}>{avatar}</Text>
+                </LinearGradient>
+              )}
+            </BotonAnimado>
           </View>
         </BlurView>
-        {/* NotificationPanel renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+        {notificationsOpen || profileOpen ? (
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => { setNotificationsOpen(false); setProfileOpen(false); }}
+            style={estilos.notificationsScrim}
+          >
+            <AdminModalBackdrop variant="scrim" />
+          </TouchableOpacity>
+        ) : null}
         <NotificationPanel visible={notificationsOpen} items={adminSignals} onNavigate={(route) => {
           // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
           setNotificationsOpen(false);
           // Ejecuta navegacion; cambia la pantalla activa manteniendo el flujo definido por React Navigation.
-          navigation.navigate(route);
+          navigateAdmin(route);
         }} onClose={() => setNotificationsOpen(false)} />
+        <AdminProfilePanel visible={profileOpen} user={user} onNavigate={(route) => {
+          // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
+          setProfileOpen(false);
+          // Ejecuta navegacion; cambia la pantalla activa manteniendo el flujo definido por React Navigation.
+          navigateAdmin(route);
+        }} onClose={() => setProfileOpen(false)} />
       </Animated.View>
       {/* BannerPantalla renderiza una pieza visual reutilizable dentro de esta pantalla. */}
       <BannerPantalla routeName={routeName} />
@@ -1639,6 +1895,17 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
     alignItems: 'center',
     // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
+    // overflow controla si el contenido se recorta o puede sobresalir.
+    overflow: 'hidden',
+  },
+  // avatarImagen: estilo local de la pantalla; muestra la foto real del administrador en la sidebar.
+  avatarImagen: {
+    // width fija o calcula el ancho del elemento.
+    width: '100%',
+    // height fija o calcula el alto del elemento.
+    height: '100%',
+    // borderRadius redondea esquinas para definir la forma visual.
+    borderRadius: 9,
   },
   // avatarTexto: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
   avatarTexto: {
@@ -2091,9 +2358,13 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
     // borderColor define el color del borde.
     borderColor: theme.border,
     // backgroundColor define el fondo del bloque.
-    backgroundColor: theme.isDark ? 'rgba(10,8,24,0.44)' : 'rgba(255,255,255,0.48)',
+    backgroundColor: theme.isDark ? 'rgba(10,8,24,0.58)' : 'rgba(255,255,255,0.62)',
     // padding agrega espacio interno alrededor del contenido.
     padding: 12,
+  },
+  notificationsScrim: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 40,
   },
   // notificationsHeader: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
   notificationsHeader: {
@@ -2238,6 +2509,15 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
     // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
   },
+  // avatarButtonImage: estilo local de la pantalla; muestra la foto real del administrador en la navbar.
+  avatarButtonImage: {
+    // width fija o calcula el ancho del elemento.
+    width: '100%',
+    // height fija o calcula el alto del elemento.
+    height: '100%',
+    // borderRadius redondea esquinas para definir la forma visual.
+    borderRadius: 12,
+  },
   // avatarButtonText: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
   avatarButtonText: {
     // color define el color del texto o icono.
@@ -2246,6 +2526,34 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
     fontSize: 13,
     // fontWeight define el peso visual del texto.
     fontWeight: '900',
+  },
+  // profileActionBtn: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
+  profileActionBtn: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
+    flexDirection: 'row',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
+    alignItems: 'center',
+    // gap define separacion uniforme entre elementos hijos.
+    gap: 10,
+    // borderRadius redondea esquinas para definir la forma visual.
+    borderRadius: 12,
+    // borderWidth define el grosor del borde visible.
+    borderWidth: 1,
+    // borderColor define el color del borde.
+    borderColor: theme.border,
+    // backgroundColor define el fondo del bloque.
+    backgroundColor: theme.chip,
+    // padding agrega espacio interno alrededor del contenido.
+    padding: 12,
+  },
+  // profileActionText: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
+  profileActionText: {
+    // color define el color del texto o icono.
+    color: theme.text,
+    // fontSize controla el tamanio del texto.
+    fontSize: 11,
+    // fontWeight define el peso visual del texto.
+    fontWeight: '800',
   },
   // divider: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   divider: {

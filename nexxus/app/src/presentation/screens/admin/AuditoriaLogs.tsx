@@ -15,8 +15,6 @@ import { useApiTranslate } from '@/shared/i18n/useApiTranslate';
 import { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Platform } from 'react-native';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
-// Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
-import { LinearGradient } from 'expo-linear-gradient';
 // Importa { useCases } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
 import { useCases } from '@/infrastructure/firebase/container';
 // Importa { useAuth }; reutiliza hooks propios que encapsulan estado, auth o consultas.
@@ -324,19 +322,13 @@ export default function AuditoriaLogs() {
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.btnSecondaryText}>{btnBackup}</Text>
             </TouchableOpacity>
-            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={{ backgroundColor: 'transparent', borderWidth: 0 }}>
-              {/* Elemento tactil; envuelve contenido que puede responder a interacciones del usuario. */}
-              <TouchableOpacity style={estilos.btnPrimary}>
-                {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-                <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white nx-admin-shimmer-button' } as any : {})} colors={['#6320a6', '#6320a6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.btnGradient}>
-                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.btnPrimaryText}>{btnExport}</Text>
-                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={[estilos.btnPrimaryText, estilos.btnIconRight, { fontSize: 18, marginTop: -1 }]}>→</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
+            {/* Elemento tactil; envuelve contenido que puede responder a interacciones del usuario. */}
+            <TouchableOpacity {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} style={estilos.btnPrimary}>
+              {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
+              <MaterialIcons {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} name="file-download" size={18} color={CONTRAST_TEXT} style={[estilos.btnIcon, estilos.btnPrimaryIcon]} />
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+              <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.btnPrimaryText}>{btnExport}</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -459,19 +451,17 @@ const crearEstilos = (theme: AdminPalette, BRAND: any) => StyleSheet.create({
   // headerActions: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
   headerActions: { flexDirection: 'row', gap: 12 },
   // btnSecondary: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  btnSecondary: { flexDirection: 'row', backgroundColor: theme.isDark ? 'rgba(255,255,255,0.045)' : 'rgba(82,58,150,0.05)', borderWidth: 1, borderColor: theme.border, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
+  btnSecondary: { flexDirection: 'row', alignItems: 'center', backgroundColor: ADMIN.fondoCampo, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: ADMIN.borde },
   // btnSecondaryText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  btnSecondaryText: { color: BRAND.textMain, fontSize: 14, fontWeight: '900', letterSpacing: 2, textDecorationLine: 'none' },
+  btnSecondaryText: { color: BRAND.textMain, fontWeight: '700', fontSize: 13 },
   // btnPrimary: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  btnPrimary: { borderRadius: 999, overflow: 'hidden', borderWidth: 0, backgroundColor: 'transparent' },
-  // btnGradient: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  btnGradient: { flexDirection: 'row', paddingHorizontal: 28, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
+  btnPrimary: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#6320A6', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: '#6320A6' },
   // btnIcon: estilo de icono; ajusta tamanio, posicion o fondo del indicador visual.
   btnIcon: { marginRight: 8 },
-  // btnIconRight: estilo de icono; ajusta tamanio, posicion o fondo del indicador visual.
-  btnIconRight: { marginLeft: 8 },
+  // btnPrimaryIcon: estilo de icono; mantiene blanco el indicador dentro del boton principal.
+  btnPrimaryIcon: { color: CONTRAST_TEXT },
   // btnPrimaryText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  btnPrimaryText: { color: CONTRAST_TEXT, fontSize: 16, fontWeight: '700', letterSpacing: 0.5, textDecorationLine: 'none' },
+  btnPrimaryText: { color: CONTRAST_TEXT, fontWeight: '700', fontSize: 13, textDecorationLine: 'none' },
   // gridStats: estilo de grilla; organiza elementos en filas o columnas con separacion controlada.
   gridStats: { flexDirection: 'row', flexWrap: 'wrap', gap: 20, marginBottom: 24 },
   // statCard: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.

@@ -7,7 +7,7 @@
  */
 
 // Importa React, { useMemo, useRef } desde React; habilita componentes, hooks y tipos base para esta pieza.
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import {
   Animated,
   Platform,
@@ -16,7 +16,16 @@ import {
   Text as NativeText,
   TouchableOpacity,
   View,
+  DeviceEventEmitter,
+  Modal,
+  TextInput,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { BlurView } from 'expo-blur';
+import { useCases } from '@/infrastructure/firebase/container';
+import { subirFotoPerfil } from '@/infrastructure/services/almacenamiento';
 // Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import { LinearGradient } from 'expo-linear-gradient';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
@@ -42,6 +51,79 @@ const Text = AdminTranslatedText;
  */
 const CONTRAST_TEXT = '#FEFEFE';
 
+interface PhoneFormatConfig {
+  minLength: number;
+  maxLength: number;
+  hyphenPositions: number[];
+  placeholder: string;
+}
+
+const PHONE_CONFIGS: Record<string, PhoneFormatConfig> = {
+  '+503': { minLength: 8, maxLength: 8, hyphenPositions: [4], placeholder: 'Ej. 7000-0000' }, // El Salvador
+  '+502': { minLength: 8, maxLength: 8, hyphenPositions: [4], placeholder: 'Ej. 5000-0000' }, // Guatemala
+  '+504': { minLength: 8, maxLength: 8, hyphenPositions: [4], placeholder: 'Ej. 9000-0000' }, // Honduras
+  '+505': { minLength: 8, maxLength: 8, hyphenPositions: [4], placeholder: 'Ej. 8000-0000' }, // Nicaragua
+  '+506': { minLength: 8, maxLength: 8, hyphenPositions: [4], placeholder: 'Ej. 8000-0000' }, // Costa Rica
+  '+507': { minLength: 8, maxLength: 8, hyphenPositions: [4], placeholder: 'Ej. 6000-0000' }, // Panama
+  '+52':  { minLength: 10, maxLength: 10, hyphenPositions: [2, 6], placeholder: 'Ej. 55-1234-5678' }, // Mexico
+  '+57':  { minLength: 10, maxLength: 10, hyphenPositions: [3, 6], placeholder: 'Ej. 300-123-4567' }, // Colombia
+  '+1':   { minLength: 10, maxLength: 10, hyphenPositions: [3, 6], placeholder: 'Ej. 202-555-0143' }, // USA/Canada
+  '+34':  { minLength: 9, maxLength: 9, hyphenPositions: [3, 6], placeholder: 'Ej. 600-123-456' }, // Spain
+  '+54':  { minLength: 10, maxLength: 10, hyphenPositions: [2, 6], placeholder: 'Ej. 11-1234-5678' }, // Argentina
+  '+56':  { minLength: 9, maxLength: 9, hyphenPositions: [1, 5], placeholder: 'Ej. 9-1234-5678' }, // Chile
+  '+51':  { minLength: 9, maxLength: 9, hyphenPositions: [3, 6], placeholder: 'Ej. 912-345-678' }, // Peru
+  '+593': { minLength: 9, maxLength: 9, hyphenPositions: [2, 5], placeholder: 'Ej. 09-123-4567' }, // Ecuador
+  '+591': { minLength: 8, maxLength: 8, hyphenPositions: [4], placeholder: 'Ej. 7000-0000' }, // Bolivia
+  '+58':  { minLength: 10, maxLength: 10, hyphenPositions: [3, 6], placeholder: 'Ej. 412-123-4567' }, // Venezuela
+};
+
+const FALLBACK_PHONE_CONFIG: PhoneFormatConfig = {
+  minLength: 7,
+  maxLength: 15,
+  hyphenPositions: [],
+  placeholder: 'Ej. 12345678'
+};
+
+function formatPhoneNumber(rawDigits: string, prefix: string): string {
+  const config = PHONE_CONFIGS[prefix] || FALLBACK_PHONE_CONFIG;
+  const clean = rawDigits.replace(/\D/g, '').slice(0, config.maxLength);
+  
+  let formatted = '';
+  for (let i = 0; i < clean.length; i++) {
+    formatted += clean[i];
+    if (config.hyphenPositions.includes(i + 1) && i < clean.length - 1) {
+      formatted += '-';
+    }
+  }
+  return formatted;
+}
+
+function parsePhoneNumber(fullPhone: string) {
+  const cleanPhone = fullPhone ? fullPhone.trim() : '';
+  const sortedPrefixes = Object.keys(PHONE_CONFIGS).sort((a, b) => b.length - a.length);
+  for (const prefix of sortedPrefixes) {
+    if (cleanPhone.startsWith(prefix)) {
+      const rest = cleanPhone.slice(prefix.length).trim();
+      return { prefix, number: rest };
+    }
+  }
+  
+  if (cleanPhone.startsWith('+')) {
+    const parts = cleanPhone.split(' ');
+    if (parts.length > 1) {
+      return { prefix: parts[0], number: parts.slice(1).join(' ') };
+    }
+  }
+  
+  return { prefix: '+503', number: cleanPhone };
+}
+
+interface PrefijoPais {
+  name: string;
+  dialCode: string;
+  flag: string;
+}
+
 /**
  * Hook usePressScale. Expone estado derivado y acciones reutilizables para componentes React.
  */
@@ -60,24 +142,10 @@ function usePressScale() {
  * Componente SectionCard. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 function SectionCard({ children, style }: any) {
-  // Inicializa { theme }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { theme } = useAdminAppearance();
-  // Inicializa styles; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const styles = useMemo(() => crearEstilos(theme), [theme]);
-  // Devuelve el JSX que React Native renderiza en pantalla.
   return (
-    // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
     <View style={[styles.card, style]}>
-      {theme.isDark ? (
-        // Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza.
-        <LinearGradient
-          colors={[theme.glowA, theme.glowB, 'transparent']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-          pointerEvents="none"
-        />
-      ) : null}
       {children}
     </View>
   );
@@ -153,28 +221,18 @@ function LangBadge({ code, label, active, onPress }: { code: string; label: stri
   // Declara press; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const press = usePressScale();
 
-  // Devuelve el JSX que React Native renderiza en pantalla.
   return (
-    // Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla.
     <Animated.View style={[styles.langBadgeWrap, { transform: [{ scale: press.scale }] }]}>
-      {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
       <TouchableOpacity onPress={onPress} onPressIn={press.onPressIn} onPressOut={press.onPressOut} activeOpacity={0.84}>
         {active ? (
-          // Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza.
-          <LinearGradient {...({ className: 'nx-force-white' } as any)} colors={theme.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.langBadge}>
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+          <View {...({ className: 'nx-force-white' } as any)} style={[styles.langBadge, styles.langBadgeActive]}>
             <Text {...({ className: 'nx-force-white' } as any)} style={styles.langBadgeCode}>{code.toUpperCase()}</Text>
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text {...({ className: 'nx-force-white' } as any)} style={styles.langBadgeLabel}>{label}</Text>
-            {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
             <MaterialIcons {...({ className: 'nx-force-white' } as any)} name="check-circle" size={14} color={CONTRAST_TEXT} />
-          </LinearGradient>
+          </View>
         ) : (
-          // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
           <View style={[styles.langBadge, styles.langBadgeInactive]}>
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={[styles.langBadgeCode, { color: theme.soft }]}>{code.toUpperCase()}</Text>
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={[styles.langBadgeLabel, { color: theme.soft }]}>{label}</Text>
           </View>
         )}
@@ -295,13 +353,152 @@ export default function ConfiguracionAdmin() {
   // Declara navigation; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const navigation = useNavigation<any>();
   // Inicializa { logout }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const { logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   // Inicializa { theme, mode, setMode }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { theme, mode, setMode } = useAdminAppearance();
   // Inicializa styles; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const styles = useMemo(() => crearEstilos(theme), [theme]);
   // Declara currentLang; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const currentLang = i18n.language;
+
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [editNombre, setEditNombre] = useState('');
+  const [editPrefijo, setEditPrefijo] = useState('+503');
+  const [editTelefonoNumber, setEditTelefonoNumber] = useState('');
+  const [isPrefixDropdownOpen, setIsPrefixDropdownOpen] = useState(false);
+  const [prefijoBusqueda, setPrefijoBusqueda] = useState('');
+  const [paisesLoaded, setPaisesLoaded] = useState<PrefijoPais[]>([]);
+  const [editFoto, setEditFoto] = useState<string | null>(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  // Carga todos los países desde la API (igual que el registro de la Landing)
+  useEffect(() => {
+    const cargarPaises = async () => {
+      try {
+        const res = await fetch('https://restcountries.com/v3.1/all?fields=name,translations,cca2,flags,idd');
+        if (!res.ok) throw new Error('Error fetching countries');
+        const data = await res.json();
+        const lista: PrefijoPais[] = data
+          .map((c: any) => {
+            const root = c.idd?.root || '';
+            const suffixes = c.idd?.suffixes || [];
+            let dialCode = '';
+            if (suffixes.length === 1) {
+              dialCode = root + suffixes[0];
+            } else {
+              dialCode = root;
+            }
+            if (!dialCode || dialCode === '+') return null;
+            return {
+              name: c.translations?.spa?.common || c.name.common,
+              dialCode: dialCode,
+              flag: c.flags?.png || '',
+            };
+          })
+          .filter(Boolean) as PrefijoPais[];
+        lista.sort((a, b) => a.name.localeCompare(b.name));
+        setPaisesLoaded(lista);
+      } catch (err) {
+        console.error('Error loading countries for prefix:', err);
+      }
+    };
+    cargarPaises();
+  }, []);
+
+  // Traducciones declaradas a nivel superior para respetar las reglas de Hooks
+  // -- Modal de edición de perfil
+  const tEditarPerfil = useApiTranslate('Editar Perfil');
+  const tNombreLabel = useApiTranslate('Nombre');
+  const tTelefonoLabel = useApiTranslate('Teléfono');
+  const tCancelar = useApiTranslate('Cancelar');
+  const tGuardar = useApiTranslate('Guardar');
+  const tBuscarPais = useApiTranslate('Buscar país...');
+  const tCargandoPaises = useApiTranslate('Cargando países...');
+  // -- Cabecera general
+  const tWorkspaceSettings = useApiTranslate('Workspace settings');
+  const tControlVisual = useApiTranslate('Control visual y operativo del admin');
+  const tAjustaApariencia = useApiTranslate('Ajusta apariencia, idioma, seguridad y preferencias del panel administrativo.');
+  // -- Etiquetas de sección
+  const tIdiomaSection = useApiTranslate('Idioma');
+  const tTemaSection = useApiTranslate('Tema');
+  const tCuentaSection = useApiTranslate('Cuenta');
+  const tSistemaSection = useApiTranslate('Sistema');
+  // -- Insights
+  const tModoOscuro = useApiTranslate('Modo oscuro');
+  const tModoClaro = useApiTranslate('Modo claro');
+  const tPropietario = useApiTranslate('Propietario');
+  // -- Pie y sesión
+  const tCerrarSesion = useApiTranslate('Cerrar sesión');
+  const tFooter = useApiTranslate('Nexxus Enterprise Platform · 2026');
+
+  const handleOpenEditProfile = () => {
+    if (user) {
+      setEditNombre(user.nombre || '');
+      const parsed = parsePhoneNumber(user.telefono || '');
+      setEditPrefijo(parsed.prefix);
+      setEditTelefonoNumber(formatPhoneNumber(parsed.number, parsed.prefix));
+      setEditFoto(user.foto_perfil || null);
+    }
+    setIsPrefixDropdownOpen(false);
+    setIsEditProfileOpen(true);
+  };
+
+  const handlePhoneChange = (text: string) => {
+    const cleanDigits = text.replace(/\D/g, '');
+    const formatted = formatPhoneNumber(cleanDigits, editPrefijo);
+    setEditTelefonoNumber(formatted);
+  };
+
+  const handlePickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+      if (!result.canceled) {
+        setEditFoto(result.assets[0].uri);
+      }
+    } catch (e) {
+      console.error('Error al seleccionar imagen:', e);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    setIsSavingProfile(true);
+    try {
+      let finalFotoUrl = user.foto_perfil;
+      if (editFoto && editFoto !== user.foto_perfil) {
+        const response = await fetch(editFoto);
+        const blob = await response.blob();
+        finalFotoUrl = await subirFotoPerfil(user.id, blob);
+      }
+      
+      const fullPhone = `${editPrefijo} ${editTelefonoNumber}`.trim();
+      
+      await useCases.admin.updateUserProfile.execute(user.id, {
+        nombre: editNombre,
+        telefono: fullPhone,
+        foto_perfil: finalFotoUrl,
+      });
+
+      if (updateUser) {
+        updateUser({
+          ...user,
+          nombre: editNombre,
+          telefono: fullPhone,
+          foto_perfil: finalFotoUrl,
+        });
+      }
+      setIsEditProfileOpen(false);
+    } catch (error) {
+      console.error('Error saving profile:', error);
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
 
   // Declara handleLogout; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const handleLogout = async () => {
@@ -337,27 +534,20 @@ export default function ConfiguracionAdmin() {
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={styles.overviewHeader}>
             <View>
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={styles.overviewEyebrow}>{useApiTranslate('Workspace settings')}</Text>
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={styles.overviewTitle}>{useApiTranslate('Control visual y operativo del admin')}</Text>
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={styles.overviewText}>{useApiTranslate('Ajusta apariencia, idioma, seguridad y preferencias del panel administrativo.')}</Text>
+              <Text style={styles.overviewEyebrow}>{tWorkspaceSettings}</Text>
+              <Text style={styles.overviewTitle}>{tControlVisual}</Text>
+              <Text style={styles.overviewText}>{tAjustaApariencia}</Text>
             </View>
           </View>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={styles.insightGrid}>
-            {/* InsightTile renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-            <InsightTile icon="palette" label="Tema" value={mode === 'dark' ? 'Modo oscuro' : 'Modo claro'} accent={theme.primary} />
-            {/* InsightTile renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+            <InsightTile icon="palette" label="Tema" value={mode === 'dark' ? tModoOscuro : tModoClaro} accent={theme.primary} />
             <InsightTile icon="language" label="Idioma" value={currentLang === 'en' ? 'English' : 'Español'} accent={theme.blue} />
-            {/* InsightTile renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-            <InsightTile icon="admin-panel-settings" label="Cuenta" value="Admin" accent={theme.success} />
+            <InsightTile icon="admin-panel-settings" label="Cuenta" value={tPropietario} accent={theme.success} />
           </View>
         </View>
 
-        {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-        <Text style={styles.sectionLabel}>{useApiTranslate('Idioma')}</Text>
+        <Text style={styles.sectionLabel}>{tIdiomaSection}</Text>
         {/* SectionCard renderiza una pieza visual reutilizable dentro de esta pantalla. */}
         <SectionCard>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
@@ -369,8 +559,7 @@ export default function ConfiguracionAdmin() {
           </View>
         </SectionCard>
 
-        {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-        <Text style={styles.sectionLabel}>{useApiTranslate('Tema')}</Text>
+        <Text style={styles.sectionLabel}>{tTemaSection}</Text>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={styles.themeGrid}>
           {/* ThemeChoice renderiza una pieza visual reutilizable dentro de esta pantalla. */}
@@ -393,12 +582,11 @@ export default function ConfiguracionAdmin() {
           />
         </View>
 
-        {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-        <Text style={styles.sectionLabel}>{useApiTranslate('Cuenta')}</Text>
+        <Text style={styles.sectionLabel}>{tCuentaSection}</Text>
         {/* SectionCard renderiza una pieza visual reutilizable dentro de esta pantalla. */}
         <SectionCard>
           {/* OptionRow renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <OptionRow icon="person-outline" label="Perfil de administrador" sublabel="Datos laborales, foto y preferencias" onPress={() => navigation.navigate('PerfilLaboral')} />
+          <OptionRow icon="person-outline" label="Perfil de administrador" sublabel="Datos laborales, foto y preferencias" onPress={handleOpenEditProfile} />
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={styles.separator} />
           {/* OptionRow renderiza una pieza visual reutilizable dentro de esta pantalla. */}
@@ -409,8 +597,7 @@ export default function ConfiguracionAdmin() {
           <OptionRow icon="admin-panel-settings" label="Permisos de administrador" sublabel="Control de módulos y privilegios" onPress={() => navigation.navigate('AuditoriaLogs')} />
         </SectionCard>
 
-        {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-        <Text style={styles.sectionLabel}>{useApiTranslate('Sistema')}</Text>
+        <Text style={styles.sectionLabel}>{tSistemaSection}</Text>
         {/* SectionCard renderiza una pieza visual reutilizable dentro de esta pantalla. */}
         <SectionCard>
           {/* OptionRow renderiza una pieza visual reutilizable dentro de esta pantalla. */}
@@ -423,14 +610,133 @@ export default function ConfiguracionAdmin() {
           <LinearGradient colors={theme.isDark ? ['rgba(239,68,68,0.16)', 'rgba(239,68,68,0.07)'] : ['rgba(220,38,38,0.12)', 'rgba(220,38,38,0.04)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.logoutInner}>
             {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
             <MaterialIcons name="logout" size={20} color={theme.danger} />
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={styles.logoutText}>{useApiTranslate('Cerrar sesión')}</Text>
+            <Text style={styles.logoutText}>{tCerrarSesion}</Text>
           </LinearGradient>
         </TouchableOpacity>
 
-        {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-        <Text style={styles.footer}>{useApiTranslate('Nexxus Enterprise Platform · 2026')}</Text>
+        <Text style={styles.footer}>{tFooter}</Text>
       </ScrollView>
+
+      <Modal visible={isEditProfileOpen} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <BlurView intensity={theme.isDark ? 80 : 50} tint={theme.isDark ? 'dark' : 'light'} style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{tEditarPerfil}</Text>
+            
+            <TouchableOpacity onPress={handlePickImage} style={styles.modalImageContainer} activeOpacity={0.85}>
+              <View style={styles.modalImagePicker}>
+                {editFoto ? (
+                  <Image source={{ uri: editFoto }} style={styles.modalImage} />
+                ) : (
+                  <View style={styles.modalImagePlaceholder}>
+                    <MaterialIcons name="person" size={48} color={theme.muted} />
+                  </View>
+                )}
+              </View>
+              <View style={styles.editIconBadge}>
+                <MaterialIcons name="camera-alt" size={14} color={CONTRAST_TEXT} />
+              </View>
+            </TouchableOpacity>
+
+            <Text style={styles.inputLabel}>{tNombreLabel}</Text>
+            <TextInput
+              style={styles.textInput}
+              value={editNombre}
+              onChangeText={setEditNombre}
+              placeholder={tNombreLabel}
+              placeholderTextColor={theme.muted}
+            />
+
+            <Text style={styles.inputLabel}>{tTelefonoLabel}</Text>
+            
+            <View style={styles.phoneInputContainer}>
+              <TouchableOpacity
+                style={styles.prefixSelector}
+                onPress={() => {
+                  setIsPrefixDropdownOpen(!isPrefixDropdownOpen);
+                  setPrefijoBusqueda('');
+                }}
+              >
+                {paisesLoaded.find(p => p.dialCode === editPrefijo)?.flag ? (
+                  <Image
+                    source={{ uri: paisesLoaded.find(p => p.dialCode === editPrefijo)?.flag }}
+                    style={styles.prefixFlagImg}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Text style={styles.prefixSelectorText}>🇸🇻</Text>
+                )}
+                <Text style={styles.prefixSelectorText}> {editPrefijo}</Text>
+                <MaterialIcons name="arrow-drop-down" size={18} color={theme.text} />
+              </TouchableOpacity>
+              
+              <TextInput
+                style={styles.phoneTextInput}
+                value={editTelefonoNumber}
+                onChangeText={handlePhoneChange}
+                placeholder={PHONE_CONFIGS[editPrefijo]?.placeholder || 'Ej. 7000-0000'}
+                placeholderTextColor={theme.muted}
+                keyboardType="phone-pad"
+              />
+            </View>
+
+            {isPrefixDropdownOpen && (
+              <View style={styles.prefixDropdown}>
+                <AdminTranslatedTextInput
+                  style={styles.prefixSearchInput}
+                  value={prefijoBusqueda}
+                  onChangeText={setPrefijoBusqueda}
+                  placeholder={tBuscarPais}
+                  placeholderTextColor={theme.muted}
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                />
+                <ScrollView nestedScrollEnabled style={{ maxHeight: 180 }} showsVerticalScrollIndicator={true}>
+                  {(paisesLoaded.length > 0 ? paisesLoaded : []).filter(p =>
+                    p.name.toLowerCase().includes(prefijoBusqueda.toLowerCase()) ||
+                    p.dialCode.includes(prefijoBusqueda)
+                  ).map((pais, idx) => (
+                    <TouchableOpacity
+                      key={`${pais.dialCode}-${idx}`}
+                      style={[styles.prefixDropdownItem, editPrefijo === pais.dialCode && styles.prefixDropdownItemActive]}
+                      onPress={() => {
+                        setEditPrefijo(pais.dialCode);
+                        setIsPrefixDropdownOpen(false);
+                        setPrefijoBusqueda('');
+                        setEditTelefonoNumber(formatPhoneNumber(editTelefonoNumber, pais.dialCode));
+                      }}
+                    >
+                      {pais.flag ? (
+                        <Image source={{ uri: pais.flag }} style={styles.prefixFlagImg} resizeMode="cover" />
+                      ) : null}
+                      <Text style={styles.prefixDropdownItemText}>
+                        {pais.name} <Text style={{ color: theme.muted }}>({pais.dialCode})</Text>
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                  {paisesLoaded.length === 0 && (
+                    <Text style={[styles.prefixDropdownItemText, { textAlign: 'center', paddingVertical: 12 }]}>
+                      {tCargandoPaises}
+                    </Text>
+                  )}
+                </ScrollView>
+              </View>
+            )}
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setIsEditProfileOpen(false)}>
+                <Text style={styles.cancelBtnText}>{tCancelar}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.saveBtn} onPress={handleSaveProfile} disabled={isSavingProfile}>
+                {isSavingProfile ? (
+                  <ActivityIndicator size="small" color={CONTRAST_TEXT} />
+                ) : (
+                  <Text style={styles.saveBtnText}>{tGuardar}</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </BlurView>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1061,13 +1367,14 @@ const crearEstilos = (theme: any) => StyleSheet.create({
     // gap define separacion uniforme entre elementos hijos.
     gap: 10,
   },
-  // langBadgeInactive: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  langBadgeInactive: {
-    // backgroundColor define el fondo del bloque.
-    backgroundColor: theme.isDark ? theme.chip : '#FFFFFF',
-    // borderWidth define el grosor del borde visible.
+  langBadgeActive: {
+    backgroundColor: theme.primary,
     borderWidth: 1,
-    // borderColor define el color del borde.
+    borderColor: theme.isDark ? 'rgba(139,92,246,0.6)' : 'rgba(91,65,150,0.5)',
+  },
+  langBadgeInactive: {
+    backgroundColor: theme.isDark ? theme.chip : '#FFFFFF',
+    borderWidth: 1,
     borderColor: theme.border,
   },
   // langBadgeCode: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
@@ -1143,5 +1450,205 @@ const crearEstilos = (theme: any) => StyleSheet.create({
     fontSize: 11,
     // fontWeight define el peso visual del texto.
     fontWeight: '800',
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: theme.isDark ? 'rgba(0, 0, 0, 0.55)' : 'rgba(0, 0, 0, 0.22)',
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: theme.isDark ? 'rgba(20, 16, 38, 0.93)' : 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1.5,
+    borderColor: theme.isDark ? 'rgba(210,198,255,0.22)' : 'rgba(91,65,150,0.25)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+    overflow: 'hidden',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: theme.text,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  modalImageContainer: {
+    alignSelf: 'center',
+    marginBottom: 24,
+    position: 'relative',
+  },
+  modalImagePicker: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: theme.surface,
+    borderWidth: 2,
+    borderColor: theme.isDark ? 'rgba(210,198,255,0.3)' : 'rgba(91,65,150,0.35)',
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  editIconBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: theme.purple,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: theme.isDark ? '#141026' : '#FFFFFF',
+  },
+  modalImagePlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalImage: {
+    width: '100%',
+    height: '100%',
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: theme.text,
+    opacity: 0.9,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  textInput: {
+    backgroundColor: theme.isDark ? 'rgba(0, 0, 0, 0.22)' : 'rgba(255, 255, 255, 0.9)',
+    borderWidth: 1.5,
+    borderColor: theme.isDark ? 'rgba(210, 198, 255, 0.22)' : 'rgba(91, 65, 150, 0.28)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    color: theme.text,
+    fontSize: 15,
+    marginBottom: 16,
+  },
+  phoneInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.isDark ? 'rgba(0, 0, 0, 0.22)' : 'rgba(255, 255, 255, 0.9)',
+    borderWidth: 1.5,
+    borderColor: theme.isDark ? 'rgba(210, 198, 255, 0.22)' : 'rgba(91, 65, 150, 0.28)',
+    borderRadius: 12,
+    marginBottom: 16,
+    overflow: 'hidden',
+    height: 48,
+  },
+  prefixSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    height: '100%',
+    borderRightWidth: 1.5,
+    borderRightColor: theme.isDark ? 'rgba(210, 198, 255, 0.22)' : 'rgba(91, 65, 150, 0.28)',
+    backgroundColor: theme.isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)',
+  },
+  prefixSelectorText: {
+    fontSize: 14,
+    color: theme.text,
+    fontWeight: '600',
+    marginRight: 2,
+  },
+  phoneTextInput: {
+    flex: 1,
+    paddingHorizontal: 14,
+    color: theme.text,
+    fontSize: 15,
+    height: '100%',
+  },
+  prefixDropdown: {
+    backgroundColor: theme.isDark ? 'rgba(20, 16, 38, 0.98)' : 'rgba(255, 255, 255, 0.99)',
+    borderWidth: 1.5,
+    borderColor: theme.isDark ? 'rgba(210, 198, 255, 0.3)' : 'rgba(91, 65, 150, 0.35)',
+    borderRadius: 12,
+    marginTop: -8,
+    marginBottom: 16,
+    paddingVertical: 4,
+    zIndex: 100,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+      },
+      android: { elevation: 6 },
+      web: { boxShadow: '0 6px 16px rgba(0,0,0,0.12)' },
+    }),
+  },
+  prefixDropdownItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  prefixDropdownItemActive: {
+    backgroundColor: theme.isDark ? 'rgba(139,92,246,0.18)' : 'rgba(91,65,150,0.12)',
+  },
+  prefixDropdownItemText: {
+    fontSize: 14,
+    color: theme.text,
+    flex: 1,
+  },
+  prefixFlagImg: {
+    width: 22,
+    height: 16,
+    borderRadius: 2,
+  },
+  prefixSearchInput: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.border,
+    color: theme.text,
+    fontSize: 14,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+    gap: 12,
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: theme.isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: theme.isDark ? 'rgba(210,198,255,0.25)' : 'rgba(91,65,150,0.3)',
+  },
+  cancelBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  saveBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: theme.primary,
+    alignItems: 'center',
+  },
+  saveBtnText: {
+    color: CONTRAST_TEXT,
+    fontWeight: '800',
+    fontSize: 15,
   },
 });
