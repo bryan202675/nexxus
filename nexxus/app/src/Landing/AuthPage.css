@@ -78,6 +78,12 @@
   z-index: 5;
 }
 
+.nx-auth-page-nav .nx-brand {
+  flex: 0 0 auto;
+  min-width: max-content;
+  white-space: nowrap;
+}
+
 /* .nx-auth-back: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-back {
   flex: 0 0 auto;
@@ -216,6 +222,11 @@
     padding: 8px;
     top: 10px;
     width: calc(100% - 18px);
+  }
+
+  .nx-auth-page-nav > div:first-child {
+    gap: 10px !important;
+    min-width: 0;
   }
 
   /* .nx-auth-mobile-back: define reglas visuales para los elementos que usan este selector en la interfaz. */

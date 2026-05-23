@@ -33,6 +33,7 @@
 
 /* html: define reglas visuales para los elementos que usan este selector en la interfaz. */
 html {
+  height: auto;
   min-height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
@@ -42,9 +43,12 @@ html {
 /* body: define reglas visuales para los elementos que usan este selector en la interfaz. */
 body {
   background: var(--nx-bg);
+  height: auto;
+  min-height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
   touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* #root: define reglas visuales para los elementos que usan este selector en la interfaz. */
@@ -52,6 +56,7 @@ body {
   max-width: 100vw;
   overflow-x: hidden;
   overflow-y: visible;
+  touch-action: pan-y;
 }
 
 /* .nx-landing: define reglas visuales para los elementos que usan este selector en la interfaz. */
@@ -63,6 +68,7 @@ body {
   overflow-x: hidden;
   overflow-y: visible;
   position: relative;
+  touch-action: pan-y;
   width: 100%;
 }
 
@@ -314,8 +320,8 @@ body {
   grid-template-columns: minmax(0, 1fr) minmax(340px, 0.9fr);
   margin: 0 auto;
   max-width: 1240px;
-  min-height: min(900px, calc(100vh - 80px));
-  padding: clamp(62px, 8vh, 88px) var(--nx-page-pad) clamp(48px, 7vh, 64px);
+  min-height: min(820px, calc(100vh - 80px));
+  padding: clamp(54px, 7vh, 76px) var(--nx-page-pad) clamp(34px, 5vh, 48px);
 }
 
 /* .nx-ops-card: define reglas visuales para los elementos que usan este selector en la interfaz. */
@@ -659,16 +665,14 @@ body {
 .nx-testimonials,
 .nx-final-cta,
 .nx-footer {
-  content-visibility: auto;
-  contain-intrinsic-size: 900px;
   margin: 0 auto;
   max-width: 1240px;
-  padding: clamp(56px, 8vw, 92px) var(--nx-page-pad);
+  padding: clamp(34px, 5.5vw, 62px) var(--nx-page-pad);
 }
 
 /* .nx-section-head: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-section-head {
-  margin-bottom: 34px;
+  margin-bottom: 24px;
 }
 
 /* .nx-pricing-head h2: define reglas visuales para los elementos que usan este selector en la interfaz. */
@@ -742,7 +746,7 @@ body {
 
 /* .nx-module-grid: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-module-grid {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 /* .nx-icon: define reglas visuales para los elementos que usan este selector en la interfaz. */
@@ -1003,7 +1007,7 @@ body {
 
 /* .nx-plan: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-plan {
-  min-height: clamp(360px, 32vw, 420px);
+  min-height: clamp(520px, 48vw, 680px);
 }
 
 /* .nx-plan .border-glow-inner: define reglas visuales para los elementos que usan este selector en la interfaz. */
@@ -1073,9 +1077,214 @@ body {
   content: "• ";
 }
 
+.nx-plan-details {
+  display: grid;
+  gap: 14px;
+  margin: 18px 0 24px;
+}
+
+.nx-plan-detail-group {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 14px;
+}
+
+.nx-plan-detail-group h4 {
+  color: #ffffff;
+  font-size: 0.86rem;
+  letter-spacing: 0;
+  margin: 0 0 10px;
+}
+
+.nx-plan-detail-group ul {
+  margin: 0;
+}
+
+.nx-plan-detail-group li {
+  color: var(--nx-muted);
+  font-size: 0.9rem;
+  line-height: 1.35;
+  margin-bottom: 8px;
+}
+
+.nx-policy-page {
+  min-height: 100vh;
+  padding-bottom: 42px;
+}
+
+.nx-policy-page .nx-nav-links button.active {
+  color: #ffffff;
+}
+
+.nx-policy-page .nx-brand {
+  flex: 0 0 auto;
+  min-width: max-content;
+  white-space: nowrap;
+}
+
+.nx-policy-hero {
+  align-items: center;
+  display: grid;
+  gap: clamp(28px, 5vw, 60px);
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.76fr);
+  margin: 0 auto;
+  max-width: 1180px;
+  padding: clamp(130px, 15vw, 180px) clamp(18px, 4vw, 48px) clamp(50px, 7vw, 86px);
+  position: relative;
+  z-index: 2;
+}
+
+.nx-policy-security .nx-policy-hero,
+.nx-policy-privacy .nx-policy-hero {
+  align-items: start;
+  gap: 28px;
+  grid-template-columns: 1fr;
+  max-width: 1120px;
+  padding-bottom: clamp(34px, 5vw, 62px);
+}
+
+.nx-policy-hero h1 {
+  font-size: clamp(2.6rem, 6vw, 5.7rem);
+  letter-spacing: -0.05em;
+  line-height: 0.95;
+  margin: 18px 0 22px;
+  max-width: 850px;
+}
+
+.nx-policy-security .nx-policy-hero h1,
+.nx-policy-privacy .nx-policy-hero h1 {
+  font-size: clamp(2.35rem, 5vw, 4.9rem);
+  line-height: 1.02;
+  max-width: 980px;
+}
+
+.nx-policy-hero p {
+  color: var(--nx-muted);
+  font-size: clamp(1rem, 1.8vw, 1.22rem);
+  line-height: 1.7;
+  max-width: 720px;
+}
+
+.nx-policy-security .nx-policy-hero p,
+.nx-policy-privacy .nx-policy-hero p {
+  max-width: 860px;
+}
+
+.nx-policy-icons {
+  align-content: center;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  justify-self: end;
+  max-width: 430px;
+}
+
+.nx-policy-security .nx-policy-icons,
+.nx-policy-privacy .nx-policy-icons {
+  justify-self: start;
+  max-width: 720px;
+}
+
+.nx-policy-icon {
+  align-items: center;
+  color: #ffffff;
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+}
+
+.nx-policy-svg {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  box-shadow: 0 16px 50px rgba(56, 189, 248, 0.12);
+  color: var(--nx-cyan);
+  flex: 0 0 auto;
+  height: 52px;
+  padding: 13px;
+  width: 52px;
+}
+
+.nx-policy-icon span {
+  color: var(--nx-muted);
+  font-size: 0.94rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.nx-policy-content {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 1180px;
+}
+
+.nx-policy-card {
+  border-radius: var(--nx-radius);
+  padding: clamp(20px, 2.4vw, 28px);
+}
+
+.nx-policy-card h2 {
+  font-size: clamp(1.35rem, 2.2vw, 2rem);
+  letter-spacing: -0.02em;
+  margin: 18px 0 12px;
+}
+
+.nx-policy-card p,
+.nx-policy-card li {
+  color: var(--nx-muted);
+  line-height: 1.68;
+}
+
+.nx-policy-card ul {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+}
+
+.nx-policy-card li::before {
+  color: var(--nx-cyan);
+  content: "• ";
+}
+
 /* .nx-ai-section: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-ai-section {
-  grid-template-columns: 1fr 0.9fr;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.92fr);
+  padding-bottom: clamp(18px, 3vw, 32px);
+}
+
+.nx-ai-proof-grid {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.nx-ai-proof {
+  align-items: flex-start;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 18px;
+  display: grid;
+  gap: 7px;
+  grid-template-columns: auto 1fr;
+  padding: 15px;
+}
+
+.nx-ai-proof .nx-icon {
+  color: var(--nx-cyan);
+  margin-top: 2px;
+}
+
+.nx-ai-proof strong {
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.nx-ai-proof small {
+  color: var(--nx-muted);
+  grid-column: 2;
+  line-height: 1.45;
 }
 
 /* .nx-ai-stream: define reglas visuales para los elementos que usan este selector en la interfaz. */
@@ -1084,8 +1293,25 @@ body {
   padding: clamp(18px, 2.2vw, 24px);
 }
 
+.nx-ai-stream .border-glow-inner {
+  display: grid;
+  gap: 12px;
+}
+
+.nx-ai-stream-head {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.nx-ai-stream-head span {
+  color: #ffffff;
+  font-weight: 900;
+}
+
 /* .nx-ai-stream div: define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-ai-stream div {
+.nx-ai-signal {
   align-items: center;
   background: rgba(255, 255, 255, 0.07);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1097,12 +1323,30 @@ body {
 }
 
 /* .nx-ai-stream span: define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-ai-stream span {
+.nx-ai-signal span {
   animation: nx-pulse 1.7s ease-in-out infinite;
   background: var(--nx-cyan);
   border-radius: 999px;
   height: 10px;
   width: 10px;
+}
+
+.nx-ai-outcome {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(56, 189, 248, 0.1));
+  border: 1px solid rgba(192, 132, 252, 0.18);
+  border-radius: 20px;
+  margin-top: 4px;
+  padding: 16px;
+}
+
+.nx-ai-outcome strong {
+  color: #ffffff;
+}
+
+.nx-ai-outcome p {
+  color: var(--nx-muted);
+  line-height: 1.55;
+  margin: 8px 0 0;
 }
 
 /* .nx-create-section: define reglas visuales para los elementos que usan este selector en la interfaz. */
@@ -1236,6 +1480,7 @@ body {
   display: grid;
   gap: 14px;
   grid-template-columns: repeat(4, 1fr);
+  padding-top: clamp(12px, 2.4vw, 24px);
 }
 
 /* .nx-testimonials blockquote: define reglas visuales para los elementos que usan este selector en la interfaz. */
@@ -1254,7 +1499,7 @@ body {
 /* .nx-final-cta: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-final-cta {
   border-radius: 38px;
-  margin-bottom: clamp(46px, 7vw, 70px);
+  margin-bottom: clamp(28px, 5vw, 44px);
   overflow: hidden;
   text-align: center;
 }
@@ -1273,8 +1518,8 @@ body {
   display: grid;
   gap: 18px;
   grid-template-columns: 0.7fr 1.2fr 1fr;
-  padding-bottom: 42px;
-  padding-top: 34px;
+  padding-bottom: 30px;
+  padding-top: 26px;
 }
 
 /* .nx-footer strong: define reglas visuales para los elementos que usan este selector en la interfaz. */
@@ -1403,6 +1648,11 @@ body {
   .nx-hero {
     min-height: 0;
     padding-top: 66px;
+  }
+
+  .nx-policy-hero,
+  .nx-policy-content {
+    grid-template-columns: 1fr;
   }
 
   /* .nx-integration-rail: define reglas visuales para los elementos que usan este selector en la interfaz. */
@@ -1586,6 +1836,16 @@ body {
     width: 100%;
   }
 
+  .nx-policy-hero {
+    padding-top: 112px;
+  }
+
+  .nx-policy-icons {
+    grid-template-columns: 1fr;
+    justify-self: stretch;
+    max-width: none;
+  }
+
   /* .star-inner-content: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-btn-primary .star-inner-content,
   .star-inner-content {
@@ -1725,14 +1985,17 @@ body {
 
   /* .nx-brand: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-brand {
-    font-size: 0;
-    gap: 0;
+    font-size: 13px;
+    gap: 7px;
+    min-width: max-content;
+    white-space: nowrap;
   }
 
   /* .nx-brand span: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-brand span {
-    height: 32px;
-    width: 32px;
+    border-radius: 10px;
+    height: 30px;
+    width: 30px;
   }
 
   /* .nx-hero h1: define reglas visuales para los elementos que usan este selector en la interfaz. */

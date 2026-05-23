@@ -10,8 +10,6 @@
 import { createElement, useEffect } from 'react';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
-// Importa DarkVeil; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
-import DarkVeil from './DarkVeil';
 // Importa LandingAuth; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import LandingAuth from './LandingAuth';
 // Importa { changeLanguage }; inicializa o consume configuracion de internacionalizacion.
@@ -51,7 +49,9 @@ function modoInicial() {
  */
 function irLanding() {
   // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-  window.location.assign('/landing');
+  window.history.pushState({}, '', '/landing');
+  window.dispatchEvent(new Event('nexxus:navigate'));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 /**
@@ -71,12 +71,6 @@ export default function AuthPage() {
   return h(
     'main',
     { className: 'nx-auth-page' },
-    h(DarkVeil, {
-      noiseIntensity: 0.012,
-      resolutionScale: 0.68,
-      speed: 0.34,
-      warpAmount: 0.055,
-    }),
     h('div', { className: 'nx-auth-page-light nx-auth-page-light-a', 'aria-hidden': true }),
     h('div', { className: 'nx-auth-page-light nx-auth-page-light-b', 'aria-hidden': true }),
     h(

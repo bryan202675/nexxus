@@ -14,8 +14,6 @@ import { useTranslation } from 'react-i18next';
 import { changeLanguage } from '../shared/i18n/config';
 // Importa BorderGlow; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import BorderGlow from './BorderGlow';
-// Importa DarkVeil; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
-import DarkVeil from './DarkVeil';
 // Importa StarBorder; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import StarBorder from './StarBorder';
 // Importa StarButton; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
@@ -41,15 +39,10 @@ type IconName = 'activity' | 'ai' | 'analytics' | 'automation' | 'briefcase' | '
  * Declaracion modules. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
  */
 const modules: [string, string, IconName][] = [
-  ['landing.module_dashboard_title', 'landing.module_dashboard_desc', 'command'],
-  ['landing.module_users_title', 'landing.module_users_desc', 'users'],
-  ['landing.module_tasks_title', 'landing.module_tasks_desc', 'check'],
-  ['landing.module_ai_title', 'landing.module_ai_desc', 'ai'],
-  ['landing.module_payroll_title', 'landing.module_payroll_desc', 'payroll'],
-  ['landing.module_attendance_title', 'landing.module_attendance_desc', 'clock'],
-  ['landing.module_analytics_title', 'landing.module_analytics_desc', 'analytics'],
-  ['landing.module_chat_title', 'landing.module_chat_desc', 'message'],
-  ['landing.module_multi_title', 'landing.module_multi_desc', 'building'],
+  ['landing.module_ops_title', 'landing.module_ops_desc', 'command'],
+  ['landing.module_people_title', 'landing.module_people_desc', 'users'],
+  ['landing.module_comms_title', 'landing.module_comms_desc', 'message'],
+  ['landing.module_intelligence_title', 'landing.module_intelligence_desc', 'analytics'],
 ];
 
 /**
@@ -62,6 +55,11 @@ const plans = [
     badge: 'landing.starter_badge',
     users: 'landing.starter_users',
     benefits: ['landing.starter_benefit1', 'landing.starter_benefit2', 'landing.starter_benefit3', 'landing.starter_benefit4'],
+    detailGroups: [
+      { title: 'landing.plan_company', items: ['landing.starter_company1', 'landing.starter_company2', 'landing.starter_company3', 'landing.starter_company4'] },
+      { title: 'landing.plan_modules', items: ['landing.starter_module1', 'landing.starter_module2', 'landing.starter_module3', 'landing.starter_module4', 'landing.starter_module5', 'landing.starter_module6', 'landing.starter_module7'] },
+      { title: 'landing.plan_limits', items: ['landing.starter_limit1', 'landing.starter_limit2', 'landing.starter_limit3', 'landing.starter_limit4', 'landing.starter_limit5', 'landing.starter_limit6', 'landing.starter_limit7'] },
+    ],
   },
   {
     name: 'Business',
@@ -69,6 +67,12 @@ const plans = [
     badge: 'landing.business_badge',
     users: 'landing.business_users',
     benefits: ['landing.business_benefit1', 'landing.business_benefit2', 'landing.business_benefit3', 'landing.business_benefit4'],
+    detailGroups: [
+      { title: 'landing.plan_scalability', items: ['landing.business_scale1', 'landing.business_scale2', 'landing.business_scale3', 'landing.business_scale4'] },
+      { title: 'landing.plan_unlocked', items: ['landing.business_unlock1', 'landing.business_unlock2', 'landing.business_unlock3', 'landing.business_unlock4', 'landing.business_unlock5', 'landing.business_unlock6', 'landing.business_unlock7', 'landing.business_unlock8', 'landing.business_unlock9', 'landing.business_unlock10'] },
+      { title: 'landing.plan_communication', items: ['landing.business_comm1', 'landing.business_comm2', 'landing.business_comm3', 'landing.business_comm4'] },
+      { title: 'landing.plan_security', items: ['landing.business_security1'] },
+    ],
     featured: true,
   },
   {
@@ -77,6 +81,11 @@ const plans = [
     badge: 'landing.enterprise_badge',
     users: 'landing.enterprise_users',
     benefits: ['landing.enterprise_benefit1', 'landing.enterprise_benefit2', 'landing.enterprise_benefit3', 'landing.enterprise_benefit4'],
+    detailGroups: [
+      { title: 'landing.plan_unlimited', items: ['landing.enterprise_unlimited1', 'landing.enterprise_unlimited2', 'landing.enterprise_unlimited3', 'landing.enterprise_unlimited4'] },
+      { title: 'landing.plan_enterprise', items: ['landing.enterprise_feature1', 'landing.enterprise_feature2', 'landing.enterprise_feature3', 'landing.enterprise_feature4', 'landing.enterprise_feature5', 'landing.enterprise_feature6', 'landing.enterprise_feature7', 'landing.enterprise_feature8', 'landing.enterprise_feature9'] },
+      { title: 'landing.plan_analytics', items: ['landing.enterprise_analytics1', 'landing.enterprise_analytics2', 'landing.enterprise_analytics3', 'landing.enterprise_analytics4'] },
+    ],
   },
 ];
 
@@ -149,14 +158,21 @@ function GlowCard({ children, className, animated = false }: { animated?: boolea
 }
 
 /**
-
-
-/**
  * Declaracion scrollToId. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
  */
 function scrollToId(id: string) {
   // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function goToLandingPath(path: string) {
+  if (path.startsWith('/landing#') || path === '/landing' || path === '/landing/seguridad' || path === '/landing/privacidad') {
+    window.history.pushState({}, '', path);
+    window.dispatchEvent(new Event('nexxus:navigate'));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
+  window.location.assign(path);
 }
 
 /**
@@ -166,7 +182,9 @@ function abrirAuth(modo: 'registro' | 'login', plan = 'Business') {
   // Declara ruta; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const ruta = modo === 'login' ? '/landing/login' : '/landing/registro';
   // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-  window.location.assign(`${ruta}?plan=${encodeURIComponent(plan)}`);
+  window.history.pushState({}, '', `${ruta}?plan=${encodeURIComponent(plan)}`);
+  window.dispatchEvent(new Event('nexxus:navigate'));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 /**
@@ -219,6 +237,9 @@ export default function Landing() {
     );
     // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     revealItems.forEach((item) => observer.observe(item));
+    if (window.location.hash.length > 1) {
+      window.requestAnimationFrame(() => scrollToId(window.location.hash.slice(1)));
+    }
 
     // Devuelve el valor final calculado para esta funcion o caso de uso.
     return () => {
@@ -254,12 +275,6 @@ export default function Landing() {
   return h(
     'main',
     { className: 'nx-landing' },
-    h(DarkVeil, {
-      noiseIntensity: 0.015,
-      resolutionScale: 0.72,
-      speed: 0.38,
-      warpAmount: 0.06,
-    }),
     h('div', { className: 'nx-orb nx-orb-a', 'aria-hidden': true }),
     h('div', { className: 'nx-orb nx-orb-b', 'aria-hidden': true }),
     h(
@@ -308,7 +323,6 @@ export default function Landing() {
           'div',
           { className: 'nx-hero-actions' },
           h(StarButton, { className: 'nx-btn nx-btn-primary', onClick: () => abrirAuth('registro', selectedPlan) }, h(Icon, { name: 'building' }), t('landing.create_company')),
-          h('button', { className: 'nx-btn nx-btn-ghost', onClick: () => scrollToId('sistema') }, h(Icon, { name: 'chart' }), t('landing.view_demo')),
           h('button', { className: 'nx-btn nx-btn-minimal', onClick: () => scrollToId('planes') }, h(Icon, { name: 'briefcase' }), t('landing.know_plans'))
         ),
         h(
@@ -409,6 +423,18 @@ export default function Landing() {
             h('div', { className: 'nx-price' }, '$', priceFor(plan.monthly, billing), h('small', null, billing === 'annual' ? `/${t('common.year')}` : `/${t('common.month')}`)),
             h('p', null, t(plan.users)),
             h('ul', null, plan.benefits.map((benefit) => h('li', { key: benefit }, t(benefit)))),
+            h(
+              'div',
+              { className: 'nx-plan-details' },
+              plan.detailGroups.map((group) =>
+                h(
+                  'div',
+                  { className: 'nx-plan-detail-group', key: group.title },
+                  h('h4', null, t(group.title)),
+                  h('ul', null, group.items.map((item) => h('li', { key: item }, t(item))))
+                )
+              )
+            ),
             h('button', { className: 'nx-btn nx-btn-plan', onClick: () => { choosePlan(plan.name); abrirAuth('registro', plan.name); } }, selectedPlan === plan.name ? t('landing.create_with_this_plan') : t('landing.choose_plan'))
           )
         )
@@ -417,8 +443,29 @@ export default function Landing() {
     h(
       'section',
       { className: 'nx-ai-section nx-reveal', id: 'ia' },
-      h('div', { className: 'nx-ai-core' }, h('span', null, t('landing.section_ai_title')), h('h2', null, t('landing.section_ai_h2')), h('p', null, t('landing.section_ai_p'))),
-      h('div', { className: 'nx-ai-stream' }, [t('landing.ai_stream_item1'), t('landing.ai_stream_item2'), t('landing.ai_stream_item3'), t('landing.ai_stream_item4')].map((item) => h('div', { key: item }, h('span', null), item)))
+      h(
+        'div',
+        { className: 'nx-ai-core' },
+        h('span', null, t('landing.section_ai_title')),
+        h('h2', null, t('landing.section_ai_h2')),
+        h('p', null, t('landing.section_ai_p')),
+        h(
+          'div',
+          { className: 'nx-ai-proof-grid' },
+          [
+            ['landing.ai_proof_1_title', 'landing.ai_proof_1_desc', 'spark'],
+            ['landing.ai_proof_2_title', 'landing.ai_proof_2_desc', 'shield'],
+            ['landing.ai_proof_3_title', 'landing.ai_proof_3_desc', 'analytics'],
+          ].map(([title, text, icon]) => h('div', { className: 'nx-ai-proof', key: title }, h(Icon, { name: icon as IconName }), h('strong', null, t(title)), h('small', null, t(text))))
+        )
+      ),
+      h(
+        GlowCard,
+        { className: 'nx-ai-stream' },
+        h('div', { className: 'nx-ai-stream-head' }, h('span', null, 'Nexxus IA')),
+        [t('landing.ai_stream_item1'), t('landing.ai_stream_item2'), t('landing.ai_stream_item3'), t('landing.ai_stream_item4'), t('landing.ai_stream_item5'), t('landing.ai_stream_item6')].map((item) => h('div', { className: 'nx-ai-signal', key: item }, h('span', null), item)),
+        h('div', { className: 'nx-ai-outcome' }, h('strong', null, t('landing.ai_outcome_title')), h('p', null, t('landing.ai_outcome_desc')))
+      )
     ),
     h(
       'section',
@@ -437,7 +484,13 @@ export default function Landing() {
       'footer',
       { className: 'nx-footer' },
       h('strong', null, 'Nexxus'),
-      h('div', null, [t('landing.footer_product'), t('landing.footer_plans'), t('landing.footer_security'), t('landing.footer_contact'), t('landing.footer_privacy')].map((item) => h('button', { key: item, onClick: () => item === t('landing.footer_plans') ? scrollToId('planes') : scrollToId('hero') }, item))),
+      h('div', null,
+        h('button', { onClick: () => scrollToId('hero') }, t('landing.footer_product')),
+        h('button', { onClick: () => scrollToId('planes') }, t('landing.footer_plans')),
+        h('button', { onClick: () => goToLandingPath('/landing/seguridad') }, t('landing.footer_security')),
+        h('button', { onClick: () => scrollToId('hero') }, t('landing.footer_contact')),
+        h('button', { onClick: () => goToLandingPath('/landing/privacidad') }, t('landing.footer_privacy'))
+      ),
       h('div', { className: 'nx-lang-selector', style: { display: 'flex', gap: '8px', alignItems: 'center', marginTop: '12px' } },
         h('span', { style: { color: 'rgba(255,255,255,0.5)', fontSize: '12px' } }, t('common.language') + ':'),
         h('button', { 

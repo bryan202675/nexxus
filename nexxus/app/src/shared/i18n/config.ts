@@ -39,6 +39,59 @@ const EN_TRANSLATION_OVERRIDES: TranslationTree = {
     employee: 'Employee',
     general: 'General',
     pending: 'Pending',
+    type: 'Type',
+    priority_title: 'Priority',
+    priority: {
+      baja: 'Low',
+      media: 'Medium',
+      alta: 'High',
+      urgente: 'Urgent',
+      permiso: 'Permission',
+      licencia: 'License',
+      incapacidad: 'Incapacity',
+      vacaciones: 'Vacation'
+    },
+    close: 'Close',
+    reject: 'Reject',
+    approve: 'Approve',
+  },
+  solicitudesInternas: {
+    types: {
+      vacaciones: 'VACATION',
+      permiso: 'PERMISSION',
+      adelanto_salarial: 'SALARY ADVANCE',
+      soporte_tecnico: 'TECHNICAL SUPPORT',
+      compra_material: 'MATERIAL PURCHASE'
+    }
+  },
+  solicitudesAusencia: {
+    categories: {
+      vacaciones: 'Vacation',
+      enfermedad: 'Illness',
+      personal: 'Personal',
+      emergencia: 'Emergency',
+      capacitacion: 'Training'
+    }
+  },
+  admin: {
+    dashboard: {
+      approvals: {
+        title: 'Approvals',
+        subtitle: 'Absences and internal requests',
+        empty: 'No pending approvals',
+        absence_detail: 'Absence Details',
+        request_detail: 'Request Details',
+        modal_subtitle: 'Nexxus Approvals Center',
+        start_date: 'Start Date',
+        end_date: 'End Date',
+        amount: 'Amount',
+        reason_title: 'Reason and Request Details',
+        no_description: 'No detailed description provided.',
+        not_specified: 'Not specified',
+        emergency_contact: 'Emergency Contact',
+        attachment: 'Attachment',
+      }
+    }
   },
   app: {
     home: 'Home',

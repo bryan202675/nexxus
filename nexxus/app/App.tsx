@@ -6,8 +6,8 @@
  * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras Firebase al extender este archivo.
  */
 
-// Importa React, { useEffect, useRef } desde React; habilita componentes, hooks y tipos base para esta pieza.
-import React, { useEffect, useRef } from 'react';
+// Importa React, { useEffect, useRef, useState } desde React; habilita componentes, hooks y tipos base para esta pieza.
+import React, { useEffect, useRef, useState } from 'react';
 // Importa { View, Text, StatusBar, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
 import { View, Text, StatusBar, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 // Importa { NavigationContainer, useNavigation }; permite declarar navegacion, rutas y transiciones entre pantallas.
@@ -39,8 +39,8 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
   const style = document.createElement('style');
   // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
   style.textContent = `
-    html, body, #root { overscroll-behavior: none !important; }
-    * { -webkit-overflow-scrolling: auto !important; }
+    html, body, #root { overscroll-behavior-x: none !important; }
+    body { -webkit-overflow-scrolling: touch !important; touch-action: pan-y !important; }
   `;
   // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
   document.head.appendChild(style);
@@ -71,6 +71,8 @@ import CheckInDiario from './src/presentation/screens/CheckInDiario';
 import ControlAsistencia from './src/presentation/screens/ControlAsistencia';
 // Importa CentroTareas; conecta esta ruta o flujo con otra pantalla del modulo de presentacion.
 import CentroTareas from './src/presentation/screens/CentroTareas';
+// Importa MisTareas; conecta esta ruta o flujo con otra pantalla del modulo de presentacion.
+import MisTareas from './src/presentation/screens/MisTareas';
 // Importa SolicitudesAusencia; conecta esta ruta o flujo con otra pantalla del modulo de presentacion.
 import SolicitudesAusencia from './src/presentation/screens/SolicitudesAusencia';
 // Importa CentroDocumentos; conecta esta ruta o flujo con otra pantalla del modulo de presentacion.
@@ -97,6 +99,8 @@ import ReservaSesion from './src/presentation/screens/ReservaSesion';
 import ConfiguracionApp from './src/presentation/screens/ConfiguracionApp';
 // Importa CentroApoyo; conecta esta ruta o flujo con otra pantalla del modulo de presentacion.
 import CentroApoyo from './src/presentation/screens/CentroApoyo';
+// Importa CalendarioLaboral; conecta esta ruta o flujo con otra pantalla del modulo de presentacion.
+import CalendarioLaboral from './src/presentation/screens/CalendarioLaboral';
 
 // Sincronización de rutas: MiPerfil fue consolidado en PerfilLaboral
 // Admin
@@ -115,6 +119,10 @@ const Pila = createNativeStackNavigator();
  */
 const rutasLanding = ['/', '/landing', '/src/landing', '/src/landing/index', '/src/landing/index.tsx'];
 /**
+ * Declaracion rutasLandingInfo. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
+ */
+const rutasLandingInfo = ['/landing/seguridad', '/landing/privacidad'];
+/**
  * Declaracion rutasLandingAuth. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
  */
 const rutasLandingAuth = ['/landing/registro', '/landing/login', '/landing/crear-empresa', '/workspace-login'];
@@ -126,7 +134,7 @@ function esRutaLandingWeb() {
   // Devuelve el valor final calculado para esta funcion o caso de uso.
   return Platform.OS === 'web'
     && typeof window !== 'undefined'
-    && (rutasLanding.includes(window.location.pathname) || rutasLandingAuth.includes(window.location.pathname))
+    && (rutasLanding.includes(window.location.pathname) || rutasLandingAuth.includes(window.location.pathname) || rutasLandingInfo.includes(window.location.pathname))
     && window.location.pathname !== '/workspace-login';
 }
 
@@ -211,6 +219,8 @@ function EnrutadorPrincipal() {
       {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
       <Pila.Screen name="CentroTareas" component={CentroTareas} />
       {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+      <Pila.Screen name="MisTareas" component={MisTareas} />
+      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
       <Pila.Screen name="SolicitudesAusencia" component={SolicitudesAusencia} />
       {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
       <Pila.Screen name="CentroDocumentos" component={CentroDocumentos} />
@@ -235,6 +245,8 @@ function EnrutadorPrincipal() {
       {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
       <Pila.Screen name="CentroApoyo" component={CentroApoyo} />
       {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+      <Pila.Screen name="CalendarioLaboral" component={CalendarioLaboral} />
+      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
       <Pila.Screen name="PerfilLaboral" component={PerfilLaboral} />
       {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
       <Pila.Screen name="ConfiguracionApp" component={ConfiguracionApp} />
@@ -250,21 +262,48 @@ function EnrutadorPrincipal() {
  * Componente App. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 export default function App() {
+  const [rutaWebLanding, setRutaWebLanding] = useState(() => Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.pathname : '');
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const actualizarRuta = () => setRutaWebLanding(window.location.pathname);
+    window.addEventListener('popstate', actualizarRuta);
+    window.addEventListener('nexxus:navigate', actualizarRuta);
+    return () => {
+      window.removeEventListener('popstate', actualizarRuta);
+      window.removeEventListener('nexxus:navigate', actualizarRuta);
+    };
+  }, []);
+
   // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
   if (esRutaLandingWeb()) {
     // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
     try {
+      const DarkVeil = require('./src/Landing/DarkVeil').default;
+      let LandingSurface;
       // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-      if (typeof window !== 'undefined' && rutasLandingAuth.includes(window.location.pathname)) {
+      if (rutasLandingAuth.includes(rutaWebLanding)) {
         // Importa LandingAuthPage; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
-        const LandingAuthPage = require('./src/Landing/AuthPage').default;
-        // Devuelve el JSX que React Native renderiza en pantalla.
-        return <LandingAuthPage />;
+        LandingSurface = require('./src/Landing/AuthPage').default;
+      } else if (rutasLandingInfo.includes(rutaWebLanding)) {
+        // Importa PolicyPage; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
+        LandingSurface = require('./src/Landing/PolicyPage').default;
+      } else {
+        // Importa Landing; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
+        LandingSurface = require('./src/Landing/Index').default;
       }
-      // Importa Landing; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
-      const Landing = require('./src/Landing/Index').default;
       // Devuelve el JSX que React Native renderiza en pantalla.
-      return <Landing />;
+      return (
+        <>
+          <DarkVeil
+            noiseIntensity={0.015}
+            resolutionScale={0.72}
+            speed={0.38}
+            warpAmount={0.06}
+          />
+          <LandingSurface />
+        </>
+      );
     } catch (e) {
       // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
       console.error('[App] Error in Landing require:', e);

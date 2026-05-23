@@ -14,19 +14,21 @@ import { useApiTranslate } from '@/shared/i18n/useApiTranslate';
 import { Clipboard, Alert, Animated, Easing, Image, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Platform } from 'react-native';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
+import * as XLSX from 'xlsx';
+import { deleteObject, listAll, ref as storageRef } from 'firebase/storage';
 // Importa AdminModalBackdrop; velo difuminado reutilizable para formularios modales.
 import { AdminModal } from './AdminModal';
 import { AdminModalFormGlass } from './AdminModalFormGlass';
 // Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import { LinearGradient } from 'expo-linear-gradient';
 // Importa { addDoc, collection, doc, getDocs, onSnapshot, query, updateDoc, where } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
-import { addDoc, collection, doc, getDocs, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
+import { addDoc, collection, doc, getDocs, onSnapshot, query, setDoc, updateDoc, where } from 'firebase/firestore';
 // Importa { httpsCallable } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
 import { httpsCallable } from 'firebase/functions';
 // Importa { useCases } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
 import { useCases } from '@/infrastructure/firebase/container';
 // Importa { db, functions } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
-import { db, functions } from '@/infrastructure/firebase/firebaseConfig';
+import { db, functions, storage } from '@/infrastructure/firebase/firebaseConfig';
 // Importa { useAuth }; reutiliza hooks propios que encapsulan estado, auth o consultas.
 import { useAuth } from '@/presentation/hooks/useAuth';
 // Importa { obtenerEmpresaIdAdmin }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
@@ -71,6 +73,7 @@ type UsuarioPlantilla = {
   id?: string;
   nombre?: string;
   correo?: string;
+  usuarioInterno?: string;
   rol?: string;
   cargoId?: string;
   cargo?: string;
@@ -111,9 +114,55 @@ type DepartamentoCatalogo = {
 type SedeCatalogo = {
   id?: string;
   nombre?: string;
+  codigo?: string;
   ciudad?: string;
+  activo?: boolean;
   activa?: boolean;
   empresaId?: string;
+};
+
+type FilaImportacionEmpleado = {
+  nombre_completo: string;
+  usuario: string;
+  password: string;
+  cargo: string;
+  departamento: string;
+  sede: string;
+  telefono: string;
+  salario_base: string;
+  rol_operativo: string;
+  jefe_usuario: string;
+};
+
+type ErrorImportacionEmpleado = {
+  fila: number;
+  nombre: string;
+  usuario: string;
+  error: string;
+};
+
+type FilaValidaImportacion = FilaImportacionEmpleado & {
+  fila: number;
+  usuarioNormalizado: string;
+  salarioBaseNumero: number;
+  sede: SedeCatalogo;
+  jefe?: UsuarioPlantilla | null;
+  jefeUsuarioNormalizado?: string;
+  departamentoId?: string;
+  cargoId?: string;
+};
+
+type PreviewImportacionEmpleados = {
+  total: number;
+  validas: FilaValidaImportacion[];
+  errores: ErrorImportacionEmpleado[];
+  archivo: string;
+};
+
+type ConfirmacionEliminacion = {
+  titulo: string;
+  mensaje: string;
+  confirmar: () => Promise<void>;
 };
 
 /**
@@ -164,6 +213,14 @@ type CheckInPlantilla = {
   energia?: string;
   empresaId?: string;
   empresa_id?: string;
+};
+
+type AsistenciaPlantilla = {
+  id?: string;
+  userId?: string;
+  empresaId?: string;
+  tipo?: 'entrada' | 'salida' | 'inicio_pausa' | 'fin_pausa';
+  timestamp?: any;
 };
 
 /**
@@ -285,6 +342,62 @@ const porcentaje = (valor: number, total: number) => total > 0 ? Math.round((val
  * Declaracion normalizarSalarioUSD. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
  */
 const normalizarSalarioUSD = (valor: string) => valor.replace(/[^\d.,]/g, '').split(/[.,]/)[0].replace(/\D/g, '');
+const COLUMNAS_IMPORTACION_EMPLEADOS = ['nombre_completo', 'usuario', 'password', 'cargo', 'departamento', 'sede', 'telefono', 'salario_base', 'rol_operativo', 'jefe_usuario'];
+const EJEMPLO_IMPORTACION_EMPLEADOS_BASE = ['Juan Pérez', 'juan.perez', '123456', 'EMPLEADO', 'GENERAL', '', '+50377777777', '365', 'EMPLEADO', 'SIN_JEFE'];
+const normalizarCodigoImportacion = (valor: any) => String(valor || '').trim().toUpperCase();
+const normalizarUsuarioImportacion = (valor: any) => String(valor || '').trim().toLowerCase();
+const normalizarCatalogoImportacion = (valor: any) => String(valor || '').trim().toLowerCase();
+const escaparCsv = (valor: any) => `"${String(valor ?? '').replace(/"/g, '""')}"`;
+const crearPasswordTemporalImportacion = () => `Nx${Math.random().toString(36).slice(2, 8)}${Date.now().toString(36).slice(-4)}`;
+const crearCsvPlantillaEmpleados = (sedes: SedeCatalogo[] = []) => {
+  const sedesActivas = sedes.filter((sede) => sede.id !== 'global' && sede.nombre && sede.activo !== false && sede.activa !== false);
+  const filas = sedesActivas.length
+    ? sedesActivas.map((sede, indice) => {
+      const usuario = (sede.nombre || `sede_${indice + 1}`).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '.').replace(/[^a-zA-Z0-9._-]/g, '').toLowerCase();
+      return [`Empleado ${indice + 1}`, `empleado.${usuario || indice + 1}`, '123456', 'EMPLEADO', 'GENERAL', sede.nombre || '', '+50377777777', '365', 'EMPLEADO', 'SIN_JEFE'];
+    })
+    : [EJEMPLO_IMPORTACION_EMPLEADOS_BASE.map((valor, indice) => indice === 5 ? 'SEDE_CENTRAL' : valor)];
+  return [
+    COLUMNAS_IMPORTACION_EMPLEADOS.join(','),
+    ...filas.map((fila) => fila.map(escaparCsv).join(',')),
+  ].join('\n');
+};
+const parsearCsvPlantillaEmpleados = (contenido: string) => {
+  const filas: string[][] = [];
+  let celda = '';
+  let fila: string[] = [];
+  let entreComillas = false;
+  for (let i = 0; i < contenido.length; i++) {
+    const char = contenido[i];
+    const siguiente = contenido[i + 1];
+    if (char === '"' && entreComillas && siguiente === '"') {
+      celda += '"';
+      i++;
+    } else if (char === '"') {
+      entreComillas = !entreComillas;
+    } else if (char === ',' && !entreComillas) {
+      fila.push(celda);
+      celda = '';
+    } else if ((char === '\n' || char === '\r') && !entreComillas) {
+      if (char === '\r' && siguiente === '\n') i++;
+      fila.push(celda);
+      if (fila.some((valor) => valor.trim())) filas.push(fila);
+      fila = [];
+      celda = '';
+    } else {
+      celda += char;
+    }
+  }
+  fila.push(celda);
+  if (fila.some((valor) => valor.trim())) filas.push(fila);
+  const encabezados = (filas.shift() || []).map((valor) => normalizarCodigoImportacion(valor).toLowerCase());
+  return filas.map((valores) => Object.fromEntries(COLUMNAS_IMPORTACION_EMPLEADOS.map((columna) => {
+    const indice = columna === 'sede'
+      ? [encabezados.indexOf('sede'), encabezados.indexOf('sede_nombre'), encabezados.indexOf('sede_codigo')].find((valor) => valor >= 0) ?? -1
+      : encabezados.indexOf(columna);
+    return [columna, indice >= 0 ? String(valores[indice] || '').trim() : ''];
+  })) as FilaImportacionEmpleado);
+};
 /**
  * Declaracion conTiempoLimite. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
  */
@@ -508,6 +621,8 @@ export default function GestionPlantilla() {
   const subtitlePlantilla = useApiTranslate('Colaboradores, roles, sedes y asignación de tareas');
   const btnExportData = useApiTranslate('Exportar Datos');
   const btnNewEmployee = useApiTranslate('Nuevo empleado');
+  const btnImportEmployees = useApiTranslate('Importar empleados');
+  const btnDownloadTemplate = useApiTranslate('Descargar plantilla');
 
   // Tarjeta de Clave de Acceso
   const keyCardTitle = useApiTranslate('CÓDIGO DE ACCESO DE LA EMPRESA');
@@ -585,6 +700,16 @@ export default function GestionPlantilla() {
   const btnSaving = useApiTranslate('Guardando...');
   const btnSave = useApiTranslate('Guardar');
   const btnSaveChanges = useApiTranslate('Guardar cambios');
+  const modalImportTitle = useApiTranslate('Importación masiva');
+  const modalImportSubtitle = useApiTranslate('Carga una plantilla CSV o XLSX y revisa los errores antes de guardar.');
+  const labelRowsRead = useApiTranslate('Filas leídas');
+  const labelValidEmployees = useApiTranslate('Empleados válidos');
+  const labelRowsWithErrors = useApiTranslate('Filas con errores');
+  const labelImportErrors = useApiTranslate('Errores detectados');
+  const labelNoImportErrors = useApiTranslate('No hay errores. Puedes confirmar la importación.');
+  const btnConfirmImport = useApiTranslate('Confirmar importación');
+  const btnProcessing = useApiTranslate('Procesando...');
+  const btnImporting = useApiTranslate('Importando...');
 
   // Modal de Asignación de Tareas
   const modalTaskTitle = useApiTranslate('Asignar Nueva Tarea');
@@ -636,6 +761,10 @@ export default function GestionPlantilla() {
   const toastEmpAddedDesc = useApiTranslate('Se ha añadido un empleado correctamente.');
   const toastEmpUpdatedTitle = useApiTranslate('Empleado actualizado');
   const toastEmpUpdatedDesc = useApiTranslate('Los cambios del empleado se guardaron correctamente.');
+  const toastImportProcessedTitle = useApiTranslate('Archivo procesado correctamente');
+  const toastImportErrorsTitle = useApiTranslate('Hay errores en algunas filas');
+  const toastImportDoneTitle = useApiTranslate('Importación completada');
+  const toastImportCriticalTitle = useApiTranslate('No se importaron empleados porque hay errores críticos');
   const toastSaveErrorTitle = useApiTranslate('No se pudo guardar');
   const toastSaveErrorDescBase = useApiTranslate('{error} Detalle técnico: {code}');
   const toastNoDestTitle = useApiTranslate('Sin destinatarios');
@@ -684,6 +813,7 @@ export default function GestionPlantilla() {
   const [tareas, setTareas] = useState<TareaPlantilla[]>([]);
   // Inicializa [checkIns, setCheckIns]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [checkIns, setCheckIns] = useState<CheckInPlantilla[]>([]);
+  const [asistencias, setAsistencias] = useState<AsistenciaPlantilla[]>([]);
   // Inicializa [ausencias, setAusencias]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [ausencias, setAusencias] = useState<AusenciaPlantilla[]>([]);
   // Inicializa [departamentosCatalogo, setDepartamentosCatalogo]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -712,6 +842,10 @@ export default function GestionPlantilla() {
   const [modalVisible, setModalVisible] = useState(false);
   // Inicializa [modalTareaVisible, setModalTareaVisible]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [modalTareaVisible, setModalTareaVisible] = useState(false);
+  const [modalImportVisible, setModalImportVisible] = useState(false);
+  const [confirmacionEliminacion, setConfirmacionEliminacion] = useState<ConfirmacionEliminacion | null>(null);
+  const [previewImportacion, setPreviewImportacion] = useState<PreviewImportacionEmpleados | null>(null);
+  const [importando, setImportando] = useState(false);
   // Inicializa [alcanceTarea, setAlcanceTarea]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [alcanceTarea, setAlcanceTarea] = useState<AlcanceTarea>('individual');
   // Inicializa [formularioTarea, setFormularioTarea]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -726,6 +860,7 @@ export default function GestionPlantilla() {
   const [guardando, setGuardando] = useState(false);
   // Inicializa [selectorActivo, setSelectorActivo]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [selectorActivo, setSelectorActivo] = useState<SelectorActivo>(null);
+  const [empleadosSeleccionados, setEmpleadosSeleccionados] = useState<string[]>([]);
   // Inicializa entrada; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const entrada = useRef(new Animated.Value(0)).current;
 
@@ -759,6 +894,7 @@ export default function GestionPlantilla() {
       setTareas([]);
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setCheckIns([]);
+      setAsistencias([]);
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setAusencias([]);
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
@@ -782,7 +918,7 @@ export default function GestionPlantilla() {
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       cargadas.add(clave);
       // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-      if (cargadas.size >= 8) setCargando(false);
+      if (cargadas.size >= 9) setCargando(false);
     };
 
     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
@@ -817,6 +953,7 @@ export default function GestionPlantilla() {
 
     // Declara unsubTareas; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const unsubTareas = crearListener<TareaPlantilla>('tareas', 'tareas', setTareas);
+    const unsubAsistencias = crearListener<AsistenciaPlantilla>('asistencias', 'asistencias', setAsistencias);
     // Declara mapasCheckIns; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const mapasCheckIns = new Map<string, Map<string, CheckInPlantilla>>();
     // Declara publicarCheckIns; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -996,6 +1133,7 @@ export default function GestionPlantilla() {
       unsubUsuarios();
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       unsubTareas();
+      unsubAsistencias();
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       unsubCheckIns.forEach((unsubscribe) => unsubscribe());
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
@@ -1012,6 +1150,45 @@ export default function GestionPlantilla() {
       unsubEmpresa();
     };
   }, [user]);
+
+  const esPropietarioEmpresa = (empleado?: UsuarioPlantilla | null) => {
+    if (!empleado?.id) return false;
+    return empleado.id === empresa?.adminId
+      || empleado.id === empresa?.propietarioId
+      || empleado.id === empresa?.ownerId
+      || empleado.rol === 'propietario';
+  };
+
+  const puedeGestionarEmpleado = (empleado?: UsuarioPlantilla | null) => !!empleado?.id && !esPropietarioEmpresa(empleado);
+
+  const estaTrabajandoPorAsistencia = (empleado?: UsuarioPlantilla | null) => {
+    if (!empleado?.id) return false;
+    const ultima = asistencias
+      .filter((asistencia) => asistencia.userId === empleado.id)
+      .sort((a, b) => (obtenerFecha(b.timestamp)?.getTime() || 0) - (obtenerFecha(a.timestamp)?.getTime() || 0))[0];
+    return ultima?.tipo === 'entrada' || ultima?.tipo === 'fin_pausa';
+  };
+
+  useEffect(() => {
+    const sincronizarEstadoAsistencia = async () => {
+      const empresaId = obtenerEmpresaIdAdmin(user);
+      if (!empresaId || !empresa || usuarios.length === 0) return;
+      const cambios = usuarios
+        .filter((empleado) => puedeGestionarEmpleado(empleado) && empleado.eliminado !== true)
+        .map((empleado) => ({ empleado, trabajando: estaTrabajandoPorAsistencia(empleado) }))
+        .filter(({ empleado, trabajando }) => empleado.estado_activo !== trabajando);
+      if (cambios.length === 0) return;
+      try {
+        await Promise.all(cambios.map(({ empleado, trabajando }) => updateDoc(doc(db, 'usuarios', empleado.id as string), {
+          estado_activo: trabajando,
+          ultimoEstadoAsistenciaSync: new Date().toISOString(),
+        })));
+      } catch (error) {
+        console.error('[GestionPlantilla] No se pudo sincronizar estado por asistencia:', error);
+      }
+    };
+    sincronizarEstadoAsistencia();
+  }, [usuarios, asistencias, empresa, user]);
 
   // Inicializa catalogos; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const catalogos = useMemo(() => {
@@ -1113,8 +1290,392 @@ export default function GestionPlantilla() {
     setFormularioTarea((actual) => ({ ...actual, [campo]: valor }));
   };
 
+  const obtenerUsuarioImportacion = (empleado: UsuarioPlantilla) => (
+    empleado.usuarioInterno || (empleado as any).usuario || String(empleado.correo || '').split('@')[0] || ''
+  ).trim().toLowerCase();
+
+  const leerArchivoImportacion = async (archivo: File): Promise<FilaImportacionEmpleado[]> => {
+    const nombre = archivo.name.toLowerCase();
+    if (nombre.endsWith('.xlsx') || nombre.endsWith('.xls')) {
+      const buffer = await archivo.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: 'array' });
+      const hoja = workbook.Sheets[workbook.SheetNames[0]];
+      const datos = XLSX.utils.sheet_to_json<Record<string, any>>(hoja, { defval: '' });
+      return datos.map((fila) => Object.fromEntries(COLUMNAS_IMPORTACION_EMPLEADOS.map((columna) => [
+        columna,
+        String(columna === 'sede' ? (fila.sede || fila.sede_nombre || fila.sede_codigo || '') : (fila[columna] || '')).trim(),
+      ])) as FilaImportacionEmpleado);
+    }
+    return parsearCsvPlantillaEmpleados(await archivo.text());
+  };
+
+  const descargarPlantillaImportacion = () => {
+    const contenido = crearCsvPlantillaEmpleados(sedesCatalogo);
+    if (Platform.OS !== 'web') {
+      Clipboard.setString(contenido);
+      toast.info({ title: btnDownloadTemplate, description: 'La plantilla CSV fue copiada al portapapeles.' });
+      return;
+    }
+    const blob = new Blob(["\uFEFF" + contenido], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'plantilla_importacion_empleados.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const validarFilasImportacion = async (filas: FilaImportacionEmpleado[], archivo: string): Promise<PreviewImportacionEmpleados> => {
+    const empresaId = obtenerEmpresaIdAdmin(user);
+    if (!empresaId) throw new Error(toastSessionErrorDesc);
+
+    const [usuariosSnap, sedesSnap] = await Promise.all([
+      getDocs(query(collection(db, 'usuarios'), where('empresaId', '==', empresaId))),
+      getDocs(query(collection(db, 'sedes'), where('empresaId', '==', empresaId))),
+    ]);
+
+    const usuariosFirestore = usuariosSnap.docs.map((documento) => ({ id: documento.id, ...documento.data() } as UsuarioPlantilla));
+    const usuariosPorUsuario = new Map<string, UsuarioPlantilla>();
+    usuariosFirestore.forEach((empleado) => {
+      const usuarioEmpleado = obtenerUsuarioImportacion(empleado);
+      if (usuarioEmpleado) usuariosPorUsuario.set(usuarioEmpleado, empleado);
+    });
+
+    const sedesPorNombreExacto = new Map<string, SedeCatalogo>();
+    const sedesPorNombreNormalizado = new Map<string, SedeCatalogo>();
+    sedesSnap.docs.forEach((documento) => {
+      const sede = { id: documento.id, ...documento.data() } as SedeCatalogo;
+      const nombreExacto = String(sede.nombre || '').trim();
+      const activa = sede.activo !== false && sede.activa !== false;
+      if (nombreExacto && activa) {
+        sedesPorNombreExacto.set(nombreExacto, sede);
+        sedesPorNombreNormalizado.set(nombreExacto.toLowerCase(), sede);
+      }
+    });
+
+    const conteoArchivo = new Map<string, number>();
+    filas.forEach((fila) => {
+      const usuarioFila = normalizarUsuarioImportacion(fila.usuario);
+      if (usuarioFila) conteoArchivo.set(usuarioFila, (conteoArchivo.get(usuarioFila) || 0) + 1);
+    });
+
+    const errores: ErrorImportacionEmpleado[] = [];
+    const validas: FilaValidaImportacion[] = [];
+    const obligatorios: (keyof FilaImportacionEmpleado)[] = ['nombre_completo', 'usuario', 'password', 'cargo', 'departamento', 'sede', 'rol_operativo'];
+
+    filas.forEach((fila, indice) => {
+      const filaNumero = indice + 2;
+      const usuarioNormalizado = normalizarUsuarioImportacion(fila.usuario);
+      const erroresFila: string[] = [];
+      obligatorios.forEach((campo) => {
+        if (!String(fila[campo] || '').trim()) erroresFila.push(`${campo} es obligatorio`);
+      });
+      if (usuarioNormalizado && (conteoArchivo.get(usuarioNormalizado) || 0) > 1) erroresFila.push(`usuario "${usuarioNormalizado}" está repetido en el archivo`);
+      if (usuarioNormalizado && usuariosPorUsuario.has(usuarioNormalizado)) erroresFila.push(`usuario "${usuarioNormalizado}" ya existe en Firestore`);
+      if (String(fila.password || '').trim().length < 6) erroresFila.push('password debe tener mínimo 6 caracteres');
+
+      const salarioTexto = String(fila.salario_base || '').trim();
+      const salarioBaseNumero = salarioTexto ? Number(salarioTexto.replace(',', '.')) : 0;
+      if (salarioTexto && !Number.isFinite(salarioBaseNumero)) erroresFila.push('salario_base debe ser número');
+
+      const sedeNombre = String(fila.sede || '').trim();
+      const sede = sedesPorNombreExacto.get(sedeNombre) || sedesPorNombreNormalizado.get(sedeNombre.toLowerCase());
+      if (!sede) erroresFila.push(`sede "${sedeNombre}" no existe en Firestore. Debe coincidir con el nombre de una sede creada.`);
+
+      const jefeUsuario = normalizarUsuarioImportacion(fila.jefe_usuario || 'SIN_JEFE');
+      const sinJefe = !jefeUsuario || jefeUsuario === 'sin_jefe';
+      const jefe = sinJefe ? null : usuariosPorUsuario.get(jefeUsuario);
+
+      if (erroresFila.length > 0 || !sede) {
+        errores.push({ fila: filaNumero, nombre: fila.nombre_completo || '', usuario: fila.usuario || '', error: erroresFila.join('. ') });
+        return;
+      }
+
+      validas.push({ ...fila, fila: filaNumero, usuarioNormalizado, salarioBaseNumero, sede, jefe, jefeUsuarioNormalizado: sinJefe ? '' : jefeUsuario });
+    });
+
+    return { total: filas.length, validas, errores, archivo };
+  };
+
+  const procesarArchivoImportacion = async (archivo: File) => {
+    setImportando(true);
+    try {
+      const filas = await leerArchivoImportacion(archivo);
+      const preview = await validarFilasImportacion(filas, archivo.name);
+      setPreviewImportacion(preview);
+      setModalImportVisible(true);
+      toast[preview.errores.length ? 'warning' : 'success']({
+        title: preview.errores.length ? toastImportErrorsTitle : toastImportProcessedTitle,
+        description: `${preview.total} filas leídas · ${preview.validas.length} válidas · ${preview.errores.length} con errores`,
+      });
+    } catch (error: any) {
+      toast.error({ title: toastImportCriticalTitle, description: error?.message || toastErrorMsg });
+    } finally {
+      setImportando(false);
+    }
+  };
+
+  const abrirSelectorImportacion = () => {
+    if (Platform.OS !== 'web') {
+      toast.warning({ title: btnImportEmployees, description: 'La carga de archivos está disponible desde el panel web.' });
+      return;
+    }
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel';
+    input.onchange = () => {
+      const archivo = input.files?.[0];
+      if (archivo) procesarArchivoImportacion(archivo);
+    };
+    input.click();
+  };
+
+  const crearPayloadImportacion = (fila: FilaValidaImportacion, empresaId: string, codigoEmpresa: string) => {
+    const rolOriginal = fila.rol_operativo.trim();
+    const rolBase = rolOriginal.toLowerCase();
+    const modulosRol = rolBase === 'admin'
+      ? ['admin', 'dashboard', 'plantilla', 'estructura', 'nomina', 'mensajeria', 'auditoria', 'aprobaciones', 'documentos', 'analytics', 'configuracion']
+      : rolBase === 'jefe'
+        ? ['equipo', 'tareas', 'aprobaciones', 'mensajeria']
+        : ['empleado'];
+    const fecha = new Date().toISOString();
+    return {
+      nombre: fila.nombre_completo.trim(),
+      nombreCompleto: fila.nombre_completo.trim(),
+      usuarioInterno: fila.usuarioNormalizado,
+      codigoEmpresa,
+      passwordInicial: fila.password.trim(),
+      passwordInterno: fila.password.trim(),
+      rol: ['admin', 'jefe', 'empleado'].includes(rolBase) ? rolBase : rolOriginal,
+      rolOperativo: rolOriginal,
+      cargo: fila.cargo.trim(),
+      departamento: fila.departamento.trim(),
+      cargoId: fila.cargoId || '',
+      departamentoId: fila.departamentoId || '',
+      sedeId: fila.sede.id || '',
+      sede: fila.sede.nombre || '',
+      sedeNombre: fila.sede.nombre || '',
+      telefono: fila.telefono.trim(),
+      salarioBase: fila.salarioBaseNumero,
+      jefeId: fila.jefe?.id || null,
+      jefeNombre: fila.jefe?.nombre || '',
+      activo: true,
+      estado_activo: true,
+      eliminado: false,
+      permisos: { modulos: modulosRol, sedes: fila.sede.id ? [fila.sede.id] : [] },
+      empresaId,
+      empresa_id: empresaId,
+      creadoEn: fecha,
+      createdAt: fecha,
+      creadoPor: user?.id || user?.correo || '',
+      estado_onboarding: 'pendiente',
+      metodoCreacion: 'importacion_masiva',
+      fecha_actualizacion: fecha,
+    };
+  };
+
+  const asegurarCatalogosImportacion = async (filas: FilaValidaImportacion[], empresaId: string) => {
+    const [departamentosSnap, cargosSnap, rolesSnap] = await Promise.all([
+      getDocs(query(collection(db, 'departments'), where('empresaId', '==', empresaId))),
+      getDocs(query(collection(db, 'cargos'), where('empresaId', '==', empresaId))),
+      getDocs(query(collection(db, 'roles_personalizados'), where('empresaId', '==', empresaId))),
+    ]);
+
+    const departamentosPorNombre = new Map<string, any>();
+    departamentosSnap.docs.forEach((documento) => {
+      const data = { id: documento.id, ...documento.data() } as any;
+      if (data.nombre) departamentosPorNombre.set(normalizarCatalogoImportacion(data.nombre), data);
+    });
+
+    const cargosPorNombreDepto = new Map<string, any>();
+    cargosSnap.docs.forEach((documento) => {
+      const data = { id: documento.id, ...documento.data() } as any;
+      if (data.nombre) cargosPorNombreDepto.set(`${normalizarCatalogoImportacion(data.nombre)}::${data.departamentoId || ''}`, data);
+    });
+
+    const rolesPorNombre = new Map<string, any>();
+    rolesSnap.docs.forEach((documento) => {
+      const data = { id: documento.id, ...documento.data() } as any;
+      if (data.nombre) rolesPorNombre.set(normalizarCatalogoImportacion(data.nombre), data);
+    });
+
+    for (const fila of filas) {
+      const fecha = new Date().toISOString();
+      const departamentoNombre = fila.departamento.trim();
+      const departamentoKey = normalizarCatalogoImportacion(departamentoNombre);
+      let departamento = departamentosPorNombre.get(departamentoKey);
+      if (!departamento) {
+        const id = doc(collection(db, 'departments')).id;
+        departamento = {
+          id,
+          empresaId,
+          nombre: departamentoNombre,
+          sedeId: fila.sede.id || '',
+          sedeNombre: fila.sede.nombre || '',
+          jefeId: '',
+          jefeNombre: '',
+          empleadosCount: 0,
+          sectores: [],
+          createdAt: fecha,
+          updatedAt: fecha,
+          creadoPor: user?.id || user?.correo || '',
+        };
+        await setDoc(doc(db, 'departments', id), departamento, { merge: true });
+        departamentosPorNombre.set(departamentoKey, departamento);
+      }
+      fila.departamentoId = departamento.id;
+
+      const cargoNombre = fila.cargo.trim();
+      const cargoKey = `${normalizarCatalogoImportacion(cargoNombre)}::${departamento.id || ''}`;
+      let cargo = cargosPorNombreDepto.get(cargoKey);
+      if (!cargo) {
+        const id = doc(collection(db, 'cargos')).id;
+        cargo = {
+          id,
+          empresaId,
+          nombre: cargoNombre,
+          departamentoId: departamento.id || '',
+          departamentoNombre: departamento.nombre || departamentoNombre,
+          nivel: '',
+          descripcion: 'Creado automáticamente desde importación masiva.',
+          activo: true,
+          createdAt: fecha,
+          updatedAt: fecha,
+          creadoPor: user?.id || user?.correo || '',
+        };
+        await setDoc(doc(db, 'cargos', id), cargo, { merge: true });
+        cargosPorNombreDepto.set(cargoKey, cargo);
+      }
+      fila.cargoId = cargo.id;
+
+      const rol = fila.rol_operativo.trim();
+      const rolKey = normalizarCatalogoImportacion(rol);
+      if (rol && !['admin', 'jefe', 'empleado'].includes(rolKey) && !rolesPorNombre.has(rolKey)) {
+        const id = doc(collection(db, 'roles_personalizados')).id;
+        const rolPayload = {
+          id,
+          empresaId,
+          nombre: rol,
+          descripcion: 'Creado automáticamente desde importación masiva.',
+          permisos: { empleado: true },
+          activo: true,
+          createdAt: fecha,
+          updatedAt: fecha,
+          creadoPor: user?.id || user?.correo || '',
+        };
+        await setDoc(doc(db, 'roles_personalizados', id), rolPayload, { merge: true });
+        rolesPorNombre.set(rolKey, rolPayload);
+      }
+    }
+  };
+
+  const confirmarImportacion = async () => {
+    const empresaId = obtenerEmpresaIdAdmin(user);
+    if (!previewImportacion || !empresaId || importando) return;
+    if (previewImportacion.validas.length === 0) {
+      toast.error({ title: toastImportCriticalTitle, description: 'No hay filas válidas para guardar.' });
+      return;
+    }
+
+    setImportando(true);
+    const crearUsuarioEmpresa = httpsCallable(functions, 'crearUsuarioEmpresa');
+    const codigoEmpresa = (empresa?.codigo || empresa?.nombre_normalizado || 'EMPRESA').toUpperCase();
+    const creados: string[] = [];
+    try {
+      const filasPorUsuario = new Map(previewImportacion.validas.map((fila) => [fila.usuarioNormalizado, fila]));
+      const filasParaCrear: FilaValidaImportacion[] = [...previewImportacion.validas];
+      const usuariosCreados = new Map<string, UsuarioPlantilla>();
+
+      previewImportacion.validas.forEach((fila) => {
+        const jefeUsuario = fila.jefeUsuarioNormalizado;
+        if (!jefeUsuario || fila.jefe) return;
+        const jefeEnArchivo = filasPorUsuario.get(jefeUsuario);
+        if (jefeEnArchivo) {
+          jefeEnArchivo.rol_operativo = 'jefe';
+          return;
+        }
+        if (filasPorUsuario.has(jefeUsuario)) return;
+        const filaJefe: FilaValidaImportacion = {
+          nombre_completo: fila.jefe_usuario.trim(),
+          usuario: jefeUsuario,
+          password: crearPasswordTemporalImportacion(),
+          cargo: 'Jefe',
+          departamento: fila.departamento,
+          telefono: '',
+          salario_base: '0',
+          rol_operativo: 'jefe',
+          jefe_usuario: 'SIN_JEFE',
+          fila: 0,
+          usuarioNormalizado: jefeUsuario,
+          salarioBaseNumero: 0,
+          sede: fila.sede,
+          jefe: null,
+          jefeUsuarioNormalizado: '',
+        };
+        filasPorUsuario.set(jefeUsuario, filaJefe);
+        filasParaCrear.unshift(filaJefe);
+      });
+
+      await asegurarCatalogosImportacion(filasParaCrear, empresaId);
+
+      const pendientes = [...filasParaCrear];
+      while (pendientes.length > 0) {
+        const indice = pendientes.findIndex((fila) => {
+          if (!fila.jefeUsuarioNormalizado || fila.jefe) return true;
+          return usuariosCreados.has(fila.jefeUsuarioNormalizado) || !filasPorUsuario.has(fila.jefeUsuarioNormalizado);
+        });
+        if (indice < 0) throw new Error('No se pudo resolver la jerarquía de jefes. Revisa referencias circulares en jefe_usuario.');
+        const [fila] = pendientes.splice(indice, 1);
+        if (fila.jefeUsuarioNormalizado && !fila.jefe) {
+          fila.jefe = usuariosCreados.get(fila.jefeUsuarioNormalizado) || null;
+        }
+        const payload = crearPayloadImportacion(fila, empresaId, codigoEmpresa);
+        const correoInterno = `${fila.usuarioNormalizado}@${codigoEmpresa.toLowerCase()}.nexxus`;
+        const resultado = await conTiempoLimite(crearUsuarioEmpresa({
+          nombre: payload.nombre,
+          correo: correoInterno,
+          contrasena: fila.password.trim(),
+          rol: payload.rol,
+          departamento_id: payload.departamento,
+          empleado: { ...payload, correo: correoInterno },
+        }));
+        const uid = (resultado.data as { uid?: string })?.uid;
+        if (!uid) throw new Error(`Firebase no devolvió ID para la fila ${fila.fila}.`);
+        await updateDoc(doc(db, 'usuarios', uid), { ...payload, id: uid, correo: correoInterno });
+        usuariosCreados.set(fila.usuarioNormalizado, { id: uid, nombre: payload.nombre, usuarioInterno: fila.usuarioNormalizado, correo: correoInterno, rol: payload.rol });
+        creados.push(uid);
+      }
+
+      const verificacionSnap = await getDocs(query(collection(db, 'usuarios'), where('empresaId', '==', empresaId)));
+      const docsCreados = verificacionSnap.docs
+        .map((documento) => ({ id: documento.id, ...documento.data() } as UsuarioPlantilla))
+        .filter((empleado) => creados.includes(empleado.id || ''));
+      const usuariosUnicos = new Set(docsCreados.map((empleado) => obtenerUsuarioImportacion(empleado)));
+      const sedesValidas = new Set(previewImportacion.validas.map((fila) => fila.sede.id));
+      const verificacionOk = docsCreados.length === creados.length
+        && usuariosUnicos.size === creados.length
+        && docsCreados.every((empleado) => empleado.sedeId && sedesValidas.has(empleado.sedeId));
+      if (!verificacionOk) throw new Error('La verificación final no confirmó todos los empleados importados.');
+
+      await registrarAuditoria('Importación masiva de empleados', `${creados.length} empleados importados desde ${previewImportacion.archivo}`);
+      toast.success({ title: toastImportDoneTitle, description: `${creados.length} empleados importados y verificados.` });
+      setModalImportVisible(false);
+      setPreviewImportacion(null);
+    } catch (error: any) {
+      toast.error({ title: toastSaveErrorTitle, description: error?.message || toastErrorMsg });
+      try {
+        await registrarAuditoria('Error de importación masiva', error?.message || 'Error', 'Error');
+      } catch {}
+    } finally {
+      setImportando(false);
+    }
+  };
+
   // Declara abrirAsignarTarea; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const abrirAsignarTarea = (alcance: AlcanceTarea = 'individual', usuario?: UsuarioPlantilla) => {
+    if (usuario && !puedeGestionarEmpleado(usuario)) return;
     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setAlcanceTarea(alcance);
     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
@@ -1146,6 +1707,7 @@ export default function GestionPlantilla() {
 
   // Declara abrirEditar; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const abrirEditar = (empleado: UsuarioPlantilla) => {
+    if (!puedeGestionarEmpleado(empleado)) return;
     // Declara cargo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const cargo = cargosCatalogo.find((item) => item.id === empleado.cargoId || item.nombre === empleado.cargo);
     // Declara departamento; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -1350,7 +1912,7 @@ export default function GestionPlantilla() {
   const sedesResumen = useMemo(() => {
     // Declara sedesBase; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const sedesBase = catalogos.sedes.length > 0
-      ? catalogos.sedes
+      ? catalogos.sedes.filter((sede) => sede.id !== 'global')
       : [{ id: 'sin-sede', nombre: 'Plantilla', detalle: 'Sede principal' }];
     // Devuelve el valor final calculado para esta funcion o caso de uso.
     return sedesBase.map((sede) => {
@@ -1604,7 +2166,7 @@ export default function GestionPlantilla() {
       // Declara activo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const activo = usuario.activo !== false && usuario.estado_activo !== false;
       // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-      if (!activo || !usuario.id) return false;
+      if (!activo || !usuario.id || !puedeGestionarEmpleado(usuario)) return false;
       // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (alcanceTarea === 'individual') return usuario.id === formularioTarea.usuarioId;
       // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
@@ -1671,10 +2233,11 @@ export default function GestionPlantilla() {
     if (!id) return;
     // Declara empleado; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const empleado = usuarios.find((usuario) => usuario.id === id);
+    if (!puedeGestionarEmpleado(empleado)) return;
     // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
     try {
       // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-      await useCases.admin.updateUserProfile.execute(id, { activo });
+      await useCases.admin.updateUserProfile.execute(id, { activo, estado_activo: activo ? empleado?.estado_activo !== false : false });
       // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
       await registrarAuditoria(activo ? 'Activación de Empleado' : 'Desactivación de Empleado', empleado?.nombre || id);
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
@@ -1688,35 +2251,148 @@ export default function GestionPlantilla() {
     }
   };
 
+  const eliminarCarpetaStorage = async (ruta: string) => {
+    try {
+      const listado = await listAll(storageRef(storage, ruta));
+      await Promise.all([
+        ...listado.items.map((item) => deleteObject(item).catch((error: any) => {
+          if (error?.code !== 'storage/object-not-found') throw error;
+        })),
+        ...listado.prefixes.map((prefijo) => eliminarCarpetaStorage(prefijo.fullPath)),
+      ]);
+    } catch (error: any) {
+      if (error?.code !== 'storage/object-not-found') throw error;
+    }
+  };
+
+  const eliminarArchivosStorageEmpleado = async (empleado: UsuarioPlantilla) => {
+    if (!empleado.id) return;
+    const urls = [empleado.foto_perfil, empleado.fotoPerfil, empleado.photoURL].filter(Boolean) as string[];
+    const referencias = new Map<string, any>();
+
+    urls.forEach((url) => {
+      try {
+        const refUrl = storageRef(storage, url);
+        referencias.set(refUrl.fullPath, refUrl);
+      } catch {}
+    });
+
+    await Promise.all(Array.from(referencias.values()).map((refUrl) => deleteObject(refUrl).catch((error: any) => {
+      if (error?.code !== 'storage/object-not-found') throw error;
+    })));
+
+    await Promise.all([
+      eliminarCarpetaStorage(`perfiles/${empleado.id}`),
+      eliminarCarpetaStorage(`usuarios/${empleado.id}`),
+    ]);
+  };
+
   // Prepara eliminarEmpleado; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
   const eliminarEmpleado = async (empleado: UsuarioPlantilla) => {
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-    if (!empleado.id) return;
+    if (!empleado.id || !puedeGestionarEmpleado(empleado)) return;
     // Prepara ejecutar; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
     const ejecutar = async () => {
-      // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-      await updateDoc(doc(db, 'usuarios', empleado.id as string), {
-        activo: false,
-        estado_activo: false,
-        eliminado: true,
-        fecha_eliminacion: new Date().toISOString(),
-        eliminado_por: user?.id || '',
-      });
-      // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-      await registrarAuditoria(auditEmpBaja, empleado.nombre || empleado.correo || empleado.id || '', 'Warning');
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      toast.warning({ title: labelEmpBajaTitle, description: labelEmpBajaDescBase.replace('{name}', empleado.nombre || 'El empleado') });
+      setGuardando(true);
+      try {
+        await eliminarArchivosStorageEmpleado(empleado);
+        // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
+        await updateDoc(doc(db, 'usuarios', empleado.id as string), {
+          activo: false,
+          estado_activo: false,
+          eliminado: true,
+          fecha_eliminacion: new Date().toISOString(),
+          eliminado_por: user?.id || '',
+        });
+        // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
+        await registrarAuditoria(auditEmpBaja, empleado.nombre || empleado.correo || empleado.id || '', 'Warning');
+        setConfirmacionEliminacion(null);
+        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+        toast.warning({ title: labelEmpBajaTitle, description: labelEmpBajaDescBase.replace('{name}', empleado.nombre || 'El empleado') });
+      } catch (error: any) {
+        toast.error({ title: 'No se pudo eliminar', description: error?.message || 'No se pudieron eliminar los archivos de Storage o el empleado.' });
+      } finally {
+        setGuardando(false);
+      }
     };
 
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-    Alert.alert(
-      alertDeleteTitle,
-      alertDeleteMsgBase.replace('{name}', empleado.nombre || 'este empleado'),
-      [
-        { text: btnCancel, style: 'cancel' },
-        { text: btnDelete, style: 'destructive', onPress: ejecutar },
-      ]
-    );
+    setConfirmacionEliminacion({
+      titulo: alertDeleteTitle,
+      mensaje: alertDeleteMsgBase.replace('{name}', empleado.nombre || 'este empleado'),
+      confirmar: ejecutar,
+    });
+  };
+
+  const alternarSeleccionEmpleado = (empleado: UsuarioPlantilla) => {
+    if (!puedeGestionarEmpleado(empleado) || !empleado.id) return;
+    setEmpleadosSeleccionados((actual) => actual.includes(empleado.id as string)
+      ? actual.filter((id) => id !== empleado.id)
+      : [...actual, empleado.id as string]);
+  };
+
+  const empleadosGestionablesFiltrados = usuariosFiltrados.filter((empleado) => puedeGestionarEmpleado(empleado));
+  const todosSeleccionados = empleadosGestionablesFiltrados.length > 0 && empleadosGestionablesFiltrados.every((empleado) => empleado.id && empleadosSeleccionados.includes(empleado.id));
+
+  const alternarSeleccionTodos = () => {
+    if (todosSeleccionados) {
+      const visibles = new Set(empleadosGestionablesFiltrados.map((empleado) => empleado.id).filter(Boolean));
+      setEmpleadosSeleccionados((actual) => actual.filter((id) => !visibles.has(id)));
+      return;
+    }
+    setEmpleadosSeleccionados((actual) => Array.from(new Set([...actual, ...empleadosGestionablesFiltrados.map((empleado) => empleado.id as string)])));
+  };
+
+  const ejecutarAccionMasiva = async (accion: 'activar' | 'desactivar' | 'eliminar') => {
+    const seleccionados = usuarios.filter((empleado) => empleado.id && empleadosSeleccionados.includes(empleado.id) && puedeGestionarEmpleado(empleado));
+    if (seleccionados.length === 0 || guardando) return;
+    const ejecutar = async () => {
+      setGuardando(true);
+      try {
+        const fecha = new Date().toISOString();
+        await Promise.all(seleccionados.map((empleado) => {
+          const ref = doc(db, 'usuarios', empleado.id as string);
+          if (accion === 'eliminar') {
+            return eliminarArchivosStorageEmpleado(empleado).then(() => updateDoc(ref, {
+              activo: false,
+              estado_activo: false,
+              eliminado: true,
+              fecha_eliminacion: fecha,
+              eliminado_por: user?.id || '',
+            }));
+          }
+          const activo = accion === 'activar';
+          return updateDoc(ref, {
+            activo,
+            estado_activo: activo ? empleado.estado_activo !== false : false,
+            fecha_actualizacion: fecha,
+          });
+        }));
+        await registrarAuditoria(
+          accion === 'eliminar' ? 'Baja masiva de empleados' : accion === 'desactivar' ? 'Desactivación masiva de empleados' : 'Activación masiva de empleados',
+          `${seleccionados.length} empleados`,
+          accion === 'eliminar' || accion === 'desactivar' ? 'Warning' : 'Success'
+        );
+        setEmpleadosSeleccionados([]);
+        toast.success({
+          title: accion === 'eliminar' ? 'Empleados dados de baja' : accion === 'desactivar' ? 'Empleados desactivados' : 'Empleados activados',
+          description: `${seleccionados.length} empleados actualizados correctamente.`,
+        });
+      } catch (error: any) {
+        toast.error({ title: 'No se pudo actualizar', description: error?.message || 'Intenta nuevamente.' });
+      } finally {
+        setGuardando(false);
+      }
+    };
+
+    if (accion === 'eliminar') {
+      setConfirmacionEliminacion({
+        titulo: 'Dar de baja empleados',
+        mensaje: `Se dará de baja operativa a ${seleccionados.length} empleados seleccionados.`,
+        confirmar: ejecutar,
+      });
+    } else {
+      await ejecutar();
+    }
   };
 
   // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
@@ -1746,6 +2422,8 @@ export default function GestionPlantilla() {
   const renderEmployeeRow = (emp: UsuarioPlantilla, i: number) => {
     // Declara activo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const activo = emp.activo !== false && emp.estado_activo !== false;
+    const gestionable = puedeGestionarEmpleado(emp);
+    const seleccionado = !!emp.id && empleadosSeleccionados.includes(emp.id);
     // Declara avatarIcono; selecciona un pictograma distinto segun el rol cuando no hay foto real.
     const avatarIcono = emp.rol === 'admin'
       ? 'admin-panel-settings'
@@ -1760,6 +2438,15 @@ export default function GestionPlantilla() {
     return (
       // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
       <View key={emp.id || i} style={estilos.tableRow}>
+        <View style={[estilos.tdCell, estilos.selectionCell]}>
+          {gestionable ? (
+            <TouchableOpacity style={[estilos.checkbox, seleccionado && estilos.checkboxActivo]} onPress={() => alternarSeleccionEmpleado(emp)}>
+              {seleccionado && <MaterialIcons name="check" size={14} color="#fff" />}
+            </TouchableOpacity>
+          ) : (
+            <MaterialIcons name="lock" size={16} color={BRAND.textSec} />
+          )}
+        </View>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={[estilos.tdCell, estilos.colaboradorCell, { flex: 2.2 }]}>
           {emp.foto_perfil || emp.fotoPerfil || emp.photoURL ? (
@@ -1805,34 +2492,28 @@ export default function GestionPlantilla() {
         </View>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={[estilos.tdCell, estilos.actionsCell]}>
-          {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-          <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnTask]} onPress={() => abrirAsignarTarea('individual', emp)}>
-            {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-            <MaterialIcons name="assignment-add" size={17} color={ADMIN.iconos.tareas} />
-          </TouchableOpacity>
-          {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-          <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnEdit]} onPress={() => abrirEditar(emp)}>
-            {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-            <MaterialIcons name="edit" size={17} color={ADMIN.iconos.documentos} />
-          </TouchableOpacity>
-          {activo ? (
-            // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-            <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnDanger]} onPress={() => actualizarActivo(emp.id, false)}>
-              {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-              <MaterialIcons name="block" size={17} color={ADMIN.iconos.peligro} />
-            </TouchableOpacity>
-          ) : (
-            // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-            <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnSuccess]} onPress={() => actualizarActivo(emp.id, true)}>
-              {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-              <MaterialIcons name="check-circle" size={17} color={ADMIN.iconos.exito} />
-            </TouchableOpacity>
+          {gestionable && (
+            <>
+              <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnTask]} onPress={() => abrirAsignarTarea('individual', emp)}>
+                <MaterialIcons name="assignment-add" size={17} color={ADMIN.iconos.tareas} />
+              </TouchableOpacity>
+              <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnEdit]} onPress={() => abrirEditar(emp)}>
+                <MaterialIcons name="edit" size={17} color={ADMIN.iconos.documentos} />
+              </TouchableOpacity>
+              {emp.activo !== false ? (
+                <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnDanger]} onPress={() => actualizarActivo(emp.id, false)}>
+                  <MaterialIcons name="block" size={17} color={ADMIN.iconos.peligro} />
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnSuccess]} onPress={() => actualizarActivo(emp.id, true)}>
+                  <MaterialIcons name="check-circle" size={17} color={ADMIN.iconos.exito} />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnDanger]} onPress={() => eliminarEmpleado(emp)}>
+                <MaterialIcons name="delete-outline" size={17} color={ADMIN.iconos.peligro} />
+              </TouchableOpacity>
+            </>
           )}
-          {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-          <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnDanger]} onPress={() => eliminarEmpleado(emp)}>
-            {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-            <MaterialIcons name="delete-outline" size={17} color={ADMIN.iconos.peligro} />
-          </TouchableOpacity>
         </View>
       </View>
     );
@@ -1855,6 +2536,17 @@ export default function GestionPlantilla() {
         </View>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={estilos.headerActions}>
+          {/* Elemento tactil; envuelve contenido que puede responder a interacciones del usuario. */}
+          <TouchableOpacity style={estilos.btnSecondary} onPress={descargarPlantillaImportacion}>
+            {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
+            <MaterialIcons name="file-download" size={18} color={BRAND.textMain} style={estilos.btnIcon} />
+            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+            <Text style={estilos.btnSecondaryText}>{btnDownloadTemplate}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={estilos.btnSecondary} onPress={abrirSelectorImportacion} disabled={importando}>
+            <MaterialIcons name="upload-file" size={18} color={BRAND.textMain} style={estilos.btnIcon} />
+            <Text style={estilos.btnSecondaryText}>{importando ? btnProcessing : btnImportEmployees}</Text>
+          </TouchableOpacity>
           {/* Elemento tactil; envuelve contenido que puede responder a interacciones del usuario. */}
           <TouchableOpacity style={estilos.btnSecondary}>
             {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
@@ -2024,11 +2716,16 @@ export default function GestionPlantilla() {
             <Text style={estilos.sedeActualNombre}>{labelUnassignedSede}</Text>
           </View>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={estilos.tableContainer}>
-            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.tableHeader}>
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={[estilos.thText, { flex: 2.2 }]}>{colEmployee}</Text>
+	          <View style={estilos.tableContainer}>
+	            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+	            <View style={estilos.tableHeader}>
+	              <View style={estilos.selectionCell}>
+	                <TouchableOpacity style={[estilos.checkbox, todosSeleccionados && estilos.checkboxActivo]} onPress={alternarSeleccionTodos}>
+	                  {todosSeleccionados && <MaterialIcons name="check" size={14} color="#fff" />}
+	                </TouchableOpacity>
+	              </View>
+	              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+	              <Text style={[estilos.thText, { flex: 2.2 }]}>{colEmployee}</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={[estilos.thText, { flex: 1.15, textAlign: 'center' }]}>{colRole}</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -2080,25 +2777,47 @@ export default function GestionPlantilla() {
             ))}
           </View>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={estilos.filterRow}>
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.filterLabel}>{filterLabelDept}</Text>
+	          <View style={estilos.filterRow}>
+	            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+	            <Text style={estilos.filterLabel}>{filterLabelDept}</Text>
             {[{ id: 'todos', nombre: filterTodos }, ...catalogos.departamentos].map((departamento) => (
               // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
               <TouchableOpacity key={departamento.id} onPress={() => setFiltroDepartamento(departamento.id)} style={[estilos.filterChip, filtroDepartamento === departamento.id && estilos.filterChipActivo]}>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={[estilos.filterChipText, filtroDepartamento === departamento.id && estilos.filterChipTextActivo]}>{departamento.nombre}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+	              </TouchableOpacity>
+	            ))}
+	          </View>
+	          {empleadosSeleccionados.length > 0 && (
+	            <View style={estilos.bulkActionsBar}>
+	              <Text style={estilos.bulkActionsText}>{empleadosSeleccionados.length} seleccionados</Text>
+	              <TouchableOpacity style={[estilos.bulkActionBtn, estilos.actionBtnSuccess]} onPress={() => ejecutarAccionMasiva('activar')} disabled={guardando}>
+	                <MaterialIcons name="check-circle" size={16} color={ADMIN.iconos.exito} />
+	                <Text style={estilos.bulkActionText}>Activar</Text>
+	              </TouchableOpacity>
+	              <TouchableOpacity style={[estilos.bulkActionBtn, estilos.actionBtnDanger]} onPress={() => ejecutarAccionMasiva('desactivar')} disabled={guardando}>
+	                <MaterialIcons name="block" size={16} color={ADMIN.iconos.peligro} />
+	                <Text style={estilos.bulkActionText}>Inactivar</Text>
+	              </TouchableOpacity>
+	              <TouchableOpacity style={[estilos.bulkActionBtn, estilos.actionBtnDanger]} onPress={() => ejecutarAccionMasiva('eliminar')} disabled={guardando}>
+	                <MaterialIcons name="delete-outline" size={16} color={ADMIN.iconos.peligro} />
+	                <Text style={estilos.bulkActionText}>Eliminar</Text>
+	              </TouchableOpacity>
+	            </View>
+	          )}
+	        </View>
 
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={estilos.tableContainer}>
-          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={estilos.tableHeader}>
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={[estilos.thText, { flex: 2.2 }]}>{colEmployee}</Text>
+	        <View style={estilos.tableContainer}>
+	          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+	          <View style={estilos.tableHeader}>
+	            <View style={estilos.selectionCell}>
+	              <TouchableOpacity style={[estilos.checkbox, todosSeleccionados && estilos.checkboxActivo]} onPress={alternarSeleccionTodos}>
+	                {todosSeleccionados && <MaterialIcons name="check" size={14} color="#fff" />}
+	              </TouchableOpacity>
+	            </View>
+	            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+	            <Text style={[estilos.thText, { flex: 2.2 }]}>{colEmployee}</Text>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={[estilos.thText, { flex: 1.15, textAlign: 'center' }]}>{colRole}</Text>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -2253,6 +2972,92 @@ export default function GestionPlantilla() {
       </View>
     </AdminModal>
 
+    <AdminModal visible={modalImportVisible} animationType="fade" onRequestClose={() => !importando && setModalImportVisible(false)}>
+      <View style={estilos.modalOverlay}>
+        <AdminModalFormGlass style={[estilos.modalCard, estilos.modalImportCard]}>
+          <View style={estilos.modalHeader}>
+            <View>
+              <Text style={estilos.modalTitle}>{modalImportTitle}</Text>
+              <Text style={estilos.modalSubtitle}>{previewImportacion?.archivo || modalImportSubtitle}</Text>
+            </View>
+            <TouchableOpacity style={estilos.modalClose} onPress={() => !importando && setModalImportVisible(false)}>
+              <MaterialIcons name="close" size={20} color={BRAND.textSec} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={estilos.modalBody} showsVerticalScrollIndicator={false}>
+            <View style={estilos.importSummaryGrid}>
+              <View style={estilos.importSummaryItem}>
+                <Text style={estilos.importSummaryValue}>{previewImportacion?.total || 0}</Text>
+                <Text style={estilos.importSummaryLabel}>{labelRowsRead}</Text>
+              </View>
+              <View style={estilos.importSummaryItem}>
+                <Text style={[estilos.importSummaryValue, { color: BRAND.success }]}>{previewImportacion?.validas.length || 0}</Text>
+                <Text style={estilos.importSummaryLabel}>{labelValidEmployees}</Text>
+              </View>
+              <View style={estilos.importSummaryItem}>
+                <Text style={[estilos.importSummaryValue, { color: previewImportacion?.errores.length ? BRAND.warning : BRAND.textMain }]}>{previewImportacion?.errores.length || 0}</Text>
+                <Text style={estilos.importSummaryLabel}>{labelRowsWithErrors}</Text>
+              </View>
+            </View>
+
+            <View style={estilos.importErrorPanel}>
+              <Text style={estilos.formLabel}>{previewImportacion?.errores.length ? labelImportErrors : labelNoImportErrors}</Text>
+              {previewImportacion?.errores.slice(0, 20).map((item) => (
+                <View key={`${item.fila}-${item.usuario}`} style={estilos.importErrorRow}>
+                  <Text style={estilos.importErrorTitle}>Fila {item.fila}: {item.nombre || item.usuario || 'Sin nombre'}</Text>
+                  <Text style={estilos.importErrorText}>{item.error}</Text>
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+
+          <View style={estilos.modalFooter}>
+            <TouchableOpacity style={estilos.btnModalSecondary} onPress={() => setModalImportVisible(false)} disabled={importando}>
+              <Text style={estilos.btnModalSecondaryText}>{btnCancel}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={estilos.btnModalPrimary} onPress={confirmarImportacion} disabled={importando || !previewImportacion?.validas.length}>
+              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white nx-admin-shimmer-button' } as any : {})} colors={['#6320a6', '#6320a6']} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.btnModalGradient}>
+                <MaterialIcons name="group-add" size={18} color="#fff" style={estilos.btnIcon} />
+                <Text style={estilos.btnPrimaryText}>{importando ? btnImporting : btnConfirmImport}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </AdminModalFormGlass>
+      </View>
+    </AdminModal>
+
+    <AdminModal visible={!!confirmacionEliminacion} animationType="fade" onRequestClose={() => !guardando && setConfirmacionEliminacion(null)}>
+      <View style={estilos.modalOverlay}>
+        <AdminModalFormGlass style={[estilos.modalCard, estilos.modalConfirmCard]}>
+          <View style={estilos.modalHeader}>
+            <View>
+              <Text style={estilos.modalTitle}>{confirmacionEliminacion?.titulo || ''}</Text>
+              <Text style={estilos.modalSubtitle}>Confirmación requerida</Text>
+            </View>
+            <TouchableOpacity style={estilos.modalClose} onPress={() => !guardando && setConfirmacionEliminacion(null)}>
+              <MaterialIcons name="close" size={20} color={BRAND.textSec} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={estilos.confirmBody}>
+            <MaterialIcons name="warning" size={28} color={ADMIN.iconos.peligro} />
+            <Text style={estilos.confirmText}>{confirmacionEliminacion?.mensaje || ''}</Text>
+          </View>
+
+          <View style={estilos.modalFooter}>
+            <TouchableOpacity style={estilos.btnModalSecondary} onPress={() => setConfirmacionEliminacion(null)} disabled={guardando}>
+              <Text style={estilos.btnModalSecondaryText}>{btnCancel}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[estilos.btnModalSecondary, estilos.confirmDangerBtn]} onPress={() => confirmacionEliminacion?.confirmar()} disabled={guardando}>
+              <MaterialIcons name="delete-outline" size={18} color={ADMIN.iconos.peligro} style={estilos.btnIcon} />
+              <Text style={estilos.confirmDangerText}>{guardando ? 'Eliminando...' : btnDelete}</Text>
+            </TouchableOpacity>
+          </View>
+        </AdminModalFormGlass>
+      </View>
+    </AdminModal>
+
     <AdminModal visible={modalTareaVisible} animationType="fade" onRequestClose={() => setModalTareaVisible(false)}>
       <View style={estilos.modalOverlay}>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
@@ -2358,7 +3163,7 @@ export default function GestionPlantilla() {
                 <Text style={estilos.formLabel}>{labelTargetEmployee}</Text>
                 {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
                 <View style={estilos.selectorGrid}>
-                  {usuariosFiltrados.map((empleado) => (
+                  {usuariosFiltrados.filter((empleado) => puedeGestionarEmpleado(empleado)).map((empleado) => (
                     // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
                     <TouchableOpacity key={empleado.id} onPress={() => actualizarFormularioTarea('usuarioId', empleado.id || '')} style={[estilos.selectorChip, formularioTarea.usuarioId === empleado.id && estilos.selectorChipActivo]}>
                       {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -2678,6 +3483,16 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     // gap define separacion uniforme entre elementos hijos.
     gap: 14,
+    // shadowColor define el color base de sombra.
+    shadowColor: '#000',
+    // shadowOffset define direccion y distancia de sombra.
+    shadowOffset: { width: 0, height: 18 },
+    // shadowOpacity controla intensidad de sombra.
+    shadowOpacity: 0.24,
+    // shadowRadius suaviza o expande la sombra.
+    shadowRadius: 28,
+    // elevation agrega sombra en Android.
+    elevation: 14,
   },
   // sedeIcono: estilo de icono; ajusta tamanio, posicion o fondo del indicador visual.
   sedeIcono: {
@@ -3372,6 +4187,26 @@ const estilos = StyleSheet.create({
     // minWidth ajusta una propiedad visual especifica de este estilo.
     minWidth: 0,
   },
+  selectionCell: {
+    width: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoCampo,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxActivo: {
+    backgroundColor: PLANTILLA_PURPLE,
+    borderColor: PLANTILLA_PURPLE,
+  },
   // colaboradorCell: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   colaboradorCell: {
     // flexDirection decide si los hijos se ordenan en fila o columna.
@@ -3558,6 +4393,35 @@ const estilos = StyleSheet.create({
     // minWidth ajusta una propiedad visual especifica de este estilo.
     minWidth: 184,
   },
+  bulkActionsBar: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 10,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: ADMIN.borde,
+  },
+  bulkActionsText: {
+    color: BRAND.textMain,
+    fontSize: 12,
+    fontWeight: '900',
+    marginRight: 4,
+  },
+  bulkActionBtn: {
+    minHeight: 36,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  bulkActionText: {
+    color: BRAND.textMain,
+    fontSize: 11,
+    fontWeight: '800',
+  },
   // actionBtn: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   actionBtn: {
     // width fija o calcula el ancho del elemento.
@@ -3698,6 +4562,12 @@ const estilos = StyleSheet.create({
     // maxWidth limita el ancho para mantener lectura y composicion.
     maxWidth: 780,
   },
+  modalImportCard: {
+    maxWidth: 860,
+  },
+  modalConfirmCard: {
+    maxWidth: 560,
+  },
   // modalHeader: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
   modalHeader: {
     // padding agrega espacio interno alrededor del contenido.
@@ -3782,6 +4652,78 @@ const estilos = StyleSheet.create({
   formGridTarea: {
     // marginTop separa este bloque del elemento anterior.
     marginTop: 18,
+  },
+  importSummaryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 20,
+  },
+  importSummaryItem: {
+    flexGrow: 1,
+    flexBasis: 180,
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    borderRadius: ADMIN.radio,
+    backgroundColor: ADMIN.fondoCampo,
+    padding: 16,
+  },
+  importSummaryValue: {
+    color: BRAND.textMain,
+    fontSize: 26,
+    fontWeight: '900',
+  },
+  importSummaryLabel: {
+    color: BRAND.textSec,
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginTop: 4,
+  },
+  importErrorPanel: {
+    gap: 10,
+  },
+  importErrorRow: {
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.25)',
+    borderRadius: ADMIN.radio,
+    backgroundColor: 'rgba(245,158,11,0.08)',
+    padding: 12,
+  },
+  importErrorTitle: {
+    color: BRAND.textMain,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  importErrorText: {
+    color: BRAND.textSec,
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  confirmBody: {
+    padding: 28,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 14,
+  },
+  confirmText: {
+    flex: 1,
+    color: BRAND.textMain,
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: '700',
+  },
+  confirmDangerBtn: {
+    borderColor: 'rgba(239,68,68,0.32)',
+    backgroundColor: 'rgba(239,68,68,0.08)',
+    flexDirection: 'row',
+  },
+  confirmDangerText: {
+    color: ADMIN.iconos.peligro,
+    fontSize: 13,
+    fontWeight: '900',
   },
   // formField: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   formField: {

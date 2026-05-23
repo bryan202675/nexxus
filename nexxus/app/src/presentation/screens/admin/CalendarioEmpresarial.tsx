@@ -15,8 +15,7 @@ import { Alert, Animated, Easing, ScrollView, StyleSheet, Text as NativeText, Te
 // Importa AdminModalBackdrop; velo difuminado reutilizable para formularios modales.
 import { AdminModal } from './AdminModal';
 import { AdminModalFormGlass } from './AdminModalFormGlass';
-// Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
-import { LinearGradient } from 'expo-linear-gradient';
+
 // Importa { addDoc, collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, updateDoc, where } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
 import { addDoc, collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
 // Importa { CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Edit3, MapPin, Plus, Search, Trash2, Users, X }; aporta iconos reutilizables para comunicar acciones y estados visuales.
@@ -1065,14 +1064,24 @@ const CalendarioEmpresarial: React.FC = () => {
                 </TouchableOpacity>
               )}
               {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-              <TouchableOpacity onPress={guardarEvento} style={estilos.botonGuardar}>
-                {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-                <LinearGradient colors={[BRAND.primario, BRAND.primarioClaro]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.botonGuardarGradiente}>
-                  {/* Check renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                  <Check size={17} color="#fff" />
-                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={estilos.botonGuardarTexto}>{t('admin.calendario.btn_save')}</Text>
-                </LinearGradient>
+              <TouchableOpacity
+                {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})}
+                onPress={guardarEvento}
+                style={estilos.botonGuardar}
+              >
+                {/* Check renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+                <Check
+                  {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})}
+                  size={17}
+                  color="#FFFFFF"
+                />
+                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                <Text
+                  {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})}
+                  style={estilos.botonGuardarTexto}
+                >
+                  {t('admin.calendario.btn_save')}
+                </Text>
               </TouchableOpacity>
             </View>
           </AdminModalFormGlass>
@@ -1335,11 +1344,9 @@ const estilos = StyleSheet.create({
   // botonEliminarTexto: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
   botonEliminarTexto: { color: BRAND.error, fontSize: 12, fontWeight: '900' },
   // botonGuardar: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
-  botonGuardar: { borderRadius: 10, overflow: 'hidden', ...sombraVioleta },
-  // botonGuardarGradiente: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
-  botonGuardarGradiente: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 18, paddingVertical: 12 },
+  botonGuardar: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#6320A6', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: '#6320A6', ...sombraVioleta },
   // botonGuardarTexto: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-  botonGuardarTexto: { color: '#fff', fontSize: 12, fontWeight: '900' },
+  botonGuardarTexto: { color: '#FFFFFF', fontSize: 13, fontWeight: '700', textDecorationLine: 'none' },
   // inputSelector: estilo de campo de formulario; controla contenedor, texto y distribucion de la entrada.
   inputSelector: { minHeight: 46, borderRadius: 10, borderWidth: 1, borderColor: ADMIN.borde, backgroundColor: 'rgba(0,0,0,0.22)', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, justifyContent: 'space-between' },
   // selectorTexto: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.

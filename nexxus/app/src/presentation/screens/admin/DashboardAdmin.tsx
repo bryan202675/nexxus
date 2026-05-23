@@ -11,9 +11,11 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
 // Importa { Animated, Easing, View, Text as NativeText, ScrollView, Dimensions, StyleSheet, ActivityIndicator, TouchableOpacity, Platform, useWindowDimensions } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { Animated, Easing, View, Text as NativeText, ScrollView, Dimensions, StyleSheet, ActivityIndicator, TouchableOpacity, Platform, useWindowDimensions } from 'react-native';
-// Importa Svg, { Circle, Defs, Line, LinearGradient as SvgLinearGradient, Path, Stop, Text as SvgText } desde react-native-svg; agrega una dependencia externa necesaria para este modulo.
-import Svg, { Circle, Defs, Line, LinearGradient as SvgLinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg';
+import { Animated, Easing, View, Text as NativeText, ScrollView, Dimensions, StyleSheet, ActivityIndicator, TouchableOpacity, Platform, useWindowDimensions, Image } from 'react-native';
+// Importa Svg, { Circle, Defs, Line, LinearGradient as SvgLinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, Defs, Line, LinearGradient as SvgLinearGradient, Path, Rect, Stop, Text as SvgText, G } from 'react-native-svg';
+// Importa { BlurView } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
+import { BlurView } from 'expo-blur';
 // Importa { addDoc, collection, doc, onSnapshot, query, updateDoc, where } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
 import { addDoc, collection, doc, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
 import {
@@ -53,6 +55,8 @@ import { ADMIN, sombraAdmin, sombraVioleta, useAdminAppearance } from './adminTh
 // Importa { useAdminToast }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import { useAdminToast } from './adminToast';
 import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
+import { AdminModal } from './AdminModal';
+import { AdminModalFormGlass } from './AdminModalFormGlass';
 
 const Text = AdminTranslatedText;
 
@@ -94,6 +98,10 @@ type UsuarioAdmin = {
   estado_trabajo?: string;
   ultimoCheckIn?: string;
   empresaId?: string;
+  foto_perfil?: string | null;
+  fotoPerfil?: string | null;
+  photoURL?: string | null;
+  avatarUrl?: string | null;
 };
 
 /**
@@ -164,6 +172,13 @@ type AusenciaAdmin = {
   asunto?: string;
   fecha_solicitud?: string;
   empresaId?: string;
+  fecha_inicio?: string;
+  fecha_fin?: string;
+  motivo?: string;
+  descripcion_detallada?: string;
+  prioridad?: string;
+  contacto_emergencia?: string;
+  archivo_adjunto?: string;
 };
 
 /**
@@ -205,6 +220,10 @@ type SolicitudInternaAdmin = {
   prioridad?: string;
   timestamp?: string;
   empresaId?: string;
+  monto?: number;
+  fecha_inicio?: string;
+  fecha_fin?: string;
+  archivo_adjunto?: string;
 };
 
 /**
@@ -396,90 +415,207 @@ type PuntoGrafico = {
 type ModoGrafico = 'diario' | 'semanal' | 'mensual';
 
 /**
- * Componente PARTICULAS_HERO. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
+ * Componente FondoHeaderTech. Renderiza una telemetría digital fluida con ondas curvas, regleta de escalas y matriz de puntos.
  */
-const PARTICULAS_HERO = [
-  // Orbe Azul Izquierda (Detrás del Título)
-  { left: '-5%', top: '-8%', size: 240, color: 'rgba(37, 99, 235, 0.16)' },
-  // Orbe Morado Centro-Izquierda (Detrás de Métricas)
-  { left: '18%', top: '48%', size: 280, color: 'rgba(168, 85, 247, 0.15)' },
-  // Orbe Azul Centro-Derecha
-  { left: '42%', top: '-2%', size: 220, color: 'rgba(37, 99, 235, 0.12)' },
-  // Orbe Morado Extremo Derecho (Fondo general)
-  { left: '65%', top: '38%', size: 260, color: 'rgba(168, 85, 247, 0.14)' },
-] as const;
-
-/**
- * Componente CampoParticulasHero. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
- */
-function CampoParticulasHero() {
-  // Inicializa avance; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const avance = useRef(new Animated.Value(0)).current;
-
-  // Devuelve el resultado de la operacion para que quien llama pueda continuar el flujo.
-  useEffect(() => {
-    // Declara animacion; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const animacion = Animated.loop(
-      Animated.timing(avance, {
-        toValue: 1,
-        duration: 22000, // Movimiento ultra lento y majestuoso
-        easing: Easing.inOut(Easing.sin),
-        useNativeDriver: true,
-      })
-    );
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-    animacion.start();
-    // Devuelve el valor final calculado para esta funcion o caso de uso.
-    return () => animacion.stop();
-  }, [avance]);
-
-  // Devuelve el JSX que React Native renderiza en pantalla.
+function FondoHeaderTech() {
   return (
-    // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      {PARTICULAS_HERO.map((particula, index) => {
-        // Declara translateX; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-        const translateX = avance.interpolate({
-          inputRange: [0, 0.5, 1],
-          outputRange: [0, index % 2 === 0 ? 38 : -38, 0],
-        });
-        // Declara translateY; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-        const translateY = avance.interpolate({
-          inputRange: [0, 0.5, 1],
-          outputRange: [0, index % 2 === 0 ? -22 : 22, 0],
-        });
-        // Declara opacity; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-        const opacity = avance.interpolate({
-          inputRange: [0, 0.5, 1],
-          outputRange: [0.7, 0.95, 0.7],
-        });
+      <Svg width="100%" height="100%" viewBox="0 0 1000 320" preserveAspectRatio="none">
+        <Defs>
+          {/* Degradado para la onda de área degradada */}
+          <SvgLinearGradient id="waveGrad" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0%" stopColor="#7C3AED" stopOpacity={0.08} />
+            <Stop offset="100%" stopColor="#7C3AED" stopOpacity={0.00} />
+          </SvgLinearGradient>
+        </Defs>
 
-        // Devuelve el JSX que React Native renderiza en pantalla.
-        return (
-          // Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla.
-          <Animated.View
-            key={index}
-            style={{
-              position: 'absolute',
-              left: particula.left,
-              top: particula.top,
-              width: particula.size,
-              height: particula.size,
-              borderRadius: particula.size / 2,
-              opacity,
-              backgroundColor: particula.color,
-              shadowColor: particula.color,
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.95,
-              shadowRadius: 50, // Gran radio para difuminar como orbe suave
-              transform: [{ translateX }, { translateY }],
-            }}
-          />
-        );
-      })}
+        {/* Matriz de Puntos de Fondo (Dot Grid) */}
+        <Path
+          d="M 20,40 L 980,40 M 20,120 L 980,120 M 20,200 L 980,200 M 20,280 L 980,280"
+          stroke="rgba(255,255,255,0.06)"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeDasharray="0 80"
+        />
+
+
+
+        {/* Onda C: Relleno suave degradado */}
+        <Path
+          d="M -20,280 Q 250,120 450,200 T 850,140 Q 920,110 1020,120 L 1020,320 L -20,320 Z"
+          fill="url(#waveGrad)"
+        />
+
+        {/* Onda A: Línea Principal Púrpura (Fluido) */}
+        <Path
+          d="M -20,240 C 200,100 380,300 550,160 C 720,20 860,260 1020,180"
+          stroke="rgba(168, 85, 247, 0.22)"
+          strokeWidth={3}
+          fill="none"
+        />
+
+        {/* Onda B: Línea Secundaria Azul Segmentada */}
+        <Path
+          d="M -20,180 C 180,280 400,80 580,220 C 760,360 880,120 1020,150"
+          stroke="rgba(37, 99, 235, 0.16)"
+          strokeWidth={2}
+          strokeDasharray="6 4"
+          fill="none"
+        />
+
+        {/* Intersecciones y Nodos de Control */}
+        {/* Nodo en Onda A (Pico central) */}
+        <Circle cx={550} cy={160} r={4} fill="#A855F7" opacity={0.8} />
+        <Circle cx={550} cy={160} r={10} stroke="#A855F7" strokeWidth={1} fill="none" opacity={0.25} />
+
+        {/* Nodo en Onda B */}
+        <Circle cx={580} cy={220} r={3} fill="#2563EB" opacity={0.8} />
+        <Circle cx={580} cy={220} r={8} stroke="#2563EB" strokeWidth={1} fill="none" opacity={0.2} />
+
+        {/* Marcador Cruz de Objetivo */}
+        <Path d="M 850,136 L 850,144 M 846,140 L 854,140" stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
+        <Circle cx={850} cy={140} r={8} stroke="rgba(255,255,255,0.1)" strokeWidth={1} fill="none" />
+
+
+      </Svg>
     </View>
   );
 }
+
+/**
+ * HeroMiniChart – animated SVG sparkline for the header health score panel.
+ * Clean gradient sparkline with glowing dots, no bars. Draws left-to-right on mount and data change.
+ */
+const HeroMiniChart = ({ datos }: { datos: PuntoGrafico[] }) => {
+  const animProg = useRef(new Animated.Value(0)).current;
+  const [prog, setProg] = useState(0);
+  const glowPulse = useRef(new Animated.Value(0)).current;
+
+  const clave = datos.map((p) => p.rendimiento).join(',');
+
+  useEffect(() => {
+    animProg.setValue(0);
+    const listener = animProg.addListener(({ value }) => setProg(value));
+    Animated.timing(animProg, {
+      toValue: 1,
+      duration: 900,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+    // Endpoint glow pulse
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowPulse, { toValue: 1, duration: 1100, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+        Animated.timing(glowPulse, { toValue: 0, duration: 1100, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+      ])
+    ).start();
+    return () => animProg.removeListener(listener);
+  }, [clave]);
+
+  const pts = datos.length > 0 ? datos.slice(-7) : [{ label: '', rendimiento: 0, carga: 0, estres: 0 }];
+  const W = 156; const H = 88;
+  const padL = 4; const padR = 6; const padT = 8; const padB = 8;
+  const iW = W - padL - padR;
+  const iH = H - padT - padB;
+  const n = pts.length;
+
+  const px = (i: number) => padL + (n === 1 ? iW / 2 : (i / (n - 1)) * iW);
+  const py = (v: number) => padT + iH - (Math.max(0, Math.min(100, v)) / 100) * iH;
+
+  // Smooth catmull-rom bezier
+  const buildPath = (points: { x: number; y: number }[]) => {
+    if (points.length < 2) return points.length === 1 ? `M${points[0].x} ${points[0].y}` : '';
+    const cmds = [`M${points[0].x} ${points[0].y}`];
+    const t2 = 0.2;
+    for (let i = 0; i < points.length - 1; i++) {
+      const a = points[i]; const b = points[i + 1];
+      const prev = points[i - 1] || a; const next = points[i + 2] || b;
+      cmds.push(`C${a.x + (b.x - prev.x) * t2} ${a.y + (b.y - prev.y) * t2},${b.x - (next.x - a.x) * t2} ${b.y - (next.y - a.y) * t2},${b.x} ${b.y}`);
+    }
+    return cmds.join(' ');
+  };
+
+  // Animate: only show points up to current progress
+  const visCount = Math.max(1, Math.ceil((n - 1) * prog) + 1);
+  const allPts = pts.map((p, i) => ({ x: px(i), y: py(p.rendimiento) }));
+  const visPts = allPts.slice(0, visCount);
+
+  const linePath = buildPath(visPts);
+  const baseY = padT + iH;
+  const areaPath = visPts.length > 0
+    ? `M${visPts[0].x} ${baseY} L${visPts[0].x} ${visPts[0].y} ${buildPath(visPts).replace(/^M[^ ]+ [^ ]+/, '')} L${visPts[visPts.length - 1].x} ${baseY} Z`
+    : '';
+  const lastPt = visPts[visPts.length - 1];
+
+  return (
+    <View style={estilos.heroChart} pointerEvents="none">
+      <Svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`}>
+        <Defs>
+          {/* Area gradient — deep violet to transparent */}
+          <SvgLinearGradient id="hAreaGr" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0%" stopColor="#A855F7" stopOpacity="0.48" />
+            <Stop offset="75%" stopColor="#6D28D9" stopOpacity="0.08" />
+            <Stop offset="100%" stopColor="#6D28D9" stopOpacity="0" />
+          </SvgLinearGradient>
+        </Defs>
+
+        {/* Subtle horizontal grid lines */}
+        {[0.25, 0.5, 0.75].map((f) => (
+          <Line
+            key={`hg-${f}`}
+            x1={padL}
+            y1={padT + iH * (1 - f)}
+            x2={W - padR}
+            y2={padT + iH * (1 - f)}
+            stroke="rgba(255,255,255,0.06)"
+            strokeWidth={1}
+            strokeDasharray="3 6"
+          />
+        ))}
+
+        {/* Gradient fill area */}
+        {areaPath ? <Path d={areaPath} fill="url(#hAreaGr)" /> : null}
+
+        {/* Main sparkline */}
+        {linePath ? (
+          <Path
+            d={linePath}
+            fill="none"
+            stroke="#C084FC"
+            strokeWidth={2.2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        ) : null}
+
+        {/* Dots at each visible data point (except last which gets the glow dot) */}
+        {visPts.map((pt, i) => (
+          i < visPts.length - 1 ? (
+            <Circle
+              key={`hdot-${i}`}
+              cx={pt.x}
+              cy={pt.y}
+              r={2.2}
+              fill="#C084FC"
+              opacity={0.55 + (i / n) * 0.4}
+            />
+          ) : null
+        ))}
+
+        {/* Glowing endpoint dot */}
+        {lastPt && (
+          <G>
+            {/* Outer glow ring */}
+            <Circle cx={lastPt.x} cy={lastPt.y} r={8} fill="#A855F7" opacity={0.16} />
+            <Circle cx={lastPt.x} cy={lastPt.y} r={5} fill="#A855F7" opacity={0.10} />
+            {/* Core dot */}
+            <Circle cx={lastPt.x} cy={lastPt.y} r={3} fill="#0D0B1E" stroke="#C084FC" strokeWidth={2} />
+          </G>
+        )}
+      </Svg>
+    </View>
+  );
+};
 
 /**
  * Componente DashboardAdmin. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
@@ -536,10 +672,10 @@ export default function DashboardAdmin() {
   const [mostrarDetalleOperativo, setMostrarDetalleOperativo] = useState(false);
   // Inicializa [cargando, setCargando]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [cargando, setCargando] = useState(true);
+  // Inicializa [solicitudSeleccionada, setSolicitudSeleccionada]; para ver detalles y motivos de aprobaciones
+  const [solicitudSeleccionada, setSolicitudSeleccionada] = useState<any | null>(null);
   // Inicializa entrada; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const entrada = useRef(new Animated.Value(0)).current;
-  // Inicializa brilloAnim; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const brilloAnim = useRef(new Animated.Value(0)).current;
 
   // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
   useEffect(() => {
@@ -551,23 +687,6 @@ export default function DashboardAdmin() {
       useNativeDriver: true,
     }).start();
   }, [entrada]);
-
-  // Devuelve el resultado de la operacion para que quien llama pueda continuar el flujo.
-  useEffect(() => {
-    // Declara anim; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const anim = Animated.loop(
-      Animated.timing(brilloAnim, {
-        toValue: 1,
-        duration: 24000,
-        easing: Easing.inOut(Easing.sin),
-        useNativeDriver: true,
-      })
-    );
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-    anim.start();
-    // Devuelve el valor final calculado para esta funcion o caso de uso.
-    return () => anim.stop();
-  }, [brilloAnim]);
 
   // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
   useEffect(() => {
@@ -912,6 +1031,30 @@ export default function DashboardAdmin() {
     }).length;
     // Calcula horasExtra; resume varios registros en un valor agregado usado por la UI o la regla de negocio.
     const horasExtra = Math.round(asistenciasHoy.reduce((total, asistencia) => total + (Number(asistencia.horas_extra_calculadas) || 0), 0));
+    // Calcula tiempoTrabajadoTotal: tiempo acumulado de jornadas iniciadas hoy
+    const ahora = new Date();
+    const tiempoTrabajadoPorUsuario: Record<string, number> = {};
+    asistenciasHoy.forEach((asistencia) => {
+      const uId = asistencia.userId;
+      if (!uId) return;
+      const t = obtenerFecha(asistencia.timestamp);
+      if (!t) return;
+      if (asistencia.tipo === 'entrada') {
+        tiempoTrabajadoPorUsuario[uId] = t.getTime();
+      }
+    });
+    let totalMs = 0;
+    Object.entries(tiempoTrabajadoPorUsuario).forEach(([uId, entradaTime]) => {
+      const salida = asistenciasHoy.find((a) => a.userId === uId && a.tipo === 'salida');
+      const tFin = salida ? (obtenerFecha(salida.timestamp)?.getTime() || ahora.getTime()) : ahora.getTime();
+      if (tFin > entradaTime) {
+        totalMs += tFin - entradaTime;
+      }
+    });
+    const totalMinutos = Math.round(totalMs / (1000 * 60));
+    const hrs = Math.floor(totalMinutos / 60);
+    const mins = totalMinutos % 60;
+    const tiempoTrabajadoTotal = `${hrs}h ${mins}m`;
     // Calcula estresPromedio; resume varios registros en un valor agregado usado por la UI o la regla de negocio.
     const estresPromedio = checkIns.length > 0
       ? checkIns.reduce((total, checkIn) => total + (Number(checkIn.estres) || 0), 0) / checkIns.length
@@ -1017,55 +1160,50 @@ export default function DashboardAdmin() {
       const periodos = crearPeriodos(modo);
       // Devuelve el JSX que React Native renderiza en pantalla.
       return periodos.map((periodo, indice) => {
-      // Declara esUltimoPeriodo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const esUltimoPeriodo = indice === periodos.length - 1;
-      // Calcula tareasPeriodo; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
-      const tareasPeriodo = tareas.filter((tarea) => {
-        // Declara fecha; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-        const fecha = obtenerFechaTarea(tarea);
-        // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-        if (!fecha) return esUltimoPeriodo;
-        // Devuelve el JSX que React Native renderiza en pantalla.
-        return fecha >= periodo.inicio && fecha <= periodo.fin;
-      });
-      // Calcula checkInsPeriodo; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
-      const checkInsPeriodo = checkIns.filter((checkIn) => {
-        // Declara fecha; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-        const fecha = obtenerFechaCheckIn(checkIn);
-        // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-        if (!fecha) return esUltimoPeriodo;
-        // Devuelve el JSX que React Native renderiza en pantalla.
-        return fecha >= periodo.inicio && fecha <= periodo.fin;
-      });
-      // Calcula completadasPeriodo; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
-      const completadasPeriodo = tareasPeriodo.filter((tarea) => tarea.estado === 'completada').length;
-      // Declara rendimientoPeriodo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const rendimientoPeriodo = tareasPeriodo.length > 0
-        ? porcentaje(completadasPeriodo, tareasPeriodo.length)
-        : esUltimoPeriodo
-          ? productividad
+        // Declara esUltimoPeriodo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
+        const esUltimoPeriodo = indice === periodos.length - 1;
+        // Calcula tareasPeriodo; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
+        const tareasPeriodo = tareas.filter((tarea) => {
+          // Declara fecha; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
+          const fecha = obtenerFechaTarea(tarea);
+          // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
+          if (!fecha) return esUltimoPeriodo;
+          // Devuelve el JSX que React Native renderiza en pantalla.
+          return fecha >= periodo.inicio && fecha <= periodo.fin;
+        });
+        // Calcula checkInsPeriodo; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
+        const checkInsPeriodo = checkIns.filter((checkIn) => {
+          // Declara fecha; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
+          const fecha = obtenerFechaCheckIn(checkIn);
+          // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
+          if (!fecha) return esUltimoPeriodo;
+          // Devuelve el JSX que React Native renderiza en pantalla.
+          return fecha >= periodo.inicio && fecha <= periodo.fin;
+        });
+        // Calcula completadasPeriodo; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
+        const completadasPeriodo = tareasPeriodo.filter((tarea) => tarea.estado === 'completada').length;
+        // Calcula rendimientoPeriodo; muestra 0 si no hay datos reales en el periodo actual.
+        const rendimientoPeriodo = tareasPeriodo.length > 0
+          ? porcentaje(completadasPeriodo, tareasPeriodo.length)
           : 0;
-      // Calcula cargaPeriodo; resume varios registros en un valor agregado usado por la UI o la regla de negocio.
-      const cargaPeriodo = checkInsPeriodo.length > 0
-        ? Math.round((checkInsPeriodo.reduce((total, checkIn) => total + valorEscalaCinco(checkIn.cargaLaboral), 0) / checkInsPeriodo.length / 5) * 100)
-        : esUltimoPeriodo
-          ? Math.round((cargaPromedio / 5) * 100)
+        // Calcula cargaPeriodo; muestra 0 si no hay check-ins reales en el periodo actual.
+        const cargaPeriodo = checkInsPeriodo.length > 0
+          ? Math.round((checkInsPeriodo.reduce((total, checkIn) => total + valorEscalaCinco(checkIn.cargaLaboral), 0) / checkInsPeriodo.length / 5) * 100)
           : 0;
-      // Calcula estresPeriodo; resume varios registros en un valor agregado usado por la UI o la regla de negocio.
-      const estresPeriodo = checkInsPeriodo.length > 0
-        ? Math.round((checkInsPeriodo.reduce((total, checkIn) => total + valorEscalaCinco(checkIn.estres), 0) / checkInsPeriodo.length / 5) * 100)
-        : esUltimoPeriodo
-          ? Math.round((estresPromedio / 5) * 100)
+        // Calcula estresPeriodo; muestra 0 si no hay check-ins reales en el periodo actual.
+        const estresPeriodo = checkInsPeriodo.length > 0
+          ? Math.round((checkInsPeriodo.reduce((total, checkIn) => total + valorEscalaCinco(checkIn.estres), 0) / checkInsPeriodo.length / 5) * 100)
           : 0;
 
-      // Devuelve el valor final calculado para esta funcion o caso de uso.
-      return {
-        label: periodo.label,
-        rendimiento: rendimientoPeriodo,
-        carga: cargaPeriodo,
-        estres: estresPeriodo,
-      };
-    });
+
+        // Devuelve el valor final calculado para esta funcion o caso de uso.
+        return {
+          label: periodo.label,
+          rendimiento: rendimientoPeriodo,
+          carga: cargaPeriodo,
+          estres: estresPeriodo,
+        };
+      });
     };
 
     // Calcula empleadosSinCheckIn; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
@@ -1125,15 +1263,21 @@ export default function DashboardAdmin() {
     const solicitudesPendientes = [
       ...ausencias
         .filter((solicitud) => solicitud.estado === 'pendiente')
-        .map((solicitud) => ({
-          id: solicitud.id || '',
-          tipo: 'ausencia' as const,
-          titulo: solicitud.asunto || solicitud.tipo || 'Ausencia',
-          empleado: solicitud.usuario_nombre || 'Empleado',
-          prioridad: solicitud.tipo || 'permiso',
-          fecha: solicitud.fecha_solicitud || '',
-          solicitud,
-        })),
+        .map((solicitud) => {
+          // Declara usuario; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
+          const usuario = usuarios.find((item) => item.id === solicitud.usuario_id);
+          // Devuelve el valor final calculado para esta funcion o caso de uso.
+          return {
+            id: solicitud.id || '',
+            tipo: 'ausencia' as const,
+            titulo: solicitud.asunto || solicitud.tipo || 'Ausencia',
+            empleado: solicitud.usuario_nombre || usuario?.nombre || 'Empleado',
+            prioridad: solicitud.prioridad || solicitud.tipo || 'permiso',
+            fecha: solicitud.fecha_solicitud || '',
+            fotoPerfil: usuario?.foto_perfil || usuario?.fotoPerfil || usuario?.photoURL || usuario?.avatarUrl || null,
+            solicitud,
+          };
+        }),
       ...solicitudesInternas
         .filter((solicitud) => solicitud.estado === 'pendiente' || solicitud.estado === 'revisado')
         .map((solicitud) => {
@@ -1147,6 +1291,7 @@ export default function DashboardAdmin() {
             empleado: usuario?.nombre || 'Empleado',
             prioridad: solicitud.prioridad || 'media',
             fecha: solicitud.timestamp || '',
+            fotoPerfil: usuario?.foto_perfil || usuario?.fotoPerfil || usuario?.photoURL || usuario?.avatarUrl || null,
             solicitud,
           };
         }),
@@ -1215,6 +1360,7 @@ export default function DashboardAdmin() {
       pausasActivas: Math.max(pausasActivas, empleadosEnPausa),
       retrasos,
       horasExtra,
+      tiempoTrabajadoTotal,
       bienestar,
       neutral,
       riesgo,
@@ -1239,6 +1385,136 @@ export default function DashboardAdmin() {
       topDepartamentos,
     };
   }, [usuarios, tareas, pagos, checkIns, logs, ausencias, notificaciones, asistencias, solicitudesInternas, feedbacks, inboxItems, documentos]);
+
+  // Calcula el resumen del periodo seleccionado
+  const resumenPeriodo = useMemo(() => {
+    const totalPeriodos = 8;
+    const periodos = Array.from({ length: totalPeriodos }).map((_, indice) => {
+      const inicio = new Date();
+      if (modoGrafico === 'diario') {
+        inicio.setDate(inicio.getDate() - (totalPeriodos - 1 - indice));
+        inicio.setHours(0, 0, 0, 0);
+        const fin = new Date(inicio);
+        fin.setHours(23, 59, 59, 999);
+        return { inicio, fin };
+      }
+      if (modoGrafico === 'semanal') {
+        inicio.setDate(inicio.getDate() - ((totalPeriodos - 1 - indice) * 7));
+        inicio.setHours(0, 0, 0, 0);
+        const fin = new Date(inicio);
+        fin.setDate(fin.getDate() + 6);
+        fin.setHours(23, 59, 59, 999);
+        return { inicio, fin };
+      }
+      // mensual
+      inicio.setMonth(inicio.getMonth() - (totalPeriodos - 1 - indice), 1);
+      inicio.setHours(0, 0, 0, 0);
+      const fin = new Date(inicio.getFullYear(), inicio.getMonth() + 1, 0, 23, 59, 59, 999);
+      return { inicio, fin };
+    });
+
+    const inicioPeriodo = periodos[0].inicio;
+    const finPeriodo = periodos[periodos.length - 1].fin;
+
+    // Generar la lista de días calendario comprendidos en el período
+    const diasArray: Date[] = [];
+    let current = new Date(inicioPeriodo);
+    let limit = 0;
+    while (current <= finPeriodo && limit < 400) {
+      diasArray.push(new Date(current));
+      current.setDate(current.getDate() + 1);
+      limit++;
+    }
+
+    const activos = usuarios.filter((usuario) => usuario.activo !== false && usuario.estado_activo !== false).length || 1;
+
+    // 1. Asistencia Promedio
+    let sumaAsistenciaPct = 0;
+    diasArray.forEach((day) => {
+      const entradasDia = asistencias.filter((a) => {
+        if (a.tipo !== 'entrada') return false;
+        const t = obtenerFecha(a.timestamp);
+        return !!t &&
+               t.getFullYear() === day.getFullYear() &&
+               t.getMonth() === day.getMonth() &&
+               t.getDate() === day.getDate();
+      }).length;
+      const pct = Math.min(100, Math.round((entradasDia / activos) * 100));
+      sumaAsistenciaPct += pct;
+    });
+    const asistenciaPct = diasArray.length > 0 ? Math.round(sumaAsistenciaPct / diasArray.length) : 0;
+
+    // 2. Tiempo Laborado total
+    const ahora = new Date();
+    let totalMsPeriodo = 0;
+    diasArray.forEach((day) => {
+      const asistenciasDia = asistencias.filter((a) => {
+        const t = obtenerFecha(a.timestamp);
+        return !!t &&
+               t.getFullYear() === day.getFullYear() &&
+               t.getMonth() === day.getMonth() &&
+               t.getDate() === day.getDate();
+      });
+      const tiempoTrabajadoPorUsuarioDia: Record<string, number> = {};
+      asistenciasDia.forEach((asistencia) => {
+        const uId = asistencia.userId;
+        if (!uId) return;
+        const t = obtenerFecha(asistencia.timestamp);
+        if (!t) return;
+        if (asistencia.tipo === 'entrada') {
+          tiempoTrabajadoPorUsuarioDia[uId] = t.getTime();
+        }
+      });
+      Object.entries(tiempoTrabajadoPorUsuarioDia).forEach(([uId, entradaTime]) => {
+        const salida = asistenciasDia.find((a) => a.userId === uId && a.tipo === 'salida');
+        const esHoy = day.getFullYear() === ahora.getFullYear() && day.getMonth() === ahora.getMonth() && day.getDate() === ahora.getDate();
+        let tFinTime: number;
+        if (salida) {
+          tFinTime = obtenerFecha(salida.timestamp)?.getTime() || entradaTime;
+        } else if (esHoy) {
+          tFinTime = ahora.getTime();
+        } else {
+          tFinTime = entradaTime + 8 * 60 * 60 * 1000;
+        }
+        if (tFinTime > entradaTime) {
+          totalMsPeriodo += tFinTime - entradaTime;
+        }
+      });
+    });
+    const totalMinutosPeriodo = Math.round(totalMsPeriodo / (1000 * 60));
+    const hrsPeriodo = Math.floor(totalMinutosPeriodo / 60);
+    const minsPeriodo = totalMinutosPeriodo % 60;
+    const tiempoTrabajado = `${hrsPeriodo}h ${minsPeriodo}m`;
+
+    // 3. Check-ins Hechos en el periodo
+    const checkInsPeriodo = checkIns.filter((c) => {
+      const t = obtenerFechaCheckIn(c);
+      return !!t && t >= inicioPeriodo && t <= finPeriodo;
+    }).length;
+
+    // 4. Aprobaciones sin resolver creadas en el periodo
+    const ausenciasPeriodo = ausencias.filter((a) => {
+      if (a.estado !== 'pendiente') return false;
+      const t = obtenerFecha(a.fecha_solicitud);
+      return !!t && t >= inicioPeriodo && t <= finPeriodo;
+    }).length;
+
+    const solicitudesPeriodo = solicitudesInternas.filter((s) => {
+      if (s.estado !== 'pendiente' && s.estado !== 'revisado') return false;
+      const t = obtenerFecha(s.timestamp);
+      return !!t && t >= inicioPeriodo && t <= finPeriodo;
+    }).length;
+
+    const aprobacionesPendientes = ausenciasPeriodo + solicitudesPeriodo;
+
+    return {
+      asistenciaPct,
+      tiempoTrabajado,
+      checkInsPeriodo,
+      aprobacionesPendientes,
+    };
+  }, [modoGrafico, usuarios, asistencias, checkIns, ausencias, solicitudesInternas]);
+
 
   // Declara stats; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const stats = [
@@ -1288,433 +1564,544 @@ export default function DashboardAdmin() {
   return (
     // Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla.
     <Animated.View style={[estilos.animatedScreen, { transform: [{ translateY: entrada.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }] }]}>
-    {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
-    <ScrollView style={estilos.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={estilos.scrollViewContent}>
-      {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-      <View style={estilos.header}>
+      {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
+      <ScrollView style={estilos.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={estilos.scrollViewContent}>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View>
-          {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={estilos.headerTitle}>{nombreEmpresa}</Text>
-          {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={estilos.headerSubtitle}>{t('admin.dashboard.title')}</Text>
-        </View>
-        {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={estilos.livePill}>
+        <View style={estilos.header}>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={estilos.liveDot} />
-          {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={estilos.liveText}>Nexxus Cloud</Text>
-        </View>
-      </View>
-
-      {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-      <View style={estilos.heroPanel}>
-        {/* Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            estilos.heroGlowA,
-            {
-              transform: [
-                {
-                  translateX: brilloAnim.interpolate({
-                    inputRange: [0, 0.5, 1],
-                    outputRange: [0, 36, 0],
-                  }),
-                },
-                {
-                  translateY: brilloAnim.interpolate({
-                    inputRange: [0, 0.5, 1],
-                    outputRange: [0, -22, 0],
-                  }),
-                },
-              ],
-            },
-          ]}
-        />
-        {/* Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            estilos.heroGlowB,
-            {
-              transform: [
-                {
-                  translateX: brilloAnim.interpolate({
-                    inputRange: [0, 0.5, 1],
-                    outputRange: [0, -32, 0],
-                  }),
-                },
-                {
-                  translateY: brilloAnim.interpolate({
-                    inputRange: [0, 0.5, 1],
-                    outputRange: [0, 26, 0],
-                  }),
-                },
-              ],
-            },
-          ]}
-        />
-        {/* CampoParticulasHero renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-        <CampoParticulasHero />
-        {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={estilos.heroCopy}>
-          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={estilos.heroKicker}>
-            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.heroKickerDot} />
+          <View>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.heroEyebrow}>{t('admin.dashboard.hero.eyebrow')}</Text>
-          </View>
-          {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={estilos.heroTitle}>{t('admin.dashboard.hero.title')}</Text>
-          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={estilos.heroActions}>
-            {/* Activos */}
-            <View style={[estilos.heroMetricPill, estilos.heroMetricPillBlue]}>
-              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View style={estilos.heroMetricHeader}>
-                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                <View style={[estilos.heroMetricIconBg, { backgroundColor: 'rgba(59,130,246,0.12)' }]}>
-                  {/* Users renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                  <Users size={12} color="#60A5FA" />
-                </View>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.heroMetricLabel}>{t('admin.dashboard.hero.active')}</Text>
-              </View>
-              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View style={estilos.heroMetricBody}>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.heroMetricValue}>{metricas.activos}</Text>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={[estilos.heroMetricTrend, { color: '#60A5FA' }]}>{t('admin.dashboard.hero.online')}</Text>
-              </View>
-            </View>
-
-            {/* Productividad */}
-            <View style={[estilos.heroMetricPill, estilos.heroMetricPillViolet]}>
-              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View style={estilos.heroMetricHeader}>
-                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                <View style={[estilos.heroMetricIconBg, { backgroundColor: 'rgba(168,85,247,0.12)' }]}>
-                  {/* Zap renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                  <Zap size={12} color="#C084FC" />
-                </View>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.heroMetricLabel}>{t('admin.dashboard.hero.productivity')}</Text>
-              </View>
-              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View style={estilos.heroMetricBody}>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.heroMetricValue}>{metricas.productividad}%</Text>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={[estilos.heroMetricTrend, { color: '#C084FC' }]}>+2.4%</Text>
-              </View>
-            </View>
-
-            {/* Check-ins */}
-            <View style={[estilos.heroMetricPill, estilos.heroMetricPillEmerald]}>
-              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View style={estilos.heroMetricHeader}>
-                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                <View style={[estilos.heroMetricIconBg, { backgroundColor: 'rgba(16,185,129,0.12)' }]}>
-                  {/* UserCheck renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                  <UserCheck size={12} color="#34D399" />
-                </View>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.heroMetricLabel}>{t('admin.dashboard.hero.checkins')}</Text>
-              </View>
-              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View style={estilos.heroMetricBody}>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.heroMetricValue}>{metricas.checkInsHoy}</Text>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={[estilos.heroMetricTrend, { color: '#34D399' }]}>{t('admin.dashboard.hero.completed')}</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-        {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={estilos.heroDashboardShell}>
-          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={estilos.heroWindowBar}>
-            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={[estilos.heroWindowDot, { backgroundColor: BRAND.error }]} />
-            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={[estilos.heroWindowDot, { backgroundColor: BRAND.warning }]} />
-            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={[estilos.heroWindowDot, { backgroundColor: BRAND.success }]} />
+            <Text style={estilos.headerTitle}>{nombreEmpresa}</Text>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.heroWindowTitle}>{t('admin.dashboard.hero.live_ops')}</Text>
+            <Text style={estilos.headerSubtitle}>{t('admin.dashboard.title')}</Text>
           </View>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={estilos.heroDashboardGrid}>
+          <View style={estilos.livePill}>
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={[estilos.heroPanelCard, estilos.heroPanelMain]}>
+            <View style={estilos.liveDot} />
+            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+            <Text style={estilos.liveText}>Nexxus Cloud</Text>
+          </View>
+        </View>
+
+        {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+        <View style={estilos.heroPanel}>
+          {/* FondoHeaderTech renderiza la cuadrícula de fondo y el pulso operativo de datos sin usar esferas ni partículas. */}
+          <FondoHeaderTech />
+          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+          <View style={estilos.heroCopy}>
+            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+            <View style={estilos.heroKicker}>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View style={estilos.heroPanelMainCopy}>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.heroPanelLabel}>{t('admin.dashboard.hero.health_score')}</Text>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.heroPanelValue}>{Math.max(0, Math.min(100, metricas.productividad - Math.round(metricas.riesgo / 3)))}%</Text>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.heroPanelText}>{t('admin.dashboard.hero.health_detail')}</Text>
-              </View>
+              <View style={estilos.heroKickerDot} />
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+              <Text style={estilos.heroEyebrow}>{t('admin.dashboard.hero.eyebrow')}</Text>
+            </View>
+            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+            <Text style={estilos.heroTitle}>{t('admin.dashboard.hero.title')}</Text>
+            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+            <View style={estilos.heroActions}>
+              {/* Activos */}
+              <BlurView intensity={theme.isDark ? 25 : 55} tint={theme.isDark ? 'dark' : 'light'} style={[estilos.heroMetricPill, estilos.heroMetricPillBlue]}>
+                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                <View style={estilos.heroMetricHeader}>
+                  {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                  <View style={[estilos.heroMetricIconBg, { backgroundColor: 'rgba(59,130,246,0.12)' }]}>
+                    {/* Users renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+                    <Users size={12} color="#60A5FA" />
+                  </View>
+                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                  <Text style={estilos.heroMetricLabel}>{t('admin.dashboard.hero.active')}</Text>
+                </View>
+                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                <View style={estilos.heroMetricBody}>
+                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                  <Text style={estilos.heroMetricValue}>{metricas.activos}</Text>
+                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                  <Text style={[estilos.heroMetricTrend, { color: '#60A5FA' }]}>{t('admin.dashboard.hero.online')}</Text>
+                </View>
+              </BlurView>
+
+              {/* Productividad */}
+              <BlurView intensity={theme.isDark ? 25 : 55} tint={theme.isDark ? 'dark' : 'light'} style={[estilos.heroMetricPill, estilos.heroMetricPillViolet]}>
+                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                <View style={estilos.heroMetricHeader}>
+                  {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                  <View style={[estilos.heroMetricIconBg, { backgroundColor: 'rgba(168,85,247,0.12)' }]}>
+                    {/* Zap renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+                    <Zap size={12} color="#C084FC" />
+                  </View>
+                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                  <Text style={estilos.heroMetricLabel}>{t('admin.dashboard.hero.productivity')}</Text>
+                </View>
+                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                <View style={estilos.heroMetricBody}>
+                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                  <Text style={estilos.heroMetricValue}>{metricas.productividad}%</Text>
+                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                  <Text style={[estilos.heroMetricTrend, { color: '#C084FC' }]}>+2.4%</Text>
+                </View>
+              </BlurView>
+
+              {/* Check-ins */}
+              <BlurView intensity={theme.isDark ? 25 : 55} tint={theme.isDark ? 'dark' : 'light'} style={[estilos.heroMetricPill, estilos.heroMetricPillEmerald]}>
+                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                <View style={estilos.heroMetricHeader}>
+                  {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                  <View style={[estilos.heroMetricIconBg, { backgroundColor: 'rgba(16,185,129,0.12)' }]}>
+                    {/* UserCheck renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+                    <UserCheck size={12} color="#34D399" />
+                  </View>
+                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                  <Text style={estilos.heroMetricLabel}>{t('admin.dashboard.hero.checkins')}</Text>
+                </View>
+                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                <View style={estilos.heroMetricBody}>
+                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                  <Text style={estilos.heroMetricValue}>{metricas.checkInsHoy}</Text>
+                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                  <Text style={[estilos.heroMetricTrend, { color: '#34D399' }]}>{t('admin.dashboard.hero.completed')}</Text>
+                </View>
+              </BlurView>
+            </View>
+          </View>
+          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+          <View style={estilos.heroDashboardShell}>
+            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+            <View style={estilos.heroWindowBar}>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View style={estilos.heroChart}>
-                {datosGrafico.slice(-6).map((punto, index) => (
-                  // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
-                  <View key={`${punto.label}-${index}`} style={[estilos.heroChartBar, { height: `${Math.max(18, punto.rendimiento)}%`, opacity: 0.48 + index * 0.08 }]} />
-                ))}
-              </View>
+              <View style={[estilos.heroWindowDot, { backgroundColor: BRAND.error }]} />
+              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+              <View style={[estilos.heroWindowDot, { backgroundColor: BRAND.warning }]} />
+              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+              <View style={[estilos.heroWindowDot, { backgroundColor: BRAND.success }]} />
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+              <Text style={estilos.heroWindowTitle}>{t('admin.dashboard.hero.live_ops')}</Text>
             </View>
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.heroPanelCard}>
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.heroPanelLabel}>{t('admin.dashboard.hero.load')}</Text>
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.heroPanelStrong}>{datosGrafico[datosGrafico.length - 1]?.carga || 0}%</Text>
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.heroPanelText}>{t('admin.dashboard.hero.active_capacity')}</Text>
-            </View>
-            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.heroPanelCard}>
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.heroPanelLabel}>{t('admin.dashboard.hero.stress')}</Text>
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.heroPanelStrong}>{datosGrafico[datosGrafico.length - 1]?.estres || 0}%</Text>
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.heroPanelText}>{t('admin.dashboard.hero.emotional_signal')}</Text>
+            <View style={estilos.heroDashboardGrid}>
+              {/* Main health card */}
+              <View style={[estilos.heroPanelCard, estilos.heroPanelMain, { backgroundColor: theme.isDark ? ADMIN.fondoVidrioFuerte : '#FFFFFF', borderColor: theme.isDark ? ADMIN.borde : 'rgba(91,65,150,0.16)' }]}>
+                <View style={estilos.heroPanelMainCopy}>
+                  <Text style={estilos.heroPanelLabel}>{t('admin.dashboard.hero.health_score')}</Text>
+                  <Text style={estilos.heroPanelValue}>{Math.max(0, Math.min(100, metricas.productividad - Math.round(metricas.riesgo / 3)))}%</Text>
+                  <Text style={estilos.heroPanelText}>{t('admin.dashboard.hero.health_detail')}</Text>
+                </View>
+                {/* Animated mini sparkline chart */}
+                <HeroMiniChart datos={datosGrafico} />
+              </View>
+              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+              <View style={[estilos.heroPanelCard, { backgroundColor: theme.isDark ? ADMIN.fondoVidrioFuerte : '#FFFFFF', borderColor: theme.isDark ? ADMIN.borde : 'rgba(91,65,150,0.16)' }]}>
+                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                <Text style={estilos.heroPanelLabel}>{t('admin.dashboard.hero.load')}</Text>
+                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                <Text style={estilos.heroPanelStrong}>{datosGrafico[datosGrafico.length - 1]?.carga || 0}%</Text>
+                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                <Text style={estilos.heroPanelText}>{t('admin.dashboard.hero.active_capacity')}</Text>
+              </View>
+              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+              <View style={[estilos.heroPanelCard, { backgroundColor: theme.isDark ? ADMIN.fondoVidrioFuerte : '#FFFFFF', borderColor: theme.isDark ? ADMIN.borde : 'rgba(91,65,150,0.16)' }]}>
+                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                <Text style={estilos.heroPanelLabel}>{t('admin.dashboard.hero.stress')}</Text>
+                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                <Text style={estilos.heroPanelStrong}>{datosGrafico[datosGrafico.length - 1]?.estres || 0}%</Text>
+                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                <Text style={estilos.heroPanelText}>{t('admin.dashboard.hero.emotional_signal')}</Text>
+              </View>
             </View>
           </View>
         </View>
-      </View>
 
-      {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-      <View style={[estilos.topGrid, !isTabletOrWeb && estilos.topGridMobile]}>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={estilos.anchoTotal}>
-          {/* PremiumCard renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <PremiumCard style={estilos.barChartCard}>
-            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.chartHeader}>
+        <View style={[estilos.topGrid, !isTabletOrWeb && estilos.topGridMobile]}>
+          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+          <View style={estilos.anchoTotal}>
+            {/* PremiumCard renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+            <PremiumCard style={estilos.barChartCard}>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View style={estilos.chartTitleContainer}>
-                {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                <IconWrapper tono="violet"><Activity size={20} color={theme.isDark ? '#FEFEFE' : '#7C3AED'} /></IconWrapper>
+              <View style={estilos.chartHeader}>
                 {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                <View>
-                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={estilos.chartTitle}>{t('admin.dashboard.chart.title')}</Text>
-                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={estilos.chartSubtitle}>{subtituloGrafico}</Text>
-                </View>
-              </View>
-              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View style={estilos.chartActions}>
-                {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-                <TouchableOpacity onPress={() => setModoGrafico('diario')} style={[estilos.chartToggle, modoGrafico === 'diario' && estilos.chartToggleActivo]}>
-                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={[estilos.chartToggleText, modoGrafico === 'diario' && estilos.chartToggleTextActivo]}>{t('admin.dashboard.chart.days')}</Text>
-                </TouchableOpacity>
-                {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-                <TouchableOpacity onPress={() => setModoGrafico('semanal')} style={[estilos.chartToggle, modoGrafico === 'semanal' && estilos.chartToggleActivo]}>
-                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={[estilos.chartToggleText, modoGrafico === 'semanal' && estilos.chartToggleTextActivo]}>{t('common.weekly')}</Text>
-                </TouchableOpacity>
-                {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-                <TouchableOpacity onPress={() => setModoGrafico('mensual')} style={[estilos.chartToggle, modoGrafico === 'mensual' && estilos.chartToggleActivo]}>
-                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={[estilos.chartToggleText, modoGrafico === 'mensual' && estilos.chartToggleTextActivo]}>{t('common.monthly')}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={[estilos.chartBody, !isTabletOrWeb && estilos.chartBodyMobile]}>
-              {isWidescreen ? (
-                <>
-                  {/* ChartEventsPanel renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                  <ChartEventsPanel eventos={eventosCalendario} />
+                <View style={estilos.chartTitleContainer}>
+                  {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
+                  <IconWrapper tono="violet"><Activity size={20} color={theme.isDark ? '#FEFEFE' : '#7C3AED'} /></IconWrapper>
                   {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                  <View style={estilos.chartGraphArea}>
-                    {/* PerformanceLineChart renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                    <PerformanceLineChart datos={datosGrafico} />
-                  </View>
-                  {/* ChartDetailPanel renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                  <ChartDetailPanel datos={datosGrafico} />
-                </>
-              ) : (
-                // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
-                <View style={estilos.chartMediumLayout}>
-                  {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                  <View style={[estilos.chartGraphArea, { maxWidth: '100%', width: '100%', minWidth: '100%', marginBottom: 12 }]}>
-                    {/* PerformanceLineChart renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                    <PerformanceLineChart datos={datosGrafico} />
-                  </View>
-                  {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                  <View style={estilos.chartBottomRow}>
-                    {/* ChartEventsPanel renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                    <ChartEventsPanel eventos={eventosCalendario} />
-                    {/* ChartDetailPanel renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                    <ChartDetailPanel datos={datosGrafico} />
+                  <View>
+                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                    <Text style={estilos.chartTitle}>{t('admin.dashboard.chart.title')}</Text>
+                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                    <Text style={estilos.chartSubtitle}>{subtituloGrafico}</Text>
                   </View>
                 </View>
-              )}
-            </View>
-          </PremiumCard>
-        </View>
-      </View>
-
-      {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-      <View style={estilos.detalleOperativoBar}>
-        {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View>
-          {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={estilos.detalleOperativoTitulo}>{t('admin.dashboard.advanced.bar_title')}</Text>
-          {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={estilos.detalleOperativoTexto}>{t('admin.dashboard.advanced.bar_subtitle')}</Text>
-        </View>
-        {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-        <TouchableOpacity onPress={() => setMostrarDetalleOperativo((valor) => !valor)} activeOpacity={0.88} style={estilos.detalleOperativoBoton}>
-          {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={estilos.detalleOperativoBotonTexto}>{mostrarDetalleOperativo ? t('common.hide') : t('common.open_action')}</Text>
-        </TouchableOpacity>
-      </View>
-
-      {mostrarDetalleOperativo && (
-      // Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla.
-      <Animated.View style={[estilos.detalleOperativoContenido, { transform: [{ translateY: entrada.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }] }]}>
-        {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={[estilos.advancedGrid, estilos.advancedGridCompact, !isTabletOrWeb && estilos.topGridMobile]}>
-          {/* PremiumCard renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <PremiumCard style={estilos.advancedCard}>
-            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.panelHeader}>
-              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.panelTitle}>{t('admin.dashboard.checkin.title')}</Text>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.panelSubtitle}>{t('admin.dashboard.checkin.subtitle')}</Text>
+                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                <View style={estilos.chartActions}>
+                  {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
+                  <TouchableOpacity onPress={() => setModoGrafico('diario')} style={[estilos.chartToggle, modoGrafico === 'diario' && estilos.chartToggleActivo]}>
+                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                    <Text style={[estilos.chartToggleText, modoGrafico === 'diario' && estilos.chartToggleTextActivo]}>{t('admin.dashboard.chart.days')}</Text>
+                  </TouchableOpacity>
+                  {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
+                  <TouchableOpacity onPress={() => setModoGrafico('semanal')} style={[estilos.chartToggle, modoGrafico === 'semanal' && estilos.chartToggleActivo]}>
+                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                    <Text style={[estilos.chartToggleText, modoGrafico === 'semanal' && estilos.chartToggleTextActivo]}>{t('common.weekly')}</Text>
+                  </TouchableOpacity>
+                  {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
+                  <TouchableOpacity onPress={() => setModoGrafico('mensual')} style={[estilos.chartToggle, modoGrafico === 'mensual' && estilos.chartToggleActivo]}>
+                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                    <Text style={[estilos.chartToggleText, modoGrafico === 'mensual' && estilos.chartToggleTextActivo]}>{t('common.monthly')}</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-              {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-              <IconWrapper tono="cyan"><Timer size={20} color={theme.isDark ? '#22D3EE' : '#0891B2'} /></IconWrapper>
-            </View>
-            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.metricRows}>
-              {/* MetricRow renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <MetricRow icon={<Timer size={16} color={BRAND.cyan} />} label={t('admin.dashboard.checkin.participation')} value={metricas.checkInsHoy} total={metricas.activos} color={BRAND.cyan} />
-              {/* MetricRow renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <MetricRow icon={<HeartPulse size={16} color={BRAND.error} />} label={t('admin.dashboard.checkin.followup')} value={metricas.empleadosRiesgo.length} total={Math.max(metricas.activos, 1)} color={BRAND.error} />
-            </View>
-            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.listadoCompacto}>
-              {metricas.empleadosSinCheckIn.slice(0, 3).map((empleado) => (
-                // ListItem renderiza una pieza visual reutilizable dentro de esta pantalla.
-                <ListItem key={empleado.id || empleado.correo} inicial={(empleado.nombre || '?')[0]} titulo={empleado.nombre || t('common.employee')} detalle={empleado.departamento || t('common.no_department')} badge={t('common.pending')} color={BRAND.cyan} />
-              ))}
-              {metricas.empleadosSinCheckIn.length === 0 && <EmptyState texto={t('admin.dashboard.checkin.all_up_to_date')} />}
-            </View>
-          </PremiumCard>
 
-          {/* PremiumCard renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <PremiumCard style={estilos.advancedCard}>
-            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.panelHeader}>
-              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.panelTitle}>{t('admin.dashboard.approvals.title')}</Text>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.panelSubtitle}>{t('admin.dashboard.approvals.subtitle')}</Text>
-              </View>
-              {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-              <IconWrapper tono="warning"><Inbox size={20} color={theme.isDark ? '#FBBF24' : '#D97706'} /></IconWrapper>
-            </View>
-            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.listadoCompacto}>
-              {metricas.solicitudesPendientes.length > 0 ? metricas.solicitudesPendientes.slice(0, 5).map((item) => (
-                // ApprovalItem renderiza una pieza visual reutilizable dentro de esta pantalla.
-                <ApprovalItem
-                  key={`${item.tipo}-${item.id}`}
-                  titulo={item.titulo}
-                  detalle={`${item.empleado} · ${item.prioridad}`}
-                  onAprobar={() => item.tipo === 'ausencia' ? actualizarSolicitudAusencia(item.solicitud as AusenciaAdmin, 'aprobada') : actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'aprobado')}
-                  onRechazar={() => item.tipo === 'ausencia' ? actualizarSolicitudAusencia(item.solicitud as AusenciaAdmin, 'rechazada') : actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'rechazado')}
+              {/* Chart + side panel side-by-side */}
+              <View style={[estilos.chartBody, !isTabletOrWeb && { flexDirection: 'column' }]}>
+                <View style={estilos.chartGraphArea}>
+                  <PerformanceSparkChart datos={datosGrafico} />
+                </View>
+                <ChartSidePanel
+                  datos={datosGrafico}
+                  eventos={eventosCalendario}
+                  metricas={metricas}
+                  resumenPeriodo={resumenPeriodo}
+                  modoGrafico={modoGrafico}
                 />
-              )) : (
-                // EmptyState renderiza una pieza visual reutilizable dentro de esta pantalla.
-                <EmptyState texto={t('admin.dashboard.approvals.empty')} />
-              )}
-            </View>
-          </PremiumCard>
-          {/* PremiumCard renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <PremiumCard style={estilos.advancedCard}>
-            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.panelHeader}>
-              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.panelTitle}>{t('admin.dashboard.alerts.title')}</Text>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.panelSubtitle}>{t('admin.dashboard.alerts.subtitle')}</Text>
               </View>
-              {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-              <IconWrapper tono="error"><MessageSquareWarning size={20} color={theme.isDark ? '#F87171' : '#DC2626'} /></IconWrapper>
-            </View>
-            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.listadoCompacto}>
-              {metricas.alertasOperativas.length > 0 ? metricas.alertasOperativas.slice(0, 5).map((alerta) => (
-                // ListItem renderiza una pieza visual reutilizable dentro de esta pantalla.
-                <ListItem key={alerta.id} inicial="!" titulo={alerta.titulo} detalle={alerta.detalle} badge={t('common.open')} color={alerta.color} />
-              )) : (
-                // EmptyState renderiza una pieza visual reutilizable dentro de esta pantalla.
-                <EmptyState texto={t('admin.dashboard.alerts.empty')} />
-              )}
-            </View>
-          </PremiumCard>
-
-          {/* PremiumCard renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <PremiumCard style={estilos.advancedCard}>
-            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.panelHeader}>
-              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.panelTitle}>{t('admin.dashboard.activity.title')}</Text>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.panelSubtitle}>{t('admin.dashboard.activity.subtitle')}</Text>
-              </View>
-              {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-              <IconWrapper tono="blue"><ShieldCheck size={20} color={theme.isDark ? '#60A5FA' : '#2563EB'} /></IconWrapper>
-            </View>
-            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.timeline}>
-              {metricas.actividad.length > 0 ? metricas.actividad.slice(0, 5).map((log) => (
-                // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
-                <View key={log.id} style={estilos.timelineItem}>
-                  {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                  <View style={[estilos.timelineDot, { backgroundColor: log.estado === 'Error' ? BRAND.error : log.estado === 'Warning' ? BRAND.warning : BRAND.success }]} />
-                  {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                  <View style={estilos.timelineContent}>
-                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                    <Text style={estilos.timelineTitle}>{log.accion || t('admin.dashboard.activity.system_event')}</Text>
-                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                    <Text style={estilos.timelineMeta}>{log.usuarioNombre || t('common.system')} · {log.modulo || t('common.general')}</Text>
-                  </View>
-                </View>
-              )) : (
-                // EmptyState renderiza una pieza visual reutilizable dentro de esta pantalla.
-                <EmptyState texto={t('admin.dashboard.activity.empty')} />
-              )}
-            </View>
-          </PremiumCard>
+            </PremiumCard>
+          </View>
         </View>
-      </Animated.View>
-      )}
-    </ScrollView>
+
+        {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+        <View style={estilos.detalleOperativoBar}>
+          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+          <View>
+            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+            <Text style={estilos.detalleOperativoTitulo}>{t('admin.dashboard.advanced.bar_title')}</Text>
+            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+            <Text style={estilos.detalleOperativoTexto}>{t('admin.dashboard.advanced.bar_subtitle')}</Text>
+          </View>
+          {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
+          <TouchableOpacity onPress={() => setMostrarDetalleOperativo((valor) => !valor)} activeOpacity={0.88} style={estilos.detalleOperativoBoton}>
+            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+            <Text style={estilos.detalleOperativoBotonTexto}>{mostrarDetalleOperativo ? t('common.hide') : t('common.open_action')}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {mostrarDetalleOperativo && (
+          // Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla.
+          <Animated.View style={[estilos.detalleOperativoContenido, { transform: [{ translateY: entrada.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }] }]}>
+            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+            <View style={[estilos.advancedGrid, estilos.advancedGridCompact, !isTabletOrWeb && estilos.topGridMobile]}>
+              {/* PremiumCard renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+              <PremiumCard style={estilos.advancedCard}>
+                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                <View style={estilos.panelHeader}>
+                  {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                  <View>
+                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                    <Text style={estilos.panelTitle}>{t('admin.dashboard.checkin.title')}</Text>
+                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                    <Text style={estilos.panelSubtitle}>{t('admin.dashboard.checkin.subtitle')}</Text>
+                  </View>
+                  {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
+                  <IconWrapper tono="cyan"><Timer size={20} color={theme.isDark ? '#22D3EE' : '#0891B2'} /></IconWrapper>
+                </View>
+                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                <View style={estilos.metricRows}>
+                  {/* MetricRow renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+                  <MetricRow icon={<Timer size={16} color={BRAND.cyan} />} label={t('admin.dashboard.checkin.participation')} value={metricas.checkInsHoy} total={metricas.activos} color={BRAND.cyan} />
+                  {/* MetricRow renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+                  <MetricRow icon={<HeartPulse size={16} color={BRAND.error} />} label={t('admin.dashboard.checkin.followup')} value={metricas.empleadosRiesgo.length} total={Math.max(metricas.activos, 1)} color={BRAND.error} />
+                </View>
+                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                <View style={estilos.listadoCompacto}>
+                  {metricas.empleadosSinCheckIn.slice(0, 3).map((empleado) => (
+                    // ListItem renderiza una pieza visual reutilizable dentro de esta pantalla.
+                    <ListItem key={empleado.id || empleado.correo} inicial={(empleado.nombre || '?')[0]} titulo={empleado.nombre || t('common.employee')} detalle={empleado.departamento || t('common.no_department')} badge={t('common.pending')} color={BRAND.cyan} />
+                  ))}
+                  {metricas.empleadosSinCheckIn.length === 0 && <EmptyState texto={t('admin.dashboard.checkin.all_up_to_date')} />}
+                </View>
+              </PremiumCard>
+
+              {/* PremiumCard renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+              <PremiumCard style={estilos.advancedCard}>
+                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                <View style={estilos.panelHeader}>
+                  {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                  <View>
+                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                    <Text style={estilos.panelTitle}>{t('admin.dashboard.approvals.title')}</Text>
+                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                    <Text style={estilos.panelSubtitle}>{t('admin.dashboard.approvals.subtitle')}</Text>
+                  </View>
+                  {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
+                  <IconWrapper tono="warning"><Inbox size={20} color={theme.isDark ? '#FBBF24' : '#D97706'} /></IconWrapper>
+                </View>
+                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                <View style={estilos.listadoCompacto}>
+                  {metricas.solicitudesPendientes.length > 0 ? metricas.solicitudesPendientes.slice(0, 5).map((item) => (
+                    // ApprovalItem renderiza una pieza visual reutilizable dentro de esta pantalla.
+                    <ApprovalItem
+                      key={`${item.tipo}-${item.id}`}
+                      titulo={item.titulo}
+                      detalle={item.empleado}
+                      tipo={item.tipo}
+                      prioridad={item.prioridad}
+                      fotoPerfil={item.fotoPerfil}
+                      onPress={() => setSolicitudSeleccionada(item)}
+                      onAprobar={() => item.tipo === 'ausencia' ? actualizarSolicitudAusencia(item.solicitud as AusenciaAdmin, 'aprobada') : actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'aprobado')}
+                      onRechazar={() => item.tipo === 'ausencia' ? actualizarSolicitudAusencia(item.solicitud as AusenciaAdmin, 'rechazada') : actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'rechazado')}
+                    />
+                  )) : (
+                    // EmptyState renderiza una pieza visual reutilizable dentro de esta pantalla.
+                    <EmptyState texto={t('admin.dashboard.approvals.empty')} />
+                  )}
+                </View>
+              </PremiumCard>
+              {/* PremiumCard renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+              <PremiumCard style={estilos.advancedCard}>
+                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                <View style={estilos.panelHeader}>
+                  {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                  <View>
+                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                    <Text style={estilos.panelTitle}>{t('admin.dashboard.alerts.title')}</Text>
+                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                    <Text style={estilos.panelSubtitle}>{t('admin.dashboard.alerts.subtitle')}</Text>
+                  </View>
+                  {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
+                  <IconWrapper tono="error"><MessageSquareWarning size={20} color={theme.isDark ? '#F87171' : '#DC2626'} /></IconWrapper>
+                </View>
+                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                <View style={estilos.listadoCompacto}>
+                  {metricas.alertasOperativas.length > 0 ? metricas.alertasOperativas.slice(0, 5).map((alerta) => (
+                    // ListItem renderiza una pieza visual reutilizable dentro de esta pantalla.
+                    <ListItem key={alerta.id} inicial="!" titulo={alerta.titulo} detalle={alerta.detalle} badge={t('common.open')} color={alerta.color} />
+                  )) : (
+                    // EmptyState renderiza una pieza visual reutilizable dentro de esta pantalla.
+                    <EmptyState texto={t('admin.dashboard.alerts.empty')} />
+                  )}
+                </View>
+              </PremiumCard>
+
+              {/* PremiumCard renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+              <PremiumCard style={estilos.advancedCard}>
+                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                <View style={estilos.panelHeader}>
+                  {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                  <View>
+                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                    <Text style={estilos.panelTitle}>{t('admin.dashboard.activity.title')}</Text>
+                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                    <Text style={estilos.panelSubtitle}>{t('admin.dashboard.activity.subtitle')}</Text>
+                  </View>
+                  {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
+                  <IconWrapper tono="blue"><ShieldCheck size={20} color={theme.isDark ? '#60A5FA' : '#2563EB'} /></IconWrapper>
+                </View>
+                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                <View style={estilos.timeline}>
+                  {metricas.actividad.length > 0 ? metricas.actividad.slice(0, 5).map((log) => (
+                    // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
+                    <View key={log.id} style={estilos.timelineItem}>
+                      {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                      <View style={[estilos.timelineDot, { backgroundColor: log.estado === 'Error' ? BRAND.error : log.estado === 'Warning' ? BRAND.warning : BRAND.success }]} />
+                      {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                      <View style={estilos.timelineContent}>
+                        {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                        <Text style={estilos.timelineTitle}>{log.accion || t('admin.dashboard.activity.system_event')}</Text>
+                        {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                        <Text style={estilos.timelineMeta}>{log.usuarioNombre || t('common.system')} · {log.modulo || t('common.general')}</Text>
+                      </View>
+                    </View>
+                  )) : (
+                    // EmptyState renderiza una pieza visual reutilizable dentro de esta pantalla.
+                    <EmptyState texto={t('admin.dashboard.activity.empty')} />
+                  )}
+                </View>
+              </PremiumCard>
+            </View>
+          </Animated.View>
+        )}
+      </ScrollView>
+
+      {/* Ventana modal para inspeccionar a detalle una solicitud de aprobación */}
+      <AdminModal
+        visible={solicitudSeleccionada !== null}
+        animationType="fade"
+        onRequestClose={() => setSolicitudSeleccionada(null)}
+      >
+        <View style={estilos.modalOverlay}>
+          <AdminModalFormGlass style={estilos.modalCard}>
+            <View style={estilos.modalHeader}>
+              <View>
+                <Text style={estilos.modalTitle}>
+                  {solicitudSeleccionada?.tipo === 'ausencia'
+                    ? t('admin.dashboard.approvals.absence_detail', { defaultValue: 'DETALLES DE AUSENCIA' })
+                    : t('admin.dashboard.approvals.request_detail', { defaultValue: 'DETALLES DE SOLICITUD' })}
+                </Text>
+                <Text style={estilos.modalSubtitle}>
+                  {t('admin.dashboard.approvals.modal_subtitle', { defaultValue: 'CENTRO DE APROBACIONES NEXXUS' })}
+                </Text>
+              </View>
+              <TouchableOpacity style={estilos.modalClose} onPress={() => setSolicitudSeleccionada(null)}>
+                <X size={20} color={BRAND.textSec} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={estilos.modalBody} showsVerticalScrollIndicator={false}>
+              {solicitudSeleccionada && (
+                <View style={estilos.modalContentContainer}>
+                  {/* Card de Empleado */}
+                  <View style={estilos.employeeCard}>
+                    <View style={estilos.employeeAvatar}>
+                      {solicitudSeleccionada.fotoPerfil ? (
+                        <Image
+                          source={{ uri: solicitudSeleccionada.fotoPerfil }}
+                          style={estilos.employeeAvatarImage}
+                        />
+                      ) : (
+                        <Text style={estilos.employeeAvatarText}>
+                          {(solicitudSeleccionada.empleado || '?')[0].toUpperCase()}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={estilos.employeeInfo}>
+                      <Text style={estilos.employeeName}>{solicitudSeleccionada.empleado}</Text>
+                      <Text style={estilos.employeeLabel}>{t('common.employee', { defaultValue: 'Colaborador' })}</Text>
+                    </View>
+                  </View>
+
+                  {/* Grid de Detalles */}
+                  <View style={estilos.detailsGrid}>
+                    <View style={estilos.detailsGridCol}>
+                      <Text style={estilos.detailsLabel}>{t('common.type', { defaultValue: 'Tipo' })}</Text>
+                      <Text style={estilos.detailsValue}>
+                        {obtenerTextoTipo(t, solicitudSeleccionada)}
+                      </Text>
+                    </View>
+
+                    <View style={estilos.detailsGridCol}>
+                      <Text style={estilos.detailsLabel}>{t('common.priority_title', { defaultValue: 'Prioridad' })}</Text>
+                      <View style={[
+                        estilos.priorityBadge,
+                        {
+                          backgroundColor: obtenerColorPrioridad(solicitudSeleccionada.prioridad).bg,
+                          alignSelf: 'flex-start',
+                          marginTop: 4
+                        }
+                      ]}>
+                        <Text style={[
+                          estilos.priorityBadgeText,
+                          { color: obtenerColorPrioridad(solicitudSeleccionada.prioridad).text }
+                        ]}>
+                          {obtenerTextoPrioridad(t, solicitudSeleccionada.prioridad).toUpperCase()}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={estilos.detailsGridCol}>
+                      <Text style={estilos.detailsLabel}>{t('admin.dashboard.approvals.start_date', { defaultValue: 'Fecha Inicio' })}</Text>
+                      <Text style={estilos.detailsValue}>
+                        {solicitudSeleccionada.solicitud?.fecha_inicio || solicitudSeleccionada.solicitud?.fecha_solicitud || t('admin.dashboard.approvals.not_specified', { defaultValue: 'No especificada' })}
+                      </Text>
+                    </View>
+
+                    <View style={estilos.detailsGridCol}>
+                      <Text style={estilos.detailsLabel}>{t('admin.dashboard.approvals.end_date', { defaultValue: 'Fecha Fin' })}</Text>
+                      <Text style={estilos.detailsValue}>
+                        {solicitudSeleccionada.solicitud?.fecha_fin || t('admin.dashboard.approvals.not_specified', { defaultValue: 'No especificada' })}
+                      </Text>
+                    </View>
+
+                    {solicitudSeleccionada.solicitud?.monto !== undefined && (
+                      <View style={estilos.detailsGridCol}>
+                        <Text style={estilos.detailsLabel}>{t('admin.dashboard.approvals.amount', { defaultValue: 'Monto' })}</Text>
+                        <Text style={[estilos.detailsValue, { color: BRAND.cyan }]}>
+                          ${Number(solicitudSeleccionada.solicitud.monto).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Tarjeta de Motivo / Descripción */}
+                  <View style={estilos.reasonSection}>
+                    <Text style={estilos.sectionTitle}>
+                      {t('admin.dashboard.approvals.reason_title', { defaultValue: 'MOTIVO Y DETALLES DE LA SOLICITUD' })}
+                    </Text>
+                    <View style={estilos.reasonCard}>
+                      <Text style={estilos.reasonText}>
+                        {solicitudSeleccionada.solicitud?.descripcion_detallada ||
+                          solicitudSeleccionada.solicitud?.motivo ||
+                          solicitudSeleccionada.solicitud?.descripcion ||
+                          t('admin.dashboard.approvals.no_description', { defaultValue: 'Sin descripción detallada proporcionada.' })}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Información de Emergencia si existe */}
+                  {solicitudSeleccionada.solicitud?.contacto_emergencia ? (
+                    <View style={estilos.extraInfoRow}>
+                      <HeartPulse size={18} color={BRAND.error} style={{ marginRight: 8 }} />
+                      <Text style={estilos.extraInfoText}>
+                        <Text style={{ fontWeight: 'bold' }}>{t('admin.dashboard.approvals.emergency_contact', { defaultValue: 'Contacto Emergencia' })}: </Text>
+                        {solicitudSeleccionada.solicitud.contacto_emergencia}
+                      </Text>
+                    </View>
+                  ) : null}
+
+                  {/* Adjunto si existe */}
+                  {solicitudSeleccionada.solicitud?.archivo_adjunto ? (
+                    <View style={estilos.extraInfoRow}>
+                      <FileText size={18} color={BRAND.cyan} style={{ marginRight: 8 }} />
+                      <Text style={estilos.extraInfoText} numberOfLines={1}>
+                        <Text style={{ fontWeight: 'bold' }}>{t('admin.dashboard.approvals.attachment', { defaultValue: 'Adjunto' })}: </Text>
+                        {solicitudSeleccionada.solicitud.archivo_adjunto}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+              )}
+            </ScrollView>
+
+            {/* Acciones del Modal */}
+            <View style={estilos.modalFooter}>
+              <TouchableOpacity
+                style={[estilos.footerButton, estilos.footerButtonError]}
+                onPress={async () => {
+                  const item = solicitudSeleccionada;
+                  setSolicitudSeleccionada(null);
+                  if (item.tipo === 'ausencia') {
+                    await actualizarSolicitudAusencia(item.solicitud as AusenciaAdmin, 'rechazada');
+                  } else {
+                    await actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'rechazado');
+                  }
+                }}
+              >
+                <X size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={estilos.footerButtonTextPrimary}>
+                  {t('common.reject', { defaultValue: 'Rechazar' })}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[estilos.footerButton, estilos.footerButtonSuccess]}
+                onPress={async () => {
+                  const item = solicitudSeleccionada;
+                  setSolicitudSeleccionada(null);
+                  if (item.tipo === 'ausencia') {
+                    await actualizarSolicitudAusencia(item.solicitud as AusenciaAdmin, 'aprobada');
+                  } else {
+                    await actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'aprobado');
+                  }
+                }}
+              >
+                <Check size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={estilos.footerButtonTextPrimary}>
+                  {t('common.approve', { defaultValue: 'Aprobar' })}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </AdminModalFormGlass>
+        </View>
+      </AdminModal>
     </Animated.View>
   );
 };
@@ -1775,34 +2162,119 @@ const ListItem = ({ inicial, titulo, detalle, badge, color }: { inicial: string;
   </View>
 );
 
+const obtenerColorPrioridad = (prioridad?: string) => {
+  const p = (prioridad || 'media').toLowerCase();
+  if (p === 'alta' || p === 'urgente' || p === 'high') return { bg: 'rgba(239, 68, 68, 0.15)', text: '#EF4444' };
+  if (p === 'media' || p === 'medium' || p === 'normal') return { bg: 'rgba(245, 158, 11, 0.15)', text: '#F59E0B' };
+  return { bg: 'rgba(16, 185, 129, 0.15)', text: '#10B981' };
+};
+
+const obtenerTextoPrioridad = (t: any, prioridad?: string) => {
+  if (!prioridad) return '';
+  const p = prioridad.toLowerCase();
+
+  // Si es un tipo de ausencia
+  if (['vacaciones', 'enfermedad', 'personal', 'emergencia', 'capacitacion'].includes(p)) {
+    return t(`solicitudesAusencia.categories.${p}`, { defaultValue: prioridad });
+  }
+
+  // Prioridades estándar
+  if (p === 'low' || p === 'baja') return t('common.priority.baja', { defaultValue: 'Baja' });
+  if (p === 'medium' || p === 'media') return t('common.priority.media', { defaultValue: 'Media' });
+  if (p === 'high' || p === 'alta') return t('common.priority.alta', { defaultValue: 'Alta' });
+  if (p === 'urgent' || p === 'urgente') return t('common.priority.urgente', { defaultValue: 'Urgente' });
+
+  return t(`common.priority.${p}`, { defaultValue: prioridad });
+};
+
+const obtenerTextoTipo = (t: any, item: any) => {
+  if (!item) return '';
+  const tipoSolicitud = item.tipo; // 'ausencia' o 'interna'
+  const valorTipo = item.solicitud?.tipo || item.titulo || '';
+  const vtLower = valorTipo.toLowerCase();
+
+  if (tipoSolicitud === 'ausencia') {
+    return t(`solicitudesAusencia.categories.${vtLower}`, { defaultValue: valorTipo });
+  } else {
+    if (['vacaciones', 'permiso', 'adelanto_salarial', 'soporte_tecnico', 'compra_material'].includes(vtLower)) {
+      return t(`solicitudesInternas.types.${vtLower}`, { defaultValue: valorTipo });
+    }
+    return t(`solicitudesInternas.types.${vtLower}`, { defaultValue: valorTipo });
+  }
+};
+
 /**
  * Componente ApprovalItem. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
-const ApprovalItem = ({ titulo, detalle, onAprobar, onRechazar }: { titulo: string; detalle: string; onAprobar: () => void; onRechazar: () => void }) => (
-  // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
-  <View style={estilos.approvalItem}>
-    {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-    <View style={estilos.approvalInfo}>
-      {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-      <Text style={estilos.listTitle} numberOfLines={1}>{titulo}</Text>
-      {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-      <Text style={estilos.listDetail} numberOfLines={1}>{detalle}</Text>
-    </View>
-    {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-    <View style={estilos.approvalActions}>
-      {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-      <TouchableOpacity onPress={onAprobar} style={[estilos.approvalButton, estilos.approvalButtonSuccess]}>
-        {/* Check renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-        <Check size={15} color={BRAND.success} />
+const ApprovalItem = ({
+  titulo,
+  detalle,
+  tipo,
+  prioridad,
+  fotoPerfil,
+  onPress,
+  onAprobar,
+  onRechazar,
+}: {
+  titulo: string;
+  detalle: string;
+  tipo: 'ausencia' | 'interna';
+  prioridad: string;
+  fotoPerfil?: string | null;
+  onPress: () => void;
+  onAprobar: () => void;
+  onRechazar: () => void;
+}) => {
+  const { t } = useTranslation();
+  const pColors = obtenerColorPrioridad(prioridad);
+  const Icono = tipo === 'ausencia' ? CalendarClock : Inbox;
+
+  // Traducir el título si es un tipo crudo o base
+  let tituloTraducido = titulo;
+  const tLower = titulo.toLowerCase();
+  if (tipo === 'ausencia') {
+    tituloTraducido = t(`solicitudesAusencia.categories.${tLower}`, { defaultValue: titulo });
+  } else {
+    tituloTraducido = t(`solicitudesInternas.types.${tLower}`, { defaultValue: titulo });
+  }
+
+  // Traducir la prioridad / categoría
+  const prioridadTraducido = obtenerTextoPrioridad(t, prioridad);
+
+  return (
+    <View style={estilos.approvalItem}>
+      <TouchableOpacity onPress={onPress} style={estilos.approvalInfoContainer} activeOpacity={0.7}>
+        <View style={[estilos.approvalIconWrapper, { backgroundColor: tipo === 'ausencia' ? 'rgba(59, 130, 246, 0.12)' : 'rgba(16, 185, 129, 0.12)' }]}>
+          {fotoPerfil ? (
+            <Image source={{ uri: fotoPerfil }} style={estilos.approvalAvatarImage} />
+          ) : (
+            <Icono size={18} color={tipo === 'ausencia' ? '#3B82F6' : '#10B981'} />
+          )}
+        </View>
+        <View style={estilos.approvalInfo}>
+          <View style={estilos.approvalTitleRow}>
+            <Text style={estilos.listTitle} numberOfLines={1}>{tituloTraducido}</Text>
+            <View style={[estilos.priorityBadge, { backgroundColor: pColors.bg }]}>
+              <Text style={[estilos.priorityBadgeText, { color: pColors.text }]}>
+                {prioridadTraducido.toUpperCase()}
+              </Text>
+            </View>
+          </View>
+          <Text style={estilos.listDetail} numberOfLines={1}>{detalle}</Text>
+        </View>
       </TouchableOpacity>
-      {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-      <TouchableOpacity onPress={onRechazar} style={[estilos.approvalButton, estilos.approvalButtonError]}>
-        {/* X renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-        <X size={15} color={BRAND.error} />
-      </TouchableOpacity>
+
+      <View style={estilos.approvalActions}>
+        <TouchableOpacity onPress={onAprobar} style={[estilos.approvalButton, estilos.approvalButtonSuccess]} activeOpacity={0.6}>
+          <Check size={14} color={BRAND.success} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={onRechazar} style={[estilos.approvalButton, estilos.approvalButtonError]} activeOpacity={0.6}>
+          <X size={14} color={BRAND.error} />
+        </TouchableOpacity>
+      </View>
     </View>
-  </View>
-);
+  );
+};
 
 /**
  * Componente EmptyState. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
@@ -1818,385 +2290,643 @@ const EmptyState = ({ texto }: { texto: string }) => (
 
 
 /**
- * Componente PerformanceLineChart. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
+ * PerformanceSparkChart – advanced multi-line chart with Y-axis labels, interactive tooltip, entry & update animations.
+ * Shows rendimiento (green), carga (amber) and estrés (red) as smooth bezier lines in the same graph.
  */
-const PerformanceLineChart = ({ datos }: { datos: PuntoGrafico[] }) => {
-  // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
+const PerformanceSparkChart = ({ datos }: { datos: PuntoGrafico[] }) => {
   const { t } = useTranslation();
-  // Inicializa animacion; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const animacion = useRef(new Animated.Value(1)).current;
-  // Inicializa [avanceAnimado, setAvanceAnimado]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const [avanceAnimado, setAvanceAnimado] = useState(1);
-  // Inicializa [puntoActivo, setPuntoActivo]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const [puntoActivo, setPuntoActivo] = useState<PuntoGrafico | null>(null);
-  // Calcula claveDatos; transforma la lista original en datos listos para renderizar o guardar.
-  const claveDatos = datos.map((punto) => `${punto.label}-${punto.rendimiento}-${punto.carga}-${punto.estres}`).join('|');
+  // Main entrance/update animation (0 → 1)
+  const animacion = useRef(new Animated.Value(0)).current;
+  const [avance, setAvance] = useState(0);
+  // Tooltip state: which point index is selected (-1 = none)
+  const [tooltipIdx, setTooltipIdx] = useState(-1);
+  // Glow pulse for hovered dot
+  const glowAnim = useRef(new Animated.Value(0)).current;
 
-  // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
+  const claveDatos = datos.map((p) => `${p.label}-${p.rendimiento}-${p.carga}-${p.estres}`).join('|');
+
+  // Entry + update animation
   useEffect(() => {
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     animacion.stopAnimation();
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     animacion.setValue(0);
-    // Declara listener; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const listener = animacion.addListener(({ value }) => setAvanceAnimado(value));
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+    setTooltipIdx(-1);
+    const listener = animacion.addListener(({ value }) => setAvance(value));
     Animated.timing(animacion, {
       toValue: 1,
-      duration: 900,
+      duration: 1000,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start();
-    // Devuelve el valor final calculado para esta funcion o caso de uso.
     return () => animacion.removeListener(listener);
-  }, [animacion, claveDatos]);
+  }, [claveDatos]);
 
-  // Declara ancho; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const ancho = 760;
-  // Declara alto; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const alto = 330;
-  // Declara margen; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const margen = { top: 24, right: 24, bottom: 54, left: 64 };
-  // Declara anchoInterno; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const anchoInterno = ancho - margen.left - margen.right;
-  // Declara altoInterno; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const altoInterno = alto - margen.top - margen.bottom;
-  // Declara valoresY; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const valoresY = [100, 75, 50, 25, 0];
-  // Declara datosSeguros; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const datosSeguros = datos.length > 0 ? datos : [{ label: '', rendimiento: 0, carga: 0, estres: 0 }];
-
-  // Declara obtenerX; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const obtenerX = (indice: number) => margen.left + (datosSeguros.length === 1 ? anchoInterno / 2 : (indice / (datosSeguros.length - 1)) * anchoInterno);
-  // Declara obtenerY; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const obtenerY = (valor: number) => margen.top + altoInterno - (Math.max(0, Math.min(100, valor)) / 100) * altoInterno;
-  // Inicializa datosVisibles; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const datosVisibles = useMemo(() => {
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-    if (datosSeguros.length <= 1) return datosSeguros;
-    // Declara cantidad; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const cantidad = Math.max(1, Math.ceil((datosSeguros.length - 1) * avanceAnimado) + 1);
-    // Devuelve el valor final calculado para esta funcion o caso de uso.
-    return datosSeguros.slice(0, Math.min(cantidad, datosSeguros.length));
-  }, [avanceAnimado, datosSeguros]);
-
-  // Declara obtenerXVisible; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const obtenerXVisible = (indice: number) => margen.left + (datosSeguros.length === 1 ? anchoInterno / 2 : (indice / (datosSeguros.length - 1)) * anchoInterno);
-  // Calcula puntosSerie; transforma la lista original en datos listos para renderizar o guardar.
-  const puntosSerie = (clave: keyof Omit<PuntoGrafico, 'label'>) => datosVisibles.map((punto, indice) => ({
-    x: obtenerXVisible(indice),
-    y: obtenerY(punto[clave]),
-  }));
-
-  // Declara crearCurvaSuave; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const crearCurvaSuave = (puntos: { x: number; y: number }[]) => {
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-    if (puntos.length === 0) return '';
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-    if (puntos.length === 1) return `M ${puntos[0].x} ${puntos[0].y}`;
-
-    // Declara comandos; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const comandos = [`M ${puntos[0].x} ${puntos[0].y}`];
-    // Recorre una coleccion para procesar cada elemento con la misma regla.
-    for (let i = 0; i < puntos.length - 1; i += 1) {
-      // Declara actual; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const actual = puntos[i];
-      // Declara siguiente; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const siguiente = puntos[i + 1];
-      // Declara anterior; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const anterior = puntos[i - 1] || actual;
-      // Declara posterior; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const posterior = puntos[i + 2] || siguiente;
-      // Declara tension; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const tension = 0.18;
-      // Declara cp1x; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const cp1x = actual.x + (siguiente.x - anterior.x) * tension;
-      // Declara cp1y; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const cp1y = actual.y + (siguiente.y - anterior.y) * tension;
-      // Declara cp2x; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const cp2x = siguiente.x - (posterior.x - actual.x) * tension;
-      // Declara cp2y; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const cp2y = siguiente.y - (posterior.y - actual.y) * tension;
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      comandos.push(`C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${siguiente.x} ${siguiente.y}`);
+  // Pulsing glow loop when tooltip is active
+  useEffect(() => {
+    if (tooltipIdx >= 0) {
+      glowAnim.setValue(0);
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(glowAnim, { toValue: 1, duration: 700, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+          Animated.timing(glowAnim, { toValue: 0, duration: 700, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+        ])
+      ).start();
+    } else {
+      glowAnim.stopAnimation();
+      glowAnim.setValue(0);
     }
-    // Devuelve el valor final calculado para esta funcion o caso de uso.
-    return comandos.join(' ');
+  }, [tooltipIdx]);
+
+  // SVG canvas dimensions
+  const W = 780;
+  const H = 270;
+  // Margins: left larger for Y-axis labels
+  const mg = { t: 32, r: 18, b: 40, l: 46 };
+  const iW = W - mg.l - mg.r;
+  const iH = H - mg.t - mg.b;
+
+  const datos2 = datos.length > 0 ? datos : [{ label: '', rendimiento: 0, carga: 0, estres: 0 }];
+  const n = datos2.length;
+
+  // X coordinate for data point i (centered in its slot)
+  const cx = (i: number) => mg.l + (n === 1 ? iW / 2 : (i / (n - 1)) * iW);
+  // Y coordinate for value v (0-100)
+  const cy = (v: number) => mg.t + iH - (Math.max(0, Math.min(100, v)) / 100) * iH;
+
+  // Smooth catmull-rom bezier path builder
+  const buildPath = (pts: { x: number; y: number }[], animated?: boolean, prog?: number) => {
+    const usePts = animated && prog !== undefined
+      ? pts.slice(0, Math.max(1, Math.ceil((pts.length - 1) * prog) + 1))
+      : pts;
+    if (usePts.length < 2) return usePts.length === 1 ? `M${usePts[0].x} ${usePts[0].y}` : '';
+    const cmds = [`M${usePts[0].x} ${usePts[0].y}`];
+    const t2 = 0.18;
+    for (let i = 0; i < usePts.length - 1; i++) {
+      const a = usePts[i]; const b = usePts[i + 1];
+      const prev = usePts[i - 1] || a; const next = usePts[i + 2] || b;
+      cmds.push(`C${a.x + (b.x - prev.x) * t2} ${a.y + (b.y - prev.y) * t2},${b.x - (next.x - a.x) * t2} ${b.y - (next.y - a.y) * t2},${b.x} ${b.y}`);
+    }
+    return cmds.join(' ');
   };
 
-  // Declara areaSerie; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const areaSerie = (clave: keyof Omit<PuntoGrafico, 'label'>) => {
-    // Declara puntos; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const puntos = puntosSerie(clave);
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-    if (puntos.length === 0) return '';
-    // Declara baseline; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const baseline = margen.top + altoInterno;
-    // Declara primero; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const primero = puntos[0];
-    // Declara ultimo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const ultimo = puntos[puntos.length - 1];
-    // Devuelve el valor final calculado para esta funcion o caso de uso.
-    return `M ${primero.x} ${baseline} L ${primero.x} ${primero.y} ${crearCurvaSuave(puntos).replace(/^M [^C]+/, '')} L ${ultimo.x} ${baseline} Z`;
+  const buildAreaPath = (pts: { x: number; y: number }[], prog?: number) => {
+    const baseY = mg.t + iH;
+    const usePts = prog !== undefined
+      ? pts.slice(0, Math.max(1, Math.ceil((pts.length - 1) * prog) + 1))
+      : pts;
+    if (usePts.length === 0) return '';
+    const linePath = buildPath(usePts);
+    const startX = usePts[0].x;
+    const endX = usePts[usePts.length - 1].x;
+    return `M${startX} ${baseY} L${startX} ${usePts[0].y} ${linePath.replace(/^M[^ ]+ [^ ]+/, '')} L${endX} ${baseY} Z`;
   };
 
-  // Calcula renderSerie; transforma la lista original en datos listos para renderizar o guardar.
-  const renderSerie = (clave: keyof Omit<PuntoGrafico, 'label'>, color: string, gradiente: string) => (
-    <>
-      {/* Path renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Path d={areaSerie(clave)} fill={`url(#${gradiente})`} />
-      {/* Path renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Path d={crearCurvaSuave(puntosSerie(clave))} fill="none" stroke={color} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-      {datosVisibles.map((punto, indice) => (
-        // Circle renderiza una pieza visual reutilizable dentro de esta pantalla.
-        <Circle
-          key={`${clave}-${punto.label}-${indice}`}
-          cx={obtenerX(indice)}
-          cy={obtenerY(punto[clave])}
-          r={puntoActivo?.label === punto.label ? '8' : '6'}
-          fill={BRAND.darkBlue}
-          stroke={color}
-          strokeWidth="3"
-          onPress={() => setPuntoActivo(punto)}
-        />
-      ))}
-    </>
-  );
+  // Build all three point sets
+  const rPts = datos2.map((p, i) => ({ x: cx(i), y: cy(p.rendimiento) }));
+  const cPts = datos2.map((p, i) => ({ x: cx(i), y: cy(p.carga) }));
+  const ePts = datos2.map((p, i) => ({ x: cx(i), y: cy(p.estres) }));
 
-  // Devuelve el JSX que React Native renderiza en pantalla.
+  // Animated paths (drawn progressively)
+  const rPath = buildPath(rPts, true, avance);
+  const cPath = buildPath(cPts, true, avance);
+  const ePath = buildPath(ePts, true, avance);
+  const rArea = buildAreaPath(rPts, avance);
+  const cArea = buildAreaPath(cPts, avance);
+  const eArea = buildAreaPath(ePts, avance);
+
+  // Visible points up to animation progress
+  const visibleCount = Math.max(1, Math.ceil((n - 1) * avance) + 1);
+  const rPtsVis = rPts.slice(0, visibleCount);
+  const cPtsVis = cPts.slice(0, visibleCount);
+  const ePtsVis = ePts.slice(0, visibleCount);
+
+  // Y-axis grid values
+  const gridValues = [0, 25, 50, 75, 100];
+
+  // Tooltip data
+  const tooltipPunto = tooltipIdx >= 0 ? datos2[tooltipIdx] : null;
+  const tooltipX = tooltipIdx >= 0 ? cx(tooltipIdx) : 0;
+  const tooltipLabelX = tooltipX > W - 145 ? tooltipX - 143 : tooltipX + 14;
+  const tooltipLabelY = mg.t - 4;
+
+  // Zone width for each data point's invisible hover area
+
+
+
   return (
-    // Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla.
-    <Animated.View style={[estilos.lineChartShell, { opacity: animacion, transform: [{ scale: animacion.interpolate({ inputRange: [0, 1], outputRange: [0.985, 1] }) }] }]}>
-      {/* Svg renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Svg width="100%" height="100%" viewBox={`0 0 ${ancho} ${alto}`}>
-        {/* Defs renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+    <Animated.View
+      style={[
+        estilos.lineChartShell,
+        {
+          opacity: animacion,
+          transform: [{
+            translateY: animacion.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }),
+          }],
+        },
+      ]}
+    >
+      <Svg
+        width="100%"
+        height="100%"
+        viewBox={`0 0 ${W} ${H}`}
+      >
         <Defs>
-          {/* SvgLinearGradient renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <SvgLinearGradient id="rendimientoFill" x1="0" y1="0" x2="0" y2="1">
-            {/* Stop renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-            <Stop offset="0%" stopColor={BRAND.success} stopOpacity="0.32" />
-            {/* Stop renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-            <Stop offset="100%" stopColor={BRAND.success} stopOpacity="0.02" />
+          {/* Gradient fills for each line */}
+          <SvgLinearGradient id="gradR" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0%" stopColor={BRAND.success} stopOpacity="0.22" />
+            <Stop offset="100%" stopColor={BRAND.success} stopOpacity="0.01" />
           </SvgLinearGradient>
-          {/* SvgLinearGradient renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <SvgLinearGradient id="cargaFill" x1="0" y1="0" x2="0" y2="1">
-            {/* Stop renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-            <Stop offset="0%" stopColor={BRAND.warning} stopOpacity="0.24" />
-            {/* Stop renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-            <Stop offset="100%" stopColor={BRAND.warning} stopOpacity="0.02" />
+          <SvgLinearGradient id="gradC" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0%" stopColor={BRAND.warning} stopOpacity="0.18" />
+            <Stop offset="100%" stopColor={BRAND.warning} stopOpacity="0.01" />
           </SvgLinearGradient>
-          {/* SvgLinearGradient renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <SvgLinearGradient id="estresFill" x1="0" y1="0" x2="0" y2="1">
-            {/* Stop renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-            <Stop offset="0%" stopColor={BRAND.error} stopOpacity="0.2" />
-            {/* Stop renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-            <Stop offset="100%" stopColor={BRAND.error} stopOpacity="0.02" />
+          <SvgLinearGradient id="gradE" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0%" stopColor={BRAND.error} stopOpacity="0.15" />
+            <Stop offset="100%" stopColor={BRAND.error} stopOpacity="0.01" />
+          </SvgLinearGradient>
+          {/* Background gradient */}
+          <SvgLinearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0%" stopColor="rgba(124,58,237,0.04)" stopOpacity="1" />
+            <Stop offset="100%" stopColor="rgba(0,0,0,0)" stopOpacity="1" />
           </SvgLinearGradient>
         </Defs>
 
-        {/* Line renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-        <Line x1={margen.left} y1={margen.top} x2={margen.left} y2={margen.top + altoInterno} stroke={ADMIN.borde} strokeWidth="1" strokeDasharray="10 12" />
-        {valoresY.map((valor) => {
-          // Declara y; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-          const y = obtenerY(valor);
-          // Devuelve el JSX que React Native renderiza en pantalla.
+        {/* Chart area subtle background */}
+        <Rect x={mg.l} y={mg.t} width={iW} height={iH} fill="url(#bgGrad)" rx={4} />
+
+        {/* Horizontal grid lines + Y-axis labels */}
+        {gridValues.map((v) => {
+          const yPos = cy(v);
           return (
-            // React.Fragment renderiza una pieza visual reutilizable dentro de esta pantalla.
-            <React.Fragment key={valor}>
-              {/* Line renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <Line x1={margen.left} y1={y} x2={margen.left + anchoInterno} y2={y} stroke={valor === 0 ? ADMIN.bordeFuerte : 'rgba(96,165,250,0.22)'} strokeWidth="2" strokeDasharray={valor === 0 ? '1 0' : '18 22'} strokeLinecap="round" />
-              {/* SvgText renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <SvgText x={margen.left - 18} y={y + 5} fill={BRAND.textSec} fontSize="12" fontWeight="800" fontFamily={CHART_FONT} textAnchor="end">{valor}</SvgText>
-            </React.Fragment>
+            <G key={`grid-${v}`}>
+              <Line
+                x1={mg.l}
+                y1={yPos}
+                x2={mg.l + iW}
+                y2={yPos}
+                stroke={v === 0 ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.06)'}
+                strokeWidth={v === 0 ? 1.5 : 1}
+                strokeDasharray={v === 0 ? '0' : '5 7'}
+              />
+              {/* Y-axis label */}
+              <SvgText
+                x={mg.l - 8}
+                y={yPos + 4}
+                fill="#94A3B8"
+                fontSize={9}
+                fontWeight="700"
+                fontFamily={CHART_FONT}
+                textAnchor="end"
+              >
+                {`${v}%`}
+              </SvgText>
+            </G>
           );
         })}
 
-        {renderSerie('carga', BRAND.warning, 'cargaFill')}
-        {renderSerie('rendimiento', BRAND.success, 'rendimientoFill')}
-        {renderSerie('estres', BRAND.error, 'estresFill')}
+        {/* Vertical separator line (Y-axis) */}
+        <Line
+          x1={mg.l}
+          y1={mg.t}
+          x2={mg.l}
+          y2={mg.t + iH}
+          stroke="rgba(255,255,255,0.10)"
+          strokeWidth={1}
+        />
 
-        {datosSeguros.map((punto, indice) => {
-          // Declara mostrar; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-          const mostrar = datosSeguros.length <= 14 || indice % 2 === 0 || indice === datosSeguros.length - 1;
-          // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-          if (!mostrar) return null;
-          // Devuelve el JSX que React Native renderiza en pantalla.
-          return (
-            // SvgText renderiza una pieza visual reutilizable dentro de esta pantalla.
-            <SvgText key={`${punto.label}-${indice}`} x={obtenerX(indice)} y={alto - 18} fill={BRAND.textMain} fontSize={datosSeguros.length > 10 ? '11' : '12'} fontWeight="800" fontFamily={CHART_FONT} textAnchor="middle">
-              {punto.label}
+        {/* Vertical tick marks at each data point */}
+        {datos2.map((_, i) => (
+          <Line
+            key={`vtick-${i}`}
+            x1={cx(i)}
+            y1={mg.t + iH}
+            x2={cx(i)}
+            y2={mg.t + iH + 4}
+            stroke="rgba(255,255,255,0.12)"
+            strokeWidth={1}
+          />
+        ))}
+
+        {/* Tooltip vertical cursor line */}
+        {tooltipIdx >= 0 && (
+          <Line
+            x1={tooltipX}
+            y1={mg.t}
+            x2={tooltipX}
+            y2={mg.t + iH}
+            stroke="rgba(255,255,255,0.22)"
+            strokeWidth={1.5}
+            strokeDasharray="3 4"
+          />
+        )}
+
+        {/* ── Estrés area + line (drawn first, behind others) ── */}
+        {eArea ? <Path d={eArea} fill="url(#gradE)" /> : null}
+        {ePath ? <Path d={ePath} fill="none" stroke={BRAND.error} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" opacity={0.85} /> : null}
+
+        {/* ── Carga area + line ── */}
+        {cArea ? <Path d={cArea} fill="url(#gradC)" /> : null}
+        {cPath ? <Path d={cPath} fill="none" stroke={BRAND.warning} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" opacity={0.9} /> : null}
+
+        {/* ── Rendimiento area + line (on top) ── */}
+        {rArea ? <Path d={rArea} fill="url(#gradR)" /> : null}
+        {rPath ? <Path d={rPath} fill="none" stroke={BRAND.success} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" /> : null}
+
+        {/* Data dots – rendimiento */}
+        {rPtsVis.map((pt, i) => (
+          i === rPtsVis.length - 1 ? (
+            <G key={`rdot-${i}`}>
+              <Circle cx={pt.x} cy={pt.y} r={7} fill={BRAND.success} opacity={0.12} />
+              <Circle cx={pt.x} cy={pt.y} r={4} fill={ADMIN.fondoElevado} stroke={BRAND.success} strokeWidth={2} />
+            </G>
+          ) : null
+        ))}
+
+        {/* Data dots – carga */}
+        {cPtsVis.map((pt, i) => (
+          i === cPtsVis.length - 1 ? (
+            <G key={`cdot-${i}`}>
+              <Circle cx={pt.x} cy={pt.y} r={6} fill={BRAND.warning} opacity={0.12} />
+              <Circle cx={pt.x} cy={pt.y} r={3.5} fill={ADMIN.fondoElevado} stroke={BRAND.warning} strokeWidth={2} />
+            </G>
+          ) : null
+        ))}
+
+        {/* Data dots – estrés */}
+        {ePtsVis.map((pt, i) => (
+          i === ePtsVis.length - 1 ? (
+            <G key={`edot-${i}`}>
+              <Circle cx={pt.x} cy={pt.y} r={6} fill={BRAND.error} opacity={0.12} />
+              <Circle cx={pt.x} cy={pt.y} r={3.5} fill={ADMIN.fondoElevado} stroke={BRAND.error} strokeWidth={2} />
+            </G>
+          ) : null
+        ))}
+
+        {/* Tooltip hovered dots */}
+        {tooltipIdx >= 0 && tooltipIdx < n && (
+          <G>
+            {/* Rendimiento hovered dot */}
+            <Circle cx={rPts[tooltipIdx].x} cy={rPts[tooltipIdx].y} r={9} fill={BRAND.success} opacity={0.18} />
+            <Circle cx={rPts[tooltipIdx].x} cy={rPts[tooltipIdx].y} r={5} fill={ADMIN.fondoElevado} stroke={BRAND.success} strokeWidth={2.5} />
+            {/* Carga hovered dot */}
+            <Circle cx={cPts[tooltipIdx].x} cy={cPts[tooltipIdx].y} r={8} fill={BRAND.warning} opacity={0.18} />
+            <Circle cx={cPts[tooltipIdx].x} cy={cPts[tooltipIdx].y} r={4.5} fill={ADMIN.fondoElevado} stroke={BRAND.warning} strokeWidth={2} />
+            {/* Estrés hovered dot */}
+            <Circle cx={ePts[tooltipIdx].x} cy={ePts[tooltipIdx].y} r={8} fill={BRAND.error} opacity={0.18} />
+            <Circle cx={ePts[tooltipIdx].x} cy={ePts[tooltipIdx].y} r={4.5} fill={ADMIN.fondoElevado} stroke={BRAND.error} strokeWidth={2} />
+          </G>
+        )}
+
+        {/* Tooltip box (SVG inline) */}
+        {tooltipIdx >= 0 && tooltipPunto && (
+          <G>
+            <Rect
+              x={tooltipLabelX}
+              y={tooltipLabelY + 2}
+              width={130}
+              height={74}
+              rx={8}
+              fill={ADMIN.fondoVidrioFuerte}
+              stroke={ADMIN.bordeFuerte}
+              strokeWidth={1}
+              opacity={0.97}
+            />
+            {/* Period label */}
+            <SvgText
+              x={tooltipLabelX + 10}
+              y={tooltipLabelY + 19}
+              fill="rgba(255,255,255,0.45)"
+              fontSize={9}
+              fontWeight="800"
+              fontFamily={CHART_FONT}
+            >
+              {tooltipPunto.label.toUpperCase()}
             </SvgText>
+            {/* Rendimiento */}
+            <Circle cx={tooltipLabelX + 14} cy={tooltipLabelY + 34} r={4} fill={BRAND.success} />
+            <SvgText x={tooltipLabelX + 24} y={tooltipLabelY + 38} fill={BRAND.success} fontSize={10} fontWeight="700" fontFamily={CHART_FONT}>
+              {`Rendimiento  ${tooltipPunto.rendimiento}%`}
+            </SvgText>
+            {/* Carga */}
+            <Circle cx={tooltipLabelX + 14} cy={tooltipLabelY + 51} r={4} fill={BRAND.warning} />
+            <SvgText x={tooltipLabelX + 24} y={tooltipLabelY + 55} fill={BRAND.warning} fontSize={10} fontWeight="700" fontFamily={CHART_FONT}>
+              {`Carga          ${tooltipPunto.carga}%`}
+            </SvgText>
+            {/* Estrés */}
+            <Circle cx={tooltipLabelX + 14} cy={tooltipLabelY + 68} r={4} fill={BRAND.error} />
+            <SvgText x={tooltipLabelX + 24} y={tooltipLabelY + 72} fill={BRAND.error} fontSize={10} fontWeight="700" fontFamily={CHART_FONT}>
+              {`Estrés          ${tooltipPunto.estres}%`}
+            </SvgText>
+          </G>
+        )}
+
+         {/* X-axis labels */}
+         {datos2.map((p, i) => {
+           const show = n <= 12 || i % Math.ceil(n / 12) === 0 || i === n - 1;
+           return show ? (
+             <SvgText
+               key={`xlabel-${i}`}
+               x={cx(i)}
+               y={H - 10}
+               fill="#94A3B8"
+               fontSize={n > 14 ? 8 : 9.5}
+               fontWeight={tooltipIdx === i ? '800' : '600'}
+               fontFamily={CHART_FONT}
+               textAnchor="middle"
+             >
+               {p.label}
+             </SvgText>
+           ) : null;
+         })}
+
+        {/* ── Invisible hover/touch zones per data point — MUST be last so they capture events ── */}
+        {datos2.map((_, i) => {
+          // Zone spans from midpoint to previous to midpoint to next point
+          const x0 = i === 0 ? mg.l : (cx(i - 1) + cx(i)) / 2;
+          const x1 = i === n - 1 ? mg.l + iW : (cx(i) + cx(i + 1)) / 2;
+          return (
+            <Rect
+              key={`zone-${i}`}
+              x={x0}
+              y={mg.t}
+              width={x1 - x0}
+              height={iH + 4}
+              fill="transparent"
+              onPressIn={() => setTooltipIdx(i)}
+              onPressOut={() => setTimeout(() => setTooltipIdx(-1), 1600)}
+              {...(Platform.OS === 'web' ? {
+                onMouseEnter: () => setTooltipIdx(i),
+                onMouseLeave: () => setTooltipIdx(-1),
+              } as any : {})}
+            />
           );
         })}
       </Svg>
-      {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-      <View style={estilos.chartTooltip}>
-        {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-        <Text style={estilos.chartTooltipLabel}>{puntoActivo?.label || datosSeguros[datosSeguros.length - 1]?.label || t('admin.dashboard.chart.period')}</Text>
-        {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={estilos.chartTooltipValues}>
-          {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={[estilos.chartTooltipValue, { color: BRAND.success }]}>R {puntoActivo?.rendimiento ?? datosSeguros[datosSeguros.length - 1]?.rendimiento ?? 0}%</Text>
-          {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={[estilos.chartTooltipValue, { color: BRAND.warning }]}>C {puntoActivo?.carga ?? datosSeguros[datosSeguros.length - 1]?.carga ?? 0}%</Text>
-          {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={[estilos.chartTooltipValue, { color: BRAND.error }]}>E {puntoActivo?.estres ?? datosSeguros[datosSeguros.length - 1]?.estres ?? 0}%</Text>
-        </View>
-      </View>
     </Animated.View>
   );
 };
 
 /**
- * Componente ChartEventsPanel. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
+ * ChartSidePanel – unified compact panel showing period metrics + next events as a single table.
  */
-const ChartEventsPanel = ({ eventos }: { eventos: any[] }) => {
-  // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
+const ChartSidePanel = ({
+  datos,
+  eventos,
+  metricas,
+  resumenPeriodo,
+  modoGrafico
+}: {
+  datos: PuntoGrafico[];
+  eventos: any[];
+  metricas: any;
+  resumenPeriodo: any;
+  modoGrafico: ModoGrafico;
+}) => {
   const { t } = useTranslation();
-  // Calcula hoy; normaliza fechas para comparaciones, filtros o etiquetas visibles.
-  const hoy = new Date();
-  // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-  hoy.setHours(0, 0, 0, 0);
+  
+  // Averages, Peaks, Min
+  const n = datos.length || 1;
+  const avgRendimiento = Math.round(datos.reduce((acc, d) => acc + d.rendimiento, 0) / n);
+  const avgCarga = Math.round(datos.reduce((acc, d) => acc + d.carga, 0) / n);
+  const avgEstres = Math.round(datos.reduce((acc, d) => acc + d.estres, 0) / n);
 
-  // Inicializa proximosEventos; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const proximosEventos = useMemo(() => {
-    // Devuelve el valor final calculado para esta funcion o caso de uso.
-    return (eventos || [])
-      .filter((evento) => {
-        // Declara fecha; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-        const fecha = obtenerFecha(evento.inicio || evento.fechaInicio);
-        // Devuelve el valor final calculado para esta funcion o caso de uso.
-        return fecha && fecha >= hoy;
-      })
-      .sort((a, b) => {
-        // Declara dateA; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-        const dateA = obtenerFecha(a.inicio || a.fechaInicio)?.getTime() || 0;
-        // Declara dateB; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-        const dateB = obtenerFecha(b.inicio || b.fechaInicio)?.getTime() || 0;
-        // Devuelve el valor final calculado para esta funcion o caso de uso.
-        return dateA - dateB;
-      })
-      .slice(0, 3);
-  }, [eventos]);
+  const maxRendimiento = Math.max(...datos.map(d => d.rendimiento), 0);
+  const maxCarga = Math.max(...datos.map(d => d.carga), 0);
+  const maxEstres = Math.max(...datos.map(d => d.estres), 0);
 
-  // Devuelve el JSX que React Native renderiza en pantalla.
-  return (
-    // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
-    <View style={estilos.chartDetailPanel}>
-      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-      <Text style={estilos.chartDetailEyebrow}>{t('admin.dashboard.chart.corporate_agenda')}</Text>
-      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-      <Text style={estilos.chartDetailTitle}>{t('admin.dashboard.chart.next_dates')}</Text>
-      
-      {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-      <View style={estilos.chartEventsList}>
-        {proximosEventos.length > 0 ? (
-          proximosEventos.map((evento) => {
-            // Declara fecha; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-            const fecha = obtenerFecha(evento.inicio || evento.fechaInicio);
-            // Declara dia; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-            const dia = fecha ? fecha.getDate().toString() : '1';
-            // Declara mes; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-            const mes = fecha ? fecha.toLocaleDateString('es-ES', { month: 'short' }).substring(0, 3).toUpperCase().replace('.', '') : 'ENE';
-            // Declara hora; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-            const hora = fecha ? fecha.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '00:00';
-
-            // Devuelve el JSX que React Native renderiza en pantalla.
-            return (
-              // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
-              <View key={evento.id} style={estilos.chartEventRowBig}>
-                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                <View style={estilos.chartEventDateBoxBig}>
-                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={estilos.chartEventDateDayBig}>{dia}</Text>
-                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={estilos.chartEventDateMonthBig}>{mes}</Text>
-                </View>
-                {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                <View style={estilos.chartEventInfo}>
-                  {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-                  <Text style={estilos.chartEventNameBig} numberOfLines={1}>{evento.titulo}</Text>
-                  {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-                  <Text style={estilos.chartEventTimeBig} numberOfLines={2}>{evento.descripcion || t('admin.dashboard.chart.no_description')}</Text>
-                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={estilos.chartEventMetaBig}>{hora} · {evento.tipo || t('common.general')}</Text>
-                </View>
-              </View>
-            );
-          })
-        ) : (
-          // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
-          <View style={estilos.chartEventsEmptyBoxBig}>
-            {/* CalendarClock renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-            <CalendarClock size={24} color={BRAND.textSec} style={{ marginBottom: 8, opacity: 0.5 }} />
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.chartEventsEmpty}>{t('admin.dashboard.chart.no_events')}</Text>
-          </View>
-        )}
-      </View>
-    </View>
-  );
-};
-
-/**
- * Componente ChartDetailPanel. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
- */
-const ChartDetailPanel = ({ datos }: { datos: PuntoGrafico[] }) => {
-  // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const { t } = useTranslation();
-  // Declara actual; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const actual = datos[datos.length - 1] || { label: t('admin.dashboard.chart.period'), rendimiento: 0, carga: 0, estres: 0 };
-  // Declara anterior; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const anterior = datos[datos.length - 2] || actual;
-  // Declara rows; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const rows = [
-    { label: t('admin.dashboard.chart.performance'), value: actual.rendimiento, prev: anterior.rendimiento, color: BRAND.success },
-    { label: t('admin.dashboard.chart.load'), value: actual.carga, prev: anterior.carga, color: BRAND.warning },
-    { label: t('admin.dashboard.chart.stress'), value: actual.estres, prev: anterior.estres, color: BRAND.error },
+
+  const score = avgRendimiento - (avgEstres * 0.7) - (avgCarga * 0.3);
+  let healthLabel = 'Estable';
+  let healthColor = BRAND.success;
+  if (score > 60) {
+    healthLabel = 'Excelente';
+    healthColor = BRAND.success;
+  } else if (score < 30) {
+    healthLabel = 'Atención';
+    healthColor = BRAND.error;
+  } else if (avgEstres > 50) {
+    healthLabel = 'Estrés Alto';
+    healthColor = BRAND.error;
+  } else if (avgCarga > 75) {
+    healthLabel = 'Carga Alta';
+    healthColor = BRAND.warning;
+  }
+
+  const metrics = [
+    {
+      label: t('admin.dashboard.chart.performance'),
+      actual: actual.rendimiento,
+      prev: anterior.rendimiento,
+      avg: avgRendimiento,
+      max: maxRendimiento,
+      color: BRAND.success,
+      bg: 'rgba(16,185,129,0.04)'
+    },
+    {
+      label: t('admin.dashboard.chart.load'),
+      actual: actual.carga,
+      prev: anterior.carga,
+      avg: avgCarga,
+      max: maxCarga,
+      color: BRAND.warning,
+      bg: 'rgba(245,158,11,0.04)'
+    },
+    {
+      label: t('admin.dashboard.chart.stress'),
+      actual: actual.estres,
+      prev: anterior.estres,
+      avg: avgEstres,
+      max: maxEstres,
+      color: BRAND.error,
+      bg: 'rgba(239,68,68,0.04)'
+    }
   ];
 
-  // Devuelve el JSX que React Native renderiza en pantalla.
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const proximosEventos = useMemo(() =>
+    (eventos || [])
+      .filter((ev) => { const f = obtenerFecha(ev.inicio || ev.fechaInicio); return f && f >= hoy; })
+      .sort((a, b) => (obtenerFecha(a.inicio || a.fechaInicio)?.getTime() || 0) - (obtenerFecha(b.inicio || b.fechaInicio)?.getTime() || 0))
+      .slice(0, 2),
+    [eventos]
+  );
+
+  const { theme } = useAdminAppearance();
+
   return (
-    // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
-    <View style={estilos.chartDetailPanel}>
-      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-      <Text style={estilos.chartDetailEyebrow}>{t('admin.dashboard.chart.period_detail')}</Text>
-      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-      <Text style={estilos.chartDetailTitle}>{actual.label}</Text>
-      {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-      <View style={estilos.chartDetailRows}>
-        {rows.map((row) => {
-          // Declara delta; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-          const delta = row.value - row.prev;
-          // Devuelve el JSX que React Native renderiza en pantalla.
+    <View style={[estilos.sidePanel, { backgroundColor: theme.isDark ? ADMIN.fondoElevado : '#FFFFFF', borderColor: theme.isDark ? ADMIN.borde : 'rgba(91,65,150,0.16)' }]}>
+      {/* Header section with Health Status */}
+      <View style={estilos.sidePanelHeader}>
+        <View style={{ flex: 1 }}>
+          <Text style={estilos.sidePanelEyebrow}>{t('admin.dashboard.chart.period_detail')}</Text>
+          <Text style={[estilos.sidePanelTitle, { marginBottom: 0 }]}>{actual.label}</Text>
+        </View>
+        <View style={[estilos.sidePanelBadge, { backgroundColor: healthColor + '12', borderColor: healthColor + '24' }]}>
+          <View style={[estilos.sidePanelBadgeDot, { backgroundColor: healthColor }]} />
+          <Text style={[estilos.sidePanelBadgeText, { color: healthColor }]}>{healthLabel}</Text>
+        </View>
+      </View>
+
+      {/* Row containing the 3 metrics side by side */}
+      <View style={estilos.sideMetricsRow}>
+        {metrics.map((m) => {
+          const delta = m.actual - m.prev;
+          const sign = delta > 0 ? '+' : '';
           return (
-            // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
-            <View key={row.label} style={estilos.chartDetailRow}>
-              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View style={[estilos.chartDetailDot, { backgroundColor: row.color }]} />
-              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View style={estilos.chartDetailCopy}>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.chartDetailLabel}>{row.label}</Text>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.chartDetailDelta}>
-                  {delta === 0
-                    ? t('admin.dashboard.chart.no_variation')
-                    : t('admin.dashboard.chart.delta_vs_previous', { delta: `${delta > 0 ? '+' : ''}${delta}` })}
+            <View key={m.label} style={[estilos.sideMetricCol, { borderColor: m.color + '18', backgroundColor: m.bg }]}>
+              {/* Metric title + dot */}
+              <View style={estilos.sideMetricTitleContainer}>
+                <View style={[estilos.sidePanelDot, { backgroundColor: m.color }]} />
+                <Text style={estilos.sideMetricColLabel} numberOfLines={1}>{m.label}</Text>
+              </View>
+              {/* Current Value + delta */}
+              <View style={estilos.sideMetricValueContainer}>
+                <Text style={[estilos.sideMetricColValue, { color: m.color }]}>{m.actual}%</Text>
+                <Text style={[estilos.sideMetricColDelta, { color: delta > 0 ? BRAND.success : delta < 0 ? BRAND.error : BRAND.textSec }]}>
+                  {delta === 0 ? '—' : `${sign}${delta}%`}
                 </Text>
               </View>
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={[estilos.chartDetailValue, { color: row.color }]}>{row.value}%</Text>
+              {/* Stats below */}
+              <View style={estilos.sideMetricStats}>
+                <Text style={estilos.sideMetricStatText}>Prom: <Text style={{ color: BRAND.textMain }}>{m.avg}%</Text></Text>
+                <Text style={estilos.sideMetricStatText}>Max: <Text style={{ color: BRAND.textMain }}>{m.max}%</Text></Text>
+              </View>
             </View>
           );
         })}
       </View>
+
+      {/* Divider */}
+      <View style={estilos.sidePanelDivider} />
+
+      {/* Bottom section with Advisor Insight & Agenda side-by-side */}
+      <View style={estilos.sidePanelBottomRow}>
+        {/* Control de Jornada */}
+        <View style={estilos.sideAdvisorCol}>
+          <Text style={estilos.sidePanelEyebrow}>Control de Jornada</Text>
+          <View style={[estilos.sideAdvisorCard, { backgroundColor: theme.isDark ? 'rgba(255,255,255,0.02)' : 'rgba(91,65,150,0.03)', borderColor: theme.isDark ? ADMIN.borde : 'rgba(91,65,150,0.08)' }]}>
+            <View style={{ gap: 5 }}>
+              {/* Fila 1: Asistencia */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: BRAND.textMain, fontSize: 10.5, fontWeight: '700' }}>Asistencia</Text>
+                  <Text style={{ color: BRAND.textSec, fontSize: 9 }}>
+                    {modoGrafico === 'diario' ? 'Promedio: últimos 8 días' : modoGrafico === 'semanal' ? 'Promedio: últimas 8 sem.' : 'Promedio: últimos 8 mes.'}
+                  </Text>
+                </View>
+                <View style={{
+                  paddingHorizontal: 6,
+                  paddingVertical: 2,
+                  borderRadius: 4,
+                  backgroundColor: 'rgba(16,185,129,0.08)'
+                }}>
+                  <Text style={{ fontSize: 9, fontWeight: '900', color: BRAND.success }}>
+                    {resumenPeriodo?.asistenciaPct ?? 0}%
+                  </Text>
+                </View>
+              </View>
+
+              {/* Fila 2: Tiempo Laborado */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.04)', paddingTop: 4 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: BRAND.textMain, fontSize: 10.5, fontWeight: '700' }}>Tiempo Laborado</Text>
+                  <Text style={{ color: BRAND.textSec, fontSize: 9 }}>Total acumulado</Text>
+                </View>
+                <View style={{
+                  paddingHorizontal: 6,
+                  paddingVertical: 2,
+                  borderRadius: 4,
+                  backgroundColor: 'rgba(59,130,246,0.08)'
+                }}>
+                  <Text style={{ fontSize: 9, fontWeight: '900', color: '#3B82F6' }}>
+                    {resumenPeriodo?.tiempoTrabajado ?? '0h 0m'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Fila 3: Check-ins Hechos */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.04)', paddingTop: 4 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: BRAND.textMain, fontSize: 10.5, fontWeight: '700' }}>Check-ins Hechos</Text>
+                  <Text style={{ color: BRAND.textSec, fontSize: 9 }}>
+                    {modoGrafico === 'diario' ? 'Total: últimos 8 días' : modoGrafico === 'semanal' ? 'Total: últimas 8 sem.' : 'Total: últimos 8 mes.'}
+                  </Text>
+                </View>
+                <View style={{
+                  paddingHorizontal: 6,
+                  paddingVertical: 2,
+                  borderRadius: 4,
+                  backgroundColor: 'rgba(16,185,129,0.08)'
+                }}>
+                  <Text style={{ fontSize: 9, fontWeight: '900', color: BRAND.success }}>
+                    {resumenPeriodo?.checkInsPeriodo ?? 0}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Fila 4: Aprobaciones sin resolver */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.04)', paddingTop: 4 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: BRAND.textMain, fontSize: 10.5, fontWeight: '700' }}>Aprobaciones</Text>
+                  <Text style={{ color: BRAND.textSec, fontSize: 9 }}>
+                    {modoGrafico === 'diario' ? 'Pendientes: últimos 8 días' : modoGrafico === 'semanal' ? 'Pendientes: últimas 8 sem.' : 'Pendientes: últimos 8 mes.'}
+                  </Text>
+                </View>
+                <View style={{
+                  paddingHorizontal: 6,
+                  paddingVertical: 2,
+                  borderRadius: 4,
+                  backgroundColor: (resumenPeriodo?.aprobacionesPendientes || 0) > 0 ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.08)'
+                }}>
+                  <Text style={{ fontSize: 9, fontWeight: '900', color: (resumenPeriodo?.aprobacionesPendientes || 0) > 0 ? BRAND.error : BRAND.success }}>
+                    {resumenPeriodo?.aprobacionesPendientes ?? 0}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Agenda column */}
+        <View style={estilos.sideAgendaCol}>
+          <Text style={estilos.sidePanelEyebrow}>{t('admin.dashboard.chart.corporate_agenda')}</Text>
+          <View style={{ gap: 6, marginTop: 4 }}>
+            {proximosEventos.length > 0 ? (
+              proximosEventos.map((ev) => {
+                const fecha = obtenerFecha(ev.inicio || ev.fechaInicio);
+                const dia = fecha ? fecha.getDate().toString().padStart(2, '0') : '--';
+                const mes = fecha ? fecha.toLocaleDateString('es-ES', { month: 'short' }).substring(0, 3).toUpperCase().replace('.', '') : '---';
+                return (
+                  <View key={ev.id} style={estilos.sideEventRow}>
+                    <View style={estilos.sideEventDate}>
+                      <Text style={estilos.sideEventDay}>{dia}</Text>
+                      <Text style={estilos.sideEventMonth}>{mes}</Text>
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={estilos.sideEventName} numberOfLines={1}>{ev.titulo}</Text>
+                      <Text style={estilos.sideEventDesc} numberOfLines={1}>{ev.descripcion || t('admin.dashboard.chart.no_description')}</Text>
+                    </View>
+                  </View>
+                );
+              })
+            ) : (
+              <View style={[estilos.sideEventEmptyHorizontal, { backgroundColor: theme.isDark ? 'rgba(255,255,255,0.02)' : 'rgba(91,65,150,0.03)', borderColor: theme.isDark ? ADMIN.borde : 'rgba(91,65,150,0.08)' }]}>
+                <Text style={estilos.sidePanelRowDelta}>{t('admin.dashboard.chart.no_events')}</Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </View>
     </View>
   );
 };
 
-/**
- * Componente LegendItem. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
+// Legacy aliases kept so old render references still compile (now replaced below)
+const ChartEventsPanel = ({ eventos }: { eventos: any[] }) => null;
+const ChartDetailPanel = ({ datos }: { datos: PuntoGrafico[] }) => null;
+
+/*** Componente LegendItem. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 const LegendItem = ({ color, label, value }: { color: string; label: string; value: string }) => (
   // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
@@ -2701,103 +3431,252 @@ const estilos = StyleSheet.create({
     // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 0,
   },
-  // chartBody: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
+  // chartBody: side-by-side chart + panel
   chartBody: {
-    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
-    // gap define separacion uniforme entre elementos hijos.
-    gap: 32,
-    // alignItems alinea los hijos en el eje transversal del contenedor.
-    alignItems: 'flex-start',
-    // justifyContent distribuye los hijos en el eje principal del contenedor.
-    justifyContent: 'center',
-    // flexWrap ajusta una propiedad visual especifica de este estilo.
-    flexWrap: 'wrap',
+    gap: 16,
+    alignItems: 'stretch',
   },
-  // chartBodyMobile: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  chartBodyMobile: {
-    // flexDirection decide si los hijos se ordenan en fila o columna.
-    flexDirection: 'column',
-    // gap define separacion uniforme entre elementos hijos.
-    gap: 20,
-  },
-  // chartGraphArea: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
+  // chartGraphArea: chart takes most of the width
   chartGraphArea: {
-    // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
-    flex: 1.5,
-    // maxWidth limita el ancho para mantener lectura y composicion.
-    maxWidth: 720,
-    // minWidth ajusta una propiedad visual especifica de este estilo.
-    minWidth: 500,
+    flex: 1,
+    minWidth: 200,
   },
-  // chartMediumLayout: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  chartMediumLayout: {
-    // width fija o calcula el ancho del elemento.
-    width: '100%',
-    // alignItems alinea los hijos en el eje transversal del contenedor.
-    alignItems: 'center',
-    // gap define separacion uniforme entre elementos hijos.
-    gap: 24,
-  },
-  // chartBottomRow: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  chartBottomRow: {
-    // flexDirection decide si los hijos se ordenan en fila o columna.
-    flexDirection: 'row',
-    // justifyContent distribuye los hijos en el eje principal del contenedor.
-    justifyContent: 'center',
-    // alignItems alinea los hijos en el eje transversal del contenedor.
-    alignItems: 'flex-start',
-    // gap define separacion uniforme entre elementos hijos.
-    gap: 32,
-    // width fija o calcula el ancho del elemento.
-    width: '100%',
-    // flexWrap ajusta una propiedad visual especifica de este estilo.
-    flexWrap: 'wrap',
-  },
-  // chartDetailPanel: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  chartDetailPanel: {
-    // width fija o calcula el ancho del elemento.
-    width: 510,
-    // minWidth ajusta una propiedad visual especifica de este estilo.
-    minWidth: 320,
-    // maxWidth limita el ancho para mantener lectura y composicion.
-    maxWidth: '100%',
-    // borderRadius redondea esquinas para definir la forma visual.
+  // sidePanel: unified events + metrics side panel
+  sidePanel: {
+    flex: 1,
     borderRadius: 12,
-    // borderWidth define el grosor del borde visible.
     borderWidth: 1,
-    // borderColor define el color del borde.
     borderColor: ADMIN.borde,
-    // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoCampo,
-    // padding agrega espacio interno alrededor del contenido.
-    padding: 14,
+    overflow: 'hidden',
   },
-  // chartDetailEyebrow: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  chartDetailEyebrow: {
-    // color define el color del texto o icono.
-    color: BRAND.textSec,
-    // fontSize controla el tamanio del texto.
-    fontSize: 9,
-    // fontWeight define el peso visual del texto.
+  sidePanelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 8,
+  },
+  sidePanelBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  sidePanelBadgeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 999,
+  },
+  sidePanelBadgeText: {
+    fontSize: 11,
     fontWeight: '900',
-    // letterSpacing ajusta la separacion entre letras.
-    letterSpacing: 1.4,
-    // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
   },
-  // chartDetailTitle: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
-  chartDetailTitle: {
-    // color define el color del texto o icono.
-    color: BRAND.textMain,
-    // fontSize controla el tamanio del texto.
-    fontSize: 22,
-    // fontWeight define el peso visual del texto.
+  sideMetricsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  sideMetricCol: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 8,
+    justifyContent: 'space-between',
+  },
+  sideMetricTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  sideMetricColLabel: {
+    color: BRAND.textSec,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  sideMetricValueContainer: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  sideMetricColValue: {
+    fontSize: 17,
     fontWeight: '900',
-    // marginTop separa este bloque del elemento anterior.
-    marginTop: 8,
-    // marginBottom separa este bloque del siguiente elemento.
-    marginBottom: 14,
+  },
+  sideMetricColDelta: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  sideMetricStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.04)',
+    paddingTop: 4,
+  },
+  sideMetricStatText: {
+    color: BRAND.textSec,
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  sidePanelBottomRow: {
+    flexDirection: 'row',
+    gap: 16,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
+    flex: 1,
+  },
+  sideAdvisorCol: {
+    flex: 1.1,
+  },
+  sideAdvisorCard: {
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    borderRadius: 8,
+    padding: 8,
+    marginTop: 4,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  sideAdvisorText: {
+    color: BRAND.textMain,
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: '600',
+  },
+  sideAgendaCol: {
+    flex: 1.3,
+  },
+  sideEventEmptyHorizontal: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    borderRadius: 8,
+    paddingVertical: 14,
+  },
+  sidePanelSection: {
+    padding: 12,
+  },
+  sidePanelDivider: {
+    height: 1,
+    backgroundColor: ADMIN.borde,
+    marginHorizontal: 12,
+  },
+  sidePanelEyebrow: {
+    color: BRAND.textSec,
+    fontSize: 10,
+    fontWeight: '900' as const,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase' as const,
+  },
+  sidePanelTitle: {
+    color: BRAND.textMain,
+    fontSize: 15.5,
+    fontWeight: '900' as const,
+    marginTop: 2,
+    marginBottom: 8,
+  },
+  sidePanelTable: {
+    gap: 4,
+  },
+  sidePanelTableRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+    paddingVertical: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.04)',
+  },
+  sidePanelDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  sidePanelRowLabel: {
+    flex: 1,
+    color: BRAND.textMain,
+    fontSize: 10,
+    fontWeight: '700' as const,
+    minWidth: 0,
+  },
+  sidePanelRowDelta: {
+    color: BRAND.textSec,
+    fontSize: 9,
+    fontWeight: '600' as const,
+  },
+  sidePanelRowValue: {
+    fontSize: 11,
+    fontWeight: '900' as const,
+    minWidth: 32,
+    textAlign: 'right' as const,
+  },
+  sideEventRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+    marginBottom: 6,
+  },
+  sideEventDate: {
+    width: 30,
+    alignItems: 'center' as const,
+    backgroundColor: 'rgba(124,58,237,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(168,85,247,0.2)',
+    borderRadius: 6,
+    paddingVertical: 3,
+  },
+  sideEventDay: {
+    color: BRAND.violet,
+    fontSize: 15,
+    fontWeight: '900' as const,
+    lineHeight: 15,
+  },
+  sideEventMonth: {
+    color: BRAND.violet,
+    fontSize: 8.5,
+    fontWeight: '700' as const,
+    letterSpacing: 0.5,
+  },
+  sideEventName: {
+    color: BRAND.textMain,
+    fontSize: 12,
+    fontWeight: '800' as const,
+  },
+  sideEventDesc: {
+    color: BRAND.textSec,
+    fontSize: 10.5,
+    marginTop: 1,
+  },
+  sideEventEmpty: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+    opacity: 0.6,
+    paddingVertical: 6,
+  },
+  // chartDetailPanel: kept for legacy (unused now)
+  chartDetailPanel: {
+    display: 'none' as any,
+  },
+  chartDetailEyebrow: {
+    display: 'none' as any,
+  },
+  chartDetailTitle: {
+    display: 'none' as any,
   },
   // chartDetailRows: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   chartDetailRows: {
@@ -3169,6 +4048,51 @@ const estilos = StyleSheet.create({
     backgroundColor: ADMIN.fondoVidrio,
     // overflow controla si el contenido se recorta o puede sobresalir.
     overflow: 'hidden',
+    // paddingBottom agrega espacio interno en la parte inferior.
+    paddingBottom: 2,
+  },
+  // chartLegendRow: fila de leyenda del grafico avanzado.
+  chartLegendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    flexWrap: 'wrap',
+  },
+  // chartLegendPill: pastilla individual de leyenda.
+  chartLegendPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoCampo,
+  },
+  // chartLegendDot: punto de color de la leyenda.
+  chartLegendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+  },
+  // chartLegendText: texto de la leyenda.
+  chartLegendText: {
+    color: BRAND.textSec,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  // chartLegendHint: texto de ayuda de interaccion.
+  chartLegendHint: {
+    color: BRAND.textSec,
+    fontSize: 9,
+    fontWeight: '500',
+    opacity: 0.55,
+    marginLeft: 4,
   },
   // chartTooltip: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   chartTooltip: {
@@ -4091,40 +5015,7 @@ const estilos = StyleSheet.create({
     // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
     ...sombraVioleta,
   },
-  // heroGlowA: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  heroGlowA: {
-    // position define como se posiciona el elemento respecto al layout.
-    position: 'absolute',
-    // right desplaza el elemento desde el borde derecho cuando usa posicionamiento.
-    right: 240,
-    // top desplaza el elemento desde el borde superior cuando usa posicionamiento.
-    top: -140,
-    // width fija o calcula el ancho del elemento.
-    width: 380,
-    // height fija o calcula el alto del elemento.
-    height: 380,
-    // borderRadius redondea esquinas para definir la forma visual.
-    borderRadius: 190,
-    // backgroundColor define el fondo del bloque.
-    backgroundColor: 'rgba(37,99,235,0.18)',
-  },
-  // heroGlowB: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  heroGlowB: {
-    // position define como se posiciona el elemento respecto al layout.
-    position: 'absolute',
-    // right desplaza el elemento desde el borde derecho cuando usa posicionamiento.
-    right: -80,
-    // bottom desplaza el elemento desde el borde inferior cuando usa posicionamiento.
-    bottom: -120,
-    // width fija o calcula el ancho del elemento.
-    width: 360,
-    // height fija o calcula el alto del elemento.
-    height: 280,
-    // borderRadius redondea esquinas para definir la forma visual.
-    borderRadius: 120,
-    // backgroundColor define el fondo del bloque.
-    backgroundColor: 'rgba(168,85,247,0.18)',
-  },
+
   // heroCopy: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   heroCopy: {
     // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
@@ -4277,6 +5168,8 @@ const estilos = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.02)',
     // borderColor define el color del borde.
     borderColor: 'rgba(255,255,255,0.06)',
+    // overflow controla si el contenido se recorta o puede sobresalir.
+    overflow: 'hidden',
   },
   // heroMetricPillBlue: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   heroMetricPillBlue: {
@@ -4598,5 +5491,290 @@ const estilos = StyleSheet.create({
     borderRadius: 999,
     // backgroundColor define el fondo del bloque.
     backgroundColor: '#A855F7',
+  },
+  // approvalInfoContainer: clickable container inside the item
+  approvalInfoContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minWidth: 0,
+  },
+  // approvalLeftContainer: layout container
+  approvalLeftContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minWidth: 0,
+  },
+  // approvalIconWrapper: rounded container for the type icon
+  approvalIconWrapper: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // approvalTitleRow: row layout for title and priority badge
+  approvalTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 2,
+  },
+  // priorityBadge: small colored badge
+  priorityBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  // priorityBadgeText: small bold text
+  priorityBadgeText: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  // modalOverlay: blurred/dimmed backdrop container
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  // modalCard: main dialog container
+  modalCard: {
+    width: '100%',
+    maxWidth: 580,
+    maxHeight: '85%',
+    borderRadius: ADMIN.radio,
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    overflow: 'hidden',
+  },
+  // modalHeader: modal top section
+  modalHeader: {
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoCampo,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  // modalTitle: modal heading text
+  modalTitle: {
+    color: BRAND.textMain,
+    fontSize: 18,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: -0.4,
+  },
+  // modalSubtitle: secondary description text
+  modalSubtitle: {
+    color: BRAND.textSec,
+    fontSize: 9,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    marginTop: 3,
+  },
+  // modalClose: close button
+  modalClose: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // modalBody: scrollable section
+  modalBody: {
+    padding: 20,
+  },
+  // modalContentContainer: layout wrapper for modal body
+  modalContentContainer: {
+    gap: 20,
+    paddingBottom: 20,
+  },
+  // employeeCard: premium card showing requester profile info
+  employeeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    borderRadius: 12,
+    padding: 14,
+    gap: 12,
+  },
+  // employeeAvatar: avatar wrapper
+  employeeAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(168, 85, 247, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(168, 85, 247, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // employeeAvatarText: bold large initial
+  employeeAvatarText: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#A855F7',
+  },
+  // employeeInfo: labels
+  employeeInfo: {
+    flex: 1,
+  },
+  // employeeName: requester name text
+  employeeName: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: BRAND.textMain,
+  },
+  // employeeLabel: subtitle
+  employeeLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: BRAND.textSec,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginTop: 1,
+  },
+  // detailsGrid: two column layout for details
+  detailsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 14,
+  },
+  // detailsGridCol: individual column item
+  detailsGridCol: {
+    width: '47%',
+    minWidth: 120,
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    borderRadius: 10,
+    padding: 10,
+  },
+  // detailsLabel: field title
+  detailsLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: BRAND.textSec,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 4,
+  },
+  // detailsValue: field value text
+  detailsValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: BRAND.textMain,
+  },
+  // reasonSection: container for reason description
+  reasonSection: {
+    gap: 8,
+  },
+  // sectionTitle: section header
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: BRAND.textSec,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+  },
+  // reasonCard: highlighted card for the reason details
+  reasonCard: {
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    borderLeftWidth: 3,
+    borderLeftColor: '#A855F7',
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    borderRadius: 8,
+    padding: 14,
+  },
+  // reasonText: reason message content
+  reasonText: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: BRAND.textMain,
+  },
+  // extraInfoRow: inline icon and message row
+  extraInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    borderRadius: 10,
+    padding: 12,
+  },
+  // extraInfoText: description text
+  extraInfoText: {
+    fontSize: 12,
+    color: BRAND.textMain,
+    flex: 1,
+  },
+  // modalFooter: footer controls panel
+  modalFooter: {
+    padding: 16,
+    backgroundColor: ADMIN.fondoCampo,
+    borderTopWidth: 1,
+    borderTopColor: ADMIN.borde,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+  },
+  // footerButton: action buttons in footer
+  footerButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 90,
+  },
+  // footerButtonSecondary: secondary style button
+  footerButtonSecondary: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+  },
+  // footerButtonError: action style button for reject
+  footerButtonError: {
+    backgroundColor: '#EF4444',
+  },
+  // footerButtonSuccess: action style button for approve
+  footerButtonSuccess: {
+    backgroundColor: '#10B981',
+  },
+  // footerButtonTextSecondary: text inside secondary button
+  footerButtonTextSecondary: {
+    color: BRAND.textSec,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  // footerButtonTextPrimary: text inside primary action buttons
+  footerButtonTextPrimary: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  // employeeAvatarImage: profile photo inside the modal detail card
+  employeeAvatarImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  // approvalAvatarImage: profile photo inside each approval list item
+  approvalAvatarImage: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
   },
 });

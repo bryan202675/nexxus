@@ -11,12 +11,16 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
 import { useApiTranslate } from '@/shared/i18n/useApiTranslate';
-// Importa { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Alert, Platform, Modal, KeyboardAvoidingView } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Alert, Platform, KeyboardAvoidingView } from 'react-native';
+// Importa { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Alert, Platform, Modal, Image, KeyboardAvoidingView } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
+import { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Alert, Platform, KeyboardAvoidingView, Modal, Image } from 'react-native';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
-// Importa { addDoc, collection, onSnapshot, query, where, getDocs, doc, updateDoc, writeBatch } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
-import { addDoc, collection, onSnapshot, query, where, getDocs, doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { BlurView } from 'expo-blur';
+// Importa { addDoc, setDoc, collection, onSnapshot, query, where, getDocs, doc, updateDoc, writeBatch } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
+import { addDoc, setDoc, collection, onSnapshot, query, where, getDocs, doc, updateDoc, writeBatch } from 'firebase/firestore';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
 // Importa { db } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
 import { db } from '@/infrastructure/firebase/firebaseConfig';
 // Importa { useCases } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
@@ -27,8 +31,8 @@ import { useAuth } from '@/presentation/hooks/useAuth';
 import { obtenerEmpresaIdAdmin } from './adminUtils';
 import { AdminModal } from './AdminModal';
 import { AdminModalFormGlass } from './AdminModalFormGlass';
-// Importa { ADMIN, sombraAdmin }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
-import { ADMIN, sombraAdmin } from './adminTheme';
+// Importa { ADMIN, sombraAdmin, useAdminAppearance }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
+import { ADMIN, sombraAdmin, useAdminAppearance } from './adminTheme';
 // Importa { useAdminToast }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import { useAdminToast } from './adminToast';
 // Importa { calcularNomina }; ejecuta casos de uso que concentran reglas de negocio.
@@ -116,6 +120,9 @@ export default function GestionNomina() {
   const [modalVisible, setModalVisible] = useState(false);
   // Inicializa [guardandoPerfil, setGuardandoPerfil]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [guardandoPerfil, setGuardandoPerfil] = useState(false);
+  const [modalExportVisible, setModalExportVisible] = useState(false);
+  const [aprobandoTodo, setAprobandoTodo] = useState(false);
+  const [logoEmpresa, setLogoEmpresa] = useState<string | null>(null);
 
   // Traducciones dinámicas por API
   const title = useApiTranslate('Gestión de Nómina');
@@ -193,6 +200,8 @@ export default function GestionNomina() {
 
   // Inicializa { user }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { user } = useAuth();
+  // Inicializa { theme }; obtiene el tema activo para soportar diseño dinámico.
+  const { theme } = useAdminAppearance();
 
   // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
   useEffect(() => {
@@ -204,6 +213,26 @@ export default function GestionNomina() {
       useNativeDriver: true,
     }).start();
   }, [entrada]);
+
+  // Obtiene el logo de la empresa desde Firestore
+  useEffect(() => {
+    const empresaId = obtenerEmpresaIdAdmin(user);
+    if (!empresaId) return;
+
+    const unsubscribe = onSnapshot(
+      doc(db, 'empresas', empresaId),
+      (docSnap) => {
+        if (docSnap.exists()) {
+          setLogoEmpresa(docSnap.data()?.logo_url || null);
+        }
+      },
+      (error) => {
+        console.error('Error fetching company logo in GestionNomina:', error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [user]);
 
   // Inicializa periodoActual; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const periodoActual = useMemo(() => {
@@ -244,7 +273,7 @@ export default function GestionNomina() {
       // Calcula dbUsers; transforma la lista original en datos listos para renderizar o guardar.
       const dbUsers = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as User);
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-      setUsuarios(dbUsers.filter(u => u.eliminado !== true));
+      setUsuarios(dbUsers.filter(u => u.eliminado !== true && u.rol !== 'admin' && u.rol !== 'propietario'));
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setCargando(false);
     }, () => {
@@ -263,15 +292,50 @@ export default function GestionNomina() {
     };
   }, [user, periodoActual]);
 
+  // Calcula todos los pagos (reales y virtuales placeholders) para todos los empleados de la empresa
+  const todosLosPagos = useMemo(() => {
+    const empresaId = obtenerEmpresaIdAdmin(user) || '';
+    return usuarios.map((u) => {
+      const realPago = pagos.find((p) => p.usuario_id === u.id);
+      if (realPago) return realPago;
+
+      const calc = calcularNomina({
+        salario_base: u.salarioBase || 0,
+        horas_extra: 0,
+        valor_hora: 0,
+        bono: u.bonos_recurrentes || 0,
+        comision: u.comisiones_recurrentes || 0,
+        descuentos_adicionales: u.descuentos_recurrentes || 0,
+      });
+
+      const virtualPago: PagoNomina = {
+        id: undefined,
+        usuario_id: u.id,
+        usuarioNombre: u.nombre,
+        empresaId,
+        salario_bruto: calc.salario_bruto,
+        isss: calc.isss,
+        afp: calc.afp,
+        renta: calc.renta,
+        salario_neto: calc.salario_neto,
+        moneda: 'USD',
+        periodo: periodoActual,
+        fecha_pago: '',
+        estado: 'Pendiente' as const,
+      };
+      return virtualPago;
+    });
+  }, [usuarios, pagos, periodoActual, user]);
+
   // Inicializa totales; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const totales = useMemo(() => {
     // Calcula bruto; resume varios registros en un valor agregado usado por la UI o la regla de negocio.
-    const bruto = pagos.reduce((acc, p) => acc + (p.salario_bruto || 0), 0);
+    const bruto = todosLosPagos.reduce((acc, p) => acc + (p.salario_bruto || 0), 0);
     // Calcula neto; resume varios registros en un valor agregado usado por la UI o la regla de negocio.
-    const neto = pagos.reduce((acc, p) => acc + (p.salario_neto || 0), 0);
+    const neto = todosLosPagos.reduce((acc, p) => acc + (p.salario_neto || 0), 0);
     // Devuelve el valor final calculado para esta funcion o caso de uso.
-    return { bruto, neto, count: pagos.length };
-  }, [pagos]);
+    return { bruto, neto, count: todosLosPagos.length };
+  }, [todosLosPagos]);
 
   // Prepara guardarPerfilSalarial; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
   const guardarPerfilSalarial = async () => {
@@ -433,45 +497,182 @@ export default function GestionNomina() {
     }
   };
 
-  // Prepara actualizarEstado; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
-  const actualizarEstado = async (id: string | undefined, estado: 'Pagado' | 'Procesando' | 'Pendiente') => {
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-    if (!id) return;
-    // Declara pago; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const pago = pagos.find((item) => item.id === id);
-    // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
+  // Aprueba todas las nóminas del periodo actual de una sola vez
+  const aprobarTodasLasNominas = async () => {
+    const empresaId = obtenerEmpresaIdAdmin(user);
+    if (!empresaId || !user) return;
+
+    setAprobandoTodo(true);
     try {
-      // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-      await useCases.admin.payments.updateStatus(id, estado);
-      // Declara empresaId; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const empresaId = obtenerEmpresaIdAdmin(user);
-      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-      if (empresaId && user) {
-        // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
+      const batch = writeBatch(db);
+      let count = 0;
+
+      for (const p of todosLosPagos) {
+        if (p.estado === 'Pagado') continue;
+
+        if (!p.id) {
+          // Registro virtual, crearlo directamente como Pagado en Firestore
+          const userObj = usuarios.find(u => u.id === p.usuario_id);
+          const nuevoPagoRef = doc(collection(db, 'payments'));
+          
+          batch.set(nuevoPagoRef, {
+            usuario_id: p.usuario_id,
+            usuarioNombre: p.usuarioNombre,
+            empresaId,
+            departamento: userObj?.departamento || '',
+            cargo: userObj?.cargo || '',
+            salario_bruto: p.salario_bruto,
+            isss: p.isss,
+            afp: p.afp,
+            renta: p.renta,
+            salario_neto: p.salario_neto,
+            moneda: 'USD',
+            periodo: periodoActual,
+            fecha_pago: new Date().toISOString(),
+            estado: 'Pagado',
+            creadoPor: user.nombre,
+            createdAt: new Date().toISOString()
+          });
+        } else {
+          // Registro real existente, actualizar a Pagado
+          const pagoRef = doc(db, 'payments', p.id);
+          batch.update(pagoRef, {
+            estado: 'Pagado',
+            fecha_pago: new Date().toISOString()
+          });
+        }
+
+        // Envía notificación al empleado
+        await enviarNotificacionPago(p);
+        count++;
+      }
+
+      if (count > 0) {
+        await batch.commit();
+        
         await addDoc(collection(db, 'audit_logs'), {
           empresaId,
           usuarioId: user.id,
-          usuarioNombre: user.nombre || 'Administrador',
-          rol: user.rol || 'admin',
-          accion: 'Actualización de Pago',
+          usuarioNombre: user.nombre,
+          rol: user.rol,
+          accion: 'Aprobación Masiva de Nómina',
           modulo: 'Nómina',
-          detalles: `${pago?.usuarioNombre || 'Colaborador'} · ${estado}`,
-          estado: estado === 'Pagado' ? 'Success' : 'Warning',
-          ipAddress: 'Cliente Web',
-          timestamp: new Date().toISOString(),
+          detalles: `Se aprobaron ${count} nóminas para el periodo ${periodoActual}`,
+          estado: 'Success',
+          timestamp: new Date().toISOString()
         });
+
+        toast.success({ title: t('Nóminas Aprobadas'), description: `Se aprobaron ${count} nóminas correctamente.` });
+      } else {
+        toast.info({ title: t('Información'), description: t('Todas las nóminas ya se encuentran aprobadas.') });
       }
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+    } catch (error) {
+      console.error("Error approving all payments:", error);
+      toast.error({ title: t('Error'), description: t('No se pudieron aprobar las nóminas.') });
+    } finally {
+      setAprobandoTodo(false);
+    }
+  };
+
+  // Envía una notificación en la app al empleado con todos los detalles de su sueldo
+  const enviarNotificacionPago = async (pago: PagoNomina) => {
+    try {
+      const userObj = usuarios.find(u => u.id === pago.usuario_id);
+      const salarioBase = userObj?.salarioBase || 0;
+      
+      const msg = `Se ha realizado el pago correspondiente de tu nómina para el periodo ${pago.periodo}.\n\n` +
+        `Detalles del Sueldo:\n` +
+        `• Salario Base: $${salarioBase.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n` +
+        `• AFP: -$${(pago.afp || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n` +
+        `• ISSS: -$${(pago.isss || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n` +
+        `• ISR (Renta): -$${(pago.renta || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n` +
+        `• Salario Neto Recibido: $${(pago.salario_neto || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+      await addDoc(collection(db, 'notificaciones'), {
+        usuario_id: pago.usuario_id,
+        empresaId: pago.empresaId || obtenerEmpresaIdAdmin(user) || '',
+        titulo: 'Nómina Pagada',
+        mensaje: msg,
+        tipo: 'info',
+        leida: false,
+        fecha: new Date().toISOString()
+      });
+    } catch (e) {
+      console.error("Error al enviar notificación de pago:", e);
+    }
+  };
+
+  // Prepara actualizarEstado; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
+  const actualizarEstado = async (pago: PagoNomina, estado: 'Pagado' | 'Procesando' | 'Pendiente') => {
+    const empresaId = obtenerEmpresaIdAdmin(user);
+    if (!empresaId || !user) return;
+
+    try {
+      let paymentId = pago.id;
+
+      if (!paymentId) {
+        // Generar un nuevo registro de pago real en Firestore
+        const userObj = usuarios.find(u => u.id === pago.usuario_id);
+        const nuevoPagoRef = doc(collection(db, 'payments'));
+        paymentId = nuevoPagoRef.id;
+
+        await setDoc(nuevoPagoRef, {
+          usuario_id: pago.usuario_id,
+          usuarioNombre: pago.usuarioNombre,
+          empresaId,
+          departamento: userObj?.departamento || '',
+          cargo: userObj?.cargo || '',
+          salario_bruto: pago.salario_bruto,
+          isss: pago.isss,
+          afp: pago.afp,
+          renta: pago.renta,
+          salario_neto: pago.salario_neto,
+          moneda: 'USD',
+          periodo: periodoActual,
+          fecha_pago: estado === 'Pagado' ? new Date().toISOString() : '',
+          estado,
+          creadoPor: user.nombre,
+          createdAt: new Date().toISOString()
+        });
+      } else {
+        // Actualizar el estado del pago existente
+        await useCases.admin.payments.updateStatus(paymentId, estado);
+        if (estado === 'Pagado') {
+          await updateDoc(doc(db, 'payments', paymentId), {
+            fecha_pago: new Date().toISOString()
+          });
+        }
+      }
+
+      // Registro en bitácora de auditoría
+      await addDoc(collection(db, 'audit_logs'), {
+        empresaId,
+        usuarioId: user.id,
+        usuarioNombre: user.nombre || 'Administrador',
+        rol: user.rol || 'admin',
+        accion: 'Actualización de Pago',
+        modulo: 'Nómina',
+        detalles: `${pago.usuarioNombre || 'Colaborador'} · ${estado}`,
+        estado: estado === 'Pagado' ? 'Success' : 'Warning',
+        ipAddress: 'Cliente Web',
+        timestamp: new Date().toISOString(),
+      });
+
+      // Si el pago quedó como Pagado, enviar la notificación correspondiente
+      if (estado === 'Pagado') {
+        await enviarNotificacionPago(pago);
+      }
+
       const statusText = stateLabels[estado] || estado;
-      toast.success({ title: toastStatusSuccessTitle, description: toastStatusSuccessDescBase.replace('{name}', pago?.usuarioNombre || labelColaborador).replace('{status}', statusText) });
+      toast.success({ title: toastStatusSuccessTitle, description: toastStatusSuccessDescBase.replace('{name}', pago.usuarioNombre || labelColaborador).replace('{status}', statusText) });
     } catch (error: any) {
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+      console.error("Error al actualizar el estado del pago:", error);
       toast.error({ title: toastStatusErrorTitle, description: error?.message || toastStatusErrorDescBase });
     }
   };
 
   // Calcula pagosFiltrados; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
-  const pagosFiltrados = pagos.filter((p) => {
+  const pagosFiltrados = todosLosPagos.filter((p) => {
     // Declara coincide; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const coincide = (p.usuarioNombre || '').toLowerCase().includes(busqueda.toLowerCase());
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
@@ -483,6 +684,224 @@ export default function GestionNomina() {
     // Devuelve el valor final calculado para esta funcion o caso de uso.
     return true;
   });
+
+  // Helper para eliminar guiones bajos, espaciar y capitalizar texto
+  const formatCleanText = (str: string | undefined | null) => {
+    if (!str) return '';
+    return str
+      .replace(/_/g, ' ')
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  // Exporta la nómina del periodo actual en formato Excel (CSV) o PDF
+  const exportarDatos = async (formato: 'Excel' | 'PDF') => {
+    try {
+      const itemsParaExportar = pagosFiltrados;
+      if (itemsParaExportar.length === 0) {
+        Alert.alert(t('Exportar'), t('No hay datos disponibles para exportar.'));
+        return;
+      }
+
+      // Validación de aprobación: todas las nóminas a exportar deben estar aprobadas (estado 'Pagado')
+      const noAprobadas = itemsParaExportar.filter(p => p.estado !== 'Pagado');
+      if (noAprobadas.length > 0) {
+        Alert.alert(
+          t('Exportar Nómina'),
+          t('No se puede exportar. Debes aprobar todas las nóminas del periodo actual para poder descargar el reporte.')
+        );
+        return;
+      }
+
+      if (formato === 'PDF') {
+        const totalBruto = itemsParaExportar.reduce((acc, p) => acc + (p.salario_bruto || 0), 0);
+        const totalNeto = itemsParaExportar.reduce((acc, p) => acc + (p.salario_neto || 0), 0);
+        const nombreEmpresa = user?.empresa || 'Planilla de Nómina';
+        
+        const filasHtml = itemsParaExportar.map(p => {
+          const userObj = usuarios.find(u => u.id === p.usuario_id);
+          const totalDeducciones = (p.isss || 0) + (p.afp || 0) + (p.renta || 0);
+          const badgeColor = '#15803d'; // Aprobados
+          const badgeBg = '#dcfce7';
+          const cargoOrol = userObj?.cargo || userObj?.rol || 'Empleado';
+          
+          return `
+            <tr>
+              <td style="padding: 12px 10px; font-size: 12px; border-bottom: 1px solid #e2e8f0; color: #0f172a;">
+                <strong>${p.usuarioNombre}</strong>
+              </td>
+              <td style="padding: 12px 10px; font-size: 12px; border-bottom: 1px solid #e2e8f0; color: #475569;">
+                ${formatCleanText(userObj?.departamento)} / ${formatCleanText(cargoOrol)}
+              </td>
+              <td style="padding: 12px 10px; font-size: 12px; border-bottom: 1px solid #e2e8f0; text-align: right; color: #0f172a;">
+                $${(userObj?.salarioBase || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </td>
+              <td style="padding: 12px 10px; font-size: 12px; border-bottom: 1px solid #e2e8f0; text-align: right; color: #dc2626;">
+                -$${totalDeducciones.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </td>
+              <td style="padding: 12px 10px; font-size: 12px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: bold; color: #0f172a;">
+                $${(p.salario_neto || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </td>
+              <td style="padding: 12px 10px; font-size: 12px; border-bottom: 1px solid #e2e8f0; text-align: center;">
+                <span style="padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: bold; text-transform: uppercase; display: inline-block; background-color: ${badgeBg}; color: ${badgeColor};">
+                  Aprobado
+                </span>
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+        const html = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Reporte de Nomina - ${periodoActual}</title>
+            <style>
+              @media print {
+                @page { margin: 0; }
+                body { margin: 1.6cm; }
+              }
+              body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1e293b; margin: 0; padding: 20px; }
+              .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 20px; margin-bottom: 25px; }
+              .title { font-size: 26px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px; }
+              .subtitle { font-size: 14px; color: #64748b; margin-top: 6px; font-weight: 500; }
+              .company { text-align: right; }
+              .company-name { font-size: 20px; font-weight: 800; color: #4f46e5; }
+              .summary-grid { display: flex; gap: 16px; margin-bottom: 30px; }
+              .card { flex: 1; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; }
+              .card-label { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 6px; letter-spacing: 0.5px; }
+              .card-value { font-size: 22px; font-weight: 800; color: #0f172a; }
+              table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+              th { background-color: #f8fafc; text-align: left; padding: 12px 10px; font-size: 11px; font-weight: 800; text-transform: uppercase; color: #475569; border-bottom: 2px solid #e2e8f0; letter-spacing: 0.5px; }
+              .totals-row { font-weight: bold; background-color: #f8fafc; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <div>
+                <div class="title">Reporte de Planilla de Nómina</div>
+                <div class="subtitle">Periodo: ${periodoActual}</div>
+              </div>
+              <div class="company">
+                <div class="company-name">${formatCleanText(nombreEmpresa)}</div>
+                <div class="subtitle">Generado el: ${new Date().toLocaleDateString()}</div>
+              </div>
+            </div>
+
+            <div class="summary-grid">
+              <div class="card">
+                <div class="card-label">Colaboradores</div>
+                <div class="card-value">${itemsParaExportar.length}</div>
+              </div>
+              <div class="card">
+                <div class="card-label">Planilla Bruta</div>
+                <div class="card-value">$${totalBruto.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              </div>
+              <div class="card">
+                <div class="card-label">Costo Neto</div>
+                <div class="card-value" style="color: #16a34a;">$${totalNeto.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              </div>
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 25%;">Colaborador</th>
+                  <th style="width: 25%;">Depto / Cargo</th>
+                  <th style="width: 15%; text-align: right;">Salario Base</th>
+                  <th style="width: 15%; text-align: right;">Deducciones</th>
+                  <th style="width: 12%; text-align: right;">Salario Neto</th>
+                  <th style="width: 8%; text-align: center;">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filasHtml}
+                <tr class="totals-row">
+                  <td style="padding: 12px 10px; font-size: 12px; border-top: 2px solid #e2e8f0; border-bottom: 2px solid #e2e8f0;">Total Planilla</td>
+                  <td style="padding: 12px 10px; font-size: 12px; border-top: 2px solid #e2e8f0; border-bottom: 2px solid #e2e8f0;"></td>
+                  <td style="padding: 12px 10px; font-size: 12px; border-top: 2px solid #e2e8f0; border-bottom: 2px solid #e2e8f0; text-align: right;"></td>
+                  <td style="padding: 12px 10px; font-size: 12px; border-top: 2px solid #e2e8f0; border-bottom: 2px solid #e2e8f0; text-align: right; color: #dc2626;">-$${(totalBruto - totalNeto).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td style="padding: 12px 10px; font-size: 12px; border-top: 2px solid #e2e8f0; border-bottom: 2px solid #e2e8f0; text-align: right; font-weight: bold; color: #16a34a;">$${totalNeto.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td style="padding: 12px 10px; font-size: 12px; border-top: 2px solid #e2e8f0; border-bottom: 2px solid #e2e8f0;"></td>
+                </tr>
+              </tbody>
+            </table>
+          </body>
+          </html>
+        `;
+
+        if (Platform.OS === 'web') {
+          const printWindow = window.open('', '_blank');
+          if (printWindow) {
+            printWindow.document.write(html);
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
+            printWindow.close();
+          }
+        } else {
+          const { uri } = await Print.printToFileAsync({ html });
+          await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+        }
+      } else {
+        // Excel (CSV)
+        const columnas = [
+          'Colaborador',
+          'Departamento',
+          'Cargo',
+          'Salario Base',
+          'ISSS',
+          'AFP',
+          'ISR Renta',
+          'Salario Neto',
+          'Estado',
+          'Periodo'
+        ];
+
+        const filas = itemsParaExportar.map(p => {
+          const userObj = usuarios.find(u => u.id === p.usuario_id);
+          const cargoOrol = userObj?.cargo || userObj?.rol || 'Empleado';
+          return [
+            p.usuarioNombre,
+            formatCleanText(userObj?.departamento),
+            formatCleanText(cargoOrol),
+            (userObj?.salarioBase || 0).toFixed(2),
+            (p.isss || 0).toFixed(2),
+            (p.afp || 0).toFixed(2),
+            (p.renta || 0).toFixed(2),
+            (p.salario_neto || 0).toFixed(2),
+            formatCleanText(p.estado),
+            p.periodo
+          ];
+        });
+
+        const csvContent = [
+          columnas.join(','),
+          ...filas.map(f => f.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))
+        ].join('\n');
+
+        if (Platform.OS === 'web') {
+          const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.setAttribute('download', `Planilla_${periodoActual.replace(/\s+/g, '_')}.csv`);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } else {
+          const tempUri = FileSystem.cacheDirectory + `Planilla_${periodoActual.replace(/\s+/g, '_')}.csv`;
+          await FileSystem.writeAsStringAsync(tempUri, "\uFEFF" + csvContent, { encoding: FileSystem.EncodingType.UTF8 });
+          await Sharing.shareAsync(tempUri, { mimeType: 'text/csv', dialogTitle: 'Exportar Nómina' });
+        }
+      }
+    } catch (err) {
+      console.error("Error al exportar datos:", err);
+      Alert.alert(t('Exportar'), t('Ocurrió un error al intentar generar el archivo de exportación.'));
+    }
+  };
 
   // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
   useEffect(() => {
@@ -532,12 +951,29 @@ export default function GestionNomina() {
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={estilos.headerActions}>
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-            <TouchableOpacity style={estilos.btnSecondary} onPress={() => Alert.alert(alertFormatTitle, alertFormatMessage, [{text: "Excel"}, {text: "PDF"}, {text: "CSV"}])}>
+            <TouchableOpacity style={estilos.btnSecondary} onPress={() => setModalExportVisible(true)}>
               {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <MaterialIcons name="file-download" size={18} color={BRAND.textMain} style={estilos.btnIcon} />
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.btnSecondaryText}>{btnExportLabel}</Text>
             </TouchableOpacity>
+
+            {/* Botón para Aprobar Todas las Nóminas */}
+            <TouchableOpacity 
+              style={[estilos.btnSecondary, { borderColor: BRAND.success + '40', backgroundColor: BRAND.success + '10' }]} 
+              onPress={aprobarTodasLasNominas} 
+              disabled={aprobandoTodo}
+            >
+              {aprobandoTodo ? (
+                <ActivityIndicator size="small" color={BRAND.success} />
+              ) : (
+                <>
+                  <MaterialIcons name="done-all" size={18} color={BRAND.success} style={estilos.btnIcon} />
+                  <Text style={[estilos.btnSecondaryText, { color: BRAND.success }]}>{t('Aprobar todas')}</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
             <TouchableOpacity {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} style={estilos.btnPrimary} onPress={generarNominaMasiva} disabled={procesandoMasivo}>
               {procesandoMasivo ? (
@@ -648,12 +1084,12 @@ export default function GestionNomina() {
                   {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
                   <View style={estilos.accionesCell}>
                     {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-                    <TouchableOpacity style={estilos.accionBtn} onPress={() => actualizarEstado(p.id, 'Pagado')}>
+                    <TouchableOpacity style={estilos.accionBtn} onPress={() => actualizarEstado(p, 'Pagado')}>
                       {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                       <MaterialIcons name="check-circle" size={18} color={BRAND.success} />
                     </TouchableOpacity>
                     {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-                    <TouchableOpacity style={estilos.accionBtn} onPress={() => actualizarEstado(p.id, 'Pendiente')}>
+                    <TouchableOpacity style={estilos.accionBtn} onPress={() => actualizarEstado(p, 'Pendiente')}>
                       {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                       <MaterialIcons name="pause-circle" size={18} color={BRAND.warning} />
                     </TouchableOpacity>
@@ -682,6 +1118,70 @@ export default function GestionNomina() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Modal de Selección de Exportación */}
+      <Modal visible={modalExportVisible} transparent animationType="fade" onRequestClose={() => setModalExportVisible(false)}>
+        <View style={estilos.exportModalOverlay}>
+          <BlurView intensity={theme.isDark ? 80 : 50} tint={theme.isDark ? 'dark' : 'light'} style={estilos.exportModalContent}>
+            
+            {/* Botón Cerrar */}
+            <TouchableOpacity onPress={() => setModalExportVisible(false)} style={estilos.exportModalCloseBtn} activeOpacity={0.85}>
+              <MaterialIcons name="close" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            {/* Logo de la empresa (o inicial de la empresa / business icon) */}
+            <View style={estilos.exportModalImageContainer}>
+              <View style={estilos.exportModalImagePicker}>
+                {logoEmpresa ? (
+                  <Image source={{ uri: logoEmpresa }} style={estilos.exportModalImage} resizeMode="contain" />
+                ) : (
+                  <View style={estilos.exportModalImagePlaceholder}>
+                    <MaterialIcons name="business" size={40} color={theme.purple} />
+                  </View>
+                )}
+              </View>
+            </View>
+
+            {/* Nombre de la nómina del mes */}
+            <Text style={estilos.exportModalTitle}>Nómina de {periodoActual}</Text>
+            {user?.empresa ? (
+              <Text style={estilos.exportModalSubtitle}>{user.empresa}</Text>
+            ) : null}
+
+            <Text style={estilos.exportModalPrompt}>
+              ¿Cómo desea exportar la nómina de su empresa? Seleccione una de las siguientes opciones de descarga:
+            </Text>
+
+            {/* Opciones de descarga abajo */}
+            <View style={estilos.exportModalActions}>
+              <TouchableOpacity 
+                style={estilos.exportBtnExcel} 
+                onPress={() => {
+                  setModalExportVisible(false);
+                  exportarDatos('Excel');
+                }}
+                activeOpacity={0.85}
+              >
+                <MaterialIcons name="grid-on" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+                <Text style={estilos.exportBtnExcelText}>Excel (CSV)</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={estilos.exportBtnPdf} 
+                onPress={() => {
+                  setModalExportVisible(false);
+                  exportarDatos('PDF');
+                }}
+                activeOpacity={0.85}
+              >
+                <MaterialIcons name="picture-as-pdf" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+                <Text style={estilos.exportBtnPdfText}>Reporte PDF</Text>
+              </TouchableOpacity>
+            </View>
+
+          </BlurView>
+        </View>
+      </Modal>
 
       {/* Modal de Perfil Salarial */}
       <AdminModal visible={modalVisible} animationType="slide">
@@ -884,4 +1384,154 @@ const estilos = StyleSheet.create({
   saveBtnGradient: { paddingHorizontal: 28, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
   // saveBtnText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   saveBtnText: { color: CONTRAST_TEXT, fontSize: 16, fontWeight: '700', letterSpacing: 0.5, textDecorationLine: 'none' },
+
+  // Estilos del Modal de Exportación Rediseñado
+  exportModalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+  },
+  exportModalContent: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: ADMIN.fondoElevado,
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1.5,
+    borderColor: ADMIN.bordeFuerte,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  exportModalCloseBtn: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: ADMIN.fondoCampo,
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    zIndex: 10,
+  },
+  exportModalImageContainer: {
+    alignSelf: 'center',
+    marginBottom: 20,
+    marginTop: 10,
+  },
+  exportModalImagePicker: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: ADMIN.fondoCampo,
+    borderWidth: 2,
+    borderColor: ADMIN.bordeFuerte,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  exportModalImagePlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  exportModalImage: {
+    width: '100%',
+    height: '100%',
+  },
+  exportModalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  exportModalSubtitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    opacity: 0.8,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  exportModalPrompt: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#FFFFFF',
+    opacity: 0.9,
+    textAlign: 'center',
+    marginBottom: 24,
+    paddingHorizontal: 10,
+  },
+  exportModalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 10,
+  },
+  exportBtnExcel: {
+    flex: 1,
+    height: 52,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 14,
+    backgroundColor: '#22C55E', 
+    borderColor: '#16A34A',
+    borderWidth: 1,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#22C55E',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0 4px 12px rgba(34, 197, 94, 0.35)',
+      },
+    }),
+  },
+  exportBtnExcelText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  exportBtnPdf: {
+    flex: 1,
+    height: 52,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 14,
+    backgroundColor: '#EF4444', 
+    borderColor: '#DC2626',
+    borderWidth: 1,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#EF4444',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0 4px 12px rgba(239, 68, 68, 0.35)',
+      },
+    }),
+  },
+  exportBtnPdfText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
 });

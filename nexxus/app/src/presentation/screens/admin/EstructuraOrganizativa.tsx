@@ -368,42 +368,73 @@ type SummaryItemData = { id: string; title: string; detail: string; raw?: unknow
 /**
  * Componente SummaryList. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
-const SummaryList = ({ title, items, empty, onEdit, onDelete }: { title: string; items: SummaryItemData[]; empty: string; onEdit?: (item: SummaryItemData) => void; onDelete?: (item: SummaryItemData) => void }) => (
+const SummaryList = ({ 
+  title, 
+  items, 
+  empty, 
+  onEdit, 
+  onDelete, 
+  icon, 
+  iconBg, 
+  iconColor 
+}: { 
+  title: string; 
+  items: SummaryItemData[]; 
+  empty: string; 
+  onEdit?: (item: SummaryItemData) => void; 
+  onDelete?: (item: SummaryItemData) => void;
+  icon?: keyof typeof MaterialIcons.glyphMap;
+  iconBg?: string;
+  iconColor?: string;
+}) => (
   // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
   <View style={estilos.summaryCard}>
-    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-    <Text style={estilos.summaryTitle}>{title}</Text>
-    {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-    <View style={estilos.summaryList}>
-      {items.length > 0 ? items.slice(0, 5).map((item) => (
-        // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
-        <View key={item.id} style={estilos.summaryItem}>
-          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={estilos.summaryItemInfo}>
-            {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-            <Text style={estilos.summaryItemTitle} numberOfLines={1}>{item.title}</Text>
-            {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-            <Text style={estilos.summaryItemDetail} numberOfLines={1}>{item.detail}</Text>
-          </View>
-          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={estilos.summaryActions}>
-            {onEdit && (
-              // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-              <TouchableOpacity style={estilos.summaryActionBtn} onPress={() => onEdit(item)}>
-                {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                <MaterialIcons name="edit" size={16} color={ADMIN.iconos.documentos} />
-              </TouchableOpacity>
+    {/* Cabecera premium con titulo y contador */}
+    <View style={estilos.summaryHeader}>
+      <Text style={estilos.summaryTitle}>{title}</Text>
+      <View style={[estilos.summaryCountBadge, { backgroundColor: iconBg || 'rgba(124, 58, 237, 0.06)' }]}>
+        <Text style={[estilos.summaryCountText, { color: iconColor || ADMIN.primario }]}>{items.length}</Text>
+      </View>
+    </View>
+    {/* Cuerpo de la tarjeta de resumen para espaciado interno */}
+    <View style={estilos.summaryBody}>
+      {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+      <View style={estilos.summaryList}>
+        {items.length > 0 ? items.slice(0, 5).map((item) => (
+          // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
+          <View key={item.id} style={estilos.summaryItem}>
+            {icon && (
+              <View style={[estilos.summaryItemIconBg, { backgroundColor: iconBg, borderColor: iconColor + '26' }]}>
+                <MaterialIcons name={icon} size={16} color={iconColor} />
+              </View>
             )}
-            {onDelete && (
-              // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-              <TouchableOpacity style={[estilos.summaryActionBtn, estilos.summaryActionDanger]} onPress={() => onDelete(item)}>
-                {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                <MaterialIcons name="delete-outline" size={16} color={ADMIN.iconos.peligro} />
-              </TouchableOpacity>
-            )}
+            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+            <View style={estilos.summaryItemInfo}>
+              {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
+              <Text style={estilos.summaryItemTitle} numberOfLines={1}>{item.title}</Text>
+              {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
+              <Text style={estilos.summaryItemDetail} numberOfLines={1}>{item.detail}</Text>
+            </View>
+            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+            <View style={estilos.summaryActions}>
+              {onEdit && (
+                // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
+                <TouchableOpacity style={estilos.summaryActionBtn} onPress={() => onEdit(item)}>
+                  {/* Icono visual; edicion. */}
+                  <MaterialIcons name="edit" size={16} color={ADMIN.primario} />
+                </TouchableOpacity>
+              )}
+              {onDelete && (
+                // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
+                <TouchableOpacity style={[estilos.summaryActionBtn, estilos.summaryActionDanger]} onPress={() => onDelete(item)}>
+                  {/* Icono visual; eliminacion. */}
+                  <MaterialIcons name="delete-outline" size={16} color={ADMIN.error} />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
-        </View>
-      )) : <EmptyState texto={empty} />}
+        )) : <EmptyState texto={empty} />}
+      </View>
     </View>
   </View>
 );
@@ -1154,9 +1185,27 @@ export default function EstructuraOrganizativa() {
       {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
       <View style={estilos.catalogSummaryGrid}>
         {/* SummaryList renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-        <SummaryList title={t('admin.estructura.summary.cargos')} items={cargos.map((cargo) => ({ id: cargo.id || cargo.nombre || '', title: cargo.nombre || 'Cargo', detail: `${cargo.departamentoNombre || t('common.global')} · ${cargo.nivel || ''}`, raw: cargo }))} empty={t('admin.estructura.summary.empty_cargos')} onEdit={(item) => abrirEditarCargo(item.raw as CargoEstructura)} onDelete={(item) => eliminarEntidad('cargo', item.id, item.title)} />
+        <SummaryList 
+          title={t('admin.estructura.summary.cargos')} 
+          items={cargos.map((cargo) => ({ id: cargo.id || cargo.nombre || '', title: cargo.nombre || 'Cargo', detail: `${cargo.departamentoNombre || t('common.global')} · ${cargo.nivel || ''}`, raw: cargo }))} 
+          empty={t('admin.estructura.summary.empty_cargos')} 
+          onEdit={(item) => abrirEditarCargo(item.raw as CargoEstructura)} 
+          onDelete={(item) => eliminarEntidad('cargo', item.id, item.title)} 
+          icon="work"
+          iconBg="rgba(20, 184, 166, 0.08)"
+          iconColor={SOFT_COLORS.cargos}
+        />
         {/* SummaryList renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-        <SummaryList title={t('admin.estructura.summary.roles')} items={roles.map((rol) => ({ id: rol.id || rol.nombre || '', title: rol.nombre || 'Rol', detail: t('admin.estructura.roles_detail', { count: Object.values(rol.permisos || {}).filter(Boolean).length, defaultValue: `${Object.values(rol.permisos || {}).filter(Boolean).length} permisos` }), raw: rol }))} empty={t('admin.estructura.summary.empty_roles')} onEdit={(item) => abrirEditarRol(item.raw as RolPersonalizado)} onDelete={(item) => eliminarEntidad('rol', item.id, item.title)} />
+        <SummaryList 
+          title={t('admin.estructura.summary.roles')} 
+          items={roles.map((rol) => ({ id: rol.id || rol.nombre || '', title: rol.nombre || 'Rol', detail: t('admin.estructura.roles_detail', { count: Object.values(rol.permisos || {}).filter(Boolean).length, defaultValue: `${Object.values(rol.permisos || {}).filter(Boolean).length} permisos` }), raw: rol }))} 
+          empty={t('admin.estructura.summary.empty_roles')} 
+          onEdit={(item) => abrirEditarRol(item.raw as RolPersonalizado)} 
+          onDelete={(item) => eliminarEntidad('rol', item.id, item.title)} 
+          icon="admin-panel-settings"
+          iconBg="rgba(245, 158, 11, 0.08)"
+          iconColor={SOFT_COLORS.roles}
+        />
       </View>
 
       {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
@@ -1196,14 +1245,8 @@ export default function EstructuraOrganizativa() {
         {departamentosFiltrados.map((dept) => (
           // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
           <View key={dept.id || dept.nombre} style={estilos.deptCard}>
-            {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-            <LinearGradient
-              {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast' } as any : {})}
-              colors={DEPT_HEADER_GRADIENT}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={estilos.deptHeader}
-            >
+            {/* Header de departamento con diseño plano y profesional sin gradientes. */}
+            <View style={estilos.deptHeader}>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
               <View style={estilos.deptHeaderInner}>
                 {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
@@ -1218,18 +1261,16 @@ export default function EstructuraOrganizativa() {
               <View style={estilos.deptHeaderActions}>
                 {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
                 <TouchableOpacity style={estilos.deptActionBtn} onPress={() => abrirEditarDepartamento(dept)}>
-                  {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                  <MaterialIcons name="edit" size={18} color="#38BDF8" />
+                  {/* Icono visual; edicion. */}
+                  <MaterialIcons name="edit" size={18} color={ADMIN.primario} />
                 </TouchableOpacity>
                 {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
                 <TouchableOpacity style={[estilos.deptActionBtn, estilos.deptActionBtnDanger]} onPress={() => eliminarEntidad('departamento', dept.id || '', dept.nombre || '')}>
-                  {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                  <MaterialIcons name="delete-outline" size={18} color="#EF4444" />
+                  {/* Icono visual; eliminacion. */}
+                  <MaterialIcons name="delete-outline" size={18} color={ADMIN.error} />
                 </TouchableOpacity>
               </View>
-              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View style={estilos.deptHeaderGlow} />
-            </LinearGradient>
+            </View>
 
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.deptBody}>
@@ -1248,14 +1289,11 @@ export default function EstructuraOrganizativa() {
                       <Image source={{ uri: foto }} style={estilos.managerAvatar} />
                     ) : (
                       // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
-                      <View {...({ className: 'nx-force-white' } as any)} style={estilos.avatarContrastWrap}>
-                        {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-                        <LinearGradient {...({ className: 'nx-force-white' } as any)} colors={[BRAND.bangladeshBlue, BRAND.caribbeanBlue]} style={estilos.managerAvatar}>
-                          {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                          <MaterialIcons {...({ className: 'nx-force-white' } as any)} name="person" size={17} color={CONTRAST_TEXT} style={estilos.whiteIcon} />
-                          {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                          <Text {...({ className: 'nx-force-white' } as any)} style={estilos.managerAvatarText}>{(dept.jefe && dept.jefe !== 'No asignado' ? dept.jefe[0] : '?').toUpperCase()}</Text>
-                        </LinearGradient>
+                      <View style={[estilos.managerAvatar, { backgroundColor: 'rgba(124, 58, 237, 0.08)', borderColor: 'rgba(124, 58, 237, 0.24)', borderWidth: 1 }]}>
+                        {/* Icono visual; persona. */}
+                        <MaterialIcons name="person" size={17} color={ADMIN.primario} />
+                        {/* Texto visible; inicial. */}
+                        <Text style={[estilos.managerAvatarText, { color: ADMIN.primario }]}>{(dept.jefe && dept.jefe !== 'No asignado' ? dept.jefe[0] : '?').toUpperCase()}</Text>
                       </View>
                     );
                   })()}
@@ -1315,14 +1353,17 @@ export default function EstructuraOrganizativa() {
                           <Image source={{ uri: foto }} style={estilos.sectorAvatar} />
                         ) : (
                           // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
-                          <View {...({ className: 'nx-force-white' } as any)} style={estilos.avatarContrastWrapSmall}>
-                            {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-                            <LinearGradient {...({ className: 'nx-force-white' } as any)} colors={sector.responsable !== 'No asignado' ? [BRAND.bangladeshBlue, BRAND.caribbeanBlue] : [BRAND.warning, '#F59E0B']} style={estilos.sectorAvatar}>
-                              {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                              <MaterialIcons {...({ className: 'nx-force-white' } as any)} name="person" size={12} color={CONTRAST_TEXT} style={estilos.whiteIcon} />
-                              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                              <Text {...({ className: 'nx-force-white' } as any)} style={estilos.sectorAvatarText}>{(sector.responsable && sector.responsable !== 'No asignado' ? sector.responsable[0] : '?').toUpperCase()}</Text>
-                            </LinearGradient>
+                          <View style={[estilos.sectorAvatar, { 
+                            backgroundColor: sector.responsable !== 'No asignado' ? 'rgba(96, 165, 250, 0.08)' : 'rgba(245, 158, 11, 0.08)', 
+                            borderColor: sector.responsable !== 'No asignado' ? 'rgba(96, 165, 250, 0.24)' : 'rgba(245, 158, 11, 0.24)', 
+                            borderWidth: 1 
+                          }]}>
+                            {/* Icono visual; persona. */}
+                            <MaterialIcons name="person" size={12} color={sector.responsable !== 'No asignado' ? ADMIN.iconos.personas : ADMIN.alerta} />
+                            {/* Texto de inicial. */}
+                            <Text style={[estilos.sectorAvatarText, { color: sector.responsable !== 'No asignado' ? ADMIN.iconos.personas : ADMIN.alerta }]}>
+                              {(sector.responsable && sector.responsable !== 'No asignado' ? sector.responsable[0] : '?').toUpperCase()}
+                            </Text>
                           </View>
                         );
                       })()}
@@ -2166,17 +2207,19 @@ const estilos = StyleSheet.create({
     // paddingHorizontal agrega espacio interno a izquierda y derecha.
     paddingHorizontal: 24,
     // paddingVertical agrega espacio interno arriba y abajo.
-    paddingVertical: 22,
+    paddingVertical: 18,
     // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
     // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'space-between',
     // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
-    // position define como se posiciona el elemento respecto al layout.
-    position: 'relative',
     // gap define separacion uniforme entre elementos hijos.
     gap: 16,
+    // Fondo plano y borde
+    backgroundColor: ADMIN.superficieSuave,
+    borderBottomWidth: 1,
+    borderBottomColor: ADMIN.borde,
   },
   // deptHeaderInner: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
   deptHeaderInner: {
@@ -2207,13 +2250,13 @@ const estilos = StyleSheet.create({
   // deptActionBtn: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   deptActionBtn: {
     // width fija o calcula el ancho del elemento.
-    width: 36,
+    width: 38,
     // height fija o calcula el alto del elemento.
-    height: 36,
+    height: 38,
     // borderRadius redondea esquinas para definir la forma visual.
-    borderRadius: 10,
+    borderRadius: 12,
     // backgroundColor define el fondo del bloque.
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    backgroundColor: 'rgba(124, 58, 237, 0.06)',
     // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
     // alignItems alinea los hijos en el eje transversal del contenedor.
@@ -2221,14 +2264,14 @@ const estilos = StyleSheet.create({
     // borderWidth define el grosor del borde visible.
     borderWidth: 1,
     // borderColor define el color del borde.
-    borderColor: 'rgba(56, 189, 248, 0.35)',
+    borderColor: 'rgba(124, 58, 237, 0.16)',
   },
   // deptActionBtnDanger: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   deptActionBtnDanger: {
     // backgroundColor define el fondo del bloque.
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    backgroundColor: 'rgba(239, 68, 68, 0.06)',
     // borderColor define el color del borde.
-    borderColor: 'rgba(239, 68, 68, 0.35)',
+    borderColor: 'rgba(239, 68, 68, 0.16)',
   },
   // deptIconBg: estilo de icono; ajusta tamanio, posicion o fondo del indicador visual.
   deptIconBg: {
@@ -2269,28 +2312,28 @@ const estilos = StyleSheet.create({
   // deptName: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   deptName: {
     // fontSize controla el tamanio del texto.
-    fontSize: 22,
+    fontSize: 18,
     // fontWeight define el peso visual del texto.
-    fontWeight: '900',
+    fontWeight: '800',
     // color define el color del texto o icono.
-    color: CONTRAST_TEXT,
+    color: BRAND.textMain,
     // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
     // letterSpacing ajusta la separacion entre letras.
-    letterSpacing: -0.8,
+    letterSpacing: -0.4,
   },
   // deptCount: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   deptCount: {
     // fontSize controla el tamanio del texto.
     fontSize: 10,
     // fontWeight define el peso visual del texto.
-    fontWeight: '900',
+    fontWeight: '700',
     // color define el color del texto o icono.
-    color: 'rgba(255,255,255,0.76)',
+    color: BRAND.textSec,
     // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
     // letterSpacing ajusta la separacion entre letras.
-    letterSpacing: 2.5,
+    letterSpacing: 1.5,
     // marginTop separa este bloque del elemento anterior.
     marginTop: 4,
   },
@@ -2848,13 +2891,62 @@ const estilos = StyleSheet.create({
     // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoElevado,
     // borderRadius redondea esquinas para definir la forma visual.
-    borderRadius: ADMIN.radio,
-    // padding agrega espacio interno alrededor del contenido.
-    padding: 22,
+    borderRadius: 18,
+    // overflow controla si el contenido se recorta o puede sobresalir.
+    overflow: 'hidden',
     // borderWidth define el grosor del borde visible.
     borderWidth: 1,
     // borderColor define el color del borde.
     borderColor: ADMIN.borde,
+    // shadowColor define el color base de sombra.
+    shadowColor: '#000',
+    // shadowOffset define direccion y distancia de sombra.
+    shadowOffset: { width: 0, height: 14 },
+    // shadowOpacity controla intensidad de sombra.
+    shadowOpacity: 0.18,
+    // shadowRadius suaviza o expande la sombra.
+    shadowRadius: 28,
+    // elevation agrega sombra en Android.
+    elevation: 10,
+  },
+  summaryHeader: {
+    // paddingHorizontal agrega espacio interno a izquierda y derecha.
+    paddingHorizontal: 24,
+    // paddingVertical agrega espacio interno arriba y abajo.
+    paddingVertical: 18,
+    // flexDirection decide si los hijos se ordenan en fila o columna.
+    flexDirection: 'row',
+    // justifyContent distribuye los hijos en el eje principal del contenedor.
+    justifyContent: 'space-between',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
+    alignItems: 'center',
+    // gap define separacion uniforme entre elementos hijos.
+    gap: 16,
+    // Fondo plano y borde
+    backgroundColor: ADMIN.superficieSuave,
+    borderBottomWidth: 1,
+    borderBottomColor: ADMIN.borde,
+  },
+  summaryBody: {
+    // padding agrega espacio interno alrededor del contenido.
+    padding: 22,
+  },
+  summaryCountBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  summaryCountText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  summaryItemIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
   },
   // summaryTitle: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
   summaryTitle: {
@@ -2866,8 +2958,6 @@ const estilos = StyleSheet.create({
     fontWeight: '900',
     // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
-    // marginBottom separa este bloque del siguiente elemento.
-    marginBottom: 14,
   },
   // summaryList: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   summaryList: {
@@ -2877,9 +2967,9 @@ const estilos = StyleSheet.create({
   // summaryItem: estilo de lista o item; mantiene espaciado y lectura consistente en elementos repetidos.
   summaryItem: {
     // padding agrega espacio interno alrededor del contenido.
-    padding: 12,
+    padding: 16,
     // borderRadius redondea esquinas para definir la forma visual.
-    borderRadius: 12,
+    borderRadius: 16,
     // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoCampo,
     // borderWidth define el grosor del borde visible.
@@ -2934,9 +3024,9 @@ const estilos = StyleSheet.create({
   // summaryActionBtn: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   summaryActionBtn: {
     // width fija o calcula el ancho del elemento.
-    width: 40,
+    width: 38,
     // height fija o calcula el alto del elemento.
-    height: 40,
+    height: 38,
     // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 12,
     // alignItems alinea los hijos en el eje transversal del contenedor.
@@ -2944,20 +3034,20 @@ const estilos = StyleSheet.create({
     // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
     // backgroundColor define el fondo del bloque.
-    backgroundColor: 'rgba(96,165,250,0.08)',
+    backgroundColor: 'rgba(124, 58, 237, 0.06)',
     // borderWidth define el grosor del borde visible.
     borderWidth: 1,
     // borderColor define el color del borde.
-    borderColor: 'rgba(96,165,250,0.24)',
+    borderColor: 'rgba(124, 58, 237, 0.16)',
     // flexShrink ajusta una propiedad visual especifica de este estilo.
     flexShrink: 0,
   },
   // summaryActionDanger: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   summaryActionDanger: {
     // backgroundColor define el fondo del bloque.
-    backgroundColor: 'rgba(239,68,68,0.08)',
+    backgroundColor: 'rgba(239, 68, 68, 0.06)',
     // borderColor define el color del borde.
-    borderColor: 'rgba(239,68,68,0.2)',
+    borderColor: 'rgba(239, 68, 68, 0.16)',
   },
   // modalOverlay: estilo de modal; define presentacion de contenido flotante sobre la pantalla actual.
   modalOverlay: {

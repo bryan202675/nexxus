@@ -57,7 +57,7 @@ const BRAND = {
 /**
  * Componente CONTRAST_TEXT. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
-const CONTRAST_TEXT = '#FFFFFF';
+const CONTRAST_TEXT = '#FFFFFE';
 
 /**
  * Describe la forma tipada Anuncio; ayuda a que estados, props o respuestas mantengan una estructura predecible.
@@ -171,28 +171,6 @@ export default function ComunicacionAdmin() {
     }).start();
   }, [entrada]);
 
-  // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-  useEffect(() => {
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-    if (!document.getElementById('nx-comunicacion-force-white')) {
-      // Declara style; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const style = document.createElement('style');
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      style.id = 'nx-comunicacion-force-white';
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      style.textContent = `
-        .nx-force-white-always,
-        .nx-force-white-always * {
-          color: #FFFFFF !important;
-          fill: #FFFFFF !important;
-        }
-      `;
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      document.head.appendChild(style);
-    }
-  }, []);
 
   // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
   useEffect(() => {
@@ -404,22 +382,26 @@ export default function ComunicacionAdmin() {
             <View style={estilos.audienceList}>
               {datos.porCanal.map((canal) => (
                 // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-                <TouchableOpacity key={canal.audiencia} onPress={() => setSelectedAudience(canal.audiencia)} style={estilos.audienceWrap}>
+                <TouchableOpacity 
+                  key={canal.audiencia} 
+                  onPress={() => setSelectedAudience(canal.audiencia)} 
+                  style={estilos.audienceWrap}
+                >
                   {selectedAudience === canal.audiencia ? (
                     // Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza.
-                    <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-force-white-always' } as any : {})} colors={['#6320a6', '#6320a6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[estilos.audienceBtn, { opacity: 1 }]}>
+                    <LinearGradient colors={['#6320a6', '#6320a6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[estilos.audienceBtn, { opacity: 1 }]}>
                       {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                      <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white-always' } as any : {})} style={[estilos.audienceBtnText, { color: '#FFFFFF' }]}>{canal.audiencia}</Text>
+                      <Text style={[estilos.audienceBtnText, { color: '#FFFFFE' }]}>{canal.audiencia}</Text>
                       {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                      <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white-always' } as any : {})} style={[estilos.audienceCount, { color: '#FFFFFF' }]}>{canal.receptores}</Text>
+                      <Text style={[estilos.audienceCount, { color: '#FFFFFE' }]}>{canal.receptores}</Text>
                     </LinearGradient>
                   ) : (
                     // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
-                    <View {...(Platform.OS === 'web' ? { className: 'nx-force-white-always' } as any : {})} style={[estilos.audienceBtn, { opacity: 0.6 }]}>
+                    <View style={[estilos.audienceBtn, { opacity: 0.6 }]}>
                       {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                      <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white-always' } as any : {})} style={[estilos.audienceBtnText, { color: '#FFFFFF' }]}>{canal.audiencia}</Text>
+                      <Text style={[estilos.audienceBtnText, { color: '#FFFFFF' }]}>{canal.audiencia}</Text>
                       {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                      <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white-always' } as any : {})} style={[estilos.audienceCount, { color: '#FFFFFF' }]}>{canal.receptores}</Text>
+                      <Text style={[estilos.audienceCount, { color: '#FFFFFF' }]}>{canal.receptores}</Text>
                     </View>
                   )}
                 </TouchableOpacity>
@@ -451,13 +433,17 @@ export default function ComunicacionAdmin() {
               onChangeText={setMensaje}
             />
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-            <TouchableOpacity style={estilos.publishBtn} onPress={crearAnuncio} disabled={enviando || !mensaje.trim()}>
+            <TouchableOpacity 
+              style={estilos.publishBtn} 
+              onPress={crearAnuncio} 
+              disabled={enviando || !mensaje.trim()}
+            >
               {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-force-white-always nx-admin-shimmer-button' } as any : {})} colors={['#6320a6', '#6320a6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.publishGradient}>
+              <LinearGradient colors={['#6320a6', '#6320a6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.publishGradient}>
                 {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                <MaterialIcons {...(Platform.OS === 'web' ? { className: 'nx-force-white-always' } as any : {})} name="send" size={18} color="#FFFFFF" style={{ color: '#FFFFFF' }} />
+                <MaterialIcons name="send" size={18} color="#FFFFFE" style={{ color: '#FFFFFE' }} />
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white-always' } as any : {})} style={[estilos.publishText, { color: '#FFFFFF' }]}>{t('admin.comunicacion.btn_send_now')}</Text>
+                <Text style={[estilos.publishText, { color: '#FFFFFE' }]}>{t('admin.comunicacion.btn_send_now')}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -510,11 +496,11 @@ export default function ComunicacionAdmin() {
                             <Image source={{ uri: foto }} style={estilos.feedAvatar} />
                           ) : (
                             // Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza.
-                            <LinearGradient {...({ className: 'nx-force-white' } as any)} colors={(prioridad === 'Alta' || prioridad === 'Urgente') ? ['#EF4444', '#991B1B'] : [BRAND.bangladeshBlue, BRAND.caribbeanBlue]} style={estilos.feedAvatar}>
+                            <LinearGradient colors={(prioridad === 'Alta' || prioridad === 'Urgente') ? ['#EF4444', '#991B1B'] : [BRAND.bangladeshBlue, BRAND.caribbeanBlue]} style={estilos.feedAvatar}>
                               {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                              <MaterialIcons {...({ className: 'nx-force-white' } as any)} name="person" size={17} color={CONTRAST_TEXT} />
+                              <MaterialIcons name="person" size={17} color={CONTRAST_TEXT} />
                               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                              <Text {...({ className: 'nx-force-white' } as any)} style={estilos.feedAvatarText}>{(feed.creadoPorNombre || 'S')[0].toUpperCase()}</Text>
+                              <Text style={estilos.feedAvatarText}>{(feed.creadoPorNombre || 'S')[0].toUpperCase()}</Text>
                             </LinearGradient>
                           );
                         })()}

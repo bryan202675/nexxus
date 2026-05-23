@@ -9,6 +9,19 @@ firebase-debug.*.log*
 
 # Firebase cache
 .firebase/
+.expo/
+
+# Local agent/tool caches
+.agents/
+.claude/
+.gemini/
+skills-lock.json
+
+# Generated/default hosting artifacts
+public/
+
+# macOS
+.DS_Store
 
 # Firebase config
 

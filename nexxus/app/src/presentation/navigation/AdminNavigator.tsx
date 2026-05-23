@@ -85,7 +85,7 @@ const Tab = createBottomTabNavigator();
 /**
  * Componente BANNER_IRIDESCENCE_COLOR. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
-const BANNER_IRIDESCENCE_COLOR: [number, number, number] = [0.4666666666666667, 0.6, 0.8666666666666667];
+const BANNER_IRIDESCENCE_COLOR: [number, number, number] = [0.4863, 0.2275, 0.9294];
 
 /**
  * Declaracion obtenerEmpresaId. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
@@ -333,9 +333,9 @@ html[data-nexxus-admin-theme="light"] #root .nx-force-white div {
 .nx-admin-banner-aurora {
   background:
     radial-gradient(circle at 18% 24%, rgba(255,255,255,0.24), transparent 22%),
-    radial-gradient(circle at 72% 30%, rgba(56,189,248,0.34), transparent 24%),
-    radial-gradient(circle at 56% 78%, rgba(168,85,247,0.42), transparent 28%),
-    conic-gradient(from 210deg at 50% 50%, rgba(255,255,255,0.12), rgba(37,99,235,0.28), rgba(124,58,237,0.42), rgba(255,255,255,0.10));
+    radial-gradient(circle at 72% 30%, rgba(124,58,237,0.34), transparent 24%),
+    radial-gradient(circle at 56% 78%, rgba(91,33,182,0.42), transparent 28%),
+    conic-gradient(from 210deg at 50% 50%, rgba(255,255,255,0.12), rgba(124,58,237,0.28), rgba(91,33,182,0.42), rgba(255,255,255,0.10));
   animation: nxBannerAurora 12s ease-in-out infinite;
 }
 .nx-admin-banner-shine {
@@ -759,7 +759,7 @@ function BannerPantalla({ routeName }: { routeName: string }) {
       ]}
     >
       {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-      <LinearGradient colors={theme.isDark ? ['#120926', '#5B21B6', '#1D4ED8'] : ['#4C1D95', '#7C3AED', '#2563EB']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={theme.isDark ? ['#05030c', '#3B0764', '#7C3AED'] : ['#120A2E', '#4C1D95', '#7C3AED']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
       {/* Elemento de fondo visual; construye la atmosfera grafica de la pantalla sin cambiar los datos. */}
       <Iridescence
         {...(Platform.OS === 'web' ? { className: 'nx-admin-banner-iridescence' } as any : {})}
