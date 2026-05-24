@@ -162,12 +162,16 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
         // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
         setTareas(t);
       });
+      const unsubNotifications = useCases.notifications.subscribe.execute(user.id, (items) => {
+        setNotificaciones(items);
+      });
       // Devuelve el valor final calculado para esta funcion o caso de uso.
       return () => {
         // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
         unsubInbox();
         // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
         unsubTasks();
+        unsubNotifications();
       };
     }
   }, [isAuthenticated, user]);

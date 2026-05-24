@@ -14,5 +14,6 @@ import { Notification } from '../entities/Notification';
  */
 export interface INotificationRepository {
   getNotificationsByUser(userId: string): Promise<Notification[]>;
+  subscribeNotificationsByUser?(userId: string, callback: (notifications: Notification[]) => void): () => void;
   markAsRead(notificationId: string): Promise<void>;
 }

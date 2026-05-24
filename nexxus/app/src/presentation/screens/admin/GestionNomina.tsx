@@ -180,7 +180,10 @@ export default function GestionNomina() {
   const stateLabels: Record<string, string> = useMemo(() => ({
     Pagado: filterPagado,
     Pendiente: filterPendiente,
-    Procesando: filterProcesando
+    Procesando: filterProcesando,
+    pagado: filterPagado,
+    pendiente: filterPendiente,
+    procesando: filterProcesando
   }), [filterPagado, filterPendiente, filterProcesando]);
   
   // Inicializa [formPerfil, setFormPerfil]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.

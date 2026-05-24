@@ -30,12 +30,68 @@ const normalizeKnownTranslation = (source: string, translated: string, target: T
   const translatedClean = translated.trim().toLowerCase();
   const isUppercaseSource = source.trim() === source.trim().toUpperCase();
 
+  if (sourceClean === 'permisos de administrador') {
+    return isUppercaseSource ? 'ADMINISTRATOR PERMISSIONS' : 'Administrator permissions';
+  }
+
+  if (sourceClean === 'administrador') {
+    return isUppercaseSource ? 'ADMINISTRATOR' : 'Administrator';
+  }
+
+  if (sourceClean === 'total planilla (bruto)') {
+    return isUppercaseSource ? 'TOTAL PAYROLL (GROSS)' : 'Total Payroll (Gross)';
+  }
+
+  if (sourceClean === 'costo neto') {
+    return isUppercaseSource ? 'NET COST' : 'Net Cost';
+  }
+
+  if (sourceClean === 'reporte pdf') {
+    return isUppercaseSource ? 'PDF REPORT' : 'PDF Report';
+  }
+
+  if (sourceClean === 'tiempo laborado') {
+    return isUppercaseSource ? 'TIME WORKED' : 'Time Worked';
+  }
+
+  if (sourceClean === 'check-ins hechos') {
+    return isUppercaseSource ? 'CHECK-INS MADE' : 'Check-ins Made';
+  }
+
+  if (sourceClean === 'datos vivos y módulos sincronizados') {
+    return isUppercaseSource ? 'LIVE DATA AND SYNC NOTIFICATIONS' : 'Live data and sync notifications';
+  }
+
+  if (sourceClean === 'asistencia') {
+    return isUppercaseSource ? 'ATTENDANCE' : 'Attendance';
+  }
+
+  if (sourceClean === 'recursos humanos') {
+    return isUppercaseSource ? 'HUMAN RESOURCES' : 'Human Resources';
+  }
+
+  if (sourceClean === 'media') {
+    return isUppercaseSource ? 'MEDIUM' : 'Medium';
+  }
+
   if (['pendiente', 'pendientes'].includes(sourceClean)) {
     return isUppercaseSource ? 'PENDING' : 'Pending';
   }
 
   if (sourceClean.includes('pendiente') && translatedClean.includes('earring')) {
     return translated.replace(/earrings/gi, 'pending').replace(/earring/gi, 'pending');
+  }
+
+  if (['modo claro', 'modo-claro'].includes(sourceClean) || translatedClean === 'clear mode') {
+    return 'Light Mode';
+  }
+
+  if (['modo oscuro', 'modo-oscuro'].includes(sourceClean) || translatedClean === 'dark mode') {
+    return 'Dark Mode';
+  }
+
+  if (['prom:', 'prom: '].includes(sourceClean)) {
+    return 'Avg:';
   }
 
   return translated;
@@ -127,7 +183,7 @@ export const translateWithApi = async (source: string, target: string) => {
 
   const cacheKey = buildCacheKey(source, normalizedTarget);
   const cached = await AsyncStorage.getItem(cacheKey);
-  if (cached) return cached;
+  if (cached) return normalizeKnownTranslation(source, cached, normalizedTarget);
 
   try {
     const translated = normalizeKnownTranslation(source, await requestTranslation(source, normalizedTarget), normalizedTarget);

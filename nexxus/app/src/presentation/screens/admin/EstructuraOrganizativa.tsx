@@ -8,6 +8,7 @@
 
 // Importa React, { useEffect, useMemo, useRef, useState } desde React; habilita componentes, hooks y tipos base para esta pieza.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useRoute } from '@react-navigation/native';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
 // Importa { Alert, Animated, Easing, Modal, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Image, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
@@ -115,6 +116,9 @@ type UsuarioEstructura = {
   id?: string;
   nombre?: string;
   rol?: string;
+  cargoId?: string;
+  cargo?: string;
+  departamentoId?: string;
   departamento?: string;
   empresaId?: string;
   activo?: boolean;
@@ -152,6 +156,16 @@ type CargoEstructura = {
   nivel?: string;
   descripcion?: string;
   activo?: boolean;
+};
+
+type CargoDetalle = {
+  cargo: CargoEstructura;
+  empleados: UsuarioEstructura[];
+};
+
+type RolDetalle = {
+  rol: RolPersonalizado;
+  empleados: UsuarioEstructura[];
 };
 
 /**
@@ -237,6 +251,11 @@ const normalizarDepartamento = (departamento: DepartamentoEstructura) => {
     empleados: departamento.empleadosCount ?? departamento.count ?? 0,
     sectores,
   };
+};
+
+type DepartamentoDetalle = {
+  departamento: ReturnType<typeof normalizarDepartamento>;
+  empleados: UsuarioEstructura[];
 };
 
 /**
@@ -372,20 +391,24 @@ const SummaryList = ({
   title, 
   items, 
   empty, 
+  onPress,
   onEdit, 
   onDelete, 
   icon, 
   iconBg, 
-  iconColor 
+  iconColor,
+  scrollable = false,
 }: { 
   title: string; 
   items: SummaryItemData[]; 
   empty: string; 
+  onPress?: (item: SummaryItemData) => void;
   onEdit?: (item: SummaryItemData) => void; 
   onDelete?: (item: SummaryItemData) => void;
   icon?: keyof typeof MaterialIcons.glyphMap;
   iconBg?: string;
   iconColor?: string;
+  scrollable?: boolean;
 }) => (
   // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
   <View style={estilos.summaryCard}>
@@ -399,22 +422,29 @@ const SummaryList = ({
     {/* Cuerpo de la tarjeta de resumen para espaciado interno */}
     <View style={estilos.summaryBody}>
       {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-      <View style={estilos.summaryList}>
-        {items.length > 0 ? items.slice(0, 5).map((item) => (
+      <ScrollView
+        nestedScrollEnabled
+        style={scrollable ? estilos.summaryListScroll : undefined}
+        contentContainerStyle={estilos.summaryList}
+        showsVerticalScrollIndicator={scrollable}
+      >
+        {items.length > 0 ? (scrollable ? items : items.slice(0, 5)).map((item) => (
           // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
           <View key={item.id} style={estilos.summaryItem}>
-            {icon && (
-              <View style={[estilos.summaryItemIconBg, { backgroundColor: iconBg, borderColor: iconColor + '26' }]}>
-                <MaterialIcons name={icon} size={16} color={iconColor} />
+            <TouchableOpacity style={estilos.summaryItemMain} activeOpacity={onPress ? 0.82 : 1} disabled={!onPress} onPress={() => onPress?.(item)}>
+              {icon && (
+                <View style={[estilos.summaryItemIconBg, { backgroundColor: iconBg, borderColor: iconColor + '26' }]}>
+                  <MaterialIcons name={icon} size={16} color={iconColor} />
+                </View>
+              )}
+              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+              <View style={estilos.summaryItemInfo}>
+                {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
+                <Text style={estilos.summaryItemTitle} numberOfLines={1}>{item.title}</Text>
+                {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
+                <Text style={estilos.summaryItemDetail} numberOfLines={1}>{item.detail}</Text>
               </View>
-            )}
-            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.summaryItemInfo}>
-              {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-              <Text style={estilos.summaryItemTitle} numberOfLines={1}>{item.title}</Text>
-              {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-              <Text style={estilos.summaryItemDetail} numberOfLines={1}>{item.detail}</Text>
-            </View>
+            </TouchableOpacity>
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.summaryActions}>
               {onEdit && (
@@ -434,7 +464,7 @@ const SummaryList = ({
             </View>
           </View>
         )) : <EmptyState texto={empty} />}
-      </View>
+      </ScrollView>
     </View>
   </View>
 );
@@ -482,6 +512,8 @@ const Selector = ({ label, value, options, onSelect, emptyLabel }: { label: stri
  * Componente EstructuraOrganizativa. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 export default function EstructuraOrganizativa() {
+  const route = useRoute<any>();
+  const focoBusquedaAplicado = useRef<string>('');
   // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { t } = useTranslation();
   // Inicializa toast; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -504,6 +536,9 @@ export default function EstructuraOrganizativa() {
   const [filtro, setFiltro] = useState<FiltroDepto>('todos');
   // Inicializa [modalActivo, setModalActivo]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [modalActivo, setModalActivo] = useState<ModalActivo>(null);
+  const [departamentoDetalle, setDepartamentoDetalle] = useState<DepartamentoDetalle | null>(null);
+  const [cargoDetalle, setCargoDetalle] = useState<CargoDetalle | null>(null);
+  const [rolDetalle, setRolDetalle] = useState<RolDetalle | null>(null);
   // Inicializa [modoModal, setModoModal]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [modoModal, setModoModal] = useState<ModoModal>('crear');
   // Inicializa [entidadSeleccionada, setEntidadSeleccionada]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -702,6 +737,74 @@ export default function EstructuraOrganizativa() {
     // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     limpiarFormularios();
   };
+
+  const obtenerEmpleadosCargo = (cargo: CargoEstructura) => {
+    const cargoId = cargo.id || '';
+    const cargoNombre = (cargo.nombre || '').toLowerCase().trim();
+    return usuarios.filter((usuario) => {
+      const usuarioCargo = (usuario.cargo || '').toLowerCase().trim();
+      return (cargoId && usuario.cargoId === cargoId) || (!!cargoNombre && usuarioCargo === cargoNombre);
+    });
+  };
+
+  const abrirDetalleCargo = (cargo: CargoEstructura) => {
+    setCargoDetalle({ cargo, empleados: obtenerEmpleadosCargo(cargo) });
+  };
+
+  const obtenerEmpleadosRol = (rol: RolPersonalizado) => {
+    const rolNombre = (rol.nombre || '').toLowerCase().trim();
+    return usuarios.filter((usuario) => !!rolNombre && (usuario.rol || '').toLowerCase().trim() === rolNombre);
+  };
+
+  const abrirDetalleRol = (rol: RolPersonalizado) => {
+    setRolDetalle({ rol, empleados: obtenerEmpleadosRol(rol) });
+  };
+
+  const obtenerEmpleadosDepartamento = (departamento: ReturnType<typeof normalizarDepartamento>) => {
+    const departamentoId = departamento.id || '';
+    const departamentoNombre = (departamento.nombre || '').toLowerCase().trim();
+    return usuarios.filter((usuario) => {
+      const usuarioDepartamento = (usuario.departamento || '').toLowerCase().trim();
+      return (departamentoId && usuario.departamentoId === departamentoId) || (!!departamentoNombre && usuarioDepartamento === departamentoNombre);
+    });
+  };
+
+  const abrirDetalleDepartamento = (departamento: ReturnType<typeof normalizarDepartamento>) => {
+    setDepartamentoDetalle({ departamento, empleados: obtenerEmpleadosDepartamento(departamento) });
+  };
+
+  useEffect(() => {
+    const foco = route.params?.adminSearch;
+    if (!foco || !['sede', 'departamento', 'cargo'].includes(foco.type)) return;
+    const clave = `${foco.type}-${foco.id || foco.title || ''}`;
+    if (focoBusquedaAplicado.current === clave) return;
+
+    if (foco.type === 'sede') {
+      const sede = sedes.find((item) => (!!foco.id && item.id === foco.id) || (!!foco.title && item.nombre === foco.title));
+      if (!sede) return;
+      focoBusquedaAplicado.current = clave;
+      setBusqueda(sede.nombre || '');
+      abrirEditarSede(sede);
+      return;
+    }
+
+    if (foco.type === 'departamento') {
+      const departamento = departamentos.find((item) => (!!foco.id && item.id === foco.id) || (!!foco.title && item.nombre === foco.title));
+      if (!departamento) return;
+      focoBusquedaAplicado.current = clave;
+      setBusqueda(departamento.nombre || '');
+      abrirDetalleDepartamento(departamento);
+      return;
+    }
+
+    if (foco.type === 'cargo') {
+      const cargo = cargos.find((item) => (!!foco.id && item.id === foco.id) || (!!foco.title && item.nombre === foco.title));
+      if (!cargo) return;
+      focoBusquedaAplicado.current = clave;
+      setBusqueda(cargo.nombre || '');
+      abrirDetalleCargo(cargo);
+    }
+  }, [route.params, sedes, departamentos, cargos, usuarios]);
 
   // Declara abrirCrear; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const abrirCrear = (tipo: Exclude<ModalActivo, null>) => {
@@ -1124,6 +1227,10 @@ export default function EstructuraOrganizativa() {
     // Devuelve el valor final calculado para esta funcion o caso de uso.
     return true;
   });
+  const cargoDetalleEmpleados = cargoDetalle ? obtenerEmpleadosCargo(cargoDetalle.cargo) : [];
+  const rolDetalleEmpleados = rolDetalle ? obtenerEmpleadosRol(rolDetalle.rol) : [];
+  const permisosRolDetalle = rolDetalle ? Object.entries(rolDetalle.rol.permisos || {}).filter(([, activo]) => activo) : [];
+  const departamentoDetalleEmpleados = departamentoDetalle ? obtenerEmpleadosDepartamento(departamentoDetalle.departamento) : [];
 
   // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
   if (cargando) {
@@ -1189,22 +1296,26 @@ export default function EstructuraOrganizativa() {
           title={t('admin.estructura.summary.cargos')} 
           items={cargos.map((cargo) => ({ id: cargo.id || cargo.nombre || '', title: cargo.nombre || 'Cargo', detail: `${cargo.departamentoNombre || t('common.global')} · ${cargo.nivel || ''}`, raw: cargo }))} 
           empty={t('admin.estructura.summary.empty_cargos')} 
+          onPress={(item) => abrirDetalleCargo(item.raw as CargoEstructura)}
           onEdit={(item) => abrirEditarCargo(item.raw as CargoEstructura)} 
           onDelete={(item) => eliminarEntidad('cargo', item.id, item.title)} 
           icon="work"
           iconBg="rgba(20, 184, 166, 0.08)"
           iconColor={SOFT_COLORS.cargos}
+          scrollable
         />
         {/* SummaryList renderiza una pieza visual reutilizable dentro de esta pantalla. */}
         <SummaryList 
           title={t('admin.estructura.summary.roles')} 
           items={roles.map((rol) => ({ id: rol.id || rol.nombre || '', title: rol.nombre || 'Rol', detail: t('admin.estructura.roles_detail', { count: Object.values(rol.permisos || {}).filter(Boolean).length, defaultValue: `${Object.values(rol.permisos || {}).filter(Boolean).length} permisos` }), raw: rol }))} 
           empty={t('admin.estructura.summary.empty_roles')} 
+          onPress={(item) => abrirDetalleRol(item.raw as RolPersonalizado)}
           onEdit={(item) => abrirEditarRol(item.raw as RolPersonalizado)} 
           onDelete={(item) => eliminarEntidad('rol', item.id, item.title)} 
           icon="admin-panel-settings"
           iconBg="rgba(245, 158, 11, 0.08)"
           iconColor={SOFT_COLORS.roles}
+          scrollable
         />
       </View>
 
@@ -1244,7 +1355,7 @@ export default function EstructuraOrganizativa() {
       <View style={estilos.gridDepts}>
         {departamentosFiltrados.map((dept) => (
           // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
-          <View key={dept.id || dept.nombre} style={estilos.deptCard}>
+          <TouchableOpacity key={dept.id || dept.nombre} style={estilos.deptCard} activeOpacity={0.86} onPress={() => abrirDetalleDepartamento(dept)}>
             {/* Header de departamento con diseño plano y profesional sin gradientes. */}
             <View style={estilos.deptHeader}>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
@@ -1387,7 +1498,7 @@ export default function EstructuraOrganizativa() {
                 )}
               </View>
             </View>
-          </View>
+          </TouchableOpacity>
         ))}
       </View>
 
@@ -1401,6 +1512,283 @@ export default function EstructuraOrganizativa() {
         </View>
       )}
     </ScrollView>
+
+    <AdminModal visible={!!departamentoDetalle} animationType="fade" onRequestClose={() => setDepartamentoDetalle(null)}>
+      <View style={estilos.modalOverlay}>
+        <AdminModalFormGlass style={[estilos.modalCard, estilos.cargoDetailCard]}>
+          <View style={estilos.modalHeader}>
+            <View style={estilos.cargoDetailHeaderText}>
+              <Text style={estilos.modalTitle}>{departamentoDetalle?.departamento.nombre || t('admin.estructura.depto')}</Text>
+              <Text style={estilos.modalSubtitle}>{t('admin.estructura.dept_detail.subtitle', { defaultValue: 'Información completa del departamento' })}</Text>
+            </View>
+            <TouchableOpacity style={estilos.modalClose} onPress={() => setDepartamentoDetalle(null)}>
+              <MaterialIcons name="close" size={20} color={BRAND.textSec} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={estilos.modalBody} showsVerticalScrollIndicator={false}>
+            <View style={estilos.cargoDetailStats}>
+              <View style={estilos.cargoDetailStat}>
+                <Text style={estilos.cargoDetailStatValue}>{departamentoDetalleEmpleados.length}</Text>
+                <Text style={estilos.cargoDetailStatLabel}>{t('admin.estructura.cargo_detail.employees', { defaultValue: 'Empleados' })}</Text>
+              </View>
+              <View style={estilos.cargoDetailStat}>
+                <Text style={estilos.cargoDetailStatValue}>{departamentoDetalle?.departamento.sectores.length || 0}</Text>
+                <Text style={estilos.cargoDetailStatLabel}>{t('admin.estructura.dept_card.sectors')}</Text>
+              </View>
+              <View style={estilos.cargoDetailStat}>
+                <Text style={estilos.cargoDetailStatValue}>{departamentoDetalle?.departamento.sedeNombre || t('common.global')}</Text>
+                <Text style={estilos.cargoDetailStatLabel}>{t('admin.estructura.sede')}</Text>
+              </View>
+            </View>
+
+            <View style={estilos.cargoDetailStats}>
+              <View style={estilos.cargoDetailStat}>
+                <Text style={estilos.cargoDetailStatValue}>{departamentoDetalle?.departamento.jefe || t('admin.estructura.dept_card.manager_none')}</Text>
+                <Text style={estilos.cargoDetailStatLabel}>{t('admin.estructura.dept_card.manager_label')}</Text>
+              </View>
+              <View style={estilos.cargoDetailStat}>
+                <Text style={estilos.cargoDetailStatValue}>{departamentoDetalle?.departamento.productividad || 0}%</Text>
+                <Text style={estilos.cargoDetailStatLabel}>{t('admin.estructura.dept_card.productivity')}</Text>
+              </View>
+              <View style={estilos.cargoDetailStat}>
+                <Text style={estilos.cargoDetailStatValue}>{departamentoDetalle?.departamento.cobertura || 0}%</Text>
+                <Text style={estilos.cargoDetailStatLabel}>{t('admin.estructura.dept_card.coverage')}</Text>
+              </View>
+            </View>
+
+            <View style={estilos.cargoDetailSection}>
+              <Text style={estilos.cargoDetailSectionTitle}>{t('admin.estructura.dept_card.sectors')}</Text>
+              <View style={estilos.cargoEmployeeList}>
+                {departamentoDetalle?.departamento.sectores.length ? departamentoDetalle.departamento.sectores.map((sector) => (
+                  <View key={sector.id || sector.nombre} style={estilos.cargoEmployeeRow}>
+                    <View style={[estilos.cargoEmployeeAvatar, estilos.deptEmployeeAvatar]}>
+                      <MaterialIcons name="workspaces" size={17} color={ADMIN.iconos.personas} />
+                    </View>
+                    <View style={estilos.cargoEmployeeInfo}>
+                      <Text style={estilos.cargoEmployeeName} numberOfLines={1}>{sector.nombre}</Text>
+                      <Text style={estilos.cargoEmployeeMeta} numberOfLines={1}>{t('admin.estructura.dept_card.leader')}: {sector.responsable}</Text>
+                    </View>
+                    <View style={estilos.cargoEmployeeStatus}>
+                      <Text style={estilos.cargoEmployeeStatusText}>{sector.empleados}</Text>
+                    </View>
+                  </View>
+                )) : <EmptyState texto={t('admin.estructura.dept_card.empty_sectors', { defaultValue: 'Sin sectores registrados' })} />}
+              </View>
+            </View>
+
+            <View style={estilos.cargoDetailSection}>
+              <Text style={estilos.cargoDetailSectionTitle}>{t('admin.estructura.dept_detail.assigned_employees', { defaultValue: 'Empleados dentro del departamento' })}</Text>
+              <View style={estilos.cargoEmployeeList}>
+                {departamentoDetalleEmpleados.length > 0 ? departamentoDetalleEmpleados.map((empleado) => (
+                  <View key={empleado.id || empleado.nombre} style={estilos.cargoEmployeeRow}>
+                    <View style={[estilos.cargoEmployeeAvatar, estilos.deptEmployeeAvatar]}>
+                      <Text style={[estilos.cargoEmployeeAvatarText, estilos.deptEmployeeAvatarText]}>{(empleado.nombre || empleado.cargo || '?').charAt(0).toUpperCase()}</Text>
+                    </View>
+                    <View style={estilos.cargoEmployeeInfo}>
+                      <Text style={estilos.cargoEmployeeName} numberOfLines={1}>{empleado.nombre || t('common.employee', { defaultValue: 'Empleado' })}</Text>
+                      <Text style={estilos.cargoEmployeeMeta} numberOfLines={1}>{empleado.cargo || empleado.rol || t('admin.estructura.cargo')}</Text>
+                    </View>
+                    <View style={[estilos.cargoEmployeeStatus, (empleado.activo === false || empleado.estado_activo === false) && estilos.cargoEmployeeStatusOff]}>
+                      <Text style={[estilos.cargoEmployeeStatusText, (empleado.activo === false || empleado.estado_activo === false) && estilos.cargoEmployeeStatusTextOff]}>
+                        {(empleado.activo === false || empleado.estado_activo === false) ? t('common.inactive', { defaultValue: 'Inactivo' }) : t('common.active', { defaultValue: 'Activo' })}
+                      </Text>
+                    </View>
+                  </View>
+                )) : (
+                  <EmptyState texto={t('admin.estructura.dept_detail.no_employees', { defaultValue: 'No hay empleados asignados a este departamento.' })} />
+                )}
+              </View>
+            </View>
+          </ScrollView>
+
+          <View style={estilos.modalFooter}>
+            <TouchableOpacity style={estilos.btnModalSecondary} onPress={() => setDepartamentoDetalle(null)}>
+              <Text style={estilos.btnModalSecondaryText}>{t('common.close', { defaultValue: 'Cerrar' })}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={estilos.btnModalPrimary} onPress={() => {
+              const departamento = departamentoDetalle?.departamento;
+              setDepartamentoDetalle(null);
+              if (departamento) abrirEditarDepartamento(departamento);
+            }}>
+              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white nx-admin-shimmer-button' } as any : {})} colors={['#6320a6', '#6320a6']} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.btnModalGradient}>
+                <MaterialIcons name="edit" size={18} color={CONTRAST_TEXT} style={estilos.btnIcon} />
+                <Text style={estilos.btnPrimaryText}>{t('common.edit')}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </AdminModalFormGlass>
+      </View>
+    </AdminModal>
+
+    <AdminModal visible={!!cargoDetalle} animationType="fade" onRequestClose={() => setCargoDetalle(null)}>
+      <View style={estilos.modalOverlay}>
+        <AdminModalFormGlass style={[estilos.modalCard, estilos.cargoDetailCard]}>
+          <View style={estilos.modalHeader}>
+            <View style={estilos.cargoDetailHeaderText}>
+              <Text style={estilos.modalTitle}>{cargoDetalle?.cargo.nombre || t('admin.estructura.btn_cargo')}</Text>
+              <Text style={estilos.modalSubtitle}>{t('admin.estructura.cargo_detail.subtitle', { defaultValue: 'Información completa del cargo' })}</Text>
+            </View>
+            <TouchableOpacity style={estilos.modalClose} onPress={() => setCargoDetalle(null)}>
+              <MaterialIcons name="close" size={20} color={BRAND.textSec} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={estilos.modalBody} showsVerticalScrollIndicator={false}>
+            <View style={estilos.cargoDetailStats}>
+              <View style={estilos.cargoDetailStat}>
+                <Text style={estilos.cargoDetailStatValue}>{cargoDetalleEmpleados.length}</Text>
+                <Text style={estilos.cargoDetailStatLabel}>{t('admin.estructura.cargo_detail.employees', { defaultValue: 'Empleados' })}</Text>
+              </View>
+              <View style={estilos.cargoDetailStat}>
+                <Text style={estilos.cargoDetailStatValue}>{cargoDetalle?.cargo.departamentoNombre || t('common.global')}</Text>
+                <Text style={estilos.cargoDetailStatLabel}>{t('admin.estructura.modal_cargo.label_dept')}</Text>
+              </View>
+              <View style={estilos.cargoDetailStat}>
+                <Text style={estilos.cargoDetailStatValue}>{cargoDetalle?.cargo.nivel || '-'}</Text>
+                <Text style={estilos.cargoDetailStatLabel}>{t('admin.estructura.modal_cargo.label_level')}</Text>
+              </View>
+            </View>
+
+            <View style={estilos.cargoDetailSection}>
+              <Text style={estilos.cargoDetailSectionTitle}>{t('admin.estructura.modal_cargo.label_desc')}</Text>
+              <Text style={estilos.cargoDetailDescription}>
+                {cargoDetalle?.cargo.descripcion || t('admin.estructura.cargo_detail.no_description', { defaultValue: 'Sin descripción registrada.' })}
+              </Text>
+            </View>
+
+            <View style={estilos.cargoDetailSection}>
+              <Text style={estilos.cargoDetailSectionTitle}>{t('admin.estructura.cargo_detail.assigned_employees', { defaultValue: 'Empleados en este cargo' })}</Text>
+              <View style={estilos.cargoEmployeeList}>
+                {cargoDetalleEmpleados.length > 0 ? cargoDetalleEmpleados.map((empleado) => (
+                  <View key={empleado.id || empleado.nombre} style={estilos.cargoEmployeeRow}>
+                    <View style={estilos.cargoEmployeeAvatar}>
+                      <Text style={estilos.cargoEmployeeAvatarText}>{(empleado.nombre || empleado.cargo || '?').charAt(0).toUpperCase()}</Text>
+                    </View>
+                    <View style={estilos.cargoEmployeeInfo}>
+                      <Text style={estilos.cargoEmployeeName} numberOfLines={1}>{empleado.nombre || t('common.employee', { defaultValue: 'Empleado' })}</Text>
+                      <Text style={estilos.cargoEmployeeMeta} numberOfLines={1}>{empleado.departamento || cargoDetalle?.cargo.departamentoNombre || t('common.global')}</Text>
+                    </View>
+                    <View style={[estilos.cargoEmployeeStatus, (empleado.activo === false || empleado.estado_activo === false) && estilos.cargoEmployeeStatusOff]}>
+                      <Text style={[estilos.cargoEmployeeStatusText, (empleado.activo === false || empleado.estado_activo === false) && estilos.cargoEmployeeStatusTextOff]}>
+                        {(empleado.activo === false || empleado.estado_activo === false) ? t('common.inactive', { defaultValue: 'Inactivo' }) : t('common.active', { defaultValue: 'Activo' })}
+                      </Text>
+                    </View>
+                  </View>
+                )) : (
+                  <EmptyState texto={t('admin.estructura.cargo_detail.no_employees', { defaultValue: 'No hay empleados asignados a este cargo.' })} />
+                )}
+              </View>
+            </View>
+          </ScrollView>
+
+          <View style={estilos.modalFooter}>
+            <TouchableOpacity style={estilos.btnModalSecondary} onPress={() => setCargoDetalle(null)}>
+              <Text style={estilos.btnModalSecondaryText}>{t('common.close', { defaultValue: 'Cerrar' })}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={estilos.btnModalPrimary} onPress={() => {
+              const cargo = cargoDetalle?.cargo;
+              setCargoDetalle(null);
+              if (cargo) abrirEditarCargo(cargo);
+            }}>
+              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white nx-admin-shimmer-button' } as any : {})} colors={['#6320a6', '#6320a6']} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.btnModalGradient}>
+                <MaterialIcons name="edit" size={18} color={CONTRAST_TEXT} style={estilos.btnIcon} />
+                <Text style={estilos.btnPrimaryText}>{t('common.edit')}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </AdminModalFormGlass>
+      </View>
+    </AdminModal>
+
+    <AdminModal visible={!!rolDetalle} animationType="fade" onRequestClose={() => setRolDetalle(null)}>
+      <View style={estilos.modalOverlay}>
+        <AdminModalFormGlass style={[estilos.modalCard, estilos.cargoDetailCard]}>
+          <View style={estilos.modalHeader}>
+            <View style={estilos.cargoDetailHeaderText}>
+              <Text style={estilos.modalTitle}>{rolDetalle?.rol.nombre || t('admin.estructura.btn_create_role')}</Text>
+              <Text style={estilos.modalSubtitle}>{t('admin.estructura.rol_detail.subtitle', { defaultValue: 'Información completa del rol' })}</Text>
+            </View>
+            <TouchableOpacity style={estilos.modalClose} onPress={() => setRolDetalle(null)}>
+              <MaterialIcons name="close" size={20} color={BRAND.textSec} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={estilos.modalBody} showsVerticalScrollIndicator={false}>
+            <View style={estilos.cargoDetailStats}>
+              <View style={estilos.cargoDetailStat}>
+                <Text style={estilos.cargoDetailStatValue}>{rolDetalleEmpleados.length}</Text>
+                <Text style={estilos.cargoDetailStatLabel}>{t('admin.estructura.cargo_detail.employees', { defaultValue: 'Empleados' })}</Text>
+              </View>
+              <View style={estilos.cargoDetailStat}>
+                <Text style={estilos.cargoDetailStatValue}>{permisosRolDetalle.length}</Text>
+                <Text style={estilos.cargoDetailStatLabel}>{t('admin.estructura.rol_detail.permissions', { defaultValue: 'Permisos' })}</Text>
+              </View>
+            </View>
+
+            <View style={estilos.cargoDetailSection}>
+              <Text style={estilos.cargoDetailSectionTitle}>{t('admin.estructura.modal_rol.label_desc')}</Text>
+              <Text style={estilos.cargoDetailDescription}>
+                {rolDetalle?.rol.descripcion || t('admin.estructura.rol_detail.no_description', { defaultValue: 'Sin descripción registrada.' })}
+              </Text>
+            </View>
+
+            <View style={estilos.cargoDetailSection}>
+              <Text style={estilos.cargoDetailSectionTitle}>{t('admin.estructura.rol_detail.permissions', { defaultValue: 'Permisos' })}</Text>
+              <View style={estilos.permissionGrid}>
+                {permisosRolDetalle.length > 0 ? permisosRolDetalle.map(([permiso]) => (
+                  <View key={permiso} style={[estilos.permissionChip, estilos.permissionChipActive]}>
+                    <MaterialIcons name="check-circle" size={16} color={BRAND.success} />
+                    <Text style={[estilos.permissionText, estilos.permissionTextActive]}>{t(`admin.modules.${permiso}`, { defaultValue: permiso })}</Text>
+                  </View>
+                )) : <EmptyState texto={t('admin.estructura.rol_detail.no_permissions', { defaultValue: 'Sin permisos activos.' })} />}
+              </View>
+            </View>
+
+            <View style={estilos.cargoDetailSection}>
+              <Text style={estilos.cargoDetailSectionTitle}>{t('admin.estructura.rol_detail.assigned_employees', { defaultValue: 'Empleados con este rol' })}</Text>
+              <View style={estilos.cargoEmployeeList}>
+                {rolDetalleEmpleados.length > 0 ? rolDetalleEmpleados.map((empleado) => (
+                  <View key={empleado.id || empleado.nombre} style={estilos.cargoEmployeeRow}>
+                    <View style={[estilos.cargoEmployeeAvatar, estilos.rolEmployeeAvatar]}>
+                      <Text style={[estilos.cargoEmployeeAvatarText, estilos.rolEmployeeAvatarText]}>{(empleado.nombre || empleado.rol || '?').charAt(0).toUpperCase()}</Text>
+                    </View>
+                    <View style={estilos.cargoEmployeeInfo}>
+                      <Text style={estilos.cargoEmployeeName} numberOfLines={1}>{empleado.nombre || t('common.employee', { defaultValue: 'Empleado' })}</Text>
+                      <Text style={estilos.cargoEmployeeMeta} numberOfLines={1}>{empleado.cargo || empleado.departamento || rolDetalle?.rol.nombre || t('admin.estructura.rol')}</Text>
+                    </View>
+                    <View style={[estilos.cargoEmployeeStatus, (empleado.activo === false || empleado.estado_activo === false) && estilos.cargoEmployeeStatusOff]}>
+                      <Text style={[estilos.cargoEmployeeStatusText, (empleado.activo === false || empleado.estado_activo === false) && estilos.cargoEmployeeStatusTextOff]}>
+                        {(empleado.activo === false || empleado.estado_activo === false) ? t('common.inactive', { defaultValue: 'Inactivo' }) : t('common.active', { defaultValue: 'Activo' })}
+                      </Text>
+                    </View>
+                  </View>
+                )) : (
+                  <EmptyState texto={t('admin.estructura.rol_detail.no_employees', { defaultValue: 'No hay empleados asignados a este rol.' })} />
+                )}
+              </View>
+            </View>
+          </ScrollView>
+
+          <View style={estilos.modalFooter}>
+            <TouchableOpacity style={estilos.btnModalSecondary} onPress={() => setRolDetalle(null)}>
+              <Text style={estilos.btnModalSecondaryText}>{t('common.close', { defaultValue: 'Cerrar' })}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={estilos.btnModalPrimary} onPress={() => {
+              const rol = rolDetalle?.rol;
+              setRolDetalle(null);
+              if (rol) abrirEditarRol(rol);
+            }}>
+              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white nx-admin-shimmer-button' } as any : {})} colors={['#6320a6', '#6320a6']} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.btnModalGradient}>
+                <MaterialIcons name="edit" size={18} color={CONTRAST_TEXT} style={estilos.btnIcon} />
+                <Text style={estilos.btnPrimaryText}>{t('common.edit')}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </AdminModalFormGlass>
+      </View>
+    </AdminModal>
+
     {/* Ventana modal; separa una accion o detalle sin abandonar la pantalla actual. */}
     <AdminModal visible={modalActivo !== null} animationType="fade" onRequestClose={cerrarModal}>
       <View style={estilos.modalOverlay}>
@@ -2409,14 +2797,7 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
-    // shadowColor define el color base de sombra.
-    shadowColor: BRAND.iconBright,
-    // shadowOffset define direccion y distancia de sombra.
-    shadowOffset: { width: 0, height: 0 },
-    // shadowOpacity controla intensidad de sombra.
-    shadowOpacity: 0.3,
-    // shadowRadius suaviza o expande la sombra.
-    shadowRadius: 15,
+
   },
   // avatarContrastWrap: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   avatarContrastWrap: {
@@ -2626,14 +3007,7 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
-    // shadowColor define el color base de sombra.
-    shadowColor: BRAND.iconBright,
-    // shadowOffset define direccion y distancia de sombra.
-    shadowOffset: { width: 0, height: 0 },
-    // shadowOpacity controla intensidad de sombra.
-    shadowOpacity: 0.2,
-    // shadowRadius suaviza o expande la sombra.
-    shadowRadius: 10,
+
   },
   // sectorAvatarText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   sectorAvatarText: {
@@ -2964,6 +3338,9 @@ const estilos = StyleSheet.create({
     // gap define separacion uniforme entre elementos hijos.
     gap: 10,
   },
+  summaryListScroll: {
+    maxHeight: 520,
+  },
   // summaryItem: estilo de lista o item; mantiene espaciado y lectura consistente en elementos repetidos.
   summaryItem: {
     // padding agrega espacio interno alrededor del contenido.
@@ -2981,6 +3358,13 @@ const estilos = StyleSheet.create({
     // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
     // gap define separacion uniforme entre elementos hijos.
+    gap: 12,
+  },
+  summaryItemMain: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
   },
   // summaryItemInfo: estilo de lista o item; mantiene espaciado y lectura consistente en elementos repetidos.
@@ -3079,6 +3463,13 @@ const estilos = StyleSheet.create({
     // overflow controla si el contenido se recorta o puede sobresalir.
     overflow: 'hidden',
   },
+  cargoDetailCard: {
+    maxWidth: 760,
+  },
+  cargoDetailHeaderText: {
+    flex: 1,
+    minWidth: 0,
+  },
   // modalHeader: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
   modalHeader: {
     // padding agrega espacio interno alrededor del contenido.
@@ -3149,6 +3540,132 @@ const estilos = StyleSheet.create({
   modalBody: {
     // padding agrega espacio interno alrededor del contenido.
     padding: 28,
+  },
+  cargoDetailStats: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 20,
+  },
+  cargoDetailStat: {
+    flex: 1,
+    minWidth: 160,
+    backgroundColor: ADMIN.fondoCampo,
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    borderRadius: 14,
+    padding: 16,
+  },
+  cargoDetailStatValue: {
+    color: BRAND.textMain,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  cargoDetailStatLabel: {
+    color: BRAND.textSec,
+    fontSize: 10,
+    fontWeight: '900',
+    marginTop: 5,
+    textTransform: 'uppercase',
+  },
+  cargoDetailSection: {
+    marginTop: 18,
+  },
+  cargoDetailSectionTitle: {
+    color: BRAND.textSec,
+    fontSize: 10,
+    fontWeight: '900',
+    marginBottom: 10,
+    textTransform: 'uppercase',
+  },
+  cargoDetailDescription: {
+    color: BRAND.textMain,
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 20,
+    backgroundColor: ADMIN.fondoCampo,
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    borderRadius: 14,
+    padding: 16,
+  },
+  cargoEmployeeList: {
+    gap: 10,
+  },
+  cargoEmployeeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: ADMIN.fondoCampo,
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    borderRadius: 14,
+    padding: 12,
+  },
+  cargoEmployeeAvatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(20, 184, 166, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(20, 184, 166, 0.22)',
+  },
+  cargoEmployeeAvatarText: {
+    color: SOFT_COLORS.cargos,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  rolEmployeeAvatar: {
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    borderColor: 'rgba(245, 158, 11, 0.22)',
+  },
+  rolEmployeeAvatarText: {
+    color: SOFT_COLORS.roles,
+  },
+  deptEmployeeAvatar: {
+    backgroundColor: 'rgba(96, 165, 250, 0.08)',
+    borderColor: 'rgba(96, 165, 250, 0.22)',
+  },
+  deptEmployeeAvatarText: {
+    color: ADMIN.iconos.personas,
+  },
+  cargoEmployeeInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  cargoEmployeeName: {
+    color: BRAND.textMain,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  cargoEmployeeMeta: {
+    color: BRAND.textSec,
+    fontSize: 10,
+    fontWeight: '800',
+    marginTop: 3,
+  },
+  cargoEmployeeStatus: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.18)',
+  },
+  cargoEmployeeStatusOff: {
+    backgroundColor: 'rgba(239, 68, 68, 0.06)',
+    borderColor: 'rgba(239, 68, 68, 0.16)',
+  },
+  cargoEmployeeStatusText: {
+    color: BRAND.success,
+    fontSize: 9,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  cargoEmployeeStatusTextOff: {
+    color: ADMIN.error,
   },
   // formGrid: estilo de grilla; organiza elementos en filas o columnas con separacion controlada.
   formGrid: {

@@ -20,22 +20,39 @@ const SPANISH_SOURCE_WORDS = [
   'acceso',
   'activo',
   'activos',
+  'actividad',
   'administrador',
   'advertencia',
   'agenda',
+  'agregar',
   'ajusta',
   'alerta',
   'alertas',
   'alto',
+  'anomalia',
+  'anomalias',
+  'anuncio',
+  'anuncios',
+  'añadido',
+  'añadir',
   'apariencia',
   'aprobacion',
   'aprobaciones',
   'asentamiento',
+  'asistencia',
   'auditoria',
+  'ausencia',
+  'ausencias',
   'autenticacion',
   'banco',
+  'balance',
+  'baja',
+  'bajas',
+  'bruto',
   'buscar',
   'calendario',
+  'canal',
+  'canales',
   'cargo',
   'cargos',
   'carga',
@@ -49,7 +66,12 @@ const SPANISH_SOURCE_WORDS = [
   'configuracion',
   'contrasena',
   'contraste',
+  'copiada',
+  'copiado',
   'correo',
+  'costo',
+  'correcto',
+  'correctamente',
   'cristal',
   'cuenta',
   'datos',
@@ -60,41 +82,70 @@ const SPANISH_SOURCE_WORDS = [
   'descripcion',
   'detalle',
   'editar',
+  'eliminado',
+  'eliminados',
+  'eliminar',
   'empleado',
   'empleados',
+  'emocional',
   'empresa',
   'empresas',
   'en',
   'escuro',
   'estado',
+  'estable',
+  'estructura',
+  'excelente',
+  'exito',
+  'exitosos',
   'estres',
   'evento',
   'eventos',
   'exportar',
   'fecha',
   'foto',
+  'fue',
   'fuerte',
   'generar',
+  'general',
   'gestion',
   'guardar',
+  'hechos',
   'hora',
+  'humanos',
   'idioma',
+  'importar',
+  'importados',
   'informacion',
+  'intenta',
+  'intentar',
   'la',
+  'laborado',
   'laborales',
   'las',
   'limpia',
+  'logs',
+  'lunes',
   'los',
   'modulos',
   'modo',
   'nombre',
+  'neto',
   'nomina',
+  'novedades',
+  'nuevamente',
   'nuevo',
   'nueva',
   'operativo',
+  'operador',
+  'operacion',
+  'operaciones',
+  'organizativa',
   'oscuro',
   'panel',
   'para',
+  'pagado',
+  'pagada',
   'pago',
   'pagos',
   'pendiente',
@@ -102,15 +153,27 @@ const SPANISH_SOURCE_WORDS = [
   'perfil',
   'permisos',
   'plantilla',
+  'planilla',
+  'portapapeles',
   'por',
   'preferencias',
+  'prioridad',
+  'prioridades',
+  'procesos',
+  'prom',
+  'publicar',
+  'publicado',
   'privilegios',
   'propietario',
   'proximo',
   'proximos',
   'que',
+  'receptores',
+  'recursos',
   'rediseno',
   'rendimiento',
+  'reporte',
+  'reportes',
   'respaldar',
   'respaldo',
   'riesgo',
@@ -125,13 +188,16 @@ const SPANISH_SOURCE_WORDS = [
   'sesiones',
   'sin',
   'sistema',
+  'soporte',
   'superficies',
   'tarea',
   'tareas',
   'telefono',
   'tema',
   'texto',
+  'tiempo',
   'todos',
+  'total',
   'ubicacion',
   'usuario',
   'usuarios',
@@ -164,13 +230,14 @@ const uniqueTerms = (terms: string[]) => {
     .sort((a, b) => b.length - a.length);
 };
 
+const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+const URL_REGEX = /https?:\/\/[^\s]+/gi;
+
 const shouldSkipTranslation = (text: string, protectedTerms: string[]) => {
   const clean = text.trim();
   if (!clean) return true;
   if (clean.length <= 1) return true;
   if (!/[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/.test(clean)) return true;
-  if (/^https?:\/\//i.test(clean) || clean.includes('@')) return true;
-  if (/^[A-Z0-9._-]{2,}$/.test(clean) && !/[ÁÉÍÓÚÜÑáéíóúüñ]/.test(clean)) return true;
   return protectedTerms.some((term) => normalizeTerm(term) === normalizeTerm(clean));
 };
 
@@ -204,11 +271,20 @@ export const translateAdminProtectedString = async (
   target: string,
   protectedTerms: string[]
 ) => {
-  const terms = uniqueTerms([...BRAND_TERMS, ...protectedTerms]);
+  const emails = source.match(EMAIL_REGEX) || [];
+  const urls = source.match(URL_REGEX) || [];
+  const dynamicProtected = [...emails, ...urls];
+
+  const terms = uniqueTerms([...BRAND_TERMS, ...protectedTerms, ...dynamicProtected]);
   const normalizedTarget = target?.startsWith('en') ? 'en' : SOURCE_LANGUAGE;
 
-  if (normalizedTarget === SOURCE_LANGUAGE || shouldSkipTranslation(source, terms)) return source;
-  if (normalizedTarget === 'en' && !looksLikeSpanishSource(source)) return source;
+  let strippedSource = source;
+  dynamicProtected.forEach((term) => {
+    strippedSource = strippedSource.replace(term, ' ');
+  });
+
+  if (normalizedTarget === SOURCE_LANGUAGE || shouldSkipTranslation(strippedSource, terms)) return source;
+  if (normalizedTarget === 'en' && !looksLikeSpanishSource(strippedSource)) return source;
 
   const leading = source.match(/^\s*/)?.[0] || '';
   const trailing = source.match(/\s*$/)?.[0] || '';

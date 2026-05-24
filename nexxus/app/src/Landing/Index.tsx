@@ -289,6 +289,17 @@ export default function Landing() {
       h(
         'div',
         { className: 'nx-nav-actions' },
+        h('div', { className: 'nx-lang-selector', style: { display: 'flex', gap: '8px', alignItems: 'center' } },
+          h('button', { 
+            onClick: () => changeLanguage('es'), 
+            style: { background: 'none', border: 'none', color: i18n.language === 'es' ? '#fff' : 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '12px', fontWeight: i18n.language === 'es' ? 'bold' : 'normal' }
+          }, 'ES'),
+          h('span', { style: { color: 'rgba(255,255,255,0.2)', fontSize: '12px' } }, '|'),
+          h('button', { 
+            onClick: () => changeLanguage('en'), 
+            style: { background: 'none', border: 'none', color: i18n.language === 'en' ? '#fff' : 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '12px', fontWeight: i18n.language === 'en' ? 'bold' : 'normal' }
+          }, 'EN')
+        ),
         h('button', { className: 'nx-nav-login', onClick: () => abrirAuth('login', selectedPlan) }, t('landing.login')),
         h(StarButton, { className: 'nx-nav-cta', onClick: () => abrirAuth('registro', selectedPlan) }, t('landing.create_company'))
       ),
@@ -307,6 +318,7 @@ export default function Landing() {
         'div',
         { className: `nx-mobile-menu ${menuMovilAbierto ? 'is-open' : ''}` },
         enlacesNav.map(([label, id]) => h('button', { key: label, onClick: () => navegarA(id) }, label)),
+        h('button', { onClick: () => { setMenuMovilAbierto(false); changeLanguage(i18n.language === 'es' ? 'en' : 'es'); } }, `${t('common.language')}: ${i18n.language === 'es' ? 'EN' : 'ES'}`),
         h('button', { onClick: () => abrirAuth('login', selectedPlan) }, t('landing.login'))
       )
     ),

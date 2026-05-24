@@ -11,10 +11,12 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
 import { useApiTranslate } from '@/shared/i18n/useApiTranslate';
-// Importa { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Platform } from 'react-native';
+// Importa { Animated, Easing, Image, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
+import { Animated, Easing, Image, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Platform } from 'react-native';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
+// Importa { LinearGradient } desde Expo; replica el avatar visual usado en Plantilla.
+import { LinearGradient } from 'expo-linear-gradient';
 // Importa { useCases } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
 import { useCases } from '@/infrastructure/firebase/container';
 // Importa { useAuth }; reutiliza hooks propios que encapsulan estado, auth o consultas.
@@ -40,13 +42,23 @@ const CONTRAST_TEXT = '#FFFFFF';
 type LogAuditoria = {
   id?: string;
   timestamp?: string;
+  usuarioId?: string;
   usuarioNombre?: string;
   accion?: string;
   modulo?: string;
   detalles?: string;
-  ipAddress?: string;
-  ip?: string;
   estado?: 'Success' | 'Warning' | 'Error';
+};
+
+type UsuarioAuditoria = {
+  id?: string;
+  nombre?: string;
+  correo?: string;
+  rol?: string;
+  foto_perfil?: string;
+  fotoPerfil?: string;
+  photoURL?: string;
+  avatarUrl?: string;
 };
 
 /**
@@ -58,8 +70,8 @@ type FiltroEstado = 'todos' | 'success' | 'warning' | 'error';
  * Componente AuditoriaLogs. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 export default function AuditoriaLogs() {
-  // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const { t } = useTranslation();
+  // Inicializa i18n; obtiene el idioma activo para formatear fecha y hora.
+  const { i18n } = useTranslation();
   // Inicializa { theme }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { theme } = useAdminAppearance();
 
@@ -80,13 +92,16 @@ export default function AuditoriaLogs() {
   const subtitle = useApiTranslate('Registro de actividad, seguridad y logs operativos en tiempo real');
   const btnBackup = useApiTranslate('Respaldar');
   const btnExport = useApiTranslate('Exportar logs');
-  const searchPlaceholder = useApiTranslate('Buscar por operador, acción, módulo o IP...');
-  const colTimestamp = useApiTranslate('Fecha y Hora');
-  const colOperator = useApiTranslate('Operador');
-  const colActivity = useApiTranslate('Actividad');
-  const colStatus = useApiTranslate('Estado');
+  const searchPlaceholder = useApiTranslate('Buscar por operador, acción o módulo...');
   const translatedOperacion = useApiTranslate('Operación');
   const emptyStateText = useApiTranslate('No se encontraron registros de auditoría que coincidan con la búsqueda.');
+  const detailLabel = useApiTranslate('Detalle completo');
+  const dateLabel = useApiTranslate('Fecha');
+  const timeLabel = useApiTranslate('Hora');
+  const moduleLabel = useApiTranslate('Módulo');
+  const operatorLabel = useApiTranslate('Operador');
+  const detailsLabel = useApiTranslate('Detalles');
+  const noDetailsLabel = useApiTranslate('Sin detalles adicionales');
 
   // Inicializa BRAND; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const BRAND = useMemo(() => ({
@@ -173,12 +188,16 @@ export default function AuditoriaLogs() {
 
   // Inicializa [logs, setLogs]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [logs, setLogs] = useState<LogAuditoria[]>([]);
+  // Inicializa [usuarios, setUsuarios]; mantiene perfiles para mostrar foto real en cada log.
+  const [usuarios, setUsuarios] = useState<UsuarioAuditoria[]>([]);
   // Inicializa [cargando, setCargando]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [cargando, setCargando] = useState(true);
   // Inicializa [busqueda, setBusqueda]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [busqueda, setBusqueda] = useState('');
   // Inicializa [filtroEstado, setFiltroEstado]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('todos');
+  // Inicializa [logAbierto, setLogAbierto]; controla el registro expandido para mostrar detalle operativo.
+  const [logAbierto, setLogAbierto] = useState<string | null>(null);
   // Inicializa entrada; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const entrada = useRef(new Animated.Value(0)).current;
 
@@ -211,14 +230,20 @@ export default function AuditoriaLogs() {
     }
 
     // Declara unsub; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const unsub = useCases.admin.auditLogs.subscribe(empresaId, 150, (dbLogs) => {
+    const unsubLogs = useCases.admin.auditLogs.subscribe(empresaId, 150, (dbLogs) => {
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setLogs(dbLogs || []);
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setCargando(false);
     });
+    const unsubUsers = useCases.admin.getAllUsers.subscribe(empresaId, (dbUsers) => {
+      setUsuarios(dbUsers || []);
+    });
     // Devuelve el valor final calculado para esta funcion o caso de uso.
-    return () => unsub();
+    return () => {
+      unsubLogs();
+      unsubUsers();
+    };
   }, [user]);
 
   // Inicializa datos; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -258,14 +283,70 @@ export default function AuditoriaLogs() {
   }, [logs, translatedGeneral, translatedSystem]);
 
   // Calcula logsFiltrados; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
+  const formatoFechaHora = (valor?: string) => {
+    const raw = valor as any;
+    const fecha = raw?.toDate ? raw.toDate() : raw ? new Date(raw) : null;
+    if (!fecha || Number.isNaN(fecha.getTime())) return { fecha: 'Sin fecha', hora: '--:--' };
+    return {
+      fecha: fecha.toLocaleDateString(i18n.language === 'es' ? 'es-SV' : 'en-US', { day: '2-digit', month: 'short', year: 'numeric' }),
+      hora: fecha.toLocaleTimeString(i18n.language === 'es' ? 'es-SV' : 'en-US', { hour: '2-digit', minute: '2-digit' }),
+    };
+  };
+
+  const keyLog = (log: LogAuditoria, index: number) => `${log.id || log.timestamp || 'log'}-${index}`;
+
+  const buscarUsuarioLog = (log: LogAuditoria) => usuarios.find((item) => (
+    (!!log.usuarioId && item.id === log.usuarioId) ||
+    (!!log.usuarioNombre && (item.nombre || '').toLowerCase() === log.usuarioNombre.toLowerCase())
+  ));
+
+  const AvatarOperador = ({ log }: { log: LogAuditoria }) => {
+    const operador = buscarUsuarioLog(log);
+    const foto = operador?.foto_perfil || operador?.fotoPerfil || operador?.photoURL || operador?.avatarUrl;
+    const nombre = operador?.nombre || log.usuarioNombre || translatedSystem;
+    const rol = operador?.rol || '';
+    const avatarIcono = rol === 'admin'
+      ? 'admin-panel-settings'
+      : rol === 'jefe'
+        ? 'supervisor-account'
+        : rol === 'psicologo'
+          ? 'psychology'
+          : 'badge';
+    const avatarInicial = (nombre || '?')[0].toUpperCase();
+
+    return foto ? (
+      <Image source={{ uri: foto }} style={estilos.avatarImagen} />
+    ) : (
+      <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} colors={['#6320A6', '#6320A6']} style={estilos.avatar}>
+        <View {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.avatarIconShell}>
+          <MaterialIcons {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} name={avatarIcono} size={18} color="#FFFFFF" style={estilos.avatarIconoBlanco} />
+        </View>
+        <View style={estilos.avatarInitialBadge}>
+          <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.avatarText}>{avatarInicial}</Text>
+        </View>
+      </LinearGradient>
+    );
+  };
+
+  const DetailRow = ({ label, value, icon }: { label: string; value: string; icon: keyof typeof MaterialIcons.glyphMap }) => (
+    <View style={estilos.detailRow}>
+      <View style={estilos.detailIcon}>
+        <MaterialIcons name={icon} size={15} color={BRAND.iconBright} />
+      </View>
+      <View style={estilos.detailTextWrap}>
+        <Text style={estilos.detailLabel}>{label}</Text>
+        <Text style={estilos.detailValue}>{value}</Text>
+      </View>
+    </View>
+  );
+
   const logsFiltrados = logs.filter((l) => {
     // Declara texto; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const texto = busqueda.toLowerCase();
     // Declara coincide; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const coincide = (l.usuarioNombre || '').toLowerCase().includes(texto) ||
       (l.accion || '').toLowerCase().includes(texto) ||
-      (l.modulo || '').toLowerCase().includes(texto) ||
-      (l.ipAddress || l.ip || '').toLowerCase().includes(texto);
+      (l.modulo || '').toLowerCase().includes(texto);
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!coincide) return false;
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
@@ -367,19 +448,7 @@ export default function AuditoriaLogs() {
           </View>
 
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={estilos.tableContainer}>
-            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.tableHeader}>
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={[estilos.thText, { flex: 1.45 }]}>{colTimestamp}</Text>
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={[estilos.thText, { flex: 1.7 }]}>{colOperator}</Text>
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={[estilos.thText, { flex: 3 }]}>{colActivity}</Text>
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={[estilos.thText, { flex: 1, textAlign: 'center' }]}>{colStatus}</Text>
-            </View>
-
+          <View style={estilos.auditList}>
             {logsFiltrados.map((log, i) => {
               const mappedEstado = log.estado === 'Success'
                 ? translatedSuccess
@@ -388,40 +457,48 @@ export default function AuditoriaLogs() {
                   : log.estado === 'Error'
                     ? translatedErrorLabel
                     : translatedSuccess;
+              const itemKey = keyLog(log, i);
+              const abierto = logAbierto === itemKey;
+              const fechaHora = formatoFechaHora(log.timestamp);
+              const estadoColor = colorEstado(log.estado);
 
               return (
                 // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
-                <View key={log.id || i} style={estilos.tableRow}>
-                  {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                  <View style={[estilos.tdCell, { flex: 1.45 }]}>
-                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                    <Text style={estilos.logId}>#{(log.id || i).toString().padStart(4, '0')}</Text>
-                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                    <Text style={estilos.logTime}>{log.timestamp || ''}</Text>
-                  </View>
-                  {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                  <View style={[estilos.tdCell, estilos.userCell, { flex: 1.7 }]}>
-                    {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                    <View style={[estilos.userAvatar, { borderColor: `${colorEstado(log.estado)}44` }]}>
-                      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                      <Text style={[estilos.userAvatarText, { color: colorEstado(log.estado) }]}>{(log.usuarioNombre || '?')[0]}</Text>
+                <TouchableOpacity key={itemKey} activeOpacity={0.9} onPress={() => setLogAbierto(abierto ? null : itemKey)} style={[estilos.auditCard, abierto && estilos.auditCardOpen, { borderLeftColor: `${estadoColor}cc` }]}>
+                  <View style={estilos.auditCardTop}>
+                    <AvatarOperador log={log} />
+                    <View style={estilos.auditMain}>
+                      <View style={estilos.auditTitleRow}>
+                        <Text style={estilos.logAction} numberOfLines={1}>{log.accion || translatedOperacion}</Text>
+                        <PremiumBadge variant={varianteEstado(log.estado)}>{mappedEstado}</PremiumBadge>
+                      </View>
+                      <Text style={estilos.logDetails} numberOfLines={abierto ? 3 : 1}>{log.detalles || noDetailsLabel}</Text>
+                      <View style={estilos.auditMetaRow}>
+                        <MaterialIcons name="schedule" size={14} color={BRAND.textSec} />
+                        <Text style={estilos.auditMetaText}>{fechaHora.fecha} · {fechaHora.hora}</Text>
+                        <View style={estilos.metaDot} />
+                        <Text style={estilos.auditMetaText} numberOfLines={1}>{log.modulo || translatedGeneral}</Text>
+                      </View>
                     </View>
-                    {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-                    <Text style={estilos.userName} numberOfLines={1}>{log.usuarioNombre || translatedSystem}</Text>
+                    <MaterialIcons name={abierto ? 'expand-less' : 'expand-more'} size={24} color={BRAND.textSec} />
                   </View>
-                  {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                  <View style={[estilos.tdCell, { flex: 3 }]}>
-                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                    <Text style={estilos.logAction}>{log.accion || translatedOperacion}</Text>
-                    {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-                    <Text style={estilos.logDetails} numberOfLines={1}>{`${log.modulo || translatedGeneral} · ${log.detalles || ''}`}</Text>
-                  </View>
-                  {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                  <View style={[estilos.tdCell, { flex: 1, alignItems: 'center' }]}>
-                    {/* PremiumBadge renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                    <PremiumBadge variant={varianteEstado(log.estado)}>{mappedEstado}</PremiumBadge>
-                  </View>
-                </View>
+
+                  {abierto && (
+                    <View style={estilos.detailPanel}>
+                      <Text style={estilos.detailTitle}>{detailLabel}</Text>
+                      <View style={estilos.detailGrid}>
+                        <DetailRow label={operatorLabel} value={log.usuarioNombre || translatedSystem} icon="person" />
+                        <DetailRow label={moduleLabel} value={log.modulo || translatedGeneral} icon="widgets" />
+                        <DetailRow label={dateLabel} value={fechaHora.fecha} icon="event" />
+                        <DetailRow label={timeLabel} value={fechaHora.hora} icon="access-time" />
+                      </View>
+                      <View style={estilos.detailFull}>
+                        <Text style={estilos.detailLabel}>{detailsLabel}</Text>
+                        <Text style={estilos.detailValue}>{log.detalles || noDetailsLabel}</Text>
+                      </View>
+                    </View>
+                  )}
+                </TouchableOpacity>
               );
             })}
             {logsFiltrados.length === 0 && <EmptyState texto={emptyStateText} />}
@@ -530,36 +607,58 @@ const crearEstilos = (theme: AdminPalette, BRAND: any) => StyleSheet.create({
   filterText: { color: BRAND.textSec, fontSize: 10, fontWeight: '800', letterSpacing: 0.3 },
   // filterTextActivo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   filterTextActivo: { color: BRAND.iconBright },
-  // tableContainer: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
-  tableContainer: { width: '100%' },
-  // tableHeader: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
-  tableHeader: { flexDirection: 'row', paddingHorizontal: 22, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: theme.border },
-  // thText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  thText: { fontSize: 10, fontWeight: '900', color: BRAND.textSec, textTransform: 'uppercase', letterSpacing: 2 },
-  // tableRow: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  tableRow: { flexDirection: 'row', paddingHorizontal: 22, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: theme.border, alignItems: 'center' },
-  // tdCell: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  tdCell: { justifyContent: 'center', minWidth: 0 },
-  // logId: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  logId: { fontSize: 12, fontWeight: '900', color: BRAND.textSec, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' },
-  // logTime: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  logTime: { fontSize: 10, fontWeight: '800', color: 'rgba(96,165,250,0.8)', marginTop: 4 },
-  // userCell: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  userCell: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  // userAvatar: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  userAvatar: { width: 32, height: 32, borderRadius: 10, backgroundColor: theme.isDark ? 'rgba(255,255,255,0.045)' : 'rgba(82,58,150,0.05)', borderWidth: 1, borderColor: theme.border, alignItems: 'center', justifyContent: 'center' },
-  // userAvatarText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  userAvatarText: { fontSize: 10, fontWeight: '900' },
-  // userName: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  userName: { flex: 1, fontSize: 12, fontWeight: '900', color: BRAND.textMain, textTransform: 'uppercase' },
+  // auditList: estilo local de la pantalla; presenta los logs como tarjetas operativas en vez de tabla plana.
+  auditList: { padding: 16, gap: 12 },
+  // auditCard: estilo de tarjeta; agrupa un evento de auditoria y permite expandir su detalle.
+  auditCard: { borderLeftWidth: 4, borderRadius: 16, borderWidth: 1, borderColor: theme.border, backgroundColor: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.78)', padding: 16 },
+  // auditCardOpen: estilo aplicado al registro expandido para reforzar el estado activo.
+  auditCardOpen: { backgroundColor: theme.isDark ? 'rgba(96,165,250,0.075)' : 'rgba(96,165,250,0.08)', borderColor: theme.isDark ? 'rgba(96,165,250,0.22)' : 'rgba(96,165,250,0.28)' },
+  // auditCardTop: estilo local de la pantalla; organiza avatar, resumen y accion de expansion.
+  auditCardTop: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  // auditMain: estilo local de la pantalla; concentra el contenido principal del log.
+  auditMain: { flex: 1, minWidth: 0, gap: 6 },
+  // auditTitleRow: estilo local de la pantalla; alinea accion y estado sin romper el ancho disponible.
+  auditTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  // auditMetaRow: estilo local de la pantalla; muestra fecha y modulo en formato compacto.
+  auditMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' },
+  // auditMetaText: estilo de texto/etiqueta; controla legibilidad de metadatos secundarios.
+  auditMetaText: { color: BRAND.textSec, fontSize: 11, fontWeight: '800' },
+  // metaDot: separador visual compacto entre metadatos.
+  metaDot: { width: 4, height: 4, borderRadius: 4, backgroundColor: theme.isDark ? 'rgba(255,255,255,0.22)' : 'rgba(82,58,150,0.28)' },
+  // avatar: estilo local de la pantalla; replica el fallback visual de Plantilla cuando no hay foto real.
+  avatar: { width: 50, height: 50, borderRadius: 12, alignItems: 'center', justifyContent: 'center', shadowColor: 'transparent', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0, shadowRadius: 0, elevation: 0, overflow: 'hidden' },
+  // avatarIconShell: estilo de icono; centra el pictograma del rol cuando el operador no tiene foto.
+  avatarIconShell: { width: 30, height: 30, borderRadius: 10, backgroundColor: 'transparent', alignItems: 'center', justifyContent: 'center' },
+  // avatarIconoBlanco: estilo de icono; fija blanco puro aunque el modo claro aplique reglas globales.
+  avatarIconoBlanco: { color: '#FFFFFF' },
+  // avatarInitialBadge: estilo local de la pantalla; muestra una inicial pequena sin competir con el icono principal.
+  avatarInitialBadge: { position: 'absolute', right: 4, bottom: 4, width: 16, height: 16, borderRadius: 6, backgroundColor: 'rgba(8,5,20,0.72)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
+  // avatarImagen: estilo local de la pantalla; muestra la foto real del operador del registro.
+  avatarImagen: { width: 50, height: 50, borderRadius: 12, borderWidth: 1, borderColor: ADMIN.borde, backgroundColor: ADMIN.fondoCampo },
+  // avatarText: estilo local de la pantalla; inicial compacta del operador dentro del badge.
+  avatarText: { color: '#fff', fontSize: 9, fontWeight: '900', lineHeight: 12 },
+  // detailPanel: estilo local de la pantalla; superficie expandida con informacion adicional.
+  detailPanel: { marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: theme.border, gap: 14 },
+  // detailTitle: estilo de titulo; encabeza el detalle expandido.
+  detailTitle: { color: BRAND.textMain, fontSize: 12, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.8 },
+  // detailGrid: estilo de grilla; distribuye campos de detalle en columnas flexibles.
+  detailGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  // detailRow: estilo local de la pantalla; agrupa icono, etiqueta y valor de un campo.
+  detailRow: { flex: 1, minWidth: 180, flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.border, backgroundColor: theme.isDark ? 'rgba(0,0,0,0.18)' : 'rgba(82,58,150,0.045)', padding: 12 },
+  // detailIcon: estilo de icono; encuadra el simbolo del campo expandido.
+  detailIcon: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(96,165,250,0.12)' },
+  // detailTextWrap: estilo local de la pantalla; evita que valores largos rompan la tarjeta.
+  detailTextWrap: { flex: 1, minWidth: 0 },
+  // detailLabel: estilo de texto/etiqueta; identifica el campo de detalle.
+  detailLabel: { color: BRAND.textSec, fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 3 },
+  // detailValue: estilo local de la pantalla; muestra el valor principal del detalle.
+  detailValue: { color: BRAND.textMain, fontSize: 12, fontWeight: '800', lineHeight: 18 },
+  // detailFull: estilo local de la pantalla; ocupa todo el ancho para descripciones completas.
+  detailFull: { borderRadius: 12, borderWidth: 1, borderColor: theme.border, backgroundColor: theme.isDark ? 'rgba(0,0,0,0.18)' : 'rgba(82,58,150,0.045)', padding: 12 },
   // logAction: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   logAction: { fontSize: 11, fontWeight: '900', color: BRAND.iconBright, textTransform: 'uppercase', marginBottom: 4 },
   // logDetails: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   logDetails: { fontSize: 11, fontWeight: '700', color: BRAND.textSec },
-  // ipBadge: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  ipBadge: { paddingHorizontal: 10, paddingVertical: 5, backgroundColor: theme.isDark ? 'rgba(255,255,255,0.045)' : 'rgba(82,58,150,0.05)', borderWidth: 1, borderColor: theme.border, borderRadius: 8, alignSelf: 'flex-start' },
-  // ipText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  ipText: { fontSize: 10, color: BRAND.textSec, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', letterSpacing: 1 },
   // badge: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   badge: { paddingHorizontal: 11, paddingVertical: 5, borderRadius: 100, borderWidth: 1 },
   // badgeText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.

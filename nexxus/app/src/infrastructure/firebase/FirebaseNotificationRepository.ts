@@ -11,8 +11,8 @@
 import { INotificationRepository } from '../../domain/repositories/INotificationRepository';
 // Importa { Notification }; usa tipos de dominio para que los datos mantengan estructura consistente.
 import { Notification } from '../../domain/entities/Notification';
-// Importa { collection, query, where, getDocs, updateDoc, doc } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
-import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
+// Importa { collection, query, where, getDocs, updateDoc, doc, onSnapshot } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
+import { collection, query, where, getDocs, updateDoc, doc, onSnapshot } from 'firebase/firestore';
 // Importa { db } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
 import { db } from './firebaseConfig';
 
@@ -29,6 +29,17 @@ export class FirebaseNotificationRepository implements INotificationRepository {
     // Devuelve el valor final calculado para esta funcion o caso de uso.
     return snap.docs.map(d => ({ id: d.id, ...d.data() } as Notification));
   }
+
+  subscribeNotificationsByUser(userId: string, callback: (notifications: Notification[]) => void): () => void {
+    const q = query(collection(db, 'notificaciones'), where('usuario_id', '==', userId));
+    return onSnapshot(q, (snapshot) => {
+      const notifications = snapshot.docs
+        .map(d => ({ id: d.id, ...d.data() } as Notification))
+        .sort((a, b) => new Date(b.fecha || 0).getTime() - new Date(a.fecha || 0).getTime());
+      callback(notifications);
+    });
+  }
+
   // markAsRead agrupa una parte de la logica del modulo para mantener el flujo principal mas legible.
   async markAsRead(notificationId: string): Promise<void> {
     // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.

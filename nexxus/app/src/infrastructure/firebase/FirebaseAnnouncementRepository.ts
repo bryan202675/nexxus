@@ -40,10 +40,10 @@ export class FirebaseAnnouncementRepository implements IAnnouncementRepository {
     // Prepara docRef; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
     const docRef = doc(collection(db, this.collectionName));
     // Calcula fullAnnouncement; normaliza fechas para comparaciones, filtros o etiquetas visibles.
-    const fullAnnouncement = {
+    const fullAnnouncement = Object.fromEntries(Object.entries({
       ...announcement,
       fecha: new Date().toISOString()
-    };
+    }).filter(([, value]) => value !== undefined));
     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     await setDoc(docRef, fullAnnouncement);
     // Devuelve el valor final calculado para esta funcion o caso de uso.

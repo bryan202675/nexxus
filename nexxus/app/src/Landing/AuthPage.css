@@ -8,7 +8,7 @@
 /* Documentacion de estilos: las reglas siguientes definen clases consumidas por componentes React; mantener nombres estables evita romper el render web. */
 /* .nx-auth-page: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-page {
-  background: #03010b;
+  background: linear-gradient(180deg, rgba(5, 3, 12, 0.2), #03010b 88%);
   color: white;
   font-family: "Avenir Next", "Satoshi", "Segoe UI", sans-serif;
   min-height: 100dvh;
@@ -35,7 +35,7 @@
   mask-image: radial-gradient(circle at 50% 18%, black, transparent 72%);
   pointer-events: none;
   position: fixed;
-  z-index: 0;
+  z-index: 1;
 }
 
 /* .nx-auth-page-light: define reglas visuales para los elementos que usan este selector en la interfaz. */
@@ -45,7 +45,7 @@
   opacity: 0.52;
   pointer-events: none;
   position: fixed;
-  z-index: 1;
+  z-index: 2;
 }
 
 /* .nx-auth-page-light-a: define reglas visuales para los elementos que usan este selector en la interfaz. */
@@ -139,7 +139,7 @@
   min-height: calc(100dvh - 84px);
   padding: 54px 24px 72px;
   position: relative;
-  z-index: 2;
+  z-index: 3;
 }
 
 /* .nx-auth-page-copy: define reglas visuales para los elementos que usan este selector en la interfaz. */

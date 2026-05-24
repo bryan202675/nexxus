@@ -10,6 +10,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 // Importa { useApiTranslate }; permite traducir textos visibles dinámicamente mediante la API.
 import { useApiTranslate } from '@/shared/i18n/useApiTranslate';
+import { useRoute } from '@react-navigation/native';
 // Importa { Clipboard, Alert, Animated, Easing, Image, Modal, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
 import { Clipboard, Alert, Animated, Easing, Image, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Platform } from 'react-native';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
@@ -75,6 +76,8 @@ type UsuarioPlantilla = {
   correo?: string;
   usuarioInterno?: string;
   rol?: string;
+  rolOperativo?: string;
+  rol_operativo?: string;
   cargoId?: string;
   cargo?: string;
   telefono?: string;
@@ -616,6 +619,8 @@ const SelectorOpciones = ({
  * Componente GestionPlantilla. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 export default function GestionPlantilla() {
+  const route = useRoute<any>();
+  const focoBusquedaAplicado = useRef<string>('');
   // Inicializa traducciones dinámicas vía API.
   const titlePlantilla = useApiTranslate('Gestión de Plantilla');
   const subtitlePlantilla = useApiTranslate('Colaboradores, roles, sedes y asignación de tareas');
@@ -1234,10 +1239,12 @@ export default function GestionPlantilla() {
     // Declara roles; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const roles = Array.from(new Set([...rolesBase, ...rolesEmpresa]));
     // Calcula jefes; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
-    const jefes = usuarios.filter((usuario) => usuario.rol === 'jefe' || usuario.rol === 'admin' || usuario.rol === 'supervisor' || usuario.rol === 'RRHH');
+    const jefes = usuarios
+      .filter((usuario) => usuario.rol === 'jefe' || usuario.rol === 'admin')
+      .sort((a, b) => (a.nombre || a.correo || '').localeCompare(b.nombre || b.correo || '', 'es', { sensitivity: 'base' }));
     // Devuelve el valor final calculado para esta funcion o caso de uso.
     return { departamentos, sedes, cargos, roles, jefes };
-  }, [usuarios, departamentosCatalogo, sedesCatalogo, cargosCatalogo, rolesPersonalizados, labelGeneral, labelGlobal, labelSinSedeAsignada, labelEmpresa, labelEmpleado]);
+  }, [usuarios, departamentosCatalogo, sedesCatalogo, cargosCatalogo, rolesPersonalizados, empleadoSeleccionado, labelGeneral, labelGlobal, labelSinSedeAsignada, labelEmpresa, labelEmpleado]);
 
   // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
   useEffect(() => {
@@ -1931,6 +1938,26 @@ export default function GestionPlantilla() {
       return { ...sede, colaboradores, activos, departamentos: departamentos.size };
     });
   }, [catalogos.sedes, datos.usuariosEnriquecidos]);
+
+  useEffect(() => {
+    const foco = route.params?.adminSearch;
+    if (!foco || foco.type !== 'empleado') return;
+    const clave = `${foco.type}-${foco.id || foco.title || ''}`;
+    if (focoBusquedaAplicado.current === clave || datos.usuariosEnriquecidos.length === 0) return;
+
+    const empleado = datos.usuariosEnriquecidos.find((usuario) => (
+      (!!foco.id && usuario.id === foco.id) ||
+      (!!foco.title && (usuario.nombre === foco.title || usuario.correo === foco.title))
+    ));
+
+    if (!empleado) return;
+    focoBusquedaAplicado.current = clave;
+    setSedeSeleccionadaId(empleado.sedeId || foco.sedeId || null);
+    setBusqueda(empleado.nombre || empleado.correo || foco.title || '');
+    setFiltroEstado('todos');
+    setFiltroRol('todos');
+    setFiltroDepartamento('todos');
+  }, [datos.usuariosEnriquecidos, route.params]);
 
   // Calcula usuariosFiltrados; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
   const usuariosFiltrados = datos.usuariosEnriquecidos.filter((usuario) => {
@@ -2933,20 +2960,25 @@ export default function GestionPlantilla() {
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.formLabel}>{labelManager}</Text>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View style={estilos.selectorGrid}>
+              <ScrollView nestedScrollEnabled style={estilos.managerList} contentContainerStyle={estilos.managerListContent} showsVerticalScrollIndicator>
                 {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-                <TouchableOpacity onPress={() => actualizarFormulario('jefeId', '')} style={[estilos.selectorChip, !formulario.jefeId && estilos.selectorChipActivo]}>
+                <TouchableOpacity onPress={() => actualizarFormulario('jefeId', '')} style={[estilos.managerItem, !formulario.jefeId && estilos.managerItemActivo]}>
                   {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={[estilos.selectorText, !formulario.jefeId && estilos.selectorTextActivo]}>{labelNoManager}</Text>
+                  <Text style={[estilos.managerItemText, !formulario.jefeId && estilos.managerItemTextActivo]}>{labelNoManager}</Text>
+                  {!formulario.jefeId && <MaterialIcons name="check-circle" size={18} color={ADMIN.iconos.personas} />}
                 </TouchableOpacity>
                 {catalogos.jefes.map((jefe) => (
                   // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-                  <TouchableOpacity key={jefe.id} onPress={() => actualizarFormulario('jefeId', jefe.id || '')} style={[estilos.selectorChip, formulario.jefeId === jefe.id && estilos.selectorChipActivo]}>
+                  <TouchableOpacity key={jefe.id} onPress={() => actualizarFormulario('jefeId', jefe.id || '')} style={[estilos.managerItem, formulario.jefeId === jefe.id && estilos.managerItemActivo]}>
                     {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                    <Text style={[estilos.selectorText, formulario.jefeId === jefe.id && estilos.selectorTextActivo]}>{jefe.nombre || jefe.correo}</Text>
+                    <View style={estilos.managerItemInfo}>
+                      <Text style={[estilos.managerItemText, formulario.jefeId === jefe.id && estilos.managerItemTextActivo]} numberOfLines={1}>{jefe.nombre || jefe.correo}</Text>
+                      <Text style={estilos.managerItemDetail} numberOfLines={1}>{jefe.rol_operativo || jefe.rolOperativo || jefe.rol || labelManager}</Text>
+                    </View>
+                    {formulario.jefeId === jefe.id && <MaterialIcons name="check-circle" size={18} color={ADMIN.iconos.personas} />}
                   </TouchableOpacity>
                 ))}
-              </View>
+              </ScrollView>
             </View>
           </ScrollView>
 
@@ -5021,6 +5053,52 @@ const estilos = StyleSheet.create({
   selectorTextActivo: {
     // color define el color del texto o icono.
     color: BRAND.textMain,
+  },
+  managerList: {
+    maxHeight: 360,
+    width: '100%',
+  },
+  managerListContent: {
+    gap: 10,
+    paddingRight: 6,
+  },
+  managerItem: {
+    minHeight: 54,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoCampo,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  managerItemActivo: {
+    backgroundColor: 'rgba(96,165,250,0.14)',
+    borderColor: 'rgba(96,165,250,0.32)',
+  },
+  managerItemInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  managerItemText: {
+    color: BRAND.textMain,
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  managerItemTextActivo: {
+    color: ADMIN.iconos.personas,
+  },
+  managerItemDetail: {
+    color: BRAND.textSec,
+    fontSize: 9,
+    fontWeight: '800',
+    marginTop: 3,
+    textTransform: 'uppercase',
   },
   // selectorDetalle: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   selectorDetalle: {

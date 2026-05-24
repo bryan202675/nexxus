@@ -53,6 +53,7 @@ import { CreateAppointment } from '@/application/use-cases/appointments/CreateAp
 import { GetNotifications } from '@/application/use-cases/notifications/GetNotifications';
 // Importa { MarkNotificationRead }; ejecuta casos de uso que concentran reglas de negocio.
 import { MarkNotificationRead } from '@/application/use-cases/notifications/MarkNotificationRead';
+import { SubscribeNotifications } from '@/application/use-cases/notifications/SubscribeNotifications';
 
 // Importa { GetDocumentos, MarkDocumentRead }; ejecuta casos de uso que concentran reglas de negocio.
 import { GetDocumentos, MarkDocumentRead } from '@/application/use-cases/documents/DocumentUseCases';
@@ -227,6 +228,7 @@ export const useCases = {
   notifications: {
     getNotifications: new GetNotifications(notificationRepository),
     markAsRead: new MarkNotificationRead(notificationRepository),
+    subscribe: new SubscribeNotifications(notificationRepository),
   },
   admin: {
     getAllUsers: new GetAllUsers(userRepository),

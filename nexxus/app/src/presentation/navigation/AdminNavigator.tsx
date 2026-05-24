@@ -14,6 +14,7 @@ import {
   Image,
   Modal,
   Platform,
+  ScrollView,
   StyleSheet,
   Text as NativeText,
   TextInput as NativeTextInput,
@@ -144,6 +145,25 @@ const ADMIN_SEARCH_ITEMS = [
   { route: 'AuditoriaLogs', title: 'Auditoría', detail: 'logs, seguridad, eventos, actividad' },
   { route: 'ConfiguracionAdmin', title: 'Configuración', detail: 'tema, cuenta, preferencias, sistema' },
 ] as const;
+
+type AdminSearchResult = {
+  id: string;
+  route: string;
+  params?: Record<string, any>;
+  title: string;
+  detail: string;
+  category: string;
+  icon: keyof typeof MaterialIcons.glyphMap;
+  keywords: string;
+};
+
+type AdminSearchRecord = Record<string, any> & { id?: string };
+
+const normalizarBusquedaAdmin = (valor: unknown) => String(valor || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+  .trim();
 
 /**
  * Componente SCREEN_BANNERS. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
@@ -1177,7 +1197,7 @@ function NavbarHeader({ routeName }: { routeName: string }) {
   // Declara navigation; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const navigation = useNavigation<any>();
   // Declara navigateAdmin; maneja la navegacion a pantallas del panel de admin (anidadas) o globales.
-  const navigateAdmin = (route: string) => {
+  const navigateAdmin = (route: string, params?: Record<string, any>) => {
     const adminScreens = [
       'DashboardGeneral',
       'CalendarioEmpresarial',
@@ -1189,9 +1209,9 @@ function NavbarHeader({ routeName }: { routeName: string }) {
       'ConfiguracionAdmin',
     ];
     if (adminScreens.includes(route)) {
-      navigation.navigate('AppAdmin', { screen: route });
+      navigation.navigate('AppAdmin', { screen: route, params });
     } else {
-      navigation.navigate(route);
+      navigation.navigate(route, params);
     }
   };
   // Inicializa { theme, mode, toggleMode }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -1202,6 +1222,13 @@ function NavbarHeader({ routeName }: { routeName: string }) {
   const [searchValue, setSearchValue] = useState('');
   // Inicializa [searchFocused, setSearchFocused]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [searchFocused, setSearchFocused] = useState(false);
+  // Inicializa [searchData, setSearchData]; agrupa datos reales para la busqueda global del admin.
+  const [searchData, setSearchData] = useState<{
+    empleados: AdminSearchRecord[];
+    sedes: AdminSearchRecord[];
+    departamentos: AdminSearchRecord[];
+    cargos: AdminSearchRecord[];
+  }>({ empleados: [], sedes: [], departamentos: [], cargos: [] });
   // Inicializa [notificationsOpen, setNotificationsOpen]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   // Inicializa [profileOpen, setProfileOpen]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -1227,6 +1254,32 @@ function NavbarHeader({ routeName }: { routeName: string }) {
   const welcomeMsgBase = `${t('common.welcome')}, {name}`;
   const syncStatus = 'Datos vivos y módulos sincronizados';
   const searchPlaceholder = 'Buscar en admin';
+
+  useEffect(() => {
+    const empresaId = obtenerEmpresaId(user);
+    if (!empresaId) {
+      setSearchData({ empleados: [], sedes: [], departamentos: [], cargos: [] });
+      return;
+    }
+
+    const crearListener = (key: keyof typeof searchData, coleccion: string) => onSnapshot(
+      query(collection(db, coleccion), where('empresaId', '==', empresaId)),
+      (snapshot) => {
+        const items = snapshot.docs.map((documento) => ({ id: documento.id, ...documento.data() }));
+        setSearchData((actual) => ({ ...actual, [key]: items }));
+      },
+      () => setSearchData((actual) => ({ ...actual, [key]: [] }))
+    );
+
+    const unsubs = [
+      crearListener('empleados', 'usuarios'),
+      crearListener('sedes', 'sedes'),
+      crearListener('departamentos', 'departments'),
+      crearListener('cargos', 'cargos'),
+    ];
+
+    return () => unsubs.forEach((unsubscribe) => unsubscribe());
+  }, [user]);
 
   // Devuelve el resultado de la operacion para que quien llama pueda continuar el flujo.
   useEffect(() => {
@@ -1254,31 +1307,113 @@ function NavbarHeader({ routeName }: { routeName: string }) {
   const avatar = (user?.nombre || 'Admin').substring(0, 1).toUpperCase();
   // Declara fotoPerfil; usa la imagen real del administrador cuando existe.
   const fotoPerfil = obtenerFotoPerfil(user);
-  // Inicializa searchResults; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const searchResults = useMemo(() => {
-    // Declara term; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const term = searchValue.trim().toLowerCase();
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-    if (!term) return ADMIN_SEARCH_ITEMS.slice(0, 4);
-    // Devuelve el valor final calculado para esta funcion o caso de uso.
-    return ADMIN_SEARCH_ITEMS.filter((item) => `${item.title} ${item.detail}`.toLowerCase().includes(term)).slice(0, 5);
-  }, [searchValue]);
+  // Inicializa searchResults; combina rutas del admin con empleados, sedes, departamentos y cargos reales.
+  const searchResults = useMemo<AdminSearchResult[]>(() => {
+    const rutas = ADMIN_SEARCH_ITEMS.map((item) => ({
+      id: `route-${item.route}`,
+      route: item.route,
+      params: {},
+      title: item.title,
+      detail: item.detail,
+      category: 'Módulo',
+      icon: (SCREEN_BANNERS[item.route]?.icon || 'apps') as keyof typeof MaterialIcons.glyphMap,
+      keywords: `${item.title} ${item.detail}`,
+    }));
+
+    const empleados = searchData.empleados.map((empleado) => ({
+      id: `empleado-${empleado.id || empleado.correo || empleado.nombre}`,
+      route: 'GestionPlantilla',
+      params: { adminSearch: { type: 'empleado', id: empleado.id, title: empleado.nombre || empleado.correo, sedeId: empleado.sedeId, sede: empleado.sede } },
+      title: empleado.nombre || empleado.correo || 'Empleado',
+      detail: [empleado.cargo, empleado.departamento, empleado.sede, empleado.correo].filter(Boolean).join(' · ') || 'Empleado de plantilla',
+      category: 'Empleado',
+      icon: 'person' as const,
+      keywords: [empleado.nombre, empleado.correo, empleado.cargo, empleado.rol, empleado.departamento, empleado.sede].filter(Boolean).join(' '),
+    }));
+
+    const sedes = searchData.sedes.map((sede) => ({
+      id: `sede-${sede.id || sede.nombre}`,
+      route: 'EstructuraOrganizativa',
+      params: { adminSearch: { type: 'sede', id: sede.id, title: sede.nombre } },
+      title: sede.nombre || 'Sede',
+      detail: [sede.ciudad, sede.pais, sede.direccion, sede.responsableNombre].filter(Boolean).join(' · ') || 'Sede empresarial',
+      category: 'Sede',
+      icon: 'corporate-fare' as const,
+      keywords: [sede.nombre, sede.ciudad, sede.pais, sede.direccion, sede.responsableNombre].filter(Boolean).join(' '),
+    }));
+
+    const departamentos = searchData.departamentos.map((departamento) => ({
+      id: `departamento-${departamento.id || departamento.nombre || departamento.name}`,
+      route: 'EstructuraOrganizativa',
+      params: { adminSearch: { type: 'departamento', id: departamento.id, title: departamento.nombre || departamento.name } },
+      title: departamento.nombre || departamento.name || 'Departamento',
+      detail: [departamento.sedeNombre, departamento.jefeNombre, departamento.manager].filter(Boolean).join(' · ') || 'Departamento organizativo',
+      category: 'Departamento',
+      icon: 'account-tree' as const,
+      keywords: [departamento.nombre, departamento.name, departamento.sedeNombre, departamento.jefeNombre, departamento.manager].filter(Boolean).join(' '),
+    }));
+
+    const cargos = searchData.cargos.map((cargo) => ({
+      id: `cargo-${cargo.id || cargo.nombre}`,
+      route: 'EstructuraOrganizativa',
+      params: { adminSearch: { type: 'cargo', id: cargo.id, title: cargo.nombre } },
+      title: cargo.nombre || 'Cargo',
+      detail: [cargo.departamentoNombre, cargo.nivel, cargo.descripcion].filter(Boolean).join(' · ') || 'Cargo de estructura',
+      category: 'Cargo',
+      icon: 'badge' as const,
+      keywords: [cargo.nombre, cargo.departamentoNombre, cargo.nivel, cargo.descripcion].filter(Boolean).join(' '),
+    }));
+
+    const todos = [...rutas, ...empleados, ...sedes, ...departamentos, ...cargos];
+    const term = normalizarBusquedaAdmin(searchValue);
+    if (!term) return todos.slice(0, 6);
+    return todos
+      .filter((item) => normalizarBusquedaAdmin(`${item.title} ${item.detail} ${item.category} ${item.keywords}`).includes(term))
+      .slice(0, 8);
+  }, [searchData, searchValue]);
+  const mostrarSearchResults = searchFocused || searchValue.trim().length > 0;
 
   // Declara navigateSearch; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const navigateSearch = (route: string) => {
+  const navigateSearch = (item: AdminSearchResult) => {
     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setSearchFocused(false);
     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setSearchValue('');
     // Ejecuta navegacion; cambia la pantalla activa manteniendo el flujo definido por React Navigation.
-    navigateAdmin(route);
+    navigateAdmin(item.route, item.params);
   };
 
   // Declara submitSearch; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const submitSearch = () => {
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-    if (searchResults[0]) navigateSearch(searchResults[0].route);
+    if (searchResults[0]) navigateSearch(searchResults[0]);
   };
+
+  const renderSearchResultsPanel = () => (
+    <View style={[estilos.searchResultsPanel, estilos.searchResultsOverlay]}>
+      <ScrollView style={estilos.searchResultsScroll} contentContainerStyle={estilos.searchResultsContent} showsVerticalScrollIndicator>
+        {searchResults.map((item) => (
+        <TouchableOpacity key={item.id} activeOpacity={0.86} onPress={() => navigateSearch(item)} style={estilos.searchResultItem}>
+            <View style={estilos.searchResultIcon}>
+              <MaterialIcons name={item.icon as any} size={15} color={theme.text} />
+            </View>
+            <View style={estilos.searchResultCopy}>
+              <View style={estilos.searchResultTop}>
+                <Text style={estilos.searchResultTitle} numberOfLines={1}>{item.title}</Text>
+                <Text style={estilos.searchResultCategory}>{item.category}</Text>
+              </View>
+              <Text style={estilos.searchResultDetail} numberOfLines={1}>{item.detail}</Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+        {searchResults.length === 0 && (
+          <View style={estilos.searchEmpty}>
+            <Text style={estilos.searchResultDetail}>Sin resultados</Text>
+          </View>
+        )}
+      </ScrollView>
+    </View>
+  );
 
   // Devuelve el JSX que React Native renderiza en pantalla.
   return (
@@ -1308,7 +1443,10 @@ function NavbarHeader({ routeName }: { routeName: string }) {
               {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
               <TextInput
                 value={searchValue}
-                onChangeText={setSearchValue}
+                onChangeText={(value) => {
+                  setSearchValue(value);
+                  setSearchFocused(true);
+                }}
                 onFocus={() => setSearchFocused(true)}
                 onSubmitEditing={submitSearch}
                 placeholder={searchPlaceholder}
@@ -1317,20 +1455,6 @@ function NavbarHeader({ routeName }: { routeName: string }) {
               />
               {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <MaterialIcons name="search" size={16} color={theme.muted} />
-              {searchFocused && (
-                // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
-                <View style={estilos.searchResultsPanel}>
-                  {searchResults.map((item) => (
-                    // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-                    <TouchableOpacity key={item.route} activeOpacity={0.86} onPress={() => navigateSearch(item.route)} style={estilos.searchResultItem}>
-                      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                      <Text style={estilos.searchResultTitle}>{item.title}</Text>
-                      {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-                      <Text style={estilos.searchResultDetail} numberOfLines={1}>{item.detail}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
             </View>
             {/* BotonAnimado renderiza una pieza visual reutilizable dentro de esta pantalla. */}
             <BotonAnimado style={estilos.iconCircle} onPress={() => navigateAdmin('ConfiguracionAdmin')}>
@@ -1385,6 +1509,7 @@ function NavbarHeader({ routeName }: { routeName: string }) {
           navigateAdmin(route);
         }} onClose={() => setProfileOpen(false)} />
       </Animated.View>
+      {mostrarSearchResults && renderSearchResultsPanel()}
       {/* BannerPantalla renderiza una pieza visual reutilizable dentro de esta pantalla. */}
       <BannerPantalla routeName={routeName} />
     </View>
@@ -1529,8 +1654,8 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
     flex: 1,
     // backgroundColor define el fondo del bloque.
     backgroundColor: theme.bg,
-    // overflow controla si el contenido se recorta o puede sobresalir.
-    overflow: 'hidden',
+    // overflow visible permite que el panel de busqueda salga por debajo de la navbar.
+    overflow: 'visible',
   },
   // fondoGlowUno: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   fondoGlowUno: {
@@ -2223,12 +2348,33 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
     // padding agrega espacio interno alrededor del contenido.
     padding: 8,
     // zIndex define prioridad de apilamiento sobre otros elementos.
-    zIndex: 20,
+    zIndex: 9999,
+    // elevation agrega sombra en Android.
+    elevation: 50,
     // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
     ...crearSombra(theme),
   },
+  // searchResultsOverlay: estilo local de la pantalla; coloca resultados por encima del banner.
+  searchResultsOverlay: {
+    top: 74,
+    left: 'auto' as any,
+    right: 166,
+    width: 310,
+    height: 320,
+    overflow: 'hidden',
+  },
+  // searchResultsScroll: estilo local de la pantalla; limita la lista y permite desplazarse sin crecer sobre el banner.
+  searchResultsScroll: { flex: 1 },
+  // searchResultsContent: estilo local de la pantalla; controla separacion interna de resultados.
+  searchResultsContent: { paddingBottom: 2 },
   // searchResultItem: estilo de lista o item; mantiene espaciado y lectura consistente en elementos repetidos.
   searchResultItem: {
+    // flexDirection decide si los hijos se ordenan en fila o columna.
+    flexDirection: 'row',
+    // alignItems alinea los hijos en el eje transversal del contenedor.
+    alignItems: 'center',
+    // gap define separacion uniforme entre elementos hijos.
+    gap: 10,
     // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 10,
     // paddingHorizontal agrega espacio interno a izquierda y derecha.
@@ -2240,6 +2386,12 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
     // marginBottom separa este bloque del siguiente elemento.
     marginBottom: 6,
   },
+  // searchResultIcon: estilo de icono; identifica visualmente el tipo de resultado global.
+  searchResultIcon: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.isDark ? 'rgba(255,255,255,0.055)' : 'rgba(82,58,150,0.07)', borderWidth: 1, borderColor: theme.border },
+  // searchResultCopy: estilo local de la pantalla; evita que textos largos rompan el dropdown.
+  searchResultCopy: { flex: 1, minWidth: 0 },
+  // searchResultTop: estilo local de la pantalla; alinea titulo y categoria del resultado.
+  searchResultTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   // searchResultTitle: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
   searchResultTitle: {
     // color define el color del texto o icono.
@@ -2248,7 +2400,11 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
     fontSize: 11,
     // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
+    flex: 1,
   },
+  // searchResultCategory: estilo local de la pantalla; etiqueta compacta del tipo de resultado.
+  searchResultCategory: { color: theme.purple, fontSize: 8, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.4 },
   // searchResultDetail: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   searchResultDetail: {
     // color define el color del texto o icono.
@@ -2260,6 +2416,8 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
     // marginTop separa este bloque del elemento anterior.
     marginTop: 3,
   },
+  // searchEmpty: estilo de estado vacio; mantiene altura tactil cuando no hay coincidencias.
+  searchEmpty: { padding: 12, alignItems: 'center' },
   // searchBox: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   searchBox: {
     // width fija o calcula el ancho del elemento.

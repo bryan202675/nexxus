@@ -175,9 +175,7 @@ export default function PolicyPage() {
       { className: 'nx-nav' },
       h('button', { className: 'nx-brand', onClick: () => goTo('/landing') }, h('span', null, 'N'), 'Nexxus'),
       h('div', { className: 'nx-nav-links' },
-        landingLinks.map(([label, path]) => h('button', { key: label, onClick: () => goTo(path) }, label)),
-        h('button', { className: kind === 'security' ? 'active' : '', onClick: () => goTo('/landing/seguridad') }, t('landing.footer_security')),
-        h('button', { className: kind === 'privacy' ? 'active' : '', onClick: () => goTo('/landing/privacidad') }, t('landing.footer_privacy'))
+        landingLinks.map(([label, path]) => h('button', { key: label, onClick: () => goTo(path) }, label))
       ),
       h('div', { className: 'nx-nav-actions' },
         h('div', { className: 'nx-lang-selector', style: { display: 'flex', gap: '8px', alignItems: 'center' } },
@@ -209,8 +207,6 @@ export default function PolicyPage() {
         'div',
         { className: `nx-mobile-menu ${menuMovilAbierto ? 'is-open' : ''}` },
         landingLinks.map(([label, path]) => h('button', { key: label, onClick: () => { setMenuMovilAbierto(false); goTo(path); } }, label)),
-        h('button', { onClick: () => { setMenuMovilAbierto(false); goTo('/landing/seguridad'); } }, t('landing.footer_security')),
-        h('button', { onClick: () => { setMenuMovilAbierto(false); goTo('/landing/privacidad'); } }, t('landing.footer_privacy')),
         h('button', { onClick: () => { setMenuMovilAbierto(false); changeLanguage(i18n.language === 'es' ? 'en' : 'es'); } }, `${t('common.language')}: ${i18n.language === 'es' ? 'EN' : 'ES'}`),
         h('button', { onClick: () => { setMenuMovilAbierto(false); goTo('/landing/login'); } }, t('landing.login'))
       )

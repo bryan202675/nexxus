@@ -12,6 +12,17 @@ export interface Announcement {
   creadoPorId: string;
   creadoPorNombre: string;
   departamentoDestino: string; // 'Todos' or specific depto like 'Ventas'
+  alcance?: 'todos' | 'sede' | 'departamento' | 'cargo' | 'rol' | 'privado';
+  canalDestino?: string;
+  sedeDestinoId?: string;
+  sedeDestino?: string;
+  departamentoDestinoId?: string;
+  cargoDestinoId?: string;
+  cargoDestino?: string;
+  rolDestino?: string;
+  destinatarioIds?: string[];
+  destinatarioNombres?: string[];
+  destinatariosTotal?: number;
   prioridad: 'Normal' | 'Alta' | 'Urgente';
   mensaje: string;
   fecha: string; // ISO 8601

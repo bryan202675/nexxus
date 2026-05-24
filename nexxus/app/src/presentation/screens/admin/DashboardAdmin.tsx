@@ -2681,7 +2681,7 @@ const ChartSidePanel = ({
   resumenPeriodo: any;
   modoGrafico: ModoGrafico;
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   
   // Averages, Peaks, Min
   const n = datos.length || 1;
@@ -2896,7 +2896,8 @@ const ChartSidePanel = ({
               proximosEventos.map((ev) => {
                 const fecha = obtenerFecha(ev.inicio || ev.fechaInicio);
                 const dia = fecha ? fecha.getDate().toString().padStart(2, '0') : '--';
-                const mes = fecha ? fecha.toLocaleDateString('es-ES', { month: 'short' }).substring(0, 3).toUpperCase().replace('.', '') : '---';
+                const locale = i18n.language === 'es' ? 'es-SV' : 'en-US';
+                const mes = fecha ? fecha.toLocaleDateString(locale, { month: 'short' }).substring(0, 3).toUpperCase().replace('.', '') : '---';
                 return (
                   <View key={ev.id} style={estilos.sideEventRow}>
                     <View style={estilos.sideEventDate}>

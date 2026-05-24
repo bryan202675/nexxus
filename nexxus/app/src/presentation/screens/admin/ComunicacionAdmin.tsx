@@ -14,8 +14,8 @@ import { useTranslation } from 'react-i18next';
 import { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Alert, Image, Platform } from 'react-native';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
-// Importa { addDoc, collection, onSnapshot, query, where } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
-import { addDoc, collection, onSnapshot, query, where } from 'firebase/firestore';
+// Importa { addDoc, collection, doc, onSnapshot, query, where, writeBatch } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
+import { addDoc, collection, doc, onSnapshot, query, where, writeBatch } from 'firebase/firestore';
 // Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import { LinearGradient } from 'expo-linear-gradient';
 // Importa { db } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
@@ -67,9 +67,40 @@ type Anuncio = {
   creadoPorId?: string;
   creadoPorNombre?: string;
   departamentoDestino?: string;
+  alcance?: AlcanceAnuncio;
+  canalDestino?: string;
+  destinatarioIds?: string[];
+  destinatarioNombres?: string[];
+  destinatariosTotal?: number;
   prioridad?: 'Normal' | 'Alta' | 'Urgente';
   mensaje?: string;
   fecha?: string;
+};
+
+type AlcanceAnuncio = 'todos' | 'sede' | 'departamento' | 'cargo' | 'rol' | 'privado';
+type GrupoSelector = AlcanceAnuncio;
+
+type OpcionCanal = {
+  id: string;
+  tipo: AlcanceAnuncio;
+  nombre: string;
+  etiqueta: string;
+  detalle?: string;
+  receptores: UsuarioComunicacion[];
+};
+
+type CatalogoComunicacion = {
+  id?: string;
+  nombre?: string;
+  name?: string;
+  departamentoId?: string;
+  departamentoNombre?: string;
+  sedeId?: string;
+  sedeNombre?: string;
+  descripcion?: string;
+  nivel?: string;
+  activo?: boolean;
+  activa?: boolean;
 };
 
 /**
@@ -78,9 +109,19 @@ type Anuncio = {
 type UsuarioComunicacion = {
   id?: string;
   nombre?: string;
+  correo?: string;
+  rol?: string;
   departamento?: string;
+  departamentoId?: string;
+  cargo?: string;
+  cargoId?: string;
+  sede?: string;
+  sedeId?: string;
   empresaId?: string;
+  empresa_id?: string;
   activo?: boolean;
+  estado_activo?: boolean;
+  eliminado?: boolean;
   foto_perfil?: string;
   fotoPerfil?: string;
   photoURL?: string;
@@ -131,6 +172,83 @@ const PremiumBadge = ({ variant, children }: { variant: 'success' | 'warning' | 
 };
 
 /**
+ * Formatea una fecha en formato ISO a una representacion legible YYYY-MM-DD HH:MM.
+ */
+function formatFecha(fechaStr?: string): string {
+  if (!fechaStr) return '';
+  try {
+    const d = new Date(fechaStr);
+    if (isNaN(d.getTime())) return fechaStr;
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+  } catch {
+    return fechaStr;
+  }
+}
+
+const noEliminado = (usuario: UsuarioComunicacion) => usuario.eliminado !== true;
+const normalizar = (valor?: string) => (valor || '').trim().toLowerCase();
+const nombreCatalogo = (item: CatalogoComunicacion) => (item.nombre || item.name || '').trim();
+const catalogoActivo = (item: CatalogoComunicacion) => item.activo !== false && item.activa !== false && nombreCatalogo(item).length > 0;
+
+const crearOpcionesCatalogo = (
+  catalogo: CatalogoComunicacion[],
+  usuarios: UsuarioComunicacion[],
+  tipo: AlcanceAnuncio,
+  etiqueta: string,
+  campoNombre: keyof UsuarioComunicacion,
+  campoId?: keyof UsuarioComunicacion,
+  obtenerDetalle?: (item: CatalogoComunicacion, repetidos: number) => string
+): OpcionCanal[] => {
+  const repetidosPorNombre = catalogo.filter(catalogoActivo).reduce((mapa, item) => {
+    const clave = normalizar(nombreCatalogo(item));
+    mapa.set(clave, (mapa.get(clave) || 0) + 1);
+    return mapa;
+  }, new Map<string, number>());
+  return catalogo
+    .filter(catalogoActivo)
+    .map((item) => {
+      const nombre = nombreCatalogo(item);
+      const idCatalogo = item.id || nombre;
+      const repetidos = repetidosPorNombre.get(normalizar(nombre)) || 1;
+      return {
+        id: `${tipo}:${idCatalogo}`,
+        tipo,
+        nombre,
+        etiqueta,
+        detalle: obtenerDetalle?.(item, repetidos),
+        receptores: usuarios.filter((usuario) => {
+          const usuarioId = campoId ? String(usuario[campoId] || '') : '';
+          return (usuarioId && usuarioId === item.id) || normalizar(String(usuario[campoNombre] || '')) === normalizar(nombre);
+        }),
+      };
+    })
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+};
+
+const mezclarCatalogoConUsuarios = (
+  catalogo: CatalogoComunicacion[],
+  usuarios: UsuarioComunicacion[],
+  campoNombre: keyof UsuarioComunicacion,
+  campoId?: keyof UsuarioComunicacion
+): CatalogoComunicacion[] => {
+  const mapa = new Map<string, CatalogoComunicacion>();
+  catalogo.filter(catalogoActivo).forEach((item) => mapa.set(item.id || nombreCatalogo(item), item));
+  usuarios.forEach((usuario) => {
+    const nombre = String(usuario[campoNombre] || '').trim();
+    if (!nombre) return;
+    const id = campoId ? String(usuario[campoId] || '').trim() : '';
+    const clave = id || nombre;
+    if (!mapa.has(clave)) mapa.set(clave, { id: clave, nombre });
+  });
+  return Array.from(mapa.values());
+};
+
+/**
  * Componente ComunicacionAdmin. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 export default function ComunicacionAdmin() {
@@ -139,11 +257,19 @@ export default function ComunicacionAdmin() {
   // Inicializa toast; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const toast = useAdminToast();
   // Inicializa [selectedAudience, setSelectedAudience]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const [selectedAudience, setSelectedAudience] = useState(t('admin.comunicacion.global'));
+  const [selectedAudience, setSelectedAudience] = useState('todos');
+  const [grupoSelector, setGrupoSelector] = useState<GrupoSelector>('todos');
+  const [destinatariosPrivados, setDestinatariosPrivados] = useState<string[]>([]);
+  const [busquedaPersonalActiva, setBusquedaPersonalActiva] = useState(false);
+  const [busquedaPersonal, setBusquedaPersonal] = useState('');
   // Inicializa [feeds, setFeeds]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [feeds, setFeeds] = useState<Anuncio[]>([]);
   // Inicializa [usuarios, setUsuarios]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [usuarios, setUsuarios] = useState<UsuarioComunicacion[]>([]);
+  const [sedesCatalogo, setSedesCatalogo] = useState<CatalogoComunicacion[]>([]);
+  const [departamentosCatalogo, setDepartamentosCatalogo] = useState<CatalogoComunicacion[]>([]);
+  const [cargosCatalogo, setCargosCatalogo] = useState<CatalogoComunicacion[]>([]);
+  const [rolesCatalogo, setRolesCatalogo] = useState<CatalogoComunicacion[]>([]);
   // Inicializa [notificaciones, setNotificaciones]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [notificaciones, setNotificaciones] = useState<NotificacionComunicacion[]>([]);
   // Inicializa [cargando, setCargando]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -182,6 +308,10 @@ export default function ComunicacionAdmin() {
       setFeeds([]);
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setUsuarios([]);
+      setSedesCatalogo([]);
+      setDepartamentosCatalogo([]);
+      setCargosCatalogo([]);
+      setRolesCatalogo([]);
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setNotificaciones([]);
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
@@ -197,7 +327,7 @@ export default function ComunicacionAdmin() {
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       cargadas.add(clave);
       // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-      if (cargadas.size >= 3) setCargando(false);
+      if (cargadas.size >= 7) setCargando(false);
     };
 
     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
@@ -212,10 +342,26 @@ export default function ComunicacionAdmin() {
     // Calcula unsubUsuarios; transforma la lista original en datos listos para renderizar o guardar.
     const unsubUsuarios = onSnapshot(query(collection(db, 'usuarios'), where('empresaId', '==', empresaId)), (snapshot) => {
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-      setUsuarios(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as UsuarioComunicacion));
+      setUsuarios(snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }) as UsuarioComunicacion).filter((usuario) => (usuario.empresaId || usuario.empresa_id) === empresaId));
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       marcarCarga('usuarios');
     }, () => marcarCarga('usuarios'));
+    const unsubSedes = onSnapshot(query(collection(db, 'sedes'), where('empresaId', '==', empresaId)), (snapshot) => {
+      setSedesCatalogo(snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }) as CatalogoComunicacion));
+      marcarCarga('sedes');
+    }, () => marcarCarga('sedes'));
+    const unsubDepartamentos = onSnapshot(query(collection(db, 'departments'), where('empresaId', '==', empresaId)), (snapshot) => {
+      setDepartamentosCatalogo(snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }) as CatalogoComunicacion));
+      marcarCarga('departamentos');
+    }, () => marcarCarga('departamentos'));
+    const unsubCargos = onSnapshot(query(collection(db, 'cargos'), where('empresaId', '==', empresaId)), (snapshot) => {
+      setCargosCatalogo(snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }) as CatalogoComunicacion));
+      marcarCarga('cargos');
+    }, () => marcarCarga('cargos'));
+    const unsubRoles = onSnapshot(query(collection(db, 'roles_personalizados'), where('empresaId', '==', empresaId)), (snapshot) => {
+      setRolesCatalogo(snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }) as CatalogoComunicacion));
+      marcarCarga('roles');
+    }, () => marcarCarga('roles'));
     // Calcula unsubNotificaciones; transforma la lista original en datos listos para renderizar o guardar.
     const unsubNotificaciones = onSnapshot(query(collection(db, 'notificaciones'), where('empresaId', '==', empresaId)), (snapshot) => {
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
@@ -230,49 +376,99 @@ export default function ComunicacionAdmin() {
       unsubFeeds();
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       unsubUsuarios();
+      unsubSedes();
+      unsubDepartamentos();
+      unsubCargos();
+      unsubRoles();
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       unsubNotificaciones();
     };
   }, [user]);
 
   // Inicializa audiencias; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const audiencias = useMemo(() => {
-    // Calcula departamentos; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
-    const departamentos = Array.from(new Set(usuarios.map((u) => u.departamento).filter(Boolean))) as string[];
-    // Devuelve el valor final calculado para esta funcion o caso de uso.
-    return [t('admin.comunicacion.global'), ...departamentos];
-  }, [usuarios, t]);
+  const audiencias = useMemo<OpcionCanal[]>(() => {
+    const disponibles = usuarios.filter(noEliminado).sort((a, b) => (a.nombre || a.correo || '').localeCompare(b.nombre || b.correo || ''));
+    const sedes = mezclarCatalogoConUsuarios(sedesCatalogo, disponibles, 'sede', 'sedeId');
+    const departamentos = mezclarCatalogoConUsuarios(departamentosCatalogo, disponibles, 'departamento', 'departamentoId');
+    const cargos = mezclarCatalogoConUsuarios(cargosCatalogo, disponibles, 'cargo', 'cargoId');
+    const departamentosPorId = new Map(departamentos.map((departamento) => [departamento.id || '', departamento]));
+    const rolesBase = ['admin', 'jefe', 'empleado', 'psicologo'];
+    const roles = mezclarCatalogoConUsuarios(
+      [...rolesBase.map((rol) => ({ id: rol, nombre: rol })), ...rolesCatalogo],
+      disponibles,
+      'rol'
+    );
+    return [
+      { id: 'todos', tipo: 'todos', nombre: t('admin.comunicacion.global'), etiqueta: 'Todos', receptores: disponibles },
+      ...crearOpcionesCatalogo(sedes, disponibles, 'sede', 'Sede', 'sede', 'sedeId', (sede) => sede.sedeNombre || sede.name || 'Sede de la empresa'),
+      ...crearOpcionesCatalogo(departamentos, disponibles, 'departamento', 'Departamento', 'departamento', 'departamentoId', (departamento) => departamento.sedeNombre ? `Sede: ${departamento.sedeNombre}` : 'Departamento global'),
+      ...crearOpcionesCatalogo(cargos, disponibles, 'cargo', 'Cargo', 'cargo', 'cargoId', (cargo, repetidos) => {
+        const departamento = departamentosPorId.get(cargo.departamentoId || '');
+        const departamentoNombre = cargo.departamentoNombre || departamento?.nombre || departamento?.name || 'Departamento global';
+        const sedeNombre = cargo.sedeNombre || departamento?.sedeNombre || 'Sede global';
+        const marca = repetidos > 1 ? ` · ${repetidos} cargos con este nombre` : '';
+        return `${departamentoNombre} · ${sedeNombre}${marca}`;
+      }),
+      ...crearOpcionesCatalogo(roles, disponibles, 'rol', 'Rol', 'rol', undefined, (rol, repetidos) => {
+        const base = rolesBase.includes(normalizar(nombreCatalogo(rol))) ? 'Rol base' : 'Rol personalizado';
+        return `${base}${repetidos > 1 ? ` · ${repetidos} roles con este nombre` : ''}`;
+      }),
+      { id: 'privado', tipo: 'privado', nombre: 'Privado', etiqueta: 'Personal', receptores: disponibles.filter((u) => destinatariosPrivados.includes(u.id || '')) },
+    ];
+  }, [usuarios, sedesCatalogo, departamentosCatalogo, cargosCatalogo, rolesCatalogo, destinatariosPrivados, t]);
+
+  const audienciaActual = useMemo(() => audiencias.find((audiencia) => audiencia.id === selectedAudience) || audiencias[0], [audiencias, selectedAudience]);
+  const usuariosPrivados = useMemo(() => usuarios
+    .filter(noEliminado)
+    .sort((a, b) => (a.nombre || a.correo || '').localeCompare(b.nombre || b.correo || '')), [usuarios]);
+  const usuariosPrivadosFiltrados = useMemo(() => {
+    const texto = busquedaPersonal.trim().toLowerCase();
+    if (!texto) return usuariosPrivados;
+    return usuariosPrivados.filter((empleado) => [
+      empleado.nombre,
+      empleado.correo,
+      empleado.rol,
+      empleado.departamento,
+      empleado.sede,
+    ].filter(Boolean).join(' ').toLowerCase().includes(texto));
+  }, [usuariosPrivados, busquedaPersonal]);
+  const gruposSelector = useMemo(() => [
+    { id: 'todos' as GrupoSelector, label: 'Todos' },
+    { id: 'sede' as GrupoSelector, label: 'Sedes' },
+    { id: 'departamento' as GrupoSelector, label: 'Departamentos' },
+    { id: 'cargo' as GrupoSelector, label: 'Cargos' },
+    { id: 'rol' as GrupoSelector, label: 'Roles' },
+    { id: 'privado' as GrupoSelector, label: 'Personal' },
+  ], []);
 
   // Inicializa datos; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const datos = useMemo(() => {
     // Calcula feedsFiltrados; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const feedsFiltrados = feeds.filter((feed) => {
       // Declara destino; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const destino = feed.departamentoDestino || t('admin.comunicacion.global');
+      const destino = feed.canalDestino || feed.departamentoDestino || t('admin.comunicacion.global');
       // Declara coincideAudiencia; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const coincideAudiencia = selectedAudience === t('admin.comunicacion.global') || destino === selectedAudience || destino === t('admin.comunicacion.todos') || destino === t('admin.comunicacion.global');
+      const coincideAudiencia = !audienciaActual || audienciaActual.tipo === 'todos' || destino === audienciaActual.nombre || feed.alcance === audienciaActual.tipo;
       // Declara coincideBusqueda; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const coincideBusqueda = (feed.mensaje || '').toLowerCase().includes(busqueda.toLowerCase()) || (feed.creadoPorNombre || '').toLowerCase().includes(busqueda.toLowerCase());
+      const coincideBusqueda = (feed.mensaje || '').toLowerCase().includes(busqueda.toLowerCase()) || (feed.creadoPorNombre || '').toLowerCase().includes(busqueda.toLowerCase()) || destino.toLowerCase().includes(busqueda.toLowerCase());
       // Devuelve el valor final calculado para esta funcion o caso de uso.
       return coincideAudiencia && coincideBusqueda;
     });
     // Calcula receptores; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
-    const receptores = selectedAudience === t('admin.comunicacion.global')
-      ? usuarios.filter((u) => u.activo !== false).length
-      : usuarios.filter((u) => u.activo !== false && u.departamento === selectedAudience).length;
+    const receptores = audienciaActual?.receptores.length || 0;
     // Calcula urgentes; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const urgentes = feeds.filter((feed) => feed.prioridad === 'Alta' || feed.prioridad === 'Urgente').length;
     // Calcula noLeidas; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const noLeidas = notificaciones.filter((n) => !n.leida).length;
     // Calcula porCanal; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const porCanal = audiencias.map((audiencia) => ({
-      audiencia,
-      total: feeds.filter((feed) => audiencia === t('admin.comunicacion.global') ? true : feed.departamentoDestino === audiencia).length,
-      receptores: audiencia === t('admin.comunicacion.global') ? usuarios.length : usuarios.filter((u) => u.departamento === audiencia).length,
+      ...audiencia,
+      total: feeds.filter((feed) => audiencia.tipo === 'todos' ? true : (feed.alcance === audiencia.tipo && (feed.canalDestino || feed.departamentoDestino) === audiencia.nombre)).length,
+      receptores: audiencia.receptores.length,
     }));
     // Devuelve el valor final calculado para esta funcion o caso de uso.
     return { feedsFiltrados, receptores, urgentes, noLeidas, porCanal };
-  }, [feeds, usuarios, notificaciones, selectedAudience, busqueda, audiencias]);
+  }, [feeds, notificaciones, busqueda, audiencias, audienciaActual]);
 
   // Prepara crearAnuncio; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
   const crearAnuncio = async () => {
@@ -282,6 +478,14 @@ export default function ComunicacionAdmin() {
     const texto = mensaje.trim();
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!empresaId || !texto || enviando) return;
+    const destino = audienciaActual || audiencias[0];
+    const receptores = destino.tipo === 'privado'
+      ? usuarios.filter((usuario) => destinatariosPrivados.includes(usuario.id || '') && noEliminado(usuario))
+      : destino.receptores;
+    if (!destino || receptores.length === 0) {
+      toast.error({ title: 'Sin destinatarios', description: 'Selecciona al menos un empleado o un canal con colaboradores activos.' });
+      return;
+    }
     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setEnviando(true);
     // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
@@ -289,14 +493,45 @@ export default function ComunicacionAdmin() {
       // Declara prioridad; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const prioridad = texto.toLowerCase().includes('urgente') ? 'Urgente' : texto.toLowerCase().includes('crítico') ? 'Alta' : 'Normal';
       // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-      await useCases.admin.announcements.create({
+      const anuncioId = await useCases.admin.announcements.create({
         empresaId,
         creadoPorId: user?.id || '',
         creadoPorNombre: user?.nombre || t('common.system'),
-        departamentoDestino: selectedAudience === t('admin.comunicacion.global') ? t('admin.comunicacion.todos') : selectedAudience,
+        departamentoDestino: destino.tipo === 'departamento' ? destino.nombre : destino.tipo === 'todos' ? t('admin.comunicacion.todos') : destino.nombre,
+        alcance: destino.tipo,
+        canalDestino: destino.nombre,
+        sedeDestinoId: destino.tipo === 'sede' ? destino.id.replace('sede:', '') : undefined,
+        sedeDestino: destino.tipo === 'sede' ? destino.nombre : undefined,
+        departamentoDestinoId: destino.tipo === 'departamento' ? destino.id.replace('departamento:', '') : undefined,
+        cargoDestinoId: destino.tipo === 'cargo' ? destino.id.replace('cargo:', '') : undefined,
+        cargoDestino: destino.tipo === 'cargo' ? destino.nombre : undefined,
+        rolDestino: destino.tipo === 'rol' ? destino.nombre : undefined,
+        destinatarioIds: receptores.map((receptor) => receptor.id || '').filter(Boolean),
+        destinatarioNombres: receptores.map((receptor) => receptor.nombre || receptor.correo || 'Empleado').filter(Boolean),
+        destinatariosTotal: receptores.length,
         prioridad,
         mensaje: texto,
       });
+      const fecha = new Date().toISOString();
+      for (let i = 0; i < receptores.length; i += 450) {
+        const batch = writeBatch(db);
+        receptores.slice(i, i + 450).forEach((receptor) => {
+          if (!receptor.id) return;
+          batch.set(doc(collection(db, 'notificaciones')), {
+            empresaId,
+            usuario_id: receptor.id,
+            titulo: destino.tipo === 'privado' ? 'Anuncio privado' : 'Nuevo anuncio',
+            mensaje: texto,
+            tipo: destino.tipo === 'privado' ? 'privada' : 'anuncio',
+            leida: false,
+            fecha,
+            anuncioId,
+            alcance: destino.tipo,
+            canalDestino: destino.nombre,
+          });
+        });
+        await batch.commit();
+      }
       // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
       await addDoc(collection(db, 'audit_logs'), {
         empresaId,
@@ -305,15 +540,16 @@ export default function ComunicacionAdmin() {
         rol: user?.rol || 'admin',
         accion: 'Publicación de Anuncio',
         modulo: 'Mensajería',
-        detalles: `${selectedAudience} · ${prioridad}`,
+        detalles: `${destino.nombre} · ${destino.tipo} · ${receptores.length} receptores · ${prioridad}`,
         estado: prioridad === 'Urgente' || prioridad === 'Alta' ? 'Warning' : 'Success',
         ipAddress: 'Cliente Web',
         timestamp: new Date().toISOString(),
       });
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setMensaje('');
+      setDestinatariosPrivados([]);
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      toast.success({ title: 'Anuncio publicado', description: 'El anuncio se publicó correctamente en el admin.' });
+      toast.success({ title: 'Anuncio publicado', description: `Enviado a ${receptores.length} destinatario${receptores.length === 1 ? '' : 's'}.` });
     } catch {
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       toast.error({ title: t('admin.comunicacion.error_envio'), description: t('admin.comunicacion.error_envio_msg') });
@@ -378,34 +614,89 @@ export default function ComunicacionAdmin() {
               {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <IconPanel icon="forum" color={ADMIN.iconos.comunicacion} />
             </View>
-            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.audienceList}>
-              {datos.porCanal.map((canal) => (
-                // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-                <TouchableOpacity 
-                  key={canal.audiencia} 
-                  onPress={() => setSelectedAudience(canal.audiencia)} 
-                  style={estilos.audienceWrap}
-                >
-                  {selectedAudience === canal.audiencia ? (
-                    // Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza.
-                    <LinearGradient colors={['#6320a6', '#6320a6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[estilos.audienceBtn, { opacity: 1 }]}>
-                      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                      <Text style={[estilos.audienceBtnText, { color: '#FFFFFE' }]}>{canal.audiencia}</Text>
-                      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                      <Text style={[estilos.audienceCount, { color: '#FFFFFE' }]}>{canal.receptores}</Text>
-                    </LinearGradient>
-                  ) : (
-                    // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
-                    <View style={[estilos.audienceBtn, { opacity: 0.6 }]}>
-                      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                      <Text style={[estilos.audienceBtnText, { color: '#FFFFFF' }]}>{canal.audiencia}</Text>
-                      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                      <Text style={[estilos.audienceCount, { color: '#FFFFFF' }]}>{canal.receptores}</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ))}
+            <View style={estilos.selectorTabs}>
+              {gruposSelector.map((grupo) => {
+                const activo = grupoSelector === grupo.id;
+                return (
+                  <TouchableOpacity
+                    key={grupo.id}
+                    style={[estilos.selectorTab, activo && estilos.selectorTabActivo]}
+                    onPress={() => {
+                      setGrupoSelector(grupo.id);
+                      if (grupo.id === 'todos') setSelectedAudience('todos');
+                      if (grupo.id === 'privado') setSelectedAudience('privado');
+                    }}
+                  >
+                    <Text style={[estilos.selectorTabText, activo && estilos.selectorTabTextActivo]}>{grupo.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <View style={estilos.audienceTable}>
+              <View style={estilos.audienceTableHeader}>
+                <Text style={[estilos.tableHeadText, { flex: 1 }]}>Opcion</Text>
+                {grupoSelector === 'privado' && (
+                  <TouchableOpacity style={estilos.searchNameBtn} onPress={() => setBusquedaPersonalActiva((actual) => !actual)}>
+                    <MaterialIcons name="search" size={15} color={busquedaPersonalActiva ? '#FFFFFE' : BRAND.textSec} />
+                    <Text style={[estilos.searchNameText, busquedaPersonalActiva && estilos.searchNameTextActivo]}>Buscar</Text>
+                  </TouchableOpacity>
+                )}
+                <Text style={estilos.tableHeadSmall}>Receptores</Text>
+              </View>
+              {grupoSelector === 'cargo' && (
+                <Text style={estilos.tableNotice}>Los cargos repetidos se muestran por departamento y sede cuando esa informacion existe.</Text>
+              )}
+              {grupoSelector === 'rol' && (
+                <Text style={estilos.tableNotice}>Los roles indican si son base o personalizados; los nombres repetidos se marcan en la descripcion.</Text>
+              )}
+              {grupoSelector === 'privado' && busquedaPersonalActiva && (
+                <View style={estilos.privateSearchBox}>
+                  <MaterialIcons name="search" size={18} color={BRAND.textSec} />
+                  <TextInput
+                    style={estilos.privateSearchInput}
+                    placeholder="Buscar por nombre..."
+                    placeholderTextColor={BRAND.textSec}
+                    value={busquedaPersonal}
+                    onChangeText={setBusquedaPersonal}
+                  />
+                </View>
+              )}
+              <ScrollView style={estilos.audienceTableScroll} nestedScrollEnabled>
+                {grupoSelector === 'privado' ? usuariosPrivadosFiltrados.map((empleado) => {
+                  const id = empleado.id || '';
+                  const activo = destinatariosPrivados.includes(id);
+                  return (
+                    <TouchableOpacity
+                      key={id}
+                      style={[estilos.tableRow, activo && estilos.tableRowActivo]}
+                      onPress={() => {
+                        setSelectedAudience('privado');
+                        setDestinatariosPrivados((prev) => activo ? prev.filter((item) => item !== id) : [...prev, id]);
+                      }}
+                    >
+                      <View style={estilos.tableNameCell}>
+                        <Text style={[estilos.tableName, activo && estilos.tableTextActivo]}>{empleado.nombre || empleado.correo || 'Empleado'}</Text>
+                        <Text style={[estilos.tableMeta, activo && estilos.tableTextActivo]}>{[empleado.rol, empleado.departamento, empleado.sede].filter(Boolean).join(' · ') || empleado.correo || 'Sin detalle'}</Text>
+                      </View>
+                      <MaterialIcons name={activo ? 'check-circle' : 'radio-button-unchecked'} size={18} color={activo ? '#FFFFFE' : BRAND.textSec} />
+                    </TouchableOpacity>
+                  );
+                }) : datos.porCanal.filter((canal) => canal.tipo === grupoSelector).map((canal) => {
+                  const activo = selectedAudience === canal.id;
+                  return (
+                    <TouchableOpacity key={canal.id} style={[estilos.tableRow, activo && estilos.tableRowActivo]} onPress={() => setSelectedAudience(canal.id)}>
+                      <View style={estilos.tableNameCell}>
+                        <Text style={[estilos.tableName, activo && estilos.tableTextActivo]}>{canal.nombre}</Text>
+                        <Text style={[estilos.tableMeta, activo && estilos.tableTextActivo]}>{canal.detalle || canal.etiqueta}</Text>
+                      </View>
+                      <Text style={[estilos.tableCount, activo && estilos.tableTextActivo]}>{canal.receptores}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+                {((grupoSelector === 'privado' && usuariosPrivadosFiltrados.length === 0) || (grupoSelector !== 'privado' && datos.porCanal.filter((canal) => canal.tipo === grupoSelector).length === 0)) && (
+                  <EmptyState texto="Sin opciones disponibles" />
+                )}
+              </ScrollView>
             </View>
           </View>
 
@@ -418,7 +709,7 @@ export default function ComunicacionAdmin() {
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.panelTitle}>{t('admin.comunicacion.new_announcement_title')}</Text>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.panelSubtitle}>{t('admin.comunicacion.destination')}: {selectedAudience}</Text>
+                <Text style={estilos.panelSubtitle}>{t('admin.comunicacion.destination')}: {audienciaActual?.nombre || t('admin.comunicacion.global')}</Text>
               </View>
               {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <IconPanel icon="campaign" color={ADMIN.iconos.organizacion} />
@@ -436,7 +727,7 @@ export default function ComunicacionAdmin() {
             <TouchableOpacity 
               style={estilos.publishBtn} 
               onPress={crearAnuncio} 
-              disabled={enviando || !mensaje.trim()}
+              disabled={enviando || !mensaje.trim() || (audienciaActual?.tipo === 'privado' && destinatariosPrivados.length === 0)}
             >
               {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
               <LinearGradient colors={['#6320a6', '#6320a6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.publishGradient}>
@@ -460,7 +751,7 @@ export default function ComunicacionAdmin() {
                 {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
                 <View style={estilos.liveDot} />
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.chatTitle}>{t('admin.comunicacion.feed_title')}: {selectedAudience}</Text>
+                <Text style={estilos.chatTitle}>{t('admin.comunicacion.feed_title')}: {audienciaActual?.nombre || t('admin.comunicacion.global')}</Text>
               </View>
               {/* PremiumBadge renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <PremiumBadge variant="blue">{datos.receptores} {t('admin.comunicacion.receptores')}</PremiumBadge>
@@ -509,7 +800,7 @@ export default function ComunicacionAdmin() {
                           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                           <Text style={estilos.feedUserName}>{feed.creadoPorNombre || t('common.system')}</Text>
                           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                          <Text style={estilos.feedUserMeta}>{feed.fecha || ''} · {feed.departamentoDestino || t('admin.comunicacion.global')}</Text>
+                          <Text style={estilos.feedUserMeta}>{formatFecha(feed.fecha) || ''} · {feed.canalDestino || feed.departamentoDestino || t('admin.comunicacion.global')}</Text>
                         </View>
                       </View>
                       {/* PremiumBadge renderiza una pieza visual reutilizable dentro de esta pantalla. */}
@@ -594,16 +885,50 @@ const estilos = StyleSheet.create({
   panelSubtitle: { color: BRAND.textSec, fontSize: 10, fontWeight: '800', letterSpacing: 0.3, marginTop: 4 },
   // audienceList: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   audienceList: { gap: 10 },
+  selectorTabs: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  selectorTab: { paddingHorizontal: 11, paddingVertical: 9, borderRadius: 10, borderWidth: 1, borderColor: ADMIN.borde, backgroundColor: ADMIN.fondoCampo },
+  selectorTabActivo: { backgroundColor: '#6320a6', borderColor: '#6320a6' },
+  selectorTabText: { color: BRAND.textSec, fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.7 },
+  selectorTabTextActivo: { color: '#FFFFFE' },
+  audienceTable: { borderWidth: 1, borderColor: ADMIN.borde, borderRadius: 12, overflow: 'hidden', backgroundColor: ADMIN.fondoCampo },
+  audienceTableHeader: { minHeight: 38, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: ADMIN.borde },
+  audienceTableScroll: { maxHeight: 300 },
+  tableNotice: { color: BRAND.textSec, fontSize: 10, fontWeight: '700', lineHeight: 15, paddingHorizontal: 14, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: ADMIN.borde },
+  tableHeadText: { color: BRAND.textSec, fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1 },
+  tableHeadSmall: { width: 82, color: BRAND.textSec, fontSize: 10, fontWeight: '900', textAlign: 'right', textTransform: 'uppercase', letterSpacing: 1 },
+  searchNameBtn: { height: 28, paddingHorizontal: 9, borderRadius: 8, borderWidth: 1, borderColor: ADMIN.borde, flexDirection: 'row', alignItems: 'center', gap: 5, marginRight: 8 },
+  searchNameText: { color: BRAND.textSec, fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.6 },
+  searchNameTextActivo: { color: '#FFFFFE' },
+  privateSearchBox: { height: 44, margin: 10, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: ADMIN.borde, backgroundColor: ADMIN.fondoElevado, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  privateSearchInput: { flex: 1, color: BRAND.textMain, fontSize: 12, fontWeight: '800' },
+  tableRow: { minHeight: 54, paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: ADMIN.borde, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  tableRowActivo: { backgroundColor: '#6320a6' },
+  tableNameCell: { flex: 1, minWidth: 0 },
+  tableName: { color: BRAND.textMain, fontSize: 12, fontWeight: '900' },
+  tableMeta: { color: BRAND.textSec, fontSize: 10, fontWeight: '700', marginTop: 2 },
+  tableCount: { width: 82, textAlign: 'right', color: BRAND.textMain, fontSize: 12, fontWeight: '900' },
+  tableTextActivo: { color: '#FFFFFE' },
   // audienceWrap: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   audienceWrap: { borderRadius: 12, overflow: 'hidden' },
   // audienceBtn: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   audienceBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 15, borderRadius: 12, backgroundColor: ADMIN.fondoCampo, borderWidth: 1, borderColor: ADMIN.borde },
+  audienceTextWrap: { flex: 1, paddingRight: 12 },
   // audienceBtnText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   audienceBtnText: { fontSize: 12, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1.3 },
+  audienceType: { fontSize: 9, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, opacity: 0.72, marginTop: 3 },
   // audienceCount: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   audienceCount: { color: CONTRAST_TEXT, fontSize: 12, fontWeight: '900' },
   // chatInput: estilo de campo de formulario; controla contenedor, texto y distribucion de la entrada.
   chatInput: { width: '100%', backgroundColor: ADMIN.fondoCampo, borderWidth: 1, borderColor: ADMIN.borde, borderRadius: 12, padding: 18, color: BRAND.textMain, fontSize: 14, fontWeight: '700', minHeight: 130, textAlignVertical: 'top' },
+  privateBox: { marginTop: 14, borderRadius: 12, borderWidth: 1, borderColor: ADMIN.borde, backgroundColor: ADMIN.fondoCampo, padding: 12 },
+  privateTitle: { color: BRAND.textMain, fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1 },
+  privateList: { maxHeight: 220, marginTop: 10 },
+  privateItem: { minHeight: 42, borderRadius: 10, paddingHorizontal: 12, marginBottom: 8, borderWidth: 1, borderColor: ADMIN.borde, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  privateItemActivo: { backgroundColor: '#6320a6', borderColor: '#6320a6' },
+  privateItemInfo: { flex: 1, paddingRight: 10 },
+  privateItemText: { color: BRAND.textMain, fontSize: 12, fontWeight: '800', flex: 1, paddingRight: 10 },
+  privateItemMeta: { color: BRAND.textSec, fontSize: 10, fontWeight: '700', marginTop: 2 },
+  privateItemTextActivo: { color: '#FFFFFE' },
   // publishBtn: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   publishBtn: { borderRadius: 12, overflow: 'hidden', marginTop: 14 },
   // publishGradient: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
