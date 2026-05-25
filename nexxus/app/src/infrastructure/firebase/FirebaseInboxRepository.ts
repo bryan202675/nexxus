@@ -69,6 +69,8 @@ export class FirebaseInboxRepository implements IInboxRepository {
       const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InboxItem));
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       callback(items);
+    }, (error) => {
+      console.warn('FirebaseInboxRepository: subscribe error', error);
     });
   }
 }

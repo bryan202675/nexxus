@@ -43,7 +43,7 @@ import { InternalRequest, NuevaSolicitudInterna } from '@/domain/entities/Intern
 // Importa { ContextualMessage }; depende de contratos de repositorio sin acoplarse a una implementacion concreta.
 import { ContextualMessage } from '@/domain/repositories/IFase2Repositories';
 // Importa { subirFotoPerfil }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
-import { subirFotoPerfil } from '@/infrastructure/services/almacenamiento';
+import { subirFotoPerfilCompleta } from '@/infrastructure/services/almacenamiento';
 
 /**
  * Define el contrato de datos EstadoContextoUsuario; documenta campos esperados y evita pasar objetos ambiguos entre capas.
@@ -107,7 +107,7 @@ const ContextoUsuario = createContext<EstadoContextoUsuario | null>(null);
  */
 const obtenerEmpresaId = (user: User | null | undefined) => {
   // Declara valor; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const valor = user?.empresaId;
+  const valor = user?.empresaId || (user as any)?.empresa_id || (user as any)?.empresaID;
   // Devuelve el valor final calculado para esta funcion o caso de uso.
   return typeof valor === 'string' ? valor.trim() : '';
 };
@@ -399,11 +399,17 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
     // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
     try {
       // Declara url; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const url = await subirFotoPerfil(user.id, blob);
+      const uploaded = await subirFotoPerfilCompleta(user.id, blob, obtenerEmpresaId(user), (user as any).foto_public_id || null);
+      const url = uploaded.url;
       // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-      await useCases.admin.updateUserProfile.execute(user.id, { foto_perfil: url });
+      await useCases.admin.updateUserProfile.execute(user.id, {
+        foto_perfil: url,
+        foto_public_id: uploaded.publicId,
+        foto_hash: uploaded.hash,
+        foto_size: uploaded.size,
+      } as any);
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      updateUser({ ...user, foto_perfil: url });
+      updateUser({ ...user, foto_perfil: url, foto_public_id: uploaded.publicId, foto_hash: uploaded.hash, foto_size: uploaded.size });
       // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
       await fetchSaaSData();
     } catch (e) {

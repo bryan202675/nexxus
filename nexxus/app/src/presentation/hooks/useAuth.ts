@@ -35,7 +35,7 @@ export function useAuth() {
         // Declara currentUser; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
         const currentUser = await useCases.auth.getCurrentUser.execute();
         // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-        setUser(currentUser);
+        setUser((prev) => prev ? prev : currentUser);
       } catch (err: any) {
         // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
         console.error('Error checking session:', err);

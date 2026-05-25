@@ -6,31 +6,18 @@
  * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras Firebase al extender este archivo.
  */
 
-// Importa React, { useState } desde React; habilita componentes, hooks y tipos base para esta pieza.
 import React, { useState } from 'react';
-// Importa { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert } from 'react-native';
-// Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-// Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
+import { BlurView } from 'expo-blur';
 import { MaterialIcons } from '@expo/vector-icons';
-// Importa { useSafeAreaInsets } desde react-native-safe-area-context; agrega una dependencia externa necesaria para este modulo.
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-// Importa { useNavigation }; permite declarar navegacion, rutas y transiciones entre pantallas.
 import { useNavigation } from '@react-navigation/native';
-// Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
-// Importa FondoAurora; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
 import FondoAurora from '@/presentation/components/FondoAurora';
-// Importa MarcaNexxus; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
-import MarcaNexxus from '@/presentation/components/MarcaNexxus';
-// Importa { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA }; reutiliza tokens visuales y constantes comunes del sistema de diseno.
 import { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/constants/diseno';
-// Importa AuraOrb; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
-import AuraOrb from '@/presentation/components/AuraOrb';
-
-// Importa { useContextoUsuario }; accede a contexto compartido de usuario, tema o estado global.
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
+import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 
 /**
  * Componente Comenzar. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
@@ -38,11 +25,9 @@ import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 export default function Comenzar() {
   // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { t } = useTranslation();
-  // Declara margenesSeguros; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const margenesSeguros = useSafeAreaInsets();
-  // Declara navegacion; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const navegacion = useNavigation<any>();
-  // Inicializa { login, cargando, error: errorAuth }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
+  const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
   const { login, cargando, error: errorAuth } = useContextoUsuario();
   // Inicializa [correo, establecerCorreo]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [correo, establecerCorreo] = useState('');
@@ -83,40 +68,39 @@ export default function Comenzar() {
 
   // Devuelve el JSX que React Native renderiza en pantalla.
   return (
-    // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
-    <View style={estilos.contenedor}>
-      {/* Elemento de fondo visual; construye la atmosfera grafica de la pantalla sin cambiar los datos. */}
+    <View style={[estilos.contenedor, { backgroundColor: colores.fondo }]}>
       <FondoAurora />
-      {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
       <View style={[estilos.contenido, { paddingTop: margenesSeguros.top + ESPACIADO.xl, paddingBottom: margenesSeguros.bottom + ESPACIADO.xl }]}>
-        {/* MarcaNexxus renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-        <MarcaNexxus tamano={28} />
-
-        {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+        
         <View style={estilos.cabecera}>
-          {/* AuraOrb renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <AuraOrb size={130} style={estilos.orbeLogin} />
-          {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={estilos.titulo}>{t('comenzar.title')}</Text>
-          {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={estilos.subtitulo}>{t('comenzar.subtitle')}</Text>
+          <Image
+            source={require('../../../assets/logozz.png')}
+            style={estilos.logoImagen}
+            resizeMode="contain"
+          />
+          <Text style={[estilos.titulo, { color: colores.texto }]}>{t('comenzar.title')}</Text>
+          <Text style={[estilos.subtitulo, { color: colores.textoSecundario }]}>{t('comenzar.subtitle')}</Text>
         </View>
 
-        {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-        <View style={estilos.tarjeta}>
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+        <BlurView
+          intensity={intensidadBlur}
+          tint={blurTint}
+          style={[
+            estilos.tarjeta,
+            {
+              backgroundColor: esOscuro ? 'rgba(10,10,24,0.48)' : 'rgba(255,255,255,0.58)',
+              borderColor: colores.borde,
+            }
+          ]}
+        >
           <View style={estilos.campo}>
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.etiqueta}>{t('comenzar.email_label')}</Text>
-            {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-            <View style={estilos.entradaContenedor}>
-              {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-              <MaterialIcons name="alternate-email" size={18} color={COLORES.textoSuave} />
-              {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
+            <Text style={[estilos.etiqueta, { color: colores.texto }]}>{t('comenzar.email_label')}</Text>
+            <View style={[estilos.entradaContenedor, { backgroundColor: colores.vidrio, borderColor: colores.borde }]}>
+              <MaterialIcons name="alternate-email" size={18} color={colores.textoSuave} />
               <TextInput
                 placeholder={t('comenzar.email_placeholder')}
-                placeholderTextColor={COLORES.textoSuave}
-                style={estilos.entrada}
+                placeholderTextColor={colores.textoSuave}
+                style={[estilos.entrada, { color: colores.texto }]}
                 value={correo}
                 onChangeText={establecerCorreo}
                 keyboardType="email-address"
@@ -125,43 +109,32 @@ export default function Comenzar() {
             </View>
           </View>
 
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={estilos.campo}>
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.etiqueta}>{t('comenzar.password_label')}</Text>
-            {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-            <View style={estilos.entradaContenedor}>
-              {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-              <MaterialIcons name="lock-outline" size={18} color={COLORES.textoSuave} />
-              {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
+            <Text style={[estilos.etiqueta, { color: colores.texto }]}>{t('comenzar.password_label')}</Text>
+            <View style={[estilos.entradaContenedor, { backgroundColor: colores.vidrio, borderColor: colores.borde }]}>
+              <MaterialIcons name="lock-outline" size={18} color={colores.textoSuave} />
               <TextInput
                 placeholder="••••••••"
-                placeholderTextColor={COLORES.textoSuave}
+                placeholderTextColor={colores.textoSuave}
                 secureTextEntry
-                style={estilos.entrada}
+                style={[estilos.entrada, { color: colores.texto }]}
                 value={contrasena}
                 onChangeText={establecerContrasena}
               />
             </View>
           </View>
 
-          {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
           <TouchableOpacity style={estilos.botonPrincipal} onPress={manejarIngreso} activeOpacity={0.88} disabled={cargando}>
-            {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-            <LinearGradient colors={[COLORES.primario, COLORES.primarioFuerte, COLORES.secundario]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.gradienteBoton}>
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+            <LinearGradient colors={[colores.primario, colores.primarioClaro]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.gradienteBoton}>
               <Text style={estilos.textoBoton}>{cargando ? t('comenzar.btn_loading') : t('comenzar.btn_continue')}</Text>
-              {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-              <MaterialIcons name={cargando ? "sync" : "arrow-forward"} size={18} color={COLORES.textoInverso} />
+              <MaterialIcons name={cargando ? "sync" : "arrow-forward"} size={18} color="#FFFFFF" />
             </LinearGradient>
           </TouchableOpacity>
 
-          {/* Elemento tactil; envuelve contenido que puede responder a interacciones del usuario. */}
           <TouchableOpacity style={estilos.botonSecundario} activeOpacity={0.82}>
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.textoSecundario}>{t('comenzar.btn_no_account')}</Text>
+            <Text style={[estilos.textoSecundario, { color: colores.textoSecundario }]}>{t('comenzar.btn_no_account')}</Text>
           </TouchableOpacity>
-        </View>
+        </BlurView>
       </View>
     </View>
   );
@@ -196,10 +169,11 @@ const estilos = StyleSheet.create({
     // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
   },
-  // orbeLogin: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  orbeLogin: {
-    // marginBottom separa este bloque del siguiente elemento.
-    marginBottom: ESPACIADO.lg,
+  // logoImagen: estilo local para mostrar el nuevo logotipo de la empresa.
+  logoImagen: {
+    width: 180,
+    height: 120,
+    marginBottom: ESPACIADO.xs,
   },
   // titulo: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
   titulo: {
@@ -307,7 +281,7 @@ const estilos = StyleSheet.create({
     // fontWeight define el peso visual del texto.
     fontWeight: '700',
     // color define el color del texto o icono.
-    color: COLORES.textoInverso,
+    color: '#FFFFFF',
   },
   // piePagina: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   piePagina: {

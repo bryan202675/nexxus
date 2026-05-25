@@ -37,6 +37,8 @@ export class FirebaseNotificationRepository implements INotificationRepository {
         .map(d => ({ id: d.id, ...d.data() } as Notification))
         .sort((a, b) => new Date(b.fecha || 0).getTime() - new Date(a.fecha || 0).getTime());
       callback(notifications);
+    }, (error) => {
+      console.warn('FirebaseNotificationRepository: subscribe error', error);
     });
   }
 

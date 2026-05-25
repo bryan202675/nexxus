@@ -113,7 +113,7 @@ El sistema actual ha superado una fase crítica de debugging, resolviendo bugs f
     - **Gestor de Tareas Operativo:** Se desarrolló `MisTareas.tsx`, permitiendo a los empleados gestionar sus tareas asignadas con seguimiento de progreso real (0-100%). La interfaz incluye tabs por estado (pendiente, en progreso, completada) y permite actualizar el avance y ver comentarios detallados de forma persistente.
     - **Centro de Notificaciones Centralizado:** Se creó `Notificaciones.tsx` para agrupar todas las alertas del sistema (tareas, ausencias, bienestar). Incluye estados de lectura persistentes y redirección automática a los módulos correspondientes, mejorando la comunicación interna.
     - **Métricas de Bienestar Reales:** Se actualizó `GetWellnessMetrics.ts` para calcular el "Promedio de Bienestar" y generar "Insights de IA" basados en datos históricos reales (sueño, estrés y energía) en lugar de simulaciones. El gráfico en `MiPulso.tsx` ahora muestra tendencias reales de Energía vs. Estrés.
-    - **Perfil Funcional:** Se habilitó la edición de perfil (nombre y departamento) conectada a Firebase y se preparó la integración con Firebase Storage para la foto de perfil.
+    - **Perfil Funcional:** Se habilitó la edición de perfil (nombre y departamento) conectada a Firebase y se preparó la integración con Cloudinary para la foto de perfil.
     - **Optimización y Persistencia:** Se eliminaron todos los fallbacks de datos simulados en el rol de empleado. Toda la información ahora reside en Firestore, garantizando una experiencia empresarial estable, escalable y lista para producción.
 - **[2026-05-09]** Restauración del Dashboard de Administrador:
     - Se eliminó por completo el layout roto y los componentes dañados del dashboard principal del administrador.
@@ -134,7 +134,7 @@ El sistema actual ha superado una fase crítica de debugging, resolviendo bugs f
     - **Estructura Organizativa:** Se adaptó el mapeo a la entidad real `Department` (`nombre`, `jefeNombre`, `empleadosCount`, `sectores`) sin crear sectores simulados, calculando departamentos, sectores, plazas y nodos desde Firestore.
     - **Nómina:** Se quitó el periodo fijo y se consulta el periodo mensual actual, preservando el diseño visual de tarjetas y tabla mientras los totales bruto/neto se calculan desde pagos reales.
     - **Auditoría y Plantilla:** Se eliminó el fallback `empresa_demo`, se corrigió el campo real `ipAddress` y se conectaron las acciones de activación/inactivación de usuarios a `UpdateUserProfile`.
-    - **Firebase Core:** `firebaseConfig.ts` ahora expone `functions` y `messaging` además de Auth, Firestore y Storage, manteniendo Messaging protegido por disponibilidad web para evitar errores en runtime nativo.
+    - **Firebase Core:** `firebaseConfig.ts` ahora expone `functions` y `messaging` además de Auth y Firestore, manteniendo Messaging protegido por disponibilidad web para evitar errores en runtime nativo.
     - **Optimización:** Los listeners se aíslan por `empresaId`, se limpian al desmontar cada pantalla y el dashboard memoiza los cálculos derivados para evitar renders y recorridos innecesarios.
 - **[2026-05-09]** Rediseño ampliado del Dashboard Ejecutivo Admin:
     - Se corrigió el espaciado del dashboard para alinearlo con el resto del panel administrador (`padding` lateral, espacio superior bajo navbar y distribución completa del viewport).
@@ -262,7 +262,7 @@ El sistema actual ha superado una fase crítica de debugging, resolviendo bugs f
     - Se refinó la sección de Implementación para corregir overflow visual y mantener una composición centrada, responsive y estable.
     - Se creó el sistema completo de Registro + Login + Creación de Empresa dentro de `app/src/Landing`, con registro por email/password, login, login con Google, validaciones de seguridad, onboarding empresarial avanzado y redirección automática al dashboard admin.
     - Se separó el flujo de autenticación/onboarding de la landing principal: los CTAs de `Crear empresa` e `Iniciar sesión` ahora navegan a pantallas dedicadas (`/landing/registro` y `/landing/login`) con el mismo estilo visual y fondo animado.
-    - Se conectó el flujo a Firebase Authentication, Firestore y Storage reales: crea la empresa, sede principal, departamento inicial, configuración empresarial, usuario administrador con permisos y logo optimizado en Storage.
+    - Se conectó el flujo a Firebase Authentication, Firestore y Cloudinary: crea la empresa, sede principal, departamento inicial, configuración empresarial, usuario administrador con permisos y logo optimizado en Cloudinary.
     - Se ajustó la creación de empresa para cumplir reglas Firebase: la empresa se crea con `adminId`, el administrador se guarda primero y el logo se sube bajo la ruta permitida `usuarios/{uid}/empresas/{empresaId}/logo.webp`.
     - Se simplificó el formulario empresarial retirando `Sitio web` y `Cantidad de empleados`, manteniendo el tamaño/rango de empresa como dato operativo.
     - Se implementó subida de logo con drag & drop, preview, compresión a WebP, validación de formato/peso y persistencia del `logo_url` en Firestore.
@@ -387,9 +387,9 @@ El sistema actual ha superado una fase crítica de debugging, resolviendo bugs f
 
 ## Pendientes
 - Hard delete de usuarios en Firebase Authentication mediante Cloud Function administrativa dedicada.
-- Selector de archivo real para foto de perfil con subida a Firebase Storage desde Plantilla.
+- Selector de archivo real para foto de perfil con subida a Cloudinary desde Plantilla.
 - Edición y eliminación controlada de sedes, departamentos, cargos y roles personalizados.
-- Generación real de PDFs de nómina en Storage desde el módulo Admin.
+- Generación real de PDFs de nómina con almacenamiento externo controlado desde el módulo Admin.
 - Integración FCM completa para push notifications además de registros Firestore.
 - Permisos granulares por módulo/sede/rol aplicados en UI y reglas de Firestore.
 - Exportaciones Excel/PDF de analytics administrativos.

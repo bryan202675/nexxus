@@ -7,7 +7,7 @@
  */
 
 // Importa { collection, query, where, getDocs, doc, updateDoc, orderBy } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
-import { collection, query, where, getDocs, doc, updateDoc, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, orderBy, addDoc, deleteDoc } from 'firebase/firestore';
 // Importa { db } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
 import { db } from './firebaseConfig';
 // Importa { Documento, IDocumentoRepository }; usa tipos de dominio para que los datos mantengan estructura consistente.
@@ -37,5 +37,20 @@ export class FirebaseDocumentoRepository implements IDocumentoRepository {
     const docRef = doc(db, 'documentos', documentoId);
     // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
     await updateDoc(docRef, { leido: true });
+  }
+
+  async getByCompany(empresaId: string): Promise<Documento[]> {
+    const q = query(collection(db, 'documentos'), where('empresaId', '==', empresaId), orderBy('fechaSubida', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Documento));
+  }
+
+  async create(documentoData: Omit<Documento, 'id'>): Promise<string> {
+    const ref = await addDoc(collection(db, 'documentos'), documentoData);
+    return ref.id;
+  }
+
+  async delete(documentoId: string): Promise<void> {
+    await deleteDoc(doc(db, 'documentos', documentoId));
   }
 }

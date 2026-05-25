@@ -49,8 +49,8 @@ export class FirebaseAuthRepository implements IAuthRepository {
 
   // loginEmpresarial agrupa una parte de la logica del modulo para mantener el flujo principal mas legible.
   async loginEmpresarial(codigoEmpresa: string, usuario: string, password: string): Promise<User> {
-    // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
     try {
+      console.log(`[loginEmpresarial] Iniciando para empresa: ${codigoEmpresa}, usuario: ${usuario}`);
       // 1. Buscar al usuario por codigoEmpresa y usuarioInterno
       const q = query(
         collection(db, 'usuarios'),
@@ -58,46 +58,73 @@ export class FirebaseAuthRepository implements IAuthRepository {
         where('usuarioInterno', '==', usuario.toLowerCase())
       );
 
-      // Declara snapshot; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const snapshot = await getDocs(q);
+      console.log(`[loginEmpresarial] Documentos encontrados en Firestore: ${snapshot.size}`);
       
       // Filtrar en cliente para admitir usuarios con campo 'eliminado' indefinido
       const docValido = snapshot.docs.find(doc => doc.data().eliminado !== true);
       
-      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (!docValido) {
-        // Interrumpe el flujo con un error controlado para que la capa superior lo maneje.
+        console.warn('[loginEmpresarial] Usuario no encontrado o marcado como eliminado.');
         throw new AuthError('auth/user-not-found', 'Usuario o código de empresa incorrectos.');
       }
 
-      // Declara userData; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const userData = docValido.data() as User;
-      // Declara userId; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const userId = docValido.id;
+      console.log(`[loginEmpresarial] Usuario encontrado: ${userData.nombre}, ID: ${userId}, correo: ${userData.correo}`);
 
       // 2. Validar password (En un sistema real esto se haría vía Cloud Function con hashing)
       if (userData.passwordInterno !== password) {
-        // Interrumpe el flujo con un error controlado para que la capa superior lo maneje.
+        console.warn('[loginEmpresarial] Validación de contraseña interna fallida.');
         throw AuthError.invalidCredentials();
       }
 
-      // 3. Autenticar en Firebase Auth (Simulado o usando un custom token si se requiere persistencia nativa)
-      // Para esta fase, si el usuario ya existe en Firestore con esas credenciales, lo damos por válido.
-      // Si necesitamos que Firebase Auth lo reconozca como "autenticado" para reglas de seguridad:
-      // OPCIÓN A: Usar el correo del usuario para hacer un login silencioso.
+      // 3. Autenticar en Firebase Auth
+      let finalUserId = userId;
       if (userData.correo) {
-        // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
         try {
-          // Intentamos login con su correo y el mismo password (asumiendo que están sincronizados o es una cuenta de staff)
-          await signInWithEmailAndPassword(auth, userData.correo, password);
-        } catch (e) {
-          // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
-          console.warn('Login empresarial: No se pudo sincronizar con Firebase Auth, usando sesión basada en Firestore.', e);
+          console.log(`[loginEmpresarial] Intentando iniciar sesión silenciosa en Firebase Auth con correo: ${userData.correo}`);
+          const userCred = await signInWithEmailAndPassword(auth, userData.correo, password);
+          console.log(`[loginEmpresarial] Sesión sincronizada con Firebase Auth. UID: ${userCred.user.uid}`);
+          
+          // Si el UID autenticado no coincide con el ID de Firestore, migramos/duplicamos el perfil
+          if (userCred.user.uid !== userId) {
+            console.warn(`[loginEmpresarial] UID mismatch! Firestore ID: ${userId}, Firebase Auth UID: ${userCred.user.uid}`);
+            const authUserDocRef = doc(db, 'usuarios', userCred.user.uid);
+            const authUserDoc = await getDoc(authUserDocRef);
+            if (!authUserDoc.exists()) {
+              await setDoc(authUserDocRef, {
+                ...userData,
+                id: userCred.user.uid,
+              });
+              console.log(`[loginEmpresarial] Perfil copiado al UID de Auth: ${userCred.user.uid}`);
+            }
+            finalUserId = userCred.user.uid;
+          }
+        } catch (e: any) {
+          console.warn(`[loginEmpresarial] Error al iniciar sesión silenciosa: ${e.code || e.message}`);
+          if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') {
+            console.log(`[loginEmpresarial] El usuario no existe en Firebase Auth, intentando crearlo...`);
+            try {
+              const userCred = await createUserWithEmailAndPassword(auth, userData.correo, password);
+              const newUid = userCred.user.uid;
+              await setDoc(doc(db, 'usuarios', newUid), {
+                ...userData,
+                id: newUid,
+              });
+              console.log(`[loginEmpresarial] Creado exitosamente en Firebase Auth y copiado a Firestore con UID: ${newUid}`);
+              finalUserId = newUid;
+            } catch (signUpError: any) {
+              console.error('[loginEmpresarial] Error crítico al crear usuario en Firebase Auth:', signUpError);
+            }
+          } else {
+            console.warn('[loginEmpresarial] Error de Firebase Auth no recuperable, usando sesión basada en Firestore.', e);
+          }
         }
       }
 
-      // Devuelve el valor final calculado para esta funcion o caso de uso.
-      return { ...userData, id: userId };
+      console.log(`[loginEmpresarial] Flujo finalizado con éxito. Retornando usuario ID: ${finalUserId}`);
+      return { ...userData, id: finalUserId };
     } catch (error: any) {
       // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (error instanceof AuthError) throw error;

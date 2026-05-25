@@ -13,6 +13,11 @@ export interface Documento {
   titulo: string;
   tipo: 'nomina' | 'contrato' | 'rrhh' | 'certificado' | 'evaluacion' | 'otro';
   url: string;
+  publicId?: string;
+  hash?: string;
+  size?: number;
+  mime?: string;
+  createdBy?: string;
   fechaSubida: string;
   leido: boolean;
 }
@@ -22,5 +27,8 @@ export interface Documento {
  */
 export interface IDocumentoRepository {
   getByUser(userId: string): Promise<Documento[]>;
+  getByCompany(empresaId: string): Promise<Documento[]>;
+  create(documento: Omit<Documento, 'id'>): Promise<string>;
+  delete(documentoId: string): Promise<void>;
   markAsRead(documentoId: string): Promise<void>;
 }

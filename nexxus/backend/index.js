@@ -10,12 +10,230 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 // Importa admin desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
 const admin = require("firebase-admin");
+const crypto = require("crypto");
 
 // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
 if (!admin.apps.length) {
   // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
   admin.initializeApp();
 }
+
+const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || "drsygtiob";
+const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY || "";
+const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET || "";
+
+const getCaller = async (auth) => {
+  if (!auth) throw new HttpsError("unauthenticated", "Usuario no autenticado.");
+  const snap = await admin.firestore().collection("usuarios").doc(auth.uid).get();
+  if (!snap.exists) throw new HttpsError("permission-denied", "No se encontró el usuario.");
+  const data = snap.data() || {};
+  return { id: auth.uid, ...data, empresaId: data.empresaId || data.empresa_id || "" };
+};
+
+const sameCompany = (caller, empresaId) => String(caller.empresaId || caller.empresa_id || "") === String(empresaId || "");
+const isAdmin = (caller) => String(caller.rol || "").toLowerCase() === "admin";
+
+const assertUploadAccess = (caller, data) => {
+  const { kind, empresaId, ownerId, documentUserId } = data;
+  if (!sameCompany(caller, empresaId)) throw new HttpsError("permission-denied", "No tienes acceso a esta empresa.");
+  if (kind === "profilePhoto" && ownerId !== caller.id && !isAdmin(caller)) {
+    throw new HttpsError("permission-denied", "No puedes modificar esta foto.");
+  }
+  if (kind === "companyLogo" && !isAdmin(caller)) {
+    throw new HttpsError("permission-denied", "Solo un administrador puede cambiar el logo.");
+  }
+  if (kind === "document" && !isAdmin(caller)) {
+    throw new HttpsError("permission-denied", "Solo un administrador puede subir documentos.");
+  }
+  if (kind === "document" && !documentUserId) {
+    throw new HttpsError("invalid-argument", "El documento necesita usuario destino.");
+  }
+};
+
+const enforceUploadRateLimit = async (uid) => {
+  const now = Date.now();
+  const windowMs = 5 * 60 * 1000;
+  const ref = admin.firestore().collection("upload_rate_limits").doc(uid);
+  const snap = await ref.get();
+  const data = snap.exists ? snap.data() : {};
+  const windowStart = Number(data.windowStart || 0);
+  const count = now - windowStart > windowMs ? 0 : Number(data.count || 0);
+  if (count >= 10) {
+    throw new HttpsError("resource-exhausted", "Demasiadas subidas. Intenta nuevamente en unos minutos.");
+  }
+  await ref.set({
+    uid,
+    windowStart: count === 0 ? now : windowStart,
+    count: count + 1,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+};
+
+const signCloudinaryParams = (params) => {
+  const payload = Object.keys(params)
+    .filter((key) => params[key] !== undefined && params[key] !== null && params[key] !== "")
+    .sort()
+    .map((key) => `${key}=${params[key]}`)
+    .join("&");
+  return crypto.createHash("sha1").update(payload + CLOUDINARY_API_SECRET).digest("hex");
+};
+
+const destroyCloudinary = async (publicId, resourceType = "image") => {
+  if (!CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+    console.warn("Cloudinary API secret no configurado; se omite borrado server-side.");
+    return { skipped: true };
+  }
+  const timestamp = Math.floor(Date.now() / 1000);
+  const params = { public_id: publicId, timestamp };
+  const body = new URLSearchParams({
+    ...params,
+    api_key: CLOUDINARY_API_KEY,
+    signature: signCloudinaryParams(params),
+  });
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/destroy`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) throw new HttpsError("internal", json?.error?.message || "No se pudo borrar el archivo en Cloudinary.");
+  return json;
+};
+
+exports.prepareCloudinaryUpload = onCall({ cors: true }, async (request) => {
+  const caller = await getCaller(request.auth);
+  const data = request.data || {};
+  assertUploadAccess(caller, data);
+  await enforceUploadRateLimit(caller.id);
+  const duplicateSnap = await admin.firestore().collection("archivos_cloudinary")
+    .where("empresaId", "==", data.empresaId)
+    .where("hash", "==", data.hash)
+    .where("kind", "==", data.kind)
+    .where("activo", "==", true)
+    .limit(1)
+    .get();
+  if (!duplicateSnap.empty) {
+    const doc = duplicateSnap.docs[0];
+    const found = doc.data();
+    return { duplicate: true, assetId: doc.id, url: found.url, publicId: found.publicId };
+  }
+  return { duplicate: false };
+});
+
+exports.registerUploadMetadata = onCall({ cors: true }, async (request) => {
+  const caller = await getCaller(request.auth);
+  const data = request.data || {};
+  assertUploadAccess(caller, data);
+  const now = admin.firestore.FieldValue.serverTimestamp();
+  const duplicateSnap = await admin.firestore().collection("archivos_cloudinary")
+    .where("empresaId", "==", data.empresaId)
+    .where("hash", "==", data.hash)
+    .where("kind", "==", data.kind)
+    .where("activo", "==", true)
+    .limit(1)
+    .get();
+  if (!duplicateSnap.empty) {
+    const doc = duplicateSnap.docs[0];
+    const found = doc.data();
+    return { assetId: doc.id, url: found.url, publicId: found.publicId, duplicate: true };
+  }
+  const ref = await admin.firestore().collection("archivos_cloudinary").add({
+    kind: data.kind,
+    empresaId: data.empresaId,
+    ownerId: data.ownerId,
+    documentUserId: data.documentUserId || null,
+    title: data.title || null,
+    hash: data.hash,
+    size: Number(data.size || 0),
+    originalSize: Number(data.originalSize || data.size || 0),
+    mime: data.mime || "",
+    publicId: data.publicId,
+    url: data.url,
+    resourceType: data.resourceType || "image",
+    activo: true,
+    createdBy: caller.id,
+    createdAt: now,
+    updatedAt: now,
+  });
+  return { assetId: ref.id, url: data.url, publicId: data.publicId, duplicate: false };
+});
+
+exports.deleteCloudinaryAsset = onCall({ cors: true }, async (request) => {
+  const caller = await getCaller(request.auth);
+  const { publicId, assetId } = request.data || {};
+  if (!publicId && !assetId) throw new HttpsError("invalid-argument", "Falta el archivo a eliminar.");
+  let assetDoc = null;
+  let assetRef = null;
+  if (assetId) {
+    assetRef = admin.firestore().collection("archivos_cloudinary").doc(assetId);
+    const snap = await assetRef.get();
+    if (snap.exists) assetDoc = { id: snap.id, ...snap.data() };
+  } else {
+    const snap = await admin.firestore().collection("archivos_cloudinary").where("publicId", "==", publicId).limit(1).get();
+    if (!snap.empty) {
+      assetRef = snap.docs[0].ref;
+      assetDoc = { id: snap.docs[0].id, ...snap.docs[0].data() };
+    }
+  }
+  if (!assetDoc) throw new HttpsError("not-found", "No se encontró el archivo registrado.");
+  if (assetDoc && !sameCompany(caller, assetDoc.empresaId)) throw new HttpsError("permission-denied", "No puedes eliminar este archivo.");
+  if (assetDoc?.kind !== "profilePhoto" && !isAdmin(caller)) throw new HttpsError("permission-denied", "Solo un administrador puede eliminar este archivo.");
+  if (assetDoc?.kind === "profilePhoto" && assetDoc.ownerId !== caller.id && !isAdmin(caller)) throw new HttpsError("permission-denied", "No puedes eliminar esta foto.");
+
+  const targetPublicId = assetDoc?.publicId || publicId;
+  const refs = await admin.firestore().collection("archivos_cloudinary")
+    .where("publicId", "==", targetPublicId)
+    .where("activo", "==", true)
+    .get();
+  if (refs.size <= 1) await destroyCloudinary(targetPublicId, assetDoc?.resourceType || "image");
+  if (assetRef) await assetRef.set({ activo: false, deletedBy: caller.id, deletedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+  return { success: true };
+});
+
+exports.cleanupOrphanCloudinaryAssets = onCall({ cors: true }, async (request) => {
+  const caller = await getCaller(request.auth);
+  if (!isAdmin(caller)) throw new HttpsError("permission-denied", "Solo un administrador puede limpiar archivos.");
+  const snap = await admin.firestore().collection("archivos_cloudinary")
+    .where("empresaId", "==", caller.empresaId)
+    .where("activo", "==", false)
+    .limit(25)
+    .get();
+  let deleted = 0;
+  for (const docSnap of snap.docs) {
+    const data = docSnap.data();
+    await destroyCloudinary(data.publicId, data.resourceType || "image").catch((error) => console.warn("cleanup cloudinary", error.message));
+    await docSnap.ref.delete();
+    deleted += 1;
+  }
+  return { deleted };
+});
+
+exports.getStorageStatsByCompany = onCall({ cors: true }, async (request) => {
+  const caller = await getCaller(request.auth);
+  const empresaId = request.data?.empresaId || caller.empresaId;
+  if (!sameCompany(caller, empresaId)) throw new HttpsError("permission-denied", "No tienes acceso a esta empresa.");
+  const snap = await admin.firestore().collection("archivos_cloudinary")
+    .where("empresaId", "==", empresaId)
+    .where("activo", "==", true)
+    .get();
+  const byUser = {};
+  let totalBytes = 0;
+  snap.docs.forEach((docSnap) => {
+    const data = docSnap.data();
+    const size = Number(data.size || 0);
+    totalBytes += size;
+    const userKey = data.ownerId || data.documentUserId || "sin_usuario";
+    byUser[userKey] = (byUser[userKey] || 0) + size;
+  });
+  return {
+    totalBytes,
+    uploadCount: snap.size,
+    topUsers: Object.entries(byUser)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([userId, bytes]) => ({ userId, bytes })),
+  };
+});
 
 /**
  * crearEmpresaAdmin: Funcion callable invocada desde la app. Valida contexto, consulta o escribe Firebase y devuelve solo la informacion que la UI necesita.

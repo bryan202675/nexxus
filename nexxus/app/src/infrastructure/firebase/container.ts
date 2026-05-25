@@ -56,7 +56,7 @@ import { MarkNotificationRead } from '@/application/use-cases/notifications/Mark
 import { SubscribeNotifications } from '@/application/use-cases/notifications/SubscribeNotifications';
 
 // Importa { GetDocumentos, MarkDocumentRead }; ejecuta casos de uso que concentran reglas de negocio.
-import { GetDocumentos, MarkDocumentRead } from '@/application/use-cases/documents/DocumentUseCases';
+import { GetDocumentos, MarkDocumentRead, GetCompanyDocuments, CreateDocument, DeleteDocument } from '@/application/use-cases/documents/DocumentUseCases';
 // Importa { GetFocusSessions, SaveFocusSession }; ejecuta casos de uso que concentran reglas de negocio.
 import { GetFocusSessions, SaveFocusSession } from '@/application/use-cases/wellness/FocusSessionUseCases';
 // Importa { GetFeedbacks, SubmitFeedback }; ejecuta casos de uso que concentran reglas de negocio.
@@ -241,6 +241,9 @@ export const useCases = {
   documents: {
     getDocumentos: new GetDocumentos(documentoRepository),
     marcarLeido: new MarkDocumentRead(documentoRepository),
+    getByCompany: new GetCompanyDocuments(documentoRepository),
+    create: new CreateDocument(documentoRepository),
+    delete: new DeleteDocument(documentoRepository),
   },
   feedback: {
     getFeedbacks: new GetFeedbacks(feedbackRepository),

@@ -808,11 +808,11 @@
     }
   },
   "pantallaBienvenida": {
-    "title": "Bienestar con criterio visual limpio y foco real.",
-    "subtitle": "Nexxus concentra bienestar, seguimiento y apoyo en una experiencia más clara, amable y útil para el día a día.",
-    "feature_1": "Seguimiento diario",
-    "feature_2": "Apoyo guiado por IA",
-    "feature_3": "Privacidad y claridad",
+    "title": "Tu espacio de bienestar",
+    "subtitle": "Monitorea tu salud laboral, accede a soporte guiado por IA y gestiona tu día a día en un entorno seguro.",
+    "feature_1": "Registro de bienestar",
+    "feature_2": "Soporte con IA",
+    "feature_3": "Privacidad garantizada",
     "btn_start": "Comenzar",
     "btn_learn_more": "Conocer más"
   },
@@ -821,14 +821,14 @@
     "alert_missing_data_msg": "Por favor ingresa un correo y contraseña.",
     "alert_error_title": "Error",
     "alert_error_msg": "No se pudo iniciar sesión.",
-    "title": "Accede con una interfaz más clara y ligera.",
-    "subtitle": "Mantuvimos el flujo actual y simplificamos la capa visual para que el inicio se sienta directo.",
+    "title": "¡Bienvenido!",
+    "subtitle": "Ingresa tus credenciales para acceder a la plataforma.",
     "email_label": "Correo corporativo",
-    "email_placeholder": "nombre@empresa.com",
+    "email_placeholder": "correo@empresa.com",
     "password_label": "Contraseña",
-    "btn_loading": "Iniciando...",
-    "btn_continue": "Continuar",
-    "btn_no_account": "No tengo una cuenta corporativa"
+    "btn_loading": "Iniciando sesión...",
+    "btn_continue": "Iniciar sesión",
+    "btn_no_account": "¿Necesitas ayuda para ingresar?"
   },
   "seleccionRol": {
     "title": "Selecciona el contexto de tu experiencia.",
@@ -1625,7 +1625,7 @@
     "aside_eyebrow": "Acceso empresarial",
     "aside_title_empresa": "Configura la base operativa de tu empresa.",
     "aside_title_default": "Crea tu workspace Nexxus con seguridad y control.",
-    "aside_desc": "Registro, autenticación y onboarding empresarial conectado a Firebase Auth, Firestore y Storage.",
+    "aside_desc": "Registro, autenticación y onboarding empresarial conectado a Firebase Auth, Firestore y Cloudinary.",
     "page_title_login": "Iniciar sesión | Nexxus",
     "page_title_register": "Crear empresa | Nexxus",
     "nav_back_home": "Volver al inicio",
@@ -1684,16 +1684,16 @@
     "btn_create_loading": "Creando empresa...",
     "btn_create": "Crear empresa y entrar",
     "workspace_login": {
-      "kicker": "ACCESO WORKSPACE",
-      "title": "Ingreso Empresarial",
-      "subtitle": "Usa el código de tu empresa y tus credenciales internas.",
-      "field_company_code": "CÓDIGO EMPRESARIAL",
+      "kicker": "ACCESO",
+      "title": "Ingreso",
+      "subtitle": "Ingresa tus credenciales corporativas para continuar.",
+      "field_company_code": "Código de empresa",
       "field_company_code_placeholder": "Ej. NEXXUS",
-      "field_user": "USUARIO",
+      "field_user": "Usuario",
       "field_user_placeholder": "usuario01",
-      "field_pass": "CONTRASEÑA",
+      "field_pass": "Contraseña",
       "field_pass_placeholder": "••••••••",
-      "btn_login": "ENTRAR AL WORKSPACE",
+      "btn_login": "Iniciar sesión",
       "back": "Volver"
     },
     "types": {
@@ -1736,7 +1736,7 @@
       "logo": "Por favor, sube el logotipo de la empresa para continuar.",
       "company_duplicate": "Ya existe una empresa registrada con ese nombre.",
       "auth_pending": "Primero completa el registro o inicio de sesión.",
-      "storage_error": "Firebase Storage rechazó la subida. Ya se ajustó la ruta a usuarios/{uid}; si persiste, publica las reglas de Storage del proyecto.",
+      "storage_error": "Cloudinary rechazó la subida. Revisa el preset, el tamaño y el formato del archivo.",
       "company_create_error": "No pudimos crear la empresa. Revisa los datos e inténtalo de nuevo."
     },
     "fb_errors": {

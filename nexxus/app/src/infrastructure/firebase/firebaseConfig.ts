@@ -10,8 +10,6 @@
 import { initializeApp, getApps } from 'firebase/app';
 // Importa { getFirestore, enableIndexedDbPersistence, CACHE_SIZE_UNLIMITED } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
 import { getFirestore, enableIndexedDbPersistence, CACHE_SIZE_UNLIMITED } from 'firebase/firestore';
-// Importa { getStorage } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
-import { getStorage } from 'firebase/storage';
 // Importa { getFunctions } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
 import { getFunctions } from 'firebase/functions';
 // Importa { getAnalytics, isSupported } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
@@ -23,13 +21,12 @@ import { Platform } from 'react-native';
  * Configuracion firebaseConfig. Reune valores que otras piezas consumen para evitar duplicacion y cambios dispersos.
  */
 const firebaseConfig = {
-  apiKey: "AIzaSyBY3RaBUUAhERMJAs3arAKSJqwnAVvGegk",
-  authDomain: "nexxus-5f119.firebaseapp.com",
-  projectId: "nexxus-5f119",
-  storageBucket: "nexxus-5f119.firebasestorage.app",
-  messagingSenderId: "509899126401",
-  appId: "1:509899126401:web:115f7be9cc9cbbd22c3f80",
-  measurementId: "G-GPY2S51MK6"
+  apiKey: "AIzaSyB_Rsiou6gunOkUKSYWAW9LjPg6ILnRHXA",
+  authDomain: "nexxus-hr.firebaseapp.com",
+  projectId: "nexxus-hr",
+  messagingSenderId: "436536765438",
+  appId: "1:436536765438:web:ce5b0422dad64cc1936eaf",
+  measurementId: "G-1MV86Y70VQ"
 };
 
 /**
@@ -68,10 +65,6 @@ export { auth };
  * Declaracion db. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
  */
 export const db = getFirestore(app);
-/**
- * Declaracion storage. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
- */
-export const storage = getStorage(app);
 /**
  * Declaracion functions. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
  */

@@ -20,6 +20,9 @@ export interface User {
   empresa?: string;
   empresaId?: string;
   foto_perfil?: string;
+  foto_public_id?: string;
+  foto_hash?: string;
+  foto_size?: number;
   cargoId?: string;
   cargo?: string;
   telefono?: string;

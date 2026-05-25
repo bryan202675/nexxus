@@ -35,9 +35,9 @@ Esta guía detalla el paso a paso exacto para montar tu infraestructura en la co
 - Selecciona tu ubicación (ej. `us-central1`).
 - Iníciala en **Modo Producción** (nuestras reglas de seguridad protegerán los datos).
 
-### C. Storage (Almacenamiento)
-- Ve a **Build > Storage**.
-- Haz clic en **Comenzar** y luego finaliza el proceso para crear el bucket por defecto (aquí se guardarán las fotos de perfil en el futuro).
+### C. Cloudinary (Imágenes)
+- Las fotos y logotipos se suben con Cloudinary desde `app/src/infrastructure/storage/cloudinaryStorage.ts`.
+- No crees bucket de archivos en Firebase para este proyecto.
 
 ---
 
@@ -53,7 +53,6 @@ Para que tu código se comunique con Firebase, necesitas las llaves de configura
      apiKey: "AIzaSyXXXXXXX...",
      authDomain: "nexxus-app.firebaseapp.com",
      projectId: "nexxus-app",
-     storageBucket: "nexxus-app.firebasestorage.app",
      messagingSenderId: "123456789",
      appId: "1:123456789:web:abcdef"
    };

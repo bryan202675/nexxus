@@ -24,7 +24,7 @@ Este documento resume todas las actualizaciones, correcciones e integraciones re
     *   **Alerta de Confirmación:** Diálogo nativo para confirmar la finalización de una tarea.
     *   **Historial:** Sección de tareas completadas recientemente para seguimiento del usuario.
     *   **Código de Colores:** Sincronización de colores (Rojo=Pendiente, Azul=Proceso, Verde=Completado) entre Admin y App.
-*   **Gestión de Perfil:** Integración con Firebase Storage para subida de fotos reales y actualización de datos personales (nombre, departamento) en tiempo real.
+*   **Gestión de Perfil:** Integración con Cloudinary para subida de fotos reales y actualización de datos personales (nombre, departamento) en tiempo real.
 *   **Check-in y Asistencia:** Registro funcional que actualiza el estado "Activo/Inactivo" del empleado en el panel del jefe/admin.
 
 ### ⚙️ Infraestructura y Backend
@@ -98,7 +98,7 @@ Este documento resume todas las actualizaciones, correcciones e integraciones re
 - [x] Dashboard Mi Pulso rediseñado
 - [x] Tareas con botones Empezar/Finalizar y confirmación
 - [x] Historial de tareas completadas
-- [x] Gestión de perfil con foto (Firebase Storage)
+- [x] Gestión de perfil con foto (Cloudinary)
 - [x] Check-in y asistencia funcional
 - [x] Solicitud de ausencias (vacaciones, enfermedad, personal)
 - [x] Reserva de citas con especialistas reales

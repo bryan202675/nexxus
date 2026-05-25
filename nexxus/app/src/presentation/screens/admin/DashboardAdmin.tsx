@@ -724,35 +724,41 @@ export default function DashboardAdmin() {
       return;
     }
 
-    // Declara cargadas; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
+    const TOTAL_CONSULTAS_DASHBOARD = 12;
     const cargadas = new Set<string>();
-    // Declara marcarCargada; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const marcarCargada = (clave: string) => {
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       cargadas.add(clave);
-      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-      if (cargadas.size >= 12) setCargando(false);
+      if (cargadas.size >= TOTAL_CONSULTAS_DASHBOARD) setCargando(false);
     };
 
     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setCargando(true);
+    const fallbackCarga = setTimeout(() => {
+      setCargando(false);
+    }, 4500);
 
     // Calcula crearListener; transforma la lista original en datos listos para renderizar o guardar.
-    const crearListener = <T,>(clave: string, coleccion: string, actualizar: (datos: T[]) => void) => onSnapshot(
-      query(collection(db, coleccion), where('empresaId', '==', empresaId)),
-      (snapshot) => {
-        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-        actualizar(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as T));
-        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-        marcarCargada(clave);
-      },
-      () => {
-        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+    const crearListener = <T,>(clave: string, coleccion: string, actualizar: (datos: T[]) => void) => {
+      try {
+        return onSnapshot(
+          query(collection(db, coleccion), where('empresaId', '==', empresaId)),
+          (snapshot) => {
+            actualizar(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as T));
+            marcarCargada(clave);
+          },
+          (error) => {
+            if (__DEV__) console.warn(`[DashboardAdmin] ${coleccion} no disponible`, error);
+            actualizar([]);
+            marcarCargada(clave);
+          }
+        );
+      } catch (error) {
+        if (__DEV__) console.warn(`[DashboardAdmin] No se pudo escuchar ${coleccion}`, error);
         actualizar([]);
-        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
         marcarCargada(clave);
+        return () => {};
       }
-    );
+    };
 
     // Declara consultas; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const consultas = [
@@ -771,7 +777,10 @@ export default function DashboardAdmin() {
     ];
 
     // Devuelve el valor final calculado para esta funcion o caso de uso.
-    return () => consultas.forEach((unsubscribe) => unsubscribe());
+    return () => {
+      clearTimeout(fallbackCarga);
+      consultas.forEach((unsubscribe) => unsubscribe());
+    };
   }, [empresaId]);
 
   // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.

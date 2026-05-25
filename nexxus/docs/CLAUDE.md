@@ -82,7 +82,7 @@ El diseño solo debe mantenerse limpio, ordenado y moderno, pero NO es prioridad
 ## BACKEND / INFRAESTRUCTURA
 - Firebase Authentication
 - Firestore
-- Firebase Storage
+- Cloudinary
 - Cloud Functions
 - Firebase Messaging
 

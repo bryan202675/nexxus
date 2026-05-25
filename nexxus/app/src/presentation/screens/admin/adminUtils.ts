@@ -14,8 +14,7 @@ import { User } from '@/domain/entities/User';
  */
 export const obtenerEmpresaIdAdmin = (user: User | null | undefined): string => {
   // Declara valor; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const valor = user?.empresaId;
+  const valor = user?.empresaId || (user as any)?.empresa_id || (user as any)?.empresaID;
   // Devuelve el valor final calculado para esta funcion o caso de uso.
   return typeof valor === 'string' ? valor.trim() : '';
 };
-

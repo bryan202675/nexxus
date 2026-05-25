@@ -20,25 +20,16 @@ import {
   Platform,
   ActivityIndicator,
   StatusBar,
+  Image,
+  Keyboard,
 } from 'react-native';
-// Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import { LinearGradient } from 'expo-linear-gradient';
-// Importa { BlurView } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import { BlurView } from 'expo-blur';
-// Importa { MaterialIcons, Ionicons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
-// Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
-// Importa { useContextoUsuario }; accede a contexto compartido de usuario, tema o estado global.
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
-// Importa FondoAurora; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
 import FondoAurora from '@/presentation/components/FondoAurora';
-// Importa MarcaNexxus; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
-import MarcaNexxus from '@/presentation/components/MarcaNexxus';
-// Importa { useTemaMobile }; accede a contexto compartido de usuario, tema o estado global.
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
-// Importa AuraOrb; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
-import AuraOrb from '@/presentation/components/AuraOrb';
 
 /**
  * Componente LoginEmpresarial. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
@@ -130,25 +121,17 @@ export default function LoginEmpresarial({ navigation }: { navigation: any }) {
         ]}>
           {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={estilos.header}>
-            {/* MarcaNexxus renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-            <MarcaNexxus tamano={28} />
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={[estilos.kicker, { color: colores.textoSecundario }]}>Nexxus 12  BETA</Text>
+            <Image
+              source={require('../../../assets/logozz.png')}
+              style={estilos.logoImagen}
+              resizeMode="contain"
+            />
+
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={[estilos.title, { color: colores.texto }]}>Tu asistente empresarial</Text>
-            {/* AuraOrb renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-            <AuraOrb size={156} style={estilos.orbe} />
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={[estilos.subtitle, { color: colores.textoSecundario }]}>{t('landing_auth.workspace_login.subtitle')}</Text>
-            {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-            <View style={estilos.puntos}>
-              {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-              <View style={[estilos.punto, { backgroundColor: colores.texto }]} />
-              {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-              <View style={[estilos.punto, { backgroundColor: colores.textoSuave }]} />
-              {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-              <View style={[estilos.punto, { backgroundColor: colores.textoSuave }]} />
-            </View>
+
           </View>
 
           {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
@@ -169,6 +152,7 @@ export default function LoginEmpresarial({ navigation }: { navigation: any }) {
                   value={form.codigoEmpresa}
                   onChangeText={(v) => setForm({ ...form, codigoEmpresa: v })}
                   autoCapitalize="characters"
+                  onSubmitEditing={Keyboard.dismiss}
                 />
               </View>
             </View>
@@ -189,6 +173,7 @@ export default function LoginEmpresarial({ navigation }: { navigation: any }) {
                   value={form.usuario}
                   onChangeText={(v) => setForm({ ...form, usuario: v })}
                   autoCapitalize="none"
+                  onSubmitEditing={Keyboard.dismiss}
                 />
               </View>
             </View>
@@ -209,6 +194,7 @@ export default function LoginEmpresarial({ navigation }: { navigation: any }) {
                   value={form.password}
                   onChangeText={(v) => setForm({ ...form, password: v })}
                   secureTextEntry={!showPassword}
+                  onSubmitEditing={Keyboard.dismiss}
                 />
                 {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={estilos.eyeBtn}>
@@ -363,9 +349,11 @@ const estilos = StyleSheet.create({
     maxWidth: 300,
   },
   // orbe: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  orbe: {
-    // marginTop separa este bloque del elemento anterior.
-    marginTop: 28,
+  logoImagen: {
+    width: 150,
+    height: 100,
+    alignSelf: 'center',
+    marginBottom: 10,
   },
   // puntos: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   puntos: {

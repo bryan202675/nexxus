@@ -16,7 +16,6 @@ import { Clipboard, Alert, Animated, Easing, Image, View, Text as NativeText, St
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
 import * as XLSX from 'xlsx';
-import { deleteObject, listAll, ref as storageRef } from 'firebase/storage';
 // Importa AdminModalBackdrop; velo difuminado reutilizable para formularios modales.
 import { AdminModal } from './AdminModal';
 import { AdminModalFormGlass } from './AdminModalFormGlass';
@@ -29,7 +28,7 @@ import { httpsCallable } from 'firebase/functions';
 // Importa { useCases } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
 import { useCases } from '@/infrastructure/firebase/container';
 // Importa { db, functions } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
-import { db, functions, storage } from '@/infrastructure/firebase/firebaseConfig';
+import { db, functions } from '@/infrastructure/firebase/firebaseConfig';
 // Importa { useAuth }; reutiliza hooks propios que encapsulan estado, auth o consultas.
 import { useAuth } from '@/presentation/hooks/useAuth';
 // Importa { obtenerEmpresaIdAdmin }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
@@ -144,7 +143,7 @@ type ErrorImportacionEmpleado = {
   error: string;
 };
 
-type FilaValidaImportacion = FilaImportacionEmpleado & {
+type FilaValidaImportacion = Omit<FilaImportacionEmpleado, 'sede'> & {
   fila: number;
   usuarioNormalizado: string;
   salarioBaseNumero: number;
@@ -410,7 +409,7 @@ const conTiempoLimite = async <T,>(promesa: Promise<T>, milisegundos = 25000): P
   // Declara limite; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const limite = new Promise<T>((_, rechazar) => {
     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-    temporizador = setTimeout(() => rechazar(new Error('La creación tardó demasiado. Verifica que la Cloud Function crearUsuarioEmpresa esté desplegada y vuelve a intentar.')), milisegundos);
+    temporizador = setTimeout(() => rechazar(new Error('La operación tardó demasiado. Verifica tu conexión y vuelve a intentar.')), milisegundos);
   });
   // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
   try {
@@ -420,6 +419,15 @@ const conTiempoLimite = async <T,>(promesa: Promise<T>, milisegundos = 25000): P
     // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     clearTimeout(temporizador!);
   }
+};
+
+type CrearEmpleadoLocalInput = {
+  nombre: string;
+  correo: string;
+  contrasena: string;
+  rol: string;
+  departamento_id?: string;
+  empleado: Record<string, any>;
 };
 
 /**
@@ -1578,6 +1586,35 @@ export default function GestionPlantilla() {
     }
   };
 
+  const crearEmpleadoFirestore = async ({ nombre, correo, contrasena, rol, departamento_id, empleado }: CrearEmpleadoLocalInput) => {
+    const empresaId = obtenerEmpresaIdAdmin(user);
+    if (!empresaId) throw new Error(toastSessionErrorDesc);
+    const ref = doc(collection(db, 'usuarios'));
+    const ahora = new Date().toISOString();
+    await setDoc(ref, {
+      ...empleado,
+      id: ref.id,
+      nombre,
+      correo,
+      rol,
+      departamento_id: empleado.departamentoId || departamento_id || null,
+      departamentoId: empleado.departamentoId || null,
+      departamento: empleado.departamento || departamento_id || 'General',
+      empresaId,
+      empresa_id: empresaId,
+      activo: true,
+      estado_activo: true,
+      eliminado: false,
+      estado_onboarding: 'pendiente',
+      passwordInterno: contrasena,
+      passwordInicial: contrasena,
+      createdAt: empleado.createdAt || ahora,
+      fecha_creacion: empleado.fecha_creacion || ahora,
+      updatedAt: ahora,
+    }, { merge: true });
+    return { uid: ref.id };
+  };
+
   const confirmarImportacion = async () => {
     const empresaId = obtenerEmpresaIdAdmin(user);
     if (!previewImportacion || !empresaId || importando) return;
@@ -1587,7 +1624,6 @@ export default function GestionPlantilla() {
     }
 
     setImportando(true);
-    const crearUsuarioEmpresa = httpsCallable(functions, 'crearUsuarioEmpresa');
     const codigoEmpresa = (empresa?.codigo || empresa?.nombre_normalizado || 'EMPRESA').toUpperCase();
     const creados: string[] = [];
     try {
@@ -1640,15 +1676,15 @@ export default function GestionPlantilla() {
         }
         const payload = crearPayloadImportacion(fila, empresaId, codigoEmpresa);
         const correoInterno = `${fila.usuarioNormalizado}@${codigoEmpresa.toLowerCase()}.nexxus`;
-        const resultado = await conTiempoLimite(crearUsuarioEmpresa({
+        const resultado = await crearEmpleadoFirestore({
           nombre: payload.nombre,
           correo: correoInterno,
           contrasena: fila.password.trim(),
           rol: payload.rol,
           departamento_id: payload.departamento,
           empleado: { ...payload, correo: correoInterno },
-        }));
-        const uid = (resultado.data as { uid?: string })?.uid;
+        });
+        const uid = resultado.uid;
         if (!uid) throw new Error(`Firebase no devolvió ID para la fila ${fila.fila}.`);
         await updateDoc(doc(db, 'usuarios', uid), { ...payload, id: uid, correo: correoInterno });
         usuariosCreados.set(fila.usuarioNormalizado, { id: uid, nombre: payload.nombre, usuarioInterno: fila.usuarioNormalizado, correo: correoInterno, rol: payload.rol });
@@ -2064,15 +2100,11 @@ export default function GestionPlantilla() {
       const payload = construirPayloadEmpleado();
       // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (modoFormulario === 'crear') {
-        // Declara crearUsuarioEmpresa; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-        const crearUsuarioEmpresa = httpsCallable(functions, 'crearUsuarioEmpresa');
         // Generamos un correo interno para Firebase Auth basado en el usuario y empresa
         const correoInterno = `${usuarioInterno}@${codigoEmpresa.toLowerCase()}.nexxus`;
         
-        // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
-        console.log('[GestionPlantilla] Llamando a crearUsuarioEmpresa con:', { nombre, usuarioInterno, rol: formulario.rol });
         // Calcula resultado; normaliza fechas para comparaciones, filtros o etiquetas visibles.
-        const resultado = await conTiempoLimite(crearUsuarioEmpresa({
+        const resultado = await crearEmpleadoFirestore({
           nombre,
           correo: correoInterno,
           contrasena: formulario.contrasena.trim(),
@@ -2086,9 +2118,9 @@ export default function GestionPlantilla() {
             createdAt: new Date().toISOString(),
             estado_onboarding: 'pendiente',
           },
-        }));
+        });
         // Declara uid; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-        const uid = (resultado.data as { uid?: string })?.uid;
+        const uid = resultado.uid;
         // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
         if (!uid) {
           // Interrumpe el flujo con un error controlado para que la capa superior lo maneje.
@@ -2153,13 +2185,13 @@ export default function GestionPlantilla() {
       // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (codigo === 'functions/internal') {
         // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-        mensajeError = 'Error interno en el servidor. Verifica que la Cloud Function esté correctamente desplegada.';
+        mensajeError = 'Error interno en el servidor. La operación no pudo completarse.';
       } else if (codigo === 'functions/permission-denied') {
         // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
         mensajeError = 'No tienes permisos suficientes para crear empleados (Verifica tu rol en el sistema).';
       } else if (codigo === 'functions/not-found') {
         // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-        mensajeError = 'La función de creación no fue encontrada. Revisa la región de despliegue.';
+        mensajeError = 'El servicio remoto no está disponible. La operación no pudo completarse.';
       }
       
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
@@ -2278,40 +2310,11 @@ export default function GestionPlantilla() {
     }
   };
 
-  const eliminarCarpetaStorage = async (ruta: string) => {
-    try {
-      const listado = await listAll(storageRef(storage, ruta));
-      await Promise.all([
-        ...listado.items.map((item) => deleteObject(item).catch((error: any) => {
-          if (error?.code !== 'storage/object-not-found') throw error;
-        })),
-        ...listado.prefixes.map((prefijo) => eliminarCarpetaStorage(prefijo.fullPath)),
-      ]);
-    } catch (error: any) {
-      if (error?.code !== 'storage/object-not-found') throw error;
-    }
-  };
-
-  const eliminarArchivosStorageEmpleado = async (empleado: UsuarioPlantilla) => {
-    if (!empleado.id) return;
-    const urls = [empleado.foto_perfil, empleado.fotoPerfil, empleado.photoURL].filter(Boolean) as string[];
-    const referencias = new Map<string, any>();
-
-    urls.forEach((url) => {
-      try {
-        const refUrl = storageRef(storage, url);
-        referencias.set(refUrl.fullPath, refUrl);
-      } catch {}
-    });
-
-    await Promise.all(Array.from(referencias.values()).map((refUrl) => deleteObject(refUrl).catch((error: any) => {
-      if (error?.code !== 'storage/object-not-found') throw error;
-    })));
-
-    await Promise.all([
-      eliminarCarpetaStorage(`perfiles/${empleado.id}`),
-      eliminarCarpetaStorage(`usuarios/${empleado.id}`),
-    ]);
+  const eliminarArchivosExternosEmpleado = async (empleado: UsuarioPlantilla) => {
+    const publicId = (empleado as any).foto_public_id || (empleado as any).fotoPublicId;
+    if (!publicId) return;
+    const borrar = httpsCallable(functions, 'deleteCloudinaryAsset');
+    await borrar({ publicId }).catch(() => null);
   };
 
   // Prepara eliminarEmpleado; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
@@ -2322,7 +2325,7 @@ export default function GestionPlantilla() {
     const ejecutar = async () => {
       setGuardando(true);
       try {
-        await eliminarArchivosStorageEmpleado(empleado);
+        await eliminarArchivosExternosEmpleado(empleado);
         // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
         await updateDoc(doc(db, 'usuarios', empleado.id as string), {
           activo: false,
@@ -2337,7 +2340,7 @@ export default function GestionPlantilla() {
         // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
         toast.warning({ title: labelEmpBajaTitle, description: labelEmpBajaDescBase.replace('{name}', empleado.nombre || 'El empleado') });
       } catch (error: any) {
-        toast.error({ title: 'No se pudo eliminar', description: error?.message || 'No se pudieron eliminar los archivos de Storage o el empleado.' });
+        toast.error({ title: 'No se pudo eliminar', description: error?.message || 'No se pudieron eliminar los archivos o el empleado.' });
       } finally {
         setGuardando(false);
       }
@@ -2379,7 +2382,7 @@ export default function GestionPlantilla() {
         await Promise.all(seleccionados.map((empleado) => {
           const ref = doc(db, 'usuarios', empleado.id as string);
           if (accion === 'eliminar') {
-            return eliminarArchivosStorageEmpleado(empleado).then(() => updateDoc(ref, {
+            return eliminarArchivosExternosEmpleado(empleado).then(() => updateDoc(ref, {
               activo: false,
               estado_activo: false,
               eliminado: true,

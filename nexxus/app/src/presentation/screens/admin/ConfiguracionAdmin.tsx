@@ -25,7 +25,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { BlurView } from 'expo-blur';
 import { useCases } from '@/infrastructure/firebase/container';
-import { subirFotoPerfil } from '@/infrastructure/services/almacenamiento';
+import { subirFotoPerfilCompleta } from '@/infrastructure/services/almacenamiento';
 // Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import { LinearGradient } from 'expo-linear-gradient';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
@@ -473,7 +473,11 @@ export default function ConfiguracionAdmin() {
       if (editFoto && editFoto !== user.foto_perfil) {
         const response = await fetch(editFoto);
         const blob = await response.blob();
-        finalFotoUrl = await subirFotoPerfil(user.id, blob);
+        const uploaded = await subirFotoPerfilCompleta(user.id, blob, user.empresaId || (user as any).empresa_id || '', (user as any).foto_public_id || null);
+        finalFotoUrl = uploaded.url;
+        (user as any).foto_public_id = uploaded.publicId;
+        (user as any).foto_hash = uploaded.hash;
+        (user as any).foto_size = uploaded.size;
       }
       
       const fullPhone = `${editPrefijo} ${editTelefonoNumber}`.trim();
@@ -482,7 +486,10 @@ export default function ConfiguracionAdmin() {
         nombre: editNombre,
         telefono: fullPhone,
         foto_perfil: finalFotoUrl,
-      });
+        foto_public_id: (user as any).foto_public_id,
+        foto_hash: (user as any).foto_hash,
+        foto_size: (user as any).foto_size,
+      } as any);
 
       if (updateUser) {
         updateUser({

@@ -54,10 +54,14 @@ export class FirebaseUserRepository implements IUserRepository {
   async getAllByCompany(empresaId: string): Promise<User[]> {
     // Prepara q; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
     const q = query(collection(db, 'usuarios'), where('empresaId', '==', empresaId));
+    const qLegacy = query(collection(db, 'usuarios'), where('empresa_id', '==', empresaId));
     // Declara querySnapshot; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const querySnapshot = await getDocs(q);
+    const [querySnapshot, legacySnapshot] = await Promise.all([getDocs(q), getDocs(qLegacy).catch(() => null)]);
+    const users = new Map<string, User>();
+    querySnapshot.docs.forEach(doc => users.set(doc.id, { id: doc.id, ...doc.data() } as User));
+    legacySnapshot?.docs.forEach(doc => users.set(doc.id, { id: doc.id, ...doc.data() } as User));
     // Devuelve el valor final calculado para esta funcion o caso de uso.
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+    return Array.from(users.values());
   }
 
   // setActive agrupa una parte de la logica del modulo para mantener el flujo principal mas legible.

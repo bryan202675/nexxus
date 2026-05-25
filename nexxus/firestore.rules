@@ -40,7 +40,14 @@ service cloud.firestore {
 
     match /usuarios/{userId} {
       allow read: if true; 
-      allow create: if autenticado() && request.auth.uid == userId;
+      allow create: if autenticado() && (
+        request.auth.uid == userId ||
+        (
+          esAdmin() &&
+          request.resource.data.empresaId is string &&
+          accesoEmpresa(request.resource.data.empresaId)
+        )
+      );
       allow update: if autenticado() && (request.auth.uid == userId || esAdmin());
       allow delete: if autenticado() && esAdmin();
 
@@ -142,10 +149,42 @@ service cloud.firestore {
       allow write: if autenticado() && (esAdmin() || esJefe());
     }
 
+    match /documentos/{documentoId} {
+      allow read: if autenticado() && (
+        resource.data.userId == request.auth.uid ||
+        accesoEmpresa(resource.data.empresaId)
+      );
+      allow create: if autenticado() &&
+                    request.resource.data.empresaId is string &&
+                    accesoEmpresa(request.resource.data.empresaId) &&
+                    esAdmin();
+      allow update: if autenticado() && (
+        resource.data.userId == request.auth.uid ||
+        (accesoEmpresa(resource.data.empresaId) && esAdmin())
+      );
+      allow delete: if autenticado() && accesoEmpresa(resource.data.empresaId) && esAdmin();
+    }
+
     match /logs_auditoria/{log_id} {
       allow read: if autenticado() && (esAdmin() || esJefe());
       allow create: if autenticado();
       allow update, delete: if false; 
+    }
+
+    match /archivos_cloudinary/{assetId} {
+      allow read: if autenticado() && accesoEmpresa(resource.data.empresaId);
+      allow create: if autenticado() &&
+                    request.resource.data.empresaId is string &&
+                    accesoEmpresa(request.resource.data.empresaId);
+      allow update: if autenticado() &&
+                    accesoEmpresa(resource.data.empresaId) &&
+                    request.resource.data.empresaId == resource.data.empresaId;
+      allow delete: if false;
+    }
+
+    match /upload_rate_limits/{uid} {
+      allow read: if autenticado() && request.auth.uid == uid;
+      allow write: if false;
     }
     
     match /{collection}/{document=**} {

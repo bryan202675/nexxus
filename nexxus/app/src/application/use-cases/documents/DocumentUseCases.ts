@@ -32,3 +32,24 @@ export class MarkDocumentRead {
     return this.repo.markAsRead(documentoId);
   }
 }
+
+export class GetCompanyDocuments {
+  constructor(private repo: IDocumentoRepository) {}
+  execute(empresaId: string) {
+    return this.repo.getByCompany(empresaId);
+  }
+}
+
+export class CreateDocument {
+  constructor(private repo: IDocumentoRepository) {}
+  execute(documento: Parameters<IDocumentoRepository['create']>[0]) {
+    return this.repo.create(documento);
+  }
+}
+
+export class DeleteDocument {
+  constructor(private repo: IDocumentoRepository) {}
+  execute(documentoId: string) {
+    return this.repo.delete(documentoId);
+  }
+}

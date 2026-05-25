@@ -38,6 +38,8 @@ export class FirebaseTaskRepository implements ITaskRepository {
     return onSnapshot(q, (snap) => {
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       callback(snap.docs.map(d => ({ id: d.id, ...d.data() } as Task)));
+    }, (error) => {
+      console.warn('FirebaseTaskRepository: subscribe error', error);
     });
   }
   // getTasksByCompany agrupa una parte de la logica del modulo para mantener el flujo principal mas legible.

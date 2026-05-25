@@ -22,6 +22,7 @@ import {
   View,
   useWindowDimensions,
   DeviceEventEmitter,
+  Dimensions,
 } from 'react-native';
 // Importa { createBottomTabNavigator, BottomTabBarProps }; permite declarar navegacion, rutas y transiciones entre pantallas.
 import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/bottom-tabs';
@@ -40,6 +41,7 @@ import { useApiTranslate } from '@/shared/i18n/useApiTranslate';
 import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 // Importa { db } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
 import { db } from '@/infrastructure/firebase/firebaseConfig';
+import { cloudinaryOptimizedUrl } from '@/infrastructure/storage/cloudinaryStorage';
 // Importa { useAuth }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import { useAuth } from '../hooks/useAuth';
 // Importa Iridescence; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
@@ -57,6 +59,7 @@ import EstructuraOrganizativa from '../screens/admin/EstructuraOrganizativa';
 import GestionNomina from '../screens/admin/GestionNomina';
 // Importa ComunicacionAdmin; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import ComunicacionAdmin from '../screens/admin/ComunicacionAdmin';
+import GestionDocumentos from '../screens/admin/GestionDocumentos';
 // Importa AuditoriaLogs; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import AuditoriaLogs from '../screens/admin/AuditoriaLogs';
 // Importa CalendarioEmpresarial; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
@@ -93,7 +96,7 @@ const BANNER_IRIDESCENCE_COLOR: [number, number, number] = [0.4863, 0.2275, 0.92
  */
 const obtenerEmpresaId = (user: any) => {
   // Declara valor; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const valor = user?.empresaId;
+  const valor = user?.empresaId || user?.empresa_id || user?.empresaID;
   // Devuelve el valor final calculado para esta funcion o caso de uso.
   return typeof valor === 'string' ? valor.trim() : '';
 };
@@ -128,6 +131,7 @@ const MENU_ITEMS = [
   { name: 'EstructuraOrganizativa', label: 'Estructura', icon: 'account-tree' },
   { name: 'GestionNomina', label: 'Nómina', icon: 'payments' },
   { name: 'ComunicacionAdmin', label: 'Comunicación', icon: 'forum' },
+  { name: 'GestionDocumentos', label: 'Documentos', icon: 'folder' },
   { name: 'AuditoriaLogs', label: 'Auditoría', icon: 'manage-search' },
   { name: 'ConfiguracionAdmin', label: 'Configuración', icon: 'tune' },
 ] as const;
@@ -142,6 +146,7 @@ const ADMIN_SEARCH_ITEMS = [
   { route: 'EstructuraOrganizativa', title: 'Estructura organizativa', detail: 'departamentos, cargos, jerarquías, sedes' },
   { route: 'GestionNomina', title: 'Nómina', detail: 'pagos, salarios, planilla, compensación' },
   { route: 'ComunicacionAdmin', title: 'Comunicación', detail: 'anuncios, notificaciones, mensajes' },
+  { route: 'GestionDocumentos', title: 'Documentos', detail: 'pdf, archivos, cloudinary, almacenamiento, métricas' },
   { route: 'AuditoriaLogs', title: 'Auditoría', detail: 'logs, seguridad, eventos, actividad' },
   { route: 'ConfiguracionAdmin', title: 'Configuración', detail: 'tema, cuenta, preferencias, sistema' },
 ] as const;
@@ -205,6 +210,12 @@ const SCREEN_BANNERS: Record<string, { title: string; eyebrow: string; descripti
     description: 'Anuncios, audiencias, notificaciones y canales internos.',
     icon: 'forum',
   },
+  GestionDocumentos: {
+    title: 'Documentos',
+    eyebrow: 'Almacenamiento controlado',
+    description: 'PDFs, uso por empresa, deduplicación y limpieza segura de archivos.',
+    icon: 'folder',
+  },
   AuditoriaLogs: {
     title: 'Auditoría',
     eyebrow: 'Seguridad y eventos',
@@ -237,6 +248,17 @@ const PARTICULAS = [
  * Componente ADMIN_LIGHT_CONTRAST_CSS. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 const ADMIN_LIGHT_CONTRAST_CSS = `
+html[data-nexxus-admin-theme] body,
+html[data-nexxus-admin-theme] #root,
+html[data-nexxus-admin-theme] #root > div,
+html[data-nexxus-admin-theme] #root > div > div,
+html[data-nexxus-admin-theme] #root > div > div > div {
+  height: 100vh !important;
+  min-height: 100vh !important;
+}
+html[data-nexxus-admin-theme] body {
+  overflow: hidden !important;
+}
 html[data-nexxus-admin-theme="light"] #root :not(.nx-admin-contrast):not(.nx-admin-contrast *)[style*="color: rgb(255, 255, 255)"],
 html[data-nexxus-admin-theme="light"] #root :not(.nx-admin-contrast):not(.nx-admin-contrast *)[style*="color: #fff"],
 html[data-nexxus-admin-theme="light"] #root :not(.nx-admin-contrast):not(.nx-admin-contrast *)[style*="color: #FFF"],
@@ -626,7 +648,7 @@ function Sidebar({ state, navigation }: BottomTabBarProps) {
         <View style={estilos.logoHeader}>
           {/* Gradiente visual o Imagen del logo de la empresa. */}
           {logoUrl ? (
-            <Image source={{ uri: logoUrl }} style={[estilos.logoIconBg, { overflow: 'hidden' }]} resizeMode="cover" />
+            <Image source={{ uri: cloudinaryOptimizedUrl(logoUrl, 128) }} style={[estilos.logoIconBg, { overflow: 'hidden' }]} resizeMode="cover" />
           ) : (
             <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} colors={theme.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.logoIconBg}>
               {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
@@ -708,7 +730,7 @@ function Sidebar({ state, navigation }: BottomTabBarProps) {
             <View style={estilos.avatarContainer}>
               {fotoPerfil ? (
                 // Imagen visual; muestra foto, avatar, logo o recurso asociado a los datos de la pantalla.
-                <Image source={{ uri: fotoPerfil }} style={estilos.avatarImagen} />
+                <Image source={{ uri: cloudinaryOptimizedUrl(fotoPerfil, 96) }} style={estilos.avatarImagen} />
               ) : (
                 // Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario.
                 <Text style={estilos.avatarTexto}>{(user?.nombre || 'AM').substring(0, 2).toUpperCase()}</Text>
@@ -1099,7 +1121,7 @@ function AdminProfilePanel({ visible, user, onNavigate, onClose }: { visible: bo
             <View style={estilos.avatarContainer}>
               {fotoPerfil ? (
                 // Imagen visual; muestra foto, avatar, logo o recurso asociado a los datos de la pantalla.
-                <Image source={{ uri: fotoPerfil }} style={estilos.avatarImagen} />
+                <Image source={{ uri: cloudinaryOptimizedUrl(fotoPerfil, 96) }} style={estilos.avatarImagen} />
               ) : (
                 // Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario.
                 <Text style={estilos.avatarTexto}>{avatar}</Text>
@@ -1205,6 +1227,7 @@ function NavbarHeader({ routeName }: { routeName: string }) {
       'EstructuraOrganizativa',
       'GestionNomina',
       'ComunicacionAdmin',
+      'GestionDocumentos',
       'AuditoriaLogs',
       'ConfiguracionAdmin',
     ];
@@ -1476,7 +1499,7 @@ function NavbarHeader({ routeName }: { routeName: string }) {
             <BotonAnimado style={estilos.avatarButton} onPress={() => setProfileOpen((value) => !value)}>
               {fotoPerfil ? (
                 // Imagen visual; muestra foto, avatar, logo o recurso asociado a los datos de la pantalla.
-                <Image source={{ uri: fotoPerfil }} style={estilos.avatarButtonImage} />
+                <Image source={{ uri: cloudinaryOptimizedUrl(fotoPerfil, 96) }} style={estilos.avatarButtonImage} />
               ) : (
                 // Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza.
                 <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast' } as any : {})} colors={theme.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.avatarButtonGradient}>
@@ -1524,6 +1547,9 @@ export default function AdminNavigator() {
   const { user } = useAuth();
   // Calcula { height }; adapta el comportamiento o diseno segun plataforma/tamano disponible.
   const { height } = useWindowDimensions();
+  const altoViewport = Platform.OS === 'web' && typeof window !== 'undefined'
+    ? window.innerHeight || height || Dimensions.get('window').height || 720
+    : height;
   // Inicializa [mode, setMode]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [mode, setMode] = useState<AdminMode>('dark');
   // Inicializa [currentRoute, setCurrentRoute] para controlar el encabezado estatico fuera del navegador.
@@ -1580,7 +1606,7 @@ export default function AdminNavigator() {
       <AdminToastProvider>
         <AdminTranslationProvider protectedTerms={protectedTranslationTerms}>
         {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-        <View style={[estilos.contenedorPrincipal, { height, maxHeight: height }]}>
+        <View style={[estilos.contenedorPrincipal, { height: altoViewport, minHeight: altoViewport, maxHeight: altoViewport }]}>
           {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
           <LinearGradient colors={[theme.bg, theme.bgDeep, theme.bg]} style={StyleSheet.absoluteFill} />
           {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
@@ -1612,6 +1638,8 @@ export default function AdminNavigator() {
             <Tab.Screen name="GestionNomina" component={GestionNomina} />
             {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
             <Tab.Screen name="ComunicacionAdmin" component={ComunicacionAdmin} />
+            {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
+            <Tab.Screen name="GestionDocumentos" component={GestionDocumentos} />
             {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
             <Tab.Screen name="AuditoriaLogs" component={AuditoriaLogs} />
             {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}

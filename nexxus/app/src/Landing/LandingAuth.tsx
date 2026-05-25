@@ -25,13 +25,13 @@ import {
   limit,
   query,
   serverTimestamp,
+  updateDoc,
   where,
   writeBatch,
 } from 'firebase/firestore';
-// Importa { getDownloadURL, ref, uploadBytes } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-// Importa { auth, db, storage } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
-import { auth, db, storage } from '@/infrastructure/firebase/firebaseConfig';
+import { uploadCompanyLogo, validateUploadFile } from '../infrastructure/storage/cloudinaryStorage';
+// Importa { auth, db } desde Firebase; habilita autenticacion, Firestore, Functions o mensajeria segun el modulo.
+import { auth, db } from '@/infrastructure/firebase/firebaseConfig';
 // Importa BorderGlow; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import BorderGlow from './BorderGlow';
 // Importa StarButton; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
@@ -276,65 +276,6 @@ function traducirErrorFirebase(codigo: string | undefined) {
 }
 
 /**
- * Declaracion comprimirLogo. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
- */
-async function comprimirLogo(archivo: File) {
-  // Declara tiposPermitidos; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const tiposPermitidos = ['image/png', 'image/jpeg', 'image/webp'];
-  // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-  if (!tiposPermitidos.includes(archivo.type)) throw new Error('Sube un logo PNG, JPG o WEBP.');
-  // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-  if (archivo.size > 3 * 1024 * 1024) throw new Error('El logo debe pesar menos de 3 MB.');
-
-  // Declara dataUrl; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const dataUrl = await new Promise<string>((resolve, reject) => {
-    // Declara reader; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const reader = new FileReader();
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-    reader.onload = () => resolve(String(reader.result));
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-    reader.onerror = () => reject(new Error('No se pudo leer el logo.'));
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-    reader.readAsDataURL(archivo);
-  });
-
-  // Declara imagen; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const imagen = await new Promise<HTMLImageElement>((resolve, reject) => {
-    // Declara img; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const img = new Image();
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-    img.onload = () => resolve(img);
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-    img.onerror = () => reject(new Error('No se pudo procesar el logo.'));
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-    img.src = dataUrl;
-  });
-
-  // Declara canvas; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const canvas = document.createElement('canvas');
-  // Declara max; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const max = 640;
-  // Declara escala; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const escala = Math.min(max / imagen.width, max / imagen.height, 1);
-  // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-  canvas.width = Math.max(1, Math.round(imagen.width * escala));
-  // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-  canvas.height = Math.max(1, Math.round(imagen.height * escala));
-  // Declara ctx; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const ctx = canvas.getContext('2d');
-  // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-  if (!ctx) throw new Error('No se pudo optimizar el logo.');
-  // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-  ctx.drawImage(imagen, 0, 0, canvas.width, canvas.height);
-
-  // Devuelve el JSX que React Native renderiza en pantalla.
-  return await new Promise<Blob>((resolve, reject) => {
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('No se pudo comprimir el logo.')), 'image/webp', 0.86);
-  });
-}
-
-/**
  * Componente Campo. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 function Campo({
@@ -489,6 +430,7 @@ function CustomSelect({
                   <img 
                     src={selectedItem.flag} 
                     alt="" 
+                    loading="lazy"
                     className="nx-dropdown-flag" 
                   />
                 )}
@@ -533,6 +475,7 @@ function CustomSelect({
                         <img 
                           src={(item as CountryData).flag} 
                           alt="" 
+                          loading="lazy"
                           className="nx-dropdown-flag" 
                         />
                       )}
@@ -614,6 +557,12 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
       document.removeEventListener('click', handleDocumentClick);
     };
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (logoPreview) URL.revokeObjectURL(logoPreview);
+    };
+  }, [logoPreview]);
 
   useEffect(() => {
     if (vista !== 'empresa') return;
@@ -944,12 +893,14 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
     setErrorGlobal('');
     // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
     try {
-      // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-      await comprimirLogo(archivo);
+      await validateUploadFile(archivo, 'companyLogo');
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setLogo(archivo);
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-      setLogoPreview(URL.createObjectURL(archivo));
+      setLogoPreview((actual) => {
+        if (actual) URL.revokeObjectURL(actual);
+        return URL.createObjectURL(archivo);
+      });
     } catch (error: any) {
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setErrores((actual) => ({ ...actual, logo: error.message }));
@@ -989,15 +940,6 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
       const departamentoRef = doc(collection(db, 'departments'));
       // Prepara configuracionRef; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
       const configuracionRef = doc(collection(db, 'configuraciones_empresa'));
-      // Declara logoOptimizado; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const logoOptimizado = await comprimirLogo(logo);
-      // Declara logoRef; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const logoRef = ref(storage, `usuarios/${usuarioPendiente.uid}/empresas/${empresaRef.id}/logo.webp`);
-      // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-      await uploadBytes(logoRef, logoOptimizado, { contentType: 'image/webp' });
-      // Declara logoUrl; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const logoUrl = await getDownloadURL(logoRef);
-
       // Declara batchInicial; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const batchInicial = writeBatch(db);
       // Calcula ahoraIso; normaliza fechas para comparaciones, filtros o etiquetas visibles.
@@ -1019,7 +961,10 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
         empresa_id: empresaRef.id,
         estado: 'activa',
         industria: empresa.industria,
-        logo_url: logoUrl,
+        logo_url: '',
+        logo_public_id: '',
+        logo_hash: '',
+        logo_size: 0,
         nombre: limpiarTexto(empresa.nombre),
         nombre_normalizado: normalizar(empresa.nombre),
         pais: limpiarTexto(empresa.pais),
@@ -1046,7 +991,10 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
         empresaId: empresaRef.id,
         estado_activo: true,
         estado_trabajo: 'disponible',
-        foto_perfil: usuarioPendiente.fotoPerfil ?? logoUrl,
+        foto_perfil: usuarioPendiente.fotoPerfil ?? '',
+        foto_public_id: null,
+        foto_hash: null,
+        foto_size: 0,
         horario_laboral: '08:00 - 17:00',
         id: usuarioPendiente.uid,
         nombre: usuarioPendiente.nombre,
@@ -1064,6 +1012,24 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
       });
       // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
       await batchInicial.commit();
+
+      const uploaded = await uploadCompanyLogo(logo, empresaRef.id);
+      const logoUrl = uploaded.url;
+      await updateDoc(empresaRef, {
+        logo_url: logoUrl,
+        logo_public_id: uploaded.publicId,
+        logo_hash: uploaded.hash,
+        logo_size: uploaded.size,
+        updatedAt: serverTimestamp(),
+      });
+      if (!usuarioPendiente.fotoPerfil) {
+        await updateDoc(doc(db, 'usuarios', usuarioPendiente.uid), {
+          foto_perfil: logoUrl,
+          foto_public_id: uploaded.publicId,
+          foto_hash: uploaded.hash,
+          foto_size: uploaded.size,
+        });
+      }
 
       // Declara batchEstructura; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const batchEstructura = writeBatch(db);
@@ -1118,12 +1084,9 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       window.location.assign('/app');
     } catch (error: any) {
-      // Declara mensajeStorage; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const mensajeStorage = error.code === 'storage/unauthorized'
-        ? 'landing_auth.errors.storage_error'
-        : error.message;
+      const mensajeCloudinary = error.message;
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-      setErrorGlobal(mensajeStorage || 'landing_auth.errors.company_create_error');
+      setErrorGlobal(mensajeCloudinary || 'landing_auth.errors.company_create_error');
     } finally {
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setCargando(false);
@@ -1252,7 +1215,7 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
                   seleccionarLogo(event.dataTransfer.files?.[0]);
                 }}
               >
-                {logoPreview ? <img alt="Logo empresa" src={logoPreview} /> : <b>{t('landing_auth.logo_drop_label')}</b>}
+                {logoPreview ? <img alt="Logo empresa" loading="lazy" src={logoPreview} /> : <b>{t('landing_auth.logo_drop_label')}</b>}
                 {/* span renderiza una pieza visual reutilizable dentro de esta pantalla. */}
                 <span>{t('landing_auth.logo_drop_hint')}</span>
                 {/* input renderiza una pieza visual reutilizable dentro de esta pantalla. */}
@@ -1362,7 +1325,7 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
                             return (
                               <>
                                 {countryWithPrefix && (
-                                  <img src={countryWithPrefix.flag} alt="" className="nx-dropdown-flag" style={{ margin: 0 }} />
+                                  <img src={countryWithPrefix.flag} alt="" loading="lazy" className="nx-dropdown-flag" style={{ margin: 0 }} />
                                 )}
                                 <span>{prefijoSeleccionado}</span>
                               </>
@@ -1398,7 +1361,7 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
                                     actualizarEmpresa('telefono', formatPhoneNumber(empresa.telefono, p.dialCode));
                                   }}
                                 >
-                                  <img src={p.flag} alt="" className="nx-dropdown-flag" />
+                                  <img src={p.flag} alt="" loading="lazy" className="nx-dropdown-flag" />
                                   <span style={{ fontWeight: 'bold' }}>{p.dialCode}</span>
                                   <span style={{ opacity: 0.7, fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                     {p.name}

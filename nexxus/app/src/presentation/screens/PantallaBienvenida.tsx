@@ -6,7 +6,6 @@
  * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras Firebase al extender este archivo.
  */
 
-// Importa React, { useEffect, useRef } desde React; habilita componentes, hooks y tipos base para esta pieza.
 import React, { useEffect, useRef } from 'react';
 import {
   View,
@@ -16,29 +15,16 @@ import {
   SafeAreaView,
   StatusBar,
   Dimensions,
+  Image,
 } from 'react-native';
-// Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import { LinearGradient } from 'expo-linear-gradient';
-// Importa { MaterialIcons, Feather }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons, Feather } from '@expo/vector-icons';
-// Importa { useNavigation }; permite declarar navegacion, rutas y transiciones entre pantallas.
 import { useNavigation } from '@react-navigation/native';
-// Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
-// Importa { BlurView } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import { BlurView } from 'expo-blur';
-
-// Importa FondoAurora; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
 import FondoAurora from '@/presentation/components/FondoAurora';
-// Importa MarcaNexxus; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
-import MarcaNexxus from '@/presentation/components/MarcaNexxus';
-// Importa { ESPACIADO, RADIOS, TIPOGRAFIA, SOMBRAS }; reutiliza tokens visuales y constantes comunes del sistema de diseno.
 import { ESPACIADO, RADIOS, TIPOGRAFIA, SOMBRAS } from '@/shared/constants/diseno';
-// Importa AuraOrb; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
-import AuraOrb from '@/presentation/components/AuraOrb';
-// Importa { useTemaMobile }; accede a contexto compartido de usuario, tema o estado global.
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
-// Importa BotonAnimado; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
 import BotonAnimado from '@/presentation/components/BotonAnimado';
 
 // Calcula { width }; adapta el comportamiento o diseno segun plataforma/tamano disponible.
@@ -69,17 +55,11 @@ export default function PantallaBienvenida() {
     }).start();
   }, []);
 
-  // Devuelve el JSX que React Native renderiza en pantalla.
   return (
-    // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
     <View style={estilos.contenedor}>
-      {/* Configura la barra de estado del sistema para que combine con el fondo de esta pantalla. */}
       <StatusBar barStyle="light-content" />
-      {/* Elemento de fondo visual; construye la atmosfera grafica de la pantalla sin cambiar los datos. */}
       <FondoAurora />
-      {/* Contenedor seguro de la pantalla; respeta areas del dispositivo como notch, barra superior y bordes. */}
       <SafeAreaView style={estilos.areaSegura}>
-        {/* Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla. */}
         <Animated.View
           style={[
             estilos.contenido,
@@ -96,87 +76,60 @@ export default function PantallaBienvenida() {
             },
           ]}
         >
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-          <View style={estilos.header}>
-            {/* MarcaNexxus renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-            <MarcaNexxus tamano={32} />
-          </View>
-
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={estilos.bloqueHero}>
-            {/* AuraOrb renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-            <AuraOrb size={190} style={estilos.orbita} />
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+            <Image
+              source={require('../../../assets/logozz.png')}
+              style={estilos.logoImagen}
+              resizeMode="contain"
+            />
             <Text style={estilos.titulo}>{t('pantallaBienvenida.title')}</Text>
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={estilos.subtitulo}>
               {t('pantallaBienvenida.subtitle')}
             </Text>
           </View>
 
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={estilos.tarjetaResumenContainer}>
-            {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
             <BlurView intensity={intensidadBlur + 20} tint={blurTint} style={estilos.tarjetaResumen}>
-              {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
               <View style={estilos.filaResumen}>
-                {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
                 <View style={[estilos.iconoContenedor, { backgroundColor: 'rgba(124,58,237,0.15)' }]}>
-                  {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                   <Feather name="activity" size={16} color="#A78BFA" />
                 </View>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.textoResumen}>{t('pantallaBienvenida.feature_1')}</Text>
               </View>
               
-              {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
               <View style={estilos.divisor} />
               
-              {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
               <View style={estilos.filaResumen}>
-                {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
                 <View style={[estilos.iconoContenedor, { backgroundColor: 'rgba(56,189,248,0.15)' }]}>
-                  {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                   <Feather name="cpu" size={16} color="#38BDF8" />
                 </View>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.textoResumen}>{t('pantallaBienvenida.feature_2')}</Text>
               </View>
 
-              {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
               <View style={estilos.divisor} />
 
-              {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
               <View style={estilos.filaResumen}>
-                {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
                 <View style={[estilos.iconoContenedor, { backgroundColor: 'rgba(52,211,153,0.15)' }]}>
-                  {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                   <Feather name="shield" size={16} color="#34D399" />
                 </View>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.textoResumen}>{t('pantallaBienvenida.feature_3')}</Text>
               </View>
             </BlurView>
           </View>
 
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={estilos.grupoBotones}>
-            {/* BotonAnimado renderiza una pieza visual reutilizable dentro de esta pantalla. */}
             <BotonAnimado 
               style={estilos.botonWrap} 
               onPress={() => navegacion.navigate('LoginEmpresarial')}
               scaleTo={0.96}
             >
-              {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
               <LinearGradient 
-                colors={['#7C3AED', '#6D28D9']} 
+                colors={[colores.primario, colores.primarioClaro]} 
                 start={{ x: 0, y: 0 }} 
                 end={{ x: 1, y: 1 }} 
                 style={estilos.botonPrincipal}
               >
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.textoBotonPrincipal}>{t('pantallaBienvenida.btn_start')}</Text>
-                {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                 <MaterialIcons name="business" size={20} color="#FFFFFF" />
               </LinearGradient>
             </BotonAnimado>
@@ -191,8 +144,6 @@ export default function PantallaBienvenida() {
  * Mapa de estilos crearEstilos. Centraliza reglas visuales para que el JSX se mantenga legible y consistente.
  */
 function crearEstilos(c: any, esOscuro: boolean) {
-  // Declara glass; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const glass = esOscuro ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.75)';
   // Devuelve el valor final calculado para esta funcion o caso de uso.
   return StyleSheet.create({
     // contenedor: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
@@ -234,34 +185,29 @@ function crearEstilos(c: any, esOscuro: boolean) {
       // gap define separacion uniforme entre elementos hijos.
       gap: ESPACIADO.md,
     },
-    // orbita: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    orbita: {
-      // marginBottom separa este bloque del siguiente elemento.
-      marginBottom: ESPACIADO.md,
+    // logoImagen: estilo local para mostrar el nuevo logotipo de la empresa.
+    logoImagen: {
+      width: 180,
+      height: 120,
+      marginBottom: ESPACIADO.xs,
     },
     // titulo: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
     titulo: {
       // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
       ...TIPOGRAFIA.hero,
       // color define el color del texto o icono.
-      color: '#FFFFFF',
+      color: c.texto,
       // textAlign alinea el texto dentro de su contenedor.
       textAlign: 'center',
       // letterSpacing ajusta la separacion entre letras.
       letterSpacing: -0.5,
-      // textShadowColor ajusta una propiedad visual especifica de este estilo.
-      textShadowColor: 'rgba(124,58,237,0.3)',
-      // textShadowOffset ajusta una propiedad visual especifica de este estilo.
-      textShadowOffset: { width: 0, height: 4 },
-      // textShadowRadius ajusta una propiedad visual especifica de este estilo.
-      textShadowRadius: 16,
     },
     // subtitulo: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
     subtitulo: {
       // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
       ...TIPOGRAFIA.cuerpoGrande,
       // color define el color del texto o icono.
-      color: 'rgba(255,255,255,0.75)',
+      color: c.textoSecundario,
       // textAlign alinea el texto dentro de su contenedor.
       textAlign: 'center',
       // maxWidth limita el ancho para mantener lectura y composicion.
@@ -278,7 +224,7 @@ function crearEstilos(c: any, esOscuro: boolean) {
       // borderWidth define el grosor del borde visible.
       borderWidth: 1,
       // borderColor define el color del borde.
-      borderColor: esOscuro ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.4)',
+      borderColor: c.borde,
       // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
       ...SOMBRAS.flotante,
     },
@@ -287,7 +233,7 @@ function crearEstilos(c: any, esOscuro: boolean) {
       // padding agrega espacio interno alrededor del contenido.
       padding: ESPACIADO.lg,
       // backgroundColor define el fondo del bloque.
-      backgroundColor: glass,
+      backgroundColor: c.vidrio,
       // gap define separacion uniforme entre elementos hijos.
       gap: ESPACIADO.md,
     },

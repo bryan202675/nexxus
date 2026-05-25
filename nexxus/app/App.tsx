@@ -149,10 +149,14 @@ function EnrutadorPrincipal() {
   // Inicializa haRedireccionado; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const haRedireccionado = useRef(false);
 
+  console.log(`[EnrutadorPrincipal] Render - cargando: ${cargando}, autenticado: ${autenticado}, perfil: ${perfil ? `${perfil.nombre} (${perfil.rol})` : 'null'}, haRedireccionado: ${haRedireccionado.current}`);
+
   // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
   useEffect(() => {
+    console.log(`[EnrutadorPrincipal] useEffect[autenticado] - autenticado: ${autenticado}`);
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!autenticado) {
+      console.log('[EnrutadorPrincipal] Resetting haRedireccionado to false because user is not authenticated');
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       haRedireccionado.current = false;
     }
@@ -160,21 +164,28 @@ function EnrutadorPrincipal() {
 
   // Ejecuta navegacion; cambia la pantalla activa manteniendo el flujo definido por React Navigation.
   useEffect(() => {
+    console.log(`[EnrutadorPrincipal] useEffect[redirection] - cargando: ${cargando}, autenticado: ${autenticado}, perfil: ${perfil ? perfil.rol : 'null'}, haRedireccionado: ${haRedireccionado.current}`);
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!cargando && autenticado && perfil && !haRedireccionado.current) {
+      console.log(`[EnrutadorPrincipal] Condition met! Triggering redirection...`);
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       haRedireccionado.current = true;
       // Redirección automática si ya está logueado
       if (perfil.rol === 'admin') {
+        console.log('[EnrutadorPrincipal] Redirecting to AppAdmin');
         // Ejecuta navegacion; cambia la pantalla activa manteniendo el flujo definido por React Navigation.
         navigation.reset({ index: 0, routes: [{ name: 'AppAdmin' }] });
       } else if (perfil.rol === 'jefe') {
+        console.log('[EnrutadorPrincipal] Redirecting to AppJefe');
         // Ejecuta navegacion; cambia la pantalla activa manteniendo el flujo definido por React Navigation.
         navigation.reset({ index: 0, routes: [{ name: 'AppJefe' }] });
       } else {
+        console.log('[EnrutadorPrincipal] Redirecting to AppEmpleado');
         // Ejecuta navegacion; cambia la pantalla activa manteniendo el flujo definido por React Navigation.
         navigation.reset({ index: 0, routes: [{ name: 'AppEmpleado' }] });
       }
+    } else {
+      console.log('[EnrutadorPrincipal] Redirection condition NOT met.');
     }
   }, [autenticado, cargando, perfil, navigation]);
 

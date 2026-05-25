@@ -8,10 +8,7 @@
 
 // Importa AsyncStorage desde @react-native-async-storage/async-storage; agrega una dependencia externa necesaria para este modulo.
 import AsyncStorage from '@react-native-async-storage/async-storage';
-// Importa { storage } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
-import { storage } from '../firebase/firebaseConfig';
-// Importa { ref, uploadBytes, getDownloadURL } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { uploadProfilePhoto, type UploadProgress } from '../storage/cloudinaryStorage';
 
 /**
  * Declaracion CLAVE_USUARIO. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
@@ -94,16 +91,14 @@ export async function limpiarDatos(): Promise<void> {
   await AsyncStorage.multiRemove([CLAVE_USUARIO, CLAVE_CHECKINS]);
 }
 
-// --- Servicios de Almacenamiento en la Nube (Firebase Storage) ---
+// --- Servicios de Almacenamiento en la Nube (Cloudinary) ---
 
-export async function subirFotoPerfil(userId: string, blob: Blob): Promise<string> {
-  // Declara path; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const path = `perfiles/${userId}/foto.jpg`;
-  // Declara storageRef; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const storageRef = ref(storage, path);
-  // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-  await uploadBytes(storageRef, blob);
-  // Devuelve el valor final calculado para esta funcion o caso de uso.
-  return await getDownloadURL(storageRef);
+export async function subirFotoPerfil(userId: string, blob: Blob, empresaId = '', previousPublicId?: string | null, onProgress?: (progress: UploadProgress) => void): Promise<string> {
+  const uploaded = await subirFotoPerfilCompleta(userId, blob, empresaId, previousPublicId, onProgress);
+  return uploaded.url;
 }
 
+export async function subirFotoPerfilCompleta(userId: string, blob: Blob, empresaId = '', previousPublicId?: string | null, onProgress?: (progress: UploadProgress) => void) {
+  const uploaded = await uploadProfilePhoto(blob, userId, empresaId, previousPublicId, onProgress);
+  return uploaded;
+}

@@ -82,21 +82,18 @@ const AdminToastContext = createContext<AdminToastContextValue>({
 const ADMIN_TOAST_CSS = `
 [data-sileo-header] {
   align-items: center !important;
-  height: 40px !important;
-  padding-top: 6px !important;
-  padding-bottom: 10px !important;
+  min-height: 34px !important;
+  height: auto !important;
+  padding: 8px 14px 6px !important;
 }
 [data-sileo-header-stack],
 [data-sileo-header-inner] {
   align-items: center !important;
-  height: 24px !important;
-  min-height: 24px !important;
-}
-[data-sileo-header-inner] {
-  transform: translateY(-4px) !important;
+  min-height: 20px !important;
+  height: auto !important;
 }
 [data-sileo-badge] {
-  transform: translateY(-2px) !important;
+  transform: none !important;
 }
 .nx-admin-toast-title {
   font-family: Avenir Next, Satoshi, Segoe UI, sans-serif !important;
@@ -107,15 +104,17 @@ const ADMIN_TOAST_CSS = `
   text-transform: none !important;
   display: inline-flex !important;
   align-items: center !important;
-  height: 20px !important;
-  min-height: 20px !important;
+  min-height: 18px !important;
+  height: auto !important;
   padding: 0 !important;
   overflow: visible !important;
-  transform: translateY(-4px) !important;
+  transform: none !important;
 }
 [data-sileo-title] {
   line-height: 14px !important;
   overflow: visible !important;
+  display: flex !important;
+  align-items: center !important;
 }
 .nx-admin-toast-description {
   font-family: Avenir Next, Satoshi, Segoe UI, sans-serif !important;
@@ -123,8 +122,8 @@ const ADMIN_TOAST_CSS = `
   line-height: 17px !important;
   letter-spacing: 0 !important;
   box-sizing: border-box !important;
-  padding: 14px 16px 17px !important;
-  min-height: 49px !important;
+  padding: 4px 14px 12px !important;
+  min-height: 30px !important;
   overflow: visible !important;
 }
 .nx-admin-toast-button {
