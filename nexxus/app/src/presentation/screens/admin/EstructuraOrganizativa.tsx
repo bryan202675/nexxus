@@ -11,8 +11,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRoute } from '@react-navigation/native';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
-// Importa { Alert, Animated, Easing, Modal, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Image, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { Alert, Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Image, Platform } from 'react-native';
+// Importa { Alert, Animated, Easing, Modal, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Image, Platform, useWindowDimensions } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
+import { Alert, Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Image, Platform, useWindowDimensions } from 'react-native';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
 // Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
@@ -254,7 +254,10 @@ const normalizarDepartamento = (departamento: DepartamentoEstructura) => {
 };
 
 type DepartamentoDetalle = {
-  departamento: ReturnType<typeof normalizarDepartamento>;
+  departamento: ReturnType<typeof normalizarDepartamento> & {
+    productividad?: number;
+    cobertura?: number;
+  };
   empleados: UsuarioEstructura[];
 };
 
@@ -346,9 +349,9 @@ const EmptyState = ({ texto }: { texto: string }) => (
 /**
  * Componente CatalogCard. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
-const CatalogCard = ({ title, subtitle, icon, color, total, onPress }: { title: string; subtitle: string; icon: keyof typeof MaterialIcons.glyphMap; color: string; total: number; onPress: () => void }) => (
+const CatalogCard = ({ title, subtitle, icon, color, total, onPress, style }: { title: string; subtitle: string; icon: keyof typeof MaterialIcons.glyphMap; color: string; total: number; onPress: () => void; style?: any }) => (
   // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-  <TouchableOpacity style={estilos.catalogCard} onPress={onPress} activeOpacity={0.82}>
+  <TouchableOpacity style={[estilos.catalogCard, style]} onPress={onPress} activeOpacity={0.82}>
     {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
     <View style={{ flex: 1, paddingRight: 10 }}>
       {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
@@ -366,16 +369,16 @@ const CatalogCard = ({ title, subtitle, icon, color, total, onPress }: { title: 
 /**
  * Componente QuickCreateButton. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
-const QuickCreateButton = ({ label, icon, color, onPress }: { label: string; icon: keyof typeof MaterialIcons.glyphMap; color: string; onPress: () => void }) => (
+const QuickCreateButton = ({ label, icon, color, onPress, style, textStyle }: { label: string; icon: keyof typeof MaterialIcons.glyphMap; color: string; onPress: () => void; style?: any; textStyle?: any }) => (
   // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-  <TouchableOpacity style={estilos.quickButton} onPress={onPress} activeOpacity={0.82}>
+  <TouchableOpacity style={[estilos.quickButton, style]} onPress={onPress} activeOpacity={0.82}>
     {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
     <View style={[estilos.quickButtonIconShell, { backgroundColor: `${color}1A`, borderColor: `${color}33` }]}>
       {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
       <MaterialIcons name={icon} size={16} color={color} />
     </View>
     {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-    <Text style={estilos.quickButtonText}>{label}</Text>
+    <Text numberOfLines={1} style={[estilos.quickButtonText, textStyle]}>{label}</Text>
   </TouchableOpacity>
 );
 
@@ -398,6 +401,7 @@ const SummaryList = ({
   iconBg, 
   iconColor,
   scrollable = false,
+  style,
 }: { 
   title: string; 
   items: SummaryItemData[]; 
@@ -409,9 +413,10 @@ const SummaryList = ({
   iconBg?: string;
   iconColor?: string;
   scrollable?: boolean;
+  style?: any;
 }) => (
   // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
-  <View style={estilos.summaryCard}>
+  <View style={[estilos.summaryCard, style]}>
     {/* Cabecera premium con titulo y contador */}
     <View style={estilos.summaryHeader}>
       <Text style={estilos.summaryTitle}>{title}</Text>
@@ -421,14 +426,9 @@ const SummaryList = ({
     </View>
     {/* Cuerpo de la tarjeta de resumen para espaciado interno */}
     <View style={estilos.summaryBody}>
-      {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-      <ScrollView
-        nestedScrollEnabled
-        style={scrollable ? estilos.summaryListScroll : undefined}
-        contentContainerStyle={estilos.summaryList}
-        showsVerticalScrollIndicator={scrollable}
-      >
-        {items.length > 0 ? (scrollable ? items : items.slice(0, 5)).map((item) => (
+      {scrollable ? (
+      <ScrollView nestedScrollEnabled style={estilos.summaryListScroll} contentContainerStyle={estilos.summaryList} showsVerticalScrollIndicator>
+        {items.length > 0 ? items.map((item) => (
           // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
           <View key={item.id} style={estilos.summaryItem}>
             <TouchableOpacity style={estilos.summaryItemMain} activeOpacity={onPress ? 0.82 : 1} disabled={!onPress} onPress={() => onPress?.(item)}>
@@ -465,6 +465,37 @@ const SummaryList = ({
           </View>
         )) : <EmptyState texto={empty} />}
       </ScrollView>
+      ) : (
+      <View style={estilos.summaryList}>
+        {items.length > 0 ? items.slice(0, 5).map((item) => (
+          <View key={item.id} style={estilos.summaryItem}>
+            <TouchableOpacity style={estilos.summaryItemMain} activeOpacity={onPress ? 0.82 : 1} disabled={!onPress} onPress={() => onPress?.(item)}>
+              {icon && (
+                <View style={[estilos.summaryItemIconBg, { backgroundColor: iconBg, borderColor: iconColor + '26' }]}>
+                  <MaterialIcons name={icon} size={16} color={iconColor} />
+                </View>
+              )}
+              <View style={estilos.summaryItemInfo}>
+                <Text style={estilos.summaryItemTitle} numberOfLines={1}>{item.title}</Text>
+                <Text style={estilos.summaryItemDetail} numberOfLines={1}>{item.detail}</Text>
+              </View>
+            </TouchableOpacity>
+            <View style={estilos.summaryActions}>
+              {onEdit && (
+                <TouchableOpacity style={estilos.summaryActionBtn} onPress={() => onEdit(item)}>
+                  <MaterialIcons name="edit" size={16} color={ADMIN.primario} />
+                </TouchableOpacity>
+              )}
+              {onDelete && (
+                <TouchableOpacity style={[estilos.summaryActionBtn, estilos.summaryActionDanger]} onPress={() => onDelete(item)}>
+                  <MaterialIcons name="delete-outline" size={16} color={ADMIN.error} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )) : <EmptyState texto={empty} />}
+      </View>
+      )}
     </View>
   </View>
 );
@@ -514,6 +545,9 @@ const Selector = ({ label, value, options, onSelect, emptyLabel }: { label: stri
 export default function EstructuraOrganizativa() {
   const route = useRoute<any>();
   const focoBusquedaAplicado = useRef<string>('');
+  const { width } = useWindowDimensions();
+  const isMobileOrTablet = width < 1024;
+  const isPhone = width < 640;
   // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { t } = useTranslation();
   // Inicializa toast; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -769,8 +803,11 @@ export default function EstructuraOrganizativa() {
     });
   };
 
-  const abrirDetalleDepartamento = (departamento: ReturnType<typeof normalizarDepartamento>) => {
-    setDepartamentoDetalle({ departamento, empleados: obtenerEmpleadosDepartamento(departamento) });
+  const abrirDetalleDepartamento = (departamento: ReturnType<typeof normalizarDepartamento> & { productividad?: number; cobertura?: number }) => {
+    const enriched = (departamento.productividad !== undefined)
+      ? departamento
+      : (datos?.departamentosEnriquecidos?.find((d) => d.id === departamento.id) || departamento);
+    setDepartamentoDetalle({ departamento: enriched, empleados: obtenerEmpleadosDepartamento(departamento) });
   };
 
   useEffect(() => {
@@ -1249,26 +1286,31 @@ export default function EstructuraOrganizativa() {
     // Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla.
     <Animated.View style={[estilos.animatedScreen, { transform: [{ translateY: entrada.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }] }]}>
     {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
-    <ScrollView style={estilos.contenedor} contentContainerStyle={estilos.scrollContent} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={[estilos.contenedor, isPhone && Platform.OS === 'web' ? { touchAction: 'pan-y', overflowY: 'auto' } as any : undefined]}
+      contentContainerStyle={[estilos.scrollContent, { paddingTop: isMobileOrTablet ? 126 : 260, padding: isMobileOrTablet ? 20 : 48 }, isPhone && { paddingTop: 90, paddingHorizontal: 12, paddingBottom: 72, alignItems: 'center' }, isPhone && Platform.OS === 'web' ? { touchAction: 'pan-y' } as any : undefined]}
+      showsVerticalScrollIndicator={false}
+      nestedScrollEnabled={false}
+    >
       {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-      <View style={estilos.header}>
+      <View style={[estilos.header, isMobileOrTablet && { flexDirection: 'column', alignItems: 'flex-start', gap: 12 }, isPhone && { width: '100%', maxWidth: 420, alignSelf: 'center', marginBottom: 18 }]}>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View>
+        <View style={isPhone ? { width: '100%' } : undefined}>
           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={estilos.titulo}>{t('admin.estructura.title')}</Text>
+          <Text style={[estilos.titulo, isPhone && { fontSize: 24 }]}>{t('admin.estructura.title')}</Text>
           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={estilos.subtitulo}>{t('admin.estructura.subtitle')}</Text>
+          <Text style={[estilos.subtitulo, isPhone && { fontSize: 12, lineHeight: 18 }]}>{t('admin.estructura.subtitle')}</Text>
         </View>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={estilos.headerActions}>
+        <View style={[estilos.headerActions, isPhone && { width: '100%', maxWidth: undefined, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 }]}>
           {/* QuickCreateButton renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <QuickCreateButton label={t('admin.estructura.btn_sede')} icon="apartment" color={SOFT_COLORS.sedes} onPress={() => abrirCrear('sede')} />
+          <QuickCreateButton label={t('admin.estructura.btn_sede')} icon="apartment" color={SOFT_COLORS.sedes} onPress={() => abrirCrear('sede')} style={isPhone ? { width: '48%', maxWidth: 184, justifyContent: 'center', paddingHorizontal: 10 } : undefined} textStyle={isPhone ? { fontSize: 12 } : undefined} />
           {/* QuickCreateButton renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <QuickCreateButton label={t('admin.estructura.btn_dept')} icon="domain-add" color={SOFT_COLORS.deptos} onPress={() => abrirCrear('departamento')} />
+          <QuickCreateButton label={t('admin.estructura.btn_dept')} icon="domain-add" color={SOFT_COLORS.deptos} onPress={() => abrirCrear('departamento')} style={isPhone ? { width: '48%', maxWidth: 184, justifyContent: 'center', paddingHorizontal: 10 } : undefined} textStyle={isPhone ? { fontSize: 12 } : undefined} />
           {/* QuickCreateButton renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <QuickCreateButton label={t('admin.estructura.btn_cargo')} icon="work" color={SOFT_COLORS.cargos} onPress={() => abrirCrear('cargo')} />
+          <QuickCreateButton label={t('admin.estructura.btn_cargo')} icon="work" color={SOFT_COLORS.cargos} onPress={() => abrirCrear('cargo')} style={isPhone ? { width: '48%', maxWidth: 184, justifyContent: 'center', paddingHorizontal: 10 } : undefined} textStyle={isPhone ? { fontSize: 12 } : undefined} />
           {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-          <TouchableOpacity {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} style={estilos.btnPrimary} onPress={() => abrirCrear('rol')}>
+          <TouchableOpacity {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} style={[estilos.btnPrimary, isPhone && { width: '48%', maxWidth: 184, justifyContent: 'center', minHeight: 44, paddingHorizontal: 10 }]} onPress={() => abrirCrear('rol')}>
             {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
             <MaterialIcons {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} name="add" size={18} color={CONTRAST_TEXT} style={[estilos.btnIcon, estilos.btnPrimaryIcon]} />
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -1278,19 +1320,19 @@ export default function EstructuraOrganizativa() {
       </View>
 
       {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-      <View style={estilos.catalogGrid}>
+      <View style={[estilos.catalogGrid, isPhone && { width: '100%', maxWidth: 420, alignSelf: 'center', gap: 10, marginBottom: 16, justifyContent: 'center' }]}>
         {/* CatalogCard renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-        <CatalogCard title={t('admin.estructura.catalog.sedes.title')} subtitle={t('admin.estructura.catalog.sedes.subtitle')} icon="apartment" color={SOFT_COLORS.sedes} total={sedes.length} onPress={() => abrirCrear('sede')} />
+        <CatalogCard title={t('admin.estructura.catalog.sedes.title')} subtitle={t('admin.estructura.catalog.sedes.subtitle')} icon="apartment" color={SOFT_COLORS.sedes} total={sedes.length} onPress={() => abrirCrear('sede')} style={isPhone ? { flexBasis: '47%', minWidth: 0, borderRadius: 14, padding: 14, flexDirection: 'column', alignItems: 'flex-start', gap: 10 } : undefined} />
         {/* CatalogCard renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-        <CatalogCard title={t('admin.estructura.catalog.depts.title')} subtitle={t('admin.estructura.catalog.depts.subtitle')} icon="domain-add" color={SOFT_COLORS.deptos} total={departamentos.length} onPress={() => abrirCrear('departamento')} />
+        <CatalogCard title={t('admin.estructura.catalog.depts.title')} subtitle={t('admin.estructura.catalog.depts.subtitle')} icon="domain-add" color={SOFT_COLORS.deptos} total={departamentos.length} onPress={() => abrirCrear('departamento')} style={isPhone ? { flexBasis: '47%', minWidth: 0, borderRadius: 14, padding: 14, flexDirection: 'column', alignItems: 'flex-start', gap: 10 } : undefined} />
         {/* CatalogCard renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-        <CatalogCard title={t('admin.estructura.catalog.cargos.title')} subtitle={t('admin.estructura.catalog.cargos.subtitle')} icon="work" color={SOFT_COLORS.cargos} total={cargos.length} onPress={() => abrirCrear('cargo')} />
+        <CatalogCard title={t('admin.estructura.catalog.cargos.title')} subtitle={t('admin.estructura.catalog.cargos.subtitle')} icon="work" color={SOFT_COLORS.cargos} total={cargos.length} onPress={() => abrirCrear('cargo')} style={isPhone ? { flexBasis: '47%', minWidth: 0, borderRadius: 14, padding: 14, flexDirection: 'column', alignItems: 'flex-start', gap: 10 } : undefined} />
         {/* CatalogCard renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-        <CatalogCard title={t('admin.estructura.catalog.roles.title')} subtitle={t('admin.estructura.catalog.roles.subtitle')} icon="admin-panel-settings" color={SOFT_COLORS.roles} total={roles.length} onPress={() => abrirCrear('rol')} />
+        <CatalogCard title={t('admin.estructura.catalog.roles.title')} subtitle={t('admin.estructura.catalog.roles.subtitle')} icon="admin-panel-settings" color={SOFT_COLORS.roles} total={roles.length} onPress={() => abrirCrear('rol')} style={isPhone ? { flexBasis: '47%', minWidth: 0, borderRadius: 14, padding: 14, flexDirection: 'column', alignItems: 'flex-start', gap: 10 } : undefined} />
       </View>
 
       {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-      <View style={estilos.catalogSummaryGrid}>
+      <View style={[estilos.catalogSummaryGrid, isPhone && { width: '100%', maxWidth: 420, alignSelf: 'center', flexDirection: 'column', gap: 14, marginBottom: 16 }]}>
         {/* SummaryList renderiza una pieza visual reutilizable dentro de esta pantalla. */}
         <SummaryList 
           title={t('admin.estructura.summary.cargos')} 
@@ -1302,7 +1344,8 @@ export default function EstructuraOrganizativa() {
           icon="work"
           iconBg="rgba(20, 184, 166, 0.08)"
           iconColor={SOFT_COLORS.cargos}
-          scrollable
+          scrollable={!isPhone}
+          style={isPhone ? { width: '100%', minWidth: 0, alignSelf: 'center', borderRadius: 14 } : undefined}
         />
         {/* SummaryList renderiza una pieza visual reutilizable dentro de esta pantalla. */}
         <SummaryList 
@@ -1315,14 +1358,15 @@ export default function EstructuraOrganizativa() {
           icon="admin-panel-settings"
           iconBg="rgba(245, 158, 11, 0.08)"
           iconColor={SOFT_COLORS.roles}
-          scrollable
+          scrollable={!isPhone}
+          style={isPhone ? { width: '100%', minWidth: 0, alignSelf: 'center', borderRadius: 14 } : undefined}
         />
       </View>
 
       {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-      <View style={estilos.toolbarCard}>
+      <View style={[estilos.toolbarCard, isPhone && { width: '100%', maxWidth: 420, alignSelf: 'center', padding: 14, borderRadius: 14, marginBottom: 16, gap: 12 }]}>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={estilos.searchContainer}>
+        <View style={[estilos.searchContainer, isPhone && { height: 46, paddingHorizontal: 14 }]}>
           {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
           <MaterialIcons name="search" size={20} color={BRAND.textSec} style={estilos.searchIcon} />
           {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
@@ -1335,7 +1379,7 @@ export default function EstructuraOrganizativa() {
           />
         </View>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={estilos.filterRow}>
+        <View style={[estilos.filterRow, isPhone && { gap: 10, justifyContent: 'center' }]}>
           {[
             { id: 'todos', label: t('admin.estructura.filters.todos', { defaultValue: t('admin.estructura.filters.all') }) },
             { id: 'conJefe', label: t('admin.estructura.filters.with_manager', { defaultValue: t('admin.estructura.filters.with_manager') }) },
@@ -1343,7 +1387,7 @@ export default function EstructuraOrganizativa() {
             { id: 'conCarga', label: t('admin.estructura.filters.with_load', { defaultValue: t('admin.estructura.filters.with_load') }) },
           ].map((item) => (
             // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-            <TouchableOpacity key={item.id} onPress={() => setFiltro(item.id as FiltroDepto)} style={[estilos.filterChip, filtro === item.id && estilos.filterChipActivo]}>
+            <TouchableOpacity key={item.id} onPress={() => setFiltro(item.id as FiltroDepto)} style={[estilos.filterChip, filtro === item.id && estilos.filterChipActivo, isPhone && { width: '47%', maxWidth: 176, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 }]}>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={[estilos.filterText, filtro === item.id && estilos.filterTextActivo]}>{item.label}</Text>
             </TouchableOpacity>
@@ -1352,12 +1396,12 @@ export default function EstructuraOrganizativa() {
       </View>
 
       {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-      <View style={estilos.gridDepts}>
+      <View style={[estilos.gridDepts, isPhone && { width: '100%', maxWidth: 420, alignSelf: 'center', flexDirection: 'column', gap: 14 }]}>
         {departamentosFiltrados.map((dept) => (
           // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
-          <TouchableOpacity key={dept.id || dept.nombre} style={estilos.deptCard} activeOpacity={0.86} onPress={() => abrirDetalleDepartamento(dept)}>
+          <TouchableOpacity key={dept.id || dept.nombre} style={[estilos.deptCard, isPhone && { width: '100%', minWidth: 0, borderRadius: 14 }]} activeOpacity={0.86} onPress={() => abrirDetalleDepartamento(dept)}>
             {/* Header de departamento con diseño plano y profesional sin gradientes. */}
-            <View style={estilos.deptHeader}>
+            <View style={[estilos.deptHeader, isPhone && { padding: 14, alignItems: 'flex-start', gap: 10 }]}>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
               <View style={estilos.deptHeaderInner}>
                 {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
@@ -1369,7 +1413,7 @@ export default function EstructuraOrganizativa() {
                 </View>
               </View>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View style={estilos.deptHeaderActions}>
+              <View style={[estilos.deptHeaderActions, isPhone && { gap: 8 }]}>
                 {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
                 <TouchableOpacity style={estilos.deptActionBtn} onPress={() => abrirEditarDepartamento(dept)}>
                   {/* Icono visual; edicion. */}
@@ -1384,9 +1428,9 @@ export default function EstructuraOrganizativa() {
             </View>
 
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.deptBody}>
+            <View style={[estilos.deptBody, isPhone && { padding: 14 }]}>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View style={estilos.managerCard}>
+              <View style={[estilos.managerCard, isPhone && { padding: 12, borderRadius: 14, alignItems: 'flex-start' }]}>
                 {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
                 <View style={estilos.managerInfoRow}>
                   {(() => {
@@ -1421,7 +1465,7 @@ export default function EstructuraOrganizativa() {
               </View>
 
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View style={estilos.deptMetrics}>
+              <View style={[estilos.deptMetrics, isPhone && { gap: 8 }]}>
                 {/* MiniMetric renderiza una pieza visual reutilizable dentro de esta pantalla. */}
                 <MiniMetric label={t('admin.estructura.dept_card.active')} value={dept.activos} color="#3B82F6" />
                 {/* MiniMetric renderiza una pieza visual reutilizable dentro de esta pantalla. */}
@@ -1504,7 +1548,7 @@ export default function EstructuraOrganizativa() {
 
       {departamentosFiltrados.length === 0 && (
         // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
-        <View style={estilos.emptyWide}>
+        <View style={[estilos.emptyWide, isPhone && { width: '100%', maxWidth: 420, alignSelf: 'center', borderRadius: 14 }]}>
           {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
           <MaterialIcons name="account-tree" size={48} color={BRAND.textSec} style={estilos.emptyIcon} />
           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}

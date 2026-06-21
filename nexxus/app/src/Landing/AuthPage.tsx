@@ -12,8 +12,7 @@ import { createElement, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 // Importa LandingAuth; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import LandingAuth from './LandingAuth';
-// Importa { changeLanguage }; inicializa o consume configuracion de internacionalizacion.
-import { changeLanguage } from '../shared/i18n/config';
+import GlassSurface from './GlassSurface';
 // Importa estilos CSS; aplica clases, animaciones o efectos visuales usados por este componente web.
 import './Landing.css';
 // Importa estilos CSS; aplica clases, animaciones o efectos visuales usados por este componente web.
@@ -34,12 +33,19 @@ function parametroPlan() {
   return new URLSearchParams(window.location.search).get('plan') || 'Business';
 }
 
+function parametroRetorno() {
+  if (typeof window === 'undefined') return '';
+  const returnTo = new URLSearchParams(window.location.search).get('returnTo') ?? '';
+  return returnTo.startsWith('/landing/checkout?') ? returnTo : '';
+}
+
 /**
  * Declaracion modoInicial. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
  */
 function modoInicial() {
   // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
   if (typeof window !== 'undefined' && window.location.pathname.includes('/login')) return 'login';
+  if (typeof window !== 'undefined' && window.location.pathname.includes('/crear-empresa')) return 'empresa';
   // Devuelve el valor final calculado para esta funcion o caso de uso.
   return 'registro';
 }
@@ -59,39 +65,51 @@ function irLanding() {
  */
 export default function AuthPage() {
   // Inicializa { t, i18n }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
+  const modo = modoInicial();
 
   // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
   useEffect(() => {
     // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-    document.title = modoInicial() === 'login' ? t('landing_auth.page_title_login') : t('landing_auth.page_title_register');
-  }, [t]);
+    document.title = modo === 'login' ? t('landing_auth.page_title_login') : t('landing_auth.page_title_register');
+  }, [t, modo]);
 
   // Devuelve el valor final calculado para esta funcion o caso de uso.
   return h(
     'main',
-    { className: 'nx-auth-page' },
-    h('div', { className: 'nx-auth-page-light nx-auth-page-light-a', 'aria-hidden': true }),
-    h('div', { className: 'nx-auth-page-light nx-auth-page-light-b', 'aria-hidden': true }),
+    { className: 'nx-landing nx-auth-page' },
+    h('div', { className: 'nx-orb nx-orb-a', 'aria-hidden': true }),
+    h('div', { className: 'nx-orb nx-orb-b', 'aria-hidden': true }),
     h(
-      'nav',
-      { className: 'nx-nav nx-auth-page-nav' },
-      h('div', { style: { display: 'flex', alignItems: 'center', gap: '20px' } },
-        h('button', { className: 'nx-brand', onClick: irLanding }, h('span', null, 'N'), 'Nexxus'),
-        h('div', { className: 'nx-lang-selector', style: { display: 'flex', gap: '8px', alignItems: 'center' } },
-          h('button', { 
-            onClick: () => changeLanguage('es'), 
-            style: { background: 'none', border: 'none', color: i18n.language === 'es' ? '#fff' : 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '12px', fontWeight: i18n.language === 'es' ? 'bold' : 'normal' }
-          }, 'ES'),
-          h('span', { style: { color: 'rgba(255,255,255,0.2)', fontSize: '12px' } }, '|'),
-          h('button', { 
-            onClick: () => changeLanguage('en'), 
-            style: { background: 'none', border: 'none', color: i18n.language === 'en' ? '#fff' : 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '12px', fontWeight: i18n.language === 'en' ? 'bold' : 'normal' }
-          }, 'EN')
+      'div',
+      { className: 'nx-nav-layer' },
+      h(
+        GlassSurface,
+        {
+          as: 'nav',
+          backgroundOpacity: 0.08,
+          blur: 8,
+          borderRadius: 999,
+          brightness: 58,
+          displace: 0.25,
+          distortionScale: -34,
+          greenOffset: 3,
+          blueOffset: 6,
+          saturation: 1.24,
+          className: 'nx-nav nx-hero-nav is-floating is-ready is-pinned nx-auth-page-nav',
+          style: { top: 8 },
+        },
+        h(
+          'button',
+          { className: 'nx-policy-back nx-auth-page-back', onClick: irLanding, 'aria-label': t('landing_auth.nav_back_home') },
+          h(
+            'svg',
+            { fill: 'none', viewBox: '0 0 24 24', 'aria-hidden': true },
+            h('path', { d: 'M14 7l-5 5 5 5', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2.2 }),
+            h('path', { d: 'M9.5 12H18', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2.2 })
+          )
         )
-      ),
-      h('button', { 'aria-label': t('landing_auth.nav_back_home'), className: 'nx-auth-mobile-back', onClick: irLanding }, h('span', null)),
-      h('button', { className: 'nx-btn-ghost nx-auth-back', onClick: irLanding }, t('landing_auth.nav_back_home'))
+      )
     ),
     h(
       'section',
@@ -99,11 +117,11 @@ export default function AuthPage() {
       h(
         'div',
         { className: 'nx-auth-page-copy' },
-        h('div', { className: 'nx-kicker' }, h('span', null), modoInicial() === 'login' ? t('landing_auth.kicker_login') : t('landing_auth.kicker_register')),
-        h('h1', null, modoInicial() === 'login' ? t('landing_auth.h1_login') : t('landing_auth.h1_register')),
+        h('div', { className: 'nx-kicker' }, h('span', null), modo === 'login' ? t('landing_auth.kicker_login') : t('landing_auth.kicker_register')),
+        h('h1', null, modo === 'login' ? t('landing_auth.h1_login') : t('landing_auth.h1_register')),
         h('p', null, t('landing_auth.p_desc'))
       ),
-      h(LandingAuth, { modoInicial: modoInicial(), planSeleccionado: parametroPlan() })
+      h(LandingAuth, { modoInicial: modo, planSeleccionado: parametroPlan(), returnTo: parametroRetorno() })
     )
   );
 }

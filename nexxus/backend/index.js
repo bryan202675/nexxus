@@ -8,6 +8,7 @@
 
 // Importa { onCall, HttpsError } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 // Importa admin desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
 const admin = require("firebase-admin");
 const crypto = require("crypto");
@@ -21,6 +22,8 @@ if (!admin.apps.length) {
 const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || "drsygtiob";
 const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY || "";
 const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET || "";
+const PLAN_PRICES = { Starter: 20, Business: 50, Enterprise: 200 };
+const VALID_BILLING_CYCLES = new Set(["monthly", "annual"]);
 
 const getCaller = async (auth) => {
   if (!auth) throw new HttpsError("unauthenticated", "Usuario no autenticado.");
@@ -99,6 +102,107 @@ const destroyCloudinary = async (publicId, resourceType = "image") => {
   if (!response.ok) throw new HttpsError("internal", json?.error?.message || "No se pudo borrar el archivo en Cloudinary.");
   return json;
 };
+
+const subscriptionExpiration = (billing) => {
+  const expiresAt = new Date();
+  if (billing === "annual") expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+  else expiresAt.setMonth(expiresAt.getMonth() + 1);
+  return expiresAt;
+};
+
+exports.confirmPlanPurchase = onCall({ cors: true }, async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Usuario no autenticado.");
+  const db = admin.firestore();
+  const userRef = db.collection("usuarios").doc(request.auth.uid);
+  const userSnapshot = await userRef.get();
+  const userData = userSnapshot.exists ? userSnapshot.data() || {} : {};
+  const caller = {
+    id: request.auth.uid,
+    correo: userData.correo || request.auth.token.email || "",
+    empresaId: userData.empresaId || userData.empresa_id || "",
+  };
+  const plan = String(request.data?.plan || "");
+  const billing = String(request.data?.billing || "");
+  const purchaseId = String(request.data?.purchaseId || "").trim();
+  const promotionCode = String(request.data?.promotionCode || "").trim().toUpperCase();
+  const automaticBilling = request.data?.automaticBilling !== false;
+  if (!PLAN_PRICES[plan] || !VALID_BILLING_CYCLES.has(billing) || !purchaseId) {
+    throw new HttpsError("invalid-argument", "Plan, ciclo o identificador de pago inválido.");
+  }
+
+  const paymentRef = db.collection("payments").doc(purchaseId);
+  const existingPayment = await paymentRef.get();
+  if (existingPayment.exists) {
+    const payment = existingPayment.data() || {};
+    if (payment.userId !== caller.id) throw new HttpsError("permission-denied", "El pago pertenece a otra cuenta.");
+    return { confirmed: true, plan: payment.plan, expiresAt: payment.expiresAt?.toDate?.().toISOString() || null };
+  }
+
+  const expiresAt = subscriptionExpiration(billing);
+  const companyRef = caller.empresaId ? db.collection("empresas").doc(caller.empresaId) : null;
+  const monthlyPrice = PLAN_PRICES[plan];
+  const amount = promotionCode === "FR33" ? 0 : billing === "annual" ? Math.round(monthlyPrice * 12 * 0.6) : monthlyPrice;
+  const subscriptionData = {
+    automaticBilling,
+    plan,
+    planActivo: plan,
+    planBilling: billing,
+    planCancelAtPeriodEnd: false,
+    planCancellationRequestedAt: null,
+    planCodigoPromocional: promotionCode || null,
+    planDataDeletionAt: null,
+    planExpiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+    planGraceStartedAt: null,
+    planPaymentStatus: "paid",
+    planPurchaseId: purchaseId,
+    planStartedAt: admin.firestore.FieldValue.serverTimestamp(),
+    planUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    subscriptionStatus: "active",
+  };
+  const batch = db.batch();
+  batch.set(userRef, { correo: caller.correo || request.auth.token.email || "", id: caller.id, ...subscriptionData }, { merge: true });
+  if (companyRef) batch.set(companyRef, { ...subscriptionData, "configuracion.plan": plan }, { merge: true });
+  batch.create(paymentRef, {
+    amount,
+    automaticBilling,
+    billing,
+    confirmedAt: admin.firestore.FieldValue.serverTimestamp(),
+    currency: "USD",
+    empresaId: caller.empresaId || null,
+    expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+    plan,
+    promotionCode: promotionCode || null,
+    status: "confirmed",
+    userId: caller.id,
+  });
+  await batch.commit();
+  return { confirmed: true, plan, expiresAt: expiresAt.toISOString() };
+});
+
+exports.cancelPlanAtPeriodEnd = onCall({ cors: true }, async (request) => {
+  const caller = await getCaller(request.auth);
+  if (!isAdmin(caller) && caller.empresaId) throw new HttpsError("permission-denied", "Solo el administrador puede cancelar el plan.");
+  if (!PLAN_PRICES[caller.planActivo]) throw new HttpsError("failed-precondition", "No hay un plan activo para cancelar.");
+  const expiresAt = caller.planExpiresAt?.toDate?.();
+  if (!expiresAt) throw new HttpsError("failed-precondition", "El plan no tiene un período de facturación válido.");
+  const deletionAt = new Date(expiresAt);
+  deletionAt.setMonth(deletionAt.getMonth() + 3);
+  const cancellationData = {
+    automaticBilling: false,
+    planAccessEndsAt: admin.firestore.Timestamp.fromDate(expiresAt),
+    planCancelAtPeriodEnd: true,
+    planCancellationRequestedAt: admin.firestore.FieldValue.serverTimestamp(),
+    planDataDeletionAt: admin.firestore.Timestamp.fromDate(deletionAt),
+    planUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    subscriptionStatus: "canceling",
+  };
+  const db = admin.firestore();
+  const batch = db.batch();
+  batch.set(db.collection("usuarios").doc(caller.id), cancellationData, { merge: true });
+  if (caller.empresaId) batch.set(db.collection("empresas").doc(caller.empresaId), cancellationData, { merge: true });
+  await batch.commit();
+  return { canceledAtPeriodEnd: true, accessEndsAt: expiresAt.toISOString(), deletionAt: deletionAt.toISOString() };
+});
 
 exports.prepareCloudinaryUpload = onCall({ cors: true }, async (request) => {
   const caller = await getCaller(request.auth);
@@ -890,4 +994,106 @@ exports.onCitaPsicologoCreada = onDocumentCreated("usuarios/{uid}/citas/{citaId}
     tipo: 'cita_psicologo',
     citaId: citaId
   });
+});
+
+const COMPANY_COLLECTIONS = [
+  "anuncios", "asistencias", "audit_logs", "calendario_empresarial", "cargos",
+  "chat_contextual", "checkins", "citas", "configuraciones_empresa", "cursos",
+  "departments", "documentos", "feedbacks", "focus_sessions", "inbox_unificado",
+  "logs", "notificaciones", "nominas", "pausas", "roles_personalizados", "sedes",
+  "solicitudes_ausencia", "solicitudes_internas", "tareas",
+];
+
+const deleteDocumentRefs = async (refs) => {
+  const uniqueRefs = [...new Map(refs.map((ref) => [ref.path, ref])).values()];
+  for (let index = 0; index < uniqueRefs.length; index += 400) {
+    const batch = admin.firestore().batch();
+    uniqueRefs.slice(index, index + 400).forEach((ref) => batch.delete(ref));
+    await batch.commit();
+  }
+};
+
+const companyDocumentRefs = async (collectionName, empresaId) => {
+  const collectionRef = admin.firestore().collection(collectionName);
+  const results = await Promise.all([
+    collectionRef.where("empresaId", "==", empresaId).get(),
+    collectionRef.where("empresa_id", "==", empresaId).get(),
+  ]);
+  return results.flatMap((snapshot) => snapshot.docs.map((entry) => entry.ref));
+};
+
+const deleteExpiredCompany = async (companySnapshot) => {
+  const db = admin.firestore();
+  const company = companySnapshot.data() || {};
+  if (company.subscriptionStatus !== "grace_period") return;
+  const empresaId = companySnapshot.id;
+  const ownerId = company.adminId || company.adminUid || "";
+  const assets = await db.collection("archivos_cloudinary").where("empresaId", "==", empresaId).get();
+  for (const asset of assets.docs) {
+    const data = asset.data() || {};
+    if (data.publicId) await destroyCloudinary(data.publicId, data.resourceType || "image").catch((error) => console.warn("subscription cleanup cloudinary", error.message));
+  }
+  if (company.logo_public_id && !assets.docs.some((entry) => entry.data()?.publicId === company.logo_public_id)) {
+    await destroyCloudinary(company.logo_public_id, "image").catch((error) => console.warn("subscription cleanup logo", error.message));
+  }
+
+  const employeeSnapshots = await Promise.all([
+    db.collection("usuarios").where("empresaId", "==", empresaId).get(),
+    db.collection("usuarios").where("empresa_id", "==", empresaId).get(),
+  ]);
+  const employees = [...new Map(employeeSnapshots.flatMap((snapshot) => snapshot.docs).map((entry) => [entry.id, entry])).values()];
+  for (const employee of employees) {
+    if (employee.id === ownerId) continue;
+    await db.recursiveDelete(employee.ref);
+  }
+
+  const refs = assets.docs.map((entry) => entry.ref);
+  for (const collectionName of COMPANY_COLLECTIONS) refs.push(...await companyDocumentRefs(collectionName, empresaId));
+  await deleteDocumentRefs(refs);
+  if (ownerId) {
+    await db.collection("usuarios").doc(ownerId).set({
+      automaticBilling: false,
+      empresa: admin.firestore.FieldValue.delete(),
+      empresaId: admin.firestore.FieldValue.delete(),
+      empresa_id: admin.firestore.FieldValue.delete(),
+      plan: admin.firestore.FieldValue.delete(),
+      planActivo: admin.firestore.FieldValue.delete(),
+      planPaymentStatus: "expired",
+      planUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      subscriptionStatus: "expired",
+    }, { merge: true });
+  }
+  await db.recursiveDelete(companySnapshot.ref);
+};
+
+exports.processSubscriptionLifecycle = onSchedule({ schedule: "every 24 hours", timeZone: "America/El_Salvador" }, async () => {
+  const db = admin.firestore();
+  const now = admin.firestore.Timestamp.now();
+  const ending = await db.collection("empresas")
+    .where("subscriptionStatus", "==", "canceling")
+    .where("planAccessEndsAt", "<=", now)
+    .get();
+  for (const companySnapshot of ending.docs) {
+    const company = companySnapshot.data() || {};
+    const graceData = {
+      automaticBilling: false,
+      plan: admin.firestore.FieldValue.delete(),
+      planActivo: admin.firestore.FieldValue.delete(),
+      planGraceStartedAt: admin.firestore.FieldValue.serverTimestamp(),
+      planPaymentStatus: "grace_period",
+      planUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      subscriptionStatus: "grace_period",
+    };
+    const batch = db.batch();
+    batch.set(companySnapshot.ref, graceData, { merge: true });
+    const ownerId = company.adminId || company.adminUid;
+    if (ownerId) batch.set(db.collection("usuarios").doc(ownerId), graceData, { merge: true });
+    await batch.commit();
+  }
+
+  const expired = await db.collection("empresas")
+    .where("subscriptionStatus", "==", "grace_period")
+    .where("planDataDeletionAt", "<=", now)
+    .get();
+  for (const companySnapshot of expired.docs) await deleteExpiredCompany(companySnapshot);
 });

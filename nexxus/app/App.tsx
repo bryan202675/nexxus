@@ -35,6 +35,26 @@ import './src/shared/i18n/config';
 
 // Deshabilitar overscroll/bounce en web (evita ver el fondo al hacer scroll)
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
+  // Inyecta la fuente Sora desde Google Fonts para que esté disponible antes que el CSS de la landing
+  if (!document.querySelector('link[data-nx-font]')) {
+    const preconnect1 = document.createElement('link');
+    preconnect1.rel = 'preconnect';
+    preconnect1.href = 'https://fonts.googleapis.com';
+    document.head.insertBefore(preconnect1, document.head.firstChild);
+
+    const preconnect2 = document.createElement('link');
+    preconnect2.rel = 'preconnect';
+    preconnect2.href = 'https://fonts.gstatic.com';
+    (preconnect2 as any).crossOrigin = 'anonymous';
+    document.head.insertBefore(preconnect2, document.head.firstChild);
+
+    const fontLink = document.createElement('link');
+    fontLink.rel = 'stylesheet';
+    fontLink.href = 'https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap';
+    fontLink.setAttribute('data-nx-font', 'sora');
+    document.head.insertBefore(fontLink, document.head.firstChild);
+  }
+
   // Declara style; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const style = document.createElement('style');
   // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
@@ -122,6 +142,8 @@ const rutasLanding = ['/', '/landing', '/src/landing', '/src/landing/index', '/s
  * Declaracion rutasLandingInfo. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
  */
 const rutasLandingInfo = ['/landing/seguridad', '/landing/privacidad'];
+const rutasLandingSoporte = ['/landing/soporte'];
+const rutasLandingCheckout = ['/landing/checkout'];
 /**
  * Declaracion rutasLandingAuth. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
  */
@@ -134,7 +156,7 @@ function esRutaLandingWeb() {
   // Devuelve el valor final calculado para esta funcion o caso de uso.
   return Platform.OS === 'web'
     && typeof window !== 'undefined'
-    && (rutasLanding.includes(window.location.pathname) || rutasLandingAuth.includes(window.location.pathname) || rutasLandingInfo.includes(window.location.pathname))
+    && (rutasLanding.includes(window.location.pathname) || rutasLandingAuth.includes(window.location.pathname) || rutasLandingInfo.includes(window.location.pathname) || rutasLandingSoporte.includes(window.location.pathname) || rutasLandingCheckout.includes(window.location.pathname))
     && window.location.pathname !== '/workspace-login';
 }
 
@@ -293,9 +315,13 @@ export default function App() {
       const DarkVeil = require('./src/Landing/DarkVeil').default;
       let LandingSurface;
       // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-      if (rutasLandingAuth.includes(rutaWebLanding)) {
+      if (rutasLandingCheckout.includes(rutaWebLanding)) {
+        LandingSurface = require('./src/Landing/CheckoutPage').default;
+      } else if (rutasLandingAuth.includes(rutaWebLanding)) {
         // Importa LandingAuthPage; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
         LandingSurface = require('./src/Landing/AuthPage').default;
+      } else if (rutasLandingSoporte.includes(rutaWebLanding)) {
+        LandingSurface = require('./src/Landing/SupportPage').default;
       } else if (rutasLandingInfo.includes(rutaWebLanding)) {
         // Importa PolicyPage; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
         LandingSurface = require('./src/Landing/PolicyPage').default;
@@ -307,9 +333,11 @@ export default function App() {
       return (
         <>
           <DarkVeil
+            maxFps={30}
             noiseIntensity={0.015}
-            resolutionScale={0.72}
+            resolutionScale={0.56}
             speed={0.38}
+            staticTime={18}
             warpAmount={0.06}
           />
           <LandingSurface />

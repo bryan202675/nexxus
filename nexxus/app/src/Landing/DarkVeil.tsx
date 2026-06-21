@@ -98,9 +98,11 @@ void main(){
  */
 type DarkVeilProps = {
   hueShift?: number;
+  maxFps?: number;
   noiseIntensity?: number;
   scanlineIntensity?: number;
   speed?: number;
+  staticTime?: number;
   scanlineFrequency?: number;
   warpAmount?: number;
   resolutionScale?: number;
@@ -111,9 +113,11 @@ type DarkVeilProps = {
  */
 export default function DarkVeil({
   hueShift = 0,
+  maxFps = 60,
   noiseIntensity = 0,
   scanlineIntensity = 0,
   speed = 0.5,
+  staticTime,
   scanlineFrequency = 0,
   warpAmount = 0,
   resolutionScale = 1,
@@ -126,19 +130,42 @@ export default function DarkVeil({
     // Declara canvas; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const canvas = ref.current;
     // Declara parent; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const parent = canvas?.parentElement;
 
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-    if (!canvas || !parent) {
+    if (!canvas) {
       // Devuelve el valor final calculado para esta funcion o caso de uso.
+      return;
+    }
+    const coarsePointer = window.matchMedia('(hover: none), (pointer: coarse)').matches;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const effectiveResolutionScale = coarsePointer ? Math.min(resolutionScale, 0.38) : resolutionScale;
+    const effectiveMaxFps = reduceMotion ? 1 : coarsePointer ? Math.min(maxFps, 24) : maxFps;
+    const contextAttributes = {
+      alpha: false,
+      antialias: false,
+      depth: true,
+      premultipliedAlpha: false,
+      preserveDrawingBuffer: false,
+      stencil: false,
+    };
+    const hasWebGL = canvas.getContext('webgl2', contextAttributes) || canvas.getContext('webgl', contextAttributes);
+    if (!hasWebGL) {
+      canvas.classList.add('is-unavailable');
       return;
     }
 
     // Declara renderer; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const renderer = new Renderer({
-      dpr: Math.max(Math.min(window.devicePixelRatio, 2) * resolutionScale, 0.1),
-      canvas,
-    });
+    let renderer: Renderer;
+    try {
+      renderer = new Renderer({
+        dpr: Math.max(Math.min(window.devicePixelRatio, coarsePointer ? 1.25 : 1.75) * effectiveResolutionScale, 0.1),
+        canvas,
+      });
+    } catch {
+      canvas.classList.add('is-unavailable');
+      return;
+    }
+    canvas.classList.remove('is-unavailable');
 
     // Declara gl; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const gl = renderer.gl;
@@ -150,7 +177,7 @@ export default function DarkVeil({
       vertex,
       fragment,
       uniforms: {
-        uTime: { value: 0 },
+        uTime: { value: staticTime ?? 0 },
         uResolution: { value: new Vec2() },
         uHueShift: { value: hueShift },
         uNoise: { value: noiseIntensity },
@@ -165,12 +192,10 @@ export default function DarkVeil({
 
     // Declara resize; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const resize = () => {
-      // Declara rect; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const rect = parent.getBoundingClientRect();
       // Declara w; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const w = Math.max(rect.width, window.innerWidth, 1);
+      const w = Math.max(window.innerWidth, 1);
       // Declara h; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const h = Math.max(rect.height, window.innerHeight, 1);
+      const h = Math.max(window.innerHeight, 1);
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       renderer.setSize(w, h);
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
@@ -178,7 +203,7 @@ export default function DarkVeil({
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       canvas.style.height = '100dvh';
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      program.uniforms.uResolution.value.set(w, h);
+      program.uniforms.uResolution.value.set(canvas.width, canvas.height);
     };
 
     // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
@@ -186,15 +211,39 @@ export default function DarkVeil({
     // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     resize();
 
+    // Setup IntersectionObserver to pause loop when hero is offscreen
+    let isHeroVisible = true;
+    let observer: IntersectionObserver | null = null;
+    const heroEl = document.getElementById('hero');
+    if (heroEl) {
+      observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          isHeroVisible = entry.isIntersecting;
+        });
+      }, { threshold: 0 });
+      observer.observe(heroEl);
+    }
+
     // Declara start; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const start = performance.now();
     // Declara frame; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     let frame = 0;
+    let lastRender = 0;
+    const frameBudget = 1000 / Math.max(effectiveMaxFps, 1);
 
     // Declara loop; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const loop = () => {
+    const loop = (now = performance.now()) => {
+      if (document.hidden || !isHeroVisible) {
+        frame = requestAnimationFrame(loop);
+        return;
+      }
+      if (now - lastRender < frameBudget) {
+        frame = requestAnimationFrame(loop);
+        return;
+      }
+      lastRender = now;
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      program.uniforms.uTime.value = ((performance.now() - start) / 1000) * speed;
+      program.uniforms.uTime.value = staticTime ?? ((now - start) / 1000) * speed;
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       program.uniforms.uHueShift.value = hueShift;
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
@@ -212,7 +261,8 @@ export default function DarkVeil({
     };
 
     // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-    loop();
+    renderer.render({ scene: mesh });
+    if (!reduceMotion && staticTime === undefined) frame = requestAnimationFrame(loop);
 
     // Devuelve el valor final calculado para esta funcion o caso de uso.
     return () => {
@@ -220,8 +270,11 @@ export default function DarkVeil({
       cancelAnimationFrame(frame);
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       window.removeEventListener('resize', resize);
+      if (observer) {
+        observer.disconnect();
+      }
     };
-  }, [hueShift, noiseIntensity, scanlineIntensity, speed, scanlineFrequency, warpAmount, resolutionScale]);
+  }, [hueShift, maxFps, noiseIntensity, scanlineIntensity, speed, staticTime, scanlineFrequency, warpAmount, resolutionScale]);
 
   // Devuelve el valor final calculado para esta funcion o caso de uso.
   return createElement('canvas', {

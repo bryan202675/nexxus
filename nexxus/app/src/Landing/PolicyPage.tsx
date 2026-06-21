@@ -4,10 +4,11 @@
  * Proposito: Pantalla informativa publica para seguridad y privacidad de Nexxus.
  */
 
-import { createElement, ReactNode, useMemo, useState } from 'react';
+import { createElement, ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { changeLanguage } from '../shared/i18n/config';
 import BorderGlow from './BorderGlow';
+import GlassSurface from './GlassSurface';
+import LandingFooter from './LandingFooter';
 import StarButton from './StarButton';
 import './Landing.css';
 
@@ -102,7 +103,7 @@ function currentKind(): PolicyKind {
 }
 
 function goTo(path: string) {
-  if (path.startsWith('/landing#') || path === '/landing' || path === '/landing/seguridad' || path === '/landing/privacidad' || path === '/landing/login' || path === '/landing/registro') {
+  if (path.startsWith('/landing#') || path === '/landing' || path === '/landing/seguridad' || path === '/landing/privacidad' || path === '/landing/soporte' || path === '/landing/login' || path === '/landing/registro') {
     window.history.pushState({}, '', path);
     window.dispatchEvent(new Event('nexxus:navigate'));
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -146,17 +147,9 @@ function PolicyIcon({ name }: { name: string }) {
 }
 
 export default function PolicyPage() {
-  const { t, i18n } = useTranslation();
-  const [menuMovilAbierto, setMenuMovilAbierto] = useState(false);
+  const { t } = useTranslation();
   const kind = currentKind();
   const content = pageContent[kind];
-  const landingLinks = [
-    [t('landing.nav_system'), '/landing#sistema'],
-    [t('landing.nav_modules'), '/landing#modulos'],
-    [t('landing.nav_admin'), '/landing#admin'],
-    [t('landing.nav_plans'), '/landing#planes'],
-    [t('landing.nav_ia'), '/landing#ia'],
-  ];
   const alternate = useMemo(() => kind === 'security' ? {
     label: 'landing.policy_view_privacy',
     path: '/landing/privacidad',
@@ -171,45 +164,35 @@ export default function PolicyPage() {
     h('div', { className: 'nx-orb nx-orb-a', 'aria-hidden': true }),
     h('div', { className: 'nx-orb nx-orb-b', 'aria-hidden': true }),
     h(
-      'nav',
-      { className: 'nx-nav' },
-      h('button', { className: 'nx-brand', onClick: () => goTo('/landing') }, h('span', null, 'N'), 'Nexxus'),
-      h('div', { className: 'nx-nav-links' },
-        landingLinks.map(([label, path]) => h('button', { key: label, onClick: () => goTo(path) }, label))
-      ),
-      h('div', { className: 'nx-nav-actions' },
-        h('div', { className: 'nx-lang-selector', style: { display: 'flex', gap: '8px', alignItems: 'center' } },
-          h('button', {
-            onClick: () => changeLanguage('es'),
-            style: { background: 'none', border: 'none', color: i18n.language === 'es' ? '#fff' : 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '12px', fontWeight: i18n.language === 'es' ? 'bold' : 'normal' }
-          }, 'ES'),
-          h('span', { style: { color: 'rgba(255,255,255,0.2)', fontSize: '12px' } }, '|'),
-          h('button', {
-            onClick: () => changeLanguage('en'),
-            style: { background: 'none', border: 'none', color: i18n.language === 'en' ? '#fff' : 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '12px', fontWeight: i18n.language === 'en' ? 'bold' : 'normal' }
-          }, 'EN')
-        ),
-        h('button', { className: 'nx-nav-login', onClick: () => goTo('/landing/login') }, t('landing.login')),
-        h(StarButton, { className: 'nx-nav-cta', onClick: () => goTo('/landing/registro') }, t('landing.create_company'))
-      ),
+      'div',
+      { className: 'nx-nav-layer' },
       h(
-        'button',
+        GlassSurface,
         {
-          'aria-expanded': menuMovilAbierto,
-          'aria-label': menuMovilAbierto ? t('common.cancel') : t('landing.hero_kicker'),
-          className: `nx-menu-toggle ${menuMovilAbierto ? 'is-open' : ''}`,
-          onClick: () => setMenuMovilAbierto((abierto) => !abierto),
+          as: 'nav',
+          backgroundOpacity: 0.08,
+          blur: 8,
+          borderRadius: 999,
+          brightness: 58,
+          displace: 0.25,
+          distortionScale: -34,
+          greenOffset: 3,
+          blueOffset: 6,
+          saturation: 1.24,
+          className: 'nx-nav nx-hero-nav is-floating is-ready is-pinned nx-policy-nav',
+          style: { top: 8 },
         },
-        h('span', null),
-        h('span', null)
+        h(
+          'button',
+          { className: 'nx-policy-back', onClick: () => goTo('/landing'), 'aria-label': t('landing.footer_product') },
+          h(
+            'svg',
+            { fill: 'none', viewBox: '0 0 24 24', 'aria-hidden': true },
+            h('path', { d: 'M14 7l-5 5 5 5', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2.2 }),
+            h('path', { d: 'M9.5 12H18', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2.2 })
+          )
+        )
       ),
-      h(
-        'div',
-        { className: `nx-mobile-menu ${menuMovilAbierto ? 'is-open' : ''}` },
-        landingLinks.map(([label, path]) => h('button', { key: label, onClick: () => { setMenuMovilAbierto(false); goTo(path); } }, label)),
-        h('button', { onClick: () => { setMenuMovilAbierto(false); changeLanguage(i18n.language === 'es' ? 'en' : 'es'); } }, `${t('common.language')}: ${i18n.language === 'es' ? 'EN' : 'ES'}`),
-        h('button', { onClick: () => { setMenuMovilAbierto(false); goTo('/landing/login'); } }, t('landing.login'))
-      )
     ),
     h(
       'section',
@@ -244,29 +227,6 @@ export default function PolicyPage() {
         )
       )
     ),
-    h(
-      'footer',
-      { className: 'nx-footer' },
-      h('strong', null, 'Nexxus'),
-      h('div', null,
-        h('button', { onClick: () => goTo('/landing') }, t('landing.footer_product')),
-        h('button', { onClick: () => goTo('/landing#planes') }, t('landing.footer_plans')),
-        h('button', { onClick: () => goTo('/landing/seguridad') }, t('landing.footer_security')),
-        h('button', { onClick: () => goTo('/landing/privacidad') }, t('landing.footer_privacy'))
-      ),
-      h('div', { className: 'nx-lang-selector', style: { display: 'flex', gap: '8px', alignItems: 'center', marginTop: '12px' } },
-        h('span', { style: { color: 'rgba(255,255,255,0.5)', fontSize: '12px' } }, t('common.language') + ':'),
-        h('button', {
-          onClick: () => changeLanguage('es'),
-          style: { background: 'none', border: 'none', color: i18n.language === 'es' ? '#fff' : 'rgba(255,255,255,0.5)', cursor: 'pointer', fontWeight: i18n.language === 'es' ? 'bold' : 'normal' }
-        }, 'ES'),
-        h('span', { style: { color: 'rgba(255,255,255,0.2)' } }, '|'),
-        h('button', {
-          onClick: () => changeLanguage('en'),
-          style: { background: 'none', border: 'none', color: i18n.language === 'en' ? '#fff' : 'rgba(255,255,255,0.5)', cursor: 'pointer', fontWeight: i18n.language === 'en' ? 'bold' : 'normal' }
-        }, 'EN')
-      ),
-      h('small', null, t('landing.policy_footer_note'))
-    )
+    h(LandingFooter)
   );
 }

@@ -7,7 +7,7 @@
  */
 
 // Importa React, { createContext, useCallback, useContext, useEffect, useMemo } desde React; habilita componentes, hooks y tipos base para esta pieza.
-import React, { createContext, useCallback, useContext, useEffect, useMemo } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 // Importa { Alert, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
 import { Alert, Platform } from 'react-native';
 // Importa type { SileoOptions, SileoState } desde sileo; agrega una dependencia externa necesaria para este modulo.
@@ -82,49 +82,57 @@ const AdminToastContext = createContext<AdminToastContextValue>({
 const ADMIN_TOAST_CSS = `
 [data-sileo-header] {
   align-items: center !important;
-  min-height: 34px !important;
-  height: auto !important;
-  padding: 8px 14px 6px !important;
+  height: var(--sileo-height) !important;
+  min-height: var(--sileo-height) !important;
+  padding: 0 12px !important;
 }
 [data-sileo-header-stack],
 [data-sileo-header-inner] {
   align-items: center !important;
-  min-height: 20px !important;
-  height: auto !important;
+  height: 100% !important;
+  min-height: 0 !important;
 }
 [data-sileo-badge] {
   transform: none !important;
 }
+[data-sileo-viewport] {
+  z-index: 100000 !important;
+}
+[data-sileo-toast] {
+  filter: drop-shadow(0 18px 38px rgba(0, 0, 0, 0.36));
+}
 .nx-admin-toast-title {
+  color: #F8FBFF !important;
   font-family: Avenir Next, Satoshi, Segoe UI, sans-serif !important;
-  font-size: 12.5px !important;
-  line-height: 14px !important;
+  font-size: 13px !important;
+  line-height: 16px !important;
   font-weight: 700 !important;
   letter-spacing: 0 !important;
   text-transform: none !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  min-height: 18px !important;
-  height: auto !important;
+  display: block !important;
+  min-height: 0 !important;
+  height: 16px !important;
   padding: 0 !important;
-  overflow: visible !important;
+  overflow: hidden !important;
+  text-align: left !important;
   transform: none !important;
+  white-space: nowrap !important;
 }
 [data-sileo-title] {
-  line-height: 14px !important;
-  overflow: visible !important;
-  display: flex !important;
-  align-items: center !important;
+  line-height: 16px !important;
+  overflow: hidden !important;
 }
 .nx-admin-toast-description {
+  color: rgba(248, 251, 255, 0.74) !important;
   font-family: Avenir Next, Satoshi, Segoe UI, sans-serif !important;
   font-size: 12px !important;
-  line-height: 17px !important;
+  line-height: 18px !important;
   letter-spacing: 0 !important;
   box-sizing: border-box !important;
-  padding: 4px 14px 12px !important;
-  min-height: 30px !important;
-  overflow: visible !important;
+  padding: 12px 14px 14px !important;
+  min-height: 44px !important;
+  overflow-wrap: anywhere !important;
+  text-align: left !important;
 }
 .nx-admin-toast-button {
   font-family: Avenir Next, Satoshi, Segoe UI, sans-serif !important;
@@ -148,6 +156,15 @@ html[data-nexxus-admin-theme="light"] .nx-admin-toast-title {
 html[data-nexxus-admin-theme="light"] .nx-admin-toast-description {
   color: rgba(23, 18, 43, 0.66) !important;
 }
+@media (max-width: 820px) {
+  [data-sileo-viewport][data-position="top-center"] {
+    top: 50% !important;
+    transform: translate(-50%, -50%) !important;
+  }
+  [data-sileo-viewport][data-position="top-center"] [data-sileo-toast] {
+    --sileo-width: min(330px, calc(100vw - 40px));
+  }
+}
 `;
 
 /**
@@ -161,6 +178,21 @@ const stateFor = (kind: AdminToastKind): SileoState => kind;
 export function AdminToastProvider({ children }: { children: React.ReactNode }) {
   // Inicializa { theme }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { theme } = useAdminAppearance();
+  const [isMobile, setIsMobile] = useState(() => (
+    Platform.OS === 'web' && typeof window !== 'undefined'
+      ? window.matchMedia('(max-width: 820px)').matches
+      : false
+  ));
+  const toastPosition = isMobile ? 'top-center' : 'top-right';
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const media = window.matchMedia('(max-width: 820px)');
+    const updatePosition = (event: MediaQueryListEvent) => setIsMobile(event.matches);
+    setIsMobile(media.matches);
+    media.addEventListener('change', updatePosition);
+    return () => media.removeEventListener('change', updatePosition);
+  }, []);
 
   // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
   useEffect(() => {
@@ -193,6 +225,7 @@ export function AdminToastProvider({ children }: { children: React.ReactNode }) 
       title: payload.title,
       description: payload.description,
       type: stateFor(kind),
+      position: toastPosition,
       duration: payload.duration ?? (kind === 'error' ? 7200 : 5200),
       fill: theme.isDark ? 'rgba(15, 11, 34, 0.96)' : 'rgba(255, 255, 255, 0.98)',
       roundness: 14,
@@ -215,7 +248,7 @@ export function AdminToastProvider({ children }: { children: React.ReactNode }) 
 
     // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     module.sileo[kind](options);
-  }, [theme.isDark]);
+  }, [theme.isDark, toastPosition]);
 
   // Inicializa value; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const value = useMemo<AdminToastContextValue>(() => ({
@@ -237,8 +270,8 @@ export function AdminToastProvider({ children }: { children: React.ReactNode }) 
       {SileoToaster ? (
         // SileoToaster renderiza una pieza visual reutilizable dentro de esta pantalla.
         <SileoToaster
-          position="top-right"
-          offset={{ top: 96, right: 24 }}
+          position={toastPosition}
+          offset={isMobile ? undefined : { top: 96, right: 24 }}
           theme={theme.isDark ? 'dark' : 'light'}
           options={{
             fill: theme.isDark ? 'rgba(15, 11, 34, 0.96)' : 'rgba(255, 255, 255, 0.98)',

@@ -21,6 +21,7 @@ import { translateManyWithApi, translateWithApi } from './translatorApi';
  * Declaracion LANGUAGE_KEY. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
  */
 const LANGUAGE_KEY = '@nexxus_language';
+const LANGUAGE_SOURCE_KEY = '@nexxus_language_source';
 const SOURCE_LANGUAGE = 'es';
 const TARGET_LANGUAGES = ['en'];
 
@@ -34,6 +35,18 @@ const loadingLanguages = new Map<string, Promise<void>>();
 let processingTranslations = false;
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 const PRIORITY_PREFIXES = ['common.', 'landing.', 'admin.', 'app.', 'perfilLaboral.'];
+const SUPPORTED_LANGUAGES = [SOURCE_LANGUAGE, ...TARGET_LANGUAGES];
+
+const normalizeLanguage = (language?: string | null) => {
+  const normalized = language?.toLowerCase().split('-')[0];
+  return normalized && SUPPORTED_LANGUAGES.includes(normalized) ? normalized : SOURCE_LANGUAGE;
+};
+
+const getDeviceLanguage = () => {
+  const nav = typeof navigator !== 'undefined' ? navigator : undefined;
+  return normalizeLanguage(nav?.languages?.[0] || nav?.language);
+};
+
 const EN_TRANSLATION_OVERRIDES: TranslationTree = {
   common: {
     employee: 'Employee',
@@ -54,6 +67,114 @@ const EN_TRANSLATION_OVERRIDES: TranslationTree = {
     close: 'Close',
     reject: 'Reject',
     approve: 'Approve',
+  },
+  landing: {
+    hero_title: 'Manage your company from one place',
+    hero_subtitle: 'Nexxus connects administration, employees, tasks, attendance, payroll, wellbeing and AI in one place so you can operate with clarity and speed.',
+    plan_includes: 'Includes:',
+    view_plan_benefits: 'View plan benefits',
+    hide_plan_benefits: 'Hide plan benefits',
+    checkout_eyebrow: 'Get a plan',
+    checkout_title: 'Complete your activation in minutes.',
+    checkout_subtitle: 'Choose a plan, add your company details and simulate payment to prepare your Nexxus workspace.',
+    checkout_selected_plan: 'Selected plan',
+    checkout_step_company: 'Company details',
+    checkout_step_company_text: 'We use this information to prepare the workspace and payment receipt.',
+    checkout_company: 'Company',
+    checkout_name: 'Owner',
+    checkout_owner_placeholder: 'Owner name',
+    checkout_email: 'Email',
+    checkout_phone: 'Phone',
+    checkout_step_payment: 'Payment method',
+    checkout_step_payment_text: 'Enter a test card to review the payment experience for this plan.',
+    checkout_card: 'Card number',
+    checkout_expiry: 'Expiry',
+    checkout_cvc: 'CVC',
+    checkout_step_review: 'Confirmation',
+    checkout_step_review_text: 'Review the summary before completing the payment simulation.',
+    checkout_billing: 'Billing',
+    checkout_total: 'Total',
+    checkout_back: 'Back',
+    checkout_continue: 'Continue',
+    checkout_pay_now: 'Complete payment',
+    checkout_processing_title: 'Validating payment',
+    checkout_processing: 'Processing secure payment...',
+    checkout_success_title: 'Subscription completed',
+    checkout_success_text: 'You have successfully subscribed to the {{plan}} plan. You can now continue to the next step and create your company.',
+    checkout_new_payment: 'Run another test',
+    checkout_create_company: 'Create company',
+    checkout_do_later: 'Do it later',
+    checkout_plan_confirmed: '{{plan}} plan acquired',
+    checkout_plan_saved: 'Payment confirmed and saved to your account',
+    checkout_back_to_plans: 'Back to plans',
+    checkout_secure_badge: 'Secure checkout',
+    checkout_tax_id: 'Tax ID',
+    checkout_address: 'Billing address',
+    checkout_card_name: 'Name on card',
+    checkout_card_name_placeholder: 'Cardholder name',
+    checkout_country: 'Country',
+    checkout_accept_terms: 'I confirm the plan, billing cycle and secure payment authorization.',
+    checkout_payment_logos: 'Payment methods',
+    checkout_test_card_placeholder: 'Test card number',
+    checkout_validation_notice: 'Review the highlighted fields before continuing.',
+    checkout_error_required: 'This field is required.',
+    checkout_error_email: 'Enter a valid email.',
+    checkout_error_phone: 'Enter a valid phone number.',
+    checkout_error_card: 'Enter 12 to 19 digits for the test card.',
+    checkout_error_expiry: 'Enter a valid future expiry date.',
+    checkout_error_cvc: 'Enter a valid security code.',
+    checkout_error_terms: 'You must accept the payment authorization.',
+    checkout_error_bank: 'Enter at least 8 account digits.',
+    checkout_language: 'Change language',
+    checkout_subscribe_to: 'Subscribe to',
+    checkout_plan_starter: 'Essential operations for growing teams.',
+    checkout_plan_business: 'Advanced control for expanding companies.',
+    checkout_plan_enterprise: 'Corporate scale, security and unlimited control.',
+    checkout_save: 'Save',
+    checkout_annual_billing: 'with annual billing',
+    checkout_subtotal: 'Subtotal',
+    checkout_tax: 'Tax',
+    checkout_total_today: 'Total due today',
+    checkout_encrypted: 'Encrypted information',
+    checkout_or: 'or',
+    checkout_contact_information: 'Contact information',
+    checkout_card_method: 'Card',
+    checkout_card_information: 'Card information',
+    checkout_expiry_placeholder: 'MM / YY',
+    checkout_bank: 'Bank',
+    checkout_bank_badge: 'Secure transfer',
+    checkout_bank_owner: 'Account holder',
+    checkout_bank_owner_placeholder: 'Full name',
+    checkout_bank_name: 'Bank',
+    checkout_bank_name_placeholder: 'Bank name',
+    checkout_bank_account: 'Account number',
+    checkout_selected_method: 'Selected method:',
+    checkout_address_line1: 'Address line 1',
+    checkout_address_line2: 'Address line 2 (optional)',
+    checkout_postal: 'Postal code',
+    checkout_city: 'City',
+    checkout_province: 'State or province',
+    checkout_save_details: 'Save my details for faster checkout',
+    checkout_save_details_text: 'Your details remain protected inside this payment demonstration.',
+    checkout_pay_with: 'Pay with',
+    checkout_authorization: 'By continuing, you authorize this payment simulation for the selected plan and billing cycle.',
+    checkout_plan_label: 'Selected plan',
+    checkout_more_plan_info: 'More information about plans',
+    checkout_auto_billing: 'Automatic billing',
+    checkout_auto_billing_monthly: 'The plan will be charged automatically every month. You can disable this later in Settings.',
+    checkout_auto_billing_annual: 'The plan will renew automatically every year. You can disable this later in Settings.',
+    checkout_auto_billing_off: 'Automatic renewal is disabled. You can enable it again later in Settings.',
+    checkout_code_label: 'Promotion code',
+    checkout_code_placeholder: 'Enter your code',
+    checkout_code_apply: 'Apply',
+    checkout_code_applied: 'Code applied. The plan now has zero cost.',
+    checkout_code_invalid: 'The entered code is not valid.',
+    checkout_discount: 'Discount',
+    checkout_activate_plan: 'Activate plan',
+    checkout_auth_required: 'Checking your session to continue...',
+    checkout_plan_save_error: 'The plan could not be saved. Check your session and try again.',
+    footer_security: 'Security',
+    footer_privacy: 'Privacy',
   },
   solicitudesInternas: {
     types: {
@@ -419,13 +540,17 @@ const loadLanguageFromApi = async (language: string) => {
 const initI18n = async () => {
   // Declara savedLanguage; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   let savedLanguage = await AsyncStorage.getItem(LANGUAGE_KEY);
+  const languageSource = await AsyncStorage.getItem(LANGUAGE_SOURCE_KEY);
 
   // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-  if (!savedLanguage) {
+  if (!savedLanguage || languageSource !== 'manual') {
     // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-    savedLanguage = 'es';
+    savedLanguage = getDeviceLanguage();
     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-    await AsyncStorage.setItem(LANGUAGE_KEY, 'es');
+    await AsyncStorage.setItem(LANGUAGE_KEY, savedLanguage);
+    await AsyncStorage.setItem(LANGUAGE_SOURCE_KEY, 'auto');
+  } else {
+    savedLanguage = normalizeLanguage(savedLanguage);
   }
 
   // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
@@ -462,11 +587,13 @@ initI18n();
  * Declaracion changeLanguage. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
  */
 export const changeLanguage = async (lng: string) => {
+  const language = normalizeLanguage(lng);
   // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-  await AsyncStorage.setItem(LANGUAGE_KEY, lng);
+  await AsyncStorage.setItem(LANGUAGE_KEY, language);
+  await AsyncStorage.setItem(LANGUAGE_SOURCE_KEY, 'manual');
   // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-  await i18n.changeLanguage(lng);
-  await loadLanguageFromApi(lng);
+  await i18n.changeLanguage(language);
+  await loadLanguageFromApi(language);
 };
 
 export default i18n;

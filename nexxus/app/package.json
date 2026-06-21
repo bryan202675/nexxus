@@ -7,7 +7,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "build:web": "expo export --platform web"
+    "build:web": "expo export --platform web",
+    "build:web:report": "npm run build:web && node scripts/report-web-bundle.mjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
@@ -27,8 +28,10 @@
     "expo-print": "~15.0.8",
     "expo-sharing": "~14.0.8",
     "firebase": "^12.12.1",
+    "gsap": "^3.15.0",
     "i18next": "^26.2.0",
     "lucide-react-native": "^1.14.0",
+    "motion": "^12.40.0",
     "ogl": "^1.0.11",
     "react": "19.1.0",
     "react-dom": "19.1.0",
@@ -43,6 +46,8 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
+    "@types/react-dom": "^19.2.3",
+    "react-refresh": "^0.18.0",
     "typescript": "~5.9.2"
   },
   "private": true

@@ -248,16 +248,39 @@ const PARTICULAS = [
  * Componente ADMIN_LIGHT_CONTRAST_CSS. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 const ADMIN_LIGHT_CONTRAST_CSS = `
-html[data-nexxus-admin-theme] body,
-html[data-nexxus-admin-theme] #root,
-html[data-nexxus-admin-theme] #root > div,
-html[data-nexxus-admin-theme] #root > div > div,
-html[data-nexxus-admin-theme] #root > div > div > div {
+html,
+body {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
   height: 100vh !important;
-  min-height: 100vh !important;
-}
-html[data-nexxus-admin-theme] body {
   overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+#root,
+#root > div,
+#root > div > div,
+#root > div > div > div {
+  height: 100% !important;
+  min-height: 100% !important;
+  max-height: 100% !important;
+  overflow: hidden !important;
+}
+div {
+  overscroll-behavior: contain !important;
+}
+.nx-admin-root,
+.nx-admin-root * {
+  box-sizing: border-box;
+}
+.nx-admin-root {
+  width: 100vw !important;
+  max-width: 100vw !important;
+  overflow: hidden !important;
+}
+.nx-admin-root [style*="min-width"] {
+  min-width: 0;
 }
 html[data-nexxus-admin-theme="light"] #root :not(.nx-admin-contrast):not(.nx-admin-contrast *)[style*="color: rgb(255, 255, 255)"],
 html[data-nexxus-admin-theme="light"] #root :not(.nx-admin-contrast):not(.nx-admin-contrast *)[style*="color: #fff"],
@@ -419,8 +442,8 @@ html[data-nexxus-admin-theme="light"] #root .nx-force-white div {
   will-change: transform, opacity !important;
 }
 .nx-admin-scrim-blur {
-  backdrop-filter: blur(22px) saturate(1.15) !important;
-  -webkit-backdrop-filter: blur(22px) saturate(1.15) !important;
+  backdrop-filter: blur(34px) saturate(1.28) !important;
+  -webkit-backdrop-filter: blur(34px) saturate(1.28) !important;
   transform: translateZ(0) !important;
   will-change: transform, opacity !important;
 }
@@ -429,6 +452,32 @@ html[data-nexxus-admin-theme="light"] #root .nx-force-white div {
   -webkit-backdrop-filter: blur(52px) saturate(1.4) !important;
   transform: translateZ(0) !important;
   will-change: backdrop-filter !important;
+}
+@media (max-width: 640px) {
+  .nx-admin-root [style*="min-width: 360px"],
+  .nx-admin-root [style*="min-width: 340px"],
+  .nx-admin-root [style*="min-width: 320px"],
+  .nx-admin-root [style*="min-width: 280px"],
+  .nx-admin-root [style*="min-width: 260px"],
+  .nx-admin-root [style*="min-width: 230px"],
+  .nx-admin-root [style*="min-width: 200px"] {
+    min-width: 0 !important;
+  }
+  .nx-admin-root [style*="width: 360px"],
+  .nx-admin-root [style*="width: 340px"],
+  .nx-admin-root [style*="width: 310px"],
+  .nx-admin-root [style*="width: 280px"],
+  .nx-admin-root [style*="width: 260px"],
+  .nx-admin-root [style*="width: 210px"],
+  .nx-admin-root [style*="width: 200px"] {
+    width: min(100%, calc(100vw - 32px)) !important;
+    max-width: calc(100vw - 32px) !important;
+  }
+  .nx-admin-root [style*="padding: 24px"],
+  .nx-admin-root [style*="padding: 20px"] {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
 }
 `;
 
@@ -557,6 +606,7 @@ function NotificationItemComponent({
   iconFor,
   routeFor,
   estilos,
+  stacked = false,
 }: {
   item: SignalItem;
   onNavigate: (route: string) => void;
@@ -564,6 +614,7 @@ function NotificationItemComponent({
   iconFor: (item: SignalItem) => string;
   routeFor: (item: SignalItem) => string;
   estilos: any;
+  stacked?: boolean;
 }) {
   const title = useApiTranslate(item.title);
   const detail = useApiTranslate(item.detail);
@@ -574,8 +625,8 @@ function NotificationItemComponent({
         <MaterialIcons name={iconFor(item) as any} size={16} color={colorFor(item)} />
       </View>
       <View style={estilos.notificationCopy}>
-        <Text style={estilos.notificationTitle} numberOfLines={1}>{title}</Text>
-        <Text style={estilos.notificationDetail} numberOfLines={1}>{detail}</Text>
+        <Text style={estilos.notificationTitle} numberOfLines={stacked ? 2 : 1}>{title}</Text>
+        <Text style={estilos.notificationDetail} numberOfLines={stacked ? 3 : 1}>{detail}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -584,19 +635,50 @@ function NotificationItemComponent({
 /**
  * Componente Sidebar. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
-function Sidebar({ state, navigation }: BottomTabBarProps) {
+function Sidebar({ state, navigation, sidebarOpen, setSidebarOpen }: BottomTabBarProps & { sidebarOpen?: boolean; setSidebarOpen?: (o: boolean) => void }) {
   // Inicializa { user }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { user } = useAuth();
   // Inicializa { theme }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { theme } = useAdminAppearance();
+  // Detección dinámica de ancho
+  const { width } = useWindowDimensions();
+  const isMobileOrTablet = width < 1024;
   // Inicializa estilos; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const estilos = useMemo(() => crearEstilos(theme), [theme]);
+  const estilos = useMemo(() => crearEstilos(theme, width), [theme, width]);
   // Declara fotoPerfil; usa la imagen real del administrador cuando existe.
   const fotoPerfil = obtenerFotoPerfil(user);
   // Inicializa entrada; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const entrada = useRef(new Animated.Value(0)).current;
   // Inicializa [logoUrl, setLogoUrl]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const nombreEmpresa = obtenerNombreEmpresa(user);
+
+  // Animación del drawer colapsable
+  const animValue = useRef(new Animated.Value(sidebarOpen ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.timing(animValue, {
+      toValue: sidebarOpen ? 1 : 0,
+      duration: 300,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [sidebarOpen]);
+
+  const translateX = useMemo(() => {
+    if (!isMobileOrTablet) return 0;
+    return animValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: [-320, 0],
+    });
+  }, [isMobileOrTablet, animValue]);
+
+  const backdropOpacity = useMemo(() => {
+    return animValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 0.42],
+    });
+  }, [animValue]);
 
   // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
   useEffect(() => {
@@ -638,10 +720,9 @@ function Sidebar({ state, navigation }: BottomTabBarProps) {
     }).start();
   }, [entrada]);
 
-  // Devuelve el JSX que React Native renderiza en pantalla.
-  return (
+  const sidebarContent = (
     // Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla.
-    <Animated.View style={[estilos.sidebar, { opacity: entrada, transform: [{ translateX: entrada.interpolate({ inputRange: [0, 1], outputRange: [-24, 0] }) }] }]}>
+    <Animated.View style={[estilos.sidebar, { opacity: entrada, transform: [{ translateX: isMobileOrTablet ? translateX : entrada.interpolate({ inputRange: [0, 1], outputRange: [-24, 0] }) }] }]}>
       {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
       <View style={estilos.logoContainer}>
         {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
@@ -651,8 +732,7 @@ function Sidebar({ state, navigation }: BottomTabBarProps) {
             <Image source={{ uri: cloudinaryOptimizedUrl(logoUrl, 128) }} style={[estilos.logoIconBg, { overflow: 'hidden' }]} resizeMode="cover" />
           ) : (
             <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} colors={theme.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.logoIconBg}>
-              {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-              <MaterialIcons name="hub" size={22} color="#FEFEFE" />
+              <Text style={estilos.logoInitial}>{nombreEmpresa.charAt(0).toUpperCase()}</Text>
             </LinearGradient>
           )}
           {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
@@ -696,6 +776,9 @@ function Sidebar({ state, navigation }: BottomTabBarProps) {
             const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
             // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
             if (!isFocused && !event.defaultPrevented) navigation.navigate(route.name);
+            if (isMobileOrTablet && setSidebarOpen) {
+              setSidebarOpen(false);
+            }
           };
 
           // Declara content; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -748,6 +831,19 @@ function Sidebar({ state, navigation }: BottomTabBarProps) {
       </View>
     </Animated.View>
   );
+
+  if (isMobileOrTablet) {
+    return (
+      <View pointerEvents={sidebarOpen ? 'auto' : 'none'} style={[StyleSheet.absoluteFill, { zIndex: 9999 }]}>
+        <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#000', opacity: backdropOpacity }]}>
+          <TouchableOpacity activeOpacity={1} style={StyleSheet.absoluteFill} onPress={() => setSidebarOpen && setSidebarOpen(false)} />
+        </Animated.View>
+        {sidebarContent}
+      </View>
+    );
+  }
+
+  return sidebarContent;
 }
 
 /**
@@ -760,8 +856,9 @@ function BannerPantalla({ routeName }: { routeName: string }) {
   const { theme } = useAdminAppearance();
   // Inicializa { user }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { user } = useAuth();
+  const { width } = useWindowDimensions();
   // Inicializa estilos; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const estilos = useMemo(() => crearEstilos(theme), [theme]);
+  const estilos = useMemo(() => crearEstilos(theme, width), [theme, width]);
   // Inicializa entrada; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const entrada = useRef(new Animated.Value(0)).current;
   // Declara data; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -933,10 +1030,14 @@ function useAdminSignals(user: any) {
 function NotificationPanel({ visible, items, onNavigate, onClose }: { visible: boolean; items: SignalItem[]; onNavigate: (route: string) => void; onClose: () => void }) {
   // Inicializa { theme }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { theme } = useAdminAppearance();
+  const { width } = useWindowDimensions();
+  const isMobileOrTablet = width < 1024;
   // Inicializa estilos; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const estilos = useMemo(() => crearEstilos(theme), [theme]);
+  const estilos = useMemo(() => crearEstilos(theme, width), [theme, width]);
   // Inicializa anim; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const anim = useRef(new Animated.Value(0)).current;
+  const drawerTranslateX = anim.interpolate({ inputRange: [0, 1], outputRange: [360, 0] });
+  const drawerBackdropOpacity = anim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.68] });
 
   // Declaraciones de traducción
   const panelTitle = 'Centro de señales';
@@ -974,27 +1075,37 @@ function NotificationPanel({ visible, items, onNavigate, onClose }: { visible: b
 
   // Devuelve el JSX que React Native renderiza en pantalla.
   return (
-    // Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla.
-    <Animated.View
-      style={[
-        estilos.notificationsPanel,
-        {
-          opacity: anim,
-          transform: [
-            { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) },
-            { scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1] }) },
-          ],
-        },
-      ]}
-    >
+    <>
+      {isMobileOrTablet ? (
+        <Animated.View {...(Platform.OS === 'web' ? { className: 'nx-admin-scrim-blur' } as any : {})} style={[estilos.rightDrawerScrim, { opacity: drawerBackdropOpacity }]}>
+          <TouchableOpacity activeOpacity={1} style={StyleSheet.absoluteFill} onPress={onClose} />
+        </Animated.View>
+      ) : null}
+      {/* Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+      <Animated.View
+        style={[
+          estilos.notificationsPanel,
+          {
+            opacity: isMobileOrTablet ? 1 : anim,
+            transform: isMobileOrTablet
+              ? [{ translateX: drawerTranslateX }]
+              : [
+                { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) },
+                { scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1] }) },
+              ],
+          },
+        ]}
+      >
       {Platform.OS === 'web' ? (
         <View
           {...({ className: 'nx-admin-notifications-blur' } as any)}
           style={[
             StyleSheet.absoluteFill,
             {
-              backgroundColor: theme.isDark ? 'rgba(13,9,27,0.82)' : 'rgba(255,255,255,0.84)',
-              borderRadius: 16,
+              backgroundColor: isMobileOrTablet ? theme.sidebar : (theme.isDark ? 'rgba(13,9,27,0.82)' : 'rgba(255,255,255,0.84)'),
+              borderRadius: isMobileOrTablet ? 0 : 16,
+              borderTopLeftRadius: isMobileOrTablet ? 22 : 16,
+              borderBottomLeftRadius: isMobileOrTablet ? 22 : 16,
             },
           ]}
         />
@@ -1012,11 +1123,11 @@ function NotificationPanel({ visible, items, onNavigate, onClose }: { visible: b
           {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
           <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={estilos.notificationCloseButton}>
             {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-            <MaterialIcons name="close" size={15} color={theme.text} />
+            <MaterialIcons name="close" size={22} color={theme.text} />
           </TouchableOpacity>
         </View>
         {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-        <View style={estilos.notificationsList}>
+        <ScrollView style={estilos.notificationsListScroll} contentContainerStyle={estilos.notificationsList} showsVerticalScrollIndicator={false}>
           {items.length > 0 ? items.slice(0, 7).map((item) => (
             <NotificationItemComponent
               key={item.id}
@@ -1026,6 +1137,7 @@ function NotificationPanel({ visible, items, onNavigate, onClose }: { visible: b
               iconFor={iconFor}
               routeFor={routeFor}
               estilos={estilos}
+              stacked={isMobileOrTablet}
             />
           )) : (
             // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
@@ -1036,9 +1148,10 @@ function NotificationPanel({ visible, items, onNavigate, onClose }: { visible: b
               <Text style={estilos.notificationDetail}>{emptyDetail}</Text>
             </View>
           )}
-        </View>
+        </ScrollView>
       </BlurView>
-    </Animated.View>
+      </Animated.View>
+    </>
   );
 }
 
@@ -1050,10 +1163,14 @@ function AdminProfilePanel({ visible, user, onNavigate, onClose }: { visible: bo
   const { theme } = useAdminAppearance();
   // Inicializa { logout }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { logout } = useAuth();
+  const { width } = useWindowDimensions();
+  const isMobileOrTablet = width < 1024;
   // Inicializa estilos; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const estilos = useMemo(() => crearEstilos(theme), [theme]);
+  const estilos = useMemo(() => crearEstilos(theme, width), [theme, width]);
   // Inicializa anim; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const anim = useRef(new Animated.Value(0)).current;
+  const drawerTranslateX = anim.interpolate({ inputRange: [0, 1], outputRange: [360, 0] });
+  const drawerBackdropOpacity = anim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.68] });
 
   // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
   useEffect(() => {
@@ -1076,27 +1193,37 @@ function AdminProfilePanel({ visible, user, onNavigate, onClose }: { visible: bo
 
   // Devuelve el JSX que React Native renderiza en pantalla.
   return (
-    // Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla.
-    <Animated.View
-      style={[
-        estilos.notificationsPanel,
-        {
-          opacity: anim,
-          transform: [
-            { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) },
-            { scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1] }) },
-          ],
-        },
-      ]}
-    >
+    <>
+      {isMobileOrTablet ? (
+        <Animated.View {...(Platform.OS === 'web' ? { className: 'nx-admin-scrim-blur' } as any : {})} style={[estilos.rightDrawerScrim, { opacity: drawerBackdropOpacity }]}>
+          <TouchableOpacity activeOpacity={1} style={StyleSheet.absoluteFill} onPress={onClose} />
+        </Animated.View>
+      ) : null}
+      {/* Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+      <Animated.View
+        style={[
+          estilos.notificationsPanel,
+          {
+            opacity: isMobileOrTablet ? 1 : anim,
+            transform: isMobileOrTablet
+              ? [{ translateX: drawerTranslateX }]
+              : [
+                { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) },
+                { scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1] }) },
+              ],
+          },
+        ]}
+      >
       {Platform.OS === 'web' ? (
         <View
           {...({ className: 'nx-admin-notifications-blur' } as any)}
           style={[
             StyleSheet.absoluteFill,
             {
-              backgroundColor: theme.isDark ? 'rgba(13,9,27,0.82)' : 'rgba(255,255,255,0.84)',
-              borderRadius: 16,
+              backgroundColor: isMobileOrTablet ? theme.sidebar : (theme.isDark ? 'rgba(13,9,27,0.82)' : 'rgba(255,255,255,0.84)'),
+              borderRadius: isMobileOrTablet ? 0 : 16,
+              borderTopLeftRadius: isMobileOrTablet ? 22 : 16,
+              borderBottomLeftRadius: isMobileOrTablet ? 22 : 16,
             },
           ]}
         />
@@ -1109,10 +1236,11 @@ function AdminProfilePanel({ visible, user, onNavigate, onClose }: { visible: bo
           {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
           <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={estilos.notificationCloseButton}>
             {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-            <MaterialIcons name="close" size={15} color={theme.text} />
+            <MaterialIcons name="close" size={22} color={theme.text} />
           </TouchableOpacity>
         </View>
 
+        <ScrollView style={estilos.rightDrawerScroll} contentContainerStyle={estilos.rightDrawerContent} showsVerticalScrollIndicator={false}>
         {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
         <View style={[estilos.usuarioInfoRow, { marginBottom: 16, marginTop: 4 }]}>
           {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
@@ -1203,15 +1331,17 @@ function AdminProfilePanel({ visible, user, onNavigate, onClose }: { visible: bo
             <Text style={[estilos.profileActionText, { color: theme.danger }]}>Cerrar sesión</Text>
           </TouchableOpacity>
         </View>
+        </ScrollView>
       </BlurView>
-    </Animated.View>
+      </Animated.View>
+    </>
   );
 }
 
 /**
  * Componente NavbarHeader. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
-function NavbarHeader({ routeName }: { routeName: string }) {
+function NavbarHeader({ routeName, sidebarOpen, setSidebarOpen }: { routeName: string; sidebarOpen: boolean; setSidebarOpen: (o: boolean) => void }) {
   // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { t } = useTranslation();
   // Inicializa { user }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -1239,8 +1369,10 @@ function NavbarHeader({ routeName }: { routeName: string }) {
   };
   // Inicializa { theme, mode, toggleMode }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { theme, mode, toggleMode } = useAdminAppearance();
+  const { width } = useWindowDimensions();
+  const isMobileOrTablet = width < 1024;
   // Inicializa estilos; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const estilos = useMemo(() => crearEstilos(theme), [theme]);
+  const estilos = useMemo(() => crearEstilos(theme, width), [theme, width]);
   // Inicializa [searchValue, setSearchValue]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [searchValue, setSearchValue] = useState('');
   // Inicializa [searchFocused, setSearchFocused]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -1438,6 +1570,12 @@ function NavbarHeader({ routeName }: { routeName: string }) {
     </View>
   );
 
+  const screenTitle = SCREEN_BANNERS[routeName]?.title || routeName;
+
+  if (isMobileOrTablet && sidebarOpen) {
+    return null;
+  }
+
   // Devuelve el JSX que React Native renderiza en pantalla.
   return (
     // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
@@ -1448,14 +1586,20 @@ function NavbarHeader({ routeName }: { routeName: string }) {
         <BlurView intensity={theme.isDark ? 34 : 46} tint={theme.navTint} style={estilos.navbarGlass}>
           {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={estilos.navbarLeft}>
-            {/* Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-            <Animated.View style={[estilos.statusDot, { transform: [{ scale: pulso.interpolate({ inputRange: [0, 1], outputRange: [1, 1.45] }) }] }]} />
+            {isMobileOrTablet && (
+              <BotonAnimado style={{ marginRight: 8, padding: 4 }} onPress={() => setSidebarOpen(true)}>
+                <MaterialIcons name="menu" size={20} color={theme.text} />
+              </BotonAnimado>
+            )}
+            {!isMobileOrTablet && (
+              <Animated.View style={[estilos.statusDot, { transform: [{ scale: pulso.interpolate({ inputRange: [0, 1], outputRange: [1, 1.45] }) }] }]} />
+            )}
             {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
             <View>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.statusText}>{welcomeMsgBase.replace('{name}', user?.nombre?.split(' ')[0] || 'Propietario')}</Text>
+              <Text style={estilos.statusText}>{isMobileOrTablet ? screenTitle : welcomeMsgBase.replace('{name}', user?.nombre?.split(' ')[0] || 'Propietario')}</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.statusSubtext}>{syncStatus}</Text>
+              <Text style={estilos.statusSubtext}>{isMobileOrTablet ? 'Nexxus Command' : syncStatus}</Text>
             </View>
           </View>
 
@@ -1510,7 +1654,8 @@ function NavbarHeader({ routeName }: { routeName: string }) {
             </BotonAnimado>
           </View>
         </BlurView>
-        {notificationsOpen || profileOpen ? (
+      </Animated.View>
+        {!isMobileOrTablet && (notificationsOpen || profileOpen) ? (
           <TouchableOpacity
             activeOpacity={1}
             onPress={() => { setNotificationsOpen(false); setProfileOpen(false); }}
@@ -1531,10 +1676,9 @@ function NavbarHeader({ routeName }: { routeName: string }) {
           // Ejecuta navegacion; cambia la pantalla activa manteniendo el flujo definido por React Navigation.
           navigateAdmin(route);
         }} onClose={() => setProfileOpen(false)} />
-      </Animated.View>
       {mostrarSearchResults && renderSearchResultsPanel()}
       {/* BannerPantalla renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <BannerPantalla routeName={routeName} />
+      {!isMobileOrTablet && <BannerPantalla routeName={routeName} />}
     </View>
   );
 }
@@ -1546,10 +1690,11 @@ export default function AdminNavigator() {
   // Inicializa { user }; obtiene datos de empresa para proteger nombres propios de la traduccion automatica.
   const { user } = useAuth();
   // Calcula { height }; adapta el comportamiento o diseno segun plataforma/tamano disponible.
-  const { height } = useWindowDimensions();
+  const { height, width } = useWindowDimensions();
   const altoViewport = Platform.OS === 'web' && typeof window !== 'undefined'
     ? window.innerHeight || height || Dimensions.get('window').height || 720
     : height;
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   // Inicializa [mode, setMode]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [mode, setMode] = useState<AdminMode>('dark');
   // Inicializa [currentRoute, setCurrentRoute] para controlar el encabezado estatico fuera del navegador.
@@ -1557,7 +1702,7 @@ export default function AdminNavigator() {
   // Declara theme; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const theme = ADMIN_THEMES[mode];
   // Inicializa estilos; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const estilos = useMemo(() => crearEstilos(theme), [theme]);
+  const estilos = useMemo(() => crearEstilos(theme, width), [theme, width]);
   // Inicializa providerValue; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const providerValue = useMemo(
     () => ({
@@ -1606,7 +1751,7 @@ export default function AdminNavigator() {
       <AdminToastProvider>
         <AdminTranslationProvider protectedTerms={protectedTranslationTerms}>
         {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-        <View style={[estilos.contenedorPrincipal, { height: altoViewport, minHeight: altoViewport, maxHeight: altoViewport }]}>
+        <View {...(Platform.OS === 'web' ? { className: 'nx-admin-root' } as any : {})} style={[estilos.contenedorPrincipal, { height: altoViewport, minHeight: altoViewport, maxHeight: altoViewport }]}>
           {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
           <LinearGradient colors={[theme.bg, theme.bgDeep, theme.bg]} style={StyleSheet.absoluteFill} />
           {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
@@ -1615,7 +1760,7 @@ export default function AdminNavigator() {
           <CampoParticulas theme={theme} />
           {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
           <Tab.Navigator
-            tabBar={(props) => <Sidebar {...props} />}
+            tabBar={(props) => <Sidebar {...props} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />}
             screenOptions={{
               headerShown: false,
               sceneStyle: estilos.contenidoPrincipal,
@@ -1646,7 +1791,7 @@ export default function AdminNavigator() {
             <Tab.Screen name="ConfiguracionAdmin" component={ConfiguracionAdmin} />
           </Tab.Navigator>
           {/* Renderizado de cabecera fija y estatica a nivel raiz del modulo de administracion */}
-          <NavbarHeader routeName={currentRoute} />
+          <NavbarHeader routeName={currentRoute} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
         </View>
         </AdminTranslationProvider>
       </AdminToastProvider>
@@ -1672,117 +1817,117 @@ const crearSombra = (theme: AdminPalette, color = '#000') => Platform.select({
   },
 });
 
-/**
- * Mapa de estilos crearEstilos. Centraliza reglas visuales para que el JSX se mantenga legible y consistente.
- */
-const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
-  // contenedorPrincipal: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
-  contenedorPrincipal: {
-    // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
-    flex: 1,
-    // backgroundColor define el fondo del bloque.
-    backgroundColor: theme.bg,
-    // overflow visible permite que el panel de busqueda salga por debajo de la navbar.
-    overflow: 'visible',
-  },
-  // fondoGlowUno: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  fondoGlowUno: {
-    // position define como se posiciona el elemento respecto al layout.
-    position: 'absolute',
-    // top desplaza el elemento desde el borde superior cuando usa posicionamiento.
-    top: -116,
-    // right desplaza el elemento desde el borde derecho cuando usa posicionamiento.
-    right: -96,
-    // width fija o calcula el ancho del elemento.
-    width: 420,
-    // height fija o calcula el alto del elemento.
-    height: 420,
-    // borderRadius redondea esquinas para definir la forma visual.
-    borderRadius: 210,
-    // backgroundColor define el fondo del bloque.
-    backgroundColor: theme.glowA,
-    // zIndex define prioridad de apilamiento sobre otros elementos.
-    zIndex: 0,
-  },
-  // fondoGlowDos: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  fondoGlowDos: {
-    // position define como se posiciona el elemento respecto al layout.
-    position: 'absolute',
-    // bottom desplaza el elemento desde el borde inferior cuando usa posicionamiento.
-    bottom: 24,
-    // left desplaza el elemento desde el borde izquierdo cuando usa posicionamiento.
-    left: 80,
-    // width fija o calcula el ancho del elemento.
-    width: 460,
-    // height fija o calcula el alto del elemento.
-    height: 340,
-    // borderRadius redondea esquinas para definir la forma visual.
-    borderRadius: 230,
-    // backgroundColor define el fondo del bloque.
-    backgroundColor: theme.glowB,
-    // zIndex define prioridad de apilamiento sobre otros elementos.
-    zIndex: 0,
-  },
-  // gridOverlay: estilo de grilla; organiza elementos en filas o columnas con separacion controlada.
-  gridOverlay: {
-    // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
-    ...StyleSheet.absoluteFillObject,
-    // opacity controla la transparencia del elemento.
-    opacity: theme.isDark ? 0.18 : 0.34,
-    // backgroundColor define el fondo del bloque.
-    backgroundColor: 'transparent',
-    // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
-    ...(Platform.OS === 'web' ? {
-      // backgroundImage ajusta una propiedad visual especifica de este estilo.
-      backgroundImage: `linear-gradient(${theme.border} 1px, transparent 1px), linear-gradient(90deg, ${theme.border} 1px, transparent 1px)`,
-      // backgroundSize ajusta una propiedad visual especifica de este estilo.
-      backgroundSize: '72px 72px',
-      // maskImage ajusta una propiedad visual especifica de este estilo.
-      maskImage: 'linear-gradient(to bottom, black, transparent 78%)',
-    } as any : {}),
-  },
-  // sidebar: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  sidebar: {
-    // position define como se posiciona el elemento respecto al layout.
-    position: 'absolute',
-    // left desplaza el elemento desde el borde izquierdo cuando usa posicionamiento.
-    left: 18,
-    // top desplaza el elemento desde el borde superior cuando usa posicionamiento.
-    top: 18,
-    // bottom desplaza el elemento desde el borde inferior cuando usa posicionamiento.
-    bottom: 18,
-    // width fija o calcula el ancho del elemento.
-    width: 300,
-    // backgroundColor define el fondo del bloque.
-    backgroundColor: theme.sidebar,
-    // borderWidth define el grosor del borde visible.
-    borderWidth: 1,
-    // borderColor define el color del borde.
-    borderColor: theme.border,
-    // borderRadius redondea esquinas para definir la forma visual.
-    borderRadius: 18,
-    // display ajusta una propiedad visual especifica de este estilo.
-    display: 'flex',
-    // flexDirection decide si los hijos se ordenan en fila o columna.
-    flexDirection: 'column',
-    // zIndex define prioridad de apilamiento sobre otros elementos.
-    zIndex: 50,
-    // overflow controla si el contenido se recorta o puede sobresalir.
-    overflow: 'hidden',
-    // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
-    ...crearSombra(theme),
-  },
-  // contenidoPrincipal: estilo del area de contenido; controla padding, distribucion y separacion interna.
-  contenidoPrincipal: {
-    // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
-    flex: 1,
-    // marginLeft ajusta una propiedad visual especifica de este estilo.
-    marginLeft: 336,
-    // backgroundColor define el fondo del bloque.
-    backgroundColor: theme.bg,
-    // overflow controla si el contenido se recorta o puede sobresalir.
-    overflow: 'hidden',
-  },
+const crearEstilos = (theme: AdminPalette, width: number) => {
+  const isMobileOrTablet = width < 1024;
+  return StyleSheet.create({
+    // contenedorPrincipal: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
+    contenedorPrincipal: {
+      // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
+      flex: 1,
+      // backgroundColor define el fondo del bloque.
+      backgroundColor: theme.bg,
+      // overflow visible permite que el panel de busqueda salga por debajo de la navbar.
+      overflow: 'visible',
+    },
+    // fondoGlowUno: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
+    fondoGlowUno: {
+      // position define como se posiciona el elemento respecto al layout.
+      position: 'absolute',
+      // top desplaza el elemento desde el borde superior cuando usa posicionamiento.
+      top: -116,
+      // right desplaza el elemento desde el borde derecho cuando usa posicionamiento.
+      right: -96,
+      // width fija o calcula el ancho del elemento.
+      width: 420,
+      // height fija o calcula el alto del elemento.
+      height: 420,
+      // borderRadius redondea esquinas para definir la forma visual.
+      borderRadius: 210,
+      // backgroundColor define el fondo del bloque.
+      backgroundColor: theme.glowA,
+      // zIndex define prioridad de apilamiento sobre otros elementos.
+      zIndex: 0,
+    },
+    // fondoGlowDos: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
+    fondoGlowDos: {
+      // position define como se posiciona el elemento respecto al layout.
+      position: 'absolute',
+      // bottom desplaza el elemento desde el borde inferior cuando usa posicionamiento.
+      bottom: 24,
+      // left desplaza el elemento desde el borde izquierdo cuando usa posicionamiento.
+      left: 80,
+      // width fija o calcula el ancho del elemento.
+      width: 460,
+      // height fija o calcula el alto del elemento.
+      height: 340,
+      // borderRadius redondea esquinas para definir la forma visual.
+      borderRadius: 230,
+      // backgroundColor define el fondo del bloque.
+      backgroundColor: theme.glowB,
+      // zIndex define prioridad de apilamiento sobre otros elementos.
+      zIndex: 0,
+    },
+    // gridOverlay: estilo de grilla; organiza elementos en filas o columnas con separacion controlada.
+    gridOverlay: {
+      // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
+      ...StyleSheet.absoluteFillObject,
+      // opacity controla la transparencia del elemento.
+      opacity: theme.isDark ? 0.18 : 0.34,
+      // backgroundColor define el fondo del bloque.
+      backgroundColor: 'transparent',
+      // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
+      ...(Platform.OS === 'web' ? {
+        // backgroundImage ajusta una propiedad visual especifica de este estilo.
+        backgroundImage: `linear-gradient(${theme.border} 1px, transparent 1px), linear-gradient(90deg, ${theme.border} 1px, transparent 1px)`,
+        // backgroundSize ajusta una propiedad visual especifica de este estilo.
+        backgroundSize: '72px 72px',
+        // maskImage ajusta una propiedad visual especifica de este estilo.
+        maskImage: 'linear-gradient(to bottom, black, transparent 78%)',
+      } as any : {}),
+    },
+    // sidebar: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
+    sidebar: {
+      // position define como se posiciona el elemento respecto al layout.
+      position: 'absolute',
+      // left desplaza el elemento desde el borde izquierdo cuando usa posicionamiento.
+      left: isMobileOrTablet ? 0 : 18,
+      // top desplaza el elemento desde el borde superior cuando usa posicionamiento.
+      top: isMobileOrTablet ? 0 : 18,
+      // bottom desplaza el elemento desde el borde inferior cuando usa posicionamiento.
+      bottom: isMobileOrTablet ? 0 : 18,
+      // width fija o calcula el ancho del elemento.
+      width: 300,
+      height: isMobileOrTablet ? '100%' : undefined,
+      // backgroundColor define el fondo del bloque.
+      backgroundColor: theme.sidebar,
+      // borderWidth define el grosor del borde visible.
+      borderWidth: 1,
+      // borderColor define el color del borde.
+      borderColor: theme.border,
+      // borderRadius redondea esquinas para definir la forma visual.
+      borderRadius: isMobileOrTablet ? 0 : 18,
+      // display ajusta una propiedad visual especifica de este estilo.
+      display: 'flex',
+      // flexDirection decide si los hijos se ordenan en fila o columna.
+      flexDirection: 'column',
+      // zIndex define prioridad de apilamiento sobre otros elementos.
+      zIndex: 100,
+      // overflow controla si el contenido se recorta o puede sobresalir.
+      overflow: 'hidden',
+      // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
+      ...crearSombra(theme),
+    },
+    // contenidoPrincipal: estilo del area de contenido; controla padding, distribucion y separacion interna.
+    contenidoPrincipal: {
+      // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
+      flex: 1,
+      // marginLeft ajusta una propiedad visual especifica de este estilo.
+      marginLeft: isMobileOrTablet ? 0 : 336,
+      // backgroundColor define el fondo del bloque.
+      backgroundColor: theme.bg,
+      // overflow controla si el contenido se recorta o puede sobresalir.
+      overflow: 'hidden',
+    },
   // logoContainer: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
   logoContainer: {
     // padding agrega espacio interno alrededor del contenido.
@@ -1823,6 +1968,11 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
     shadowRadius: 20,
     // elevation agrega sombra en Android.
     elevation: 10,
+  },
+  logoInitial: {
+    color: '#FEFEFE',
+    fontSize: 18,
+    fontWeight: '900',
   },
   // logoTexto: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
   logoTexto: {
@@ -2194,11 +2344,11 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
     // position define como se posiciona el elemento respecto al layout.
     position: 'absolute',
     // top desplaza el elemento desde el borde superior cuando usa posicionamiento.
-    top: 28,
+    top: isMobileOrTablet ? 12 : 28,
     // left desplaza el elemento desde el borde izquierdo cuando usa posicionamiento.
-    left: 24,
+    left: isMobileOrTablet ? 12 : 24,
     // right desplaza el elemento desde el borde derecho cuando usa posicionamiento.
-    right: 24,
+    right: isMobileOrTablet ? 12 : 24,
     // zIndex define prioridad de apilamiento sobre otros elementos.
     zIndex: 40,
   },
@@ -2209,13 +2359,13 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
     // top desplaza el elemento desde el borde superior cuando usa posicionamiento.
     top: 0,
     // left desplaza el elemento desde el borde izquierdo cuando usa posicionamiento.
-    left: Platform.OS === 'web' ? 336 : 0,
+    left: isMobileOrTablet ? 0 : (Platform.OS === 'web' ? 336 : 0),
     // right desplaza el elemento desde el borde derecho cuando usa posicionamiento.
     right: 0,
     // height fija o calcula el alto del elemento.
-    height: 250,
+    height: isMobileOrTablet ? '100%' : 250,
     // zIndex define prioridad de apilamiento sobre otros elementos.
-    zIndex: 40,
+    zIndex: isMobileOrTablet ? 10000 : 40,
   },
   // navbarGlass: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   navbarGlass: {
@@ -2241,6 +2391,22 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
     overflow: 'hidden',
     // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
     ...crearSombra(theme),
+    ...(isMobileOrTablet ? Platform.select({
+      ios: {
+        shadowColor: '#000000',
+        shadowOffset: { width: -10, height: 0 },
+        shadowOpacity: theme.isDark ? 0.36 : 0.16,
+        shadowRadius: 24,
+      },
+      android: {
+        elevation: 12,
+      },
+      web: {
+        boxShadow: theme.isDark
+          ? '-14px 0 34px rgba(0,0,0,0.38)'
+          : '-14px 0 34px rgba(23,18,43,0.16)',
+      },
+    }) : {}),
   },
   // navbarLeft: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   navbarLeft: {
@@ -2251,7 +2417,8 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
     // gap define separacion uniforme entre elementos hijos.
     gap: 10,
     // minWidth ajusta una propiedad visual especifica de este estilo.
-    minWidth: 220,
+    minWidth: isMobileOrTablet ? undefined : 220,
+    flexShrink: 1,
   },
   // statusDot: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   statusDot: {
@@ -2301,7 +2468,7 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
     // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
     // gap define separacion uniforme entre elementos hijos.
-    gap: 9,
+    gap: width < 480 ? 4 : 9,
     // position define como se posiciona el elemento respecto al layout.
     position: 'relative',
     // zIndex define prioridad de apilamiento sobre otros elementos.
@@ -2310,7 +2477,7 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
   // searchWrap: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   searchWrap: {
     // width fija o calcula el ancho del elemento.
-    width: 310,
+    width: width < 480 ? 0 : (width < 600 ? 120 : (isMobileOrTablet ? 200 : 310)),
     // minHeight asegura una altura minima util para lectura o area tactil.
     minHeight: 38,
     // borderRadius redondea esquinas para definir la forma visual.
@@ -2333,6 +2500,7 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
     position: 'relative',
     // zIndex define prioridad de apilamiento sobre otros elementos.
     zIndex: 8,
+    display: width < 480 ? 'none' : 'flex',
   },
   // searchInput: estilo de campo de formulario; controla contenedor, texto y distribucion de la entrada.
   searchInput: {
@@ -2481,9 +2649,9 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
   // iconCircle: estilo de icono; ajusta tamanio, posicion o fondo del indicador visual.
   iconCircle: {
     // width fija o calcula el ancho del elemento.
-    width: 38,
+    width: width < 480 ? 34 : 38,
     // height fija o calcula el alto del elemento.
-    height: 38,
+    height: width < 480 ? 34 : 38,
     // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 12,
     // alignItems alinea los hijos en el eje transversal del contenedor.
@@ -2521,19 +2689,22 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
   // notificationsPanel: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   notificationsPanel: {
     // position define como se posiciona el elemento respecto al layout.
-    position: 'absolute',
+    position: isMobileOrTablet && Platform.OS === 'web' ? 'fixed' as any : 'absolute',
     // right desplaza el elemento desde el borde derecho cuando usa posicionamiento.
-    right: 56,
+    right: isMobileOrTablet ? 0 : 56,
     // top desplaza el elemento desde el borde superior cuando usa posicionamiento.
-    top: 54,
+    top: isMobileOrTablet ? 0 : 54,
+    ...(isMobileOrTablet ? { bottom: 0 } : {}),
     // width fija o calcula el ancho del elemento.
-    width: 360,
+    width: isMobileOrTablet ? Math.min(width * 0.88, 380) : 360,
     // borderRadius redondea esquinas para definir la forma visual.
-    borderRadius: 16,
+    borderRadius: isMobileOrTablet ? 0 : 16,
+    borderTopLeftRadius: isMobileOrTablet ? 22 : 16,
+    borderBottomLeftRadius: isMobileOrTablet ? 22 : 16,
     // overflow controla si el contenido se recorta o puede sobresalir.
     overflow: 'hidden',
     // zIndex define prioridad de apilamiento sobre otros elementos.
-    zIndex: 50,
+    zIndex: isMobileOrTablet ? 10001 : 50,
     // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
     ...crearSombra(theme),
   },
@@ -2544,9 +2715,29 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
     // borderColor define el color del borde.
     borderColor: theme.border,
     // backgroundColor define el fondo del bloque.
-    backgroundColor: theme.isDark ? 'rgba(10,8,24,0.58)' : 'rgba(255,255,255,0.62)',
+    backgroundColor: isMobileOrTablet ? theme.sidebar : (theme.isDark ? 'rgba(10,8,24,0.82)' : 'rgba(255,255,255,0.88)'),
     // padding agrega espacio interno alrededor del contenido.
-    padding: 12,
+    padding: isMobileOrTablet ? 18 : 12,
+    ...(isMobileOrTablet ? { flex: 1, height: '100%' } : {}),
+  },
+  notificationsListScroll: {
+    flex: isMobileOrTablet ? 1 : undefined,
+    maxHeight: isMobileOrTablet ? undefined : 420,
+  },
+  rightDrawerScroll: {
+    flex: 1,
+  },
+  rightDrawerContent: {
+    paddingBottom: 18,
+  },
+  rightDrawerScrim: {
+    position: Platform.OS === 'web' ? 'fixed' as any : 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: theme.isDark ? '#05030D' : '#EDE9FE',
+    zIndex: 10000,
   },
   notificationsScrim: {
     ...StyleSheet.absoluteFillObject,
@@ -2561,73 +2752,93 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
     // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'space-between',
     // marginBottom separa este bloque del siguiente elemento.
-    marginBottom: 10,
+    marginBottom: isMobileOrTablet ? 16 : 10,
+    ...(isMobileOrTablet ? {
+      paddingBottom: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    } : {}),
   },
   // notificationsTitle: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
   notificationsTitle: {
     // color define el color del texto o icono.
     color: theme.text,
     // fontSize controla el tamanio del texto.
-    fontSize: 12,
+    fontSize: isMobileOrTablet ? 16 : 12,
     // fontWeight define el peso visual del texto.
     fontWeight: '900',
   },
   // notificationsCount: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   notificationsCount: {
     // color define el color del texto o icono.
-    color: theme.purple,
+    color: isMobileOrTablet ? '#FFFFFF' : (theme.isDark ? '#FFFFFF' : theme.purple),
     // fontSize controla el tamanio del texto.
-    fontSize: 11,
+    fontSize: isMobileOrTablet ? 15 : 11,
     // fontWeight define el peso visual del texto.
     fontWeight: '900',
+    ...(isMobileOrTablet ? {
+      minWidth: 34,
+      height: 30,
+      paddingHorizontal: 10,
+      borderRadius: 999,
+      overflow: 'hidden',
+      textAlign: 'center',
+      lineHeight: 30,
+      backgroundColor: theme.purple,
+      borderWidth: 1,
+      borderColor: theme.borderStrong,
+    } : {}),
   },
   // notificationCloseButton: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
   notificationCloseButton: {
     // width fija o calcula el ancho del elemento.
-    width: 22,
+    width: isMobileOrTablet ? 42 : 22,
     // height fija o calcula el alto del elemento.
-    height: 22,
+    height: isMobileOrTablet ? 42 : 22,
     // borderRadius redondea esquinas para definir la forma visual.
-    borderRadius: 6,
+    borderRadius: isMobileOrTablet ? 14 : 6,
     // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
     // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
     // backgroundColor define el fondo del bloque.
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: isMobileOrTablet ? theme.sidebarStrong : 'rgba(255,255,255,0.06)',
+    borderWidth: isMobileOrTablet ? 1 : 0,
+    borderColor: theme.border,
   },
   // notificationsList: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   notificationsList: {
     // gap define separacion uniforme entre elementos hijos.
-    gap: 8,
+    gap: isMobileOrTablet ? 12 : 8,
+    ...(isMobileOrTablet ? { paddingBottom: 18 } : {}),
   },
   // notificationItem: estilo de lista o item; mantiene espaciado y lectura consistente en elementos repetidos.
   notificationItem: {
     // flexDirection decide si los hijos se ordenan en fila o columna.
-    flexDirection: 'row',
+    flexDirection: isMobileOrTablet ? 'column' : 'row',
     // alignItems alinea los hijos en el eje transversal del contenedor.
-    alignItems: 'center',
+    alignItems: isMobileOrTablet ? 'flex-start' : 'center',
     // gap define separacion uniforme entre elementos hijos.
-    gap: 10,
+    gap: isMobileOrTablet ? 12 : 10,
     // borderRadius redondea esquinas para definir la forma visual.
-    borderRadius: 12,
+    borderRadius: isMobileOrTablet ? 16 : 12,
     // borderWidth define el grosor del borde visible.
     borderWidth: 1,
     // borderColor define el color del borde.
-    borderColor: 'transparent',
+    borderColor: isMobileOrTablet ? theme.border : 'transparent',
     // backgroundColor define el fondo del bloque.
-    backgroundColor: 'transparent',
+    backgroundColor: isMobileOrTablet ? (theme.isDark ? '#0F0B22' : '#FFFFFF') : 'transparent',
     // padding agrega espacio interno alrededor del contenido.
-    padding: 10,
+    padding: isMobileOrTablet ? 14 : 10,
   },
   // notificationIcon: estilo de icono; ajusta tamanio, posicion o fondo del indicador visual.
   notificationIcon: {
     // width fija o calcula el ancho del elemento.
-    width: 34,
+    width: isMobileOrTablet ? 42 : 34,
     // height fija o calcula el alto del elemento.
-    height: 34,
+    height: isMobileOrTablet ? 42 : 34,
     // borderRadius redondea esquinas para definir la forma visual.
-    borderRadius: 10,
+    borderRadius: isMobileOrTablet ? 14 : 10,
     // borderWidth define el grosor del borde visible.
     borderWidth: 1,
     // alignItems alinea los hijos en el eje transversal del contenedor.
@@ -2639,6 +2850,7 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
   notificationCopy: {
     // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
     flex: 1,
+    width: isMobileOrTablet ? '100%' : undefined,
     // minWidth ajusta una propiedad visual especifica de este estilo.
     minWidth: 0,
   },
@@ -2647,7 +2859,7 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
     // color define el color del texto o icono.
     color: theme.text,
     // fontSize controla el tamanio del texto.
-    fontSize: 11,
+    fontSize: isMobileOrTablet ? 13 : 11,
     // fontWeight define el peso visual del texto.
     fontWeight: '900',
   },
@@ -2656,7 +2868,7 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
     // color define el color del texto o icono.
     color: theme.muted,
     // fontSize controla el tamanio del texto.
-    fontSize: 9,
+    fontSize: isMobileOrTablet ? 11 : 9,
     // fontWeight define el peso visual del texto.
     fontWeight: '700',
     // marginTop separa este bloque del elemento anterior.
@@ -2671,16 +2883,16 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
     // borderColor define el color del borde.
     borderColor: theme.border,
     // backgroundColor define el fondo del bloque.
-    backgroundColor: theme.chip,
+    backgroundColor: isMobileOrTablet ? (theme.isDark ? '#0F0B22' : '#FFFFFF') : theme.chip,
     // padding agrega espacio interno alrededor del contenido.
-    padding: 12,
+    padding: isMobileOrTablet ? 16 : 12,
   },
   // avatarButton: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
   avatarButton: {
     // width fija o calcula el ancho del elemento.
-    width: 38,
+    width: width < 480 ? 34 : 38,
     // height fija o calcula el alto del elemento.
-    height: 38,
+    height: width < 480 ? 34 : 38,
     // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 12,
     // overflow controla si el contenido se recorta o puede sobresalir.
@@ -3039,3 +3251,4 @@ const crearEstilos = (theme: AdminPalette) => StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.20)',
   },
 });
+};

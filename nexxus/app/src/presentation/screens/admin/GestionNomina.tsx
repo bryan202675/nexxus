@@ -11,8 +11,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
 import { useApiTranslate } from '@/shared/i18n/useApiTranslate';
-// Importa { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Alert, Platform, Modal, Image, KeyboardAvoidingView } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Alert, Platform, KeyboardAvoidingView, Modal, Image } from 'react-native';
+// Importa { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Alert, Platform, Modal, Image, KeyboardAvoidingView, useWindowDimensions } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
+import { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Alert, Platform, KeyboardAvoidingView, Modal, Image, useWindowDimensions } from 'react-native';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
@@ -102,6 +102,9 @@ export default function GestionNomina() {
   const { t, i18n } = useTranslation();
   // Inicializa toast; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const toast = useAdminToast();
+  const { width } = useWindowDimensions();
+  const isMobileOrTablet = width < 1024;
+  const isPhone = width < 640;
   // Inicializa [pagos, setPagos]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [pagos, setPagos] = useState<PagoNomina[]>([]);
   // Inicializa [usuarios, setUsuarios]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -185,7 +188,7 @@ export default function GestionNomina() {
     pendiente: filterPendiente,
     procesando: filterProcesando
   }), [filterPagado, filterPendiente, filterProcesando]);
-  
+
   // Inicializa [formPerfil, setFormPerfil]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [formPerfil, setFormPerfil] = useState({
     salarioBase: '',
@@ -517,7 +520,7 @@ export default function GestionNomina() {
           // Registro virtual, crearlo directamente como Pagado en Firestore
           const userObj = usuarios.find(u => u.id === p.usuario_id);
           const nuevoPagoRef = doc(collection(db, 'payments'));
-          
+
           batch.set(nuevoPagoRef, {
             usuario_id: p.usuario_id,
             usuarioNombre: p.usuarioNombre,
@@ -552,7 +555,7 @@ export default function GestionNomina() {
 
       if (count > 0) {
         await batch.commit();
-        
+
         await addDoc(collection(db, 'audit_logs'), {
           empresaId,
           usuarioId: user.id,
@@ -582,7 +585,7 @@ export default function GestionNomina() {
     try {
       const userObj = usuarios.find(u => u.id === pago.usuario_id);
       const salarioBase = userObj?.salarioBase || 0;
-      
+
       const msg = `Se ha realizado el pago correspondiente de tu nómina para el periodo ${pago.periodo}.\n\n` +
         `Detalles del Sueldo:\n` +
         `• Salario Base: $${salarioBase.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n` +
@@ -721,14 +724,14 @@ export default function GestionNomina() {
         const totalBruto = itemsParaExportar.reduce((acc, p) => acc + (p.salario_bruto || 0), 0);
         const totalNeto = itemsParaExportar.reduce((acc, p) => acc + (p.salario_neto || 0), 0);
         const nombreEmpresa = user?.empresa || 'Planilla de Nómina';
-        
+
         const filasHtml = itemsParaExportar.map(p => {
           const userObj = usuarios.find(u => u.id === p.usuario_id);
           const totalDeducciones = (p.isss || 0) + (p.afp || 0) + (p.renta || 0);
           const badgeColor = '#15803d'; // Aprobados
           const badgeBg = '#dcfce7';
           const cargoOrol = userObj?.cargo || userObj?.rol || 'Empleado';
-          
+
           return `
             <tr>
               <td style="padding: 12px 10px; font-size: 12px; border-bottom: 1px solid #e2e8f0; color: #0f172a;">
@@ -941,30 +944,35 @@ export default function GestionNomina() {
     // Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla.
     <Animated.View style={[estilos.animatedScreen, { transform: [{ translateY: entrada.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }] }]}>
       {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
-      <ScrollView style={estilos.contenedor} contentContainerStyle={estilos.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={[estilos.contenedor, isPhone && Platform.OS === 'web' ? { touchAction: 'pan-y', overflowY: 'auto' } as any : undefined]}
+        contentContainerStyle={[estilos.scrollContent, { paddingTop: isMobileOrTablet ? 126 : 260 }, isPhone && { paddingTop: 90, paddingHorizontal: 12, paddingBottom: 72, alignItems: 'center' }, isPhone && Platform.OS === 'web' ? { touchAction: 'pan-y' } as any : undefined]}
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled={false}
+      >
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={estilos.header}>
+        <View style={[estilos.header, isMobileOrTablet && { flexDirection: 'column', alignItems: 'flex-start', gap: 12 }, isPhone && { width: '100%', maxWidth: 420, alignSelf: 'center', marginBottom: 18 }]}>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View>
+          <View style={isPhone ? { width: '100%' } : undefined}>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.titulo}>{title}</Text>
+            <Text style={[estilos.titulo, isPhone && { fontSize: 24 }]}>{title}</Text>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.subtitulo}>{periodoActual}</Text>
+            <Text style={[estilos.subtitulo, isPhone && { fontSize: 12, lineHeight: 18 }]}>{periodoActual}</Text>
           </View>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={estilos.headerActions}>
+          <View style={[estilos.headerActions, isPhone && { width: '100%', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 10 }]}>
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-            <TouchableOpacity style={estilos.btnSecondary} onPress={() => setModalExportVisible(true)}>
+            <TouchableOpacity style={[estilos.btnSecondary, isPhone && { width: '48%', maxWidth: 184, minHeight: 44, justifyContent: 'center', paddingHorizontal: 10 }]} onPress={() => setModalExportVisible(true)}>
               {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <MaterialIcons name="file-download" size={18} color={BRAND.textMain} style={estilos.btnIcon} />
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.btnSecondaryText}>{btnExportLabel}</Text>
+              <Text numberOfLines={1} style={estilos.btnSecondaryText}>{btnExportLabel}</Text>
             </TouchableOpacity>
 
             {/* Botón para Aprobar Todas las Nóminas */}
-            <TouchableOpacity 
-              style={[estilos.btnSecondary, { borderColor: BRAND.success + '40', backgroundColor: BRAND.success + '10' }]} 
-              onPress={aprobarTodasLasNominas} 
+            <TouchableOpacity
+              style={[estilos.btnSecondary, { borderColor: BRAND.success + '40', backgroundColor: BRAND.success + '10' }, isPhone && { width: '48%', maxWidth: 184, minHeight: 44, justifyContent: 'center', paddingHorizontal: 10 }]}
+              onPress={aprobarTodasLasNominas}
               disabled={aprobandoTodo}
             >
               {aprobandoTodo ? (
@@ -972,13 +980,13 @@ export default function GestionNomina() {
               ) : (
                 <>
                   <MaterialIcons name="done-all" size={18} color={BRAND.success} style={estilos.btnIcon} />
-                  <Text style={[estilos.btnSecondaryText, { color: BRAND.success }]}>{t('Aprobar todas')}</Text>
+                  <Text numberOfLines={1} style={[estilos.btnSecondaryText, { color: BRAND.success }]}>{t('Aprobar todas')}</Text>
                 </>
               )}
             </TouchableOpacity>
 
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-            <TouchableOpacity {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} style={estilos.btnPrimary} onPress={generarNominaMasiva} disabled={procesandoMasivo}>
+            <TouchableOpacity {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} style={[estilos.btnPrimary, isPhone && { width: '100%', maxWidth: 380, minHeight: 46, justifyContent: 'center', paddingHorizontal: 10 }]} onPress={generarNominaMasiva} disabled={procesandoMasivo}>
               {procesandoMasivo ? (
                 <ActivityIndicator size="small" color={CONTRAST_TEXT} />
               ) : (
@@ -986,7 +994,7 @@ export default function GestionNomina() {
                   {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                   <MaterialIcons {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} name="payments" size={18} color={CONTRAST_TEXT} style={[estilos.btnIcon, estilos.btnPrimaryIcon]} />
                   {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.btnPrimaryText}>{btnGeneratePayroll}</Text>
+                  <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} numberOfLines={1} style={estilos.btnPrimaryText}>{btnGeneratePayroll}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -994,16 +1002,16 @@ export default function GestionNomina() {
         </View>
 
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={estilos.resumenRow}>
+        <View style={[estilos.resumenRow, isPhone && { width: '100%', maxWidth: 420, alignSelf: 'center', gap: 10, marginBottom: 16 }]}>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={estilos.resumenCard}>
+          <View style={[estilos.resumenCard, isPhone && { minWidth: 0, padding: 14, borderRadius: 14 }]}>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={estilos.resumenLabel}>{labelTotalPayroll}</Text>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={estilos.resumenValor}>{moneda(totales.bruto)}</Text>
           </View>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={estilos.resumenCard}>
+          <View style={[estilos.resumenCard, isPhone && { minWidth: 0, padding: 14, borderRadius: 14 }]}>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={estilos.resumenLabel}>{labelNetCost}</Text>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -1012,29 +1020,31 @@ export default function GestionNomina() {
         </View>
 
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={estilos.tablaCard}>
+        <View style={[estilos.tablaCard, isPhone && { width: '100%', maxWidth: 420, alignSelf: 'center', borderRadius: 14 }]}>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={estilos.tablaHeaderActions}>
+          <View style={[estilos.tablaHeaderActions, isPhone && { padding: 14, flexDirection: 'column', alignItems: 'stretch', gap: 12 }]}>
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.busquedaContainer}>
-              {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-              <MaterialIcons name="search" size={20} color={BRAND.textSec} style={estilos.searchIcon} />
-              {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
-              <TextInput
-                style={estilos.searchInput}
-                placeholder={searchPlaceholder}
-                placeholderTextColor={BRAND.textSec}
-                value={busqueda}
-                onChangeText={setBusqueda}
-              />
-            </View>
+            {!isMobileOrTablet && (
+              <View style={[estilos.busquedaContainer, isPhone && { width: '100%', minWidth: 0, flex: undefined }]}>
+                {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
+                <MaterialIcons name="search" size={20} color={BRAND.textSec} style={estilos.searchIcon} />
+                {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
+                <TextInput
+                  style={estilos.searchInput}
+                  placeholder={searchPlaceholder}
+                  placeholderTextColor={BRAND.textSec}
+                  value={busqueda}
+                  onChangeText={setBusqueda}
+                />
+              </View>
+            )}
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.filtrosRow}>
+            <View style={[estilos.filtrosRow, isPhone && { width: '100%', justifyContent: 'center', gap: 8 }]}>
               {['todos', 'pagado', 'pendiente'].map((f) => {
                 const label = filterLabels[f] || f;
                 return (
                   // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-                  <TouchableOpacity key={f} onPress={() => setFiltro(f as any)} style={[estilos.filtroChip, filtro === f && estilos.filtroChipActivo]}>
+                  <TouchableOpacity key={f} onPress={() => setFiltro(f as any)} style={[estilos.filtroChip, filtro === f && estilos.filtroChipActivo, isPhone && { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 }]}>
                     {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                     <Text style={[estilos.filtroText, filtro === f && estilos.filtroTextActivo]}>{label}</Text>
                   </TouchableOpacity>
@@ -1044,6 +1054,52 @@ export default function GestionNomina() {
           </View>
 
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+          {isPhone ? (
+          <View style={estilos.mobilePayrollList}>
+            {pagosFiltrados.map((p, i) => {
+              const statusText = stateLabels[p.estado || 'Pendiente'] || p.estado || 'Pendiente';
+              return (
+                <View key={p.id || i} style={[estilos.mobilePayrollCard, Platform.OS === 'web' ? { touchAction: 'pan-y' } as any : undefined]}>
+                  <View style={estilos.mobilePayrollTop}>
+                    <View style={estilos.mobilePayrollInfo}>
+                      <Text style={estilos.nombreEmp} numberOfLines={2}>{p.usuarioNombre || labelEmpleado}</Text>
+                      <Text style={estilos.mobilePayrollMeta}>{p.id ? `ID: ${p.id.slice(-6)}` : periodoActual}</Text>
+                    </View>
+                    <View style={[estilos.estadoBadge, { backgroundColor: p.estado === 'Pagado' ? BRAND.success + '22' : BRAND.warning + '22' }]}>
+                      <Text style={[estilos.estadoTexto, { color: p.estado === 'Pagado' ? BRAND.success : BRAND.warning }]}>{statusText}</Text>
+                    </View>
+                  </View>
+                  <View style={estilos.mobilePayrollAmounts}>
+                    <View style={estilos.mobileAmountBox}>
+                      <Text style={estilos.mobileAmountLabel}>{colBrutoNeto}</Text>
+                      <Text style={estilos.montoBruto}>{moneda(p.salario_bruto || 0)}</Text>
+                      <Text style={estilos.montoNeto}>{moneda(p.salario_neto || 0)}</Text>
+                    </View>
+                  </View>
+                  <View style={estilos.mobilePayrollActions}>
+                    <TouchableOpacity style={[estilos.accionBtn, estilos.mobileActionBtn]} onPress={() => actualizarEstado(p, 'Pagado')}>
+                      <MaterialIcons name="check-circle" size={18} color={BRAND.success} />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[estilos.accionBtn, estilos.mobileActionBtn]} onPress={() => actualizarEstado(p, 'Pendiente')}>
+                      <MaterialIcons name="pause-circle" size={18} color={BRAND.warning} />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[estilos.accionBtn, estilos.mobileActionBtn]} onPress={() => {
+                      const userObj = usuarios.find(u => u.id === p.usuario_id);
+                      if (userObj) {
+                        setUsuarioSeleccionado(userObj);
+                        setModalVisible(true);
+                      } else {
+                        toast.error({ title: labelPerfilNoEncontrado, description: labelNoSeEncontroPerfil });
+                      }
+                    }}>
+                      <MaterialIcons name="settings" size={18} color={BRAND.iconBright} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+          ) : (
           <View style={estilos.tablaContainer}>
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.thRow}>
@@ -1119,6 +1175,7 @@ export default function GestionNomina() {
               );
             })}
           </View>
+          )}
         </View>
       </ScrollView>
 
@@ -1126,7 +1183,7 @@ export default function GestionNomina() {
       <Modal visible={modalExportVisible} transparent animationType="fade" onRequestClose={() => setModalExportVisible(false)}>
         <View style={estilos.exportModalOverlay}>
           <BlurView intensity={theme.isDark ? 80 : 50} tint={theme.isDark ? 'dark' : 'light'} style={estilos.exportModalContent}>
-            
+
             {/* Botón Cerrar */}
             <TouchableOpacity onPress={() => setModalExportVisible(false)} style={estilos.exportModalCloseBtn} activeOpacity={0.85}>
               <MaterialIcons name="close" size={20} color="#FFFFFF" />
@@ -1157,8 +1214,8 @@ export default function GestionNomina() {
 
             {/* Opciones de descarga abajo */}
             <View style={estilos.exportModalActions}>
-              <TouchableOpacity 
-                style={estilos.exportBtnExcel} 
+              <TouchableOpacity
+                style={estilos.exportBtnExcel}
                 onPress={() => {
                   setModalExportVisible(false);
                   exportarDatos('Excel');
@@ -1169,8 +1226,8 @@ export default function GestionNomina() {
                 <Text style={estilos.exportBtnExcelText}>Excel (CSV)</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={estilos.exportBtnPdf} 
+              <TouchableOpacity
+                style={estilos.exportBtnPdf}
                 onPress={() => {
                   setModalExportVisible(false);
                   exportarDatos('PDF');
@@ -1350,6 +1407,61 @@ const estilos = StyleSheet.create({
   accionesCell: { flex: 1.5, flexDirection: 'row', justifyContent: 'center', gap: 12 },
   // accionBtn: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   accionBtn: { padding: 8, backgroundColor: ADMIN.fondoCampo, borderRadius: 8, borderWidth: 1, borderColor: ADMIN.borde },
+  mobilePayrollList: {
+    padding: 12,
+    gap: 12,
+  },
+  mobilePayrollCard: {
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    borderRadius: 14,
+    backgroundColor: ADMIN.fondoCampo,
+    padding: 14,
+    gap: 12,
+  },
+  mobilePayrollTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  mobilePayrollInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  mobilePayrollMeta: {
+    color: BRAND.textSec,
+    fontSize: 10,
+    fontWeight: '800',
+    marginTop: 4,
+    textTransform: 'uppercase',
+  },
+  mobilePayrollAmounts: {
+    flexDirection: 'row',
+  },
+  mobileAmountBox: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: ADMIN.fondoElevado,
+  },
+  mobileAmountLabel: {
+    color: BRAND.textSec,
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    marginBottom: 6,
+  },
+  mobilePayrollActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  mobileActionBtn: {
+    flex: 1,
+    alignItems: 'center',
+  },
 
   // Modal Styles
   modalOverlay: { flex: 1, backgroundColor: 'transparent', justifyContent: 'flex-end' },
@@ -1484,7 +1596,7 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 14,
-    backgroundColor: '#22C55E', 
+    backgroundColor: '#22C55E',
     borderColor: '#16A34A',
     borderWidth: 1,
     ...Platform.select({
@@ -1514,7 +1626,7 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 14,
-    backgroundColor: '#EF4444', 
+    backgroundColor: '#EF4444',
     borderColor: '#DC2626',
     borderWidth: 1,
     ...Platform.select({

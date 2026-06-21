@@ -1,0 +1,1214 @@
+.nx-account-page {
+  --account-bg: #050308;
+  --account-panel: #09060f;
+  --account-panel-soft: #0d0916;
+  --account-line: rgba(167, 139, 250, 0.18);
+  --account-line-soft: rgba(255, 255, 255, 0.075);
+  --account-muted: #9a93a5;
+  --account-purple: #9b7cf5;
+  --account-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  color: #f8f6fb;
+  font-family: "Sora", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  min-height: 100svh;
+  padding: 116px 24px 104px;
+  position: relative;
+}
+
+.nx-account-page::before {
+  background: linear-gradient(rgba(139, 92, 246, 0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(139, 92, 246, 0.035) 1px, transparent 1px);
+  background-size: 52px 52px;
+  content: '';
+  inset: 0;
+  mask-image: linear-gradient(to bottom, black, transparent 46%);
+  pointer-events: none;
+  position: absolute;
+}
+
+.nx-account-shell {
+  margin: 0 auto;
+  max-width: 980px;
+  position: relative;
+  width: 100%;
+}
+
+.nx-account-page .nx-account-nav.nx-hero-nav.is-floating {
+  left: 50%;
+  max-width: 980px;
+  top: 8px;
+  transform: translateX(-50%);
+  width: min(calc(100% - 32px), 980px);
+}
+
+.nx-account-nav > .glass-surface__content {
+  justify-content: space-between;
+  padding: 10px 12px 10px 14px;
+  width: 100%;
+}
+
+.nx-account-nav .nx-policy-back,
+.nx-account-nav .nx-policy-back:hover {
+  box-shadow: none !important;
+}
+
+.nx-account-logout-profile {
+  align-items: center;
+  background: rgba(220, 38, 38, 0.14) !important;
+  border: 1px solid rgba(248, 113, 113, 0.4) !important;
+  border-radius: 11px;
+  color: #fca5a5 !important;
+  display: inline-flex;
+  font-size: 0.84rem !important;
+  font-weight: 750 !important;
+  gap: 8px;
+  justify-self: end;
+  min-height: 44px;
+  padding: 0 17px !important;
+  transition: background-color 180ms ease, border-color 180ms ease, transform 140ms var(--account-ease-out);
+}
+
+.nx-account-logout-profile svg {
+  height: 18px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.9;
+  width: 18px;
+}
+
+.nx-account-logout-profile:active {
+  transform: scale(0.97);
+}
+
+.nx-account-logout-profile:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+.nx-account-nav-start,
+.nx-account-nav-links {
+  align-items: center;
+  display: flex;
+}
+
+.nx-account-nav-start {
+  gap: 10px;
+}
+
+.nx-account-brand {
+  align-items: center;
+  color: #f7f4ff;
+  display: inline-flex;
+  font-size: 0.98rem;
+  font-weight: 800;
+  gap: 9px;
+  letter-spacing: -0.025em;
+  padding: 0 8px !important;
+}
+
+.nx-account-brand > span {
+  align-items: center;
+  background: #8b5cf6;
+  border-radius: 8px;
+  color: #fff;
+  display: inline-flex;
+  height: 29px;
+  justify-content: center;
+  width: 29px;
+}
+
+.nx-account-nav-links {
+  gap: 4px;
+}
+
+.nx-account-nav-links button {
+  border-radius: 999px;
+  color: #a49cad;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 10px 13px !important;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.nx-account-back {
+  align-items: center;
+  background: #0d0916;
+  border: 1px solid rgba(167, 139, 250, 0.22) !important;
+  border-radius: 999px;
+  color: #f5f1ff;
+  display: inline-flex;
+  height: 42px;
+  justify-content: center;
+  padding: 0 !important;
+  transition: background-color 160ms ease, border-color 160ms ease, transform 140ms var(--account-ease-out);
+  width: 42px;
+}
+
+.nx-account-back svg {
+  fill: none;
+  height: 22px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.9;
+  width: 22px;
+}
+
+.nx-account-back:active,
+.nx-account-button:active,
+.nx-account-primary:active,
+.nx-inline-edit button:active,
+.nx-account-value.editable:active,
+.nx-account-empty button:active {
+  transform: scale(0.97);
+}
+
+.nx-account-heading {
+  margin: 0 0 58px;
+  max-width: 760px;
+}
+
+.nx-account-heading > span {
+  align-items: center;
+  color: #ad96ff;
+  display: flex;
+  font-size: 0.76rem;
+  font-weight: 800;
+  gap: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.nx-account-heading > span::before {
+  background: #8b5cf6;
+  border-radius: 50%;
+  content: '';
+  height: 7px;
+  width: 7px;
+}
+
+.nx-account-heading h1 {
+  font-size: clamp(2.4rem, 5vw, 4.5rem);
+  letter-spacing: -0.055em;
+  line-height: 1;
+  margin: 16px 0 18px;
+}
+
+.nx-account-heading p {
+  color: var(--account-muted);
+  font-size: clamp(1rem, 1.8vw, 1.12rem);
+  line-height: 1.7;
+  margin: 0;
+  max-width: 660px;
+}
+
+.nx-account-layout {
+  align-items: start;
+  display: grid;
+  gap: 28px;
+  grid-template-columns: 290px minmax(0, 1fr);
+  width: 100%;
+}
+
+.nx-account-content {
+  margin: 0 auto;
+  max-width: 980px;
+  min-width: 0;
+  width: 100%;
+}
+
+.nx-account-content .nx-account-section:first-child {
+  margin-top: 0;
+}
+
+.nx-account-aside {
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.055), transparent 30%),
+    radial-gradient(circle at 18% 88%, rgba(199, 157, 255, 0.22), transparent 35%),
+    linear-gradient(145deg, #140d20 0%, #281244 50%, #512098 100%);
+  border: 1px solid rgba(223, 205, 255, 0.16);
+  border-radius: 25px;
+  min-height: 520px;
+  overflow: hidden;
+  padding: 24px;
+  position: sticky;
+  top: 96px;
+}
+
+.nx-account-aside-pattern {
+  background-image: linear-gradient(rgba(255, 255, 255, 0.055) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.055) 1px, transparent 1px);
+  background-size: 34px 34px;
+  inset: 0;
+  mask-image: linear-gradient(to bottom, black, transparent 72%);
+  opacity: 0.55;
+  pointer-events: none;
+  position: absolute;
+}
+
+.nx-account-aside-user,
+.nx-account-aside nav,
+.nx-account-aside-foot {
+  position: relative;
+}
+
+.nx-account-aside-user {
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  gap: 13px;
+  padding-bottom: 22px;
+}
+
+.nx-account-aside-avatar {
+  align-items: center;
+  background: rgba(7, 4, 12, 0.46);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 15px;
+  display: flex;
+  flex: 0 0 auto;
+  height: 52px;
+  justify-content: center;
+  overflow: hidden;
+  width: 52px;
+}
+
+.nx-account-aside-avatar img {
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.nx-account-aside-avatar span {
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.nx-account-aside-user > div:last-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.nx-account-aside-user span {
+  color: #d7c8ee;
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.nx-account-aside-user strong,
+.nx-account-aside-user small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nx-account-aside-user strong {
+  font-size: 0.93rem;
+}
+
+.nx-account-aside-user small {
+  color: rgba(244, 237, 255, 0.66);
+  font-size: 0.72rem;
+}
+
+.nx-account-aside nav {
+  display: grid;
+  gap: 7px;
+  margin-top: 22px;
+}
+
+.nx-account-aside nav button {
+  align-items: center;
+  background: rgba(7, 4, 12, 0.22);
+  border: 1px solid transparent !important;
+  border-radius: 14px;
+  display: flex;
+  gap: 12px;
+  padding: 12px !important;
+  text-align: left;
+  transition: background-color 160ms ease, border-color 160ms ease, transform 140ms var(--account-ease-out);
+}
+
+.nx-account-aside nav button:active {
+  transform: scale(0.98);
+}
+
+.nx-account-aside nav button > span {
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 9px;
+  color: #e7ddf7;
+  display: inline-flex;
+  font-size: 0.66rem;
+  font-weight: 800;
+  height: 32px;
+  justify-content: center;
+  width: 32px;
+}
+
+.nx-account-aside nav button > div {
+  display: grid;
+  gap: 2px;
+}
+
+.nx-account-aside nav strong {
+  font-size: 0.84rem;
+}
+
+.nx-account-aside nav small {
+  color: rgba(240, 232, 250, 0.6);
+  font-size: 0.68rem;
+}
+
+.nx-account-aside-foot {
+  bottom: 24px;
+  display: grid;
+  gap: 4px;
+  left: 24px;
+  position: absolute;
+  right: 24px;
+}
+
+.nx-account-aside-foot span {
+  color: #ebe3f7;
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+.nx-account-aside-foot small {
+  color: rgba(240, 232, 250, 0.58);
+  font-size: 0.67rem;
+}
+
+.nx-account-enter {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 240ms var(--account-ease-out), transform 240ms var(--account-ease-out);
+  transition-delay: var(--delay, 0ms);
+}
+
+.nx-account-page.is-mounted .nx-account-enter {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.nx-account-section {
+  margin-top: 70px;
+  scroll-margin-top: 104px;
+  width: 100%;
+}
+
+.nx-account-section-title {
+  align-items: end;
+  display: flex;
+  justify-content: space-between;
+  margin: 0 2px 18px;
+}
+
+.nx-account-section-title > div {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.nx-account-section-title span {
+  align-items: center;
+  border: 1px solid rgba(167, 139, 250, 0.26);
+  border-radius: 999px;
+  color: #ad96ff;
+  display: inline-flex;
+  font-size: 0.68rem;
+  font-weight: 800;
+  height: 29px;
+  justify-content: center;
+  width: 29px;
+}
+
+.nx-account-section-title h2 {
+  font-size: clamp(1.45rem, 2.6vw, 1.9rem);
+  letter-spacing: -0.035em;
+  margin: 0;
+}
+
+.nx-account-section-title p {
+  color: #81798d;
+  font-size: 0.88rem;
+  margin: 0;
+}
+
+.nx-account-card {
+  background: linear-gradient(145deg, rgba(13, 9, 22, 0.98), rgba(6, 4, 10, 0.98));
+  border: 1px solid var(--account-line);
+  border-radius: 25px;
+  box-shadow: none !important;
+  overflow: hidden;
+  width: 100%;
+}
+
+.nx-account-row {
+  align-items: center;
+  display: grid;
+  gap: 28px;
+  grid-template-columns: minmax(230px, 0.8fr) minmax(0, 1.2fr);
+  margin: 0 30px;
+  min-height: 104px;
+  padding: 23px 0;
+}
+
+.nx-account-row + .nx-account-row {
+  border-top: 1px solid var(--account-line-soft);
+}
+
+.nx-account-row > div:first-child {
+  display: grid;
+  gap: 6px;
+}
+
+.nx-account-row strong {
+  font-size: 0.96rem;
+  font-weight: 700;
+}
+
+.nx-account-row small {
+  color: #85808e;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.nx-account-value {
+  color: #e8e4ed;
+  font-family: inherit;
+  font-size: 0.94rem;
+  justify-self: end;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.nx-account-value.editable {
+  align-items: center;
+  background: #110d19;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 12px;
+  display: inline-flex;
+  gap: 10px;
+  padding: 10px 13px !important;
+  transition: background-color 160ms ease, border-color 160ms ease, transform 140ms var(--account-ease-out);
+}
+
+.nx-account-value.editable svg {
+  fill: none;
+  height: 17px;
+  stroke: #8e8798;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+  width: 17px;
+}
+
+.nx-profile-picture-actions {
+  align-items: center;
+  display: flex !important;
+  gap: 11px !important;
+  justify-self: end;
+}
+
+.nx-account-avatar,
+.nx-company-logo {
+  align-items: center;
+  background: #15101f;
+  border: 1px solid rgba(167, 139, 250, 0.24);
+  border-radius: 50%;
+  box-shadow: none !important;
+  display: flex;
+  flex: 0 0 auto;
+  height: 60px;
+  justify-content: center;
+  overflow: hidden;
+  width: 60px;
+}
+
+.nx-account-avatar img,
+.nx-company-logo img {
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.nx-account-avatar span,
+.nx-company-logo span {
+  color: #cdbfff;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.nx-account-button,
+.nx-account-primary,
+.nx-inline-edit button,
+.nx-account-empty button {
+  align-items: center;
+  border-radius: 11px;
+  box-shadow: none !important;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.84rem;
+  font-weight: 750;
+  justify-content: center;
+  min-height: 41px;
+  padding: 0 15px !important;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 140ms var(--account-ease-out);
+}
+
+.nx-account-button-secondary {
+  background: #120e1b;
+  border: 1px solid rgba(167, 139, 250, 0.2) !important;
+  color: #f3eff8;
+}
+
+.nx-account-button input {
+  display: none;
+}
+
+.nx-account-text-button {
+  color: #918a9b;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.nx-account-text-button.danger {
+  color: #fb7185;
+}
+
+.nx-account-remove-photo {
+  align-items: center;
+  background: rgba(244, 63, 94, 0.08) !important;
+  border: 1px solid rgba(251, 113, 133, 0.24) !important;
+  border-radius: 11px;
+  color: #fda4af !important;
+  display: inline-flex;
+  font-size: 0.8rem !important;
+  font-weight: 750 !important;
+  min-height: 41px;
+  padding: 0 14px !important;
+  transition: background-color 160ms ease, border-color 160ms ease, transform 140ms var(--account-ease-out);
+}
+
+.nx-account-remove-photo:active {
+  transform: scale(0.97);
+}
+
+.nx-inline-edit {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-self: end;
+  max-width: 100%;
+}
+
+.nx-inline-edit input {
+  background: #100c18;
+  border: 1px solid rgba(167, 139, 250, 0.36);
+  border-radius: 11px;
+  color: white;
+  font: inherit;
+  min-height: 42px;
+  min-width: 220px;
+  outline: none;
+  padding: 0 12px;
+}
+
+.nx-inline-edit input:focus {
+  border-color: #a78bfa;
+  outline: 2px solid rgba(167, 139, 250, 0.16);
+  outline-offset: 2px;
+}
+
+.nx-inline-edit button:first-of-type {
+  background: #7957df;
+  border: 1px solid #8d6cec !important;
+  color: white;
+}
+
+.nx-inline-edit button:last-of-type {
+  color: #aaa3b4;
+}
+
+.nx-company-card + .nx-company-card {
+  margin-top: 18px;
+}
+
+.nx-company-head {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.018);
+  border-bottom: 1px solid var(--account-line-soft);
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 26px 30px;
+}
+
+.nx-company-identity {
+  align-items: center;
+  display: flex;
+  gap: 18px;
+  min-width: 0;
+}
+
+.nx-company-logo {
+  border-radius: 15px;
+  height: 64px;
+  width: 64px;
+}
+
+.nx-company-title {
+  display: grid;
+  gap: 4px;
+}
+
+.nx-company-title > span,
+.nx-current-plan-label {
+  color: #aa92ff;
+  font-size: 0.69rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.nx-company-title h3 {
+  font-size: 1.3rem;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.nx-company-title small {
+  color: #827b8d;
+  text-transform: capitalize;
+}
+
+.nx-company-details {
+  display: grid;
+  gap: 0;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 0 30px;
+  padding: 22px 0;
+}
+
+.nx-company-details > div {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+  display: grid;
+  gap: 6px;
+  padding: 15px 16px;
+}
+
+.nx-company-details span,
+.nx-plan-account-meta span {
+  color: #7f7889;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.nx-company-details strong {
+  font-size: 0.9rem;
+}
+
+.nx-employee-usage {
+  border-top: 1px solid var(--account-line-soft);
+  margin: 0 30px;
+  padding: 28px 0 32px;
+}
+
+.nx-employee-usage > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+
+.nx-employee-usage > div:first-child > div {
+  display: grid;
+  gap: 4px;
+}
+
+.nx-employee-usage span {
+  color: #a39cab;
+  font-size: 0.82rem;
+}
+
+.nx-employee-usage strong {
+  font-size: 1.1rem;
+}
+
+.nx-employee-usage small {
+  align-self: end;
+  color: #817a89;
+}
+
+.nx-employee-track {
+  background: #19151e;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  height: 11px;
+  overflow: hidden;
+}
+
+.nx-employee-track i {
+  background: linear-gradient(90deg, #22c55e 0%, var(--usage-color) 100%);
+  border-radius: inherit;
+  box-shadow: none !important;
+  display: block;
+  height: 100%;
+  transform-origin: left;
+  transition: transform 240ms var(--account-ease-out);
+}
+
+.nx-employee-usage.is-unlimited .nx-employee-track i {
+  background: #22c55e;
+}
+
+.nx-plan-account-card {
+  background: linear-gradient(145deg, #100b19, #07040c);
+  padding: 32px;
+}
+
+.nx-plan-account-main {
+  align-items: end;
+  display: flex;
+  gap: 30px;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+.nx-plan-account-main h3,
+.nx-no-plan-card h3 {
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  letter-spacing: -0.05em;
+  margin: 0 0 8px;
+}
+
+.nx-plan-account-main p,
+.nx-no-plan-card p {
+  color: #928b9b;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.nx-plan-price {
+  align-items: baseline;
+  display: flex;
+  white-space: nowrap;
+}
+
+.nx-plan-price strong {
+  font-size: clamp(2rem, 4vw, 3.15rem);
+  letter-spacing: -0.055em;
+}
+
+.nx-plan-price span {
+  color: #8e8796;
+}
+
+.nx-plan-account-meta {
+  border-bottom: 1px solid var(--account-line-soft);
+  border-top: 1px solid var(--account-line-soft);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 28px 0;
+  padding: 22px 0;
+}
+
+.nx-plan-account-meta > div {
+  display: grid;
+  gap: 7px;
+}
+
+.nx-account-primary,
+.nx-account-empty button {
+  background: #7654dc;
+  border: 1px solid #8e70e9 !important;
+  color: white;
+  min-height: 46px;
+  padding: 0 20px !important;
+}
+
+.nx-no-plan-card {
+  align-items: start;
+  display: grid;
+  gap: 13px;
+}
+
+.nx-no-plan-card p {
+  max-width: 700px;
+}
+
+.nx-no-plan-card .nx-account-primary {
+  margin-top: 7px;
+}
+
+.nx-plan-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.nx-account-danger {
+  background: transparent;
+  border: 1px solid rgba(248, 113, 113, 0.42) !important;
+  border-radius: 11px;
+  color: #fca5a5;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 750;
+  min-height: 46px;
+  padding: 0 20px !important;
+}
+
+.nx-plan-cancel-status {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.24);
+  border-radius: 13px;
+  display: grid;
+  gap: 5px;
+  margin-bottom: 20px;
+  padding: 14px 16px;
+}
+
+.nx-plan-cancel-status strong { color: #fbbf24; }
+.nx-plan-cancel-status span { color: #b8af9f; font-size: 0.82rem; line-height: 1.5; }
+
+.nx-cancel-modal-backdrop {
+  --account-line-soft: rgba(255, 255, 255, 0.075);
+  align-items: center;
+  backdrop-filter: blur(10px);
+  background: rgba(2, 1, 5, 0.78);
+  color: #f8f6fb;
+  color-scheme: dark;
+  display: flex;
+  font-family: "Sora", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  inset: 0;
+  justify-content: center;
+  padding: 20px;
+  position: fixed;
+  z-index: 100001;
+}
+
+.nx-cancel-modal-backdrop,
+.nx-cancel-modal-backdrop * {
+  box-sizing: border-box;
+}
+
+.nx-cancel-modal {
+  background: #0d0915;
+  border: 1px solid rgba(167, 139, 250, 0.26);
+  border-radius: 22px;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.5);
+  color: #f8f6fb;
+  max-height: calc(100dvh - 40px);
+  max-width: 620px;
+  overflow-y: auto;
+  padding: 30px;
+  width: 100%;
+}
+
+.nx-cancel-modal > span { color: #fca5a5; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.11em; text-transform: uppercase; }
+.nx-cancel-modal h2 { color: #f8f6fb; font-family: inherit; font-size: clamp(1.45rem, 3vw, 2rem); font-weight: 800; letter-spacing: -0.035em; line-height: 1.12; margin: 12px 0 16px; }
+.nx-cancel-modal p { color: #aaa3b4; font-family: inherit; font-size: 0.92rem; line-height: 1.65; margin: 0 0 14px; }
+.nx-cancel-modal p strong { color: #e8e2ee; }
+
+.nx-cancel-modal-dates {
+  border-bottom: 1px solid var(--account-line-soft);
+  border-top: 1px solid var(--account-line-soft);
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr 1fr;
+  margin: 24px 0;
+  padding: 18px 0;
+}
+
+.nx-cancel-modal-dates > div { display: grid; gap: 5px; }
+.nx-cancel-modal-dates span { color: #81798d; font-size: 0.72rem; text-transform: uppercase; }
+.nx-cancel-modal-dates strong { color: #f1edf5; font-size: 0.92rem; }
+
+.nx-cancel-modal-actions { display: flex; gap: 12px; justify-content: flex-end; }
+.nx-cancel-modal-actions button { border-radius: 10px; cursor: pointer; font-family: inherit; font-size: 0.84rem; font-weight: 750; line-height: 1; min-height: 44px; padding: 0 17px; }
+.nx-cancel-modal-actions button:first-child { background: #171120; border: 1px solid rgba(255,255,255,0.12); color: #ddd6e5; }
+.nx-cancel-modal-actions button:last-child { background: #b4233e; border: 1px solid #d3425d; color: white; }
+.nx-cancel-modal-actions button:disabled { cursor: wait; opacity: 0.62; }
+
+.nx-account-empty {
+  padding: 34px;
+}
+
+.nx-account-empty h3 {
+  font-size: 1.4rem;
+  margin: 0 0 8px;
+}
+
+.nx-account-empty p {
+  color: #8e8796;
+  margin: 0 0 20px;
+}
+
+.nx-account-notice {
+  align-items: center;
+  background: #110c1a;
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  border-radius: 14px;
+  box-shadow: none !important;
+  color: #eee9f5;
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  left: 50%;
+  max-width: calc(100% - 32px);
+  padding: 13px 15px 13px 17px;
+  position: fixed;
+  top: 76px;
+  transform: translateX(-50%);
+  width: 500px;
+  z-index: 100000;
+}
+
+.nx-account-notice button {
+  color: #a9a2b2;
+  font-size: 1.35rem;
+}
+
+.nx-account-loading {
+  display: grid;
+  gap: 13px;
+  inset: 0;
+  place-content: center;
+  position: fixed;
+  text-align: center;
+}
+
+.nx-account-loading span {
+  animation: nx-account-spin 700ms linear infinite;
+  border: 2px solid rgba(167, 139, 250, 0.18);
+  border-radius: 50%;
+  border-top-color: #a78bfa;
+  height: 32px;
+  justify-self: center;
+  width: 32px;
+}
+
+.nx-account-loading p {
+  color: #928b9b;
+  margin: 0;
+}
+
+@keyframes nx-account-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nx-account-back:hover,
+  .nx-account-button-secondary:hover,
+  .nx-account-value.editable:hover {
+    background: #171020;
+    border-color: rgba(167, 139, 250, 0.36) !important;
+  }
+
+  .nx-account-primary:hover,
+  .nx-account-empty button:hover {
+    background: #8260e4;
+  }
+
+  .nx-account-logout-profile:hover {
+    background: rgba(220, 38, 38, 0.24) !important;
+    border-color: rgba(248, 113, 113, 0.62) !important;
+  }
+
+  .nx-account-nav-links button:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: #fff;
+  }
+
+  .nx-account-aside nav button:hover {
+    background: rgba(255, 255, 255, 0.09);
+    border-color: rgba(255, 255, 255, 0.11) !important;
+  }
+}
+
+@media (max-width: 980px) {
+  .nx-account-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .nx-account-aside {
+    min-height: 0;
+    position: relative;
+    top: auto;
+  }
+
+  .nx-account-aside nav {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .nx-account-aside-foot {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .nx-account-page {
+    padding: 98px 14px 76px;
+  }
+
+  .nx-account-heading {
+    margin-bottom: 44px;
+  }
+
+  .nx-account-nav-links {
+    display: none;
+  }
+
+  .nx-account-aside {
+    padding: 20px;
+  }
+
+  .nx-account-aside nav button {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .nx-account-aside nav small {
+    display: none;
+  }
+
+  .nx-account-section {
+    margin-top: 50px;
+  }
+
+  .nx-account-section-title {
+    align-items: start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .nx-account-section-title p {
+    margin-left: 41px;
+  }
+
+  .nx-account-card {
+    border-radius: 20px;
+  }
+
+  .nx-account-row {
+    align-items: start;
+    gap: 16px;
+    grid-template-columns: 1fr;
+    margin: 0 20px;
+    min-height: 0;
+    padding: 21px 0;
+  }
+
+  .nx-account-value,
+  .nx-inline-edit,
+  .nx-profile-picture-actions {
+    justify-self: stretch;
+    text-align: left;
+  }
+
+  .nx-account-logout-profile {
+    justify-self: stretch;
+  }
+
+  .nx-account-value.editable {
+    justify-content: space-between;
+  }
+
+  .nx-inline-edit {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .nx-inline-edit input {
+    grid-column: 1 / -1;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .nx-company-head {
+    grid-template-columns: 1fr;
+    padding: 23px 20px;
+  }
+
+  .nx-company-head > .nx-account-button {
+    grid-column: auto;
+  }
+
+  .nx-company-details {
+    grid-template-columns: 1fr 1fr;
+    margin: 0 20px;
+  }
+
+  .nx-company-details > div {
+    padding: 13px 0;
+  }
+
+  .nx-employee-usage {
+    margin: 0 20px;
+  }
+
+  .nx-employee-usage > div:first-child {
+    align-items: start;
+    flex-direction: column;
+    gap: 9px;
+  }
+
+  .nx-plan-account-card {
+    padding: 25px 20px;
+  }
+
+  .nx-plan-account-main {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .nx-plan-account-meta {
+    gap: 20px;
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 440px) {
+  .nx-account-page {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .nx-profile-picture-actions {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .nx-company-details {
+    grid-template-columns: 1fr;
+  }
+
+  .nx-cancel-modal { padding: 23px 18px; }
+  .nx-cancel-modal-dates { grid-template-columns: 1fr; }
+  .nx-cancel-modal-actions { flex-direction: column; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nx-account-enter {
+    opacity: 1;
+    transform: none;
+    transition: opacity 150ms ease;
+  }
+
+  .nx-account-back,
+  .nx-account-button,
+  .nx-account-primary,
+  .nx-inline-edit button,
+  .nx-account-value.editable,
+  .nx-employee-track i {
+    transition-duration: 0ms;
+  }
+}

@@ -40,7 +40,6 @@ const postCloudinary = (file: Blob | File, folder: string, publicId: string, onP
     formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
     formData.append('folder', folder);
     formData.append('public_id', publicId);
-    formData.append('overwrite', 'true');
 
     const abort = () => {
       xhr.abort();
@@ -145,7 +144,7 @@ export async function uploadManagedFile(file: Blob | File, options: ManagedUploa
     };
   }
 
-  const suffix = options.kind === 'document' ? `${Date.now()}_${hash.slice(0, 10)}` : limits.publicId;
+  const suffix = `${limits.publicId}_${Date.now()}_${hash.slice(0, 10)}`;
   const uploaded = await uploadWithRetry(prepared, limits.folder(options.ownerId), suffix, options.onProgress, options.signal);
   const payload = {
     kind: options.kind,

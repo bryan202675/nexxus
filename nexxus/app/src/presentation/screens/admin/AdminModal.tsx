@@ -23,7 +23,7 @@ const WEB_HOST_STYLE: ViewStyle =
         width: '100%',
         height: '100%',
         zIndex: 10000,
-      } as ViewStyle)
+      } as any)
     : { flex: 1 };
 
 export function AdminModal({

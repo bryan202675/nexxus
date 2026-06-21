@@ -11,8 +11,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 // Importa { useApiTranslate }; permite traducir textos visibles dinámicamente mediante la API.
 import { useApiTranslate } from '@/shared/i18n/useApiTranslate';
 import { useRoute } from '@react-navigation/native';
-// Importa { Clipboard, Alert, Animated, Easing, Image, Modal, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { Clipboard, Alert, Animated, Easing, Image, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Platform } from 'react-native';
+// Importa { Clipboard, Alert, Animated, Easing, Image, Modal, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Platform, useWindowDimensions } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
+import { Clipboard, Alert, Animated, Easing, Image, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Platform, useWindowDimensions } from 'react-native';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
 import * as XLSX from 'xlsx';
@@ -629,6 +629,9 @@ const SelectorOpciones = ({
 export default function GestionPlantilla() {
   const route = useRoute<any>();
   const focoBusquedaAplicado = useRef<string>('');
+  const { width } = useWindowDimensions();
+  const isMobileOrTablet = width < 1024;
+  const isPhone = width < 640;
   // Inicializa traducciones dinámicas vía API.
   const titlePlantilla = useApiTranslate('Gestión de Plantilla');
   const subtitlePlantilla = useApiTranslate('Colaboradores, roles, sedes y asignación de tareas');
@@ -1020,7 +1023,7 @@ export default function GestionPlantilla() {
     const unsubCargos = crearListener<CargoCatalogo>('cargos', 'cargos', setCargosCatalogo);
     // Declara unsubRoles; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const unsubRoles = crearListener<RolCatalogo>('roles', 'roles_personalizados', setRolesPersonalizados);
-    
+
     // Calcula unsubEmpresa; transforma la lista original en datos listos para renderizar o guardar.
     const unsubEmpresa = onSnapshot(doc(db, 'empresas', empresaId), async (snapshotDoc) => {
       // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
@@ -1067,7 +1070,7 @@ export default function GestionPlantilla() {
             await updateDoc(doc(db, 'empresas', empresaId), { codigo: uniqueCode });
             // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
             console.log(`[GestionPlantilla] Código de empresa único generado de forma retroactiva: ${uniqueCode}`);
-            
+
             // Propagar el nuevo código de acceso a todos los usuarios existentes de esta empresa
             try {
               // Prepara qUsers; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
@@ -1075,7 +1078,7 @@ export default function GestionPlantilla() {
               // Declara snapUsers; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
               const snapUsers = await getDocs(qUsers);
               // Calcula batchPromises; transforma la lista original en datos listos para renderizar o guardar.
-              const batchPromises = snapUsers.docs.map(userDoc => 
+              const batchPromises = snapUsers.docs.map(userDoc =>
                 updateDoc(doc(db, 'usuarios', userDoc.id), { codigoEmpresa: uniqueCode })
               );
               // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
@@ -1096,7 +1099,7 @@ export default function GestionPlantilla() {
             const snapUsers = await getDocs(qUsers);
             // Declara batchPromises; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
             const batchPromises: Promise<any>[] = [];
-            
+
             // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
             snapUsers.docs.forEach(userDoc => {
               // Declara uData; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -1820,10 +1823,10 @@ export default function GestionPlantilla() {
         : formulario.rol === 'jefe'
           ? ['equipo', 'tareas', 'aprobaciones', 'mensajeria']
           : ['empleado'];
-    
+
     // Declara codigoEmpresa; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const codigoEmpresa = (empresa?.codigo || empresa?.nombre_normalizado || 'EMPRESA').toUpperCase();
-    
+
     // Devuelve el valor final calculado para esta funcion o caso de uso.
     return {
       nombre: formulario.nombre.trim(),
@@ -1833,8 +1836,8 @@ export default function GestionPlantilla() {
       cargoId: cargo?.id || '',
       cargo: cargo?.nombre || (formulario.cargoId === 'base' ? labelEmpleado : ''),
       departamentoId: departamento?.id || (formulario.departamentoId === 'general' ? 'general' : ''),
-      departamento: (departamento?.nombre && departamento?.nombre.toLowerCase().trim() !== 'global.global') 
-        ? departamento.nombre 
+      departamento: (departamento?.nombre && departamento?.nombre.toLowerCase().trim() !== 'global.global')
+        ? departamento.nombre
         : (formulario.departamentoId === 'general' ? labelGeneral : labelGeneral),
       sede: sede?.nombre || (formulario.sedeId === 'global' ? labelGlobal : ''),
       sedeId: sede?.id || (formulario.sedeId === 'global' ? 'global' : ''),
@@ -2041,7 +2044,7 @@ export default function GestionPlantilla() {
     const usuarioInterno = formulario.usuarioInterno.trim().toLowerCase();
     // Declara codigoEmpresa; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const codigoEmpresa = (empresa?.codigo || empresa?.nombre_normalizado || 'EMPRESA').toUpperCase();
-    
+
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!empresaId) {
       // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
@@ -2069,7 +2072,7 @@ export default function GestionPlantilla() {
       // Devuelve el valor final calculado para esta funcion o caso de uso.
       return;
     }
-    
+
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (modoFormulario === 'crear') {
       // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
@@ -2102,7 +2105,7 @@ export default function GestionPlantilla() {
       if (modoFormulario === 'crear') {
         // Generamos un correo interno para Firebase Auth basado en el usuario y empresa
         const correoInterno = `${usuarioInterno}@${codigoEmpresa.toLowerCase()}.nexxus`;
-        
+
         // Calcula resultado; normaliza fechas para comparaciones, filtros o etiquetas visibles.
         const resultado = await crearEmpleadoFirestore({
           nombre,
@@ -2181,7 +2184,7 @@ export default function GestionPlantilla() {
       let mensajeError = error?.message || 'Firebase no confirmó la operación.';
       // Declara codigo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const codigo = error?.code || 'unknown';
-      
+
       // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (codigo === 'functions/internal') {
         // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
@@ -2193,7 +2196,7 @@ export default function GestionPlantilla() {
         // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
         mensajeError = 'El servicio remoto no está disponible. La operación no pudo completarse.';
       }
-      
+
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       toast.error({ title: toastSaveErrorTitle, description: toastSaveErrorDescBase.replace('{error}', mensajeError).replace('{code}', codigo) });
       // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
@@ -2464,14 +2467,72 @@ export default function GestionPlantilla() {
           : 'badge';
     // Declara avatarInicial; mantiene una referencia alfabetica del empleado dentro del fallback visual.
     const avatarInicial = (emp.nombre || emp.correo || '?')[0].toUpperCase();
+    if (isPhone) {
+      return (
+        <View key={emp.id || i} style={[estilos.mobileEmployeeCard, Platform.OS === 'web' ? { touchAction: 'pan-y' } as any : undefined]}>
+          <View style={estilos.mobileEmployeeTop}>
+            {gestionable ? (
+              <TouchableOpacity style={[estilos.checkbox, seleccionado && estilos.checkboxActivo, Platform.OS === 'web' ? { touchAction: 'pan-y' } as any : undefined]} onPress={() => alternarSeleccionEmpleado(emp)}>
+                {seleccionado && <MaterialIcons {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} name="check" size={14} color="#FFFFFF" style={estilos.checkboxCheckIcon} />}
+              </TouchableOpacity>
+            ) : (
+              <MaterialIcons name="lock" size={16} color={BRAND.textSec} />
+            )}
+            {emp.foto_perfil || emp.fotoPerfil || emp.photoURL ? (
+              <Image source={{ uri: emp.foto_perfil || emp.fotoPerfil || emp.photoURL }} style={estilos.avatarImagen} />
+            ) : (
+              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} colors={['#6320A6', '#6320A6']} style={estilos.avatar}>
+                <View {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.avatarIconShell}>
+                  <MaterialIcons {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} name={avatarIcono} size={18} color="#FFFFFF" style={estilos.avatarIconoBlanco} />
+                </View>
+                <View style={estilos.avatarInitialBadge}>
+                  <Text {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.avatarText}>{avatarInicial}</Text>
+                </View>
+              </LinearGradient>
+            )}
+            <View style={estilos.mobileEmployeeInfo}>
+              <Text style={estilos.empName} numberOfLines={2}>{emp.nombre || labelSinNombre}</Text>
+              <Text style={estilos.empEmail} numberOfLines={1}>{(emp as any).usuarioInterno || emp.correo || labelSinUsuario}</Text>
+            </View>
+          </View>
+          <View style={estilos.mobileEmployeeMeta}>
+            <PremiumBadge variant={emp.rol === 'admin' ? 'violet' : emp.rol === 'jefe' ? 'blue' : 'default'}>{emp.rol ? (emp.rol === 'admin' ? roleAdmin : emp.rol === 'jefe' ? roleManager : emp.rol === 'empleado' ? roleEmployee : emp.rol.toUpperCase()) : roleEmployee}</PremiumBadge>
+            <PremiumBadge variant={activo ? 'success' : 'warning'}>{activo ? statusActive : statusInactive}</PremiumBadge>
+          </View>
+          <Text style={estilos.mobileDepartmentText} numberOfLines={2}>{(emp.departamento && emp.departamento.toLowerCase().trim() !== 'global.global') ? emp.departamento : labelGeneral}</Text>
+          {gestionable && (
+            <View style={estilos.mobileActionsGrid}>
+              <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnTask, estilos.mobileActionBtn, Platform.OS === 'web' ? { touchAction: 'pan-y' } as any : undefined]} onPress={() => abrirAsignarTarea('individual', emp)}>
+                <MaterialIcons name="assignment-add" size={17} color={ADMIN.iconos.tareas} />
+              </TouchableOpacity>
+              <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnEdit, estilos.mobileActionBtn, Platform.OS === 'web' ? { touchAction: 'pan-y' } as any : undefined]} onPress={() => abrirEditar(emp)}>
+                <MaterialIcons name="edit" size={17} color={ADMIN.iconos.documentos} />
+              </TouchableOpacity>
+              {emp.activo !== false ? (
+                <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnDanger, estilos.mobileActionBtn, Platform.OS === 'web' ? { touchAction: 'pan-y' } as any : undefined]} onPress={() => actualizarActivo(emp.id, false)}>
+                  <MaterialIcons name="block" size={17} color={ADMIN.iconos.peligro} />
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnSuccess, estilos.mobileActionBtn, Platform.OS === 'web' ? { touchAction: 'pan-y' } as any : undefined]} onPress={() => actualizarActivo(emp.id, true)}>
+                  <MaterialIcons name="check-circle" size={17} color={ADMIN.iconos.exito} />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={[estilos.actionBtn, estilos.actionBtnDanger, estilos.mobileActionBtn, Platform.OS === 'web' ? { touchAction: 'pan-y' } as any : undefined]} onPress={() => eliminarEmpleado(emp)}>
+                <MaterialIcons name="delete-outline" size={17} color={ADMIN.iconos.peligro} />
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      );
+    }
     // Devuelve el JSX que React Native renderiza en pantalla.
     return (
       // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
       <View key={emp.id || i} style={estilos.tableRow}>
         <View style={[estilos.tdCell, estilos.selectionCell]}>
           {gestionable ? (
-            <TouchableOpacity style={[estilos.checkbox, seleccionado && estilos.checkboxActivo]} onPress={() => alternarSeleccionEmpleado(emp)}>
-              {seleccionado && <MaterialIcons name="check" size={14} color="#fff" />}
+              <TouchableOpacity style={[estilos.checkbox, seleccionado && estilos.checkboxActivo]} onPress={() => alternarSeleccionEmpleado(emp)}>
+              {seleccionado && <MaterialIcons {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} name="check" size={14} color="#FFFFFF" style={estilos.checkboxCheckIcon} />}
             </TouchableOpacity>
           ) : (
             <MaterialIcons name="lock" size={16} color={BRAND.textSec} />
@@ -2554,38 +2615,44 @@ export default function GestionPlantilla() {
     // Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla.
     <Animated.View style={[estilos.animatedScreen, { transform: [{ translateY: entrada.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }] }]}>
     {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
-    <ScrollView style={estilos.contenedor} contentContainerStyle={estilos.scrollContent} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={[estilos.contenedor, isPhone && Platform.OS === 'web' ? { touchAction: 'pan-y', overflowY: 'auto' } as any : undefined]}
+      contentContainerStyle={[estilos.scrollContent, { paddingTop: isMobileOrTablet ? 126 : 260 }, isPhone && { paddingHorizontal: 12, paddingBottom: 72 }, isPhone && Platform.OS === 'web' ? { touchAction: 'pan-y' } as any : undefined]}
+      showsVerticalScrollIndicator={false}
+      scrollEnabled
+      nestedScrollEnabled={false}
+    >
       {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-      <View style={estilos.header}>
+      <View style={[estilos.header, isMobileOrTablet && { flexDirection: 'column', alignItems: 'flex-start', gap: 12 }, isPhone && { marginBottom: 16 }]}>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View>
+        <View style={isPhone ? { width: '100%' } : undefined}>
           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={estilos.titulo}>{titlePlantilla}</Text>
+          <Text style={[estilos.titulo, isPhone && { fontSize: 24 }]}>{titlePlantilla}</Text>
           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={estilos.subtitulo}>{subtitlePlantilla}</Text>
+          <Text style={[estilos.subtitulo, isPhone && { fontSize: 12, lineHeight: 18 }]}>{subtitlePlantilla}</Text>
         </View>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={estilos.headerActions}>
+        <View style={[estilos.headerActions, isPhone && { width: '100%', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 10 }]}>
           {/* Elemento tactil; envuelve contenido que puede responder a interacciones del usuario. */}
-          <TouchableOpacity style={estilos.btnSecondary} onPress={descargarPlantillaImportacion}>
+          <TouchableOpacity style={[estilos.btnSecondary, isPhone && { width: '48%', maxWidth: 184, justifyContent: 'center', minHeight: 46, paddingHorizontal: 10 }]} onPress={descargarPlantillaImportacion}>
             {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
             <MaterialIcons name="file-download" size={18} color={BRAND.textMain} style={estilos.btnIcon} />
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={estilos.btnSecondaryText}>{btnDownloadTemplate}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={estilos.btnSecondary} onPress={abrirSelectorImportacion} disabled={importando}>
+          <TouchableOpacity style={[estilos.btnSecondary, isPhone && { width: '48%', maxWidth: 184, justifyContent: 'center', minHeight: 46, paddingHorizontal: 10 }]} onPress={abrirSelectorImportacion} disabled={importando}>
             <MaterialIcons name="upload-file" size={18} color={BRAND.textMain} style={estilos.btnIcon} />
             <Text style={estilos.btnSecondaryText}>{importando ? btnProcessing : btnImportEmployees}</Text>
           </TouchableOpacity>
           {/* Elemento tactil; envuelve contenido que puede responder a interacciones del usuario. */}
-          <TouchableOpacity style={estilos.btnSecondary}>
+          <TouchableOpacity style={[estilos.btnSecondary, isPhone && { width: '48%', maxWidth: 184, justifyContent: 'center', minHeight: 46, paddingHorizontal: 10 }]}>
             {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
             <MaterialIcons name="file-download" size={18} color={BRAND.textMain} style={estilos.btnIcon} />
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={estilos.btnSecondaryText}>{btnExportData}</Text>
           </TouchableOpacity>
           {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-          <TouchableOpacity {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} style={estilos.btnPrimary} onPress={abrirCrear}>
+          <TouchableOpacity {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} style={[estilos.btnPrimary, isPhone && { width: '48%', maxWidth: 184, justifyContent: 'center', minHeight: 48, paddingHorizontal: 10 }]} onPress={abrirCrear}>
             {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
             <MaterialIcons {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} name="person-add" size={18} color="#FFFFFF" style={[estilos.btnIcon, estilos.btnPrimaryIcon]} />
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -2597,14 +2664,14 @@ export default function GestionPlantilla() {
       {/* Tarjeta del Código de Acceso de la Empresa */}
       {empresa && (
         // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
-        <View {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} style={estilos.keyCard}>
+        <View {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} style={[estilos.keyCard, isPhone && { borderRadius: 16, marginBottom: 16 }]}>
           {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
           <LinearGradient
             {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})}
             colors={[PLANTILLA_PURPLE, PLANTILLA_PURPLE]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={estilos.keyGradient}
+            style={[estilos.keyGradient, isPhone && { flexDirection: 'column', alignItems: 'stretch', gap: 12, padding: 16 }]}
           >
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} style={estilos.keyIconWrapper}>
@@ -2621,9 +2688,9 @@ export default function GestionPlantilla() {
               </Text>
             </View>
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-            <TouchableOpacity 
+            <TouchableOpacity
               {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})}
-              style={estilos.keyBadge} 
+              style={[estilos.keyBadge, isPhone && { width: '100%', justifyContent: 'center' }]}
               activeOpacity={0.8}
               onPress={() => {
                 // Declara codigo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -2658,27 +2725,27 @@ export default function GestionPlantilla() {
       )}
 
       {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-      <View style={estilos.statsRow}>
+      <View style={[estilos.statsRow, isPhone && { gap: 10, marginBottom: 16 }]}>
         {stats.map((item, idx) => (
           // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
-          <View key={idx} style={estilos.statCard}>
+          <View key={idx} style={[estilos.statCard, isPhone && { flexBasis: '47%', minWidth: 0, padding: 14, gap: 9, borderRadius: 14, flexDirection: 'column', alignItems: 'flex-start' }]}>
             {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
             <IconPanel icon={item.icon} color={item.color} />
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View>
+            <View style={isPhone ? { width: '100%', minWidth: 0 } : undefined}>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.statValue}>{item.val}</Text>
+              <Text style={[estilos.statValue, isPhone && { fontSize: 26 }]}>{item.val}</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.statLabel}>{item.label}</Text>
+              <Text numberOfLines={2} style={[estilos.statLabel, isPhone && { fontSize: 9, lineHeight: 13, letterSpacing: 0.7 }]}>{item.label}</Text>
             </View>
           </View>
         ))}
       </View>
 
       {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-      <View style={estilos.toolbarCard}>
+      <View style={[estilos.toolbarCard, isPhone && { padding: 14, borderRadius: 14, marginBottom: 16 }]}>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={estilos.searchContainer}>
+        <View style={[estilos.searchContainer, isPhone && { height: 46, paddingHorizontal: 14, marginBottom: 12 }]}>
           {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
           <MaterialIcons name="search" size={20} color={BRAND.textSec} style={estilos.searchIcon} />
           {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
@@ -2691,7 +2758,7 @@ export default function GestionPlantilla() {
           />
         </View>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={estilos.filterRow}>
+        <View style={[estilos.filterRow, isPhone && { gap: 10, justifyContent: 'center' }]}>
             {[
               { id: 'todos', label: filterTodos },
               { id: 'activos', label: filterStatusActive },
@@ -2699,7 +2766,7 @@ export default function GestionPlantilla() {
               { id: 'riesgo', label: filterRisk },
             ].map((item) => (
               // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-              <TouchableOpacity key={item.id} onPress={() => setFiltroEstado(item.id as FiltroEstado)} style={[estilos.filterChip, filtroEstado === item.id && estilos.filterChipActivo]}>
+              <TouchableOpacity key={item.id} onPress={() => setFiltroEstado(item.id as FiltroEstado)} style={[estilos.filterChip, filtroEstado === item.id && estilos.filterChipActivo, isPhone && { width: '47%', maxWidth: 176, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 }]}>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={[estilos.filterChipText, filtroEstado === item.id && estilos.filterChipTextActivo]}>{item.label}</Text>
               </TouchableOpacity>
@@ -2709,24 +2776,24 @@ export default function GestionPlantilla() {
 
       {catalogos.sedes.length > 1 && !sedeSeleccionadaId && (
         // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
-        <View style={estilos.sedesGrid}>
+        <View style={[estilos.sedesGrid, isPhone && { flexDirection: 'column', gap: 12 }]}>
           {sedesResumen.map((sede) => (
             // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-            <TouchableOpacity key={sede.id} style={estilos.sedeCard} activeOpacity={0.88} onPress={() => setSedeSeleccionadaId(sede.id)}>
+            <TouchableOpacity key={sede.id} style={[estilos.sedeCard, isPhone && { width: '100%', minWidth: 0, borderRadius: 14, padding: 14, alignItems: 'flex-start' }]} activeOpacity={0.88} onPress={() => setSedeSeleccionadaId(sede.id)}>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
               <View style={estilos.sedeIcono}>
                 {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                 <MaterialIcons name="business" size={22} color={ADMIN.iconos.calendario} />
               </View>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View style={estilos.sedeInfo}>
+              <View style={[estilos.sedeInfo, isPhone && { flex: 1, minWidth: 0 }]}>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.sedeNombre}>{sede.nombre}</Text>
+                <Text numberOfLines={2} style={estilos.sedeNombre}>{sede.nombre}</Text>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.sedeDetalle}>{sede.detalle}</Text>
+                <Text numberOfLines={2} style={estilos.sedeDetalle}>{sede.detalle}</Text>
               </View>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View style={estilos.sedeMeta}>
+              <View style={[estilos.sedeMeta, isPhone && { alignItems: 'flex-end', minWidth: 68 }]}>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.sedeTotal}>{sede.colaboradores.length}</Text>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -2739,19 +2806,25 @@ export default function GestionPlantilla() {
 
       {catalogos.sedes.length > 1 && !sedeSeleccionadaId && usuariosSinSede.length > 0 && (
         // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
-        <View style={[estilos.premiumCard, { marginTop: 24 }]}>
+        <View style={[estilos.premiumCard, { marginTop: 24 }, isPhone && { marginTop: 16, borderRadius: 14 }]}>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={[estilos.cardHeader, { paddingVertical: 14 }]}>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={estilos.sedeActualNombre}>{labelUnassignedSede}</Text>
           </View>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+          {isPhone ? (
+            <View style={estilos.mobileRosterList}>
+              {usuariosSinSede.map((emp, i) => renderEmployeeRow(emp, i))}
+            </View>
+          ) : (
+	          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={estilos.tableScroll} contentContainerStyle={estilos.tableScrollContent}>
 	          <View style={estilos.tableContainer}>
 	            {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
 	            <View style={estilos.tableHeader}>
 	              <View style={estilos.selectionCell}>
 	                <TouchableOpacity style={[estilos.checkbox, todosSeleccionados && estilos.checkboxActivo]} onPress={alternarSeleccionTodos}>
-	                  {todosSeleccionados && <MaterialIcons name="check" size={14} color="#fff" />}
+	                  {todosSeleccionados && <MaterialIcons {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} name="check" size={14} color="#FFFFFF" style={estilos.checkboxCheckIcon} />}
 	                </TouchableOpacity>
 	              </View>
 	              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -2767,17 +2840,19 @@ export default function GestionPlantilla() {
             </View>
             {usuariosSinSede.map((emp, i) => renderEmployeeRow(emp, i))}
           </View>
+          </ScrollView>
+          )}
         </View>
       )}
 
       {(catalogos.sedes.length <= 1 || sedeSeleccionadaId) && (
       // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
-      <View style={estilos.premiumCard}>
+      <View style={[estilos.premiumCard, isPhone && { borderRadius: 14 }]}>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={estilos.cardHeader}>
+        <View style={[estilos.cardHeader, isPhone && { padding: 14, gap: 14 }]}>
           {catalogos.sedes.length > 1 && (
             // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
-            <View style={estilos.sedeBar}>
+            <View style={[estilos.sedeBar, isPhone && { flexDirection: 'column', alignItems: 'stretch', gap: 10 }]}>
               {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
               <TouchableOpacity onPress={() => setSedeSeleccionadaId(null)} style={estilos.volverSedes}>
                 {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
@@ -2795,41 +2870,43 @@ export default function GestionPlantilla() {
             </View>
           )}
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={estilos.filterRow}>
+          <View style={[estilos.filterRow, isPhone && { gap: 8, justifyContent: 'center' }]}>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.filterLabel}>{filterLabelRole}</Text>
+            <Text style={[estilos.filterLabel, isPhone && { width: '100%', minWidth: 0 }]}>{filterLabelRole}</Text>
             {['todos', ...catalogos.roles].map((rol) => (
               // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-              <TouchableOpacity key={rol} onPress={() => setFiltroRol(rol)} style={[estilos.filterChip, filtroRol === rol && estilos.filterChipActivo]}>
+              <TouchableOpacity key={rol} onPress={() => setFiltroRol(rol)} style={[estilos.filterChip, filtroRol === rol && estilos.filterChipActivo, isPhone && { minWidth: 88, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 }]}>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={[estilos.filterChipText, filtroRol === rol && estilos.filterChipTextActivo]}>{rol === 'todos' ? filterTodos : rol}</Text>
               </TouchableOpacity>
             ))}
           </View>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-	          <View style={estilos.filterRow}>
+	          <View style={[estilos.filterRow, isPhone && { gap: 8, justifyContent: 'center' }]}>
 	            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-	            <Text style={estilos.filterLabel}>{filterLabelDept}</Text>
+	            <Text style={[estilos.filterLabel, isPhone && { width: '100%', minWidth: 0 }]}>{filterLabelDept}</Text>
             {[{ id: 'todos', nombre: filterTodos }, ...catalogos.departamentos].map((departamento) => (
               // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-              <TouchableOpacity key={departamento.id} onPress={() => setFiltroDepartamento(departamento.id)} style={[estilos.filterChip, filtroDepartamento === departamento.id && estilos.filterChipActivo]}>
+              <TouchableOpacity key={departamento.id} onPress={() => setFiltroDepartamento(departamento.id)} style={[estilos.filterChip, filtroDepartamento === departamento.id && estilos.filterChipActivo, isPhone && { minWidth: departamento.id === 'todos' ? 88 : 128, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 }]}>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={[estilos.filterChipText, filtroDepartamento === departamento.id && estilos.filterChipTextActivo]}>{departamento.nombre}</Text>
 	              </TouchableOpacity>
 	            ))}
 	          </View>
 	          {empleadosSeleccionados.length > 0 && (
-	            <View style={estilos.bulkActionsBar}>
-	              <Text style={estilos.bulkActionsText}>{empleadosSeleccionados.length} seleccionados</Text>
-	              <TouchableOpacity style={[estilos.bulkActionBtn, estilos.actionBtnSuccess]} onPress={() => ejecutarAccionMasiva('activar')} disabled={guardando}>
+	            <View style={[estilos.bulkActionsBar, isPhone && { alignItems: 'stretch', justifyContent: 'center' }]}>
+	              <Text style={[estilos.bulkActionsText, isPhone && { width: '100%', marginRight: 0, textAlign: 'center', fontSize: 13 }]}>
+	                {empleadosSeleccionados.length === 1 ? '1 empleado seleccionado' : `${empleadosSeleccionados.length} empleados seleccionados`}
+	              </Text>
+	              <TouchableOpacity style={[estilos.bulkActionBtn, estilos.actionBtnSuccess, isPhone && { flex: 1, minWidth: 0, justifyContent: 'center', paddingHorizontal: 6 }]} onPress={() => ejecutarAccionMasiva('activar')} disabled={guardando}>
 	                <MaterialIcons name="check-circle" size={16} color={ADMIN.iconos.exito} />
 	                <Text style={estilos.bulkActionText}>Activar</Text>
 	              </TouchableOpacity>
-	              <TouchableOpacity style={[estilos.bulkActionBtn, estilos.actionBtnDanger]} onPress={() => ejecutarAccionMasiva('desactivar')} disabled={guardando}>
+	              <TouchableOpacity style={[estilos.bulkActionBtn, estilos.actionBtnDanger, isPhone && { flex: 1, minWidth: 0, justifyContent: 'center', paddingHorizontal: 6 }]} onPress={() => ejecutarAccionMasiva('desactivar')} disabled={guardando}>
 	                <MaterialIcons name="block" size={16} color={ADMIN.iconos.peligro} />
 	                <Text style={estilos.bulkActionText}>Inactivar</Text>
 	              </TouchableOpacity>
-	              <TouchableOpacity style={[estilos.bulkActionBtn, estilos.actionBtnDanger]} onPress={() => ejecutarAccionMasiva('eliminar')} disabled={guardando}>
+	              <TouchableOpacity style={[estilos.bulkActionBtn, estilos.actionBtnDanger, isPhone && { flex: 1, minWidth: 0, justifyContent: 'center', paddingHorizontal: 6 }]} onPress={() => ejecutarAccionMasiva('eliminar')} disabled={guardando}>
 	                <MaterialIcons name="delete-outline" size={16} color={ADMIN.iconos.peligro} />
 	                <Text style={estilos.bulkActionText}>Eliminar</Text>
 	              </TouchableOpacity>
@@ -2838,12 +2915,24 @@ export default function GestionPlantilla() {
 	        </View>
 
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+        {isPhone ? (
+          <View style={[estilos.mobileRosterList, Platform.OS === 'web' ? { touchAction: 'pan-y' } as any : undefined]}>
+            {usuariosFiltrados.map((emp, i) => renderEmployeeRow(emp, i))}
+            {usuariosFiltrados.length === 0 && (
+              <View style={estilos.emptyTable}>
+                <MaterialIcons name="group-off" size={40} color={BRAND.textSec} style={estilos.emptyIcon} />
+                <Text style={estilos.emptyText}>{labelEmptyMsg}</Text>
+              </View>
+            )}
+          </View>
+        ) : (
+	        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={estilos.tableScroll} contentContainerStyle={estilos.tableScrollContent}>
 	        <View style={estilos.tableContainer}>
 	          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
 	          <View style={estilos.tableHeader}>
 	            <View style={estilos.selectionCell}>
 	              <TouchableOpacity style={[estilos.checkbox, todosSeleccionados && estilos.checkboxActivo]} onPress={alternarSeleccionTodos}>
-	                {todosSeleccionados && <MaterialIcons name="check" size={14} color="#fff" />}
+	                {todosSeleccionados && <MaterialIcons {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} name="check" size={14} color="#FFFFFF" style={estilos.checkboxCheckIcon} />}
 	              </TouchableOpacity>
 	            </View>
 	            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -2869,18 +2958,20 @@ export default function GestionPlantilla() {
             </View>
           )}
         </View>
+        </ScrollView>
+        )}
       </View>
       )}
     </ScrollView>
 
     {/* Ventana modal; separa una accion o detalle sin abandonar la pantalla actual. */}
     <AdminModal visible={modalVisible} animationType="fade" onRequestClose={cerrarModal}>
-      <View style={estilos.modalOverlay}>
+      <View style={[estilos.modalOverlay, isPhone && { padding: 10, justifyContent: 'flex-end' }]}>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <AdminModalFormGlass style={estilos.modalCard}>
-          <View style={estilos.modalHeader}>
-            <View>
-              <Text style={estilos.modalTitle}>{modoFormulario === 'crear' ? modalCreateTitle : modalEditTitle}</Text>
+        <AdminModalFormGlass style={[estilos.modalCard, isPhone && { maxHeight: '96%', borderRadius: 16 }]}>
+          <View style={[estilos.modalHeader, isPhone && { padding: 16, alignItems: 'flex-start', gap: 10 }]}>
+            <View style={isPhone ? { flex: 1, paddingRight: 8 } : undefined}>
+              <Text style={[estilos.modalTitle, isPhone && { fontSize: 19 }]}>{modoFormulario === 'crear' ? modalCreateTitle : modalEditTitle}</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.modalSubtitle}>{modalEmployeeSubtitle}</Text>
             </View>
@@ -2892,9 +2983,9 @@ export default function GestionPlantilla() {
           </View>
 
           {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
-          <ScrollView style={estilos.modalBody} showsVerticalScrollIndicator={false}>
+          <ScrollView style={[estilos.modalBody, isPhone && { padding: 16 }]} showsVerticalScrollIndicator={false}>
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.formGrid}>
+            <View style={[estilos.formGrid, isPhone && { gap: 12 }]}>
               {/* FormField renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <FormField label={labelFullName} value={formulario.nombre} onChangeText={(valor) => actualizarFormulario('nombre', valor)} placeholder={placeholderFullName} />
               {/* FormField renderiza una pieza visual reutilizable dentro de esta pantalla. */}
@@ -2986,16 +3077,16 @@ export default function GestionPlantilla() {
           </ScrollView>
 
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={estilos.modalFooter}>
+          <View style={[estilos.modalFooter, isPhone && { flexDirection: 'column-reverse', alignItems: 'stretch', padding: 14 }]}>
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-            <TouchableOpacity style={estilos.btnModalSecondary} onPress={cerrarModal}>
+            <TouchableOpacity style={[estilos.btnModalSecondary, isPhone && { width: '100%' }]} onPress={cerrarModal}>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.btnModalSecondaryText}>{btnCancel}</Text>
             </TouchableOpacity>
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-            <TouchableOpacity style={estilos.btnModalPrimary} onPress={guardarEmpleado} disabled={guardando}>
+            <TouchableOpacity style={[estilos.btnModalPrimary, isPhone && { width: '100%' }]} onPress={guardarEmpleado} disabled={guardando}>
               {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white nx-admin-shimmer-button' } as any : {})} colors={['#6320a6', '#6320a6']} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.btnModalGradient}>
+              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white nx-admin-shimmer-button' } as any : {})} colors={['#6320a6', '#6320a6']} start={{x:0,y:0}} end={{x:1,y:1}} style={[estilos.btnModalGradient, isPhone && { minHeight: 50 }]}>
                 {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                 <MaterialIcons name={modoFormulario === 'crear' ? 'person-add' : 'save'} size={18} color="#fff" style={estilos.btnIcon} />
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -3008,11 +3099,11 @@ export default function GestionPlantilla() {
     </AdminModal>
 
     <AdminModal visible={modalImportVisible} animationType="fade" onRequestClose={() => !importando && setModalImportVisible(false)}>
-      <View style={estilos.modalOverlay}>
-        <AdminModalFormGlass style={[estilos.modalCard, estilos.modalImportCard]}>
-          <View style={estilos.modalHeader}>
-            <View>
-              <Text style={estilos.modalTitle}>{modalImportTitle}</Text>
+      <View style={[estilos.modalOverlay, isPhone && { padding: 10, justifyContent: 'flex-end' }]}>
+        <AdminModalFormGlass style={[estilos.modalCard, estilos.modalImportCard, isPhone && { maxHeight: '92%', borderRadius: 16 }]}>
+          <View style={[estilos.modalHeader, isPhone && { padding: 16, alignItems: 'flex-start', gap: 10 }]}>
+            <View style={isPhone ? { flex: 1, paddingRight: 8 } : undefined}>
+              <Text style={[estilos.modalTitle, isPhone && { fontSize: 19 }]}>{modalImportTitle}</Text>
               <Text style={estilos.modalSubtitle}>{previewImportacion?.archivo || modalImportSubtitle}</Text>
             </View>
             <TouchableOpacity style={estilos.modalClose} onPress={() => !importando && setModalImportVisible(false)}>
@@ -3020,8 +3111,8 @@ export default function GestionPlantilla() {
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={estilos.modalBody} showsVerticalScrollIndicator={false}>
-            <View style={estilos.importSummaryGrid}>
+          <ScrollView style={[estilos.modalBody, isPhone && { padding: 16 }]} showsVerticalScrollIndicator={false}>
+            <View style={[estilos.importSummaryGrid, isPhone && { flexDirection: 'column' }]}>
               <View style={estilos.importSummaryItem}>
                 <Text style={estilos.importSummaryValue}>{previewImportacion?.total || 0}</Text>
                 <Text style={estilos.importSummaryLabel}>{labelRowsRead}</Text>
@@ -3047,12 +3138,12 @@ export default function GestionPlantilla() {
             </View>
           </ScrollView>
 
-          <View style={estilos.modalFooter}>
-            <TouchableOpacity style={estilos.btnModalSecondary} onPress={() => setModalImportVisible(false)} disabled={importando}>
+          <View style={[estilos.modalFooter, isPhone && { flexDirection: 'column-reverse', alignItems: 'stretch', padding: 14 }]}>
+            <TouchableOpacity style={[estilos.btnModalSecondary, isPhone && { width: '100%' }]} onPress={() => setModalImportVisible(false)} disabled={importando}>
               <Text style={estilos.btnModalSecondaryText}>{btnCancel}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={estilos.btnModalPrimary} onPress={confirmarImportacion} disabled={importando || !previewImportacion?.validas.length}>
-              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white nx-admin-shimmer-button' } as any : {})} colors={['#6320a6', '#6320a6']} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.btnModalGradient}>
+            <TouchableOpacity style={[estilos.btnModalPrimary, isPhone && { width: '100%' }]} onPress={confirmarImportacion} disabled={importando || !previewImportacion?.validas.length}>
+              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white nx-admin-shimmer-button' } as any : {})} colors={['#6320a6', '#6320a6']} start={{x:0,y:0}} end={{x:1,y:1}} style={[estilos.btnModalGradient, isPhone && { minHeight: 50 }]}>
                 <MaterialIcons name="group-add" size={18} color="#fff" style={estilos.btnIcon} />
                 <Text style={estilos.btnPrimaryText}>{importando ? btnImporting : btnConfirmImport}</Text>
               </LinearGradient>
@@ -3063,11 +3154,11 @@ export default function GestionPlantilla() {
     </AdminModal>
 
     <AdminModal visible={!!confirmacionEliminacion} animationType="fade" onRequestClose={() => !guardando && setConfirmacionEliminacion(null)}>
-      <View style={estilos.modalOverlay}>
-        <AdminModalFormGlass style={[estilos.modalCard, estilos.modalConfirmCard]}>
-          <View style={estilos.modalHeader}>
-            <View>
-              <Text style={estilos.modalTitle}>{confirmacionEliminacion?.titulo || ''}</Text>
+      <View style={[estilos.modalOverlay, isPhone && { padding: 10, justifyContent: 'center' }]}>
+        <AdminModalFormGlass style={[estilos.modalCard, estilos.modalConfirmCard, isPhone && { borderRadius: 16 }]}>
+          <View style={[estilos.modalHeader, isPhone && { padding: 16, alignItems: 'flex-start', gap: 10 }]}>
+            <View style={isPhone ? { flex: 1, paddingRight: 8 } : undefined}>
+              <Text style={[estilos.modalTitle, isPhone && { fontSize: 18 }]}>{confirmacionEliminacion?.titulo || ''}</Text>
               <Text style={estilos.modalSubtitle}>Confirmación requerida</Text>
             </View>
             <TouchableOpacity style={estilos.modalClose} onPress={() => !guardando && setConfirmacionEliminacion(null)}>
@@ -3075,16 +3166,16 @@ export default function GestionPlantilla() {
             </TouchableOpacity>
           </View>
 
-          <View style={estilos.confirmBody}>
+          <View style={[estilos.confirmBody, isPhone && { padding: 16, flexDirection: 'column' }]}>
             <MaterialIcons name="warning" size={28} color={ADMIN.iconos.peligro} />
             <Text style={estilos.confirmText}>{confirmacionEliminacion?.mensaje || ''}</Text>
           </View>
 
-          <View style={estilos.modalFooter}>
-            <TouchableOpacity style={estilos.btnModalSecondary} onPress={() => setConfirmacionEliminacion(null)} disabled={guardando}>
+          <View style={[estilos.modalFooter, isPhone && { flexDirection: 'column-reverse', alignItems: 'stretch', padding: 14 }]}>
+            <TouchableOpacity style={[estilos.btnModalSecondary, isPhone && { width: '100%' }]} onPress={() => setConfirmacionEliminacion(null)} disabled={guardando}>
               <Text style={estilos.btnModalSecondaryText}>{btnCancel}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[estilos.btnModalSecondary, estilos.confirmDangerBtn]} onPress={() => confirmacionEliminacion?.confirmar()} disabled={guardando}>
+            <TouchableOpacity style={[estilos.btnModalSecondary, estilos.confirmDangerBtn, isPhone && { width: '100%', justifyContent: 'center' }]} onPress={() => confirmacionEliminacion?.confirmar()} disabled={guardando}>
               <MaterialIcons name="delete-outline" size={18} color={ADMIN.iconos.peligro} style={estilos.btnIcon} />
               <Text style={estilos.confirmDangerText}>{guardando ? 'Eliminando...' : btnDelete}</Text>
             </TouchableOpacity>
@@ -3094,14 +3185,14 @@ export default function GestionPlantilla() {
     </AdminModal>
 
     <AdminModal visible={modalTareaVisible} animationType="fade" onRequestClose={() => setModalTareaVisible(false)}>
-      <View style={estilos.modalOverlay}>
+      <View style={[estilos.modalOverlay, isPhone && { padding: 10, justifyContent: 'flex-end' }]}>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <AdminModalFormGlass style={[estilos.modalCard, estilos.modalTareaCard]}>
-          <View style={estilos.modalHeader}>
+        <AdminModalFormGlass style={[estilos.modalCard, estilos.modalTareaCard, isPhone && { maxHeight: '94%', borderRadius: 16 }]}>
+          <View style={[estilos.modalHeader, isPhone && { padding: 16, alignItems: 'flex-start', gap: 10 }]}>
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View>
+            <View style={isPhone ? { flex: 1, paddingRight: 8 } : undefined}>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.modalTitle}>{modalTaskTitle}</Text>
+              <Text style={[estilos.modalTitle, isPhone && { fontSize: 19 }]}>{modalTaskTitle}</Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.modalSubtitle}>{modalTaskSubtitle}</Text>
             </View>
@@ -3113,12 +3204,12 @@ export default function GestionPlantilla() {
           </View>
 
           {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
-          <ScrollView style={estilos.modalBody} showsVerticalScrollIndicator={false}>
+          <ScrollView style={[estilos.modalBody, isPhone && { padding: 16 }]} showsVerticalScrollIndicator={false}>
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.selectorGrid}>
+            <View style={[estilos.selectorGrid, isPhone && { gap: 8 }]}>
               {(['sede', 'departamento', 'individual'] as AlcanceTarea[]).map((alcance) => (
                 // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-                <TouchableOpacity key={alcance} onPress={() => setAlcanceTarea(alcance)} style={[estilos.selectorChip, alcanceTarea === alcance && estilos.selectorChipActivo]}>
+                <TouchableOpacity key={alcance} onPress={() => setAlcanceTarea(alcance)} style={[estilos.selectorChip, alcanceTarea === alcance && estilos.selectorChipActivo, isPhone && { flexGrow: 1, alignItems: 'center' }]}>
                   {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                   <Text style={[estilos.selectorText, alcanceTarea === alcance && estilos.selectorTextActivo]}>
                     {alcance === 'sede' ? btnScopeSede : alcance === 'departamento' ? btnScopeDept : btnScopeIndividual}
@@ -3128,7 +3219,7 @@ export default function GestionPlantilla() {
             </View>
 
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={[estilos.formGrid, estilos.formGridTarea]}>
+            <View style={[estilos.formGrid, estilos.formGridTarea, isPhone && { gap: 12 }]}>
               {/* FormField renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <FormField label={labelTaskTitle} value={formularioTarea.titulo} onChangeText={(valor) => actualizarFormularioTarea('titulo', valor)} placeholder={placeholderTaskTitle} />
               {/* FormField renderiza una pieza visual reutilizable dentro de esta pantalla. */}
@@ -3211,16 +3302,16 @@ export default function GestionPlantilla() {
           </ScrollView>
 
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={estilos.modalFooter}>
+          <View style={[estilos.modalFooter, isPhone && { flexDirection: 'column-reverse', alignItems: 'stretch', padding: 14 }]}>
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-            <TouchableOpacity style={estilos.btnModalSecondary} onPress={() => setModalTareaVisible(false)}>
+            <TouchableOpacity style={[estilos.btnModalSecondary, isPhone && { width: '100%' }]} onPress={() => setModalTareaVisible(false)}>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.btnModalSecondaryText}>{btnCancel}</Text>
             </TouchableOpacity>
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-            <TouchableOpacity style={estilos.btnModalPrimary} onPress={guardarAsignacionTarea} disabled={guardando}>
+            <TouchableOpacity style={[estilos.btnModalPrimary, isPhone && { width: '100%' }]} onPress={guardarAsignacionTarea} disabled={guardando}>
               {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white nx-admin-shimmer-button' } as any : {})} colors={['#6320a6', '#6320a6']} start={{x:0,y:0}} end={{x:1,y:1}} style={estilos.btnModalGradient}>
+              <LinearGradient {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white nx-admin-shimmer-button' } as any : {})} colors={['#6320a6', '#6320a6']} start={{x:0,y:0}} end={{x:1,y:1}} style={[estilos.btnModalGradient, isPhone && { minHeight: 50 }]}>
                 {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                 <MaterialIcons name="assignment-add" size={18} color="#fff" style={estilos.btnIcon} />
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -4170,9 +4261,58 @@ const estilos = StyleSheet.create({
     fontWeight: '900',
   },
   // tableContainer: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
+  tableScroll: {
+    width: '100%',
+  },
+  tableScrollContent: {
+    flexGrow: 1,
+  },
   tableContainer: {
     // width fija o calcula el ancho del elemento.
     width: '100%',
+    minWidth: 760,
+  },
+  mobileRosterList: {
+    padding: 12,
+    gap: 12,
+  },
+  mobileEmployeeCard: {
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    borderRadius: 16,
+    backgroundColor: ADMIN.fondoCampo,
+    padding: 14,
+    gap: 12,
+  },
+  mobileEmployeeTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  mobileEmployeeInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  mobileEmployeeMeta: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  mobileDepartmentText: {
+    color: BRAND.textSec,
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  mobileActionsGrid: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  mobileActionBtn: {
+    flex: 1,
+    width: undefined,
+    minHeight: 42,
   },
   // tableHeader: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
   tableHeader: {
@@ -4241,6 +4381,9 @@ const estilos = StyleSheet.create({
   checkboxActivo: {
     backgroundColor: PLANTILLA_PURPLE,
     borderColor: PLANTILLA_PURPLE,
+  },
+  checkboxCheckIcon: {
+    color: '#FFFFFF',
   },
   // colaboradorCell: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   colaboradorCell: {

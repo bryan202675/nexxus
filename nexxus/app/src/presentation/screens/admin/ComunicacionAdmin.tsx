@@ -11,7 +11,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
 // Importa { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Alert, Image, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Alert, Image, Platform } from 'react-native';
+import { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Alert, Image, Platform, useWindowDimensions } from 'react-native';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
 // Importa { addDoc, collection, doc, onSnapshot, query, where, writeBatch } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
@@ -256,6 +256,9 @@ export default function ComunicacionAdmin() {
   const { t } = useTranslation();
   // Inicializa toast; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const toast = useAdminToast();
+  const { width } = useWindowDimensions();
+  const isMobileOrTablet = width < 1024;
+  const isPhone = width < 1180;
   // Inicializa [selectedAudience, setSelectedAudience]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [selectedAudience, setSelectedAudience] = useState('todos');
   const [grupoSelector, setGrupoSelector] = useState<GrupoSelector>('todos');
@@ -584,28 +587,33 @@ export default function ComunicacionAdmin() {
     // Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla.
     <Animated.View style={[estilos.animatedScreen, { transform: [{ translateY: entrada.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }] }]}>
     {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
-    <ScrollView style={estilos.contenedor} contentContainerStyle={estilos.scrollContent} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={[estilos.contenedor, isPhone && Platform.OS === 'web' ? { touchAction: 'pan-y', overflowY: 'auto' } as any : undefined]}
+      contentContainerStyle={[estilos.scrollContent, { paddingTop: isMobileOrTablet ? 126 : 260 }, isPhone && { paddingTop: 90, paddingHorizontal: 12, paddingBottom: 72, alignItems: 'center' }, isPhone && Platform.OS === 'web' ? { touchAction: 'pan-y' } as any : undefined]}
+      showsVerticalScrollIndicator={false}
+      nestedScrollEnabled={false}
+    >
       {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-      <View style={estilos.header}>
+      <View style={[estilos.header, isMobileOrTablet && { flexDirection: 'column', alignItems: 'flex-start', gap: 12 }, isPhone && { width: '100%', maxWidth: 420, alignSelf: 'center', marginBottom: 18 }]}>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View>
+        <View style={isPhone ? { width: '100%' } : undefined}>
           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={estilos.titulo}>{t('admin.comunicacion.title')}</Text>
+          <Text style={[estilos.titulo, isPhone && { fontSize: 24 }]}>{t('admin.comunicacion.title')}</Text>
           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={estilos.subtitulo}>{t('admin.comunicacion.subtitle')}</Text>
+          <Text style={[estilos.subtitulo, isPhone && { fontSize: 12, lineHeight: 18 }]}>{t('admin.comunicacion.subtitle')}</Text>
         </View>
       </View>
 
       {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-      <View style={estilos.gridMain}>
+      <View style={[estilos.gridMain, isMobileOrTablet && { flexDirection: 'column' }, isPhone && { width: '100%', maxWidth: 420, alignSelf: 'center', flexDirection: 'column', gap: 16 }]}>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={estilos.colLeft}>
+        <View style={[estilos.colLeft, isMobileOrTablet && { flex: 0 }, isPhone && { width: '100%', flex: 0, gap: 14 }]}>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={estilos.premiumCard}>
+          <View style={[estilos.premiumCard, isPhone && { width: '100%', borderRadius: 16, padding: 16, overflow: 'visible' }]}>
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.panelHeader}>
+            <View style={[estilos.panelHeader, isPhone && { alignItems: 'flex-start', marginBottom: 14 }]}>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View>
+              <View style={isPhone ? { flex: 1, minWidth: 0 } : undefined}>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.panelTitle}>{t('admin.comunicacion.channels_title')}</Text>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -614,26 +622,26 @@ export default function ComunicacionAdmin() {
               {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <IconPanel icon="forum" color={ADMIN.iconos.comunicacion} />
             </View>
-            <View style={estilos.selectorTabs}>
+            <View style={[estilos.selectorTabs, isPhone && { gap: 8, justifyContent: 'center', marginBottom: 14 }]}>
               {gruposSelector.map((grupo) => {
                 const activo = grupoSelector === grupo.id;
                 return (
                   <TouchableOpacity
                     key={grupo.id}
-                    style={[estilos.selectorTab, activo && estilos.selectorTabActivo]}
+                    style={[estilos.selectorTab, activo && estilos.selectorTabActivo, isPhone && { width: '48%', minWidth: 0, minHeight: 42, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 }]}
                     onPress={() => {
                       setGrupoSelector(grupo.id);
                       if (grupo.id === 'todos') setSelectedAudience('todos');
                       if (grupo.id === 'privado') setSelectedAudience('privado');
                     }}
                   >
-                    <Text style={[estilos.selectorTabText, activo && estilos.selectorTabTextActivo]}>{grupo.label}</Text>
+                    <Text numberOfLines={1} style={[estilos.selectorTabText, activo && estilos.selectorTabTextActivo, isPhone && { fontSize: 10, letterSpacing: 0.2 }]}>{grupo.label}</Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
-            <View style={estilos.audienceTable}>
-              <View style={estilos.audienceTableHeader}>
+            <View style={[estilos.audienceTable, isPhone && { borderRadius: 14, overflow: 'hidden' }]}>
+              <View style={[estilos.audienceTableHeader, isPhone && { paddingHorizontal: 12, minHeight: 42 }]}>
                 <Text style={[estilos.tableHeadText, { flex: 1 }]}>Opcion</Text>
                 {grupoSelector === 'privado' && (
                   <TouchableOpacity style={estilos.searchNameBtn} onPress={() => setBusquedaPersonalActiva((actual) => !actual)}>
@@ -661,7 +669,7 @@ export default function ComunicacionAdmin() {
                   />
                 </View>
               )}
-              <ScrollView style={estilos.audienceTableScroll} nestedScrollEnabled>
+              <ScrollView style={[estilos.audienceTableScroll, isPhone && { maxHeight: undefined, flexGrow: 0 }]} nestedScrollEnabled={!isPhone} scrollEnabled={!isPhone}>
                 {grupoSelector === 'privado' ? usuariosPrivadosFiltrados.map((empleado) => {
                   const id = empleado.id || '';
                   const activo = destinatariosPrivados.includes(id);
@@ -684,7 +692,7 @@ export default function ComunicacionAdmin() {
                 }) : datos.porCanal.filter((canal) => canal.tipo === grupoSelector).map((canal) => {
                   const activo = selectedAudience === canal.id;
                   return (
-                    <TouchableOpacity key={canal.id} style={[estilos.tableRow, activo && estilos.tableRowActivo]} onPress={() => setSelectedAudience(canal.id)}>
+                    <TouchableOpacity key={canal.id} style={[estilos.tableRow, activo && estilos.tableRowActivo, isPhone && { minHeight: 62, paddingHorizontal: 12 }]} onPress={() => setSelectedAudience(canal.id)}>
                       <View style={estilos.tableNameCell}>
                         <Text style={[estilos.tableName, activo && estilos.tableTextActivo]}>{canal.nombre}</Text>
                         <Text style={[estilos.tableMeta, activo && estilos.tableTextActivo]}>{canal.detalle || canal.etiqueta}</Text>
@@ -701,11 +709,11 @@ export default function ComunicacionAdmin() {
           </View>
 
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={estilos.premiumCard}>
+          <View style={[estilos.premiumCard, isPhone && { width: '100%', borderRadius: 16, padding: 16 }]}>
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.panelHeader}>
+            <View style={[estilos.panelHeader, isPhone && { alignItems: 'flex-start', marginBottom: 14 }]}>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View>
+              <View style={isPhone ? { flex: 1, minWidth: 0 } : undefined}>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.panelTitle}>{t('admin.comunicacion.new_announcement_title')}</Text>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -725,12 +733,12 @@ export default function ComunicacionAdmin() {
             />
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
             <TouchableOpacity 
-              style={estilos.publishBtn} 
+              style={[estilos.publishBtn, isPhone && { borderRadius: 14 }]}
               onPress={crearAnuncio} 
               disabled={enviando || !mensaje.trim() || (audienciaActual?.tipo === 'privado' && destinatariosPrivados.length === 0)}
             >
               {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-              <LinearGradient colors={['#6320a6', '#6320a6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.publishGradient}>
+              <LinearGradient colors={['#6320a6', '#6320a6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[estilos.publishGradient, isPhone && { minHeight: 54 }]}>
                 {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                 <MaterialIcons name="send" size={18} color="#FFFFFE" style={{ color: '#FFFFFE' }} />
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -741,41 +749,41 @@ export default function ComunicacionAdmin() {
         </View>
 
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={estilos.colRight}>
+        <View style={[estilos.colRight, isMobileOrTablet && { flex: 0 }, isPhone && { display: 'none' }]}>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={[estilos.premiumCard, estilos.feedCard]}>
+          <View style={[estilos.premiumCard, estilos.feedCard, isPhone && { width: '100%', borderRadius: 16, minHeight: 0, overflow: 'hidden' }]}>
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.chatHeader}>
+            <View style={[estilos.chatHeader, isPhone && { padding: 14, flexDirection: 'column', alignItems: 'stretch', gap: 12 }]}>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View style={estilos.chatTitleRow}>
+              <View style={[estilos.chatTitleRow, isPhone && { alignItems: 'flex-start' }]}>
                 {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
                 <View style={estilos.liveDot} />
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.chatTitle}>{t('admin.comunicacion.feed_title')}: {audienciaActual?.nombre || t('admin.comunicacion.global')}</Text>
+                <Text style={[estilos.chatTitle, isPhone && { fontSize: 14, flex: 1 }]}>{t('admin.comunicacion.feed_title')}: {audienciaActual?.nombre || t('admin.comunicacion.global')}</Text>
               </View>
               {/* PremiumBadge renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <PremiumBadge variant="blue">{datos.receptores} {t('admin.comunicacion.receptores')}</PremiumBadge>
+              <PremiumBadge variant="blue">{`Alcance: ${datos.receptores} ${datos.receptores === 1 ? 'destinatario' : 'destinatarios'}`}</PremiumBadge>
             </View>
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.searchContainer}>
+            <View style={[estilos.searchContainer, isPhone && { margin: 14, marginBottom: 0, height: 46, paddingHorizontal: 14 }]}>
               {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <MaterialIcons name="search" size={20} color={BRAND.textSec} style={estilos.searchIcon} />
               {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
               <TextInput style={estilos.searchInput} placeholder={t('admin.comunicacion.search_placeholder')} placeholderTextColor={BRAND.textSec} value={busqueda} onChangeText={setBusqueda} />
             </View>
             {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
-            <ScrollView style={estilos.chatArea} contentContainerStyle={estilos.feedContent}>
+            <ScrollView style={[estilos.chatArea, isPhone && { flexGrow: 0 }]} contentContainerStyle={[estilos.feedContent, isPhone && { padding: 14 }]} scrollEnabled={!isPhone}>
               {datos.feedsFiltrados.map((feed) => {
                 // Declara prioridad; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
                 const prioridad = feed.prioridad || 'Normal';
                 // Devuelve el JSX que React Native renderiza en pantalla.
                 return (
                   // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
-                  <View key={feed.id} style={[estilos.feedItem, (prioridad === 'Alta' || prioridad === 'Urgente') && estilos.feedItemUrgent]}>
+                  <View key={feed.id} style={[estilos.feedItem, (prioridad === 'Alta' || prioridad === 'Urgente') && estilos.feedItemUrgent, isPhone && { borderRadius: 14, padding: 14, marginBottom: 12 }]}>
                     {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                    <View style={estilos.feedItemHeader}>
+                    <View style={[estilos.feedItemHeader, isPhone && { flexDirection: 'column', gap: 10 }]}>
                       {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                      <View style={estilos.feedUserRow}>
+                      <View style={[estilos.feedUserRow, isPhone && { alignItems: 'flex-start', flex: 1 }]}>
                         {(() => {
                           // Declara autor; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
                           const autor = usuarios.find(u => u.id === feed.creadoPorId || u.nombre === feed.creadoPorNombre);
@@ -796,11 +804,11 @@ export default function ComunicacionAdmin() {
                           );
                         })()}
                         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                        <View>
+                        <View style={isPhone ? { flex: 1, minWidth: 0 } : undefined}>
                           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                          <Text style={estilos.feedUserName}>{feed.creadoPorNombre || t('common.system')}</Text>
+                          <Text numberOfLines={1} style={estilos.feedUserName}>{feed.creadoPorNombre || t('common.system')}</Text>
                           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                          <Text style={estilos.feedUserMeta}>{formatFecha(feed.fecha) || ''} · {feed.canalDestino || feed.departamentoDestino || t('admin.comunicacion.global')}</Text>
+                          <Text numberOfLines={2} style={estilos.feedUserMeta}>{formatFecha(feed.fecha) || ''} · {feed.canalDestino || feed.departamentoDestino || t('admin.comunicacion.global')}</Text>
                         </View>
                       </View>
                       {/* PremiumBadge renderiza una pieza visual reutilizable dentro de esta pantalla. */}
@@ -816,6 +824,51 @@ export default function ComunicacionAdmin() {
           </View>
         </View>
       </View>
+      {isPhone && (
+        <View style={[estilos.premiumCard, estilos.feedCard, { width: '100%', maxWidth: 420, alignSelf: 'center', borderRadius: 16, minHeight: 0, overflow: 'hidden', marginTop: 16 }]}>
+          <View style={[estilos.chatHeader, { padding: 14, flexDirection: 'column', alignItems: 'stretch', gap: 12 }]}>
+            <View style={[estilos.chatTitleRow, { alignItems: 'flex-start' }]}>
+              <View style={estilos.liveDot} />
+              <Text style={[estilos.chatTitle, { fontSize: 14, flex: 1 }]}>{t('admin.comunicacion.feed_title')}: {audienciaActual?.nombre || t('admin.comunicacion.global')}</Text>
+            </View>
+            <PremiumBadge variant="blue">{`Alcance: ${datos.receptores} ${datos.receptores === 1 ? 'destinatario' : 'destinatarios'}`}</PremiumBadge>
+          </View>
+          <View style={[estilos.searchContainer, { margin: 14, marginBottom: 0, height: 46, paddingHorizontal: 14 }]}>
+            <MaterialIcons name="search" size={20} color={BRAND.textSec} style={estilos.searchIcon} />
+            <TextInput style={estilos.searchInput} placeholder={t('admin.comunicacion.search_placeholder')} placeholderTextColor={BRAND.textSec} value={busqueda} onChangeText={setBusqueda} />
+          </View>
+          <View style={[estilos.feedContent, { padding: 14 }]}>
+            {datos.feedsFiltrados.map((feed) => {
+              const prioridad = feed.prioridad || 'Normal';
+              const autor = usuarios.find(u => u.id === feed.creadoPorId || u.nombre === feed.creadoPorNombre);
+              const foto = autor?.foto_perfil || autor?.fotoPerfil || autor?.photoURL;
+              return (
+                <View key={feed.id} style={[estilos.feedItem, (prioridad === 'Alta' || prioridad === 'Urgente') && estilos.feedItemUrgent, { borderRadius: 14, padding: 14, marginBottom: 12 }]}>
+                  <View style={[estilos.feedItemHeader, { flexDirection: 'column', gap: 10 }]}>
+                    <View style={[estilos.feedUserRow, { alignItems: 'flex-start', flex: 1 }]}>
+                      {foto ? (
+                        <Image source={{ uri: foto }} style={estilos.feedAvatar} />
+                      ) : (
+                        <LinearGradient colors={(prioridad === 'Alta' || prioridad === 'Urgente') ? ['#EF4444', '#991B1B'] : [BRAND.bangladeshBlue, BRAND.caribbeanBlue]} style={estilos.feedAvatar}>
+                          <MaterialIcons name="person" size={17} color={CONTRAST_TEXT} />
+                          <Text style={estilos.feedAvatarText}>{(feed.creadoPorNombre || 'S')[0].toUpperCase()}</Text>
+                        </LinearGradient>
+                      )}
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text numberOfLines={1} style={estilos.feedUserName}>{feed.creadoPorNombre || t('common.system')}</Text>
+                        <Text numberOfLines={2} style={estilos.feedUserMeta}>{formatFecha(feed.fecha) || ''} · {feed.canalDestino || feed.departamentoDestino || t('admin.comunicacion.global')}</Text>
+                      </View>
+                    </View>
+                    <PremiumBadge variant={(prioridad === 'Alta' || prioridad === 'Urgente') ? 'error' : prioridad === 'Normal' ? 'default' : 'warning'}>{prioridad}</PremiumBadge>
+                  </View>
+                  <Text style={estilos.feedMsg}>{feed.mensaje}</Text>
+                </View>
+              );
+            })}
+            {datos.feedsFiltrados.length === 0 && <EmptyState texto={t('admin.comunicacion.empty_feed')} />}
+          </View>
+        </View>
+      )}
     </ScrollView>
     </Animated.View>
   );
@@ -974,7 +1027,7 @@ const estilos = StyleSheet.create({
   // feedMsg: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   feedMsg: { fontSize: 14, color: BRAND.textMain, lineHeight: 23, fontWeight: '600' },
   // badge: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  badge: { paddingHorizontal: 11, paddingVertical: 5, borderRadius: 100, borderWidth: 1 },
+  badge: { paddingHorizontal: 11, paddingVertical: 5, borderRadius: 100, borderWidth: 1, alignSelf: 'flex-start' },
   // badgeText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   badgeText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.2 },
   // emptyState: estilo de estado vacio; presenta mensajes cuando no hay datos disponibles.

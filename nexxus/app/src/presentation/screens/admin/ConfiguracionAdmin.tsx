@@ -21,6 +21,8 @@ import {
   TextInput,
   Image,
   ActivityIndicator,
+  useWindowDimensions,
+  Dimensions,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { BlurView } from 'expo-blur';
@@ -143,7 +145,8 @@ function usePressScale() {
  */
 function SectionCard({ children, style }: any) {
   const { theme } = useAdminAppearance();
-  const styles = useMemo(() => crearEstilos(theme), [theme]);
+  const { width } = useWindowDimensions();
+  const styles = useMemo(() => crearEstilos(theme, width), [theme, width]);
   return (
     <View style={[styles.card, style]}>
       {children}
@@ -173,8 +176,9 @@ function OptionRow({
 }) {
   // Inicializa { theme }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { theme } = useAdminAppearance();
+  const { width } = useWindowDimensions();
   // Inicializa styles; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const styles = useMemo(() => crearEstilos(theme), [theme]);
+  const styles = useMemo(() => crearEstilos(theme, width), [theme, width]);
   // Declara press; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const press = usePressScale();
 
@@ -201,8 +205,8 @@ function OptionRow({
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={styles.rowText}>
           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={[styles.rowLabel, danger && { color: theme.danger }, active && { color: theme.text }]}>{translatedLabel}</Text>
-          {translatedSublabel ? <Text style={styles.rowSublabel}>{translatedSublabel}</Text> : null}
+          <Text style={[styles.rowLabel, danger && { color: theme.danger }, active && { color: theme.text }]} numberOfLines={2}>{translatedLabel}</Text>
+          {translatedSublabel ? <Text style={styles.rowSublabel} numberOfLines={2}>{translatedSublabel}</Text> : null}
         </View>
         {right}
       </TouchableOpacity>
@@ -216,8 +220,9 @@ function OptionRow({
 function LangBadge({ code, label, active, onPress }: { code: string; label: string; active: boolean; onPress: () => void }) {
   // Inicializa { theme }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { theme } = useAdminAppearance();
+  const { width } = useWindowDimensions();
   // Inicializa styles; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const styles = useMemo(() => crearEstilos(theme), [theme]);
+  const styles = useMemo(() => crearEstilos(theme, width), [theme, width]);
   // Declara press; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const press = usePressScale();
 
@@ -247,8 +252,9 @@ function LangBadge({ code, label, active, onPress }: { code: string; label: stri
 function InsightTile({ icon, label, value, accent }: { icon: string; label: string; value: string; accent: string }) {
   // Inicializa { theme }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { theme } = useAdminAppearance();
+  const { width } = useWindowDimensions();
   // Inicializa styles; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const styles = useMemo(() => crearEstilos(theme), [theme]);
+  const styles = useMemo(() => crearEstilos(theme, width), [theme, width]);
 
   const translatedLabel = useApiTranslate(label);
   const translatedValue = useApiTranslate(value);
@@ -263,9 +269,11 @@ function InsightTile({ icon, label, value, accent }: { icon: string; label: stri
         <MaterialIcons {...({ className: 'nx-force-white' } as any)} name={icon as any} size={18} color={CONTRAST_TEXT} />
       </View>
       {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-      <Text style={styles.insightLabel}>{translatedLabel}</Text>
-      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-      <Text style={styles.insightValue}>{translatedValue}</Text>
+      <View style={styles.insightTextWrap}>
+        <Text style={styles.insightLabel} numberOfLines={1}>{translatedLabel}</Text>
+        {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+        <Text style={styles.insightValue} numberOfLines={2}>{translatedValue}</Text>
+      </View>
     </View>
   );
 }
@@ -290,8 +298,9 @@ function ThemeChoice({
 }) {
   // Inicializa { theme }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { theme } = useAdminAppearance();
+  const { width } = useWindowDimensions();
   // Inicializa styles; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const styles = useMemo(() => crearEstilos(theme), [theme]);
+  const styles = useMemo(() => crearEstilos(theme, width), [theme, width]);
   // Declara press; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const press = usePressScale();
 
@@ -314,9 +323,9 @@ function ThemeChoice({
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={{ flex: 1 }}>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={styles.themeChoiceTitle}>{translatedTitle}</Text>
+            <Text style={styles.themeChoiceTitle} numberOfLines={1}>{translatedTitle}</Text>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={styles.themeChoiceSubtitle}>{translatedSubtitle}</Text>
+            <Text style={styles.themeChoiceSubtitle} numberOfLines={2}>{translatedSubtitle}</Text>
           </View>
           {active ? <MaterialIcons name="check-circle" size={20} color={theme.purple} /> : null}
         </View>
@@ -356,8 +365,10 @@ export default function ConfiguracionAdmin() {
   const { user, logout, updateUser } = useAuth();
   // Inicializa { theme, mode, setMode }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { theme, mode, setMode } = useAdminAppearance();
+  const { width } = useWindowDimensions();
+  const isPhone = width < 1180;
   // Inicializa styles; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const styles = useMemo(() => crearEstilos(theme), [theme]);
+  const styles = useMemo(() => crearEstilos(theme, width), [theme, width]);
   // Declara currentLang; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const currentLang = i18n.language;
 
@@ -531,7 +542,12 @@ export default function ConfiguracionAdmin() {
       <View pointerEvents="none" style={styles.glowBottom} />
 
       {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={[styles.scroll, isPhone && Platform.OS === 'web' ? { touchAction: 'pan-y', overflowY: 'auto' } as any : undefined]}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled={false}
+      >
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={styles.overviewPanel}>
           {theme.isDark ? (
@@ -627,6 +643,7 @@ export default function ConfiguracionAdmin() {
       <Modal visible={isEditProfileOpen} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <BlurView intensity={theme.isDark ? 80 : 50} tint={theme.isDark ? 'dark' : 'light'} style={styles.modalContent}>
+            <ScrollView contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <Text style={styles.modalTitle}>{tEditarPerfil}</Text>
             
             <TouchableOpacity onPress={handlePickImage} style={styles.modalImageContainer} activeOpacity={0.85}>
@@ -741,6 +758,7 @@ export default function ConfiguracionAdmin() {
                 )}
               </TouchableOpacity>
             </View>
+            </ScrollView>
           </BlurView>
         </View>
       </Modal>
@@ -767,7 +785,12 @@ const crearSombra = (theme: any) => Platform.select({
 /**
  * Mapa de estilos crearEstilos. Centraliza reglas visuales para que el JSX se mantenga legible y consistente.
  */
-const crearEstilos = (theme: any) => StyleSheet.create({
+const crearEstilos = (theme: any, width?: number) => {
+  const currentWidth = width ?? Dimensions.get('window').width;
+  const isMobileOrTablet = currentWidth < 1024;
+  const isPhone = currentWidth < 1180;
+  const mobileMaxWidth = 760;
+  return StyleSheet.create({
   // root: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   root: {
     // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
@@ -825,16 +848,20 @@ const crearEstilos = (theme: any) => StyleSheet.create({
   // scrollContent: estilo del area de contenido; controla padding, distribucion y separacion interna.
   scrollContent: {
     // paddingHorizontal agrega espacio interno a izquierda y derecha.
-    paddingHorizontal: 24,
+    paddingHorizontal: isPhone ? 12 : isMobileOrTablet ? 16 : 24,
     // paddingTop separa el contenido del borde superior.
-    paddingTop: 260,
+    paddingTop: isPhone ? 90 : isMobileOrTablet ? 126 : 260,
     // paddingBottom separa el contenido del borde inferior.
-    paddingBottom: 48,
+    paddingBottom: isPhone ? 72 : 48,
+    alignItems: isPhone ? 'center' : 'stretch',
   },
   // overviewPanel: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   overviewPanel: {
+    width: isPhone ? '100%' : undefined,
+    maxWidth: isPhone ? mobileMaxWidth : undefined,
+    alignSelf: isPhone ? 'center' : undefined,
     // borderRadius redondea esquinas para definir la forma visual.
-    borderRadius: 18,
+    borderRadius: isPhone ? 16 : 18,
     // borderWidth define el grosor del borde visible.
     borderWidth: 1,
     // borderColor define el color del borde.
@@ -844,18 +871,18 @@ const crearEstilos = (theme: any) => StyleSheet.create({
     // overflow controla si el contenido se recorta o puede sobresalir.
     overflow: 'hidden',
     // padding agrega espacio interno alrededor del contenido.
-    padding: 20,
+    padding: isPhone ? 16 : 20,
     // marginBottom separa este bloque del siguiente elemento.
-    marginBottom: 22,
+    marginBottom: isPhone ? 18 : 22,
     // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
     ...crearSombra(theme),
   },
   // overviewHeader: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
   overviewHeader: {
     // flexDirection decide si los hijos se ordenan en fila o columna.
-    flexDirection: 'row',
+    flexDirection: isPhone || isMobileOrTablet ? 'column' : 'row',
     // alignItems alinea los hijos en el eje transversal del contenedor.
-    alignItems: 'flex-start',
+    alignItems: isPhone || isMobileOrTablet ? 'stretch' : 'flex-start',
     // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'space-between',
     // gap define separacion uniforme entre elementos hijos.
@@ -881,7 +908,7 @@ const crearEstilos = (theme: any) => StyleSheet.create({
     // color define el color del texto o icono.
     color: theme.text,
     // fontSize controla el tamanio del texto.
-    fontSize: 22,
+    fontSize: isPhone ? 24 : 22,
     // fontWeight define el peso visual del texto.
     fontWeight: '900',
     // letterSpacing ajusta la separacion entre letras.
@@ -892,7 +919,7 @@ const crearEstilos = (theme: any) => StyleSheet.create({
     // color define el color del texto o icono.
     color: theme.muted,
     // fontSize controla el tamanio del texto.
-    fontSize: 12,
+    fontSize: isPhone ? 12 : 12,
     // fontWeight define el peso visual del texto.
     fontWeight: '700',
     // lineHeight ajusta una propiedad visual especifica de este estilo.
@@ -900,7 +927,7 @@ const crearEstilos = (theme: any) => StyleSheet.create({
     // marginTop separa este bloque del elemento anterior.
     marginTop: 6,
     // maxWidth limita el ancho para mantener lectura y composicion.
-    maxWidth: 680,
+    maxWidth: isPhone ? '100%' : 680,
   },
   // overviewBadge: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   overviewBadge: {
@@ -931,9 +958,10 @@ const crearEstilos = (theme: any) => StyleSheet.create({
   // insightGrid: estilo de grilla; organiza elementos en filas o columnas con separacion controlada.
   insightGrid: {
     // flexDirection decide si los hijos se ordenan en fila o columna.
-    flexDirection: 'row',
+    flexDirection: isPhone ? 'column' : isMobileOrTablet ? 'column' : 'row',
+    flexWrap: 'nowrap',
     // gap define separacion uniforme entre elementos hijos.
-    gap: 12,
+    gap: isPhone ? 10 : 12,
     // marginTop separa este bloque del elemento anterior.
     marginTop: 18,
   },
@@ -941,8 +969,12 @@ const crearEstilos = (theme: any) => StyleSheet.create({
   insightTile: {
     // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
     flex: 1,
+    width: isPhone ? '100%' : undefined,
+    flexDirection: isPhone ? 'row' : 'column',
+    alignItems: isPhone ? 'center' : 'stretch',
+    gap: isPhone ? 12 : 0,
     // minHeight asegura una altura minima util para lectura o area tactil.
-    minHeight: 96,
+    minHeight: isPhone ? 72 : 96,
     // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 14,
     // borderWidth define el grosor del borde visible.
@@ -952,7 +984,7 @@ const crearEstilos = (theme: any) => StyleSheet.create({
     // backgroundColor define el fondo del bloque.
     backgroundColor: theme.isDark ? theme.chip : '#FFFFFF',
     // padding agrega espacio interno alrededor del contenido.
-    padding: 14,
+    padding: isPhone ? 12 : 14,
   },
   // insightIcon: estilo de icono; ajusta tamanio, posicion o fondo del indicador visual.
   insightIcon: {
@@ -967,7 +999,11 @@ const crearEstilos = (theme: any) => StyleSheet.create({
     // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
     // marginBottom separa este bloque del siguiente elemento.
-    marginBottom: 12,
+    marginBottom: isPhone ? 0 : 12,
+  },
+  insightTextWrap: {
+    flex: 1,
+    minWidth: 0,
   },
   // insightLabel: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
   insightLabel: {
@@ -1071,6 +1107,9 @@ const crearEstilos = (theme: any) => StyleSheet.create({
   },
   // sectionLabel: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
   sectionLabel: {
+    width: isPhone ? '100%' : undefined,
+    maxWidth: isPhone ? mobileMaxWidth : undefined,
+    alignSelf: isPhone ? 'center' : undefined,
     // color define el color del texto o icono.
     color: theme.purple,
     // fontSize controla el tamanio del texto.
@@ -1082,14 +1121,17 @@ const crearEstilos = (theme: any) => StyleSheet.create({
     // textTransform ajusta una propiedad visual especifica de este estilo.
     textTransform: 'uppercase',
     // marginBottom separa este bloque del siguiente elemento.
-    marginBottom: 10,
+    marginBottom: isPhone ? 8 : 10,
     // marginTop separa este bloque del elemento anterior.
-    marginTop: 8,
+    marginTop: isPhone ? 6 : 8,
   },
   // card: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
   card: {
+    width: isPhone ? '100%' : undefined,
+    maxWidth: isPhone ? mobileMaxWidth : undefined,
+    alignSelf: isPhone ? 'center' : undefined,
     // borderRadius redondea esquinas para definir la forma visual.
-    borderRadius: 14,
+    borderRadius: isPhone ? 16 : 14,
     // borderWidth define el grosor del borde visible.
     borderWidth: 1,
     // borderColor define el color del borde.
@@ -1099,30 +1141,34 @@ const crearEstilos = (theme: any) => StyleSheet.create({
     // overflow controla si el contenido se recorta o puede sobresalir.
     overflow: 'hidden',
     // marginBottom separa este bloque del siguiente elemento.
-    marginBottom: 18,
+    marginBottom: isPhone ? 16 : 18,
     // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
     ...crearSombra(theme),
   },
   // themeGrid: estilo de grilla; organiza elementos en filas o columnas con separacion controlada.
   themeGrid: {
     // flexDirection decide si los hijos se ordenan en fila o columna.
-    flexDirection: 'row',
+    flexDirection: isPhone ? 'column' : isMobileOrTablet ? 'column' : 'row',
+    width: isPhone ? '100%' : undefined,
+    maxWidth: isPhone ? mobileMaxWidth : undefined,
+    alignSelf: isPhone ? 'center' : undefined,
     // gap define separacion uniforme entre elementos hijos.
-    gap: 14,
+    gap: isPhone ? 12 : 14,
     // marginBottom separa este bloque del siguiente elemento.
-    marginBottom: 18,
+    marginBottom: isPhone ? 16 : 18,
   },
   // themeChoiceWrap: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   themeChoiceWrap: {
     // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
     flex: 1,
+    width: isPhone ? '100%' : undefined,
   },
   // themeChoice: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   themeChoice: {
     // minHeight asegura una altura minima util para lectura o area tactil.
-    minHeight: 184,
+    minHeight: isPhone ? 132 : 184,
     // borderRadius redondea esquinas para definir la forma visual.
-    borderRadius: 16,
+    borderRadius: isPhone ? 15 : 16,
     // borderWidth define el grosor del borde visible.
     borderWidth: 1,
     // borderColor define el color del borde.
@@ -1130,7 +1176,7 @@ const crearEstilos = (theme: any) => StyleSheet.create({
     // backgroundColor define el fondo del bloque.
     backgroundColor: theme.isDark ? theme.panel : '#FFFFFF',
     // padding agrega espacio interno alrededor del contenido.
-    padding: 14,
+    padding: isPhone ? 12 : 14,
     // overflow controla si el contenido se recorta o puede sobresalir.
     overflow: 'hidden',
     // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
@@ -1148,7 +1194,7 @@ const crearEstilos = (theme: any) => StyleSheet.create({
     // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
     // alignItems alinea los hijos en el eje transversal del contenedor.
-    alignItems: 'center',
+    alignItems: isPhone ? 'flex-start' : 'center',
     // gap define separacion uniforme entre elementos hijos.
     gap: 12,
     // marginBottom separa este bloque del siguiente elemento.
@@ -1168,18 +1214,19 @@ const crearEstilos = (theme: any) => StyleSheet.create({
     // color define el color del texto o icono.
     color: theme.muted,
     // fontSize controla el tamanio del texto.
-    fontSize: 11,
+    fontSize: isPhone ? 10 : 11,
     // fontWeight define el peso visual del texto.
     fontWeight: '700',
     // marginTop separa este bloque del elemento anterior.
     marginTop: 3,
+    lineHeight: isPhone ? 15 : undefined,
   },
   // themePreview: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   themePreview: {
     // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
     flex: 1,
     // minHeight asegura una altura minima util para lectura o area tactil.
-    minHeight: 94,
+    minHeight: isPhone ? 58 : 94,
     // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 14,
     // borderWidth define el grosor del borde visible.
@@ -1203,7 +1250,7 @@ const crearEstilos = (theme: any) => StyleSheet.create({
   // themePreviewSidebar: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   themePreviewSidebar: {
     // width fija o calcula el ancho del elemento.
-    width: 34,
+    width: isPhone ? 24 : 34,
     // backgroundColor define el fondo del bloque.
     backgroundColor: 'rgba(255,255,255,0.08)',
   },
@@ -1217,7 +1264,7 @@ const crearEstilos = (theme: any) => StyleSheet.create({
     // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
     flex: 1,
     // padding agrega espacio interno alrededor del contenido.
-    padding: 12,
+    padding: isPhone ? 9 : 12,
     // gap define separacion uniforme entre elementos hijos.
     gap: 8,
   },
@@ -1263,13 +1310,13 @@ const crearEstilos = (theme: any) => StyleSheet.create({
   // row: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   row: {
     // minHeight asegura una altura minima util para lectura o area tactil.
-    minHeight: 66,
+    minHeight: isPhone ? 62 : 66,
     // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
     // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
     // paddingHorizontal agrega espacio interno a izquierda y derecha.
-    paddingHorizontal: 16,
+    paddingHorizontal: isPhone ? 14 : 16,
     // paddingVertical agrega espacio interno arriba y abajo.
     paddingVertical: 12,
   },
@@ -1315,13 +1362,15 @@ const crearEstilos = (theme: any) => StyleSheet.create({
   rowText: {
     // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
     flex: 1,
+    minWidth: 0,
   },
   // rowLabel: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
   rowLabel: {
     // color define el color del texto o icono.
     color: theme.text,
     // fontSize controla el tamanio del texto.
-    fontSize: 14,
+    fontSize: isPhone ? 13 : 14,
+    lineHeight: isPhone ? 17 : undefined,
     // fontWeight define el peso visual del texto.
     fontWeight: '900',
   },
@@ -1330,7 +1379,8 @@ const crearEstilos = (theme: any) => StyleSheet.create({
     // color define el color del texto o icono.
     color: theme.muted,
     // fontSize controla el tamanio del texto.
-    fontSize: 11,
+    fontSize: isPhone ? 10 : 11,
+    lineHeight: isPhone ? 15 : undefined,
     // fontWeight define el peso visual del texto.
     fontWeight: '700',
     // marginTop separa este bloque del elemento anterior.
@@ -1343,36 +1393,38 @@ const crearEstilos = (theme: any) => StyleSheet.create({
     // backgroundColor define el fondo del bloque.
     backgroundColor: theme.border,
     // marginLeft ajusta una propiedad visual especifica de este estilo.
-    marginLeft: 66,
+    marginLeft: isPhone ? 0 : 66,
   },
   // langRow: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   langRow: {
     // flexDirection decide si los hijos se ordenan en fila o columna.
-    flexDirection: 'row',
+    flexDirection: isPhone ? 'column' : isMobileOrTablet ? 'column' : 'row',
+    flexWrap: 'nowrap',
     // gap define separacion uniforme entre elementos hijos.
-    gap: 12,
+    gap: isPhone ? 10 : 12,
     // padding agrega espacio interno alrededor del contenido.
-    padding: 14,
+    padding: isPhone ? 12 : 14,
   },
   // langBadgeWrap: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   langBadgeWrap: {
     // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
     flex: 1,
+    width: isPhone ? '100%' : undefined,
   },
   // langBadge: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   langBadge: {
     // minHeight asegura una altura minima util para lectura o area tactil.
-    minHeight: 64,
+    minHeight: isPhone ? 56 : 64,
     // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 13,
     // padding agrega espacio interno alrededor del contenido.
-    padding: 13,
+    padding: isPhone ? 11 : 13,
     // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
     // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
     // gap define separacion uniforme entre elementos hijos.
-    gap: 10,
+    gap: isPhone ? 9 : 10,
   },
   langBadgeActive: {
     backgroundColor: theme.primary,
@@ -1402,12 +1454,15 @@ const crearEstilos = (theme: any) => StyleSheet.create({
     // color define el color del texto o icono.
     color: CONTRAST_TEXT,
     // fontSize controla el tamanio del texto.
-    fontSize: 13,
+    fontSize: isPhone ? 12 : 13,
     // fontWeight define el peso visual del texto.
     fontWeight: '900',
   },
   // logoutBtn: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   logoutBtn: {
+    width: isPhone ? '100%' : undefined,
+    maxWidth: isPhone ? mobileMaxWidth : undefined,
+    alignSelf: isPhone ? 'center' : undefined,
     // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 14,
     // overflow controla si el contenido se recorta o puede sobresalir.
@@ -1449,6 +1504,9 @@ const crearEstilos = (theme: any) => StyleSheet.create({
   },
   // footer: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   footer: {
+    width: isPhone ? '100%' : undefined,
+    maxWidth: isPhone ? mobileMaxWidth : undefined,
+    alignSelf: isPhone ? 'center' : undefined,
     // textAlign alinea el texto dentro de su contenedor.
     textAlign: 'center',
     // color define el color del texto o icono.
@@ -1462,15 +1520,16 @@ const crearEstilos = (theme: any) => StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: isPhone ? 14 : 20,
     backgroundColor: theme.isDark ? 'rgba(0, 0, 0, 0.55)' : 'rgba(0, 0, 0, 0.22)',
   },
   modalContent: {
     width: '100%',
-    maxWidth: 400,
+    maxWidth: isPhone ? mobileMaxWidth : 400,
+    maxHeight: isPhone ? '92%' : undefined,
     backgroundColor: theme.isDark ? 'rgba(20, 16, 38, 0.93)' : 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 24,
-    padding: 24,
+    borderRadius: isPhone ? 20 : 24,
+    padding: isPhone ? 18 : 24,
     borderWidth: 1.5,
     borderColor: theme.isDark ? 'rgba(210,198,255,0.22)' : 'rgba(91,65,150,0.25)',
     shadowColor: '#000',
@@ -1480,8 +1539,11 @@ const crearEstilos = (theme: any) => StyleSheet.create({
     elevation: 10,
     overflow: 'hidden',
   },
+  modalScrollContent: {
+    paddingBottom: isPhone ? 4 : 0,
+  },
   modalTitle: {
-    fontSize: 20,
+    fontSize: isPhone ? 18 : 20,
     fontWeight: '800',
     color: theme.text,
     marginBottom: 20,
@@ -1489,13 +1551,13 @@ const crearEstilos = (theme: any) => StyleSheet.create({
   },
   modalImageContainer: {
     alignSelf: 'center',
-    marginBottom: 24,
+    marginBottom: isPhone ? 18 : 24,
     position: 'relative',
   },
   modalImagePicker: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+    width: isPhone ? 78 : 90,
+    height: isPhone ? 78 : 90,
+    borderRadius: isPhone ? 39 : 45,
     backgroundColor: theme.surface,
     borderWidth: 2,
     borderColor: theme.isDark ? 'rgba(210,198,255,0.3)' : 'rgba(91,65,150,0.35)',
@@ -1642,7 +1704,7 @@ const crearEstilos = (theme: any) => StyleSheet.create({
     borderColor: theme.isDark ? 'rgba(210,198,255,0.25)' : 'rgba(91,65,150,0.3)',
   },
   cancelBtnText: {
-    color: '#FFFFFF',
+    color: theme.isDark ? '#FFFFFF' : theme.text,
     fontWeight: '700',
     fontSize: 15,
   },
@@ -1652,6 +1714,8 @@ const crearEstilos = (theme: any) => StyleSheet.create({
     borderRadius: 12,
     backgroundColor: theme.primary,
     alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: theme.primary,
   },
   saveBtnText: {
     color: CONTRAST_TEXT,
@@ -1659,3 +1723,4 @@ const crearEstilos = (theme: any) => StyleSheet.create({
     fontSize: 15,
   },
 });
+};

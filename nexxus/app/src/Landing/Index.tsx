@@ -1,107 +1,189 @@
-/**
- * Documentacion Nexxus - nexxus/app/src/Landing/Index.tsx
- * Capa: landing.
- * Proposito: Pantalla o recurso visual del flujo publico de autenticacion/landing. Centraliza la presentacion inicial antes de entrar a la app privada.
- * Dependencias clave: imports superiores y contratos tipados del propio modulo.
- * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras Firebase al extender este archivo.
- */
-
-// Importa { createElement, ReactNode, useEffect, useState } desde React; habilita componentes, hooks y tipos base para esta pieza.
-import { createElement, ReactNode, useEffect, useState } from 'react';
-// Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
-import { useTranslation } from 'react-i18next';
-// Importa { changeLanguage }; inicializa o consume configuracion de internacionalizacion.
-import { changeLanguage } from '../shared/i18n/config';
-// Importa BorderGlow; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
+import { CSSProperties, ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '@/infrastructure/firebase/firebaseConfig';
 import BorderGlow from './BorderGlow';
-// Importa StarBorder; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
-import StarBorder from './StarBorder';
-// Importa StarButton; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
+import GlassSurface from './GlassSurface';
+import LandingFooter from './LandingFooter';
+import { getActivePlan, NexxusPlan, PLAN_ORDER } from './planAccess';
 import StarButton from './StarButton';
-// Importa estilos CSS; aplica clases, animaciones o efectos visuales usados por este componente web.
 import './Landing.css';
 
-/**
- * Declaracion h. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
- */
-const h = createElement;
-
-/**
- * Describe la forma tipada BillingCycle; ayuda a que estados, props o respuestas mantengan una estructura predecible.
- */
 type BillingCycle = 'monthly' | 'annual';
-/**
- * Describe la forma tipada IconName; ayuda a que estados, props o respuestas mantengan una estructura predecible.
- */
 type IconName = 'activity' | 'ai' | 'analytics' | 'automation' | 'briefcase' | 'building' | 'chart' | 'check' | 'clock' | 'command' | 'database' | 'file' | 'lock' | 'message' | 'payroll' | 'shield' | 'spark' | 'users' | 'workflow' | 'zap';
 
-/**
- * Declaracion modules. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
- */
-const modules: [string, string, IconName][] = [
-  ['landing.module_ops_title', 'landing.module_ops_desc', 'command'],
-  ['landing.module_people_title', 'landing.module_people_desc', 'users'],
-  ['landing.module_comms_title', 'landing.module_comms_desc', 'message'],
-  ['landing.module_intelligence_title', 'landing.module_intelligence_desc', 'analytics'],
-];
-
-/**
- * Declaracion plans. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
- */
-const plans = [
-  {
-    name: 'Starter',
-    monthly: 20,
-    badge: 'landing.starter_badge',
-    users: 'landing.starter_users',
-    benefits: ['landing.starter_benefit1', 'landing.starter_benefit2', 'landing.starter_benefit3', 'landing.starter_benefit4'],
-    detailGroups: [
-      { title: 'landing.plan_company', items: ['landing.starter_company1', 'landing.starter_company2', 'landing.starter_company3', 'landing.starter_company4'] },
-      { title: 'landing.plan_modules', items: ['landing.starter_module1', 'landing.starter_module2', 'landing.starter_module3', 'landing.starter_module4', 'landing.starter_module5', 'landing.starter_module6', 'landing.starter_module7'] },
-      { title: 'landing.plan_limits', items: ['landing.starter_limit1', 'landing.starter_limit2', 'landing.starter_limit3', 'landing.starter_limit4', 'landing.starter_limit5', 'landing.starter_limit6', 'landing.starter_limit7'] },
-    ],
+const landingText = {
+  meta: {
+    title: 'Nexxus | Impulsa tu empresa con rendimiento real',
+    description: 'Nexxus centraliza empleados, tareas, asistencia, nómina, IA y analytics para empresas modernas.',
   },
-  {
-    name: 'Business',
-    monthly: 50,
-    badge: 'landing.business_badge',
-    users: 'landing.business_users',
-    benefits: ['landing.business_benefit1', 'landing.business_benefit2', 'landing.business_benefit3', 'landing.business_benefit4'],
-    detailGroups: [
-      { title: 'landing.plan_scalability', items: ['landing.business_scale1', 'landing.business_scale2', 'landing.business_scale3', 'landing.business_scale4'] },
-      { title: 'landing.plan_unlocked', items: ['landing.business_unlock1', 'landing.business_unlock2', 'landing.business_unlock3', 'landing.business_unlock4', 'landing.business_unlock5', 'landing.business_unlock6', 'landing.business_unlock7', 'landing.business_unlock8', 'landing.business_unlock9', 'landing.business_unlock10'] },
-      { title: 'landing.plan_communication', items: ['landing.business_comm1', 'landing.business_comm2', 'landing.business_comm3', 'landing.business_comm4'] },
-      { title: 'landing.plan_security', items: ['landing.business_security1'] },
-    ],
-    featured: true,
+  nav: [
+    ['Sistema', 'sistema'],
+    ['Módulos', 'modulos'],
+    ['Admin', 'admin'],
+    ['Planes', 'planes'],
+    ['IA', 'ia'],
+  ] as [string, string][],
+  hero: {
+    title: 'Gestiona tu empresa desde un solo lugar',
+    subtitle: 'Nexxus conecta administración, empleados, tareas, asistencia, nómina, bienestar e IA en un solo lugar para operar con claridad y velocidad.',
+    createCompany: 'Registrarse',
+    knowPlans: 'Conocer Planes',
   },
-  {
-    name: 'Enterprise',
-    monthly: 200,
-    badge: 'landing.enterprise_badge',
-    users: 'landing.enterprise_users',
-    benefits: ['landing.enterprise_benefit1', 'landing.enterprise_benefit2', 'landing.enterprise_benefit3', 'landing.enterprise_benefit4'],
-    detailGroups: [
-      { title: 'landing.plan_unlimited', items: ['landing.enterprise_unlimited1', 'landing.enterprise_unlimited2', 'landing.enterprise_unlimited3', 'landing.enterprise_unlimited4'] },
-      { title: 'landing.plan_enterprise', items: ['landing.enterprise_feature1', 'landing.enterprise_feature2', 'landing.enterprise_feature3', 'landing.enterprise_feature4', 'landing.enterprise_feature5', 'landing.enterprise_feature6', 'landing.enterprise_feature7', 'landing.enterprise_feature8', 'landing.enterprise_feature9'] },
-      { title: 'landing.plan_analytics', items: ['landing.enterprise_analytics1', 'landing.enterprise_analytics2', 'landing.enterprise_analytics3', 'landing.enterprise_analytics4'] },
-    ],
+  access: {
+    guestEyebrow: 'Conoce Nexxus',
+    guestTitle: 'Descubre una forma más clara de gestionar tu empresa.',
+    guestText: 'Conoce el sistema que conecta personas, procesos e información en un solo lugar.',
+    learnMore: 'Ver cómo funciona',
+    login: 'Iniciar sesión',
+    companyEyebrow: 'Tu espacio empresarial',
+    companyTitle: 'Tu empresa está lista para continuar.',
+    companyText: 'Accede directamente a tu espacio de trabajo y retoma la operación donde la dejaste.',
+    enterCompany: 'Acceder a mi empresa',
+    account: 'Gestionar cuenta',
+    createEyebrow: 'Completa tu configuración',
+    createTitle: 'Crea tu empresa para empezar a trabajar en Nexxus.',
+    createText: 'Configura los datos de tu organización y activa tu espacio empresarial.',
+    createCompany: 'Crear empresa',
   },
-];
+  metrics: [
+    ['34%', 'menos tiempo operativo', 'zap'],
+    ['4.8x', 'más trazabilidad', 'shield'],
+    ['72h', 'para activar equipos', 'clock'],
+    ['99.9%', 'visión centralizada', 'activity'],
+  ] as [string, string, IconName][],
+  system: {
+    eyebrow: 'Sistema',
+    title: 'La plataforma operativa para equipos modernos.',
+    text: 'Todo lo que necesitas para administrar tu organización desde una única plataforma.',
+    cards: [
+      ['Automatización', 'Flujos inteligentes que eliminan tareas repetitivas.', 'automation'],
+      ['Visibilidad', 'Información actualizada para actuar sin retrasos.', 'activity'],
+      ['Inteligencia', 'IA que transforma datos en decisiones accionables.', 'ai'],
+    ] as [string, string, IconName][],
+  },
+  modules: {
+    eyebrow: 'Módulos',
+    title: 'Todo lo que tu empresa necesita en una sola plataforma.',
+    text: 'Gestiona operaciones, equipos, comunicación e inteligencia empresarial desde un único lugar.',
+    cards: [
+      ['Operación diaria', 'Tareas, asistencia y calendarios para mantener cada operación bajo control.', 'command'],
+      ['Personas y estructura', 'Empleados, roles, departamentos y sucursales organizados de forma centralizada.', 'users'],
+      ['Comunicación interna', 'Chats, anuncios y documentos compartidos para equipos mejor conectados.', 'message'],
+      ['Inteligencia y control', 'Reportes, métricas e IA para supervisar el negocio y tomar decisiones con confianza.', 'analytics'],
+    ] as [string, string, IconName][],
+  },
+  admin: {
+    eyebrow: 'Administrador',
+    title: 'Control total de la operación.',
+    text: 'Supervisa equipos, procesos y métricas desde un panel centralizado diseñado para tomar decisiones con rapidez y confianza.',
+    live: 'Operaciones en vivo',
+    active: '',
+    items: ['Equipo', 'Nómina', 'Auditoría', 'Comunicación'],
+  },
+  security: {
+    eyebrow: 'Seguridad y control',
+    title: 'Diseñado para crecer sin perder el control.',
+    text: 'Estructura, permisos y procesos que mantienen la operación segura, organizada y escalable.',
+    cards: [
+      ['Auditoría continua', 'Cada acción queda registrada para garantizar trazabilidad y cumplimiento.', 'shield'],
+      ['Datos centralizados', 'Toda la información de la empresa conectada en una única fuente de verdad.', 'database'],
+      ['Flujos inteligentes', 'Aprobaciones, solicitudes y procesos automatizados con reglas claras.', 'workflow'],
+      ['Gestión documental', 'Documentos protegidos, organizados y accesibles cuando se necesitan.', 'file'],
+    ] as [string, string, IconName][],
+  },
+  implementation: {
+    eyebrow: 'Implementación',
+    title: 'Se adapta a tu operación desde el primer día.',
+    text: 'Implementa Nexxus sin cambiar la forma en que tu empresa trabaja. Centraliza procesos, equipos e información en una sola plataforma.',
+    items: [
+      ['Datos en la nube', 'database'],
+      ['RRHH', 'users'],
+      ['Nómina', 'payroll'],
+      ['Datos en tiempo real', 'analytics'],
+      ['Documentos', 'file'],
+      ['Comunicación', 'message'],
+    ] as [string, IconName][],
+  },
+  pricing: {
+    eyebrow: 'Planes',
+    title: 'Desde equipos pequeños hasta operaciones empresariales.',
+    monthly: 'Mensual',
+    annual: 'Anual -20%',
+    includes: 'Incluye:',
+    viewBenefits: 'Ver beneficios del plan',
+    hideBenefits: 'Ocultar beneficios del plan',
+    choosePlan: 'Elegir plan',
+    createWithPlan: 'Crear con este plan',
+  },
+  plans: [
+    {
+      name: 'Starter',
+      monthly: 20,
+      badge: 'Para equipos en crecimiento',
+      users: '1 empresa · hasta 15 empleados · 1 sucursal · 1 administrador',
+      benefits: ['Empleados, asistencia y tareas', 'Anuncios, chat interno y calendario', 'Documentos básicos', 'Reportes básicos'],
+      detailGroups: [
+        { title: 'Empresa', items: ['1 empresa', 'Hasta 15 empleados', '1 sucursal', '1 administrador'] },
+        { title: 'Módulos incluidos', items: ['Empleados', 'Asistencia', 'Tareas', 'Anuncios', 'Chat interno', 'Calendario', 'Documentos básicos'] },
+        { title: 'Limitaciones funcionales', items: ['Historial de 30 días', 'Máximo 3 departamentos', 'Reportes básicos', 'Exportaciones limitadas', 'Sin personalización avanzada', 'Sin permisos avanzados', 'Sin métricas avanzadas'] },
+      ],
+    },
+    {
+      name: 'Business',
+      monthly: 50,
+      badge: 'Más elegido',
+      users: 'Todo lo del Starter + hasta 100 empleados',
+      benefits: ['Reportes avanzados', 'Exportación Excel/PDF', 'Dashboard avanzado', 'Roles personalizados'],
+      detailGroups: [
+        { title: 'Escalabilidad', items: ['Hasta 100 empleados', 'Hasta 10 administradores', 'Hasta 10 departamentos', 'Hasta 5 sucursales'] },
+        { title: 'Funciones desbloqueadas', items: ['Reportes avanzados', 'Exportación Excel/PDF', 'Dashboard avanzado', 'Estadísticas empresariales', 'Gestión avanzada de permisos', 'Roles personalizados', 'Historial de 1 año', 'Filtros avanzados', 'Prioridades en tareas', 'Gestión de equipos'] },
+        { title: 'Comunicación', items: ['Canales internos', 'Mensajes destacados', 'Encuestas internas', 'Archivos compartidos'] },
+        { title: 'Seguridad', items: ['Registro de actividad'] },
+      ],
+      featured: true,
+    },
+    {
+      name: 'Enterprise',
+      monthly: 200,
+      badge: 'Operación corporativa',
+      users: 'Todo lo del Business + empleados, sedes y administradores ilimitados',
+      benefits: ['Multiempresa', 'Panel corporativo global', 'Auditoría completa', 'KPIs empresariales'],
+      detailGroups: [
+        { title: 'Sin límites', items: ['Empleados ilimitados', 'Administradores ilimitados', 'Departamentos ilimitados', 'Sucursales ilimitadas'] },
+        { title: 'Funciones enterprise', items: ['Multiempresa', 'Panel corporativo global', 'Auditoría completa', 'Historial ilimitado', 'Logs empresariales', 'Permisos ultra avanzados', 'Control por sucursal', 'Control por departamento', 'Accesos jerárquicos'] },
+        { title: 'Analítica avanzada', items: ['KPIs empresariales', 'Métricas en tiempo real', 'Reportes ejecutivos', 'Estadísticas avanzadas'] },
+      ],
+    },
+  ],
+  ai: {
+    eyebrow: 'Inteligencia operativa',
+    title: 'IA que transforma datos operativos en decisiones estratégicas.',
+    text: 'Nexxus IA analiza tu operación en tiempo real para detectar riesgos, priorizar acciones y aumentar la eficiencia de tu equipo.',
+    features: [
+      ['Rendimiento de equipos', 'Mide productividad y cumplimiento por áreas y equipos.', 'analytics'],
+      ['Alertas inteligentes', 'Detecta incidencias y oportunidades antes de que ocurran.', 'shield'],
+      ['Resumen ejecutivo', 'Reportes claros y listos para decidir.', 'users'],
+      ['Acciones prioritarias', 'La IA sugiere qué hacer y en qué enfocarse.', 'command'],
+      ['Bienestar y carga laboral', 'Monitorea la carga operativa y el bienestar del equipo.', 'activity'],
+    ] as [string, string, IconName][],
+  },
+  testimonial: 'Nexxus transforma la gestión empresarial en una operación conectada, medible y preparada para crecer.',
+  finalCta: {
+    title: 'Tu empresa no necesita más herramientas. Necesita un sistema conectado.',
+    text: 'Centraliza personas, procesos y decisiones en una plataforma diseñada para operar, controlar y escalar con confianza.',
+  },
+  footer: {
+    product: 'Producto',
+    plans: 'Planes',
+    security: 'Seguridad',
+    contact: 'Contacto',
+    privacy: 'Privacidad',
+    tagline: 'Inteligencia para operaciones modernas',
+  },
+};
 
-/**
- * Declaracion metrics. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
- */
-const metrics = [
-  ['34%', 'landing.less_ops_time'],
-  ['4.8x', 'landing.more_traceability'],
-  ['72h', 'landing.to_activate_teams'],
-  ['99.9%', 'landing.centralized_vision'],
-];
-
-/**
- * Declaracion iconPaths. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
- */
 const iconPaths: Record<IconName, string[]> = {
   activity: ['M22 12h-4l-3 8-6-16-3 8H2'],
   ai: ['M12 2l1.6 5.2L19 8.8l-5.4 1.6L12 16l-1.6-5.6L5 8.8l5.4-1.6L12 2z', 'M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z'],
@@ -125,48 +207,59 @@ const iconPaths: Record<IconName, string[]> = {
   zap: ['M13 2L3 14h8l-1 8 10-12h-8l1-8z'],
 };
 
-/**
- * Componente Icon. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
- */
 function Icon({ name }: { name: IconName }) {
-  // Devuelve el valor final calculado para esta funcion o caso de uso.
-  return h(
-    'svg',
-    { className: 'nx-icon', fill: 'none', viewBox: '0 0 24 24', 'aria-hidden': true },
-    iconPaths[name].map((path, index) => h('path', { d: path, key: index, stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 1.9 }))
+  return (
+    <svg className="nx-icon" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+      {iconPaths[name].map((path, index) => (
+        <path d={path} key={index} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.9} />
+      ))}
+    </svg>
   );
 }
 
-/**
- * Componente GlowCard. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
- */
-function GlowCard({ children, className, animated = false }: { animated?: boolean; children?: ReactNode; className: string }) {
-  // Devuelve el valor final calculado para esta funcion o caso de uso.
-  return h(
-    BorderGlow,
-    {
-      animated,
-      backgroundColor: 'rgba(12, 9, 27, 0.76)',
-      className,
-      colors: ['#8b5cf6', '#a855f7', '#38bdf8'],
-      glowColor: '268 88 72',
-      glowIntensity: 0.7,
-      glowRadius: 24,
-    },
-    children
+function GlowCard({ animated = false, children, className }: { animated?: boolean; children?: ReactNode; className: string }) {
+  return (
+    <BorderGlow
+      animated={animated}
+      backgroundColor="rgba(12, 9, 27, 0.76)"
+      className={className}
+      colors={['#8b5cf6', '#a855f7', '#38bdf8']}
+      glowColor="268 88 72"
+      glowIntensity={0.7}
+      glowRadius={24}
+    >
+      {children}
+    </BorderGlow>
   );
 }
 
-/**
- * Declaracion scrollToId. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
- */
-function scrollToId(id: string) {
-  // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+function profileInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return 'N';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
+function ProfileAvatar({ initials, onImageError, photo }: { initials: string; onImageError: () => void; photo: string }) {
+  return photo
+    ? <img alt="" aria-hidden="true" onError={onImageError} src={photo} />
+    : <span className="nx-profile-initials" aria-hidden="true">{initials}</span>;
+}
+
+function scrollToId(id: string, navHeight = 0, behavior: ScrollBehavior = 'smooth') {
+  const element = document.getElementById(id);
+  if (!element) return;
+  const measuredNavHeight = document.querySelector<HTMLElement>('.nx-hero-nav')?.getBoundingClientRect().height || navHeight;
+  const offsetNavHeight = window.matchMedia('(max-width: 980px)').matches ? Math.max(measuredNavHeight, 78) : measuredNavHeight;
+  const elementPosition = element.getBoundingClientRect().top + window.scrollY;
+  const previousScrollBehavior = document.documentElement.style.scrollBehavior;
+  if (behavior === 'auto') document.documentElement.style.scrollBehavior = 'auto';
+  window.scrollTo({ top: Math.max(0, elementPosition - (offsetNavHeight + 20)), behavior });
+  if (behavior === 'auto') document.documentElement.style.scrollBehavior = previousScrollBehavior;
 }
 
 function goToLandingPath(path: string) {
-  if (path.startsWith('/landing#') || path === '/landing' || path === '/landing/seguridad' || path === '/landing/privacidad') {
+  if (path.startsWith('/landing#') || path === '/landing' || path === '/landing/cuenta' || path === '/landing/seguridad' || path === '/landing/privacidad' || path === '/landing/soporte') {
     window.history.pushState({}, '', path);
     window.dispatchEvent(new Event('nexxus:navigate'));
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -175,347 +268,902 @@ function goToLandingPath(path: string) {
   window.location.assign(path);
 }
 
-/**
- * Declaracion abrirAuth. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
- */
-function abrirAuth(modo: 'registro' | 'login', plan = 'Business') {
-  // Declara ruta; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
+function abrirAuth(modo: 'registro' | 'login', plan = 'Business', returnTo = '') {
   const ruta = modo === 'login' ? '/landing/login' : '/landing/registro';
-  // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-  window.history.pushState({}, '', `${ruta}?plan=${encodeURIComponent(plan)}`);
+  const params = new URLSearchParams({ plan });
+  if (returnTo) params.set('returnTo', returnTo);
+  window.history.pushState({}, '', `${ruta}?${params.toString()}`);
   window.dispatchEvent(new Event('nexxus:navigate'));
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-/**
- * Declaracion priceFor. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
- */
 function priceFor(monthly: number, cycle: BillingCycle) {
-  // Devuelve el valor final calculado para esta funcion o caso de uso.
   return cycle === 'annual' ? Math.round(monthly * 12 * 0.6) : monthly;
 }
 
-/**
- * Componente Landing. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
- */
 export default function Landing() {
-  // Inicializa { t, i18n }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const { t, i18n } = useTranslation();
-  // Inicializa [billing, setBilling]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const [billing, setBilling] = useState<BillingCycle>('annual');
-  // Inicializa [selectedPlan, setSelectedPlan]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
+  const [billing, setBilling] = useState<BillingCycle>('monthly');
   const [selectedPlan, setSelectedPlan] = useState('Business');
-  // Inicializa [menuMovilAbierto, setMenuMovilAbierto]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
+  const [plansExpanded, setPlansExpanded] = useState(false);
   const [menuMovilAbierto, setMenuMovilAbierto] = useState(false);
+  const [navHeight, setNavHeight] = useState(0);
+  const [navReady, setNavReady] = useState(false);
+  const [activeSection, setActiveSection] = useState('hero');
+  const [activePlan, setActivePlan] = useState<NexxusPlan | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(Boolean(auth.currentUser));
+  const [authReady, setAuthReady] = useState(false);
+  const [hasCompany, setHasCompany] = useState(false);
+  const [profilePhoto, setProfilePhoto] = useState(auth.currentUser?.photoURL || '');
+  const [profileLetters, setProfileLetters] = useState(profileInitials(auth.currentUser?.displayName || auth.currentUser?.email || 'N'));
+  const rootRef = useRef<HTMLDivElement>(null);
+  const navRef = useRef<HTMLElement>(null);
+  const mobileMenuTriggerRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const mobileMenuBackdropRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuReadyRef = useRef(false);
+  const bodyOverflowRef = useRef('');
+  const navRestTopRef = useRef(0);
+  const navWasPinnedRef = useRef(false);
+  const bounceTimerRef = useRef(0);
 
-  // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
+  useEffect(() => onAuthStateChanged(auth, async (user) => {
+    setIsAuthenticated(Boolean(user));
+    if (!user) {
+      setActivePlan(null);
+      setHasCompany(false);
+      setProfilePhoto('');
+      setProfileLetters('N');
+      setAuthReady(true);
+      return;
+    }
+    const userSnapshot = await getDoc(doc(db, 'usuarios', user.uid)).catch(() => null);
+    const userData = userSnapshot?.exists() ? userSnapshot.data() : {};
+    const profileName = String(userData.nombre || user.displayName || user.email?.split('@')[0] || 'N');
+    setHasCompany(Boolean(userData.empresaId || userData.empresa_id || userData.empresaID));
+    setProfilePhoto(String(userData.foto_perfil || user.photoURL || ''));
+    setProfileLetters(profileInitials(profileName));
+    setAuthReady(true);
+    getActivePlan(user).then(setActivePlan).catch(() => setActivePlan(null));
+  }), []);
+
   useEffect(() => {
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-    document.title = 'Nexxus | Impulsa tu empresa con rendimiento real';
-    // Declara description; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const description = 'Nexxus centraliza empleados, tareas, asistencia, nómina, IA y analytics para empresas modernas.';
-    // Declara meta; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    let meta = document.querySelector('meta[name="description"]');
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-    if (!meta) {
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      meta = document.createElement('meta');
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-      meta.setAttribute('name', 'description');
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      document.head.appendChild(meta);
-    }
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-    meta.setAttribute('content', description);
+    const menu = mobileMenuRef.current;
+    const backdrop = mobileMenuBackdropRef.current;
+    if (!menu || !backdrop) return;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const items = Array.from(menu.querySelectorAll<HTMLElement>('.nx-mobile-menu-animate'));
 
-    // Declara revealItems; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const revealItems = Array.from(document.querySelectorAll('.nx-reveal'));
-    // Declara observer; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const observer = new IntersectionObserver(
-      (entries) => entries.forEach((entry) => entry.isIntersecting && entry.target.classList.add('is-visible')),
-      { threshold: 0.16 }
-    );
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-    revealItems.forEach((item) => observer.observe(item));
-    if (window.location.hash.length > 1) {
-      window.requestAnimationFrame(() => scrollToId(window.location.hash.slice(1)));
+    gsap.killTweensOf([menu, backdrop, ...items]);
+    if (!mobileMenuReadyRef.current) {
+      menu.inert = true;
+      gsap.set(menu, { autoAlpha: 0, transform: `translate3d(${reduceMotion ? 0 : -100}%, 0, 0)` });
+      gsap.set(backdrop, { autoAlpha: 0 });
+      mobileMenuReadyRef.current = true;
     }
 
-    // Devuelve el valor final calculado para esta funcion o caso de uso.
+    if (menuMovilAbierto) {
+      menu.inert = false;
+      bodyOverflowRef.current = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      gsap.set([menu, backdrop], { visibility: 'visible' });
+      gsap.timeline({ defaults: { overwrite: 'auto' } })
+        .to(backdrop, { autoAlpha: 1, duration: 0.18, ease: 'power2.out' }, 0)
+        .to(menu, {
+          autoAlpha: 1,
+          transform: 'translate3d(0%, 0, 0)',
+          duration: reduceMotion ? 0.16 : 0.28,
+          ease: 'power3.out',
+        }, 0)
+        .fromTo(items, {
+          autoAlpha: 0,
+          y: reduceMotion ? 0 : 8,
+        }, {
+          autoAlpha: 1,
+          y: 0,
+          duration: 0.2,
+          ease: 'power3.out',
+          stagger: reduceMotion ? 0 : 0.03,
+        }, 0.08);
+      window.requestAnimationFrame(() => menu.querySelector<HTMLButtonElement>('.nx-mobile-menu-close')?.focus());
+    } else {
+      if (menu.contains(document.activeElement)) {
+        mobileMenuTriggerRef.current?.focus({ preventScroll: true });
+      }
+      menu.inert = true;
+      gsap.timeline({ defaults: { overwrite: 'auto' } })
+        .to(menu, {
+          autoAlpha: 0,
+          transform: `translate3d(${reduceMotion ? 0 : -100}%, 0, 0)`,
+          duration: reduceMotion ? 0.12 : 0.22,
+          ease: 'power3.inOut',
+        }, 0)
+        .to(backdrop, { autoAlpha: 0, duration: 0.16, ease: 'power2.out' }, 0.04)
+        .set([menu, backdrop], { visibility: 'hidden' });
+      document.body.style.overflow = bodyOverflowRef.current;
+    }
+
+    const handleKeyboard = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMenuMovilAbierto(false);
+        return;
+      }
+      if (event.key !== 'Tab' || !menuMovilAbierto) return;
+      const focusable = Array.from(menu.querySelectorAll<HTMLElement>('button:not([disabled])'));
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyboard);
     return () => {
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      observer.disconnect();
+      window.removeEventListener('keydown', handleKeyboard);
+    };
+  }, [menuMovilAbierto]);
+
+  useEffect(() => {
+    const mobileQuery = window.matchMedia('(max-width: 980px)');
+    const closeOnDesktop = (event: MediaQueryListEvent) => {
+      if (!event.matches) setMenuMovilAbierto(false);
+    };
+    mobileQuery.addEventListener('change', closeOnDesktop);
+    return () => {
+      mobileQuery.removeEventListener('change', closeOnDesktop);
+      document.body.style.overflow = bodyOverflowRef.current;
     };
   }, []);
 
-  // Declara choosePlan; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const choosePlan = (plan: string) => {
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
+  useEffect(() => {
+    document.title = landingText.meta.title;
+    document.querySelector('meta[name="description"]')?.setAttribute('content', landingText.meta.description);
+
+    const root = rootRef.current;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const revealItems = Array.from(root?.querySelectorAll<HTMLElement>('.nx-reveal') ?? []);
+    const gsapContext = gsap.context(() => {
+      gsap.set('.nx-reveal', {
+        autoAlpha: 0,
+        y: reduceMotion ? 0 : 18,
+        filter: reduceMotion ? 'none' : 'blur(3px)',
+      });
+      gsap.set('.nx-radar i', { autoAlpha: 0, scale: 0.58 });
+      gsap.set('.nx-ai-signal span', { scale: 0.82, autoAlpha: 0.58 });
+      gsap.to('.nx-orb-a', {
+        y: reduceMotion ? 0 : -14,
+        x: reduceMotion ? 0 : 8,
+        duration: 7,
+        ease: 'sine.inOut',
+        repeat: -1,
+        yoyo: true,
+      });
+      gsap.to('.nx-orb-b', {
+        y: reduceMotion ? 0 : 16,
+        x: reduceMotion ? 0 : -10,
+        duration: 8,
+        ease: 'sine.inOut',
+        repeat: -1,
+        yoyo: true,
+      });
+    }, root || undefined);
+    const revealObserver = new IntersectionObserver(
+      (entries) => entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        const target = entry.target as HTMLElement;
+        target.classList.add('is-visible');
+        gsap.to(target, {
+          autoAlpha: 1,
+          y: 0,
+          filter: 'blur(0px)',
+          duration: reduceMotion ? 0.18 : 0.72,
+          ease: 'power3.out',
+          overwrite: 'auto',
+        });
+        const staggerItems = target.querySelectorAll<HTMLElement>(
+          '.nx-section-head > *, .nx-admin-copy > *, .nx-pricing-head > *, .nx-ai-core > *, .nx-value-card, .nx-module-card, .nx-ops-card, .nx-plan, .nx-ai-proof, .nx-testimonial-metric, .nx-integration-rail span, .nx-admin-console li, .nx-ai-signal'
+        );
+        if (staggerItems.length) {
+          gsap.fromTo(staggerItems, {
+            autoAlpha: 0,
+            y: reduceMotion ? 0 : 14,
+            scale: reduceMotion ? 1 : 0.985,
+          }, {
+            autoAlpha: 1,
+            y: 0,
+            scale: 1,
+            duration: reduceMotion ? 0.16 : 0.5,
+            ease: 'power3.out',
+            stagger: reduceMotion ? 0 : 0.045,
+            overwrite: 'auto',
+          });
+        }
+        const radarRings = target.querySelectorAll<HTMLElement>('.nx-radar i');
+        if (radarRings.length && !reduceMotion) {
+          gsap.fromTo(radarRings, { autoAlpha: 0.88, scale: 0.48 }, {
+            autoAlpha: 0,
+            scale: 1.28,
+            duration: 2.4,
+            ease: 'none',
+            stagger: 0.48,
+          });
+        }
+        const aiDots = target.querySelectorAll<HTMLElement>('.nx-ai-signal span');
+        if (aiDots.length && !reduceMotion) {
+          gsap.to(aiDots, {
+            autoAlpha: 1,
+            scale: 1.18,
+            duration: 0.95,
+            ease: 'sine.inOut',
+            repeat: -1,
+            yoyo: true,
+            stagger: 0.12,
+          });
+        }
+        revealObserver.unobserve(entry.target);
+      }),
+      { threshold: 0.16 }
+    );
+    revealItems.forEach((item) => revealObserver.observe(item));
+
+    const sectionElements = ['hero', 'sistema', 'modulos', 'admin', 'planes', 'ia']
+      .map((id) => document.getElementById(id))
+      .filter((element): element is HTMLElement => element !== null);
+    const sectionObserver = new IntersectionObserver(
+      (entries) => {
+        const visibleEntries = entries.filter((entry) => entry.isIntersecting);
+        if (!visibleEntries.length) return;
+        visibleEntries.sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        setActiveSection(visibleEntries[0].target.id);
+      },
+      { rootMargin: '-30% 0px -60% 0px', threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5] },
+    );
+    sectionElements.forEach((element) => sectionObserver.observe(element));
+
+    let hashFrame = 0;
+    let hashTimer = 0;
+    if (window.location.hash.length > 1) {
+      const alignHashTarget = () => scrollToId(window.location.hash.slice(1), navHeight, 'auto');
+      hashFrame = window.requestAnimationFrame(() => {
+        hashFrame = window.requestAnimationFrame(alignHashTarget);
+      });
+      hashTimer = window.setTimeout(alignHashTarget, 220);
+    }
+
+    const perfEnabled = window.location.search.includes('perf=1') || window.localStorage.getItem('nexxus:perf') === '1';
+    const perfStops: (() => void)[] = [];
+    if (perfEnabled) {
+      const samples: number[] = [];
+      let lastFrame = performance.now();
+      let raf = 0;
+      const tick = (now: number) => {
+        samples.push(now - lastFrame);
+        lastFrame = now;
+        raf = window.requestAnimationFrame(tick);
+      };
+      raf = window.requestAnimationFrame(tick);
+      perfStops.push(() => window.cancelAnimationFrame(raf));
+
+      const metrics: Record<string, number> = {};
+      const observe = (type: string, handler: (entry: PerformanceEntry) => void) => {
+        try {
+          const observer = new PerformanceObserver((list) => list.getEntries().forEach(handler));
+          observer.observe({ buffered: true, type });
+          perfStops.push(() => observer.disconnect());
+        } catch {
+          return;
+        }
+      };
+      observe('largest-contentful-paint', (entry) => {
+        metrics.lcp = entry.startTime;
+      });
+      observe('layout-shift', (entry) => {
+        const layoutEntry = entry as PerformanceEntry & { hadRecentInput?: boolean; value?: number };
+        if (!layoutEntry.hadRecentInput) metrics.cls = (metrics.cls || 0) + (layoutEntry.value || 0);
+      });
+      observe('event', (entry) => {
+        metrics.inp = Math.max(metrics.inp || 0, (entry as PerformanceEntry & { duration?: number }).duration || 0);
+      });
+
+      const report = window.setTimeout(() => {
+        const avgFrame = samples.reduce((total, frame) => total + frame, 0) / Math.max(samples.length, 1);
+        console.info('[Nexxus perf]', {
+          avgFps: Math.round(1000 / Math.max(avgFrame, 1)),
+          longFrames: samples.filter((frame) => frame > 50).length,
+          samples: samples.length,
+          ...metrics,
+        });
+      }, 8000);
+      perfStops.push(() => window.clearTimeout(report));
+    }
+
+    return () => {
+      gsapContext.revert();
+      revealObserver.disconnect();
+      sectionObserver.disconnect();
+      window.cancelAnimationFrame(hashFrame);
+      window.clearTimeout(hashTimer);
+      perfStops.forEach((stop) => stop());
+    };
+  }, []);
+
+  const measureNavAnchor = () => {
+    const hero = document.getElementById('hero');
+    const copy = hero?.querySelector('.nx-hero-copy');
+    const nav = navRef.current;
+    if (!hero || !copy || !nav) return false;
+
+    const measuredGap = parseFloat(window.getComputedStyle(hero).gap);
+    const gap = Number.isFinite(measuredGap) ? measuredGap : 44;
+    const marginTop = parseFloat(window.getComputedStyle(nav).marginTop) || 0;
+    const navRect = nav.getBoundingClientRect();
+    const heroTop = hero.getBoundingClientRect().top + window.scrollY;
+    const restTop = heroTop + (copy as HTMLElement).offsetTop + (copy as HTMLElement).offsetHeight + gap + marginTop;
+
+    navRestTopRef.current = restTop;
+    setNavHeight(navRect.height + marginTop);
+    return true;
+  };
+
+  useLayoutEffect(() => {
+    const copy = document.querySelector<HTMLElement>('.nx-hero-copy');
+    const measure = () => {
+      if (window.scrollY <= 12 && measureNavAnchor()) setNavReady(true);
+    };
+    const frame = window.requestAnimationFrame(measure);
+    const resizeObserver = new ResizeObserver(measure);
+    if (copy) resizeObserver.observe(copy);
+    document.fonts.ready.then(measure);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    const navPinTop = 8;
+    const animateNavState = (kind: 'pin' | 'return') => {
+      const nav = navRef.current;
+      if (!nav) return;
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const isMobile = window.matchMedia('(max-width: 980px)').matches;
+
+      if (isMobile) {
+        const restContent = nav.querySelector<HTMLElement>('.nx-mobile-nav-rest');
+        const pinnedContent = nav.querySelector<HTMLElement>('.nx-mobile-nav-pinned');
+        if (!restContent || !pinnedContent) return;
+        const entering = kind === 'pin' ? pinnedContent : restContent;
+        const leaving = kind === 'pin' ? restContent : pinnedContent;
+        const width = kind === 'pin' ? 'calc(100vw - 28px)' : '206px';
+        const height = kind === 'pin' ? 78 : 54;
+
+        gsap.killTweensOf([nav, restContent, pinnedContent]);
+        if (reduceMotion) {
+          gsap.set(nav, { width, height });
+          gsap.set(leaving, { autoAlpha: 0, scale: 0.97 });
+          gsap.set(entering, { autoAlpha: 1, scale: 1 });
+          return;
+        }
+        gsap.timeline({ defaults: { overwrite: 'auto' } })
+          .to(leaving, { autoAlpha: 0, scale: 0.97, duration: 0.12, ease: 'power2.out' }, 0)
+          .to(nav, { width, height, duration: 0.3, ease: 'power3.inOut' }, 0)
+          .fromTo(entering, { autoAlpha: 0, scale: 0.97 }, {
+            autoAlpha: 1,
+            scale: 1,
+            duration: 0.18,
+            ease: 'power3.out',
+          }, 0.12);
+        return;
+      }
+
+      if (reduceMotion) return;
+      gsap.fromTo(nav, {
+        scale: kind === 'pin' ? 0.992 : 1.006,
+        y: kind === 'pin' ? 2 : -1,
+      }, {
+        scale: 1,
+        y: 0,
+        duration: kind === 'pin' ? 0.34 : 0.26,
+        ease: 'back.out(1.8)',
+        overwrite: 'auto',
+      });
+    };
+    const updateNavPosition = () => {
+      const nextTop = Math.max(navPinTop, navRestTopRef.current - window.scrollY);
+      const nextPinned = nextTop <= navPinTop + 0.5;
+
+      const nav = navRef.current;
+      if (nav) {
+        nav.style.top = `${nextTop}px`;
+        if (nextPinned) {
+          nav.classList.add('is-pinned');
+        } else {
+          nav.classList.remove('is-pinned');
+        }
+      }
+
+      if (nextPinned && !navWasPinnedRef.current) animateNavState('pin');
+      if (!nextPinned && navWasPinnedRef.current) {
+        setMenuMovilAbierto(false);
+        animateNavState('return');
+      }
+      navWasPinnedRef.current = nextPinned;
+    };
+    const remeasure = () => {
+      if (window.scrollY > 12) return;
+      if (measureNavAnchor()) updateNavPosition();
+    };
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(() => {
+        updateNavPosition();
+        ticking = false;
+      });
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', remeasure);
+    updateNavPosition();
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', remeasure);
+    };
+  }, [navReady]);
+
+  const choosePlan = (plan: string) => setSelectedPlan(plan);
+  const togglePlanBenefits = (plan: string) => {
     setSelectedPlan(plan);
+    setPlansExpanded((current) => !current);
   };
-
-  // Declara enlacesNav; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const enlacesNav: [string, string][] = [
-    [t('landing.nav_system'), 'sistema'],
-    [t('landing.nav_modules'), 'modulos'],
-    [t('landing.nav_admin'), 'admin'],
-    [t('landing.nav_plans'), 'planes'],
-    [t('landing.nav_ia'), 'ia'],
-  ];
-
-  // Declara navegarA; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
+  const abrirCheckout = (plan: string) => {
+    setSelectedPlan(plan);
+    const checkoutPath = `/landing/checkout?plan=${encodeURIComponent(plan)}&billing=${billing}`;
+    if (!auth.currentUser) {
+      abrirAuth('registro', plan, checkoutPath);
+      return;
+    }
+    window.history.pushState({}, '', checkoutPath);
+    window.dispatchEvent(new Event('nexxus:navigate'));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
   const navegarA = (id: string) => {
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setMenuMovilAbierto(false);
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-    scrollToId(id);
+    scrollToId(id, navHeight);
+  };
+  const finalCtaLabel = !authReady
+    ? 'Comprobando sesión…'
+    : !isAuthenticated
+      ? 'Registrarse'
+      : hasCompany
+        ? 'Ingresar a la empresa'
+        : 'Crear empresa';
+  const handleFinalCta = () => {
+    if (!authReady) return;
+    if (!isAuthenticated) {
+      abrirAuth('registro', selectedPlan);
+      return;
+    }
+    if (hasCompany) {
+      window.location.assign('/app');
+      return;
+    }
+    goToLandingPath('/landing/crear-empresa');
   };
 
-  // Devuelve el valor final calculado para esta funcion o caso de uso.
-  return h(
-    'main',
-    { className: 'nx-landing' },
-    h('div', { className: 'nx-orb nx-orb-a', 'aria-hidden': true }),
-    h('div', { className: 'nx-orb nx-orb-b', 'aria-hidden': true }),
-    h(
-      'nav',
-      { className: 'nx-nav' },
-      h('button', { className: 'nx-brand', onClick: () => scrollToId('hero') }, h('span', null, 'N'), 'Nexxus'),
-      h(
-        'div',
-        { className: 'nx-nav-links' },
-        enlacesNav.map(([label, id]) => h('button', { key: label, onClick: () => navegarA(id) }, label))
-      ),
-      h(
-        'div',
-        { className: 'nx-nav-actions' },
-        h('div', { className: 'nx-lang-selector', style: { display: 'flex', gap: '8px', alignItems: 'center' } },
-          h('button', { 
-            onClick: () => changeLanguage('es'), 
-            style: { background: 'none', border: 'none', color: i18n.language === 'es' ? '#fff' : 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '12px', fontWeight: i18n.language === 'es' ? 'bold' : 'normal' }
-          }, 'ES'),
-          h('span', { style: { color: 'rgba(255,255,255,0.2)', fontSize: '12px' } }, '|'),
-          h('button', { 
-            onClick: () => changeLanguage('en'), 
-            style: { background: 'none', border: 'none', color: i18n.language === 'en' ? '#fff' : 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '12px', fontWeight: i18n.language === 'en' ? 'bold' : 'normal' }
-          }, 'EN')
-        ),
-        h('button', { className: 'nx-nav-login', onClick: () => abrirAuth('login', selectedPlan) }, t('landing.login')),
-        h(StarButton, { className: 'nx-nav-cta', onClick: () => abrirAuth('registro', selectedPlan) }, t('landing.create_company'))
-      ),
-      h(
-        'button',
-        {
-          'aria-expanded': menuMovilAbierto,
-          'aria-label': menuMovilAbierto ? t('common.cancel') : t('landing.hero_kicker'),
-          className: `nx-menu-toggle ${menuMovilAbierto ? 'is-open' : ''}`,
-          onClick: () => setMenuMovilAbierto((abierto) => !abierto),
-        },
-        h('span', null),
-        h('span', null)
-      ),
-      h(
-        'div',
-        { className: `nx-mobile-menu ${menuMovilAbierto ? 'is-open' : ''}` },
-        enlacesNav.map(([label, id]) => h('button', { key: label, onClick: () => navegarA(id) }, label)),
-        h('button', { onClick: () => { setMenuMovilAbierto(false); changeLanguage(i18n.language === 'es' ? 'en' : 'es'); } }, `${t('common.language')}: ${i18n.language === 'es' ? 'EN' : 'ES'}`),
-        h('button', { onClick: () => abrirAuth('login', selectedPlan) }, t('landing.login'))
-      )
-    ),
-    h(
-      'section',
-      { className: 'nx-hero', id: 'hero' },
-      h(
-        'div',
-        { className: 'nx-hero-copy nx-reveal is-visible' },
-        h('div', { className: 'nx-kicker' }, h('span', null), t('landing.hero_kicker')),
-        h('h1', null, t('landing.hero_title')),
-        h('p', null, t('landing.hero_subtitle')),
-        h(
-          'div',
-          { className: 'nx-hero-actions' },
-          h(StarButton, { className: 'nx-btn nx-btn-primary', onClick: () => abrirAuth('registro', selectedPlan) }, h(Icon, { name: 'building' }), t('landing.create_company')),
-          h('button', { className: 'nx-btn nx-btn-minimal', onClick: () => scrollToId('planes') }, h(Icon, { name: 'briefcase' }), t('landing.know_plans'))
-        ),
-        h(
-          'div',
-          { className: 'nx-trust-row' },
-          metrics.map(([value, label], index) => h(GlowCard, { className: 'nx-metric-card', key: label }, h(Icon, { name: index === 0 ? 'zap' : index === 1 ? 'shield' : index === 2 ? 'clock' : 'activity' }), h('strong', null, value), h('span', null, t(label))))
-        )
-      ),
-      h(
-        'div',
-        { className: 'nx-dashboard-shell nx-reveal is-visible' },
-        h('div', { className: 'nx-window-bar' }, h('span', null), h('span', null), h('span', null), h('strong', null, 'Nexxus Command')),
-        h(
-          'div',
-          { className: 'nx-dashboard-grid' },
-          h('div', { className: 'nx-panel nx-panel-main' }, h('span', null, t('landing.productivity')), h('strong', null, '87%'), h('div', { className: 'nx-chart' }, h('i'), h('i'), h('i'), h('i'), h('i'))),
-          h('div', { className: 'nx-panel' }, h('span', null, 'Nexus IA'), h('strong', null, `12 ${t('landing.ai_alerts_resolved')}`), h('p', null, t('landing.low_ops_risk'))),
-          h('div', { className: 'nx-panel' }, h('span', null, t('landing.attendance')), h('strong', null, `142 ${t('landing.active_employees')}`), h('p', null, `3 ${t('landing.synced_locations')}`)),
-          h('div', { className: 'nx-panel nx-table-panel' }, h('span', null, t('landing.operation')), [t('landing.payroll_ready'), t('landing.critical_tasks'), t('landing.pending_checkins')].map((item) => h('b', { key: item }, item, h('em', null))))
-        )
-      )
-    ),
-    h(
-      'section',
-      { className: 'nx-section nx-reveal', id: 'sistema' },
-      h('div', { className: 'nx-section-head' }, h('span', null, t('landing.section_system_title')), h('h2', null, t('landing.section_system_h2')), h('p', null, t('landing.section_system_p'))),
-      h(
-        'div',
-        { className: 'nx-value-grid' },
-        [
-          [t('landing.value_auto_title'), t('landing.value_auto_desc'), 'automation'],
-          [t('landing.value_realtime_title'), t('landing.value_realtime_desc'), 'activity'],
-          [t('landing.value_ai_title'), t('landing.value_ai_desc'), 'ai'],
-        ].map(([title, text, icon], index) => h(GlowCard, { animated: index === 0, className: 'nx-value-card', key: title }, h('div', { className: 'nx-card-topline' }, h(Icon, { name: icon as IconName }), h('span', null, `0${index + 1}`)), h('h3', null, title), h('p', null, text)))
-      )
-    ),
-    h(
-      'section',
-      { className: 'nx-section nx-reveal', id: 'modulos' },
-      h('div', { className: 'nx-section-head' }, h('span', null, t('landing.section_modules_title')), h('h2', null, t('landing.section_modules_h2')), h('p', null, t('landing.section_modules_p'))),
-      h('div', { className: 'nx-module-grid' }, modules.map(([title, text, icon]) => h(GlowCard, { className: 'nx-module-card', key: title }, h('div', { className: 'nx-module-icon' }, h(Icon, { name: icon })), h('h3', null, t(title)), h('p', null, t(text)))))
-    ),
-    h(
-      'section',
-      { className: 'nx-admin-section nx-reveal', id: 'admin' },
-      h('div', { className: 'nx-admin-copy' }, h('span', null, t('landing.section_admin_title')), h('h2', null, t('landing.section_admin_h2')), h('p', null, t('landing.section_admin_p'))),
-      h(
-        GlowCard,
-        { className: 'nx-admin-console' },
-        h('div', null, h('strong', null, `${t('landing.live_operations')}      `), h('span', null, t('landing.system_active'))),
-        h('ul', null, [t('landing.team'), t('landing.payroll'), t('landing.audit'), t('landing.communication')].map((item, index) => h('li', { key: item }, h('span', null, item), h('b', null, `${92 - index * 7}%`)))),
-        h('div', { className: 'nx-radar' }, h('i'), h('i'), h('i'))
-      )
-    ),
-    h(
-      'section',
-      { className: 'nx-section nx-reveal', id: 'seguridad' },
-      h('div', { className: 'nx-section-head' }, h('span', null, t('landing.section_security_title')), h('h2', null, t('landing.section_security_h2')), h('p', null, t('landing.section_security_p'))),
-      h(
-        'div',
-        { className: 'nx-ops-grid' },
-        [
-          [t('landing.ops_audit_title'), t('landing.ops_audit_desc'), 'shield'],
-          [t('landing.ops_data_title'), t('landing.ops_data_desc'), 'database'],
-          [t('landing.ops_workflows_title'), t('landing.ops_workflows_desc'), 'workflow'],
-          [t('landing.ops_docs_title'), t('landing.ops_docs_desc'), 'file'],
-        ].map(([title, text, icon]) => h(GlowCard, { className: 'nx-ops-card', key: title }, h(Icon, { name: icon as IconName }), h('h3', null, title), h('p', null, text)))
-      )
-    ),
-    h(
-      'section',
-      { className: 'nx-integrations nx-reveal' },
-      h('div', null, h('span', null, t('landing.section_impl_title')), h('h2', null, t('landing.section_impl_h2')), h('p', null, t('landing.section_impl_p'))),
-      h(
-        'div',
-        { className: 'nx-integration-rail' },
-        [t('landing.cloud_data'), t('landing.hr'), t('landing.payroll'), t('landing.real_data'), t('landing.docs'), t('landing.inbox')].map((item, index) => h('span', { key: item }, h(Icon, { name: index === 0 ? 'database' : index === 1 ? 'users' : index === 2 ? 'payroll' : index === 3 ? 'analytics' : index === 4 ? 'file' : 'message' }), item))
-      )
-    ),
-    h(
-      'section',
-      { className: 'nx-section nx-reveal', id: 'planes' },
-      h(
-        'div',
-        { className: 'nx-pricing-head' },
-        h('div', null, h('span', null, t('landing.section_plans_title')), h('h2', null, t('landing.section_plans_h2'))),
-        h('div', { className: 'nx-toggle', role: 'group', 'aria-label': 'Facturación' }, h('button', { className: billing === 'monthly' ? 'active' : '', onClick: () => setBilling('monthly') }, t('landing.billing_monthly')), h('button', { className: billing === 'annual' ? 'active' : '', onClick: () => setBilling('annual') }, t('landing.billing_annual')))
-      ),
-      h(
-        'div',
-        { className: 'nx-plan-grid' },
-        plans.map((plan) =>
-          h(
-            GlowCard,
-            { className: `nx-plan ${plan.featured ? 'featured' : ''} ${selectedPlan === plan.name ? 'selected' : ''}`, key: plan.name },
-            h('div', { className: 'nx-plan-header' }, h(Icon, { name: plan.name === 'Starter' ? 'briefcase' : plan.name === 'Business' ? 'zap' : 'shield' }), h('span', { className: 'nx-plan-badge' }, t(plan.badge))),
-            h('h3', null, plan.name),
-            h('div', { className: 'nx-price' }, '$', priceFor(plan.monthly, billing), h('small', null, billing === 'annual' ? `/${t('common.year')}` : `/${t('common.month')}`)),
-            h('p', null, t(plan.users)),
-            h('ul', null, plan.benefits.map((benefit) => h('li', { key: benefit }, t(benefit)))),
-            h(
-              'div',
-              { className: 'nx-plan-details' },
-              plan.detailGroups.map((group) =>
-                h(
-                  'div',
-                  { className: 'nx-plan-detail-group', key: group.title },
-                  h('h4', null, t(group.title)),
-                  h('ul', null, group.items.map((item) => h('li', { key: item }, t(item))))
-                )
-              )
-            ),
-            h('button', { className: 'nx-btn nx-btn-plan', onClick: () => { choosePlan(plan.name); abrirAuth('registro', plan.name); } }, selectedPlan === plan.name ? t('landing.create_with_this_plan') : t('landing.choose_plan'))
-          )
-        )
-      )
-    ),
-    h(
-      'section',
-      { className: 'nx-ai-section nx-reveal', id: 'ia' },
-      h(
-        'div',
-        { className: 'nx-ai-core' },
-        h('span', null, t('landing.section_ai_title')),
-        h('h2', null, t('landing.section_ai_h2')),
-        h('p', null, t('landing.section_ai_p')),
-        h(
-          'div',
-          { className: 'nx-ai-proof-grid' },
-          [
-            ['landing.ai_proof_1_title', 'landing.ai_proof_1_desc', 'spark'],
-            ['landing.ai_proof_2_title', 'landing.ai_proof_2_desc', 'shield'],
-            ['landing.ai_proof_3_title', 'landing.ai_proof_3_desc', 'analytics'],
-          ].map(([title, text, icon]) => h('div', { className: 'nx-ai-proof', key: title }, h(Icon, { name: icon as IconName }), h('strong', null, t(title)), h('small', null, t(text))))
-        )
-      ),
-      h(
-        GlowCard,
-        { className: 'nx-ai-stream' },
-        h('div', { className: 'nx-ai-stream-head' }, h('span', null, 'Nexxus IA')),
-        [t('landing.ai_stream_item1'), t('landing.ai_stream_item2'), t('landing.ai_stream_item3'), t('landing.ai_stream_item4'), t('landing.ai_stream_item5'), t('landing.ai_stream_item6')].map((item) => h('div', { className: 'nx-ai-signal', key: item }, h('span', null), item)),
-        h('div', { className: 'nx-ai-outcome' }, h('strong', null, t('landing.ai_outcome_title')), h('p', null, t('landing.ai_outcome_desc')))
-      )
-    ),
-    h(
-      'section',
-      { className: 'nx-testimonials nx-reveal' },
-      metrics.map(([value, label], index) => h(GlowCard, { className: 'nx-testimonial-metric', key: label }, h(Icon, { name: index === 0 ? 'zap' : index === 1 ? 'shield' : index === 2 ? 'clock' : 'activity' }), h('strong', null, value), h('span', null, t(label)))),
-      h('blockquote', null, t('landing.testimonial_quote'))
-    ),
-    h(
-      'section',
-      { className: 'nx-final-cta nx-reveal' },
-      h('h2', null, t('landing.final_cta_h2')),
-      h('p', null, t('landing.final_cta_p')),
-      h(StarButton, { className: 'nx-btn nx-btn-primary', onClick: () => abrirAuth('registro', selectedPlan) }, t('landing.create_company'))
-    ),
-    h(
-      'footer',
-      { className: 'nx-footer' },
-      h('strong', null, 'Nexxus'),
-      h('div', null,
-        h('button', { onClick: () => scrollToId('hero') }, t('landing.footer_product')),
-        h('button', { onClick: () => scrollToId('planes') }, t('landing.footer_plans')),
-        h('button', { onClick: () => goToLandingPath('/landing/seguridad') }, t('landing.footer_security')),
-        h('button', { onClick: () => scrollToId('hero') }, t('landing.footer_contact')),
-        h('button', { onClick: () => goToLandingPath('/landing/privacidad') }, t('landing.footer_privacy'))
-      ),
-      h('div', { className: 'nx-lang-selector', style: { display: 'flex', gap: '8px', alignItems: 'center', marginTop: '12px' } },
-        h('span', { style: { color: 'rgba(255,255,255,0.5)', fontSize: '12px' } }, t('common.language') + ':'),
-        h('button', { 
-          onClick: () => changeLanguage('es'), 
-          style: { background: 'none', border: 'none', color: i18n.language === 'es' ? '#fff' : 'rgba(255,255,255,0.5)', cursor: 'pointer', fontWeight: i18n.language === 'es' ? 'bold' : 'normal' }
-        }, 'ES'),
-        h('span', { style: { color: 'rgba(255,255,255,0.2)' } }, '|'),
-        h('button', { 
-          onClick: () => changeLanguage('en'), 
-          style: { background: 'none', border: 'none', color: i18n.language === 'en' ? '#fff' : 'rgba(255,255,255,0.5)', cursor: 'pointer', fontWeight: i18n.language === 'en' ? 'bold' : 'normal' }
-        }, 'EN')
-      ),
-      h('span', null, t('landing.footer_tagline'))
-    )
+  const navClassName = [
+    'nx-nav',
+    'nx-hero-nav',
+    'is-floating',
+    navReady ? 'is-ready' : '',
+  ].filter(Boolean).join(' ');
+  const navStyle = navReady ? ({ top: `${Math.max(8, navRestTopRef.current - window.scrollY)}px` } as CSSProperties) : undefined;
+
+  return (
+    <div className="nx-landing" ref={rootRef}>
+      <div className="nx-orb nx-orb-a" aria-hidden="true" />
+      <div className="nx-orb nx-orb-b" aria-hidden="true" />
+
+      <div className="nx-hero" id="hero">
+        <div className="nx-hero-copy nx-reveal">
+          <h1>{landingText.hero.title}</h1>
+          <p>{landingText.hero.subtitle}</p>
+          <div className="nx-hero-actions">
+            <StarButton className="nx-btn nx-btn-primary" onClick={() => abrirAuth('registro', selectedPlan)}>
+              <Icon name="building" />
+              {landingText.hero.createCompany}
+            </StarButton>
+            <button className="nx-btn nx-btn-minimal" onClick={() => scrollToId('planes', navHeight)}>
+              <Icon name="briefcase" />
+              {landingText.hero.knowPlans}
+            </button>
+          </div>
+          <div className="nx-trust-row">
+            {landingText.metrics.map(([value, label, icon]) => (
+              <GlowCard className="nx-metric-card" key={label}>
+                <Icon name={icon} />
+                <strong>{value}</strong>
+                <span>{label}</span>
+              </GlowCard>
+            ))}
+          </div>
+        </div>
+        {navReady ? <div aria-hidden="true" className="nx-hero-nav-slot" style={{ height: navHeight }} /> : null}
+      </div>
+
+      <div className="nx-nav-layer">
+        <GlassSurface
+          as="nav"
+          ref={navRef}
+          backgroundOpacity={0.08}
+          blur={8}
+          borderRadius={999}
+          brightness={58}
+          displace={0.25}
+          distortionScale={-34}
+          greenOffset={3}
+          blueOffset={6}
+          saturation={1.24}
+          className={navClassName}
+          style={navStyle}
+        >
+          <button className="nx-brand" onClick={() => scrollToId('hero', navHeight)}><span>N</span>Nexxus</button>
+          <div className="nx-nav-links">
+            {landingText.nav.map(([label, id]) => (
+              <button key={id} onClick={() => navegarA(id)} className={activeSection === id ? 'is-active' : ''}>{label}</button>
+            ))}
+          </div>
+          <div className="nx-nav-actions">
+            {isAuthenticated ? (
+              <button className="nx-nav-profile" aria-label="Perfil" onClick={() => goToLandingPath('/landing/cuenta')} type="button">
+                <ProfileAvatar initials={profileLetters} onImageError={() => setProfilePhoto('')} photo={profilePhoto} />
+              </button>
+            ) : (
+              <StarButton className="nx-nav-cta" onClick={() => abrirAuth('registro', selectedPlan)}>
+                Registrate
+              </StarButton>
+            )}
+          </div>
+          <div className="nx-mobile-nav-rest">
+            <button onClick={() => navegarA('sistema')}>
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 5.5 18 12 8 18.5Z" /></svg>
+              <span>Ver plataforma</span>
+            </button>
+          </div>
+          <div className="nx-mobile-nav-pinned">
+            <button
+              ref={mobileMenuTriggerRef}
+              aria-expanded={menuMovilAbierto}
+              aria-label={menuMovilAbierto ? 'Cerrar menú' : 'Abrir menú'}
+              className={`nx-menu-toggle ${menuMovilAbierto ? 'is-open' : ''}`}
+              onClick={() => setMenuMovilAbierto((abierto) => !abierto)}
+            >
+              <span />
+              <span />
+            </button>
+            {isAuthenticated ? (
+              <button className="nx-mobile-profile" aria-label="Perfil" onClick={() => goToLandingPath('/landing/cuenta')} type="button">
+                <ProfileAvatar initials={profileLetters} onImageError={() => setProfilePhoto('')} photo={profilePhoto} />
+              </button>
+            ) : (
+              <StarButton className="nx-nav-cta nx-mobile-register" onClick={() => abrirAuth('registro', selectedPlan)}>
+                Registrarse
+              </StarButton>
+            )}
+          </div>
+        </GlassSurface>
+        <button
+          ref={mobileMenuBackdropRef}
+          className="nx-mobile-menu-backdrop"
+          aria-label="Cerrar menú"
+          onClick={() => setMenuMovilAbierto(false)}
+        />
+        <div
+          ref={mobileMenuRef}
+          className={`nx-mobile-menu ${menuMovilAbierto ? 'is-open' : ''}`}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navegación de Nexxus"
+        >
+          <div className="nx-mobile-menu-head nx-mobile-menu-animate">
+            <strong>Nexxus</strong>
+            <button className="nx-mobile-menu-close" aria-label="Cerrar menú" onClick={() => setMenuMovilAbierto(false)}>
+              <span />
+              <span />
+            </button>
+          </div>
+          <div className="nx-mobile-menu-links">
+            {landingText.nav.map(([label, id], index) => (
+              <button className={`nx-mobile-menu-animate ${activeSection === id ? 'is-active' : ''}`} key={id} onClick={() => navegarA(id)}>
+                <Icon name={(['workflow', 'database', 'users', 'briefcase', 'spark'] as IconName[])[index]} />
+                <span>{label}</span>
+                <span className="nx-mobile-menu-arrow">→</span>
+              </button>
+            ))}
+          </div>
+          <div className="nx-mobile-menu-actions nx-mobile-menu-animate">
+            {isAuthenticated ? (
+              <button className="nx-mobile-menu-access" onClick={() => window.location.assign('/app')}>
+                Acceder a tu empresa
+              </button>
+            ) : (
+              <>
+                <button className="nx-mobile-menu-login" onClick={() => { setMenuMovilAbierto(false); abrirAuth('login', selectedPlan); }}>
+                  Iniciar sesión
+                </button>
+                <button className="nx-mobile-menu-register" onClick={() => { setMenuMovilAbierto(false); abrirAuth('registro', selectedPlan); }}>
+                  Registrarse
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="nx-access-section nx-reveal" aria-live="polite">
+        <div className={`nx-access-card ${authReady ? 'is-ready' : 'is-loading'}`}>
+          {!authReady ? (
+            <div className="nx-access-loading" aria-label="Comprobando sesión" />
+          ) : !isAuthenticated ? (
+            <>
+              <div className="nx-access-copy">
+                <span>{landingText.access.guestEyebrow}</span>
+                <h2>{landingText.access.guestTitle}</h2>
+                <p>{landingText.access.guestText}</p>
+              </div>
+              <div className="nx-access-actions">
+                <StarButton className="nx-btn nx-btn-primary" onClick={() => scrollToId('sistema', navHeight)}>
+                  {landingText.access.learnMore}
+                </StarButton>
+                <button className="nx-btn nx-btn-minimal" onClick={() => abrirAuth('login', selectedPlan)}>
+                  {landingText.access.login}
+                </button>
+              </div>
+            </>
+          ) : hasCompany ? (
+            <>
+              <div className="nx-access-copy">
+                <span>{landingText.access.companyEyebrow}</span>
+                <h2>{landingText.access.companyTitle}</h2>
+                <p>{landingText.access.companyText}</p>
+              </div>
+              <div className="nx-access-actions">
+                <StarButton className="nx-btn nx-btn-primary" onClick={() => window.location.assign('/app')}>
+                  {landingText.access.enterCompany}
+                </StarButton>
+                <button className="nx-btn nx-btn-minimal" onClick={() => goToLandingPath('/landing/cuenta')}>
+                  {landingText.access.account}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="nx-access-copy">
+                <span>{landingText.access.createEyebrow}</span>
+                <h2>{landingText.access.createTitle}</h2>
+                <p>{landingText.access.createText}</p>
+              </div>
+              <div className="nx-access-actions">
+                <StarButton className="nx-btn nx-btn-primary" onClick={() => goToLandingPath('/landing/crear-empresa')}>
+                  {landingText.access.createCompany}
+                </StarButton>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="nx-section nx-reveal" id="sistema">
+        <div className="nx-section-head">
+          <span>{landingText.system.eyebrow}</span>
+          <h2>{landingText.system.title}</h2>
+          <p>{landingText.system.text}</p>
+        </div>
+        <div className="nx-value-grid">
+          {landingText.system.cards.map(([title, text, icon], index) => (
+            <GlowCard animated={index === 0} className="nx-value-card" key={title}>
+              <div className="nx-card-topline"><Icon name={icon} /><span>{`0${index + 1}`}</span></div>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </GlowCard>
+          ))}
+        </div>
+      </div>
+
+      <div className="nx-section nx-reveal" id="modulos">
+        <div className="nx-section-head">
+          <span>{landingText.modules.eyebrow}</span>
+          <h2>{landingText.modules.title}</h2>
+          <p>{landingText.modules.text}</p>
+        </div>
+        <div className="nx-module-grid">
+          {landingText.modules.cards.map(([title, text, icon]) => (
+            <GlowCard className="nx-module-card" key={title}>
+              <div className="nx-module-icon"><Icon name={icon} /></div>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </GlowCard>
+          ))}
+        </div>
+      </div>
+
+      <div className="nx-admin-section nx-reveal" id="admin">
+        <div className="nx-admin-copy">
+          <span>{landingText.admin.eyebrow}</span>
+          <h2>{landingText.admin.title}</h2>
+          <p>{landingText.admin.text}</p>
+        </div>
+        <GlowCard className="nx-admin-console">
+          <div><strong>{landingText.admin.live} </strong><span>{landingText.admin.active}</span></div>
+          <ul>
+            {landingText.admin.items.map((item, index) => (
+              <li key={item}><span>{item}</span><b>{92 - index * 7}%</b></li>
+            ))}
+          </ul>
+          <div className="nx-radar"><i /><i /><i /></div>
+        </GlowCard>
+      </div>
+
+      <div className="nx-section nx-reveal" id="seguridad">
+        <div className="nx-section-head">
+          <span>{landingText.security.eyebrow}</span>
+          <h2>{landingText.security.title}</h2>
+          <p>{landingText.security.text}</p>
+        </div>
+        <div className="nx-ops-grid">
+          {landingText.security.cards.map(([title, text, icon]) => (
+            <GlowCard className="nx-ops-card" key={title}>
+              <Icon name={icon} />
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </GlowCard>
+          ))}
+        </div>
+      </div>
+
+      <div className="nx-section nx-reveal" id="implementacion">
+        <div className="nx-section-head">
+          <span>{landingText.implementation.eyebrow}</span>
+          <h2>{landingText.implementation.title}</h2>
+          <p>{landingText.implementation.text}</p>
+        </div>
+        <div className="nx-integration-rail">
+          {landingText.implementation.items.map(([item, icon]) => (
+            <span key={item}><Icon name={icon} />{item}</span>
+          ))}
+        </div>
+      </div>
+
+      <div className="nx-section nx-reveal" id="planes">
+        <div className="nx-pricing-head">
+          <div>
+            <span>{landingText.pricing.eyebrow}</span>
+            <h2>{landingText.pricing.title}</h2>
+          </div>
+          <div className="nx-toggle" role="group" aria-label="Facturación">
+            <button className={billing === 'monthly' ? 'active' : ''} onClick={() => setBilling('monthly')}>{landingText.pricing.monthly}</button>
+            <button className={billing === 'annual' ? 'active' : ''} onClick={() => setBilling('annual')}>{landingText.pricing.annual}</button>
+          </div>
+        </div>
+        <div className="nx-plan-grid">
+          {landingText.plans.map((plan) => {
+            const benefitsOpen = plansExpanded;
+            const planName = plan.name as NexxusPlan;
+            const activeRank = activePlan ? PLAN_ORDER.indexOf(activePlan) : -1;
+            const planRank = PLAN_ORDER.indexOf(planName);
+            const isOwned = activePlan === planName;
+            const isLowerPlan = activeRank > planRank;
+            const isUpgrade = activeRank >= 0 && planRank > activeRank;
+            return (
+              <GlowCard className={`nx-plan ${plan.featured ? 'featured' : ''} ${selectedPlan === plan.name ? 'selected' : ''} ${isOwned ? 'is-owned-plan' : ''} ${isLowerPlan ? 'is-lower-plan' : ''}`} key={plan.name}>
+                <div className="nx-plan-header">
+                  <Icon name={plan.name === 'Starter' ? 'briefcase' : plan.name === 'Business' ? 'zap' : 'shield'} />
+                  <span className="nx-plan-badge">{plan.badge}</span>
+                </div>
+                <h3>{plan.name}</h3>
+                <div className="nx-price">${priceFor(plan.monthly, billing)}<small>/{billing === 'annual' ? 'Año' : 'Mes'}</small></div>
+                <p className="nx-plan-users">{plan.users}</p>
+                <div className="nx-plan-includes">
+                  <strong>{landingText.pricing.includes}</strong>
+                  <ul className="nx-plan-benefits">
+                    {plan.benefits.map((benefit) => <li key={benefit}>{benefit}</li>)}
+                  </ul>
+                </div>
+                <button aria-expanded={benefitsOpen} className="nx-plan-benefits-toggle" onClick={() => togglePlanBenefits(plan.name)} type="button">
+                  {benefitsOpen ? landingText.pricing.hideBenefits : landingText.pricing.viewBenefits}
+                  <span>{benefitsOpen ? '-' : '+'}</span>
+                </button>
+                <div aria-hidden={!benefitsOpen} className={`nx-plan-details ${benefitsOpen ? 'is-open' : ''}`}>
+                  {plan.detailGroups.map((group) => (
+                    <div className="nx-plan-detail-group" key={group.title}>
+                      <h4>{group.title}</h4>
+                      <ul>{group.items.map((item) => <li key={item}>{item}</li>)}</ul>
+                    </div>
+                  ))}
+                </div>
+                {isOwned || isLowerPlan ? (
+                  <button className="nx-btn nx-btn-plan nx-plan-cta nx-plan-status" disabled type="button">
+                    {isOwned ? 'Obtenido' : 'Incluido en tu plan'}
+                  </button>
+                ) : (
+                  <StarButton className="nx-btn nx-btn-plan nx-plan-cta" onClick={() => { choosePlan(plan.name); abrirCheckout(plan.name); }}>
+                    {isUpgrade ? 'Mejorar plan' : selectedPlan === plan.name ? landingText.pricing.createWithPlan : landingText.pricing.choosePlan}
+                  </StarButton>
+                )}
+              </GlowCard>
+            );
+          })}
+        </div>
+      </div>
+
+      <section className="nx-ai-showcase nx-reveal" id="ia">
+        <div className="nx-ai-showcase-main">
+          <div className="nx-ai-showcase-copy">
+            <span className="nx-ai-eyebrow"><Icon name="spark" />{landingText.ai.eyebrow}</span>
+            <h2>IA que <em>transforma</em> datos operativos en decisiones estratégicas.</h2>
+            <p>{landingText.ai.text}</p>
+          </div>
+
+          <div className="nx-ai-dashboard">
+            <div className="nx-ai-dashboard-head">
+              <strong><Icon name="spark" />Nexxus IA</strong>
+              <span><i />Análisis en tiempo real</span>
+            </div>
+            <div className="nx-ai-dashboard-body">
+              <div className="nx-ai-feature-list">
+                {landingText.ai.features.map(([title, text, icon]) => (
+                  <div className="nx-ai-feature" key={title}>
+                    <div><Icon name={icon} /></div>
+                    <span><strong>{title}</strong><small>{text}</small></span>
+                  </div>
+                ))}
+              </div>
+              <div className="nx-ai-analytics">
+                <div className="nx-ai-chart-card">
+                  <span>Rendimiento general</span>
+                  <strong>92%</strong>
+                  <small>↑ 18% <b>vs. semana anterior</b></small>
+                  <svg aria-hidden="true" className="nx-ai-line-chart" viewBox="0 0 360 130" preserveAspectRatio="none">
+                    <defs><linearGradient id="nx-ai-area" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#a855f7" stopOpacity=".4" /><stop offset="1" stopColor="#7c3aed" stopOpacity="0" /></linearGradient></defs>
+                    <path d="M0 112 C24 93 34 104 55 86 S88 112 110 92 S145 49 166 68 S196 80 218 43 S256 34 277 36 S318 20 360 2 L360 130 L0 130Z" fill="url(#nx-ai-area)" />
+                    <path d="M0 112 C24 93 34 104 55 86 S88 112 110 92 S145 49 166 68 S196 80 218 43 S256 34 277 36 S318 20 360 2" fill="none" stroke="#a855f7" strokeWidth="3" />
+                  </svg>
+                </div>
+                <div className="nx-ai-mini-grid">
+                  <div className="nx-ai-mini-card is-alert"><span>Alertas activas</span><strong>7</strong><small>Requieren atención</small><div>{[52, 68, 61, 74, 58].map((height, index) => <i key={index} style={{ height: `${height}%` }} />)}</div></div>
+                  <div className="nx-ai-mini-card"><span>Tareas completadas</span><strong>128</strong><small>↑ 24%</small><div>{[38, 61, 34, 52, 84, 58, 71, 92, 67].map((height, index) => <i key={index} style={{ height: `${height}%` }} />)}</div></div>
+                </div>
+                <div className="nx-ai-impact-card">
+                  <span>Áreas con mayor impacto</span>
+                  {[['Operaciones', 92], ['Logística', 78], ['Soporte', 65]].map(([label, value]) => (
+                    <div key={label}><small>{label}</small><i><b style={{ width: `${value}%` }} /></i><strong>{value}%</strong></div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="nx-ai-metrics">
+          {landingText.metrics.map(([value, label, icon]) => (
+            <div className="nx-ai-metric" key={label}><span><Icon name={icon} /></span><div><small>{label}</small><strong>{value}</strong></div></div>
+          ))}
+        </div>
+        <blockquote className="nx-ai-legend"><Icon name="spark" /><span>{landingText.testimonial}</span></blockquote>
+      </section>
+
+      <div className="nx-final-cta nx-reveal">
+        <h2>{landingText.finalCta.title}</h2>
+        <p>{landingText.finalCta.text}</p>
+        <StarButton className="nx-btn nx-btn-primary" disabled={!authReady} onClick={handleFinalCta}>
+          {finalCtaLabel}
+        </StarButton>
+      </div>
+
+      <LandingFooter onSection={(id) => scrollToId(id, navHeight)} />
+    </div>
   );
 }

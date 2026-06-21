@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text as NativeText, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text as NativeText, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
@@ -26,8 +26,10 @@ export default function GestionDocumentos() {
   const { user } = useAuth();
   const { theme } = useAdminAppearance();
   const toast = useAdminToast();
+  const { width } = useWindowDimensions();
+  const isPhone = width < 900;
   const empresaId = obtenerEmpresaIdAdmin(user);
-  const styles = useMemo(() => crearEstilos(theme.isDark), [theme.isDark]);
+  const styles = useMemo(() => crearEstilos(theme.isDark, width), [theme.isDark, width]);
   const [documentos, setDocumentos] = useState<Documento[]>([]);
   const [usuarios, setUsuarios] = useState<User[]>([]);
   const [stats, setStats] = useState<Stats>({ totalBytes: 0, uploadCount: 0, topUsers: [] });
@@ -130,14 +132,19 @@ export default function GestionDocumentos() {
   });
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={[styles.container, isPhone && Platform.OS === 'web' ? { touchAction: 'pan-y', overflowY: 'auto' } as any : undefined]}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+      nestedScrollEnabled={false}
+    >
       <View style={styles.header}>
         <View>
-          <Text style={styles.eyebrow}>Cloudinary Control</Text>
           <Text style={styles.title}>Documentos y almacenamiento</Text>
+          <Text style={styles.subtitle}>Control documental, uso de almacenamiento y archivos PDF de la empresa.</Text>
         </View>
         <TouchableOpacity style={styles.primaryButton} onPress={seleccionarDocumentoWeb} disabled={subiendo}>
-          {subiendo ? <ActivityIndicator color="#fff" /> : <MaterialIcons name="upload-file" size={18} color="#fff" />}
+          {subiendo ? <ActivityIndicator color="#fff" /> : <MaterialIcons {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} name="upload-file" size={18} color="#FFFFFF" style={styles.primaryButtonIcon} />}
           <Text style={styles.primaryButtonText}>{subiendo ? `${progreso}%` : 'Subir PDF'}</Text>
         </TouchableOpacity>
       </View>
@@ -149,14 +156,33 @@ export default function GestionDocumentos() {
       </View>
 
       <View style={styles.panel}>
-        <Text style={styles.panelTitle}>Usuarios con más almacenamiento</Text>
+        <View style={styles.panelHeader}>
+          <View>
+            <Text style={styles.panelTitle}>Uso por colaborador</Text>
+            <Text style={styles.panelSubtitle}>Almacenamiento con mayor actividad</Text>
+          </View>
+          <View style={styles.panelIcon}>
+            <MaterialIcons name="storage" size={22} color={ADMIN.iconos.documentos} />
+          </View>
+        </View>
         <Text style={styles.muted}>{topUsers.length ? topUsers.join(' · ') : 'Sin uso registrado todavía.'}</Text>
       </View>
 
       <View style={styles.panel}>
-        <Text style={styles.panelTitle}>Documentos</Text>
+        <View style={styles.panelHeader}>
+          <View>
+            <Text style={styles.panelTitle}>Documentos</Text>
+            <Text style={styles.panelSubtitle}>{documentos.length} archivos registrados</Text>
+          </View>
+          <View style={styles.panelIcon}>
+            <MaterialIcons name="folder" size={22} color={ADMIN.iconos.documentos} />
+          </View>
+        </View>
         {documentos.length === 0 ? (
-          <Text style={styles.muted}>No hay documentos cargados.</Text>
+          <View style={styles.emptyBox}>
+            <MaterialIcons name="folder-off" size={30} color={ADMIN.textoSecundario} />
+            <Text style={styles.emptyText}>No hay documentos cargados.</Text>
+          </View>
         ) : documentos.map((documento) => (
           <View key={documento.id} style={styles.row}>
             <View style={styles.fileIcon}>
@@ -183,33 +209,48 @@ export default function GestionDocumentos() {
 
 function Metric({ label, value }: { label: string; value: string }) {
   const { theme } = useAdminAppearance();
-  const styles = useMemo(() => crearEstilos(theme.isDark), [theme.isDark]);
+  const { width } = useWindowDimensions();
+  const styles = useMemo(() => crearEstilos(theme.isDark, width), [theme.isDark, width]);
   return (
     <View style={styles.metric}>
+      <View style={styles.metricIcon}>
+        <MaterialIcons name={label === 'Documentos' ? 'description' : label === 'Uploads activos' ? 'cloud-upload' : 'inventory'} size={20} color={ADMIN.iconos.documentos} />
+      </View>
       <Text style={styles.metricValue}>{value}</Text>
       <Text style={styles.muted}>{label}</Text>
     </View>
   );
 }
 
-const crearEstilos = (isDark: boolean) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: 'transparent' },
-  content: { padding: 24, paddingTop: 190, gap: 16 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
-  eyebrow: { color: ADMIN.violeta, fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0 },
-  title: { color: ADMIN.texto, fontSize: 24, fontWeight: '800', marginTop: 4 },
-  primaryButton: { height: 42, paddingHorizontal: 16, borderRadius: 8, backgroundColor: ADMIN.primario, flexDirection: 'row', alignItems: 'center', gap: 8 },
+const crearEstilos = (isDark: boolean, width: number) => {
+  const isMobileOrTablet = width < 1024;
+  const isPhone = width < 900;
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: ADMIN.fondo },
+    content: { padding: isPhone ? 12 : 24, paddingTop: isPhone ? 90 : isMobileOrTablet ? 126 : 260, paddingBottom: isPhone ? 72 : 64, gap: isPhone ? 14 : 18, alignItems: isPhone ? 'center' : 'stretch' },
+    header: { width: isPhone ? '100%' : undefined, maxWidth: isPhone ? 420 : undefined, alignSelf: isPhone ? 'center' : undefined, flexDirection: isMobileOrTablet ? 'column' : 'row', alignItems: isMobileOrTablet ? 'flex-start' : 'center', justifyContent: 'space-between', gap: 14, marginBottom: isPhone ? 4 : 10 },
+  title: { color: ADMIN.texto, fontSize: isPhone ? 24 : 28, fontWeight: '900', marginTop: 4 },
+  subtitle: { color: ADMIN.textoSecundario, fontSize: isPhone ? 12 : 14, lineHeight: isPhone ? 18 : 20, fontWeight: '700', marginTop: 6 },
+  primaryButton: { width: isPhone ? '100%' : undefined, maxWidth: isPhone ? 380 : undefined, alignSelf: isPhone ? 'center' : undefined, minHeight: isPhone ? 48 : 44, paddingHorizontal: 18, borderRadius: 14, backgroundColor: '#6320A6', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1, borderColor: '#6320A6' },
+  primaryButtonIcon: { color: '#FFFFFF' },
   primaryButtonText: { color: '#fff', fontWeight: '800', fontSize: 13 },
-  statsGrid: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
-  metric: { minWidth: 180, flex: 1, borderRadius: 8, borderWidth: 1, borderColor: ADMIN.borde, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.72)', padding: 16 },
-  metricValue: { color: ADMIN.texto, fontSize: 22, fontWeight: '800' },
-  panel: { borderRadius: 8, borderWidth: 1, borderColor: ADMIN.borde, backgroundColor: ADMIN.fondoVidrio, padding: 16, gap: 12 },
-  panelTitle: { color: ADMIN.texto, fontSize: 16, fontWeight: '800' },
-  muted: { color: ADMIN.textoSecundario, fontSize: 13 },
-  row: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 12, borderTopWidth: 1, borderTopColor: ADMIN.bordeSuave, paddingVertical: 10 },
-  fileIcon: { width: 38, height: 38, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(239,68,68,0.12)' },
+  statsGrid: { width: isPhone ? '100%' : undefined, maxWidth: isPhone ? 420 : undefined, alignSelf: isPhone ? 'center' : undefined, flexDirection: 'row', gap: isPhone ? 10 : 14, flexWrap: 'wrap' },
+  metric: { flexBasis: isPhone ? '47%' : undefined, minWidth: isPhone ? 0 : 180, flex: 1, borderRadius: isPhone ? 14 : 18, borderWidth: 1, borderColor: ADMIN.borde, backgroundColor: ADMIN.fondoElevado, padding: isPhone ? 14 : 18, shadowColor: '#000', shadowOffset: { width: 0, height: 16 }, shadowOpacity: isDark ? 0.24 : 0.14, shadowRadius: 28, elevation: 10 },
+  metricIcon: { width: 48, height: 48, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(96,165,250,0.24)', backgroundColor: 'rgba(96,165,250,0.10)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  metricValue: { color: ADMIN.texto, fontSize: isPhone ? 24 : 26, fontWeight: '900' },
+  panel: { width: isPhone ? '100%' : undefined, maxWidth: isPhone ? 420 : undefined, alignSelf: isPhone ? 'center' : undefined, borderRadius: isPhone ? 16 : 20, borderWidth: 1, borderColor: ADMIN.borde, backgroundColor: ADMIN.fondoElevado, padding: isPhone ? 14 : 20, gap: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 18 }, shadowOpacity: isDark ? 0.24 : 0.14, shadowRadius: 28, elevation: 12 },
+  panelHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  panelIcon: { width: 52, height: 52, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(124,58,237,0.25)', backgroundColor: 'rgba(124,58,237,0.10)', alignItems: 'center', justifyContent: 'center' },
+  panelTitle: { color: ADMIN.texto, fontSize: isPhone ? 18 : 17, fontWeight: '900' },
+  panelSubtitle: { color: ADMIN.textoSecundario, fontSize: 11, fontWeight: '800', marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.6 },
+  muted: { color: ADMIN.textoSecundario, fontSize: 13, fontWeight: '700', lineHeight: 19 },
+  row: { minHeight: 72, flexDirection: isPhone ? 'column' : 'row', alignItems: isPhone ? 'stretch' : 'center', gap: 12, borderTopWidth: 1, borderTopColor: ADMIN.bordeSuave, paddingVertical: 12 },
+  fileIcon: { width: 46, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(239,68,68,0.12)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.20)' },
   rowBody: { flex: 1, minWidth: 0 },
-  rowTitle: { color: ADMIN.texto, fontSize: 14, fontWeight: '700' },
-  iconButton: { width: 36, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: ADMIN.fondoCampo, borderWidth: 1, borderColor: ADMIN.borde },
-  iconButtonDanger: { width: 36, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(239,68,68,0.10)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.25)' },
-});
+  rowTitle: { color: ADMIN.texto, fontSize: 14, fontWeight: '900' },
+  iconButton: { width: isPhone ? '100%' : 38, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: ADMIN.fondoCampo, borderWidth: 1, borderColor: ADMIN.borde },
+  iconButtonDanger: { width: isPhone ? '100%' : 38, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(239,68,68,0.10)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.25)' },
+  emptyBox: { minHeight: 130, borderRadius: 14, borderWidth: 1, borderColor: ADMIN.borde, backgroundColor: ADMIN.fondoCampo, alignItems: 'center', justifyContent: 'center', gap: 10 },
+  emptyText: { color: ADMIN.textoSecundario, fontSize: 12, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.8 },
+  });
+};

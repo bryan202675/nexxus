@@ -8,11 +8,12 @@
 
 // Importa { registerRootComponent } desde expo; agrega una dependencia externa necesaria para este modulo.
 import { registerRootComponent } from 'expo';
+import { Platform } from 'react-native';
 
-// Importa App; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
-import App from './App';
-
-
+const isLandingWeb = Platform.OS === 'web'
+  && typeof window !== 'undefined'
+  && window.location.pathname !== '/workspace-login'
+  && require('./src/Landing/LandingRoot').isLandingPath(window.location.pathname);
 
 // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-registerRootComponent(App);
+registerRootComponent(isLandingWeb ? require('./src/Landing/LandingRoot').default : require('./App').default);

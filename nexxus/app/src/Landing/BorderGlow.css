@@ -21,8 +21,9 @@
   border-radius: var(--border-radius);
   box-shadow:
     rgba(0, 0, 0, 0.12) 0 1px 2px,
-    rgba(0, 0, 0, 0.12) 0 8px 22px,
-    rgba(0, 0, 0, 0.14) 0 24px 64px;
+    rgba(0, 0, 0, 0.12) 0 8px 18px,
+    rgba(0, 0, 0, 0.13) 0 18px 46px;
+  contain: paint;
   display: grid;
   isolation: isolate;
   overflow: visible;
@@ -99,8 +100,8 @@
     inset 0 0 10px 0 var(--glow-color-30),
     inset 0 0 24px 2px var(--glow-color-20),
     0 0 3px 0 var(--glow-color-50),
-    0 0 12px 0 var(--glow-color-30),
-    0 0 28px 2px var(--glow-color-20);
+    0 0 10px 0 var(--glow-color-30),
+    0 0 20px 1px var(--glow-color-20);
   content: "";
   inset: var(--glow-padding);
   position: absolute;
@@ -114,4 +115,32 @@
   overflow: visible;
   position: relative;
   z-index: 1;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .border-glow-card {
+    transform: none;
+  }
+
+  .border-glow-card::before {
+    mask-image: none;
+    opacity: 0.18;
+  }
+
+  .border-glow-card:not(:hover):not(.sweep-active)::before {
+    opacity: 0.18;
+  }
+
+  .border-glow-card:not(:hover):not(.sweep-active)>.edge-light,
+  .border-glow-card>.edge-light {
+    opacity: 0.18;
+    transition: none;
+  }
+
+  .border-glow-card>.edge-light::before {
+    box-shadow:
+      inset 0 0 0 1px var(--glow-color-50),
+      inset 0 0 14px 0 var(--glow-color-20),
+      0 0 14px 0 var(--glow-color-20);
+  }
 }

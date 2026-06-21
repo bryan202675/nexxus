@@ -15,18 +15,19 @@
 /* .nx-auth-layout: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-layout {
   display: grid;
-  gap: 22px;
+  gap: 18px;
   grid-template-columns: 0.82fr 1.18fr;
-  padding: 22px;
+  padding: clamp(18px, 2.2vw, 24px);
 }
 
 /* .nx-auth-aside: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-aside {
   background:
-    radial-gradient(circle at 30% 20%, rgba(168, 85, 247, 0.24), transparent 36%),
-    rgba(255, 255, 255, 0.045);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+    radial-gradient(circle at 28% 16%, rgba(192, 132, 252, 0.22), transparent 38%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.035));
+  border: 1px solid var(--nx-line);
   border-radius: 26px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
   padding: 26px;
 }
 
@@ -51,7 +52,7 @@
 
 /* .nx-auth-aside p: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-aside p {
-  color: #b7acd8;
+  color: var(--nx-muted);
   line-height: 1.7;
 }
 
@@ -118,8 +119,8 @@
 
 /* .nx-auth-tabs: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-tabs {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--nx-line);
   border-radius: 999px;
   display: inline-flex;
   gap: 5px;
@@ -148,15 +149,16 @@
 
 /* .nx-auth-tabs button.active: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-tabs button.active {
-  background: #f4efff;
-  color: #21113c;
+  background: rgba(130, 118, 255, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.34), 0 0 22px rgba(130, 118, 255, 0.22);
+  color: #ffffff;
 }
 
 /* .nx-google-button: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-google-button {
   align-items: center;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.13);
   border-radius: 18px;
   color: white;
   cursor: pointer;
@@ -167,7 +169,21 @@
   justify-content: center;
   margin-bottom: 16px;
   min-height: 52px;
+  transition: transform 160ms var(--nx-ease-out), background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
   width: 100%;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nx-google-button:hover {
+    background: rgba(216, 180, 254, 0.1);
+    border-color: rgba(216, 180, 254, 0.28);
+    box-shadow: 0 12px 28px rgba(130, 118, 255, 0.14);
+    transform: translateY(-2px);
+  }
+}
+
+.nx-google-button:active {
+  transform: scale(0.98);
 }
 
 /* .nx-google-button span: define reglas visuales para los elementos que usan este selector en la interfaz. */
@@ -184,7 +200,7 @@
 
 /* .nx-auth-form: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-form {
-  animation: nx-auth-enter 360ms ease both;
+  animation: nx-auth-enter 360ms var(--nx-ease-out) both;
   display: grid;
   gap: 13px;
 }
@@ -210,14 +226,14 @@
 /* .nx-auth-field select: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-field input,
 .nx-auth-field select {
-  background: rgba(4, 3, 14, 0.68);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(3, 2, 12, 0.64);
+  border: 1px solid rgba(255, 255, 255, 0.13);
   border-radius: 16px;
   color: white;
   font: inherit;
   outline: 0;
   padding: 15px 16px;
-  transition: 180ms ease;
+  transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
   width: 100%;
 }
 
@@ -345,6 +361,18 @@
   object-fit: contain;
 }
 
+.nx-logo-initial {
+  align-items: center;
+  background: linear-gradient(135deg, #6f5cff, #9e92ff);
+  border-radius: 16px;
+  color: #fff;
+  display: flex;
+  font-size: 1.75rem;
+  height: 58px;
+  justify-content: center;
+  width: 58px;
+}
+
 /* .nx-logo-drop span: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-logo-drop span {
   color: #a99cc9;
@@ -376,8 +404,8 @@
 
 /* .nx-auth-secondary: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-secondary {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.13);
   min-height: 52px;
 }
 
@@ -833,6 +861,768 @@
 
 @media (max-width: 380px) {
   .nx-phone-input-wrapper {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Checkout-aligned authentication surface */
+.nx-auth-shell {
+  background: #fbfafc;
+  border: 0;
+  border-radius: 0;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+
+.nx-auth-shell .border-glow-inner {
+  overflow: hidden;
+}
+
+.nx-auth-shell .nx-auth-layout,
+.nx-auth-shell-wide .nx-auth-layout {
+  gap: 0 !important;
+  grid-template-columns: minmax(260px, 0.82fr) minmax(0, 1.18fr) !important;
+  min-height: 100dvh;
+  padding: 0;
+}
+
+.nx-auth-shell-wide .nx-auth-layout {
+  grid-template-columns: minmax(280px, 0.72fr) minmax(0, 1.6fr) !important;
+}
+
+.nx-auth-shell .nx-auth-aside {
+  background:
+    radial-gradient(circle at 18% 8%, rgba(111, 92, 255, 0.22), transparent 34%),
+    linear-gradient(145deg, rgba(5, 5, 9, 0.98), rgba(12, 9, 22, 0.96));
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100%;
+  padding: 96px clamp(48px, 7vw, 120px);
+}
+
+.nx-auth-shell .nx-auth-aside > * {
+  max-width: 480px;
+  width: 100%;
+}
+
+.nx-auth-shell .nx-auth-eyebrow,
+.nx-auth-shell .nx-company-head span {
+  color: #a99fff;
+  letter-spacing: 0.08em;
+}
+
+.nx-auth-shell .nx-auth-aside h3 {
+  color: #f7f5ff;
+  font-size: clamp(1.8rem, 3vw, 3rem);
+  letter-spacing: 0;
+  line-height: 1.05;
+}
+
+.nx-auth-shell .nx-auth-aside p {
+  color: #aaa5b2;
+}
+
+.nx-auth-shell .nx-auth-progress {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.nx-auth-shell .nx-auth-progress i,
+.nx-auth-shell .nx-password-meter i {
+  background: linear-gradient(90deg, #6f5cff, #9e92ff);
+}
+
+.nx-auth-shell .nx-auth-steps span {
+  color: #777180;
+}
+
+.nx-auth-shell .nx-auth-steps span.is-active {
+  color: #f3f0ff;
+}
+
+.nx-auth-shell .nx-auth-steps span.is-active::before {
+  background: #8d7fff;
+  box-shadow: 0 0 16px rgba(111, 92, 255, 0.64);
+}
+
+.nx-auth-shell .nx-auth-panel {
+  background: #fbfafc;
+  color: #17151f;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 72px clamp(46px, 8vw, 128px);
+}
+
+.nx-auth-shell .nx-auth-panel > * {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 560px;
+  width: 100%;
+}
+
+.nx-auth-shell-wide .nx-auth-panel {
+  justify-content: flex-start;
+  overflow-y: auto;
+  padding-bottom: 56px;
+  padding-top: 76px;
+}
+
+.nx-auth-shell-wide .nx-auth-panel > * {
+  max-width: 860px;
+}
+
+.nx-auth-shell .nx-auth-tabs {
+  background: #efedf4;
+  border-color: #dedbe5;
+  border-radius: 10px;
+  gap: 4px;
+  padding: 4px;
+}
+
+.nx-auth-shell .nx-auth-tabs button,
+.nx-auth-shell .nx-auth-secondary {
+  border-radius: 8px;
+  color: #6d6878;
+}
+
+.nx-auth-shell .nx-auth-tabs button.active {
+  background: #fff;
+  box-shadow: 0 1px 5px rgba(25, 20, 40, 0.1);
+  color: #4e3dde;
+}
+
+.nx-auth-shell .nx-google-button {
+  background: #fff !important;
+  border-color: #dedbe5 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 1px 3px rgba(25, 20, 40, 0.05) !important;
+  color: #292431 !important;
+  min-height: 50px;
+}
+
+.nx-auth-shell .nx-auth-field span {
+  color: #625d68;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.nx-auth-shell .nx-auth-field input,
+.nx-auth-shell .nx-auth-field select,
+.nx-auth-shell .nx-dropdown-trigger,
+.nx-auth-shell .nx-dropdown-search {
+  background: #fff;
+  border: 1px solid #dedbe5;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(25, 20, 40, 0.04);
+  color: #17151f;
+  min-height: 48px;
+}
+
+.nx-auth-shell .nx-auth-field input::placeholder,
+.nx-auth-shell .nx-dropdown-search::placeholder {
+  color: #9a96a0;
+}
+
+.nx-auth-shell .nx-auth-field input:focus,
+.nx-auth-shell .nx-auth-field select:focus,
+.nx-auth-shell .nx-dropdown-trigger:focus,
+.nx-auth-shell .nx-custom-dropdown.active .nx-dropdown-trigger {
+  border-color: #6f5cff;
+  box-shadow: 0 0 0 3px rgba(111, 92, 255, 0.12);
+}
+
+.nx-auth-shell .nx-auth-field select option {
+  background: #fff;
+  color: #17151f;
+}
+
+.nx-auth-shell .nx-password-list span {
+  color: #817b8a;
+}
+
+.nx-auth-shell .nx-password-list span.valid {
+  color: #5b49db;
+}
+
+.nx-auth-shell .nx-auth-error {
+  background: #fff0f4;
+  border-color: #efbdca;
+  border-radius: 10px;
+  color: #a82244;
+}
+
+.nx-auth-shell .nx-auth-aside {
+  animation: nx-auth-side-enter 360ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+.nx-auth-shell .nx-auth-panel {
+  animation: nx-auth-panel-enter 380ms 40ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+.nx-auth-shell .nx-auth-form {
+  animation: nx-auth-form-enter 240ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+@keyframes nx-auth-side-enter {
+  from { opacity: 0; transform: translateX(-18px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes nx-auth-panel-enter {
+  from { opacity: 0; transform: translateX(18px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes nx-auth-form-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.nx-auth-shell .nx-company-head strong {
+  color: #26212e;
+}
+
+.nx-auth-shell .nx-logo-drop {
+  background: #fff;
+  border-color: #c9c1f5;
+  border-radius: 12px;
+  color: #5b49db;
+}
+
+.nx-auth-shell .nx-logo-drop span {
+  color: #77717d;
+}
+
+.nx-auth-shell .nx-company-grid {
+  gap: 16px 18px !important;
+}
+
+.nx-auth-shell .nx-auth-secondary {
+  background: #fff !important;
+  border-color: #dedbe5 !important;
+  box-shadow: none !important;
+  color: #5f5968 !important;
+}
+
+.nx-auth-shell .nx-dropdown-panel {
+  background: #fff;
+  border-color: #dedbe5;
+  box-shadow: 0 18px 40px rgba(25, 20, 40, 0.16);
+}
+
+.nx-auth-shell .nx-dropdown-item {
+  color: #4b4651;
+}
+
+.nx-auth-shell .nx-dropdown-item:hover,
+.nx-auth-shell .nx-dropdown-item.active {
+  background: #f0edff;
+  color: #4e3dde;
+}
+
+.nx-auth-shell .nx-dropdown-empty {
+  color: #817b86;
+}
+
+.nx-auth-shell .nx-dropdown-search-wrapper {
+  background: #f7f6fa;
+  border-bottom-color: #e4e1e8;
+}
+
+.nx-auth-shell .nx-dropdown-search {
+  background: #fff !important;
+  border-color: #d8d4df !important;
+  color: #17151f !important;
+}
+
+.nx-auth-shell .nx-dropdown-search:focus {
+  border-color: #6f5cff !important;
+  box-shadow: 0 0 0 3px rgba(111, 92, 255, 0.12);
+}
+
+.nx-auth-shell .nx-dropdown-search::placeholder {
+  color: #817b86 !important;
+  opacity: 1;
+}
+
+.nx-phone-flag {
+  flex: 0 0 auto;
+  font-size: 1.2rem !important;
+  line-height: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nx-auth-shell .nx-google-button:hover {
+    background: #f7f5ff !important;
+    border-color: #c9c1f5 !important;
+    color: #292431 !important;
+  }
+}
+
+@media (max-width: 940px) {
+  .nx-auth-shell .nx-auth-layout,
+  .nx-auth-shell-wide .nx-auth-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .nx-auth-shell .nx-auth-aside {
+    min-height: 280px;
+    padding: 72px 30px 30px;
+  }
+}
+
+@media (max-width: 640px) {
+  .nx-auth-shell {
+    border-radius: 0;
+  }
+
+  .nx-auth-shell .nx-auth-aside {
+    padding: 22px 20px;
+  }
+
+  .nx-auth-shell .nx-auth-panel {
+    min-height: calc(100dvh - 220px);
+    padding: 34px 20px 42px;
+  }
+
+  .nx-auth-shell .nx-auth-field input,
+  .nx-auth-shell .nx-auth-field select,
+  .nx-auth-shell .nx-company-form .nx-auth-field input,
+  .nx-auth-shell .nx-company-form .nx-auth-field select,
+  .nx-auth-shell .nx-dropdown-trigger {
+    border-radius: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nx-auth-shell .nx-auth-aside,
+  .nx-auth-shell .nx-auth-panel,
+  .nx-auth-shell .nx-auth-form {
+    animation: none;
+  }
+}
+
+/* Landing authentication redesign */
+.nx-auth-view-login,
+.nx-auth-view-registro {
+  background: #07070a !important;
+  color: #f7f5ff;
+}
+
+.nx-auth-view-login .nx-auth-layout,
+.nx-auth-view-registro .nx-auth-layout {
+  background:
+    radial-gradient(circle at 76% 8%, rgba(151, 71, 255, 0.08), transparent 30%),
+    #07070a;
+  gap: clamp(42px, 7vw, 112px) !important;
+  grid-template-columns: minmax(420px, 0.9fr) minmax(460px, 1.1fr) !important;
+  min-height: 100dvh;
+  padding: clamp(36px, 5vw, 78px) clamp(32px, 5vw, 88px);
+}
+
+.nx-auth-view-login .nx-auth-panel,
+.nx-auth-view-registro .nx-auth-panel {
+  align-self: center;
+  animation: nx-auth-panel-enter 420ms 40ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  background: transparent;
+  color: #f7f5ff;
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: end;
+  padding: 0;
+  width: min(100%, 590px);
+}
+
+.nx-auth-view-login .nx-auth-panel > *,
+.nx-auth-view-registro .nx-auth-panel > * {
+  margin-left: 0;
+  margin-right: 0;
+  max-width: none;
+  width: 100%;
+}
+
+.nx-auth-view-login .nx-auth-aside,
+.nx-auth-view-registro .nx-auth-aside {
+  align-self: center;
+  animation: nx-auth-showcase-enter 520ms 100ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  background: transparent;
+  border: 0;
+  grid-column: 2;
+  grid-row: 1;
+  min-height: min(78dvh, 840px);
+  padding: 0;
+}
+
+.nx-auth-view-login .nx-auth-aside > *,
+.nx-auth-view-registro .nx-auth-aside > * {
+  max-width: none;
+}
+
+.nx-auth-showcase {
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.08), transparent 34%),
+    radial-gradient(circle at 18% 90%, rgba(210, 176, 255, 0.32), transparent 36%),
+    radial-gradient(circle at 84% 24%, rgba(126, 54, 255, 0.46), transparent 40%),
+    linear-gradient(145deg, #151020 0%, #35145f 48%, #6d2fc5 100%);
+  border: 1px solid rgba(228, 211, 255, 0.16);
+  border-radius: 30px;
+  box-shadow: 0 38px 100px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: space-between;
+  overflow: hidden;
+  padding: clamp(34px, 4vw, 64px);
+  position: relative;
+}
+
+.nx-auth-showcase-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.055) 1px, transparent 1px);
+  background-size: 58px 58px;
+  inset: 0;
+  mask-image: linear-gradient(to bottom, black, transparent 68%);
+  opacity: 0.55;
+  pointer-events: none;
+  position: absolute;
+}
+
+.nx-auth-showcase-copy,
+.nx-auth-testimonial {
+  position: relative;
+  z-index: 1;
+}
+
+.nx-auth-showcase-copy {
+  max-width: 580px;
+}
+
+.nx-auth-showcase-copy .nx-auth-eyebrow {
+  color: #e5d2ff;
+}
+
+.nx-auth-showcase-copy h2 {
+  color: #fff;
+  font-size: clamp(2.25rem, 3.7vw, 4.7rem);
+  letter-spacing: -0.055em;
+  line-height: 0.98;
+  margin: 20px 0;
+  text-wrap: balance;
+}
+
+.nx-auth-showcase-copy p {
+  color: rgba(242, 233, 255, 0.76);
+  font-size: clamp(0.95rem, 1.15vw, 1.08rem);
+  line-height: 1.65;
+  max-width: 500px;
+}
+
+.nx-auth-testimonial {
+  background: rgba(10, 6, 17, 0.52);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 22px;
+  backdrop-filter: blur(18px);
+  box-shadow: 0 22px 60px rgba(9, 3, 20, 0.26);
+  padding: clamp(22px, 2.4vw, 34px);
+}
+
+.nx-auth-testimonial-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.nx-auth-testimonial-tags span {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  color: #eee4ff;
+  font-size: 0.73rem;
+  font-weight: 750;
+  padding: 7px 10px;
+}
+
+.nx-auth-testimonial blockquote {
+  color: #fff;
+  font-size: clamp(1.05rem, 1.55vw, 1.36rem);
+  line-height: 1.5;
+  margin: 20px 0 24px;
+}
+
+.nx-auth-testimonial-author {
+  display: grid;
+  gap: 3px;
+}
+
+.nx-auth-testimonial-author strong {
+  color: #fff;
+}
+
+.nx-auth-testimonial-author span {
+  color: rgba(227, 211, 247, 0.62);
+  font-size: 0.85rem;
+}
+
+.nx-auth-intro {
+  margin-bottom: 32px !important;
+}
+
+.nx-auth-brand-row {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  margin-bottom: 36px;
+}
+
+.nx-auth-back-button {
+  align-items: center;
+  border-radius: 13px;
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  height: 46px;
+  justify-content: center;
+  width: 46px;
+}
+
+.nx-auth-back-button {
+  background: #222226;
+  border: 1px solid #34343a;
+}
+
+.nx-auth-back-button svg {
+  fill: none;
+  height: 22px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+  width: 22px;
+}
+
+.nx-auth-intro h1 {
+  color: #fff;
+  font-size: clamp(2.45rem, 4vw, 4.3rem);
+  font-weight: 650;
+  letter-spacing: -0.055em;
+  line-height: 1;
+  margin: 0 0 16px;
+}
+
+.nx-auth-intro p {
+  color: #98949f;
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.nx-auth-view-login .nx-auth-form,
+.nx-auth-view-registro .nx-auth-form {
+  gap: 18px;
+}
+
+.nx-auth-view-login .nx-auth-field,
+.nx-auth-view-registro .nx-auth-field {
+  gap: 9px;
+}
+
+.nx-auth-view-login .nx-auth-field span,
+.nx-auth-view-registro .nx-auth-field span {
+  color: #f1edf5;
+  font-size: 0.86rem;
+  font-weight: 650;
+}
+
+.nx-auth-view-login .nx-auth-field input,
+.nx-auth-view-registro .nx-auth-field input {
+  background: #222226;
+  border: 1px solid #323238;
+  border-radius: 12px;
+  box-shadow: none;
+  color: #fff;
+  min-height: 56px;
+  padding: 15px 17px;
+}
+
+.nx-auth-view-login .nx-auth-field input::placeholder,
+.nx-auth-view-registro .nx-auth-field input::placeholder {
+  color: #77747d;
+}
+
+.nx-auth-view-login .nx-auth-field input:focus,
+.nx-auth-view-registro .nx-auth-field input:focus {
+  background: #26242b;
+  border-color: #a85bf0;
+  box-shadow: 0 0 0 4px rgba(168, 91, 240, 0.12);
+}
+
+.nx-auth-view-login .nx-password-list span,
+.nx-auth-view-registro .nx-password-list span {
+  color: #77717f;
+}
+
+.nx-auth-view-login .nx-password-list span.valid,
+.nx-auth-view-registro .nx-password-list span.valid {
+  color: #ca94ff;
+}
+
+.nx-auth-view-login .nx-auth-submit,
+.nx-auth-view-registro .nx-auth-submit {
+  border-radius: 12px !important;
+  box-shadow: none !important;
+  filter: none !important;
+  height: 56px;
+  margin-top: 4px;
+}
+
+.nx-auth-view-login .nx-auth-submit::after,
+.nx-auth-view-registro .nx-auth-submit::after {
+  content: none;
+}
+
+.nx-auth-alternatives {
+  margin-top: 24px !important;
+}
+
+.nx-auth-divider {
+  align-items: center;
+  color: #85818b;
+  display: grid;
+  font-size: 0.86rem;
+  gap: 18px;
+  grid-template-columns: 1fr auto 1fr;
+  margin-bottom: 22px;
+}
+
+.nx-auth-divider::before,
+.nx-auth-divider::after {
+  background: #303036;
+  content: "";
+  height: 1px;
+}
+
+.nx-auth-view-login .nx-google-button,
+.nx-auth-view-registro .nx-google-button {
+  background: #222226 !important;
+  border: 1px solid #34343a !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+  color: #fff !important;
+  margin: 0;
+  min-height: 56px;
+}
+
+.nx-auth-switch {
+  color: #77737f;
+  font-size: 0.92rem;
+  margin: 26px 0 0;
+  text-align: center;
+}
+
+.nx-auth-switch button {
+  background: transparent;
+  border: 0;
+  color: #c16dff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 750;
+  padding: 0;
+}
+
+@keyframes nx-auth-showcase-enter {
+  from { opacity: 0; transform: translateX(20px) scale(0.985); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nx-auth-view-login .nx-google-button:hover,
+  .nx-auth-view-registro .nx-google-button:hover {
+    background: #29282e !important;
+    border-color: #5a4a69 !important;
+    color: #fff !important;
+    transform: translateY(-2px);
+  }
+
+  .nx-auth-view-login .nx-auth-submit:hover,
+  .nx-auth-view-registro .nx-auth-submit:hover {
+    box-shadow: none !important;
+    filter: none !important;
+  }
+
+  .nx-auth-back-button:hover {
+    background-color: #2c2b31;
+    transform: translateY(-2px);
+  }
+}
+
+.nx-auth-view-login .nx-auth-submit:focus,
+.nx-auth-view-registro .nx-auth-submit:focus {
+  box-shadow: none !important;
+  outline: 2px solid #d6a7ff;
+  outline-offset: 3px;
+}
+
+@media (max-width: 1050px) {
+  .nx-auth-view-login .nx-auth-layout,
+  .nx-auth-view-registro .nx-auth-layout {
+    grid-template-columns: minmax(360px, 0.95fr) minmax(390px, 1.05fr) !important;
+    padding: 32px;
+  }
+
+  .nx-auth-showcase-copy h2 {
+    font-size: clamp(2.1rem, 4vw, 3.2rem);
+  }
+}
+
+@media (max-width: 820px) {
+  .nx-auth-view-login .nx-auth-layout,
+  .nx-auth-view-registro .nx-auth-layout {
+    display: block;
+    padding: 48px 24px;
+  }
+
+  .nx-auth-view-login .nx-auth-aside,
+  .nx-auth-view-registro .nx-auth-aside {
+    display: none;
+  }
+
+  .nx-auth-view-login .nx-auth-panel,
+  .nx-auth-view-registro .nx-auth-panel {
+    margin: 0 auto;
+    min-height: calc(100dvh - 96px);
+    width: min(100%, 590px);
+  }
+}
+
+@media (max-width: 520px) {
+  .nx-auth-view-login .nx-auth-layout,
+  .nx-auth-view-registro .nx-auth-layout {
+    padding: 32px 20px 40px;
+  }
+
+  .nx-auth-back-button {
+    height: 42px;
+    width: 42px;
+  }
+
+  .nx-auth-brand-row {
+    margin-bottom: 30px;
+  }
+
+  .nx-auth-intro {
+    margin-bottom: 26px !important;
+  }
+
+  .nx-auth-intro h1 {
+    font-size: clamp(2.15rem, 11vw, 3rem);
+  }
+
+  .nx-password-list {
     grid-template-columns: 1fr;
   }
 }

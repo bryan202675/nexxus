@@ -10,20 +10,19 @@
 import { ReactNode } from 'react';
 // Importa { createElement } desde React; habilita componentes, hooks y tipos base para esta pieza.
 import { createElement } from 'react';
-// Importa StarBorder; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
-import StarBorder from './StarBorder';
-
 /**
  * Componente StarButton. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 export default function StarButton({
   children,
   className = '',
+  disabled = false,
   onClick,
   type = 'button',
 }: {
   children?: ReactNode;
   className?: string;
+  disabled?: boolean;
   onClick?: () => void;
   type?: 'button' | 'submit';
 }) {
@@ -31,6 +30,7 @@ export default function StarButton({
   return (
     <button
       className={`nx-btn-shimmer ${className}`}
+      disabled={disabled}
       onClick={onClick}
       type={type}
     >

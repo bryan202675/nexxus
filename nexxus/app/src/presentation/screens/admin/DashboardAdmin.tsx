@@ -631,6 +631,9 @@ export default function DashboardAdmin() {
   const { width } = useWindowDimensions();
   // Declara isTabletOrWeb; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const isTabletOrWeb = width > 900;
+  // Define isMobileOrTablet para el comportamiento responsivo del drawer y espaciado
+  const isMobileOrTablet = width < 1024;
+  const isPhone = width < 640;
   // Declara isWidescreen; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const isWidescreen = width > 1500;
   // Inicializa { user }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -1574,9 +1577,9 @@ export default function DashboardAdmin() {
     // Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla.
     <Animated.View style={[estilos.animatedScreen, { transform: [{ translateY: entrada.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }] }]}>
       {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
-      <ScrollView style={estilos.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={estilos.scrollViewContent}>
+      <ScrollView style={estilos.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={[estilos.scrollViewContent, { paddingTop: isMobileOrTablet ? 110 : 260 }]}>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={estilos.header}>
+        <View style={[estilos.header, isMobileOrTablet && { flexDirection: 'column', alignItems: 'flex-start', gap: 8 }]}>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -1594,11 +1597,11 @@ export default function DashboardAdmin() {
         </View>
 
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={estilos.heroPanel}>
+        <View style={[estilos.heroPanel, isMobileOrTablet && estilos.heroPanelMobile, isPhone && estilos.heroPanelPhone]}>
           {/* FondoHeaderTech renderiza la cuadrícula de fondo y el pulso operativo de datos sin usar esferas ni partículas. */}
-          <FondoHeaderTech />
+          {!isPhone && <FondoHeaderTech />}
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={estilos.heroCopy}>
+          <View style={[estilos.heroCopy, isMobileOrTablet && estilos.heroCopyMobile]}>
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.heroKicker}>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
@@ -1607,11 +1610,18 @@ export default function DashboardAdmin() {
               <Text style={estilos.heroEyebrow}>{t('admin.dashboard.hero.eyebrow')}</Text>
             </View>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.heroTitle}>{t('admin.dashboard.hero.title')}</Text>
+            <Text style={[estilos.heroTitle, isMobileOrTablet && estilos.heroTitleMobile, isPhone && estilos.heroTitlePhone]}>
+              {isPhone ? 'Centro operativo en vivo' : t('admin.dashboard.hero.title')}
+            </Text>
+            {isPhone && (
+              <Text style={estilos.heroSubtitlePhone}>
+                Señales clave de tu equipo en una vista limpia para móvil.
+              </Text>
+            )}
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.heroActions}>
+            <View style={[estilos.heroActions, isMobileOrTablet && estilos.heroActionsMobile, isPhone && estilos.heroActionsPhone]}>
               {/* Activos */}
-              <BlurView intensity={theme.isDark ? 25 : 55} tint={theme.isDark ? 'dark' : 'light'} style={[estilos.heroMetricPill, estilos.heroMetricPillBlue]}>
+              <BlurView intensity={theme.isDark ? 25 : 55} tint={theme.isDark ? 'dark' : 'light'} style={[estilos.heroMetricPill, estilos.heroMetricPillBlue, isPhone && estilos.heroMetricPillPhone]}>
                 {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
                 <View style={estilos.heroMetricHeader}>
                   {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
@@ -1632,7 +1642,7 @@ export default function DashboardAdmin() {
               </BlurView>
 
               {/* Productividad */}
-              <BlurView intensity={theme.isDark ? 25 : 55} tint={theme.isDark ? 'dark' : 'light'} style={[estilos.heroMetricPill, estilos.heroMetricPillViolet]}>
+              <BlurView intensity={theme.isDark ? 25 : 55} tint={theme.isDark ? 'dark' : 'light'} style={[estilos.heroMetricPill, estilos.heroMetricPillViolet, isPhone && estilos.heroMetricPillPhone]}>
                 {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
                 <View style={estilos.heroMetricHeader}>
                   {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
@@ -1653,7 +1663,7 @@ export default function DashboardAdmin() {
               </BlurView>
 
               {/* Check-ins */}
-              <BlurView intensity={theme.isDark ? 25 : 55} tint={theme.isDark ? 'dark' : 'light'} style={[estilos.heroMetricPill, estilos.heroMetricPillEmerald]}>
+              <BlurView intensity={theme.isDark ? 25 : 55} tint={theme.isDark ? 'dark' : 'light'} style={[estilos.heroMetricPill, estilos.heroMetricPillEmerald, isPhone && estilos.heroMetricPillPhone]}>
                 {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
                 <View style={estilos.heroMetricHeader}>
                   {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
@@ -1675,7 +1685,7 @@ export default function DashboardAdmin() {
             </View>
           </View>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={estilos.heroDashboardShell}>
+          <View style={[estilos.heroDashboardShell, isMobileOrTablet && estilos.heroDashboardShellMobile, isPhone && estilos.heroDashboardShellPhone]}>
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={estilos.heroWindowBar}>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
@@ -1688,19 +1698,19 @@ export default function DashboardAdmin() {
               <Text style={estilos.heroWindowTitle}>{t('admin.dashboard.hero.live_ops')}</Text>
             </View>
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.heroDashboardGrid}>
+            <View style={[estilos.heroDashboardGrid, isPhone && estilos.heroDashboardGridPhone]}>
               {/* Main health card */}
-              <View style={[estilos.heroPanelCard, estilos.heroPanelMain, { backgroundColor: theme.isDark ? ADMIN.fondoVidrioFuerte : '#FFFFFF', borderColor: theme.isDark ? ADMIN.borde : 'rgba(91,65,150,0.16)' }]}>
-                <View style={estilos.heroPanelMainCopy}>
+              <View style={[estilos.heroPanelCard, estilos.heroPanelMain, isPhone && estilos.heroPanelMainPhone, { backgroundColor: theme.isDark ? ADMIN.fondoVidrioFuerte : '#FFFFFF', borderColor: theme.isDark ? ADMIN.borde : 'rgba(91,65,150,0.16)' }]}>
+                <View style={[estilos.heroPanelMainCopy, isPhone && estilos.heroPanelMainCopyPhone]}>
                   <Text style={estilos.heroPanelLabel}>{t('admin.dashboard.hero.health_score')}</Text>
                   <Text style={estilos.heroPanelValue}>{Math.max(0, Math.min(100, metricas.productividad - Math.round(metricas.riesgo / 3)))}%</Text>
                   <Text style={estilos.heroPanelText}>{t('admin.dashboard.hero.health_detail')}</Text>
                 </View>
                 {/* Animated mini sparkline chart */}
-                <HeroMiniChart datos={datosGrafico} />
+                {!isPhone && <HeroMiniChart datos={datosGrafico} />}
               </View>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View style={[estilos.heroPanelCard, { backgroundColor: theme.isDark ? ADMIN.fondoVidrioFuerte : '#FFFFFF', borderColor: theme.isDark ? ADMIN.borde : 'rgba(91,65,150,0.16)' }]}>
+              <View style={[estilos.heroPanelCard, isPhone && estilos.heroPanelCardPhone, { backgroundColor: theme.isDark ? ADMIN.fondoVidrioFuerte : '#FFFFFF', borderColor: theme.isDark ? ADMIN.borde : 'rgba(91,65,150,0.16)' }]}>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.heroPanelLabel}>{t('admin.dashboard.hero.load')}</Text>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -1709,7 +1719,7 @@ export default function DashboardAdmin() {
                 <Text style={estilos.heroPanelText}>{t('admin.dashboard.hero.active_capacity')}</Text>
               </View>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View style={[estilos.heroPanelCard, { backgroundColor: theme.isDark ? ADMIN.fondoVidrioFuerte : '#FFFFFF', borderColor: theme.isDark ? ADMIN.borde : 'rgba(91,65,150,0.16)' }]}>
+              <View style={[estilos.heroPanelCard, isPhone && estilos.heroPanelCardPhone, { backgroundColor: theme.isDark ? ADMIN.fondoVidrioFuerte : '#FFFFFF', borderColor: theme.isDark ? ADMIN.borde : 'rgba(91,65,150,0.16)' }]}>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.heroPanelLabel}>{t('admin.dashboard.hero.stress')}</Text>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -1726,35 +1736,35 @@ export default function DashboardAdmin() {
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View style={estilos.anchoTotal}>
             {/* PremiumCard renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-            <PremiumCard style={estilos.barChartCard}>
+            <PremiumCard style={[estilos.barChartCard, isPhone && estilos.barChartCardPhone]}>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View style={estilos.chartHeader}>
+              <View style={[estilos.chartHeader, isPhone && estilos.chartHeaderPhone]}>
                 {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                <View style={estilos.chartTitleContainer}>
+                <View style={[estilos.chartTitleContainer, isPhone && estilos.chartTitleContainerPhone]}>
                   {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                   <IconWrapper tono="violet"><Activity size={20} color={theme.isDark ? '#FEFEFE' : '#7C3AED'} /></IconWrapper>
                   {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
                   <View>
                     {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                    <Text style={estilos.chartTitle}>{t('admin.dashboard.chart.title')}</Text>
+                    <Text style={[estilos.chartTitle, isPhone && estilos.chartTitlePhone]}>{t('admin.dashboard.chart.title')}</Text>
                     {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                    <Text style={estilos.chartSubtitle}>{subtituloGrafico}</Text>
+                    <Text style={[estilos.chartSubtitle, isPhone && estilos.chartSubtitlePhone]}>{subtituloGrafico}</Text>
                   </View>
                 </View>
                 {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                <View style={estilos.chartActions}>
+                <View style={[estilos.chartActions, isPhone && estilos.chartActionsPhone]}>
                   {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-                  <TouchableOpacity onPress={() => setModoGrafico('diario')} style={[estilos.chartToggle, modoGrafico === 'diario' && estilos.chartToggleActivo]}>
+                  <TouchableOpacity onPress={() => setModoGrafico('diario')} style={[estilos.chartToggle, isPhone && estilos.chartTogglePhone, modoGrafico === 'diario' && estilos.chartToggleActivo]}>
                     {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                     <Text style={[estilos.chartToggleText, modoGrafico === 'diario' && estilos.chartToggleTextActivo]}>{t('admin.dashboard.chart.days')}</Text>
                   </TouchableOpacity>
                   {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-                  <TouchableOpacity onPress={() => setModoGrafico('semanal')} style={[estilos.chartToggle, modoGrafico === 'semanal' && estilos.chartToggleActivo]}>
+                  <TouchableOpacity onPress={() => setModoGrafico('semanal')} style={[estilos.chartToggle, isPhone && estilos.chartTogglePhone, modoGrafico === 'semanal' && estilos.chartToggleActivo]}>
                     {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                     <Text style={[estilos.chartToggleText, modoGrafico === 'semanal' && estilos.chartToggleTextActivo]}>{t('common.weekly')}</Text>
                   </TouchableOpacity>
                   {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-                  <TouchableOpacity onPress={() => setModoGrafico('mensual')} style={[estilos.chartToggle, modoGrafico === 'mensual' && estilos.chartToggleActivo]}>
+                  <TouchableOpacity onPress={() => setModoGrafico('mensual')} style={[estilos.chartToggle, isPhone && estilos.chartTogglePhone, modoGrafico === 'mensual' && estilos.chartToggleActivo]}>
                     {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                     <Text style={[estilos.chartToggleText, modoGrafico === 'mensual' && estilos.chartToggleTextActivo]}>{t('common.monthly')}</Text>
                   </TouchableOpacity>
@@ -1762,9 +1772,9 @@ export default function DashboardAdmin() {
               </View>
 
               {/* Chart + side panel side-by-side */}
-              <View style={[estilos.chartBody, !isTabletOrWeb && { flexDirection: 'column' }]}>
-                <View style={estilos.chartGraphArea}>
-                  <PerformanceSparkChart datos={datosGrafico} />
+              <View style={[estilos.chartBody, !isTabletOrWeb && { flexDirection: 'column' }, isPhone && estilos.chartBodyPhone]}>
+                <View style={[estilos.chartGraphArea, isPhone && estilos.chartGraphAreaPhone]}>
+                  {isPhone ? <MobileSignalDonut datos={datosGrafico} /> : <PerformanceSparkChart datos={datosGrafico} />}
                 </View>
                 <ChartSidePanel
                   datos={datosGrafico}
@@ -1779,16 +1789,16 @@ export default function DashboardAdmin() {
         </View>
 
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={estilos.detalleOperativoBar}>
+        <View style={[estilos.detalleOperativoBar, isPhone && estilos.detalleOperativoBarPhone]}>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View>
+          <View style={isPhone && estilos.detalleOperativoCopyPhone}>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={estilos.detalleOperativoTitulo}>{t('admin.dashboard.advanced.bar_title')}</Text>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={estilos.detalleOperativoTexto}>{t('admin.dashboard.advanced.bar_subtitle')}</Text>
           </View>
           {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-          <TouchableOpacity onPress={() => setMostrarDetalleOperativo((valor) => !valor)} activeOpacity={0.88} style={estilos.detalleOperativoBoton}>
+          <TouchableOpacity onPress={() => setMostrarDetalleOperativo((valor) => !valor)} activeOpacity={0.88} style={[estilos.detalleOperativoBoton, isPhone && estilos.detalleOperativoBotonPhone]}>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={estilos.detalleOperativoBotonTexto}>{mostrarDetalleOperativo ? t('common.hide') : t('common.open_action')}</Text>
           </TouchableOpacity>
@@ -1800,7 +1810,7 @@ export default function DashboardAdmin() {
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
             <View style={[estilos.advancedGrid, estilos.advancedGridCompact, !isTabletOrWeb && estilos.topGridMobile]}>
               {/* PremiumCard renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <PremiumCard style={estilos.advancedCard}>
+              <PremiumCard style={[estilos.advancedCard, estilos.advancedCardFullWidth]}>
                 {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
                 <View style={estilos.panelHeader}>
                   {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
@@ -1814,11 +1824,15 @@ export default function DashboardAdmin() {
                   <IconWrapper tono="cyan"><Timer size={20} color={theme.isDark ? '#22D3EE' : '#0891B2'} /></IconWrapper>
                 </View>
                 {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                <View style={estilos.metricRows}>
+                <View style={estilos.checkInMetricGrid}>
                   {/* MetricRow renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                  <MetricRow icon={<Timer size={16} color={BRAND.cyan} />} label={t('admin.dashboard.checkin.participation')} value={metricas.checkInsHoy} total={metricas.activos} color={BRAND.cyan} />
+                  <View style={estilos.checkInMetricItem}>
+                    <MetricRow icon={<Timer size={16} color={BRAND.cyan} />} label={t('admin.dashboard.checkin.participation')} value={metricas.checkInsHoy} total={metricas.activos} color={BRAND.cyan} />
+                  </View>
                   {/* MetricRow renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                  <MetricRow icon={<HeartPulse size={16} color={BRAND.error} />} label={t('admin.dashboard.checkin.followup')} value={metricas.empleadosRiesgo.length} total={Math.max(metricas.activos, 1)} color={BRAND.error} />
+                  <View style={estilos.checkInMetricItem}>
+                    <MetricRow icon={<HeartPulse size={16} color={BRAND.error} />} label={t('admin.dashboard.checkin.followup')} value={metricas.empleadosRiesgo.length} total={Math.max(metricas.activos, 1)} color={BRAND.error} />
+                  </View>
                 </View>
                 {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
                 <View style={estilos.listadoCompacto}>
@@ -1831,7 +1845,7 @@ export default function DashboardAdmin() {
               </PremiumCard>
 
               {/* PremiumCard renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <PremiumCard style={estilos.advancedCard}>
+              <PremiumCard style={[estilos.advancedCard, estilos.advancedCardFullWidth]}>
                 {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
                 <View style={estilos.panelHeader}>
                   {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
@@ -1866,7 +1880,7 @@ export default function DashboardAdmin() {
                 </View>
               </PremiumCard>
               {/* PremiumCard renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <PremiumCard style={estilos.advancedCard}>
+              <PremiumCard style={[estilos.advancedCard, estilos.advancedCardFullWidth]}>
                 {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
                 <View style={estilos.panelHeader}>
                   {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
@@ -1892,7 +1906,7 @@ export default function DashboardAdmin() {
               </PremiumCard>
 
               {/* PremiumCard renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <PremiumCard style={estilos.advancedCard}>
+              <PremiumCard style={[estilos.advancedCard, estilos.advancedCardFullWidth]}>
                 {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
                 <View style={estilos.panelHeader}>
                   {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
@@ -2674,6 +2688,66 @@ const PerformanceSparkChart = ({ datos }: { datos: PuntoGrafico[] }) => {
   );
 };
 
+const MobileSignalDonut = ({ datos }: { datos: PuntoGrafico[] }) => {
+  const ultimo = datos[datos.length - 1] || { label: '', rendimiento: 0, carga: 0, estres: 0 };
+  const size = 210;
+  const center = size / 2;
+  const radius = 72;
+  const stroke = 18;
+  const circumference = 2 * Math.PI * radius;
+  const values = [
+    { key: 'rendimiento', label: 'Rendimiento', value: Math.max(0, Math.min(100, ultimo.rendimiento || 0)), color: BRAND.success },
+    { key: 'carga', label: 'Carga', value: Math.max(0, Math.min(100, ultimo.carga || 0)), color: BRAND.warning },
+    { key: 'estres', label: 'Estrés', value: Math.max(0, Math.min(100, ultimo.estres || 0)), color: BRAND.error },
+  ];
+  const total = values.reduce((sum, item) => sum + item.value, 0) || 1;
+  let offset = 0;
+
+  return (
+    <View style={estilos.mobileDonutCard}>
+      <View style={estilos.mobileDonutShell}>
+        <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <Circle cx={center} cy={center} r={radius} stroke="rgba(124,58,237,0.10)" strokeWidth={stroke} fill="transparent" />
+          {values.map((item) => {
+            const length = (item.value / total) * circumference;
+            const dashOffset = -offset;
+            offset += length;
+            return (
+              <Circle
+                key={item.key}
+                cx={center}
+                cy={center}
+                r={radius}
+                stroke={item.color}
+                strokeWidth={stroke}
+                fill="transparent"
+                strokeDasharray={`${Math.max(1, length)} ${circumference}`}
+                strokeDashoffset={dashOffset}
+                strokeLinecap="round"
+                rotation="-90"
+                origin={`${center}, ${center}`}
+              />
+            );
+          })}
+        </Svg>
+        <View style={estilos.mobileDonutCenter}>
+          <Text style={estilos.mobileDonutValue}>{ultimo.rendimiento || 0}%</Text>
+          <Text style={estilos.mobileDonutLabel}>salud</Text>
+        </View>
+      </View>
+      <View style={estilos.mobileDonutLegend}>
+        {values.map((item) => (
+          <View key={item.key} style={estilos.mobileDonutLegendItem}>
+            <View style={[estilos.mobileDonutLegendDot, { backgroundColor: item.color }]} />
+            <Text style={estilos.mobileDonutLegendText}>{item.label}</Text>
+            <Text style={[estilos.mobileDonutLegendValue, { color: item.color }]}>{item.value}%</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+};
+
 /**
  * ChartSidePanel – unified compact panel showing period metrics + next events as a single table.
  */
@@ -2691,6 +2765,8 @@ const ChartSidePanel = ({
   modoGrafico: ModoGrafico;
 }) => {
   const { t, i18n } = useTranslation();
+  const { width } = useWindowDimensions();
+  const isPhone = width < 640;
   
   // Averages, Peaks, Min
   const n = datos.length || 1;
@@ -2764,9 +2840,9 @@ const ChartSidePanel = ({
   const { theme } = useAdminAppearance();
 
   return (
-    <View style={[estilos.sidePanel, { backgroundColor: theme.isDark ? ADMIN.fondoElevado : '#FFFFFF', borderColor: theme.isDark ? ADMIN.borde : 'rgba(91,65,150,0.16)' }]}>
+      <View style={[estilos.sidePanel, isPhone && estilos.sidePanelPhone, { backgroundColor: theme.isDark ? ADMIN.fondoElevado : '#FFFFFF', borderColor: theme.isDark ? ADMIN.borde : 'rgba(91,65,150,0.16)' }]}>
       {/* Header section with Health Status */}
-      <View style={estilos.sidePanelHeader}>
+      <View style={[estilos.sidePanelHeader, isPhone && estilos.sidePanelHeaderPhone]}>
         <View style={{ flex: 1 }}>
           <Text style={estilos.sidePanelEyebrow}>{t('admin.dashboard.chart.period_detail')}</Text>
           <Text style={[estilos.sidePanelTitle, { marginBottom: 0 }]}>{actual.label}</Text>
@@ -2778,26 +2854,26 @@ const ChartSidePanel = ({
       </View>
 
       {/* Row containing the 3 metrics side by side */}
-      <View style={estilos.sideMetricsRow}>
+      <View style={[estilos.sideMetricsRow, isPhone && estilos.sideMetricsRowPhone]}>
         {metrics.map((m) => {
           const delta = m.actual - m.prev;
           const sign = delta > 0 ? '+' : '';
           return (
-            <View key={m.label} style={[estilos.sideMetricCol, { borderColor: m.color + '18', backgroundColor: m.bg }]}>
+            <View key={m.label} style={[estilos.sideMetricCol, isPhone && estilos.sideMetricColPhone, { borderColor: m.color + '18', backgroundColor: m.bg }]}>
               {/* Metric title + dot */}
               <View style={estilos.sideMetricTitleContainer}>
                 <View style={[estilos.sidePanelDot, { backgroundColor: m.color }]} />
                 <Text style={estilos.sideMetricColLabel} numberOfLines={1}>{m.label}</Text>
               </View>
               {/* Current Value + delta */}
-              <View style={estilos.sideMetricValueContainer}>
+              <View style={[estilos.sideMetricValueContainer, isPhone && estilos.sideMetricValueContainerPhone]}>
                 <Text style={[estilos.sideMetricColValue, { color: m.color }]}>{m.actual}%</Text>
                 <Text style={[estilos.sideMetricColDelta, { color: delta > 0 ? BRAND.success : delta < 0 ? BRAND.error : BRAND.textSec }]}>
                   {delta === 0 ? '—' : `${sign}${delta}%`}
                 </Text>
               </View>
               {/* Stats below */}
-              <View style={estilos.sideMetricStats}>
+              <View style={[estilos.sideMetricStats, isPhone && estilos.sideMetricStatsPhone]}>
                 <Text style={estilos.sideMetricStatText}>Prom: <Text style={{ color: BRAND.textMain }}>{m.avg}%</Text></Text>
                 <Text style={estilos.sideMetricStatText}>Max: <Text style={{ color: BRAND.textMain }}>{m.max}%</Text></Text>
               </View>
@@ -2810,11 +2886,11 @@ const ChartSidePanel = ({
       <View style={estilos.sidePanelDivider} />
 
       {/* Bottom section with Advisor Insight & Agenda side-by-side */}
-      <View style={estilos.sidePanelBottomRow}>
+      <View style={[estilos.sidePanelBottomRow, isPhone && estilos.sidePanelBottomRowPhone]}>
         {/* Control de Jornada */}
-        <View style={estilos.sideAdvisorCol}>
+        <View style={[estilos.sideAdvisorCol, isPhone && estilos.sideStackedColPhone]}>
           <Text style={estilos.sidePanelEyebrow}>Control de Jornada</Text>
-          <View style={[estilos.sideAdvisorCard, { backgroundColor: theme.isDark ? 'rgba(255,255,255,0.02)' : 'rgba(91,65,150,0.03)', borderColor: theme.isDark ? ADMIN.borde : 'rgba(91,65,150,0.08)' }]}>
+          <View style={[estilos.sideAdvisorCard, isPhone && estilos.sideAdvisorCardPhone, { backgroundColor: theme.isDark ? 'rgba(255,255,255,0.02)' : 'rgba(91,65,150,0.03)', borderColor: theme.isDark ? ADMIN.borde : 'rgba(91,65,150,0.08)' }]}>
             <View style={{ gap: 5 }}>
               {/* Fila 1: Asistencia */}
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -2898,7 +2974,7 @@ const ChartSidePanel = ({
         </View>
 
         {/* Agenda column */}
-        <View style={estilos.sideAgendaCol}>
+        <View style={[estilos.sideAgendaCol, isPhone && estilos.sideStackedColPhone]}>
           <Text style={estilos.sidePanelEyebrow}>{t('admin.dashboard.chart.corporate_agenda')}</Text>
           <View style={{ gap: 6, marginTop: 4 }}>
             {proximosEventos.length > 0 ? (
@@ -2921,7 +2997,7 @@ const ChartSidePanel = ({
                 );
               })
             ) : (
-              <View style={[estilos.sideEventEmptyHorizontal, { backgroundColor: theme.isDark ? 'rgba(255,255,255,0.02)' : 'rgba(91,65,150,0.03)', borderColor: theme.isDark ? ADMIN.borde : 'rgba(91,65,150,0.08)' }]}>
+              <View style={[estilos.sideEventEmptyHorizontal, isPhone && estilos.sideEventEmptyHorizontalPhone, { backgroundColor: theme.isDark ? 'rgba(255,255,255,0.02)' : 'rgba(91,65,150,0.03)', borderColor: theme.isDark ? ADMIN.borde : 'rgba(91,65,150,0.08)' }]}>
                 <Text style={estilos.sidePanelRowDelta}>{t('admin.dashboard.chart.no_events')}</Text>
               </View>
             )}
@@ -3277,6 +3353,16 @@ const estilos = StyleSheet.create({
     // gap define separacion uniforme entre elementos hijos.
     gap: 14,
   },
+  detalleOperativoBarPhone: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    padding: 14,
+    gap: 12,
+  },
+  detalleOperativoCopyPhone: {
+    width: '100%',
+    minWidth: 0,
+  },
   // detalleOperativoTitulo: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
   detalleOperativoTitulo: {
     // color define el color del texto o icono.
@@ -3312,6 +3398,12 @@ const estilos = StyleSheet.create({
     // paddingVertical agrega espacio interno arriba y abajo.
     paddingVertical: 10,
   },
+  detalleOperativoBotonPhone: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 42,
+  },
   // detalleOperativoBotonTexto: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
   detalleOperativoBotonTexto: {
     // color define el color del texto o icono.
@@ -3329,7 +3421,8 @@ const estilos = StyleSheet.create({
   // advancedGrid: estilo de grilla; organiza elementos en filas o columnas con separacion controlada.
   advancedGrid: {
     // flexDirection decide si los hijos se ordenan en fila o columna.
-    flexDirection: 'row',
+    flexDirection: 'column',
+    alignItems: 'stretch',
     // gap define separacion uniforme entre elementos hijos.
     gap: 10,
     // marginBottom separa este bloque del siguiente elemento.
@@ -3338,7 +3431,7 @@ const estilos = StyleSheet.create({
   // advancedGridCompact: estilo de grilla; organiza elementos en filas o columnas con separacion controlada.
   advancedGridCompact: {
     // flexWrap ajusta una propiedad visual especifica de este estilo.
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
   },
   // advancedCard: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
   advancedCard: {
@@ -3348,6 +3441,29 @@ const estilos = StyleSheet.create({
     minWidth: 260,
     // padding agrega espacio interno alrededor del contenido.
     padding: 14,
+  },
+  advancedCardFullWidth: {
+    width: '100%',
+    alignSelf: 'stretch',
+    flexBasis: 'auto' as any,
+    minWidth: 0,
+    flexGrow: 0,
+    flexShrink: 0,
+    padding: 14,
+  },
+  checkInMetricGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  checkInMetricItem: {
+    flex: 1,
+    minWidth: 0,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoCampo,
+    padding: 10,
   },
   // topGridMobile: estilo de grilla; organiza elementos en filas o columnas con separacion controlada.
   topGridMobile: {
@@ -3376,6 +3492,10 @@ const estilos = StyleSheet.create({
     // minHeight asegura una altura minima util para lectura o area tactil.
     minHeight: 430,
   },
+  barChartCardPhone: {
+    padding: 14,
+    minHeight: 0,
+  },
   // chartHeader: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
   chartHeader: {
     // flexDirection decide si los hijos se ordenan en fila o columna.
@@ -3386,6 +3506,12 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     // marginBottom separa este bloque del siguiente elemento.
     marginBottom: 18,
+  },
+  chartHeaderPhone: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 12,
+    marginBottom: 14,
   },
   // chartInsightRow: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   chartInsightRow: {
@@ -3447,10 +3573,78 @@ const estilos = StyleSheet.create({
     gap: 16,
     alignItems: 'stretch',
   },
+  chartBodyPhone: {
+    gap: 12,
+  },
   // chartGraphArea: chart takes most of the width
   chartGraphArea: {
     flex: 1,
     minWidth: 200,
+  },
+  chartGraphAreaPhone: {
+    minWidth: 0,
+  },
+  mobileDonutCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: ADMIN.borde,
+    backgroundColor: ADMIN.fondoCampo,
+    padding: 14,
+    alignItems: 'center',
+    gap: 12,
+  },
+  mobileDonutShell: {
+    width: 210,
+    height: 210,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mobileDonutCenter: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mobileDonutValue: {
+    color: BRAND.textMain,
+    fontSize: 28,
+    fontWeight: '900',
+    lineHeight: 32,
+  },
+  mobileDonutLabel: {
+    color: BRAND.textSec,
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  mobileDonutLegend: {
+    width: '100%',
+    gap: 8,
+  },
+  mobileDonutLegendItem: {
+    minHeight: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 11,
+    gap: 9,
+  },
+  mobileDonutLegendDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 99,
+  },
+  mobileDonutLegendText: {
+    flex: 1,
+    minWidth: 0,
+    color: BRAND.textSec,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  mobileDonutLegendValue: {
+    fontSize: 13,
+    fontWeight: '900',
   },
   // sidePanel: unified events + metrics side panel
   sidePanel: {
@@ -3461,6 +3655,13 @@ const estilos = StyleSheet.create({
     backgroundColor: ADMIN.fondoCampo,
     overflow: 'hidden',
   },
+  sidePanelPhone: {
+    flexGrow: 0,
+    flexShrink: 0,
+    flexBasis: 'auto' as any,
+    overflow: 'visible',
+    paddingBottom: 14,
+  },
   sidePanelHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -3468,6 +3669,12 @@ const estilos = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 8,
+  },
+  sidePanelHeaderPhone: {
+    alignItems: 'flex-start',
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    gap: 10,
   },
   sidePanelBadge: {
     flexDirection: 'row',
@@ -3494,12 +3701,21 @@ const estilos = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 12,
   },
+  sideMetricsRowPhone: {
+    flexDirection: 'column',
+    gap: 8,
+    paddingHorizontal: 14,
+  },
   sideMetricCol: {
     flex: 1,
     borderWidth: 1,
     borderRadius: 10,
     padding: 8,
     justifyContent: 'space-between',
+  },
+  sideMetricColPhone: {
+    minHeight: 64,
+    padding: 10,
   },
   sideMetricTitleContainer: {
     flexDirection: 'row',
@@ -3517,6 +3733,9 @@ const estilos = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 4,
   },
+  sideMetricValueContainerPhone: {
+    marginTop: 6,
+  },
   sideMetricColValue: {
     fontSize: 17,
     fontWeight: '900',
@@ -3533,6 +3752,10 @@ const estilos = StyleSheet.create({
     borderTopColor: 'rgba(255,255,255,0.04)',
     paddingTop: 4,
   },
+  sideMetricStatsPhone: {
+    justifyContent: 'flex-start',
+    gap: 16,
+  },
   sideMetricStatText: {
     color: BRAND.textSec,
     fontSize: 10,
@@ -3546,8 +3769,25 @@ const estilos = StyleSheet.create({
     paddingBottom: 12,
     flex: 1,
   },
+  sidePanelBottomRowPhone: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 14,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    flexGrow: 0,
+    flexShrink: 0,
+    flexBasis: 'auto' as any,
+  },
   sideAdvisorCol: {
     flex: 1.1,
+  },
+  sideStackedColPhone: {
+    flexGrow: 0,
+    flexShrink: 0,
+    flexBasis: 'auto' as any,
+    width: '100%',
+    minWidth: 0,
   },
   sideAdvisorCard: {
     backgroundColor: 'rgba(255,255,255,0.02)',
@@ -3558,6 +3798,15 @@ const estilos = StyleSheet.create({
     marginTop: 4,
     flex: 1,
     justifyContent: 'center',
+  },
+  sideAdvisorCardPhone: {
+    flexGrow: 0,
+    flexShrink: 0,
+    flexBasis: 'auto' as any,
+    width: '100%',
+    minHeight: 0,
+    padding: 12,
+    marginTop: 8,
   },
   sideAdvisorText: {
     color: BRAND.textMain,
@@ -3577,6 +3826,15 @@ const estilos = StyleSheet.create({
     borderColor: ADMIN.borde,
     borderRadius: 8,
     paddingVertical: 14,
+  },
+  sideEventEmptyHorizontalPhone: {
+    flexGrow: 0,
+    flexShrink: 0,
+    flexBasis: 'auto' as any,
+    width: '100%',
+    minHeight: 72,
+    marginTop: 8,
+    paddingHorizontal: 12,
   },
   sidePanelSection: {
     padding: 12,
@@ -3940,6 +4198,10 @@ const estilos = StyleSheet.create({
     // gap define separacion uniforme entre elementos hijos.
     gap: 14,
   },
+  chartTitleContainerPhone: {
+    gap: 10,
+    alignItems: 'flex-start',
+  },
   // chartTitle: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
   chartTitle: {
     // fontSize controla el tamanio del texto.
@@ -3950,6 +4212,10 @@ const estilos = StyleSheet.create({
     color: BRAND.textMain,
     // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 0,
+  },
+  chartTitlePhone: {
+    fontSize: 13,
+    lineHeight: 17,
   },
   // chartSubtitle: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
   chartSubtitle: {
@@ -3963,6 +4229,10 @@ const estilos = StyleSheet.create({
     letterSpacing: 0,
     // marginTop separa este bloque del elemento anterior.
     marginTop: 4,
+  },
+  chartSubtitlePhone: {
+    fontSize: 9,
+    lineHeight: 13,
   },
   // kpiInline: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   kpiInline: {
@@ -4006,6 +4276,11 @@ const estilos = StyleSheet.create({
     // backgroundColor define el fondo del bloque.
     backgroundColor: ADMIN.fondoCampo,
   },
+  chartActionsPhone: {
+    width: '100%',
+    gap: 6,
+    justifyContent: 'space-between',
+  },
   // chartToggle: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   chartToggle: {
     // paddingHorizontal agrega espacio interno a izquierda y derecha.
@@ -4014,6 +4289,12 @@ const estilos = StyleSheet.create({
     paddingVertical: 8,
     // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: 10,
+  },
+  chartTogglePhone: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 9,
   },
   // chartToggleActivo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   chartToggleActivo: {
@@ -4682,9 +4963,9 @@ const estilos = StyleSheet.create({
   // listadoCompacto: estilo de lista o item; mantiene espaciado y lectura consistente en elementos repetidos.
   listadoCompacto: {
     // gap define separacion uniforme entre elementos hijos.
-    gap: 10,
+    gap: 8,
     // marginTop separa este bloque del elemento anterior.
-    marginTop: 16,
+    marginTop: 12,
   },
   // listItem: estilo de lista o item; mantiene espaciado y lectura consistente en elementos repetidos.
   listItem: {
@@ -5025,6 +5306,22 @@ const estilos = StyleSheet.create({
     // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
     ...sombraVioleta,
   },
+  heroPanelMobile: {
+    minHeight: 0,
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    justifyContent: 'flex-start',
+    paddingHorizontal: 16,
+    paddingVertical: 18,
+    gap: 18,
+  },
+  heroPanelPhone: {
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    gap: 12,
+    marginBottom: 14,
+  },
 
   // heroCopy: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   heroCopy: {
@@ -5038,6 +5335,12 @@ const estilos = StyleSheet.create({
     zIndex: 2,
     // paddingRight ajusta una propiedad visual especifica de este estilo.
     paddingRight: 8,
+  },
+  heroCopyMobile: {
+    flex: 0,
+    maxWidth: '100%',
+    minWidth: 0,
+    paddingRight: 0,
   },
   // heroKicker: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   heroKicker: {
@@ -5097,6 +5400,22 @@ const estilos = StyleSheet.create({
     // fontStyle ajusta una propiedad visual especifica de este estilo.
     fontStyle: 'italic',
   },
+  heroTitleMobile: {
+    fontSize: 28,
+    lineHeight: 34,
+  },
+  heroTitlePhone: {
+    fontSize: 24,
+    lineHeight: 29,
+    fontStyle: 'normal',
+  },
+  heroSubtitlePhone: {
+    color: BRAND.textSec,
+    fontSize: 12,
+    fontWeight: '800',
+    lineHeight: 18,
+    marginTop: 8,
+  },
   // heroText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   heroText: {
     // color define el color del texto o icono.
@@ -5124,6 +5443,15 @@ const estilos = StyleSheet.create({
     marginTop: 20,
     // flexWrap ajusta una propiedad visual especifica de este estilo.
     flexWrap: 'wrap',
+  },
+  heroActionsMobile: {
+    alignItems: 'stretch',
+  },
+  heroActionsPhone: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 8,
+    marginTop: 14,
   },
   // heroButtonGlow: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
   heroButtonGlow: {
@@ -5180,6 +5508,14 @@ const estilos = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.06)',
     // overflow controla si el contenido se recorta o puede sobresalir.
     overflow: 'hidden',
+  },
+  heroMetricPillPhone: {
+    flexBasis: 'auto' as any,
+    minWidth: 0,
+    width: '100%',
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    borderRadius: 12,
   },
   // heroMetricPillBlue: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   heroMetricPillBlue: {
@@ -5297,6 +5633,17 @@ const estilos = StyleSheet.create({
     // shadowRadius suaviza o expande la sombra.
     shadowRadius: 54,
   },
+  heroDashboardShellMobile: {
+    flex: 0,
+    maxWidth: '100%',
+    minWidth: 0,
+    width: '100%',
+  },
+  heroDashboardShellPhone: {
+    display: 'none',
+    borderRadius: 14,
+    shadowOpacity: 0,
+  },
   // heroWindowBar: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   heroWindowBar: {
     // minHeight asegura una altura minima util para lectura o area tactil.
@@ -5347,6 +5694,10 @@ const estilos = StyleSheet.create({
     // gap define separacion uniforme entre elementos hijos.
     gap: 10,
   },
+  heroDashboardGridPhone: {
+    padding: 10,
+    gap: 8,
+  },
   // heroPanelCard: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
   heroPanelCard: {
     // width fija o calcula el ancho del elemento.
@@ -5364,6 +5715,11 @@ const estilos = StyleSheet.create({
     // padding agrega espacio interno alrededor del contenido.
     padding: 13,
   },
+  heroPanelCardPhone: {
+    width: '48%',
+    minHeight: 86,
+    padding: 11,
+  },
   // heroPanelMain: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   heroPanelMain: {
     // width fija o calcula el ancho del elemento.
@@ -5373,12 +5729,20 @@ const estilos = StyleSheet.create({
     // paddingRight ajusta una propiedad visual especifica de este estilo.
     paddingRight: 178,
   },
+  heroPanelMainPhone: {
+    minHeight: 0,
+    paddingRight: 12,
+    paddingVertical: 14,
+  },
   // heroPanelMainCopy: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   heroPanelMainCopy: {
     // maxWidth limita el ancho para mantener lectura y composicion.
     maxWidth: 178,
     // zIndex define prioridad de apilamiento sobre otros elementos.
     zIndex: 2,
+  },
+  heroPanelMainCopyPhone: {
+    maxWidth: '100%',
   },
   // heroPanelLabel: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
   heroPanelLabel: {

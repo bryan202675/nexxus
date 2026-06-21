@@ -10,8 +10,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
-// Importa { Alert, Animated, Easing, Modal, ScrollView, StyleSheet, Text as NativeText, TextInput as NativeTextInput, TouchableOpacity, View, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { Alert, Animated, Easing, ScrollView, StyleSheet, Text as NativeText, TextInput as NativeTextInput, TouchableOpacity, View, Platform } from 'react-native';
+// Importa { Alert, Animated, Easing, Modal, ScrollView, StyleSheet, Text as NativeText, TextInput as NativeTextInput, TouchableOpacity, View, Platform, useWindowDimensions } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
+import { Alert, Animated, Easing, ScrollView, StyleSheet, Text as NativeText, TextInput as NativeTextInput, TouchableOpacity, View, Platform, useWindowDimensions } from 'react-native';
 // Importa AdminModalBackdrop; velo difuminado reutilizable para formularios modales.
 import { AdminModal } from './AdminModal';
 import { AdminModalFormGlass } from './AdminModalFormGlass';
@@ -198,7 +198,10 @@ const CalendarioEmpresarial: React.FC = () => {
   const { theme } = useAdminAppearance();
   // Inicializa toast; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const toast = useAdminToast();
-  
+  const { width } = useWindowDimensions();
+  const isMobileOrTablet = width < 1024;
+  const isPhone = width < 640;
+
   // Inicializa tiposEvento; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const tiposEvento = useMemo(() => [
     { id: 'reunion' as TipoEvento, label: t('admin.calendario.tipos.reunion'), color: BRAND.azul },
@@ -212,7 +215,7 @@ const CalendarioEmpresarial: React.FC = () => {
   const { user } = useAuth();
   // Declara empresaId; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const empresaId = obtenerEmpresaIdAdmin(user);
-  
+
   // Declara nombreMes; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const nombreMes = (fecha: Date) => fecha.toLocaleDateString(i18n.language === 'es' ? 'es-SV' : 'en-US', { month: 'long', year: 'numeric' });
   // Declara nombreCorto; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -433,12 +436,12 @@ const CalendarioEmpresarial: React.FC = () => {
     const empleadoIds = dividirLista(formulario.empleadoIds);
     // Calcula empleadosPorId; transforma la lista original en datos listos para renderizar o guardar.
     const empleadosPorId = new Map(usuarios.map((usuario) => [usuario.id, usuario.nombre || usuario.correo || 'Empleado']));
-    
+
     // Declara deptoIds; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const deptoIds = dividirLista(formulario.departamentos);
     // Calcula deptosPorId; transforma la lista original en datos listos para renderizar o guardar.
     const deptosPorId = new Map(departamentos.map((d) => [d.id, d.nombre || d.name || 'Depto']));
-    
+
     // Declara sedeIds; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const sedeIds = dividirLista(formulario.sedes);
     // Calcula sedesPorId; transforma la lista original en datos listos para renderizar o guardar.
@@ -535,15 +538,15 @@ const CalendarioEmpresarial: React.FC = () => {
     // Declara EventoCard; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const EventoCard = ({ evento, color, onEditar, onEliminar, amplio }: { evento: EventoCalendario & { fechaInicio?: Date | null; fechaFin?: Date | null }; color: string; onEditar: () => void; onEliminar: () => void; amplio?: boolean }) => (
       // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-      <TouchableOpacity onPress={onEditar} activeOpacity={0.9} style={[estilos.eventoCard, amplio && estilos.eventoCardAmplio, { borderColor: `${color}55` }]}>
+      <TouchableOpacity onPress={onEditar} activeOpacity={0.9} style={[estilos.eventoCard, amplio && estilos.eventoCardAmplio, { borderColor: `${color}55` }, isPhone && { flexDirection: 'column', paddingRight: 12, paddingLeft: 14, gap: 8, width: '100%' }]}>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={[estilos.eventoBorde, { backgroundColor: color }]} />
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={estilos.eventoContenido}>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={estilos.eventoHeader}>
+          <View style={[estilos.eventoHeader, isPhone && { flexDirection: 'column', alignItems: 'flex-start', gap: 4 }]}>
             {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-            <Text style={estilos.eventoTitulo} numberOfLines={1}>{evento.titulo}</Text>
+            <Text style={estilos.eventoTitulo} numberOfLines={isPhone ? 2 : 1}>{evento.titulo}</Text>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={[estilos.eventoTipo, { color }]}>{tiposEvento.find((tipo) => tipo.id === evento.tipo)?.label}</Text>
           </View>
@@ -556,14 +559,14 @@ const CalendarioEmpresarial: React.FC = () => {
           </View>
           {!!evento.descripcion && <Text style={estilos.eventoDescripcion} numberOfLines={2}>{evento.descripcion}</Text>}
           {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-          <Text style={estilos.eventoMeta} numberOfLines={1}>{[...(evento.empleadoNombres || []), ...(evento.departamentos || []), ...(evento.sedes || [])].join(' · ') || 'Sin asignaciones específicas'}</Text>
+          <Text style={estilos.eventoMeta} numberOfLines={isPhone ? 2 : 1}>{[...(evento.empleadoNombres || []), ...(evento.departamentos || []), ...(evento.sedes || [])].join(' · ') || 'Sin asignaciones específicas'}</Text>
         </View>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={estilos.eventoAcciones}>
+        <View style={[estilos.eventoAcciones, isPhone && { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8, gap: 10 }]}>
           {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-          <TouchableOpacity onPress={onEditar} style={[estilos.accionIcono, estilos.accionIconoEditar]}><Edit3 size={14} color={ADMIN.iconos.documentos} /></TouchableOpacity>
+          <TouchableOpacity onPress={onEditar} style={[estilos.accionIcono, estilos.accionIconoEditar, isPhone && { width: 42, height: 38, flex: 1 }]}><Edit3 size={14} color={ADMIN.iconos.documentos} /></TouchableOpacity>
           {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-          <TouchableOpacity onPress={onEliminar} style={[estilos.accionIcono, estilos.accionIconoEliminar]}><Trash2 size={14} color={ADMIN.iconos.peligro} /></TouchableOpacity>
+          <TouchableOpacity onPress={onEliminar} style={[estilos.accionIcono, estilos.accionIconoEliminar, isPhone && { width: 42, height: 38, flex: 1 }]}><Trash2 size={14} color={ADMIN.iconos.peligro} /></TouchableOpacity>
         </View>
       </TouchableOpacity>
     );
@@ -575,18 +578,19 @@ const CalendarioEmpresarial: React.FC = () => {
         {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
         <Text style={[estilos.inputLabel, { color: theme.muted }]}>{label}</Text>
         {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
-        <TextInput 
-          {...props} 
-          placeholderTextColor={theme.isDark ? 'rgba(255,255,255,0.36)' : 'rgba(23,18,43,0.38)'} 
+        <TextInput
+          {...props}
+          placeholderTextColor={theme.isDark ? 'rgba(255,255,255,0.36)' : 'rgba(23,18,43,0.38)'}
           style={[
-            estilos.input, 
-            { 
+            estilos.input,
+            {
               backgroundColor: theme.isDark ? 'rgba(0,0,0,0.22)' : 'rgba(82,58,150,0.05)',
               borderColor: theme.border,
               color: theme.text
-            }, 
-            props.multiline && estilos.inputMultiline
-          ]} 
+            },
+            props.multiline && estilos.inputMultiline,
+            isPhone && { fontSize: 13, minHeight: props.multiline ? 98 : 46 }
+          ]}
         />
       </View>
     );
@@ -594,13 +598,13 @@ const CalendarioEmpresarial: React.FC = () => {
     // Declara Selector; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const Selector = ({ label, valor, alPresionar, icono: Icono, placeholder }: any) => (
       // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-      <TouchableOpacity onPress={alPresionar} activeOpacity={0.7} style={estilos.campo}>
+      <TouchableOpacity onPress={alPresionar} activeOpacity={0.7} style={[estilos.campo, isPhone && { width: '100%' }]}>
         {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
         <Text style={[estilos.inputLabel, { color: theme.muted }]}>{label}</Text>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
         <View style={[
-          estilos.inputSelector, 
-          { 
+          estilos.inputSelector,
+          {
             backgroundColor: theme.isDark ? 'rgba(0,0,0,0.22)' : 'rgba(82,58,150,0.05)',
             borderColor: theme.border
           }
@@ -610,10 +614,10 @@ const CalendarioEmpresarial: React.FC = () => {
             {Icono && <Icono size={16} color={theme.muted} style={{ marginRight: 10 }} />}
             {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
             <Text style={[
-              estilos.selectorTexto, 
-              { color: theme.text }, 
+              estilos.selectorTexto,
+              { color: theme.text },
               !valor && { color: theme.isDark ? 'rgba(255,255,255,0.36)' : 'rgba(23,18,43,0.38)' }
-            ]} numberOfLines={1}>
+            ]} numberOfLines={isPhone ? 2 : 1}>
               {valor || placeholder}
             </Text>
           </View>
@@ -629,18 +633,18 @@ const CalendarioEmpresarial: React.FC = () => {
       <Animated.View style={[estilos.pantalla, { opacity: entrada, transform: [{ translateY: entrada.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }] }]}>
 
       {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={estilos.contenido}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[estilos.contenido, { paddingTop: isMobileOrTablet ? 170 : 260 }, isPhone && { paddingHorizontal: 12, paddingBottom: 64 }]}>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={estilos.encabezado}>
+        <View style={[estilos.encabezado, isMobileOrTablet && { flexDirection: 'column', alignItems: 'stretch', gap: 12 }]}>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <View>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.titulo}>{t('admin.calendario.title')}</Text>
+            <Text style={[estilos.titulo, isPhone && { fontSize: 24 }]}>{t('admin.calendario.title')}</Text>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.subtitulo}>{t('admin.calendario.subtitle')}</Text>
+            <Text style={[estilos.subtitulo, isPhone && { fontSize: 12, lineHeight: 18 }]}>{t('admin.calendario.subtitle')}</Text>
           </View>
           {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-          <TouchableOpacity {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} onPress={() => abrirCrear()} activeOpacity={0.9} style={estilos.botonCrear}>
+          <TouchableOpacity {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} onPress={() => abrirCrear()} activeOpacity={0.9} style={[estilos.botonCrear, isPhone && { width: '100%', justifyContent: 'center' }]}>
             {/* Plus renderiza una pieza visual reutilizable dentro de esta pantalla. */}
             <Plus {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} size={18} color="#FFFFFF" style={estilos.botonCrearIcono} />
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -649,50 +653,61 @@ const CalendarioEmpresarial: React.FC = () => {
         </View>
 
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={estilos.panel}>
+        <View style={[estilos.panel, isPhone && { padding: 12, borderRadius: 12 }]}>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={estilos.toolbar}>
+          <View style={[estilos.toolbar, isMobileOrTablet && { flexDirection: 'column', alignItems: 'stretch', gap: 12 }]}>
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.navegadorFecha}>
+            <View style={[estilos.navegadorFecha, isPhone && { width: '100%', justifyContent: 'space-between', gap: 10 }]}>
               {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
               <TouchableOpacity onPress={() => moverFecha(-1)} style={estilos.iconoBoton}><ChevronLeft size={18} color={BRAND.texto} /></TouchableOpacity>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View>
+              <View style={isPhone ? { flex: 1, alignItems: 'center' } : undefined}>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.mesTexto}>{nombreMes(fechaActiva)}</Text>
+                <Text style={[estilos.mesTexto, isPhone && { fontSize: 16, textAlign: 'center' }]} numberOfLines={1}>{nombreMes(fechaActiva)}</Text>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.fechaTexto}>{fechaActiva.toLocaleDateString(i18n.language === 'es' ? 'es-SV' : 'en-US', { weekday: 'long', day: 'numeric' })}</Text>
+                <Text style={[estilos.fechaTexto, isPhone && { textAlign: 'center' }]} numberOfLines={1}>{fechaActiva.toLocaleDateString(i18n.language === 'es' ? 'es-SV' : 'en-US', { weekday: 'long', day: 'numeric' })}</Text>
               </View>
               {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
               <TouchableOpacity onPress={() => moverFecha(1)} style={estilos.iconoBoton}><ChevronRight size={18} color={BRAND.texto} /></TouchableOpacity>
             </View>
 
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.toolbarDerecha}>
+            <View style={[
+              estilos.toolbarDerecha,
+              isMobileOrTablet && { width: '100%', justifyContent: 'space-between' },
+              isPhone && { flexDirection: 'column', alignItems: 'stretch', gap: 10 }
+            ]}>
+              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+              {!isMobileOrTablet && (
+                <View style={[
+                  estilos.busqueda,
+                  {
+                    backgroundColor: theme.isDark ? 'rgba(0,0,0,0.22)' : 'rgba(82,58,150,0.06)',
+                    borderColor: theme.border,
+                  },
+                  isMobileOrTablet && { flex: 1, maxWidth: 'none' },
+                  isPhone && { width: '100%' }
+                ]}>
+                  {/* Search renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+                  <Search size={15} color={theme.isDark ? BRAND.textoSecundario : 'rgba(23,18,43,0.56)'} />
+                  {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
+                  <TextInput
+                    value={busqueda}
+                    onChangeText={setBusqueda}
+                    placeholder={t('admin.calendario.search_placeholder')}
+                    placeholderTextColor={theme.isDark ? 'rgba(255,255,255,0.38)' : 'rgba(23,18,43,0.38)'}
+                    style={[estilos.busquedaInput, { color: theme.text }]}
+                  />
+                </View>
+              )}
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
               <View style={[
-                estilos.busqueda,
-                {
-                  backgroundColor: theme.isDark ? 'rgba(0,0,0,0.22)' : 'rgba(82,58,150,0.06)',
-                  borderColor: theme.border,
-                }
+                estilos.segmentos,
+                isPhone && { width: '100%', justifyContent: 'space-around' }
               ]}>
-                {/* Search renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                <Search size={15} color={theme.isDark ? BRAND.textoSecundario : 'rgba(23,18,43,0.56)'} />
-                {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
-                <TextInput 
-                  value={busqueda} 
-                  onChangeText={setBusqueda} 
-                  placeholder={t('admin.calendario.search_placeholder')} 
-                  placeholderTextColor={theme.isDark ? 'rgba(255,255,255,0.38)' : 'rgba(23,18,43,0.38)'} 
-                  style={[estilos.busquedaInput, { color: theme.text }]} 
-                />
-              </View>
-              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View style={estilos.segmentos}>
                 {(['mes', 'semana', 'dia', 'agenda'] as VistaCalendario[]).map((item) => (
                   // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-                  <TouchableOpacity key={item} onPress={() => setVista(item)} style={[estilos.segmento, vista === item && estilos.segmentoActivo]}>
+                  <TouchableOpacity key={item} onPress={() => setVista(item)} style={[estilos.segmento, vista === item && estilos.segmentoActivo, isPhone && { flex: 1, alignItems: 'center' }]}>
                     {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                     <Text style={[estilos.segmentoTexto, vista === item && estilos.segmentoTextoActivo]}>{t(`admin.calendario.vistas.${item}`)}</Text>
                   </TouchableOpacity>
@@ -703,8 +718,8 @@ const CalendarioEmpresarial: React.FC = () => {
 
           {vista === 'mes' && (
             // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
-            <View style={estilos.mesGrid}>
-              {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((dia) => <Text key={dia} style={estilos.diaSemana}>{dia}</Text>)}
+            <View style={[estilos.mesGrid, isPhone && { gap: 4 }]}>
+              {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((dia) => <Text key={dia} style={[estilos.diaSemana, isPhone && { fontSize: 9, textAlign: 'center', marginBottom: 2 }]}>{dia}</Text>)}
               {diasMes.map((dia) => {
                 // Declara eventosDia; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
                 const eventosDia = eventosPorDia(dia);
@@ -713,21 +728,39 @@ const CalendarioEmpresarial: React.FC = () => {
                 // Devuelve el JSX que React Native renderiza en pantalla.
                 return (
                   // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-                  <TouchableOpacity key={dia.toISOString()} onPress={() => eventosDia[0] ? abrirEditar(eventosDia[0]) : abrirCrear(dia)} activeOpacity={0.88} style={[estilos.diaMes, !esMesActual && estilos.diaMesFuera, mismoDia(dia, new Date()) && estilos.diaHoy]}>
+                  <TouchableOpacity key={dia.toISOString()} onPress={() => eventosDia[0] ? abrirEditar(eventosDia[0]) : abrirCrear(dia)} activeOpacity={0.88} style={[estilos.diaMes, !esMesActual && estilos.diaMesFuera, mismoDia(dia, new Date()) && estilos.diaHoy, isMobileOrTablet && { minHeight: 60, padding: 4 }, isPhone && { minHeight: 56, padding: 4, borderRadius: 8 }]}>
                     {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                    <Text style={[estilos.diaNumero, !esMesActual && estilos.diaNumeroFuera]}>{dia.getDate()}</Text>
+                    <Text style={[estilos.diaNumero, !esMesActual && estilos.diaNumeroFuera, isPhone && { fontSize: 11, marginBottom: 2 }]}>{dia.getDate()}</Text>
                     {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
                     <View style={estilos.eventosMini}>
-                      {eventosDia.slice(0, 3).map((evento) => (
-                        // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
-                        <View key={evento.id} style={[estilos.eventoMini, { backgroundColor: `${colorTipo(evento.tipo)}22`, borderColor: `${colorTipo(evento.tipo)}66` }]}>
-                          {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                          <View style={[estilos.puntoTipo, { backgroundColor: colorTipo(evento.tipo) }]} />
-                          {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-                          <Text style={estilos.eventoMiniTexto} numberOfLines={1}>{evento.titulo}</Text>
+                      {isMobileOrTablet ? (
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                          {eventosDia.map((evento) => (
+                            <View
+                              key={evento.id}
+                              style={{
+                                width: 6,
+                                height: 6,
+                                borderRadius: 3,
+                                backgroundColor: colorTipo(evento.tipo)
+                              }}
+                            />
+                          ))}
                         </View>
-                      ))}
-                      {eventosDia.length > 3 && <Text style={estilos.masEventos}>+{eventosDia.length - 3}</Text>}
+                      ) : (
+                        <>
+                          {eventosDia.slice(0, 3).map((evento) => (
+                            // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
+                            <View key={evento.id} style={[estilos.eventoMini, { backgroundColor: `${colorTipo(evento.tipo)}22`, borderColor: `${colorTipo(evento.tipo)}66` }]}>
+                              {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
+                              <View style={[estilos.puntoTipo, { backgroundColor: colorTipo(evento.tipo) }]} />
+                              {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
+                              <Text style={estilos.eventoMiniTexto} numberOfLines={1}>{evento.titulo}</Text>
+                            </View>
+                          ))}
+                          {eventosDia.length > 3 && <Text style={estilos.masEventos}>+{eventosDia.length - 3}</Text>}
+                        </>
+                      )}
                     </View>
                   </TouchableOpacity>
                 );
@@ -737,10 +770,10 @@ const CalendarioEmpresarial: React.FC = () => {
 
           {vista === 'semana' && (
             // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
-            <View style={estilos.semanaGrid}>
+            <View style={[estilos.semanaGrid, isMobileOrTablet && { flexDirection: 'column', gap: 16 }]}>
               {diasSemana.map((dia) => (
                 // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
-                <View key={dia.toISOString()} style={estilos.columnaSemana}>
+                <View key={dia.toISOString()} style={[estilos.columnaSemana, isMobileOrTablet && { minHeight: 0, gap: 8 }]}>
                   {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
                   <TouchableOpacity onPress={() => setFechaActiva(dia)} style={[estilos.cabeceraSemana, mismoDia(dia, fechaActiva) && estilos.cabeceraSemanaActiva]}>
                     {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -754,18 +787,18 @@ const CalendarioEmpresarial: React.FC = () => {
 
           {vista === 'dia' && (
             // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
-            <View style={estilos.diaVista}>
+            <View style={[estilos.diaVista, isPhone && { gap: 12 }]}>
               {Array.from({ length: 13 }, (_, indice) => indice + 7).map((hora) => {
                 // Calcula eventosHora; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
                 const eventosHora = eventosPorDia(fechaActiva).filter((evento) => evento.fechaInicio?.getHours() === hora);
                 // Devuelve el JSX que React Native renderiza en pantalla.
                 return (
                   // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
-                  <View key={hora} style={estilos.horaFila}>
+                  <View key={hora} style={[estilos.horaFila, isPhone && { gap: 8 }]}>
                     {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                    <Text style={estilos.horaTexto}>{String(hora).padStart(2, '0')}:00</Text>
+                    <Text style={[estilos.horaTexto, isPhone && { width: 42, fontSize: 10 }]}>{String(hora).padStart(2, '0')}:00</Text>
                     {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                    <View style={estilos.horaContenido}>
+                    <View style={[estilos.horaContenido, isPhone && { paddingLeft: 8, minHeight: 50 }]}>
                       {eventosHora.length > 0 ? eventosHora.map((evento) => <EventoCard key={evento.id} evento={evento} color={colorTipo(evento.tipo)} onEditar={() => abrirEditar(evento)} onEliminar={() => eliminarEvento(evento)} />) : <TouchableOpacity onPress={() => { const fecha = new Date(fechaActiva); fecha.setHours(hora, 0, 0, 0); abrirCrear(fecha); }} style={estilos.horaVacia}><Plus size={14} color={BRAND.textoSecundario} /></TouchableOpacity>}
                     </View>
                   </View>
@@ -786,7 +819,7 @@ const CalendarioEmpresarial: React.FC = () => {
 
       {/* Ventana modal; separa una accion o detalle sin abandonar la pantalla actual. */}
       <AdminModal visible={modalVisible} animationType="fade" onRequestClose={() => setModalVisible(false)}>
-        <View style={estilos.modalFondo}>
+        <View style={[estilos.modalFondo, isPhone && { padding: 10, justifyContent: 'flex-end' }]}>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
           <AdminModalFormGlass
             style={[
@@ -795,14 +828,15 @@ const CalendarioEmpresarial: React.FC = () => {
                 borderColor: theme.border,
                 backgroundColor: theme.isDark ? ADMIN.fondoVidrioFuerte : 'rgba(255,255,255,0.96)',
               },
+              isPhone && { maxHeight: '96%', borderRadius: 16, padding: 14 },
             ]}
           >
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.modalHeader}>
+            <View style={[estilos.modalHeader, isPhone && { alignItems: 'flex-start', gap: 10 }]}>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View>
+              <View style={isPhone ? { flex: 1, paddingRight: 8 } : undefined}>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={[estilos.modalTitulo, { color: theme.text }]}>{eventoEditando ? t('admin.calendario.modal.title_edit') : t('admin.calendario.modal.title_create')}</Text>
+                <Text style={[estilos.modalTitulo, { color: theme.text }, isPhone && { fontSize: 18 }]}>{eventoEditando ? t('admin.calendario.modal.title_edit') : t('admin.calendario.modal.title_create')}</Text>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={[estilos.modalSubtitulo, { color: theme.muted }]}>{t('admin.calendario.modal.subtitle')}</Text>
               </View>
@@ -811,7 +845,7 @@ const CalendarioEmpresarial: React.FC = () => {
             </View>
 
             {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={estilos.formulario}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[estilos.formulario, isPhone && { paddingBottom: 14 }]}>
               {/* Campo renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <Campo label={t('admin.calendario.label_title')} value={formulario.titulo} onChangeText={(titulo: string) => setFormulario((actual) => ({ ...actual, titulo }))} />
               {/* Campo renderiza una pieza visual reutilizable dentro de esta pantalla. */}
@@ -819,10 +853,10 @@ const CalendarioEmpresarial: React.FC = () => {
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={[estilos.inputLabel, { color: theme.muted }]}>{t('admin.calendario.label_type')}</Text>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View style={estilos.tiposGrid}>
+              <View style={[estilos.tiposGrid, isPhone && { gap: 10 }]}>
                 {tiposEvento.map((tipo) => (
                   // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-                  <TouchableOpacity key={tipo.id} onPress={() => setFormulario((actual) => ({ ...actual, tipo: tipo.id }))} style={[estilos.tipoChip, { backgroundColor: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(82,58,150,0.03)', borderColor: theme.border }, formulario.tipo === tipo.id && { borderColor: tipo.color, backgroundColor: `${tipo.color}18` }]}>
+                  <TouchableOpacity key={tipo.id} onPress={() => setFormulario((actual) => ({ ...actual, tipo: tipo.id }))} style={[estilos.tipoChip, { backgroundColor: theme.isDark ? 'rgba(255,255,255,0.035)' : 'rgba(82,58,150,0.03)', borderColor: theme.border }, formulario.tipo === tipo.id && { borderColor: tipo.color, backgroundColor: `${tipo.color}18` }, isPhone && { flexBasis: '48%', justifyContent: 'center' }]}>
                     {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
                     <View style={[estilos.puntoTipo, { backgroundColor: tipo.color }]} />
                     {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -831,54 +865,54 @@ const CalendarioEmpresarial: React.FC = () => {
                 ))}
               </View>
               {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-              <View style={estilos.formGrid}>
+              <View style={[estilos.formGrid, isPhone && { flexDirection: 'column', gap: 12 }]}>
                 {/* Selector renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                <Selector 
-                  label={t('admin.calendario.label_start')} 
-                  valor={formulario.inicio} 
+                <Selector
+                  label={t('admin.calendario.label_start')}
+                  valor={formulario.inicio}
                   icono={Clock3}
-                  alPresionar={() => setPickerActivo('inicio')} 
+                  alPresionar={() => setPickerActivo('inicio')}
                 />
                 {/* Selector renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                <Selector 
-                  label={t('admin.calendario.label_end')} 
-                  valor={formulario.fin} 
+                <Selector
+                  label={t('admin.calendario.label_end')}
+                  valor={formulario.fin}
                   icono={Clock3}
-                  alPresionar={() => setPickerActivo('fin')} 
+                  alPresionar={() => setPickerActivo('fin')}
                 />
               </View>
-              
+
               {/* Selector renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <Selector 
-                label={t('admin.calendario.label_employees')} 
-                valor={formulario.empleadoIds ? `${dividirLista(formulario.empleadoIds).length} seleccionados` : ''} 
+              <Selector
+                label={t('admin.calendario.label_employees')}
+                valor={formulario.empleadoIds ? `${dividirLista(formulario.empleadoIds).length} seleccionados` : ''}
                 placeholder="Seleccionar empleados..."
                 icono={Users}
-                alPresionar={() => setPickerActivo('empleados')} 
+                alPresionar={() => setPickerActivo('empleados')}
               />
-              
+
               {/* Selector renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <Selector 
-                label={t('admin.calendario.label_depts')} 
-                valor={formulario.departamentos ? `${dividirLista(formulario.departamentos).length} seleccionados` : ''} 
+              <Selector
+                label={t('admin.calendario.label_depts')}
+                valor={formulario.departamentos ? `${dividirLista(formulario.departamentos).length} seleccionados` : ''}
                 placeholder="Seleccionar departamentos..."
                 icono={Search}
-                alPresionar={() => setPickerActivo('departamentos')} 
+                alPresionar={() => setPickerActivo('departamentos')}
               />
-              
+
               {/* Selector renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <Selector 
-                label={t('admin.calendario.label_sedes')} 
-                valor={formulario.sedes ? `${dividirLista(formulario.sedes).length} seleccionadas` : ''} 
+              <Selector
+                label={t('admin.calendario.label_sedes')}
+                valor={formulario.sedes ? `${dividirLista(formulario.sedes).length} seleccionadas` : ''}
                 placeholder="Seleccionar sedes..."
                 icono={MapPin}
-                alPresionar={() => setPickerActivo('sedes')} 
+                alPresionar={() => setPickerActivo('sedes')}
               />
             </ScrollView>
 
             {/* Picker Modal for Entities and Dates */}
             <AdminModal visible={!!pickerActivo} animationType="fade">
-              <View style={estilos.modalFondo}>
+              <View style={[estilos.modalFondo, isPhone && { padding: 10, justifyContent: 'flex-end' }]}>
                 <AdminModalFormGlass
                   style={[
                     estilos.modalTarjeta,
@@ -887,30 +921,31 @@ const CalendarioEmpresarial: React.FC = () => {
                       borderColor: theme.border,
                       backgroundColor: theme.isDark ? ADMIN.fondoVidrioFuerte : 'rgba(255,255,255,0.96)',
                     },
+                    isPhone && { height: '92%', maxHeight: '92%', borderRadius: 16, padding: 14 },
                   ]}
                 >
                   {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                  <View style={estilos.modalHeader}>
+                  <View style={[estilos.modalHeader, isPhone && { alignItems: 'flex-start', gap: 10 }]}>
                     {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                    <Text style={[estilos.modalTitulo, { color: theme.text }]}>
+                    <Text style={[estilos.modalTitulo, { color: theme.text }, isPhone && { flex: 1, fontSize: 17, paddingRight: 8 }]}>
                       {pickerActivo === 'inicio' || pickerActivo === 'fin' ? `Seleccionar Fecha ${pickerActivo === 'inicio' ? 'Inicio' : 'Fin'}` : `Seleccionar ${pickerActivo}`}
                     </Text>
                     {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
                     <TouchableOpacity onPress={() => setPickerActivo(null)} style={estilos.iconoBoton}><X size={18} color={theme.text} /></TouchableOpacity>
                   </View>
-                  
+
                   {pickerActivo === 'inicio' || pickerActivo === 'fin' ? (
                     // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
                     <View style={{ flex: 1 }}>
                       {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                      <View style={estilos.pickerFechaHeader}>
+                      <View style={[estilos.pickerFechaHeader, isPhone && { marginBottom: 14 }]}>
                         {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
                         <TouchableOpacity onPress={() => { const d = new Date(fechaPicker); d.setMonth(d.getMonth() - 1); setFechaPicker(d); }}>
                           {/* ChevronLeft renderiza una pieza visual reutilizable dentro de esta pantalla. */}
                           <ChevronLeft size={20} color={theme.text} />
                         </TouchableOpacity>
                         {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                        <Text style={[estilos.pickerMesAno, { color: theme.text }]}>{nombreMes(fechaPicker)}</Text>
+                        <Text style={[estilos.pickerMesAno, { color: theme.text }, isPhone && { fontSize: 14 }]} numberOfLines={1}>{nombreMes(fechaPicker)}</Text>
                         {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
                         <TouchableOpacity onPress={() => { const d = new Date(fechaPicker); d.setMonth(d.getMonth() + 1); setFechaPicker(d); }}>
                           {/* ChevronRight renderiza una pieza visual reutilizable dentro de esta pantalla. */}
@@ -932,7 +967,7 @@ const CalendarioEmpresarial: React.FC = () => {
                           const inicio = new Date(primero);
                           // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
                           inicio.setDate(primero.getDate() - primero.getDay());
-                          
+
                           // Devuelve el JSX que React Native renderiza en pantalla.
                           return Array.from({ length: 42 }).map((_, idx) => {
                             // Calcula d; normaliza fechas para comparaciones, filtros o etiquetas visibles.
@@ -947,8 +982,8 @@ const CalendarioEmpresarial: React.FC = () => {
                             // Devuelve el JSX que React Native renderiza en pantalla.
                             return (
                               // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-                              <TouchableOpacity 
-                                key={idx} 
+                              <TouchableOpacity
+                                key={idx}
                                 onPress={() => setFechaPicker(d)}
                                 style={[estilos.pickerDia, !esMesActual && { opacity: 0.3 }, esSeleccionado && estilos.pickerDiaSeleccionado]}
                               >
@@ -961,13 +996,13 @@ const CalendarioEmpresarial: React.FC = () => {
                       </View>
 
                       {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                      <View style={{ marginTop: 25, flex: 1 }}>
+                      <View style={{ marginTop: isPhone ? 16 : 25, flex: 1 }}>
                         {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                         <Text style={[estilos.subLabelPicker, { color: theme.text, fontSize: 11 }]}>Seleccionar Hora</Text>
                         {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
                         <ScrollView showsVerticalScrollIndicator={false}>
                           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-                          <View style={estilos.pickerHorasGrid}>
+                          <View style={[estilos.pickerHorasGrid, isPhone && { gap: 8 }]}>
                             {Array.from({ length: 24 }).map((_, hora) => {
                               // Calcula fActual; normaliza fechas para comparaciones, filtros o etiquetas visibles.
                               const fActual = convertirFecha(formulario[pickerActivo]) || new Date();
@@ -976,8 +1011,8 @@ const CalendarioEmpresarial: React.FC = () => {
                               // Devuelve el JSX que React Native renderiza en pantalla.
                               return (
                                 // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-                                <TouchableOpacity 
-                                  key={hora} 
+                                <TouchableOpacity
+                                  key={hora}
                                   onPress={() => {
                                     // Calcula d; normaliza fechas para comparaciones, filtros o etiquetas visibles.
                                     const d = new Date(fechaPicker);
@@ -988,7 +1023,7 @@ const CalendarioEmpresarial: React.FC = () => {
                                     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
                                     setPickerActivo(null);
                                   }}
-                                  style={[estilos.pickerHoraItem, { backgroundColor: theme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', borderColor: theme.border }, esSeleccionado && estilos.pickerHoraItemActivo]}
+                                  style={[estilos.pickerHoraItem, { backgroundColor: theme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', borderColor: theme.border }, esSeleccionado && estilos.pickerHoraItemActivo, isPhone && { width: '30%', minHeight: 38 }]}
                                 >
                                   {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                                   <Text style={[estilos.pickerHoraTexto, { color: theme.text }, esSeleccionado && { color: '#fff' }]}>
@@ -1003,13 +1038,13 @@ const CalendarioEmpresarial: React.FC = () => {
                     </View>
                   ) : (
                     // Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa.
-                    <ScrollView style={{ flex: 1 }}>
+                    <ScrollView style={{ flex: 1 }} contentContainerStyle={isPhone ? { paddingBottom: 10 } : undefined}>
                       {(pickerActivo === 'empleados' ? usuarios : pickerActivo === 'departamentos' ? departamentos : sedes).map((item) => {
                         // Declara ids; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
                         const ids = dividirLista(pickerActivo === 'empleados' ? formulario.empleadoIds : pickerActivo === 'departamentos' ? formulario.departamentos : formulario.sedes);
                         // Declara estaSeleccionado; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
                         const estaSeleccionado = ids.includes(item.id || '');
-                        
+
                         // Calcula toggleItem; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
                         const toggleItem = () => {
                           // Declara nuevas; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -1025,25 +1060,25 @@ const CalendarioEmpresarial: React.FC = () => {
                           // Declara valor; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
                           const valor = nuevas.join(', ');
                           // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-                          setFormulario(prev => ({ 
-                            ...prev, 
-                            [pickerActivo === 'empleados' ? 'empleadoIds' : pickerActivo === 'departamentos' ? 'departamentos' : 'sedes']: valor 
+                          setFormulario(prev => ({
+                            ...prev,
+                            [pickerActivo === 'empleados' ? 'empleadoIds' : pickerActivo === 'departamentos' ? 'departamentos' : 'sedes']: valor
                           }));
                         };
 
                         // Devuelve el JSX que React Native renderiza en pantalla.
                         return (
                           // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-                          <TouchableOpacity key={item.id} onPress={toggleItem} style={[estilos.itemPicker, { backgroundColor: theme.isDark ? 'rgba(255,255,255,0.03)' : 'rgba(82,58,150,0.03)' }, estaSeleccionado && estilos.itemPickerActivo]}>
+                          <TouchableOpacity key={item.id} onPress={toggleItem} style={[estilos.itemPicker, { backgroundColor: theme.isDark ? 'rgba(255,255,255,0.03)' : 'rgba(82,58,150,0.03)' }, estaSeleccionado && estilos.itemPickerActivo, isPhone && { padding: 14 }]}>
                             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                            <Text style={[estilos.itemPickerTexto, { color: theme.text }, estaSeleccionado && { color: '#fff' }]}>{item.nombre || item.name || item.correo}</Text>
+                            <Text style={[estilos.itemPickerTexto, { color: theme.text }, estaSeleccionado && { color: '#fff' }]} numberOfLines={2}>{item.nombre || item.name || item.correo}</Text>
                             {estaSeleccionado && <Check size={16} color={BRAND.primarioClaro} />}
                           </TouchableOpacity>
                         );
                       })}
                     </ScrollView>
                   )}
-                  
+
                   {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
                   <TouchableOpacity onPress={() => setPickerActivo(null)} style={estilos.botonCerrarPicker}>
                     {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -1053,10 +1088,10 @@ const CalendarioEmpresarial: React.FC = () => {
               </View>
             </AdminModal>
 
-            <View style={estilos.modalAcciones}>
+            <View style={[estilos.modalAcciones, isPhone && { flexDirection: 'column-reverse', alignItems: 'stretch', gap: 10 }]}>
               {eventoEditando && (
                 // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-                <TouchableOpacity onPress={() => eliminarEvento(eventoEditando)} style={estilos.botonEliminar}>
+                <TouchableOpacity onPress={() => eliminarEvento(eventoEditando)} style={[estilos.botonEliminar, isPhone && { justifyContent: 'center', width: '100%' }]}>
                   {/* Trash2 renderiza una pieza visual reutilizable dentro de esta pantalla. */}
                   <Trash2 size={16} color={BRAND.error} />
                   {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -1067,7 +1102,7 @@ const CalendarioEmpresarial: React.FC = () => {
               <TouchableOpacity
                 {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})}
                 onPress={guardarEvento}
-                style={estilos.botonGuardar}
+                style={[estilos.botonGuardar, isPhone && { justifyContent: 'center', width: '100%', minHeight: 46 }]}
               >
                 {/* Check renderiza una pieza visual reutilizable dentro de esta pantalla. */}
                 <Check

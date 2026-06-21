@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
+  onAuthStateChanged,
   signInWithEmailAndPassword,
   signInWithPopup,
   updateProfile,
@@ -36,6 +37,7 @@ import { auth, db } from '@/infrastructure/firebase/firebaseConfig';
 import BorderGlow from './BorderGlow';
 // Importa StarButton; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import StarButton from './StarButton';
+import { getActivePlan } from './planAccess';
 // Importa estilos CSS; aplica clases, animaciones o efectos visuales usados por este componente web.
 import './LandingAuth.css';
 
@@ -78,13 +80,10 @@ type LoginEstado = {
 type EmpresaEstado = {
   ciudad: string;
   direccion: string;
-  industria: string;
   nombre: string;
   pais: string;
   sedePrincipal: string;
-  tamano: string;
   telefono: string;
-  tipo: string;
 };
 
 /**
@@ -116,27 +115,11 @@ const estadoLoginInicial: LoginEstado = {
 const estadoEmpresaInicial: EmpresaEstado = {
   ciudad: '',
   direccion: '',
-  industria: '',
   nombre: '',
   pais: '',
-  sedePrincipal: '',
-  tamano: '',
+  sedePrincipal: 'Sede central',
   telefono: '',
-  tipo: '',
 };
-
-/**
- * Declaracion tiposEmpresa. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
- */
-const tiposEmpresa = ['Startup', 'PYME', 'Corporativo', 'Institución', 'Holding'];
-/**
- * Declaracion industrias. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
- */
-const industrias = ['Tecnología', 'Servicios', 'Retail', 'Manufactura', 'Salud', 'Educación', 'Finanzas', 'Otro'];
-/**
- * Declaracion tamanos. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
- */
-const tamanos = ['1-20', '21-50', '51-150', '151-500', '500+'];
 
 /**
  * Declaracion limpiarTexto. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
@@ -314,46 +297,6 @@ function Campo({
   );
 }
 
-/**
- * Componente Selector. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
- */
-function Selector({
-  error,
-  label,
-  onChange,
-  opciones,
-  value,
-}: {
-  error?: string;
-  label: string;
-  onChange: (valor: string) => void;
-  opciones: { value: string; label: string }[];
-  value: string;
-}) {
-  // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const { t } = useTranslation();
-  // Devuelve el JSX que React Native renderiza en pantalla.
-  return (
-    // label renderiza una pieza visual reutilizable dentro de esta pantalla.
-    <label className={`nx-auth-field ${error ? 'is-invalid' : ''}`}>
-      {/* span renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <span>{label}</span>
-      {/* select renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <select onChange={(event) => onChange(event.target.value)} value={value}>
-        {/* option renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-        <option value="">{t('landing_auth.field_type_placeholder')}</option>
-        {opciones.map((opcion) => (
-          // option renderiza una pieza visual reutilizable dentro de esta pantalla.
-          <option key={opcion.value} value={opcion.value}>
-            {opcion.label}
-          </option>
-        ))}
-      </select>
-      {error ? <small>{error}</small> : null}
-    </label>
-  );
-}
-
 const normalizarTexto = (texto: string) => {
   return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 };
@@ -362,8 +305,40 @@ interface CountryData {
   name: string;
   englishName: string;
   code: string;
-  flag: string;
   dialCode: string;
+}
+
+function countryFlagEmoji(code: string) {
+  return code.toUpperCase().replace(/[A-Z]/g, (letter) => String.fromCodePoint(127397 + letter.charCodeAt(0)));
+}
+
+const FALLBACK_COUNTRIES: CountryData[] = [
+  { name: 'Argentina', englishName: 'Argentina', code: 'AR', dialCode: '+54' },
+  { name: 'Bolivia', englishName: 'Bolivia', code: 'BO', dialCode: '+591' },
+  { name: 'Canadá', englishName: 'Canada', code: 'CA', dialCode: '+1' },
+  { name: 'Chile', englishName: 'Chile', code: 'CL', dialCode: '+56' },
+  { name: 'Colombia', englishName: 'Colombia', code: 'CO', dialCode: '+57' },
+  { name: 'Costa Rica', englishName: 'Costa Rica', code: 'CR', dialCode: '+506' },
+  { name: 'Ecuador', englishName: 'Ecuador', code: 'EC', dialCode: '+593' },
+  { name: 'El Salvador', englishName: 'El Salvador', code: 'SV', dialCode: '+503' },
+  { name: 'España', englishName: 'Spain', code: 'ES', dialCode: '+34' },
+  { name: 'Estados Unidos', englishName: 'United States', code: 'US', dialCode: '+1' },
+  { name: 'Guatemala', englishName: 'Guatemala', code: 'GT', dialCode: '+502' },
+  { name: 'Honduras', englishName: 'Honduras', code: 'HN', dialCode: '+504' },
+  { name: 'México', englishName: 'Mexico', code: 'MX', dialCode: '+52' },
+  { name: 'Nicaragua', englishName: 'Nicaragua', code: 'NI', dialCode: '+505' },
+  { name: 'Panamá', englishName: 'Panama', code: 'PA', dialCode: '+507' },
+  { name: 'Perú', englishName: 'Peru', code: 'PE', dialCode: '+51' },
+  { name: 'Venezuela', englishName: 'Venezuela', code: 'VE', dialCode: '+58' },
+];
+
+function cleanCityName(value: string) {
+  return value
+    .normalize('NFC')
+    .replace(/^[‘’ʻʼ`´']+\s*/u, '')
+    .replace(/[‘’ʻʼ`´']/gu, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /**
@@ -406,8 +381,17 @@ function CustomSelect({
   const resolveItemValue = getItemValue ?? ((item: any) => hasFlags ? (item as CountryData).name : String(item));
   const resolveItemLabel = getItemLabel ?? resolveItemValue;
   
-  const selectedItem = items.find((item) => resolveItemValue(item) === value);
+  // Find selected item from current items or just use value
+  let selectedItem: any = undefined;
+  for (const item of items) {
+    if (resolveItemValue(item) === value) {
+      selectedItem = item;
+      break;
+    }
+  }
   const selectedLabel = selectedItem ? resolveItemLabel(selectedItem) : value;
+
+
 
   return (
     <label className={`nx-auth-field ${error ? 'is-invalid' : ''}`}>
@@ -416,27 +400,30 @@ function CustomSelect({
         <div 
           className="nx-dropdown-trigger" 
           onClick={(e) => {
+            e.preventDefault();
             e.stopPropagation();
             setIsOpen(!isOpen);
           }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setIsOpen(!isOpen);
+            }
+          }}
           tabIndex={0}
+          role="button"
+          aria-haspopup="listbox"
+          aria-expanded={isOpen}
         >
           <div className="nx-dropdown-trigger-content">
             {loading ? (
               <span style={{ opacity: 0.5 }}>{t('landing_auth.loading')}...</span>
             ) : hasFlags && selectedItem ? (
               <>
-                {selectedItem.flag && (
-                  <img 
-                    src={selectedItem.flag} 
-                    alt="" 
-                    loading="lazy"
-                    className="nx-dropdown-flag" 
-                  />
-                )}
+                <span className="nx-phone-flag" aria-hidden="true">{countryFlagEmoji(selectedItem.code)}</span>
                 <span>{selectedLabel}</span>
               </>
-            ) : !hasFlags && value ? (
+            ) : value ? (
               <span>{selectedLabel}</span>
             ) : (
               <span style={{ opacity: 0.5 }}>{placeholder}</span>
@@ -446,7 +433,7 @@ function CustomSelect({
         </div>
         
         {isOpen && (
-          <div className="nx-dropdown-panel" onClick={(e) => e.stopPropagation()}>
+          <div className="nx-dropdown-panel" onClick={(e) => e.stopPropagation()} role="listbox">
             <div className="nx-dropdown-search-wrapper">
               <input
                 type="text"
@@ -469,16 +456,15 @@ function CustomSelect({
                     <div 
                       key={idx}
                       className={`nx-dropdown-item ${isSelected ? 'active' : ''}`}
-                      onClick={() => onSelect(item)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onSelect(item);
+                      }}
+                      role="option"
+                      aria-selected={isSelected}
                     >
-                      {hasFlags && (item as CountryData).flag && (
-                        <img 
-                          src={(item as CountryData).flag} 
-                          alt="" 
-                          loading="lazy"
-                          className="nx-dropdown-flag" 
-                        />
-                      )}
+                      {hasFlags ? <span className="nx-phone-flag" aria-hidden="true">{countryFlagEmoji((item as CountryData).code)}</span> : null}
                       <span>{itemLabel}</span>
                     </div>
                   );
@@ -496,7 +482,7 @@ function CustomSelect({
 /**
  * Componente LandingAuth. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
-export default function LandingAuth({ modoInicial = 'registro', planSeleccionado }: { modoInicial?: 'registro' | 'login'; planSeleccionado: string }) {
+export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?: VistaAuth; planSeleccionado: string; returnTo?: string }) {
   // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { t, i18n } = useTranslation();
   // Inicializa [vista, setVista]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -522,7 +508,7 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
   // Inicializa [pasoEmpresa, setPasoEmpresa]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [pasoEmpresa, setPasoEmpresa] = useState(1);
 
-  const [paises, setPaises] = useState<CountryData[]>([]);
+  const [paises, setPaises] = useState<CountryData[]>(FALLBACK_COUNTRIES);
   const [ciudades, setCiudades] = useState<string[]>([]);
   const [cargandoPaises, setCargandoPaises] = useState(false);
   const [cargandoCiudades, setCargandoCiudades] = useState(false);
@@ -536,8 +522,15 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
   const [buscarPrefijo, setBuscarPrefijo] = useState('');
 
   const [prefijoSeleccionado, setPrefijoSeleccionado] = useState('+503');
+  const [prefijoPaisCodigo, setPrefijoPaisCodigo] = useState('SV');
   const mostrarPaisesEnIngles = i18n.language?.startsWith('en');
   const obtenerEtiquetaPais = (pais: CountryData) => mostrarPaisesEnIngles ? pais.englishName : pais.name;
+
+  const navegarLanding = () => {
+    window.history.pushState({}, '', '/landing');
+    window.dispatchEvent(new Event('nexxus:navigate'));
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  };
 
   const cerrarDropdowns = () => {
     setPaisAbierto(false);
@@ -546,15 +539,49 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
   };
 
   useEffect(() => {
+    if (modoInicial !== 'empresa') return;
+    return onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        setVista('login');
+        return;
+      }
+      setUsuarioPendiente({
+        correo: user.email ?? '',
+        fotoPerfil: user.photoURL,
+        nombre: user.displayName || user.email?.split('@')[0] || t('miPulso.user_default'),
+        uid: user.uid,
+      });
+      setVista('empresa');
+      setPasoEmpresa(1);
+    });
+  }, [modoInicial, t]);
+
+  useEffect(() => {
     const handleDocumentClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (!target.closest('.nx-custom-dropdown')) {
         cerrarDropdowns();
       }
     };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        cerrarDropdowns();
+      }
+    };
+
+    const handleScroll = () => {
+      cerrarDropdowns();
+    };
+
     document.addEventListener('click', handleDocumentClick);
+    document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('scroll', handleScroll, true);
+
     return () => {
       document.removeEventListener('click', handleDocumentClick);
+      document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('scroll', handleScroll, true);
     };
   }, []);
 
@@ -566,45 +593,41 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
 
   useEffect(() => {
     if (vista !== 'empresa') return;
+    let active = true;
 
     const cargarPaises = async () => {
       setCargandoPaises(true);
       try {
-        const res = await fetch("https://restcountries.com/v3.1/all?fields=name,translations,cca2,flags,idd");
-        if (!res.ok) throw new Error("Error fetching countries");
-        const data = await res.json();
-
-        const lista: CountryData[] = data.map((c: any) => {
-          const root = c.idd?.root || '';
-          const suffixes = c.idd?.suffixes || [];
-          let dialCode = '';
-          if (suffixes.length === 1) {
-            dialCode = root + suffixes[0];
-          } else if (suffixes.length > 1) {
-            dialCode = root;
-          } else {
-            dialCode = root;
-          }
-          return {
-            name: c.translations?.spa?.common || c.name.common,
-            englishName: c.name.common,
-            code: c.cca2,
-            flag: c.flags.png,
-            dialCode: dialCode || '+1'
-          };
-        });
-
-        lista.sort((a, b) => a.name.localeCompare(b.name));
-        setPaises(lista);
-      } catch (err) {
-        console.error("Error loading countries:", err);
+        const response = await fetch('https://countriesnow.space/api/v0.1/countries/codes');
+        if (!response.ok) throw new Error('Error fetching countries');
+        const payload = await response.json();
+        const displayNames = typeof Intl.DisplayNames === 'function'
+          ? new Intl.DisplayNames([mostrarPaisesEnIngles ? 'en' : 'es'], { type: 'region' })
+          : null;
+        const allCountries: CountryData[] = Array.isArray(payload.data)
+          ? payload.data
+              .filter((country: any) => country?.name && country?.code && country?.dial_code)
+              .map((country: any) => ({
+                name: displayNames?.of(country.code) || country.name,
+                englishName: country.name,
+                code: country.code,
+                dialCode: country.dial_code,
+              }))
+              .sort((a: CountryData, b: CountryData) => a.name.localeCompare(b.name))
+          : [];
+        if (active && allCountries.length > 0) setPaises(allCountries);
+      } catch (error) {
+        console.error('Error loading countries:', error);
       } finally {
-        setCargandoPaises(false);
+        if (active) setCargandoPaises(false);
       }
     };
 
     cargarPaises();
-  }, [vista]);
+    return () => {
+      active = false;
+    };
+  }, [vista, mostrarPaisesEnIngles]);
 
   useEffect(() => {
     setCiudades([]);
@@ -628,8 +651,13 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
         if (!res.ok) throw new Error("Error fetching cities");
         const data = await res.json();
         if (active) {
-          if (data.error === false && data.data) {
-            const listaCiudades: string[] = data.data;
+          if (data.error === false && Array.isArray(data.data)) {
+            const listaCiudades = [...new Set(
+              data.data
+                .filter((city: unknown): city is string => typeof city === 'string')
+                .map(cleanCityName)
+                .filter(Boolean)
+            )] as string[];
             listaCiudades.sort((a, b) => a.localeCompare(b));
             setCiudades(listaCiudades);
           } else {
@@ -735,12 +763,6 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (limpiarTexto(empresa.nombre).length < 2) nuevos.nombreEmpresa = 'landing_auth.errors.company_name';
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-    if (!empresa.tipo) nuevos.tipo = 'landing_auth.errors.company_type';
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-    if (!empresa.industria) nuevos.industria = 'landing_auth.errors.company_industry';
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-    if (!empresa.tamano) nuevos.tamano = 'landing_auth.errors.company_size';
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (limpiarTexto(empresa.pais).length < 2) nuevos.pais = 'landing_auth.errors.country';
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (limpiarTexto(empresa.ciudad).length < 2) nuevos.ciudad = 'landing_auth.errors.city';
@@ -752,9 +774,6 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
     if (errorTelefono) nuevos.telefono = errorTelefono;
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (limpiarTexto(empresa.sedePrincipal).length < 2) nuevos.sedePrincipal = 'landing_auth.errors.hq';
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-    if (!logo) nuevos.logo = 'landing_auth.errors.logo';
-
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!nuevos.nombreEmpresa) {
       // Prepara duplicado; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
@@ -770,32 +789,8 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
   };
 
   // Prepara continuarSegunUsuario; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
-  const continuarSegunUsuario = async (uid: string, correo: string | null, nombre: string | null, fotoPerfil?: string | null) => {
-    // Prepara usuarioDoc; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
-    const usuarioDoc = await getDoc(doc(db, 'usuarios', uid));
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-    if (usuarioDoc.exists()) {
-      // Declara datos; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const datos = usuarioDoc.data();
-      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-      if (datos.empresaId) {
-        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-        window.location.assign('/app');
-        // Devuelve el valor final calculado para esta funcion o caso de uso.
-        return;
-      }
-    }
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-    setUsuarioPendiente({
-      correo: correo ?? '',
-      fotoPerfil,
-      nombre: nombre || (correo ? correo.split('@')[0] : t('miPulso.user_default')),
-      uid,
-    });
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-    setVista('empresa');
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-    setPasoEmpresa(1);
+  const continuarSegunUsuario = () => {
+    navegarLanding();
   };
 
   // Declara enviarRegistro; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -814,16 +809,7 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
       const credencial = await createUserWithEmailAndPassword(auth, registro.correo.trim().toLowerCase(), registro.password);
       // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
       await updateProfile(credencial.user, { displayName: limpiarTexto(registro.nombre) });
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-      setUsuarioPendiente({
-        correo: credencial.user.email ?? registro.correo.trim().toLowerCase(),
-        nombre: limpiarTexto(registro.nombre),
-        uid: credencial.user.uid,
-      });
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-      setVista('empresa');
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-      setPasoEmpresa(1);
+      navegarLanding();
     } catch (error: any) {
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setErrorGlobal(traducirErrorFirebase(error.code));
@@ -848,7 +834,7 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
       // Declara credencial; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const credencial = await signInWithEmailAndPassword(auth, login.correo.trim().toLowerCase(), login.password);
       // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-      await continuarSegunUsuario(credencial.user.uid, credencial.user.email, credencial.user.displayName, credencial.user.photoURL);
+      continuarSegunUsuario();
     } catch (error: any) {
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setErrorGlobal(traducirErrorFirebase(error.code));
@@ -873,7 +859,7 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
       // Declara credencial; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const credencial = await signInWithPopup(auth, proveedor);
       // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-      await continuarSegunUsuario(credencial.user.uid, credencial.user.email, credencial.user.displayName, credencial.user.photoURL);
+      continuarSegunUsuario();
     } catch (error: any) {
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setErrorGlobal(traducirErrorFirebase(error.code));
@@ -930,7 +916,15 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
       // Declara valido; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const valido = await validarEmpresa();
       // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-      if (!valido || !logo) return;
+      if (!valido) return;
+      const usuarioActual = auth.currentUser;
+      const planActivo = usuarioActual ? await getActivePlan(usuarioActual) : null;
+      if (!planActivo) {
+        setErrorGlobal('landing_auth.errors.active_plan_required');
+        return;
+      }
+      const planSnapshot = await getDoc(doc(db, 'usuarios', usuarioPendiente.uid));
+      const planData = planSnapshot.exists() ? planSnapshot.data() : {};
 
       // Prepara empresaRef; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
       const empresaRef = doc(collection(db, 'empresas'));
@@ -954,13 +948,12 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
           auditoria: true,
           ia: true,
           nomina: true,
-          plan: planSeleccionado,
+          plan: planActivo,
         },
         createdAt: serverTimestamp(),
         direccion: limpiarTexto(empresa.direccion),
         empresa_id: empresaRef.id,
         estado: 'activa',
-        industria: empresa.industria,
         logo_url: '',
         logo_public_id: '',
         logo_hash: '',
@@ -968,12 +961,19 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
         nombre: limpiarTexto(empresa.nombre),
         nombre_normalizado: normalizar(empresa.nombre),
         pais: limpiarTexto(empresa.pais),
-        plan: planSeleccionado,
-        rangoEmpleados: empresa.tamano,
+        plan: planActivo,
+        planActivo,
+        automaticBilling: planData.automaticBilling !== false,
+        planAccessEndsAt: planData.planAccessEndsAt ?? null,
+        planBilling: planData.planBilling ?? 'monthly',
+        planCancelAtPeriodEnd: planData.planCancelAtPeriodEnd === true,
+        planDataDeletionAt: planData.planDataDeletionAt ?? null,
+        planExpiresAt: planData.planExpiresAt ?? null,
+        planPaymentStatus: planData.planPaymentStatus ?? 'paid',
+        planPurchaseId: planData.planPurchaseId ?? null,
+        subscriptionStatus: planData.subscriptionStatus ?? 'active',
         sedes: [],
-        tamano: empresa.tamano,
         telefono: `${prefijoSeleccionado.trim()} ${limpiarTexto(empresa.telefono)}`.trim(),
-        tipo: empresa.tipo,
         updatedAt: serverTimestamp(),
       };
 
@@ -1009,26 +1009,29 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
         sede: limpiarTexto(empresa.sedePrincipal),
         sedeId: sedeRef.id,
         telefono: `${prefijoSeleccionado.trim()} ${limpiarTexto(empresa.telefono)}`.trim(),
-      });
+      }, { merge: true });
       // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
       await batchInicial.commit();
 
-      const uploaded = await uploadCompanyLogo(logo, empresaRef.id);
-      const logoUrl = uploaded.url;
-      await updateDoc(empresaRef, {
-        logo_url: logoUrl,
-        logo_public_id: uploaded.publicId,
-        logo_hash: uploaded.hash,
-        logo_size: uploaded.size,
-        updatedAt: serverTimestamp(),
-      });
-      if (!usuarioPendiente.fotoPerfil) {
-        await updateDoc(doc(db, 'usuarios', usuarioPendiente.uid), {
-          foto_perfil: logoUrl,
-          foto_public_id: uploaded.publicId,
-          foto_hash: uploaded.hash,
-          foto_size: uploaded.size,
+      let logoUrl = '';
+      if (logo) {
+        const uploaded = await uploadCompanyLogo(logo, empresaRef.id);
+        logoUrl = uploaded.url;
+        await updateDoc(empresaRef, {
+          logo_url: logoUrl,
+          logo_public_id: uploaded.publicId,
+          logo_hash: uploaded.hash,
+          logo_size: uploaded.size,
+          updatedAt: serverTimestamp(),
         });
+        if (!usuarioPendiente.fotoPerfil) {
+          await updateDoc(doc(db, 'usuarios', usuarioPendiente.uid), {
+            foto_perfil: logoUrl,
+            foto_public_id: uploaded.publicId,
+            foto_hash: uploaded.hash,
+            foto_size: uploaded.size,
+          });
+        }
       }
 
       // Declara batchEstructura; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -1096,63 +1099,65 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
   // Devuelve el JSX que React Native renderiza en pantalla.
   return (
     <>
-      <BorderGlow className={`nx-auth-shell ${vista === 'empresa' ? 'nx-auth-shell-wide' : ''}`} backgroundColor="rgba(10, 7, 24, 0.82)" glowColor="268 88 72" glowIntensity={0.55}>
+      <BorderGlow className={`nx-auth-shell nx-auth-view-${vista} ${vista === 'empresa' ? 'nx-auth-shell-wide' : ''}`} backgroundColor="#fbfafc" glowColor="268 88 72" glowIntensity={0.38}>
         {/* div renderiza una pieza visual reutilizable dentro de esta pantalla. */}
         <div className="nx-auth-layout">
         {/* aside renderiza una pieza visual reutilizable dentro de esta pantalla. */}
         <aside className="nx-auth-aside">
-          {/* span renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <span className="nx-auth-eyebrow">{t('landing_auth.aside_eyebrow')}</span>
-          {/* h3 renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <h3>{vista === 'empresa' ? t('landing_auth.aside_title_empresa') : t('landing_auth.aside_title_default')}</h3>
-          {/* p renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <p>{t('landing_auth.aside_desc')}</p>
-          {/* div renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <div className="nx-auth-progress">
-            {/* i renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-            <i style={{ width: `${progresoOnboarding}%` }} />
-          </div>
-          {/* div renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <div className="nx-auth-steps">
-            {[
-              t('landing_auth.steps.step_1'),
-              t('landing_auth.steps.step_2'),
-              t('landing_auth.steps.step_3'),
-              t('landing_auth.steps.step_4')
-            ].map((paso, index) => (
-              // span renderiza una pieza visual reutilizable dentro de esta pantalla.
-              <span key={paso} className={progresoOnboarding >= (index + 1) * 25 ? 'is-active' : ''}>{paso}</span>
-            ))}
-          </div>
+          {vista === 'empresa' ? (
+            <>
+              <span className="nx-auth-eyebrow">{t('landing_auth.aside_eyebrow')}</span>
+              <h3>{t('landing_auth.aside_title_empresa')}</h3>
+              <p>{t('landing_auth.aside_desc')}</p>
+              <div className="nx-auth-progress"><i style={{ width: `${progresoOnboarding}%` }} /></div>
+              <div className="nx-auth-steps">
+                {[
+                  t('landing_auth.steps.step_1'),
+                  t('landing_auth.steps.step_2'),
+                  t('landing_auth.steps.step_3'),
+                  t('landing_auth.steps.step_4')
+                ].map((paso, index) => (
+                  <span key={paso} className={progresoOnboarding >= (index + 1) * 25 ? 'is-active' : ''}>{paso}</span>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="nx-auth-showcase">
+              <div className="nx-auth-showcase-grid" aria-hidden="true" />
+              <div className="nx-auth-showcase-copy">
+                <span className="nx-auth-eyebrow">{t('landing_auth.showcase_eyebrow')}</span>
+                <h2>{t('landing_auth.showcase_title')}</h2>
+                <p>{t('landing_auth.showcase_desc')}</p>
+              </div>
+              <div className="nx-auth-testimonial">
+                <div className="nx-auth-testimonial-tags">
+                  <span>{t('landing_auth.showcase_tag_team')}</span>
+                  <span>{t('landing_auth.showcase_tag_ai')}</span>
+                </div>
+                <blockquote>{t('landing_auth.showcase_quote')}</blockquote>
+                <div className="nx-auth-testimonial-author">
+                  <strong>Nexxus</strong>
+                  <span>{t('landing_auth.showcase_author')}</span>
+                </div>
+              </div>
+            </div>
+          )}
         </aside>
 
         {/* section renderiza una pieza visual reutilizable dentro de esta pantalla. */}
         <section className="nx-auth-panel">
           {vista !== 'empresa' ? (
-            <>
-              {/* div renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <div className="nx-auth-tabs">
-                {/* button renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                <button className={vista === 'registro' ? 'active' : ''} onClick={() => setVista('registro')} type="button">{t('landing_auth.tab_register')}</button>
-                {/* button renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                <button className={vista === 'login' ? 'active' : ''} onClick={() => setVista('login')} type="button">{t('landing_auth.tab_login')}</button>
+            <header className="nx-auth-intro">
+              <div className="nx-auth-brand-row">
+                <button className="nx-auth-back-button" onClick={() => window.location.assign('/landing')} type="button" aria-label={t('landing_auth.nav_back_home')}>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M15 18l-6-6 6-6" />
+                  </svg>
+                </button>
               </div>
-              {/* button renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <button className="nx-btn-ghost nx-google-button" disabled={cargando} onClick={loginGoogle} type="button">
-                {/* svg renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                <svg viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
-                  {/* path renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                  {/* path renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                  {/* path renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                  {/* path renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                </svg>
-                {t('landing_auth.google_button')}
-              </button>
-            </>
+              <h1>{vista === 'login' ? t('landing_auth.heading_login') : t('landing_auth.heading_register')}</h1>
+              <p>{vista === 'login' ? t('landing_auth.subtitle_login') : t('landing_auth.subtitle_register')}</p>
+            </header>
           ) : null}
 
           {vista === 'registro' ? (
@@ -1194,6 +1199,27 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
             </form>
           ) : null}
 
+          {vista !== 'empresa' ? (
+            <div className="nx-auth-alternatives">
+              <div className="nx-auth-divider"><span>{t('landing_auth.divider')}</span></div>
+              <button className="nx-btn-ghost nx-google-button" disabled={cargando} onClick={loginGoogle} type="button">
+                <svg viewBox="0 0 24 24" width="22" height="22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                </svg>
+                {t('landing_auth.google_button')}
+              </button>
+              <p className="nx-auth-switch">
+                {vista === 'login' ? t('landing_auth.switch_login_text') : t('landing_auth.switch_register_text')}{' '}
+                <button onClick={() => setVista(vista === 'login' ? 'registro' : 'login')} type="button">
+                  {vista === 'login' ? t('landing_auth.switch_login_action') : t('landing_auth.switch_register_action')}
+                </button>
+              </p>
+            </div>
+          ) : null}
+
           {vista === 'empresa' ? (
             // form renderiza una pieza visual reutilizable dentro de esta pantalla.
             <form className="nx-auth-form nx-company-form" onSubmit={crearEmpresa} noValidate>
@@ -1206,7 +1232,7 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
               </div>
               {/* div renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <div
-                className={`nx-logo-drop ${errores.logo ? 'is-invalid' : ''}`}
+                className="nx-logo-drop"
                 onDragOver={(event: DragEvent<HTMLDivElement>) => event.preventDefault()}
                 onDrop={(event: DragEvent<HTMLDivElement>) => {
                   // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
@@ -1215,24 +1241,21 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
                   seleccionarLogo(event.dataTransfer.files?.[0]);
                 }}
               >
-                {logoPreview ? <img alt="Logo empresa" loading="lazy" src={logoPreview} /> : <b>{t('landing_auth.logo_drop_label')}</b>}
+                {logoPreview ? <img alt="Logo empresa" loading="lazy" src={logoPreview} /> : (
+                  <>
+                    {limpiarTexto(empresa.nombre) ? <b className="nx-logo-initial">{limpiarTexto(empresa.nombre).charAt(0).toUpperCase()}</b> : null}
+                    <b>{t('landing_auth.logo_drop_label')}</b>
+                  </>
+                )}
                 {/* span renderiza una pieza visual reutilizable dentro de esta pantalla. */}
                 <span>{t('landing_auth.logo_drop_hint')}</span>
                 {/* input renderiza una pieza visual reutilizable dentro de esta pantalla. */}
                 <input accept="image/png,image/jpeg,image/webp" onChange={(event) => seleccionarLogo(event.target.files?.[0])} type="file" />
               </div>
-              {errores.logo ? <small className="nx-logo-error">{t(errores.logo)}</small> : null}
-
               {/* div renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <div className="nx-company-grid">
                 {/* Campo renderiza una pieza visual reutilizable dentro de esta pantalla. */}
                 <Campo error={errores.nombreEmpresa} label={t('landing_auth.field_company_name_label')} onChange={(valor) => actualizarEmpresa('nombre', valor)} placeholder={t('landing_auth.field_company_name_placeholder')} value={empresa.nombre} />
-                {/* Selector renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                <Selector error={errores.tipo} label={t('landing_auth.field_type_label')} onChange={(valor) => actualizarEmpresa('tipo', valor)} opciones={tiposEmpresa.map(v => ({ value: v, label: t(`landing_auth.types.${v}`) }))} value={empresa.tipo} />
-                {/* Selector renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                <Selector error={errores.industria} label={t('landing_auth.field_industry_label')} onChange={(valor) => actualizarEmpresa('industria', valor)} opciones={industrias.map(v => ({ value: v, label: t(`landing_auth.industries.${v}`) }))} value={empresa.industria} />
-                {/* Selector renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                <Selector error={errores.tamano} label={t('landing_auth.field_size_label')} onChange={(valor) => actualizarEmpresa('tamano', valor)} opciones={tamanos.map(v => ({ value: v, label: v }))} value={empresa.tamano} />
                 <CustomSelect
                   label={t('landing_auth.field_country_label')}
                   error={errores.pais}
@@ -1242,6 +1265,7 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
                     actualizarEmpresa('pais', item.name);
                     if (item.dialCode) {
                       setPrefijoSeleccionado(item.dialCode);
+                      setPrefijoPaisCodigo(item.code);
                       actualizarEmpresa('telefono', formatPhoneNumber(empresa.telefono, item.dialCode));
                     }
                     actualizarEmpresa('ciudad', ''); // reset city
@@ -1266,7 +1290,7 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
                   hasFlags={true}
                   getItemLabel={obtenerEtiquetaPais}
                   getItemValue={(pais: CountryData) => pais.name}
-                  emptyText="No se encontraron países"
+                  emptyText={t('landing_auth.country_empty')}
                 />
 
                 {/* CustomSelect para Ciudad con autocompletado o fallback a Campo de texto libre si no hay resultados de API */}
@@ -1313,19 +1337,31 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
                       <div 
                         className="nx-dropdown-trigger nx-dropdown-trigger-prefix" 
                         onClick={(e) => {
+                          e.preventDefault();
                           e.stopPropagation();
                           cerrarDropdowns();
                           setPrefijoAbierto(!prefijoAbierto);
                         }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            cerrarDropdowns();
+                            setPrefijoAbierto(!prefijoAbierto);
+                          }
+                        }}
                         tabIndex={0}
+                        role="button"
+                        aria-haspopup="listbox"
+                        aria-expanded={prefijoAbierto}
                       >
                         <div className="nx-dropdown-trigger-content">
                           {(() => {
-                            const countryWithPrefix = paises.find(p => p.dialCode === prefijoSeleccionado);
+                            const countryWithPrefix = paises.find(p => p.code === prefijoPaisCodigo)
+                              ?? paises.find(p => p.dialCode === prefijoSeleccionado);
                             return (
                               <>
                                 {countryWithPrefix && (
-                                  <img src={countryWithPrefix.flag} alt="" loading="lazy" className="nx-dropdown-flag" style={{ margin: 0 }} />
+                                  <span className="nx-phone-flag" aria-label={countryWithPrefix.name}>{countryFlagEmoji(countryWithPrefix.code)}</span>
                                 )}
                                 <span>{prefijoSeleccionado}</span>
                               </>
@@ -1336,7 +1372,7 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
                       </div>
                       
                       {prefijoAbierto && (
-                        <div className="nx-dropdown-panel" style={{ width: '240px', left: 0 }} onClick={(e) => e.stopPropagation()}>
+                        <div className="nx-dropdown-panel" style={{ width: '240px', left: 0 }} onClick={(e) => e.stopPropagation()} role="listbox">
                           <div className="nx-dropdown-search-wrapper">
                             <input
                               type="text"
@@ -1354,14 +1390,19 @@ export default function LandingAuth({ modoInicial = 'registro', planSeleccionado
                                 <div 
                                   key={idx}
                                   className={`nx-dropdown-item ${prefijoSeleccionado === p.dialCode ? 'active' : ''}`}
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
                                     setPrefijoSeleccionado(p.dialCode);
+                                    setPrefijoPaisCodigo(p.code);
                                     setPrefijoAbierto(false);
                                     setBuscarPrefijo('');
                                     actualizarEmpresa('telefono', formatPhoneNumber(empresa.telefono, p.dialCode));
                                   }}
+                                  role="option"
+                                  aria-selected={prefijoSeleccionado === p.dialCode}
                                 >
-                                  <img src={p.flag} alt="" loading="lazy" className="nx-dropdown-flag" />
+                                  <span className="nx-phone-flag" aria-hidden="true">{countryFlagEmoji(p.code)}</span>
                                   <span style={{ fontWeight: 'bold' }}>{p.dialCode}</span>
                                   <span style={{ opacity: 0.7, fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                     {p.name}

@@ -7,7 +7,7 @@
  */
 
 // Importa { CSSProperties, ReactNode, useCallback, useEffect, useRef } desde React; habilita componentes, hooks y tipos base para esta pieza.
-import { CSSProperties, ReactNode, useCallback, useEffect, useRef } from 'react';
+import { CSSProperties, ReactNode, useCallback, useEffect, useMemo, useRef, memo } from 'react';
 // Importa { createElement } desde React; habilita componentes, hooks y tipos base para esta pieza.
 import { createElement } from 'react';
 // Importa estilos CSS; aplica clases, animaciones o efectos visuales usados por este componente web.
@@ -134,10 +134,15 @@ function animateValue({
   onUpdate: (value: number) => void;
   start?: number;
 }) {
+  // Declara cancelado; permite cortar animaciones diferidas cuando el componente se desmonta.
+  let cancelado = false;
+  let frame = 0;
+  let timeout = 0;
   // Declara t0; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const t0 = performance.now() + delay;
   // tick agrupa una parte de la logica del modulo para mantener el flujo principal mas legible.
   function tick() {
+    if (cancelado) return;
     // Declara elapsed; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const elapsed = performance.now() - t0;
     // Declara t; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -145,17 +150,28 @@ function animateValue({
     // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     onUpdate(start + (end - start) * ease(t));
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-    if (t < 1) requestAnimationFrame(tick);
+    if (t < 1) frame = requestAnimationFrame(tick);
     else onEnd?.();
   }
   // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-  setTimeout(() => requestAnimationFrame(tick), delay);
+  timeout = window.setTimeout(() => {
+    frame = requestAnimationFrame(tick);
+  }, delay);
+  return () => {
+    cancelado = true;
+    window.clearTimeout(timeout);
+    if (frame) cancelAnimationFrame(frame);
+  };
+}
+
+function canUsePointerGlow() {
+  return typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 }
 
 /**
  * Componente BorderGlow. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
-export default function BorderGlow({
+const BorderGlow = memo(function BorderGlow({
   animated = false,
   backgroundColor = 'rgba(18, 15, 23, 0.78)',
   borderRadius = 28,
@@ -173,19 +189,21 @@ export default function BorderGlow({
   const cardRef = useRef<HTMLDivElement | null>(null);
   // Inicializa frameRef; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const frameRef = useRef<number | null>(null);
+  const rectRef = useRef<DOMRect | null>(null);
+  const pointerGlowEnabled = useMemo(canUsePointerGlow, []);
 
-  // Inicializa getCenterOfElement; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const getCenterOfElement = useCallback((el: HTMLDivElement) => {
+  // Inicializa getCenterOfRect; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
+  const getCenterOfRect = useCallback((rect: DOMRect) => {
     // Declara { width, height }; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const { width, height } = el.getBoundingClientRect();
+    const { width, height } = rect;
     // Devuelve el valor final calculado para esta funcion o caso de uso.
     return [width / 2, height / 2];
   }, []);
 
   // Inicializa getEdgeProximity; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const getEdgeProximity = useCallback((el: HTMLDivElement, x: number, y: number) => {
+  const getEdgeProximity = useCallback((rect: DOMRect, x: number, y: number) => {
     // Declara [cx, cy]; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const [cx, cy] = getCenterOfElement(el);
+    const [cx, cy] = getCenterOfRect(rect);
     // Declara dx; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const dx = x - cx;
     // Declara dy; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -200,12 +218,12 @@ export default function BorderGlow({
     if (dy !== 0) ky = cy / Math.abs(dy);
     // Devuelve el valor final calculado para esta funcion o caso de uso.
     return Math.min(Math.max(1 / Math.min(kx, ky), 0), 1);
-  }, [getCenterOfElement]);
+  }, [getCenterOfRect]);
 
   // Inicializa getCursorAngle; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const getCursorAngle = useCallback((el: HTMLDivElement, x: number, y: number) => {
+  const getCursorAngle = useCallback((rect: DOMRect, x: number, y: number) => {
     // Declara [cx, cy]; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const [cx, cy] = getCenterOfElement(el);
+    const [cx, cy] = getCenterOfRect(rect);
     // Declara dx; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const dx = x - cx;
     // Declara dy; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -220,40 +238,58 @@ export default function BorderGlow({
     if (degrees < 0) degrees += 360;
     // Devuelve el valor final calculado para esta funcion o caso de uso.
     return degrees;
-  }, [getCenterOfElement]);
+  }, [getCenterOfRect]);
+
+  const handlePointerEnter = useCallback(() => {
+    if (!pointerGlowEnabled || !cardRef.current) return;
+    rectRef.current = cardRef.current.getBoundingClientRect();
+  }, [pointerGlowEnabled]);
+
+  const handlePointerLeave = useCallback(() => {
+    rectRef.current = null;
+    if (frameRef.current) {
+      cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    }
+    const card = cardRef.current;
+    if (!card) return;
+    card.style.setProperty('--edge-proximity', '0');
+  }, []);
 
   // Inicializa handlePointerMove; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const handlePointerMove = useCallback((event: PointerEvent) => {
     // Declara card; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const card = cardRef.current;
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-    if (!card) return;
+    if (!card || !pointerGlowEnabled) return;
 
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (frameRef.current) cancelAnimationFrame(frameRef.current);
     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     frameRef.current = requestAnimationFrame(() => {
       // Declara rect; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const rect = card.getBoundingClientRect();
+      const rect = rectRef.current ?? card.getBoundingClientRect();
+      rectRef.current = rect;
       // Declara x; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const x = event.clientX - rect.left;
       // Declara y; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const y = event.clientY - rect.top;
       // Declara edge; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const edge = getEdgeProximity(card, x, y);
+      const edge = getEdgeProximity(rect, x, y);
       // Declara angle; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const angle = getCursorAngle(card, x, y);
+      const angle = getCursorAngle(rect, x, y);
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       card.style.setProperty('--edge-proximity', `${(edge * 100).toFixed(3)}`);
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       card.style.setProperty('--cursor-angle', `${angle.toFixed(3)}deg`);
+      frameRef.current = null;
     });
-  }, [getCursorAngle, getEdgeProximity]);
+  }, [getCursorAngle, getEdgeProximity, pointerGlowEnabled]);
 
   // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
   useEffect(() => {
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-    if (!animated || !cardRef.current) return;
+    if (!animated || !cardRef.current || !pointerGlowEnabled) return;
     // Declara card; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const card = cardRef.current;
     // Declara angleStart; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -266,25 +302,26 @@ export default function BorderGlow({
     card.style.setProperty('--cursor-angle', `${angleStart}deg`);
 
     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-    animateValue({ duration: 500, onUpdate: (value) => card.style.setProperty('--edge-proximity', `${value}`) });
+    const stops = [
+      animateValue({ duration: 500, onUpdate: (value) => card.style.setProperty('--edge-proximity', `${value}`) }),
     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-    animateValue({
+      animateValue({
       duration: 1500,
       ease: easeInCubic,
       end: 50,
       onUpdate: (value) => card.style.setProperty('--cursor-angle', `${(angleEnd - angleStart) * (value / 100) + angleStart}deg`),
-    });
+    }),
     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-    animateValue({
+      animateValue({
       delay: 1500,
       duration: 2250,
       ease: easeOutCubic,
       end: 100,
       start: 50,
       onUpdate: (value) => card.style.setProperty('--cursor-angle', `${(angleEnd - angleStart) * (value / 100) + angleStart}deg`),
-    });
+    }),
     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-    animateValue({
+      animateValue({
       delay: 2500,
       duration: 1500,
       ease: easeInCubic,
@@ -292,8 +329,13 @@ export default function BorderGlow({
       onEnd: () => card.classList.remove('sweep-active'),
       onUpdate: (value) => card.style.setProperty('--edge-proximity', `${value}`),
       start: 100,
-    });
-  }, [animated]);
+    }),
+    ];
+    return () => {
+      stops.forEach((stop) => stop());
+      card.classList.remove('sweep-active');
+    };
+  }, [animated, pointerGlowEnabled]);
 
   // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
   useEffect(() => () => {
@@ -301,12 +343,27 @@ export default function BorderGlow({
     if (frameRef.current) cancelAnimationFrame(frameRef.current);
   }, []);
 
+  useEffect(() => {
+    if (!pointerGlowEnabled) return;
+    const clearRect = () => {
+      rectRef.current = null;
+    };
+    window.addEventListener('resize', clearRect);
+    window.addEventListener('scroll', clearRect, { passive: true });
+    return () => {
+      window.removeEventListener('resize', clearRect);
+      window.removeEventListener('scroll', clearRect);
+    };
+  }, [pointerGlowEnabled]);
+
   // Devuelve el valor final calculado para esta funcion o caso de uso.
   return createElement(
     'div',
     {
       className: `border-glow-card ${className}`,
-      onPointerMove: handlePointerMove,
+      onPointerEnter: pointerGlowEnabled ? handlePointerEnter : undefined,
+      onPointerLeave: pointerGlowEnabled ? handlePointerLeave : undefined,
+      onPointerMove: pointerGlowEnabled ? handlePointerMove : undefined,
       ref: cardRef,
       style: {
         '--border-radius': `${borderRadius}px`,
@@ -322,4 +379,6 @@ export default function BorderGlow({
     createElement('span', { className: 'edge-light' }),
     createElement('div', { className: 'border-glow-inner' }, children)
   );
-}
+});
+
+export default BorderGlow;

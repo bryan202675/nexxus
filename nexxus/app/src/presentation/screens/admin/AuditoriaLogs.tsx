@@ -11,8 +11,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
 import { useApiTranslate } from '@/shared/i18n/useApiTranslate';
-// Importa { Animated, Easing, Image, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { Animated, Easing, Image, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Platform } from 'react-native';
+// Importa { Animated, Easing, Image, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Platform, useWindowDimensions } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
+import { Animated, Easing, Image, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Platform, useWindowDimensions } from 'react-native';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
 // Importa { LinearGradient } desde Expo; replica el avatar visual usado en Plantilla.
@@ -74,6 +74,9 @@ export default function AuditoriaLogs() {
   const { i18n } = useTranslation();
   // Inicializa { theme }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { theme } = useAdminAppearance();
+  const { width } = useWindowDimensions();
+  const isMobileOrTablet = width < 1024;
+  const isPhone = width < 900;
 
   // Traducciones dinámicas por API
   const translatedGeneral = useApiTranslate('General');
@@ -120,7 +123,7 @@ export default function AuditoriaLogs() {
   }), [theme]);
 
   // Inicializa estilos; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const estilos = useMemo(() => crearEstilos(theme, BRAND), [theme, BRAND]);
+  const estilos = useMemo(() => crearEstilos(theme, BRAND, width), [theme, BRAND, width]);
 
   // Declara IconPanel; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const IconPanel = ({ icon, color }: { icon: keyof typeof MaterialIcons.glyphMap; color: string }) => (
@@ -384,27 +387,37 @@ export default function AuditoriaLogs() {
     // Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla.
     <Animated.View style={[estilos.animatedScreen, { transform: [{ translateY: entrada.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }] }]}>
       {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
-      <ScrollView style={estilos.contenedor} contentContainerStyle={estilos.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={[estilos.contenedor, isPhone && Platform.OS === 'web' ? { touchAction: 'pan-y', overflowY: 'auto' } as any : undefined]}
+        contentContainerStyle={[
+          estilos.scrollContent,
+          { paddingTop: isMobileOrTablet ? 126 : 260 },
+          isPhone && { paddingTop: 90, paddingHorizontal: 12, paddingBottom: 72, alignItems: 'center' },
+          isPhone && Platform.OS === 'web' ? { touchAction: 'pan-y' } as any : undefined,
+        ]}
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled={false}
+      >
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={estilos.header}>
+        <View style={[estilos.header, isMobileOrTablet && { flexDirection: 'column', alignItems: 'flex-start', gap: 12 }, isPhone && { width: '100%', maxWidth: 420, alignSelf: 'center', marginBottom: 18 }]}>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View>
+          <View style={isPhone ? { width: '100%' } : undefined}>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.titulo}>{title}</Text>
+            <Text style={[estilos.titulo, isPhone && { fontSize: 24 }]}>{title}</Text>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.subtitulo}>{subtitle}</Text>
+            <Text style={[estilos.subtitulo, isPhone && { fontSize: 12, lineHeight: 18 }]}>{subtitle}</Text>
           </View>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={estilos.headerActions}>
+          <View style={[estilos.headerActions, isMobileOrTablet && { flexWrap: 'wrap' }, isPhone && { width: '100%', justifyContent: 'center', gap: 10 }]}>
             {/* Elemento tactil; envuelve contenido que puede responder a interacciones del usuario. */}
-            <TouchableOpacity style={estilos.btnSecondary}>
+            <TouchableOpacity style={[estilos.btnSecondary, isPhone && { width: '48%', maxWidth: 184, minHeight: 44, justifyContent: 'center', paddingHorizontal: 10 }]}>
               {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <MaterialIcons name="storage" size={18} color={BRAND.textMain} style={estilos.btnIcon} />
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.btnSecondaryText}>{btnBackup}</Text>
             </TouchableOpacity>
             {/* Elemento tactil; envuelve contenido que puede responder a interacciones del usuario. */}
-            <TouchableOpacity {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} style={estilos.btnPrimary}>
+            <TouchableOpacity {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} style={[estilos.btnPrimary, isPhone && { width: '48%', maxWidth: 184, minHeight: 44, justifyContent: 'center', paddingHorizontal: 10 }]}>
               {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <MaterialIcons {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} name="file-download" size={18} color={CONTRAST_TEXT} style={[estilos.btnIcon, estilos.btnPrimaryIcon]} />
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -414,11 +427,11 @@ export default function AuditoriaLogs() {
         </View>
 
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={estilos.premiumCard}>
+        <View style={[estilos.premiumCard, isPhone && { width: '100%', maxWidth: 420, alignSelf: 'center', borderRadius: 16 }]}>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={estilos.cardHeader}>
+          <View style={[estilos.cardHeader, isPhone && { padding: 14, gap: 12 }]}>
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.searchContainer}>
+            <View style={[estilos.searchContainer, isPhone && { height: 46, paddingHorizontal: 14 }]}>
               {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <MaterialIcons name="search" size={20} color={BRAND.textSec} style={estilos.searchIcon} />
               {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
@@ -431,7 +444,7 @@ export default function AuditoriaLogs() {
               />
             </View>
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={estilos.filterRow}>
+            <View style={[estilos.filterRow, isPhone && { justifyContent: 'center', gap: 10 }]}>
               {[
                 { id: 'todos', label: translatedTodos },
                 { id: 'success', label: translatedSuccess },
@@ -439,7 +452,7 @@ export default function AuditoriaLogs() {
                 { id: 'error', label: translatedErrorLabel },
               ].map((item) => (
                 // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-                <TouchableOpacity key={item.id} onPress={() => setFiltroEstado(item.id as FiltroEstado)} style={[estilos.filterChip, filtroEstado === item.id && estilos.filterChipActivo]}>
+                <TouchableOpacity key={item.id} onPress={() => setFiltroEstado(item.id as FiltroEstado)} style={[estilos.filterChip, filtroEstado === item.id && estilos.filterChipActivo, isPhone && { width: '47%', maxWidth: 176, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 }]}>
                   {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                   <Text style={[estilos.filterText, filtroEstado === item.id && estilos.filterTextActivo]}>{item.label}</Text>
                 </TouchableOpacity>
@@ -448,7 +461,7 @@ export default function AuditoriaLogs() {
           </View>
 
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={estilos.auditList}>
+          <View style={[estilos.auditList, isPhone && { padding: 12, gap: 12 }]}>
             {logsFiltrados.map((log, i) => {
               const mappedEstado = log.estado === 'Success'
                 ? translatedSuccess
@@ -461,15 +474,15 @@ export default function AuditoriaLogs() {
               const abierto = logAbierto === itemKey;
               const fechaHora = formatoFechaHora(log.timestamp);
               const estadoColor = colorEstado(log.estado);
-
-              return (
-                // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
-                <TouchableOpacity key={itemKey} activeOpacity={0.9} onPress={() => setLogAbierto(abierto ? null : itemKey)} style={[estilos.auditCard, abierto && estilos.auditCardOpen, { borderLeftColor: `${estadoColor}cc` }]}>
-                  <View style={estilos.auditCardTop}>
+              const toggleLog = () => setLogAbierto(abierto ? null : itemKey);
+              const cardStyle = [estilos.auditCard, abierto && estilos.auditCardOpen, { borderLeftColor: `${estadoColor}cc` }, isPhone && { borderRadius: 14, padding: 14 }];
+              const cardContent = (
+                <>
+                  <View style={[estilos.auditCardTop, isPhone && { alignItems: 'flex-start', gap: 10 }]}>
                     <AvatarOperador log={log} />
                     <View style={estilos.auditMain}>
-                      <View style={estilos.auditTitleRow}>
-                        <Text style={estilos.logAction} numberOfLines={1}>{log.accion || translatedOperacion}</Text>
+                      <View style={[estilos.auditTitleRow, isPhone && { flexWrap: 'wrap' }]}>
+                        <Text style={[estilos.logAction, isPhone && { flexShrink: 1, maxWidth: '100%' }]} numberOfLines={isPhone ? 2 : 1}>{log.accion || translatedOperacion}</Text>
                         <PremiumBadge variant={varianteEstado(log.estado)}>{mappedEstado}</PremiumBadge>
                       </View>
                       <Text style={estilos.logDetails} numberOfLines={abierto ? 3 : 1}>{log.detalles || noDetailsLabel}</Text>
@@ -480,13 +493,19 @@ export default function AuditoriaLogs() {
                         <Text style={estilos.auditMetaText} numberOfLines={1}>{log.modulo || translatedGeneral}</Text>
                       </View>
                     </View>
-                    <MaterialIcons name={abierto ? 'expand-less' : 'expand-more'} size={24} color={BRAND.textSec} />
+                    {isPhone ? (
+                      <TouchableOpacity onPress={toggleLog} hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }} style={estilos.expandButton}>
+                        <MaterialIcons name={abierto ? 'expand-less' : 'expand-more'} size={26} color={BRAND.textSec} />
+                      </TouchableOpacity>
+                    ) : (
+                      <MaterialIcons name={abierto ? 'expand-less' : 'expand-more'} size={24} color={BRAND.textSec} />
+                    )}
                   </View>
 
                   {abierto && (
                     <View style={estilos.detailPanel}>
                       <Text style={estilos.detailTitle}>{detailLabel}</Text>
-                      <View style={estilos.detailGrid}>
+                      <View style={[estilos.detailGrid, isPhone && { flexDirection: 'column' }]}>
                         <DetailRow label={operatorLabel} value={log.usuarioNombre || translatedSystem} icon="person" />
                         <DetailRow label={moduleLabel} value={log.modulo || translatedGeneral} icon="widgets" />
                         <DetailRow label={dateLabel} value={fechaHora.fecha} icon="event" />
@@ -498,6 +517,17 @@ export default function AuditoriaLogs() {
                       </View>
                     </View>
                   )}
+                </>
+              );
+
+              return isPhone ? (
+                <View key={itemKey} style={cardStyle}>
+                  {cardContent}
+                </View>
+              ) : (
+                // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
+                <TouchableOpacity key={itemKey} activeOpacity={0.9} onPress={toggleLog} style={cardStyle}>
+                  {cardContent}
                 </TouchableOpacity>
               );
             })}
@@ -512,19 +542,21 @@ export default function AuditoriaLogs() {
 /**
  * Mapa de estilos crearEstilos. Centraliza reglas visuales para que el JSX se mantenga legible y consistente.
  */
-const crearEstilos = (theme: AdminPalette, BRAND: any) => StyleSheet.create({
+const crearEstilos = (theme: AdminPalette, BRAND: any, width: number) => {
+  const isPhone = width < 900;
+  return StyleSheet.create({
   // animatedScreen: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   animatedScreen: { flex: 1, backgroundColor: BRAND.richBlack },
   // contenedor: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
   contenedor: { flex: 1, backgroundColor: BRAND.richBlack },
   // scrollContent: estilo del area de contenido; controla padding, distribucion y separacion interna.
-  scrollContent: { flexGrow: 1, padding: 20, paddingTop: 260, paddingBottom: 64 },
+  scrollContent: { flexGrow: 1, padding: isPhone ? 12 : 20, paddingTop: 260, paddingBottom: isPhone ? 72 : 64 },
   // header: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: isPhone ? 18 : 32 },
   // titulo: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
-  titulo: { fontSize: 28, fontWeight: '800', color: BRAND.textMain, letterSpacing: 0 },
+  titulo: { fontSize: isPhone ? 24 : 28, fontWeight: '800', color: BRAND.textMain, letterSpacing: 0 },
   // subtitulo: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
-  subtitulo: { fontSize: 14, color: BRAND.textSec, fontWeight: '600', marginTop: 4, letterSpacing: 0.4 },
+  subtitulo: { fontSize: isPhone ? 12 : 14, color: BRAND.textSec, fontWeight: '600', marginTop: 4, letterSpacing: 0.4, lineHeight: isPhone ? 18 : undefined },
   // headerActions: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
   headerActions: { flexDirection: 'row', gap: 12 },
   // btnSecondary: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
@@ -604,7 +636,7 @@ const crearEstilos = (theme: AdminPalette, BRAND: any) => StyleSheet.create({
   // filterChipActivo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   filterChipActivo: { backgroundColor: 'rgba(96,165,250,0.14)', borderColor: 'rgba(96,165,250,0.25)' },
   // filterText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  filterText: { color: BRAND.textSec, fontSize: 10, fontWeight: '800', letterSpacing: 0.3 },
+  filterText: { color: BRAND.textSec, fontSize: isPhone ? 11 : 10, fontWeight: '800', letterSpacing: 0.3, textAlign: 'center' },
   // filterTextActivo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   filterTextActivo: { color: BRAND.iconBright },
   // auditList: estilo local de la pantalla; presenta los logs como tarjetas operativas en vez de tabla plana.
@@ -614,7 +646,9 @@ const crearEstilos = (theme: AdminPalette, BRAND: any) => StyleSheet.create({
   // auditCardOpen: estilo aplicado al registro expandido para reforzar el estado activo.
   auditCardOpen: { backgroundColor: theme.isDark ? 'rgba(96,165,250,0.075)' : 'rgba(96,165,250,0.08)', borderColor: theme.isDark ? 'rgba(96,165,250,0.22)' : 'rgba(96,165,250,0.28)' },
   // auditCardTop: estilo local de la pantalla; organiza avatar, resumen y accion de expansion.
-  auditCardTop: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  auditCardTop: { flexDirection: 'row', alignItems: 'center', gap: isPhone ? 10 : 14 },
+  // expandButton: limita la interaccion tactil del log al icono para no bloquear el scroll principal.
+  expandButton: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.isDark ? 'rgba(255,255,255,0.05)' : 'rgba(82,58,150,0.06)' },
   // auditMain: estilo local de la pantalla; concentra el contenido principal del log.
   auditMain: { flex: 1, minWidth: 0, gap: 6 },
   // auditTitleRow: estilo local de la pantalla; alinea accion y estado sin romper el ancho disponible.
@@ -626,7 +660,7 @@ const crearEstilos = (theme: AdminPalette, BRAND: any) => StyleSheet.create({
   // metaDot: separador visual compacto entre metadatos.
   metaDot: { width: 4, height: 4, borderRadius: 4, backgroundColor: theme.isDark ? 'rgba(255,255,255,0.22)' : 'rgba(82,58,150,0.28)' },
   // avatar: estilo local de la pantalla; replica el fallback visual de Plantilla cuando no hay foto real.
-  avatar: { width: 50, height: 50, borderRadius: 12, alignItems: 'center', justifyContent: 'center', shadowColor: 'transparent', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0, shadowRadius: 0, elevation: 0, overflow: 'hidden' },
+  avatar: { width: isPhone ? 44 : 50, height: isPhone ? 44 : 50, borderRadius: 12, alignItems: 'center', justifyContent: 'center', shadowColor: 'transparent', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0, shadowRadius: 0, elevation: 0, overflow: 'hidden' },
   // avatarIconShell: estilo de icono; centra el pictograma del rol cuando el operador no tiene foto.
   avatarIconShell: { width: 30, height: 30, borderRadius: 10, backgroundColor: 'transparent', alignItems: 'center', justifyContent: 'center' },
   // avatarIconoBlanco: estilo de icono; fija blanco puro aunque el modo claro aplique reglas globales.
@@ -634,7 +668,7 @@ const crearEstilos = (theme: AdminPalette, BRAND: any) => StyleSheet.create({
   // avatarInitialBadge: estilo local de la pantalla; muestra una inicial pequena sin competir con el icono principal.
   avatarInitialBadge: { position: 'absolute', right: 4, bottom: 4, width: 16, height: 16, borderRadius: 6, backgroundColor: 'rgba(8,5,20,0.72)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
   // avatarImagen: estilo local de la pantalla; muestra la foto real del operador del registro.
-  avatarImagen: { width: 50, height: 50, borderRadius: 12, borderWidth: 1, borderColor: ADMIN.borde, backgroundColor: ADMIN.fondoCampo },
+  avatarImagen: { width: isPhone ? 44 : 50, height: isPhone ? 44 : 50, borderRadius: 12, borderWidth: 1, borderColor: ADMIN.borde, backgroundColor: ADMIN.fondoCampo },
   // avatarText: estilo local de la pantalla; inicial compacta del operador dentro del badge.
   avatarText: { color: '#fff', fontSize: 9, fontWeight: '900', lineHeight: 12 },
   // detailPanel: estilo local de la pantalla; superficie expandida con informacion adicional.
@@ -644,7 +678,7 @@ const crearEstilos = (theme: AdminPalette, BRAND: any) => StyleSheet.create({
   // detailGrid: estilo de grilla; distribuye campos de detalle en columnas flexibles.
   detailGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   // detailRow: estilo local de la pantalla; agrupa icono, etiqueta y valor de un campo.
-  detailRow: { flex: 1, minWidth: 180, flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.border, backgroundColor: theme.isDark ? 'rgba(0,0,0,0.18)' : 'rgba(82,58,150,0.045)', padding: 12 },
+  detailRow: { flex: 1, minWidth: isPhone ? 0 : 180, width: isPhone ? '100%' : undefined, flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.border, backgroundColor: theme.isDark ? 'rgba(0,0,0,0.18)' : 'rgba(82,58,150,0.045)', padding: 12 },
   // detailIcon: estilo de icono; encuadra el simbolo del campo expandido.
   detailIcon: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(96,165,250,0.12)' },
   // detailTextWrap: estilo local de la pantalla; evita que valores largos rompan la tarjeta.
@@ -667,4 +701,5 @@ const crearEstilos = (theme: AdminPalette, BRAND: any) => StyleSheet.create({
   emptyState: { padding: 32, alignItems: 'center', justifyContent: 'center' },
   // emptyText: estilo de estado vacio; presenta mensajes cuando no hay datos disponibles.
   emptyText: { color: BRAND.textSec, fontWeight: '900', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1.2, textAlign: 'center' },
-});
+  });
+};

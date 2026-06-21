@@ -8,13 +8,17 @@
 /* Documentacion de estilos: las reglas siguientes definen clases consumidas por componentes React; mantener nombres estables evita romper el render web. */
 /* .nx-auth-page: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-page {
-  background: linear-gradient(180deg, rgba(5, 3, 12, 0.2), #03010b 88%);
-  color: white;
-  font-family: "Avenir Next", "Satoshi", "Segoe UI", sans-serif;
+  background: #07070a;
+  color: var(--nx-text);
+  font-family: var(--nx-font);
   min-height: 100dvh;
   overflow-x: hidden;
   position: relative;
   width: 100%;
+}
+
+.nx-auth-page > .nx-nav-layer {
+  display: none;
 }
 
 /* .nx-auth-page *::after: define reglas visuales para los elementos que usan este selector en la interfaz. */
@@ -27,12 +31,13 @@
 /* .nx-auth-page::before: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-page::before {
   background:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
-  background-size: 62px 62px;
+    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 72px 72px;
   content: "";
   inset: 0;
-  mask-image: radial-gradient(circle at 50% 18%, black, transparent 72%);
+  mask-image: linear-gradient(to bottom, black, transparent 72%);
+  opacity: 0.22;
   pointer-events: none;
   position: fixed;
   z-index: 1;
@@ -67,96 +72,53 @@
 }
 
 /* .nx-auth-page-nav: define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-auth-page-nav {
-  left: auto;
-  margin-top: 18px;
-  max-width: 1180px;
-  position: sticky !important;
-  top: 18px;
+.nx-auth-page .nx-auth-page-nav {
+  left: 28px;
+  top: 24px;
   transform: none;
-  width: calc(100% - 36px);
-  z-index: 5;
+  width: 48px;
 }
 
-.nx-auth-page-nav .nx-brand {
-  flex: 0 0 auto;
-  min-width: max-content;
-  white-space: nowrap;
-}
-
-/* .nx-auth-back: define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-auth-back {
-  flex: 0 0 auto;
-}
-
-/* .nx-auth-mobile-back: define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-auth-mobile-back {
+.nx-auth-page-nav .glass-surface__content {
   align-items: center;
-  background: rgba(255, 255, 255, 0.07) !important;
-  border: 1px solid rgba(216, 180, 254, 0.18) !important;
-  border-radius: 999px;
-  color: white;
-  cursor: pointer;
-  display: none;
-  height: 38px;
   justify-content: center;
-  padding: 0 !important;
-  width: 38px;
+  padding: 2px;
 }
 
-/* .nx-auth-mobile-back span: define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-auth-mobile-back span {
-  border-bottom: 2px solid currentColor;
-  border-left: 2px solid currentColor;
+.nx-auth-page-back svg {
   display: block;
-  height: 10px;
-  transform: translateX(2px) rotate(45deg);
-  width: 10px;
-}
-
-/* .nx-auth-mobile-back:hover: define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-auth-mobile-back:hover {
-  background: rgba(216, 180, 254, 0.12) !important;
-}
-
-/* .nx-auth-back.nx-btn-ghost: define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-auth-back.nx-btn-ghost {
-  height: 40px !important;
-  padding: 0 16px !important;
-  font-size: 13px !important;
-  border-radius: 999px !important;
 }
 
 /* .nx-auth-page-stage: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-page-stage {
   align-items: center;
   display: grid;
-  gap: clamp(88px, 8vw, 112px);
-  grid-template-columns: minmax(300px, 360px) minmax(680px, 720px);
+  grid-template-columns: minmax(0, 1fr);
   justify-content: center;
-  margin: 0 auto;
-  max-width: 1220px;
-  min-height: calc(100dvh - 84px);
-  padding: 54px 24px 72px;
+  margin: 0;
+  max-width: none;
+  min-height: 100dvh;
+  padding: 0;
   position: relative;
   z-index: 3;
 }
 
 /* .nx-auth-page-copy: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-page-copy {
-  justify-self: end;
-  max-width: 360px;
+  display: none;
 }
 
 /* .nx-auth-page-copy h1: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-page-copy h1 {
-  font-size: clamp(3rem, 4.7vw, 5.2rem);
-  font-weight: 900;
-  letter-spacing: -0.055em;
-  line-height: 0.9;
+  color: #f7f5ff;
+  font-family: var(--nx-font);
+  font-size: clamp(2.7rem, 5.4vw, 5.8rem);
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 0.94;
   margin: 20px 0 24px;
   hyphens: none;
-  max-width: 360px;
+  max-width: 420px;
   overflow-wrap: normal;
   text-wrap: balance;
   word-break: normal;
@@ -164,27 +126,28 @@
 
 /* .nx-auth-page-copy p: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-page-copy p {
-  color: #c9bee6;
-  font-size: clamp(1rem, 1.35vw, 1.18rem);
+  color: var(--nx-muted);
+  font-size: clamp(1rem, 1.35vw, 1.2rem);
   line-height: 1.75;
   max-width: 680px;
 }
 
 /* .nx-auth-page .nx-auth-shell: define reglas visuales para los elementos que usan este selector en la interfaz. */
 .nx-auth-page .nx-auth-shell {
-  box-shadow: 0 26px 90px rgba(0, 0, 0, 0.44);
-  justify-self: start;
+  box-shadow: none;
+  justify-self: stretch;
   margin: 0;
-  width: min(100%, 720px);
+  min-height: 100dvh;
+  width: 100%;
 }
 
 .nx-auth-page .nx-auth-shell.nx-auth-shell-wide {
-  width: min(100%, 960px) !important;
+  width: 100% !important;
 }
 
 .nx-auth-page-stage:has(.nx-auth-shell-wide) {
-  grid-template-columns: minmax(300px, 360px) minmax(680px, 960px) !important;
-  max-width: 1440px !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  max-width: none !important;
 }
 
 /* .nx-auth-page button: define reglas visuales para los elementos que usan este selector en la interfaz. */
@@ -200,7 +163,7 @@
   .nx-auth-page-stage {
     grid-template-columns: 1fr !important;
     justify-items: center;
-    padding-top: 46px;
+    padding-top: 0;
   }
 
   .nx-auth-page-stage:has(.nx-auth-shell-wide) {
@@ -218,33 +181,21 @@
 @media (max-width: 640px) {
   /* .nx-auth-page-nav: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-auth-page-nav {
-    justify-content: space-between;
-    padding: 8px;
-    top: 10px;
-    width: calc(100% - 18px);
+    left: 14px;
+    top: 14px;
+    width: 44px;
   }
 
-  .nx-auth-page-nav > div:first-child {
+  .nx-auth-page-nav .glass-surface__content {
     gap: 10px !important;
     min-width: 0;
   }
 
-  /* .nx-auth-mobile-back: define reglas visuales para los elementos que usan este selector en la interfaz. */
-  .nx-auth-mobile-back {
-    display: inline-flex;
-    flex: 0 0 auto;
-  }
-
-  /* .nx-auth-back: define reglas visuales para los elementos que usan este selector en la interfaz. */
-  .nx-auth-back {
-    display: none;
-  }
-
   /* .nx-auth-page-stage: define reglas visuales para los elementos que usan este selector en la interfaz. */
   .nx-auth-page-stage {
-    gap: 22px;
+    gap: 0;
     min-height: auto;
-    padding: 28px 14px 34px;
+    padding: 0;
   }
 
   /* .nx-auth-page-copy: define reglas visuales para los elementos que usan este selector en la interfaz. */
