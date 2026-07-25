@@ -217,29 +217,34 @@ export default function Recursos({ navigation }: Props) {
           )}
         </View>
 
-        {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+        {/* Bloque de layout; organiza accesos útiles en tarjetas 2x2 grandes estilo Perfil Laboral */}
         <View style={estilos.seccionRecursos}>
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={estilos.cabeceraSec}>
-            {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-            <MaterialIcons name="bolt" size={18} color={COLORES.primario} />
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+            <MaterialIcons name="bolt" size={20} color={COLORES.primario} />
             <Text style={estilos.tituloSec}>{t('recursos.useful_access')}</Text>
           </View>
 
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-          <View style={estilos.atajosGrid}>
+          <View style={estilos.gridAtajos2x2}>
             {[
-              { titulo: t('recursos.shortcuts.center_docs'), icono: 'folder' as const, destino: 'CentroDocumentos' },
-              { titulo: t('recursos.shortcuts.learn'), icono: 'book-open' as const, destino: 'CentroAprendizaje' },
-              { titulo: t('recursos.shortcuts.support'), icono: 'headphones' as const, destino: 'CentroApoyo' },
+              { titulo: t('recursos.shortcuts.center_docs'), subtitulo: 'Documentos oficiales', icono: 'folder' as const, destino: 'CentroDocumentos', color: '#3B82F6' },
+              { titulo: 'Mi salario', subtitulo: 'Comprobantes de pago', icono: 'credit-card' as const, destino: 'MiSalario', color: '#10B981' },
+              { titulo: t('recursos.shortcuts.learn'), subtitulo: 'Cursos y módulos', icono: 'book-open' as const, destino: 'CentroAprendizaje', color: '#8B5CF6' },
+              { titulo: t('recursos.shortcuts.support'), subtitulo: 'Atención y soporte', icono: 'headphones' as const, destino: 'CentroApoyo', color: '#F59E0B' },
+              { titulo: 'Mis activos', subtitulo: 'Equipos asignados', icono: 'briefcase' as const, destino: 'MisActivos', color: '#EC4899' },
             ].map((atajo) => (
-              // BotonAnimado renderiza una pieza visual reutilizable dentro de esta pantalla.
-              <BotonAnimado key={atajo.titulo} style={estilos.tarjetaAtajo} onPress={() => navigation.navigate(atajo.destino)}>
-                {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                <Feather name={atajo.icono} size={20} color={colores.texto} />
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.textoAtajo}>{atajo.titulo}</Text>
+              <BotonAnimado key={atajo.titulo} style={estilos.cardAtajo2x2} onPress={() => navigation.navigate(atajo.destino)}>
+                <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.cardAtajoContenido}>
+                  <View style={estilos.cardAtajoHeader}>
+                    <View style={[estilos.iconoAtajoBadge, { backgroundColor: `${atajo.color}1E`, borderColor: `${atajo.color}35` }]}>
+                      <Feather name={atajo.icono} size={18} color={atajo.color} />
+                    </View>
+                    <MaterialIcons name="chevron-right" size={20} color={colores.textoSuave} />
+                  </View>
+                  <View style={estilos.cardAtajoBody}>
+                    <Text style={estilos.cardAtajoTitulo} numberOfLines={1}>{atajo.titulo}</Text>
+                    <Text style={estilos.cardAtajoSubtitulo} numberOfLines={1}>{atajo.subtitulo}</Text>
+                  </View>
+                </BlurView>
               </BotonAnimado>
             ))}
           </View>
@@ -333,13 +338,25 @@ function crearEstilosRecursos(c: any, esOscuro: boolean) {
     docTitulo: { fontSize: 14, fontWeight: '700', color: c.texto },
     // docMeta: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     docMeta: { fontSize: 11, color: c.textoSuave, marginTop: 2, fontWeight: '600' },
-    // atajosGrid: estilo de grilla; organiza elementos en filas o columnas con separacion controlada.
-    atajosGrid: { flexDirection: 'row', gap: ESPACIADO.sm },
-    // tarjetaAtajo: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
-    tarjetaAtajo: { flex: 1, minHeight: 86, borderRadius: RADIOS.xl, padding: ESPACIADO.sm, alignItems: 'center', justifyContent: 'center', gap: ESPACIADO.xs, backgroundColor: glass, borderWidth: 1, borderColor: c.borde },
-    // textoAtajo: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    textoAtajo: { fontSize: 11, fontWeight: '700', color: c.textoSuave, marginTop: 4 },
+    // atajosGrid / gridAtajos2x2: grilla de 2 columnas de ancho similar a PerfilLaboral
+    gridAtajos2x2: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+    // cardAtajo2x2: tarjetas grandes y espaciosas en 2x2
+    cardAtajo2x2: { width: '48.2%', minHeight: 112, borderRadius: RADIOS.xl, overflow: 'hidden', borderWidth: 1, borderColor: c.borde, backgroundColor: glass },
+    // cardAtajoContenido: padding y distribucion vertical
+    cardAtajoContenido: { flex: 1, padding: 14, justifyContent: 'space-between' },
+    // cardAtajoHeader: icono coloreado y flecha derecha
+    cardAtajoHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    // iconoAtajoBadge: contenedor circular para el icono con borde sutil
+    iconoAtajoBadge: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+    // cardAtajoBody: textos de titulo y subtitulo
+    cardAtajoBody: { marginTop: 10, gap: 2 },
+    // cardAtajoTitulo: estilo de texto principal grande
+    cardAtajoTitulo: { fontSize: 14, fontWeight: '800', color: c.texto, letterSpacing: -0.2 },
+    // cardAtajoSubtitulo: estilo de texto secundario suave
+    cardAtajoSubtitulo: { fontSize: 11, fontWeight: '500', color: c.textoSuave },
+    // atajosGrid legacy fallback
+    atajosGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+    tarjetaAtajo: { width: '48.2%', minHeight: 112, borderRadius: RADIOS.xl, overflow: 'hidden', borderWidth: 1, borderColor: c.borde, backgroundColor: glass },
+    textoAtajo: { fontSize: 13, fontWeight: '700', color: c.texto },
   });
 }
-
-

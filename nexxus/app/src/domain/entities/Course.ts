@@ -16,9 +16,29 @@ export interface Course {
   modulos: {
     titulo: string;
     video_url?: string;
+    documento_url?: string;
     contenido_texto?: string;
+    evaluacion_corta?: {
+      pregunta: string;
+      opciones: string[];
+      respuestaCorrecta: string;
+    };
   }[];
   puntos: number;
+}
+
+export interface TrainingProgress {
+  id: string;
+  empresaId: string;
+  empleadoId: string;
+  cursoId: string;
+  modulosCompletados: number[];
+  porcentaje: number;
+  completado: boolean;
+  certificadoEmitido: boolean;
+  certificadoCodigo?: string;
+  certificadoEmitidoAt?: string;
+  updatedAt?: string;
 }
 
 /**
@@ -27,4 +47,6 @@ export interface Course {
 export interface ICourseRepository {
   getAll(empresaId: string): Promise<Course[]>;
   getById(id: string): Promise<Course | null>;
+  getProgressForUser(empresaId: string, empleadoId: string): Promise<TrainingProgress[]>;
+  completeModule(cursoId: string, moduloIndex: number): Promise<TrainingProgress>;
 }

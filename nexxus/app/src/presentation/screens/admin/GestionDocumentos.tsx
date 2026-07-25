@@ -1,26 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text as NativeText, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
 import { useAuth } from '@/presentation/hooks/useAuth';
-import { db, functions } from '@/infrastructure/firebase/firebaseConfig';
 import { useCases } from '@/infrastructure/firebase/container';
 import { uploadManagedFile } from '@/infrastructure/storage/cloudinaryUpload';
 import { formatBytes, validateUploadFile } from '@/infrastructure/storage/cloudinaryStorage';
-import { Documento } from '@/domain/entities/Documento';
+import { DocumentStorageStats, Documento } from '@/domain/entities/Documento';
 import { User } from '@/domain/entities/User';
 import { obtenerEmpresaIdAdmin } from './adminUtils';
 import { ADMIN, useAdminAppearance } from './adminTheme';
 import { useAdminToast } from './adminToast';
 
 const Text = NativeText;
-
-type Stats = {
-  totalBytes: number;
-  uploadCount: number;
-  topUsers: { userId: string; bytes: number }[];
-};
 
 export default function GestionDocumentos() {
   const { user } = useAuth();
@@ -32,18 +23,14 @@ export default function GestionDocumentos() {
   const styles = useMemo(() => crearEstilos(theme.isDark, width), [theme.isDark, width]);
   const [documentos, setDocumentos] = useState<Documento[]>([]);
   const [usuarios, setUsuarios] = useState<User[]>([]);
-  const [stats, setStats] = useState<Stats>({ totalBytes: 0, uploadCount: 0, topUsers: [] });
+  const [stats, setStats] = useState<DocumentStorageStats>({ totalBytes: 0, uploadCount: 0, topUsers: [] });
   const [subiendo, setSubiendo] = useState(false);
   const [progreso, setProgreso] = useState(0);
 
   useEffect(() => {
     if (!empresaId) return;
-    const unsubDocs = onSnapshot(query(collection(db, 'documentos'), where('empresaId', '==', empresaId)), (snap) => {
-      setDocumentos(snap.docs.map((item) => ({ id: item.id, ...item.data() } as Documento)));
-    });
-    const unsubUsers = onSnapshot(query(collection(db, 'usuarios'), where('empresaId', '==', empresaId)), (snap) => {
-      setUsuarios(snap.docs.map((item) => ({ id: item.id, ...item.data() } as User)));
-    });
+    const unsubDocs = useCases.documents.subscribeByCompany.execute(empresaId, setDocumentos);
+    const unsubUsers = useCases.admin.getAllUsers.subscribe(empresaId, (items) => setUsuarios(items as User[]));
     return () => {
       unsubDocs();
       unsubUsers();
@@ -52,9 +39,7 @@ export default function GestionDocumentos() {
 
   const cargarStats = async () => {
     if (!empresaId) return;
-    const getStats = httpsCallable(functions, 'getStorageStatsByCompany');
-    const res: any = await getStats({ empresaId });
-    setStats(res.data || { totalBytes: 0, uploadCount: 0, topUsers: [] });
+    setStats(await useCases.documents.getStorageStats.execute(empresaId));
   };
 
   useEffect(() => {
@@ -116,9 +101,7 @@ export default function GestionDocumentos() {
 
   const eliminarDocumento = async (documento: Documento) => {
     try {
-      const borrar = httpsCallable(functions, 'deleteCloudinaryAsset');
-      if (documento.publicId) await borrar({ publicId: documento.publicId }).catch(() => null);
-      await useCases.documents.delete.execute(documento.id);
+      await useCases.documents.deleteWithAsset.execute(documento);
       toast.success({ title: 'Documento eliminado', description: 'Se eliminó el registro y el archivo asociado.' });
       cargarStats().catch(() => {});
     } catch (error: any) {

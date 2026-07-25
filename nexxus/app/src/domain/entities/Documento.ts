@@ -20,7 +20,16 @@ export interface Documento {
   createdBy?: string;
   fechaSubida: string;
   leido: boolean;
+  tamano?: string;
+  categoria?: string;
+  contenido_completo?: string;
 }
+
+export type DocumentStorageStats = {
+  totalBytes: number;
+  uploadCount: number;
+  topUsers: { userId: string; bytes: number }[];
+};
 
 /**
  * Define el contrato de datos IDocumentoRepository; documenta campos esperados y evita pasar objetos ambiguos entre capas.
@@ -28,7 +37,10 @@ export interface Documento {
 export interface IDocumentoRepository {
   getByUser(userId: string): Promise<Documento[]>;
   getByCompany(empresaId: string): Promise<Documento[]>;
+  subscribeByCompany?(empresaId: string, callback: (documentos: Documento[]) => void, onError?: () => void): () => void;
   create(documento: Omit<Documento, 'id'>): Promise<string>;
   delete(documentoId: string): Promise<void>;
+  deleteWithAsset?(documento: Pick<Documento, 'id' | 'publicId'>): Promise<void>;
   markAsRead(documentoId: string): Promise<void>;
+  getStorageStats?(empresaId: string): Promise<DocumentStorageStats>;
 }

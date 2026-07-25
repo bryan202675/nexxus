@@ -30,13 +30,28 @@ import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
  */
 interface Props {
   titulo: string;
+  subtitulo?: string;
   mostrarAtras?: boolean;
+  onBackPress?: () => void;
+  avatarUrl?: string;
+  avatarLetra?: string;
+  ocultarAccionesDerechas?: boolean;
+  accionDerecha?: React.ReactNode;
 }
 
 /**
  * Componente NavbarEnterprise. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
-export default function NavbarEnterprise({ titulo, mostrarAtras }: Props) {
+export default function NavbarEnterprise({
+  titulo,
+  subtitulo,
+  mostrarAtras,
+  onBackPress,
+  avatarUrl,
+  avatarLetra,
+  ocultarAccionesDerechas = false,
+  accionDerecha,
+}: Props) {
   // Inicializa { perfil, alertasNoLeidas }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { perfil, alertasNoLeidas } = useContextoUsuario();
   // Declara { colores, blurTint, intensidadBlur, esOscuro }; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -48,63 +63,73 @@ export default function NavbarEnterprise({ titulo, mostrarAtras }: Props) {
 
   // Declara abrirPerfil; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const abrirPerfil = () => {
-    // Ejecuta navegacion; cambia la pantalla activa manteniendo el flujo definido por React Navigation.
     navigation.navigate('PerfilLaboral');
+  };
+
+  const handleBack = () => {
+    if (onBackPress) {
+      onBackPress();
+    } else {
+      navigation.goBack();
+    }
   };
 
   // Devuelve el JSX que React Native renderiza en pantalla.
   return (
-    // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
     <View style={{ zIndex: 100 }}>
-      {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
       <View style={estilos.appBarContainer}>
-        {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
         <BlurView intensity={intensidadBlur} tint={blurTint} style={[estilos.appBar, { backgroundColor: esOscuro ? 'rgba(10,10,24,0.58)' : 'rgba(255,255,255,0.66)', borderColor: colores.borde, shadowColor: colores.sombra }]}>
           {mostrarAtras ? (
-            // BotonAnimado renderiza una pieza visual reutilizable dentro de esta pantalla.
-            <BotonAnimado onPress={() => navigation.goBack()} style={[estilos.iconoPlano, { backgroundColor: colores.vidrio, borderColor: colores.borde }]}>
-              {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-              <MaterialIcons name="arrow-back" size={20} color={colores.texto} />
-            </BotonAnimado>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <BotonAnimado onPress={handleBack} style={[estilos.iconoPlano, { backgroundColor: colores.vidrio, borderColor: colores.borde }]}>
+                <MaterialIcons name="arrow-back" size={20} color={colores.texto} />
+              </BotonAnimado>
+
+              {avatarUrl || avatarLetra ? (
+                <View style={[estilos.avatarWrapSubscreen, { backgroundColor: esOscuro ? 'rgba(124,58,237,0.35)' : 'rgba(124,58,237,0.18)', borderColor: colores.borde }]}>
+                  {avatarUrl ? (
+                    <Image source={{ uri: avatarUrl }} style={estilos.avatarImg} resizeMode="cover" />
+                  ) : (
+                    <Text style={[estilos.avatarLetra, { color: colores.primarioClaro }]}>
+                      {(avatarLetra || titulo || 'C').charAt(0).toUpperCase()}
+                    </Text>
+                  )}
+                </View>
+              ) : null}
+            </View>
           ) : (
-            // BotonAnimado renderiza una pieza visual reutilizable dentro de esta pantalla.
             <BotonAnimado onPress={abrirPerfil} style={[estilos.avatarBotonPrincipal, { borderColor: colores.bordeFuerte }]}>
               {perfil?.foto_perfil ? (
-                // Imagen visual; muestra foto, avatar, logo o recurso asociado a los datos de la pantalla.
                 <Image source={{ uri: perfil.foto_perfil }} style={estilos.avatarImg} />
               ) : (
-                // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
                 <View style={[estilos.avatarPlaceholder, { backgroundColor: esOscuro ? 'rgba(124,58,237,0.28)' : 'rgba(124,58,237,0.15)' }]}>
-                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                   <Text style={[estilos.avatarLetra, { color: colores.primarioClaro }]}>{perfil?.nombre?.charAt(0).toUpperCase() || 'U'}</Text>
                 </View>
               )}
             </BotonAnimado>
           )}
 
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={estilos.titulos}>
-            {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
             <Text numberOfLines={1} style={[estilos.titulo, { color: colores.texto }]}>{titulo}</Text>
-            {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-            <Text numberOfLines={1} style={[estilos.fecha, { color: colores.textoSuave }]}>{fechaActual}</Text>
+            <Text numberOfLines={1} style={[estilos.fecha, { color: colores.textoSuave }]}>{subtitulo || fechaActual}</Text>
           </View>
 
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-          <View style={estilos.accionesAppBar}>
-            {/* BotonAnimado renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-            <BotonAnimado onPress={() => navigation.navigate('Notificaciones')} style={[estilos.iconoPlano, { backgroundColor: colores.vidrio, borderColor: colores.borde }]}>
-              {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-              <MaterialIcons name="notifications-none" size={19} color={colores.texto} />
-              {alertasNoLeidas > 0 && <View style={estilos.puntoNotif} />}
-            </BotonAnimado>
+          {!ocultarAccionesDerechas ? (
+            <View style={estilos.accionesAppBar}>
+              <BotonAnimado onPress={() => navigation.navigate('Notificaciones')} style={[estilos.iconoPlano, { backgroundColor: colores.vidrio, borderColor: colores.borde }]}>
+                <MaterialIcons name="notifications-none" size={19} color={colores.texto} />
+                {alertasNoLeidas > 0 && <View style={estilos.puntoNotif} />}
+              </BotonAnimado>
 
-            {/* BotonAnimado renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-            <BotonAnimado onPress={() => navigation.navigate('ConfiguracionApp')} style={[estilos.iconoPlano, { backgroundColor: colores.vidrio, borderColor: colores.borde }]}>
-              {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-              <MaterialIcons name="settings" size={18} color={colores.texto} />
-            </BotonAnimado>
-          </View>
+              <BotonAnimado onPress={() => navigation.navigate('ConfiguracionApp')} style={[estilos.iconoPlano, { backgroundColor: colores.vidrio, borderColor: colores.borde }]}>
+                <MaterialIcons name="settings" size={18} color={colores.texto} />
+              </BotonAnimado>
+            </View>
+          ) : accionDerecha ? (
+            <View style={estilos.accionesAppBar}>
+              {accionDerecha}
+            </View>
+          ) : null}
         </BlurView>
       </View>
     </View>
@@ -133,7 +158,7 @@ const estilos = StyleSheet.create({
     // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
     // gap define separacion uniforme entre elementos hijos.
-    gap: 12,
+    gap: 10,
     // paddingHorizontal agrega espacio interno a izquierda y derecha.
     paddingHorizontal: 12,
     // paddingVertical agrega espacio interno arriba y abajo.
@@ -159,9 +184,9 @@ const estilos = StyleSheet.create({
   // titulos: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
   titulos: { flex: 1, minWidth: 0 },
   // titulo: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
-  titulo: { fontSize: 17, fontWeight: '900', letterSpacing: 0 },
+  titulo: { fontSize: 16, fontWeight: '900', letterSpacing: 0 },
   // fecha: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  fecha: { fontSize: 11, fontWeight: '700', marginTop: 2, textTransform: 'capitalize' },
+  fecha: { fontSize: 11, fontWeight: '700', marginTop: 1 },
   // accionesAppBar: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   accionesAppBar: { flexDirection: 'row', alignItems: 'center', gap: ESPACIADO.xs },
   // iconoPlano: estilo de icono; ajusta tamanio, posicion o fondo del indicador visual.
@@ -169,11 +194,13 @@ const estilos = StyleSheet.create({
   // puntoNotif: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   puntoNotif: { position: 'absolute', top: 7, right: 7, width: 6, height: 6, borderRadius: 3, backgroundColor: COLORES.error, borderWidth: 1, borderColor: COLORES.superficie },
   // avatarBotonPrincipal: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
-  avatarBotonPrincipal: { width: 42, height: 42, borderRadius: 21, backgroundColor: COLORES.primarioClaro, alignItems: 'center', justifyContent: 'center', borderWidth: 1, overflow: 'hidden' },
+  avatarBotonPrincipal: { width: 38, height: 38, borderRadius: 19, backgroundColor: COLORES.primarioClaro, alignItems: 'center', justifyContent: 'center', borderWidth: 1, overflow: 'hidden' },
+  // avatarWrapSubscreen: burbuja avatar fija para subsustituciones de navegacion atras.
+  avatarWrapSubscreen: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', borderWidth: 1, overflow: 'hidden' },
   // avatarImg: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   avatarImg: { width: '100%', height: '100%' },
   // avatarPlaceholder: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   avatarPlaceholder: { flex: 1, backgroundColor: COLORES.contenedorPrimario, alignItems: 'center', justifyContent: 'center', width: '100%' },
   // avatarLetra: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  avatarLetra: { fontSize: 15, fontWeight: '900', color: COLORES.primario },
+  avatarLetra: { fontSize: 15, fontWeight: '900' },
 });

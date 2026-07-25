@@ -12,4 +12,10 @@ import { INotificationRepository } from '@/domain/repositories/INotificationRepo
 /**
  * Implementa GetNotifications; agrupa comportamiento con estado interno o dependencias de infraestructura.
  */
-export class GetNotifications { constructor(private repo: INotificationRepository) {} execute(userId: string) { return this.repo.getNotificationsByUser(userId); } }
+export class GetNotifications {
+  constructor(private repo: INotificationRepository) {}
+
+  execute(userId: string, empresaId?: string, limit?: number) {
+    return this.repo.getNotificationsByUser(userId, empresaId, limit);
+  }
+}

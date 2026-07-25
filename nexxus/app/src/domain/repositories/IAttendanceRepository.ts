@@ -7,7 +7,7 @@
  */
 
 // Importa { Attendance, NuevaEntradaAsistencia }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
-import { Attendance, NuevaEntradaAsistencia } from '../entities/Attendance';
+import { Attendance, AttendanceDailySummary, NuevaEntradaAsistencia } from '../entities/Attendance';
 
 /**
  * Define el contrato de datos IAttendanceRepository; documenta campos esperados y evita pasar objetos ambiguos entre capas.
@@ -17,4 +17,5 @@ export interface IAttendanceRepository {
   getByUser(userId: string, limit?: number): Promise<Attendance[]>;
   getCurrentShift(userId: string): Promise<Attendance | null>; // Última entrada sin salida
   getByCompany(empresaId: string, limit?: number): Promise<Attendance[]>;
+  getDailySummaryByCompany(empresaId: string, dateIso: string, limit?: number): Promise<AttendanceDailySummary[]>;
 }

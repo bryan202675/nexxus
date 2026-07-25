@@ -106,9 +106,10 @@ async function uploadWithRetry(file: Blob | File, folder: string, publicId: stri
   throw lastError;
 }
 
-export async function uploadManagedFile(file: Blob | File, options: ManagedUploadOptions): Promise<ManagedUploadResult> {
+export async function uploadManagedFile(file: Blob | File | string, options: ManagedUploadOptions): Promise<ManagedUploadResult> {
   const original = await validateUploadFile(file, options.kind);
-  const prepared = options.kind === 'document' ? file : await optimizeImageForUpload(file, options.kind);
+  const isPdf = typeof file !== 'string' && String((file as Blob).type || '').toLowerCase().includes('pdf');
+  const prepared = options.kind === 'document' || isPdf ? file : await optimizeImageForUpload(file, options.kind);
   const preparedValidation = await validateUploadFile(prepared, options.kind);
   const hash = await hashFile(prepared);
   const limits = UPLOAD_LIMITS[options.kind];
@@ -122,7 +123,7 @@ export async function uploadManagedFile(file: Blob | File, options: ManagedUploa
       empresaId: options.empresaId,
       ownerId: options.ownerId,
       hash,
-      size: prepared.size,
+      size: preparedValidation.size,
       mime: preparedValidation.mime,
       documentUserId: options.documentUserId,
     });
@@ -138,14 +139,14 @@ export async function uploadManagedFile(file: Blob | File, options: ManagedUploa
       publicId: intent.data.publicId,
       assetId: intent.data.assetId,
       hash,
-      size: prepared.size,
+      size: preparedValidation.size,
       mime: preparedValidation.mime,
       reused: true,
     };
   }
 
   const suffix = `${limits.publicId}_${Date.now()}_${hash.slice(0, 10)}`;
-  const uploaded = await uploadWithRetry(prepared, limits.folder(options.ownerId), suffix, options.onProgress, options.signal);
+  const uploaded = await uploadWithRetry(prepared as any, limits.folder(options.ownerId), suffix, options.onProgress, options.signal);
   const payload = {
     kind: options.kind,
     empresaId: options.empresaId,
@@ -153,12 +154,12 @@ export async function uploadManagedFile(file: Blob | File, options: ManagedUploa
     documentUserId: options.documentUserId || null,
     title: options.documentTitle || null,
     hash,
-    size: prepared.size,
+    size: preparedValidation.size,
     originalSize: original.size,
     mime: preparedValidation.mime,
     publicId: uploaded.public_id,
     url: uploaded.secure_url,
-    resourceType: options.kind === 'document' ? 'raw' : 'image',
+    resourceType: preparedValidation.mime === 'application/pdf' ? 'raw' : 'image',
   };
   let registered: any;
   try {
@@ -182,7 +183,7 @@ export async function uploadManagedFile(file: Blob | File, options: ManagedUploa
     publicId: registered.data?.publicId || uploaded.public_id,
     assetId: registered.data?.assetId,
     hash,
-    size: prepared.size,
+    size: preparedValidation.size,
     mime: preparedValidation.mime,
     reused: false,
   };

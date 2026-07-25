@@ -14,7 +14,7 @@ export interface User {
   id: string;
   nombre: string;
   correo: string;
-  rol: 'empleado' | 'jefe' | 'admin' | 'psicologo' | string;
+  rol: 'super_admin' | 'admin_empresa' | 'empleado' | 'jefe' | 'admin' | 'psicologo' | 'jefe_sector' | string;
   departamento: string;
   departamentoId?: string;
   empresa?: string;
@@ -41,6 +41,17 @@ export interface User {
   activo: boolean;
   estado_activo?: boolean;
   estado_trabajo?: 'disponible' | 'ocupado' | 'en_pausa' | 'en_reunion' | 'fuera_oficina';
+  plan?: string;
+  planActivo?: string;
+  planFeatures?: Record<string, boolean>;
+  planLimits?: {
+    employees?: number | null;
+    departments?: number | null;
+    branches?: number | null;
+    storageGb?: number;
+    aiRequestsMonthly?: number;
+  };
+  subscriptionStatus?: string;
   
   // Extensiones Fase 3 (Perfil Laboral Útil)
   horario_laboral?: string;
@@ -98,5 +109,6 @@ export interface User {
   // Autenticación Empresarial
   codigoEmpresa?: string;
   usuarioInterno?: string;
-  passwordInterno?: string; // Nota: En producción esto debería ser un hash
+  passwordInternoHash?: string;
+  passwordHashAlgorithm?: string;
 }

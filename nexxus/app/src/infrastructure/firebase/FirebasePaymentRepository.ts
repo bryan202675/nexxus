@@ -30,6 +30,7 @@ export class FirebasePaymentRepository implements IPaymentRepository {
     const constraints: any[] = [where('usuario_id', '==', userId)];
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (empresaId) constraints.push(where('empresaId', '==', empresaId));
+    constraints.push(orderBy('createdAt', 'desc'), limit(60));
     // Prepara q; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
     const q = query(collection(db, this.col), ...constraints);
     // Declara snap; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.

@@ -38,6 +38,9 @@ import { useTranslation } from 'react-i18next';
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
 // Importa { useTemaMobile }; accede a contexto compartido de usuario, tema o estado global.
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
+import { useCases } from '@/infrastructure/firebase/container';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
 
 /**
  * Define el contrato de datos Props; documenta campos esperados y evita pasar objetos ambiguos entre capas.
@@ -125,15 +128,59 @@ export default function ChatIA({ navigation }: Props) {
   // Calcula formatearHora; normaliza fechas para comparaciones, filtros o etiquetas visibles.
   const formatearHora = () => new Date().toLocaleTimeString(i18n.language === 'es' ? 'es-SV' : 'en-US', { hour: '2-digit', minute: '2-digit' });
 
-  // Inicializa [mensajes, setMensajes]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const [mensajes, setMensajes] = useState<Mensaje[]>([
-    {
-      id: '0',
-      rol: 'ia',
-      texto: t('chatIA.welcome_msg', { nombre: perfil?.nombre ?? (i18n.language === 'es' ? 'Usuario' : 'User') }),
-      hora: formatearHora(),
-    },
-  ]);
+  const [mensajes, setMensajes] = useState<Mensaje[]>([]);
+
+  const guardarMensajes = async (nuevosMensajes: Mensaje[] | ((prev: Mensaje[]) => Mensaje[])) => {
+    setMensajes((prev) => {
+      const next = typeof nuevosMensajes === 'function' ? nuevosMensajes(prev) : nuevosMensajes;
+      AsyncStorage.setItem(`nexxus_ai_chat_${perfil?.id || 'guest'}`, JSON.stringify(next)).catch((err) => {
+        console.error('Error saving AI chat history:', err);
+      });
+      return next;
+    });
+  };
+
+  const limpiarHistorial = async () => {
+    try {
+      const defaultMsg = [
+        {
+          id: '0',
+          rol: 'ia' as const,
+          texto: t('chatIA.welcome_msg', { nombre: perfil?.nombre ?? (i18n.language === 'es' ? 'Usuario' : 'User') }),
+          hora: formatearHora(),
+        }
+      ];
+      await AsyncStorage.setItem(`nexxus_ai_chat_${perfil?.id || 'guest'}`, JSON.stringify(defaultMsg));
+      setMensajes(defaultMsg);
+    } catch (err) {
+      console.error('Error clearing AI chat history:', err);
+    }
+  };
+
+  useEffect(() => {
+    async function cargarHistorial() {
+      try {
+        const stored = await AsyncStorage.getItem(`nexxus_ai_chat_${perfil?.id || 'guest'}`);
+        if (stored) {
+          setMensajes(JSON.parse(stored));
+        } else {
+          setMensajes([
+            {
+              id: '0',
+              rol: 'ia',
+              texto: t('chatIA.welcome_msg', { nombre: perfil?.nombre ?? (i18n.language === 'es' ? 'Usuario' : 'User') }),
+              hora: formatearHora(),
+            }
+          ]);
+        }
+      } catch (err) {
+        console.error('Error loading AI chat history:', err);
+      }
+    }
+    if (perfil?.id) {
+      cargarHistorial();
+    }
+  }, [perfil?.id, perfil?.nombre]);
 
   // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
   useEffect(() => {
@@ -185,7 +232,7 @@ export default function ChatIA({ navigation }: Props) {
 
 
   // manejarComandoIA agrupa una parte de la logica del modulo para mantener el flujo principal mas legible.
-  async function manejarComandoIA(texto: string) {
+  async function manejarComandoLocal(texto: string) {
     // Declara tInput; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const tInput = texto.toLowerCase();
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
@@ -216,9 +263,9 @@ export default function ChatIA({ navigation }: Props) {
         .filter((tarea) => tarea.estado !== 'completada')
         .sort((a, b) => {
           // Declara prioridad; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-          const prioridad = { Urgente: 0, Alta: 1, Media: 2, Baja: 3 };
+          const prioridad: Record<string, number> = { Urgente: 0, Alta: 1, Media: 2, Baja: 3 };
           // Devuelve el valor final calculado para esta funcion o caso de uso.
-          return (prioridad as any)[a.prioridad] - (prioridad as any)[b.prioridad];
+          return (prioridad[a.prioridad] ?? 9) - (prioridad[b.prioridad] ?? 9);
         })
         .slice(0, 3);
       // Devuelve el valor final calculado para esta funcion o caso de uso.
@@ -240,6 +287,24 @@ export default function ChatIA({ navigation }: Props) {
     return t('chatIA.responses.default');
   }
 
+  // manejarComandoIA usa el asistente server-side y conserva un respaldo local cuando Functions no responde.
+  async function manejarComandoIA(texto: string) {
+    try {
+      const historyPayload = mensajes
+        .filter((m) => m.rol === 'ia' || m.rol === 'usuario')
+        .slice(-6)
+        .map((m) => ({ rol: m.rol, texto: m.texto }));
+      const respuesta = await useCases.ai.ask.execute(texto, historyPayload);
+      return respuesta.respuesta;
+    } catch (error: any) {
+      console.error("[ChatIA] Error calling askNexxusAI:", error);
+      if (error?.code === 'functions/failed-precondition' || error?.code === 'failed-precondition') {
+        return error?.message || 'Este módulo no está disponible para el plan actual de tu empresa.';
+      }
+      return manejarComandoLocal(texto);
+    }
+  }
+
   // enviarMensaje agrupa una parte de la logica del modulo para mantener el flujo principal mas legible.
   function enviarMensaje(texto: string) {
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
@@ -254,7 +319,7 @@ export default function ChatIA({ navigation }: Props) {
     };
 
     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-    setMensajes((anterior) => [...anterior, mensajeUsuario]);
+    guardarMensajes((anterior) => [...anterior, mensajeUsuario]);
     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setTextoEntrada('');
     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
@@ -274,7 +339,7 @@ export default function ChatIA({ navigation }: Props) {
         hora: formatearHora(),
       };
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-      setMensajes((anterior) => [...anterior, mensajeIA]);
+      guardarMensajes((anterior) => [...anterior, mensajeIA]);
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setTimeout(() => referenciaScroll.current?.scrollToEnd({ animated: true }), 80);
     }, 700);
@@ -282,6 +347,21 @@ export default function ChatIA({ navigation }: Props) {
 
   // Declara estilos; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const estilos = crearEstilosChat(colores, esOscuro);
+
+  const parsearMensajeIA = (texto: string) => {
+    const match = texto.match(/\[REDIRECT:(\w+)\|([^\]]+)\]/);
+    if (match) {
+      const cleanText = texto.replace(/\[REDIRECT:(\w+)\|([^\]]+)\]/, '').trim();
+      return {
+        texto: cleanText,
+        redirect: {
+          ruta: match[1],
+          etiqueta: match[2],
+        }
+      };
+    }
+    return { texto, redirect: null };
+  };
 
   // Devuelve el JSX que React Native renderiza en pantalla.
   return (
@@ -295,30 +375,12 @@ export default function ChatIA({ navigation }: Props) {
         <FondoMobilePremium />
       </View>
 
-      {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-      <View style={estilos.header}>
-        {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
-        <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.headerVidrio}>
-          {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-          <TouchableOpacity onPress={() => navigation.goBack()} style={estilos.botonRegresar} activeOpacity={0.8}>
-            {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-            <Feather name="arrow-left" size={19} color={colores.texto} />
-
-          </TouchableOpacity>
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-          <View style={estilos.headerCentro}>
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.tituloPantalla}>{t('chatIA.title')}</Text>
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.subtituloPantalla}>{t('chatIA.subtitle')}</Text>
-          </View>
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-          <View style={estilos.iconoHeader}>
-            {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-            <MaterialIcons name="auto-awesome" size={18} color={colores.textoSuave} />
-          </View>
-        </BlurView>
-      </View>
+      {/* Header uniforme con el resto de pantallas de la app */}
+      <NavbarEnterprise
+        titulo={t('chatIA.title')}
+        subtitulo={t('chatIA.subtitle')}
+        mostrarAtras
+      />
 
       {/* Contenedor que ajusta el layout cuando aparece el teclado. */}
       <KeyboardAvoidingView style={estilos.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={0}>
@@ -356,36 +418,49 @@ export default function ChatIA({ navigation }: Props) {
             {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
             <View style={estilos.lineaDivisor} />
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.textoDivisor}>{t('chatIA.today')}, {mensajes[0].hora}</Text>
+            <Text style={estilos.textoDivisor}>{t('chatIA.today')}, {mensajes[0]?.hora || ''}</Text>
             {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
             <View style={estilos.lineaDivisor} />
           </View>
 
-          {mensajes.map((mensaje) => (
-            // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
-            <View key={mensaje.id} style={[estilos.filaBurbuja, mensaje.rol === 'usuario' && estilos.filaBurbujaUsuario]}>
-              {mensaje.rol === 'ia' ? (
-                // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
-                <View style={estilos.burbujaIA}>
-                  {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
-                  <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.burbujaContenido}>
+          {mensajes.map((mensaje) => {
+            const parsed = mensaje.rol === 'ia' ? parsearMensajeIA(mensaje.texto) : { texto: mensaje.texto, redirect: null };
+            return (
+              // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
+              <View key={mensaje.id} style={[estilos.filaBurbuja, mensaje.rol === 'usuario' && estilos.filaBurbujaUsuario]}>
+                {mensaje.rol === 'ia' ? (
+                  // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
+                  <View style={estilos.burbujaIA}>
+                    {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
+                    <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.burbujaContenido}>
+                      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                      <Text style={estilos.textoBurbujaIA}>{parsed.texto}</Text>
+                      {parsed.redirect && (
+                        <TouchableOpacity
+                          style={estilos.botonRedirect}
+                          onPress={() => navigation.navigate(parsed.redirect.ruta)}
+                          activeOpacity={0.8}
+                        >
+                          <MaterialIcons name="double-arrow" size={14} color="#ffffff" />
+                          <Text style={estilos.textoRedirect}>{parsed.redirect.etiqueta}</Text>
+                        </TouchableOpacity>
+                      )}
+                      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                      <Text style={estilos.horaIA}>{mensaje.hora}</Text>
+                    </BlurView>
+                  </View>
+                ) : (
+                  // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
+                  <View style={estilos.burbujaUsuario}>
                     {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                    <Text style={estilos.textoBurbujaIA}>{mensaje.texto}</Text>
+                    <Text style={estilos.textoBurbujaUsuario}>{parsed.texto}</Text>
                     {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                    <Text style={estilos.horaIA}>{mensaje.hora}</Text>
-                  </BlurView>
-                </View>
-              ) : (
-                // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
-                <View style={estilos.burbujaUsuario}>
-                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={estilos.textoBurbujaUsuario}>{mensaje.texto}</Text>
-                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={estilos.horaUsuario}>{mensaje.hora}</Text>
-                </View>
-              )}
-            </View>
-          ))}
+                    <Text style={estilos.horaUsuario}>{mensaje.hora}</Text>
+                  </View>
+                )}
+              </View>
+            );
+          })}
 
           {escribiendo && (
             // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
@@ -468,17 +543,17 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
     // fondoAbsoluto: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     fondoAbsoluto: { ...StyleSheet.absoluteFillObject, zIndex: -1, overflow: 'hidden' },
     // header: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
-    header: { paddingHorizontal: ESPACIADO.lg, paddingTop: Platform.OS === 'ios' ? ESPACIADO.sm : ESPACIADO.lg, paddingBottom: ESPACIADO.sm },
+    header: { marginHorizontal: ESPACIADO.md, marginTop: Platform.OS === 'ios' ? ESPACIADO.xs : ESPACIADO.sm, borderRadius: 28, overflow: 'hidden' },
     // headerVidrio: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
-    headerVidrio: { minHeight: 72, borderRadius: RADIOS.xl, overflow: 'hidden', borderWidth: 1, borderColor: c.borde, backgroundColor: glass, flexDirection: 'row', alignItems: 'center', paddingHorizontal: ESPACIADO.md, gap: ESPACIADO.sm },
+    headerVidrio: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 12, paddingVertical: 11, backgroundColor: glass, overflow: 'hidden', borderWidth: 1, borderColor: c.borde, borderRadius: 28 },
     // botonRegresar: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
     botonRegresar: { width: 38, height: 38, borderRadius: 19, backgroundColor: glassMini, borderWidth: 1, borderColor: c.borde, alignItems: 'center', justifyContent: 'center' },
     // headerCentro: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
-    headerCentro: { flex: 1 },
+    headerCentro: { flex: 1, minWidth: 0 },
     // tituloPantalla: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
-    tituloPantalla: { ...TIPOGRAFIA.tituloTarjeta, color: c.texto, fontSize: 21, letterSpacing: -0.3 },
+    tituloPantalla: { fontSize: 17, fontWeight: '900', letterSpacing: 0, color: c.texto },
     // subtituloPantalla: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
-    subtituloPantalla: { ...TIPOGRAFIA.micro, color: c.textoSuave, marginTop: 2 },
+    subtituloPantalla: { fontSize: 11, fontWeight: '700', color: c.textoSuave, marginTop: 2 },
     // iconoHeader: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
     iconoHeader: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: glassMini, borderWidth: 1, borderColor: c.borde },
     // scrollChat: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
@@ -518,11 +593,15 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
     // filaBurbujaUsuario: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     filaBurbujaUsuario: { alignSelf: 'flex-end' },
     // burbujaIA: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    burbujaIA: { borderRadius: RADIOS.xl, borderBottomLeftRadius: 5, overflow: 'hidden', borderWidth: 1, borderColor: c.borde, backgroundColor: glass },
+    burbujaIA: { borderRadius: RADIOS.xl, borderBottomLeftRadius: 5, overflow: 'hidden', borderWidth: 1, borderColor: esOscuro ? 'rgba(124, 58, 237, 0.15)' : 'rgba(124, 58, 237, 0.08)', backgroundColor: esOscuro ? 'rgba(30, 27, 50, 0.85)' : '#F3F4F6' },
     // burbujaContenido: estilo del area de contenido; controla padding, distribucion y separacion interna.
     burbujaContenido: { padding: ESPACIADO.md },
     // textoBurbujaIA: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
     textoBurbujaIA: { ...TIPOGRAFIA.cuerpo, color: c.texto, lineHeight: 22 },
+    // botonRedirect: estilo de boton de redireccion dinamica.
+    botonRedirect: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: ESPACIADO.sm, paddingVertical: 10, paddingHorizontal: ESPACIADO.md, borderRadius: RADIOS.lg, backgroundColor: COLORES.primario, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', alignSelf: 'flex-start' },
+    // textoRedirect: estilo de texto del boton de redireccion.
+    textoRedirect: { ...TIPOGRAFIA.cuerpoPequeno, color: '#ffffff', fontWeight: '700' },
     // horaIA: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     horaIA: { ...TIPOGRAFIA.micro, color: c.textoSuave, marginTop: ESPACIADO.sm, fontSize: 9 },
     // burbujaUsuario: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
@@ -555,4 +634,3 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
     botonEnviarDeshabilitado: { opacity: 0.42 },
   });
 }
-

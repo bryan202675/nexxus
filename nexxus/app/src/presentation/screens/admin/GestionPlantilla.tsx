@@ -1464,8 +1464,6 @@ export default function GestionPlantilla() {
       nombreCompleto: fila.nombre_completo.trim(),
       usuarioInterno: fila.usuarioNormalizado,
       codigoEmpresa,
-      passwordInicial: fila.password.trim(),
-      passwordInterno: fila.password.trim(),
       rol: ['admin', 'jefe', 'empleado'].includes(rolBase) ? rolBase : rolOriginal,
       rolOperativo: rolOriginal,
       cargo: fila.cargo.trim(),
@@ -1590,32 +1588,10 @@ export default function GestionPlantilla() {
   };
 
   const crearEmpleadoFirestore = async ({ nombre, correo, contrasena, rol, departamento_id, empleado }: CrearEmpleadoLocalInput) => {
-    const empresaId = obtenerEmpresaIdAdmin(user);
-    if (!empresaId) throw new Error(toastSessionErrorDesc);
-    const ref = doc(collection(db, 'usuarios'));
-    const ahora = new Date().toISOString();
-    await setDoc(ref, {
-      ...empleado,
-      id: ref.id,
-      nombre,
-      correo,
-      rol,
-      departamento_id: empleado.departamentoId || departamento_id || null,
-      departamentoId: empleado.departamentoId || null,
-      departamento: empleado.departamento || departamento_id || 'General',
-      empresaId,
-      empresa_id: empresaId,
-      activo: true,
-      estado_activo: true,
-      eliminado: false,
-      estado_onboarding: 'pendiente',
-      passwordInterno: contrasena,
-      passwordInicial: contrasena,
-      createdAt: empleado.createdAt || ahora,
-      fecha_creacion: empleado.fecha_creacion || ahora,
-      updatedAt: ahora,
-    }, { merge: true });
-    return { uid: ref.id };
+    if (!obtenerEmpresaIdAdmin(user)) throw new Error(toastSessionErrorDesc);
+    const crearUsuario = httpsCallable(functions, 'crearUsuarioEmpresa');
+    const resultado = await crearUsuario({ nombre, correo, contrasena, rol, departamento_id, empleado });
+    return resultado.data as { uid?: string };
   };
 
   const confirmarImportacion = async () => {
@@ -1852,7 +1828,6 @@ export default function GestionPlantilla() {
         sedes: sede?.id ? [sede.id] : [],
       },
       fecha_actualizacion: new Date().toISOString(),
-      ...(modoFormulario === 'crear' ? { passwordInterno: formulario.contrasena } : {})
     };
   };
 
@@ -2164,8 +2139,12 @@ export default function GestionPlantilla() {
       } else if (empleadoSeleccionado?.id) {
         // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
         try {
+          const { rol: rolSolicitado, ...payloadSinRol } = payload;
           // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-          await conTiempoLimite(updateDoc(doc(db, 'usuarios', empleadoSeleccionado.id), payload));
+          await conTiempoLimite(updateDoc(doc(db, 'usuarios', empleadoSeleccionado.id), payloadSinRol));
+          if (rolSolicitado && rolSolicitado !== empleadoSeleccionado.rol) {
+            await useCases.admin.sensitiveProfiles.updateEmployeeRole(empleadoSeleccionado.id, rolSolicitado);
+          }
         } catch (error: any) {
           // Interrumpe el flujo con un error controlado para que la capa superior lo maneje.
           throw new Error(error?.message || 'No se pudo actualizar el empleado en Firestore.');

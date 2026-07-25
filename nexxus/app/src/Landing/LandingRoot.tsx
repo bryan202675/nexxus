@@ -3,6 +3,7 @@ import './Landing.css';
 import '../shared/i18n/config';
 
 const landingRoutes = ['/', '/landing', '/src/landing', '/src/landing/index', '/src/landing/index.tsx'];
+const nuevaRoutes = ['/landing/nueva'];
 const infoRoutes = ['/landing/seguridad', '/landing/privacidad'];
 const supportRoutes = ['/landing/soporte'];
 const checkoutRoutes = ['/landing/checkout'];
@@ -42,6 +43,7 @@ function injectLandingHead() {
 }
 
 function resolveSurface(pathname: string) {
+  if (nuevaRoutes.includes(pathname)) return require('./LandingNueva/index').default;
   if (accountRoutes.includes(pathname)) return require('./AccountPage').default;
   if (checkoutRoutes.includes(pathname)) return require('./CheckoutPage').default;
   if (authRoutes.includes(pathname)) return require('./AuthPage').default;
@@ -51,7 +53,7 @@ function resolveSurface(pathname: string) {
 }
 
 export function isLandingPath(pathname: string) {
-  return [...landingRoutes, ...infoRoutes, ...supportRoutes, ...checkoutRoutes, ...accountRoutes, ...authRoutes].includes(pathname);
+  return [...landingRoutes, ...nuevaRoutes, ...infoRoutes, ...supportRoutes, ...checkoutRoutes, ...accountRoutes, ...authRoutes].includes(pathname);
 }
 
 export default function LandingRoot() {

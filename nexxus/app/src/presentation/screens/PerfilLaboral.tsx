@@ -11,6 +11,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Image,
+  Platform,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -29,6 +30,7 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 // Importa * as ImagePicker desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
 
@@ -173,40 +175,42 @@ export default function PerfilLaboral({ navigation }: Props) {
 
   // Declara seleccionarYSubirFoto; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const seleccionarYSubirFoto = async () => {
-    // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
     try {
-      // Declara result; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.7,
+        base64: true,
       });
 
-      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-      if (!result.canceled) {
-        // Declara imageUri; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-        const imageUri = result.assets[0].uri;
-        // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
         setSubiendoFoto(true);
 
-        // Declara response; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-        const response = await fetch(imageUri);
-        // Declara blob; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-        const blob = await response.blob();
+        let fileToUpload: any;
 
-        // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-        await actualizarFotoPerfil(blob);
-        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+        if (Platform.OS === 'web') {
+          const response = await fetch(asset.uri);
+          fileToUpload = await response.blob();
+        } else {
+          const mimeType = asset.mimeType || 'image/jpeg';
+          let base64String = asset.base64;
+          if (!base64String) {
+            base64String = await FileSystem.readAsStringAsync(asset.uri, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+          }
+          fileToUpload = `data:${mimeType};base64,${base64String}`;
+        }
+
+        await actualizarFotoPerfil(fileToUpload);
         Alert.alert(t('common.success'), t('perfilLaboral.photo_success'));
       }
     } catch (e) {
-      // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
       console.error('Error al subir foto:', e);
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       Alert.alert(t('common.error'), t('perfilLaboral.photo_error'));
     } finally {
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setSubiendoFoto(false);
     }
   };

@@ -320,6 +320,7 @@ export default function MiPulso({ navigation }: { navigation: any }) {
           <View style={estilos.operativoGrid}>
             {[
               { titulo: t('miPulso.requests'), desc: t('miPulso.requests_desc', { count: solicitudesPendientes }), icono: 'file-text' as const, destino: 'SolicitudesAusencia' },
+              { titulo: 'Mi salario', desc: 'Recibos, neto y desglose', icono: 'credit-card' as const, destino: 'MiSalario' },
               { titulo: t('miPulso.documents'), desc: t('miPulso.documents_desc', { count: documentosPendientes }), icono: 'folder' as const, destino: 'CentroDocumentos' },
               { titulo: t('miPulso.history', { defaultValue: 'Mi Historial' }), desc: t('miPulso.history_desc', { defaultValue: 'Bitácora y nómina' }), icono: 'archive' as const, destino: 'HistorialCompleto' },
               { titulo: t('miPulso.calendar'), desc: t('miPulso.calendar_desc'), icono: 'calendar' as const, destino: 'CalendarioLaboral' },

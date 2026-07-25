@@ -7,25 +7,62 @@
  */
 
 // Importa { collection, addDoc, query, where, orderBy, limit, getDocs, Timestamp } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
-import { collection, addDoc, query, where, orderBy, limit, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 // Importa { db } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
 import { db } from './firebaseConfig';
 // Importa { Attendance, NuevaEntradaAsistencia }; usa tipos de dominio para que los datos mantengan estructura consistente.
-import { Attendance, NuevaEntradaAsistencia } from '@/domain/entities/Attendance';
+import { Attendance, AttendanceDailySummary, AttendanceSchedule, NuevaEntradaAsistencia } from '@/domain/entities/Attendance';
 // Importa { IAttendanceRepository }; depende de contratos de repositorio sin acoplarse a una implementacion concreta.
 import { IAttendanceRepository } from '@/domain/repositories/IAttendanceRepository';
+import { calculateAttendanceFlags, dateKeyOf, DEFAULT_ATTENDANCE_SCHEDULE, summarizeAttendanceDay } from '@/domain/services/attendancePolicy';
 
 /**
  * Implementa FirebaseAttendanceRepository; agrupa comportamiento con estado interno o dependencias de infraestructura.
  */
 export class FirebaseAttendanceRepository implements IAttendanceRepository {
+  private async getCompanySchedule(empresaId: string): Promise<AttendanceSchedule> {
+    const configQuery = query(
+      collection(db, 'configuraciones_empresa'),
+      where('empresaId', '==', empresaId),
+      limit(1)
+    );
+    const snapshot = await getDocs(configQuery);
+    const data = snapshot.docs[0]?.data() || {};
+    const asistencia = data.asistencia || data.horarioLaboral || {};
+    return {
+      horaEntrada: typeof asistencia.horaEntrada === 'string' ? asistencia.horaEntrada : DEFAULT_ATTENDANCE_SCHEDULE.horaEntrada,
+      horaSalida: typeof asistencia.horaSalida === 'string' ? asistencia.horaSalida : DEFAULT_ATTENDANCE_SCHEDULE.horaSalida,
+      toleranciaMinutos: Number.isFinite(Number(asistencia.toleranciaMinutos)) ? Number(asistencia.toleranciaMinutos) : DEFAULT_ATTENDANCE_SCHEDULE.toleranciaMinutos,
+      horasEsperadas: Number.isFinite(Number(asistencia.horasEsperadas)) ? Number(asistencia.horasEsperadas) : DEFAULT_ATTENDANCE_SCHEDULE.horasEsperadas,
+    };
+  }
+
+  private async getLastEntry(userId: string): Promise<Attendance | undefined> {
+    const q = query(
+      collection(db, 'asistencias'),
+      where('userId', '==', userId),
+      where('tipo', '==', 'entrada'),
+      orderBy('timestamp', 'desc'),
+      limit(1)
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.empty ? undefined : { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Attendance;
+  }
+
   // record agrupa una parte de la logica del modulo para mantener el flujo principal mas legible.
   async record(userId: string, data: NuevaEntradaAsistencia): Promise<Attendance> {
+    const now = new Date();
+    const schedule = await this.getCompanySchedule(data.empresaId);
+    const lastEntry = data.tipo === 'salida' ? await this.getLastEntry(userId) : undefined;
+    const derived = calculateAttendanceFlags(data.tipo, now, schedule, lastEntry);
     // Calcula docData; normaliza fechas para comparaciones, filtros o etiquetas visibles.
     const docData: any = {
       ...data,
       userId,
-      timestamp: new Date().toISOString(),
+      timestamp: now.toISOString(),
+      metodoRegistro: data.metodoRegistro || (data.gps ? 'ubicacion' : 'manual'),
+      ubicacionEstado: data.ubicacionEstado || (data.gps ? 'granted' : 'unavailable'),
+      ...derived,
       offline_sync: false, // Default to false when recording live
     };
     
@@ -91,5 +128,19 @@ export class FirebaseAttendanceRepository implements IAttendanceRepository {
     const snapshot = await getDocs(q);
     // Devuelve el valor final calculado para esta funcion o caso de uso.
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Attendance));
+  }
+
+  async getDailySummaryByCompany(empresaId: string, dateIso: string, count: number = 200): Promise<AttendanceDailySummary[]> {
+    const schedule = await this.getCompanySchedule(empresaId);
+    const dayKey = dateKeyOf(dateIso);
+    const q = query(
+      collection(db, 'asistencias'),
+      where('empresaId', '==', empresaId),
+      where('fechaJornada', '==', dayKey),
+      orderBy('timestamp', 'asc'),
+      limit(count)
+    );
+    const snapshot = await getDocs(q);
+    return summarizeAttendanceDay(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Attendance)), schedule);
   }
 }

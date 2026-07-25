@@ -431,7 +431,8 @@ export default function Landing() {
         filter: reduceMotion ? 'none' : 'blur(3px)',
       });
       gsap.set('.nx-radar i', { autoAlpha: 0, scale: 0.58 });
-      gsap.set('.nx-ai-signal span', { scale: 0.82, autoAlpha: 0.58 });
+      const aiSignalDots = root?.querySelectorAll<HTMLElement>('.nx-ai-signal span') ?? [];
+      if (aiSignalDots.length) gsap.set(aiSignalDots, { scale: 0.82, autoAlpha: 0.58 });
       gsap.to('.nx-orb-a', {
         y: reduceMotion ? 0 : -14,
         x: reduceMotion ? 0 : 8,

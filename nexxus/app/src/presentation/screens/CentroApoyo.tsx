@@ -108,6 +108,12 @@ export default function CentroApoyo({ navigation }: Props) {
       icono: 'assignment',
       accion: () => navigation.navigate('SolicitudesInternas'),
     },
+    {
+      titulo: 'Mis activos',
+      desc: 'Consulta equipo asignado y reporta incidencias internas.',
+      icono: 'inventory-2',
+      accion: () => navigation.navigate('MisActivos'),
+    },
   ];
 
   // Declara estadoBienestar; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -561,7 +567,6 @@ function crearEstilosApoyo(c: any, esOscuro: boolean) {
     textoBotonCrisis: { ...TIPOGRAFIA.micro, color: '#fff', fontSize: 10 },
   });
 }
-
 
 
 

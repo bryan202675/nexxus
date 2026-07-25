@@ -11,18 +11,14 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
 import { useApiTranslate } from '@/shared/i18n/useApiTranslate';
-// Importa { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Alert, Platform, Modal, Image, KeyboardAvoidingView, useWindowDimensions } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Alert, Platform, KeyboardAvoidingView, Modal, Image, useWindowDimensions } from 'react-native';
+// Importa { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Alert, Platform, Modal, KeyboardAvoidingView, useWindowDimensions } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
+import { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Alert, Platform, KeyboardAvoidingView, Modal, useWindowDimensions } from 'react-native';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-// Importa { addDoc, setDoc, collection, onSnapshot, query, where, getDocs, doc, updateDoc, writeBatch } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
-import { addDoc, setDoc, collection, onSnapshot, query, where, getDocs, doc, updateDoc, writeBatch } from 'firebase/firestore';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
-// Importa { db } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
-import { db } from '@/infrastructure/firebase/firebaseConfig';
 // Importa { useCases } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
 import { useCases } from '@/infrastructure/firebase/container';
 // Importa { useAuth }; reutiliza hooks propios que encapsulan estado, auth o consultas.
@@ -35,10 +31,9 @@ import { AdminModalFormGlass } from './AdminModalFormGlass';
 import { ADMIN, sombraAdmin, useAdminAppearance } from './adminTheme';
 // Importa { useAdminToast }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import { useAdminToast } from './adminToast';
-// Importa { calcularNomina }; ejecuta casos de uso que concentran reglas de negocio.
-import { calcularNomina } from '@/application/use-cases/admin/AdminPaymentUseCases';
 // Importa { User }; usa tipos de dominio para que los datos mantengan estructura consistente.
 import { User } from '@/domain/entities/User';
+import { PayrollRecord, PayrollStatus } from '@/domain/entities/Payroll';
 // Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import { LinearGradient } from 'expo-linear-gradient';
 import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
@@ -74,8 +69,8 @@ const CONTRAST_TEXT = '#FFFFFF';
  * Describe la forma tipada PagoNomina; ayuda a que estados, props o respuestas mantengan una estructura predecible.
  */
 type PagoNomina = {
-  id?: string;
-  usuario_id?: string;
+  id: string;
+  usuario_id: string;
   usuarioNombre?: string;
   empresaId?: string;
   salario_bruto?: number;
@@ -87,7 +82,29 @@ type PagoNomina = {
   periodo?: string;
   fecha_pago?: string;
   estado?: 'Pagado' | 'Procesando' | 'Pendiente';
+  payrollEstado?: PayrollStatus;
 };
+
+const paymentFromPayroll = (record: PayrollRecord): PagoNomina => ({
+  id: record.id,
+  usuario_id: record.empleadoId,
+  usuarioNombre: record.empleadoNombre,
+  empresaId: record.empresaId,
+  salario_bruto: record.salarioBruto,
+  isss: record.isss,
+  afp: record.afp,
+  renta: record.renta,
+  salario_neto: record.totalPagar,
+  moneda: 'USD',
+  periodo: record.periodo,
+  fecha_pago: record.fechaAprobacion || '',
+  estado: record.estado === 'pagado' ? 'Pagado' : record.estado === 'revisado' ? 'Procesando' : 'Pendiente',
+  payrollEstado: record.estado,
+});
+
+const payrollStatusFromPayment = (estado: 'Pagado' | 'Procesando' | 'Pendiente'): PayrollStatus => (
+  estado === 'Pagado' ? 'pagado' : estado === 'Procesando' ? 'revisado' : 'pendiente'
+);
 
 /**
  * Declaracion moneda. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
@@ -125,7 +142,6 @@ export default function GestionNomina() {
   const [guardandoPerfil, setGuardandoPerfil] = useState(false);
   const [modalExportVisible, setModalExportVisible] = useState(false);
   const [aprobandoTodo, setAprobandoTodo] = useState(false);
-  const [logoEmpresa, setLogoEmpresa] = useState<string | null>(null);
 
   // Traducciones dinámicas por API
   const title = useApiTranslate('Gestión de Nómina');
@@ -220,26 +236,6 @@ export default function GestionNomina() {
     }).start();
   }, [entrada]);
 
-  // Obtiene el logo de la empresa desde Firestore
-  useEffect(() => {
-    const empresaId = obtenerEmpresaIdAdmin(user);
-    if (!empresaId) return;
-
-    const unsubscribe = onSnapshot(
-      doc(db, 'empresas', empresaId),
-      (docSnap) => {
-        if (docSnap.exists()) {
-          setLogoEmpresa(docSnap.data()?.logo_url || null);
-        }
-      },
-      (error) => {
-        console.error('Error fetching company logo in GestionNomina:', error);
-      }
-    );
-
-    return () => unsubscribe();
-  }, [user]);
-
   // Inicializa periodoActual; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const periodoActual = useMemo(() => {
     // Calcula etiqueta; normaliza fechas para comparaciones, filtros o etiquetas visibles.
@@ -267,24 +263,19 @@ export default function GestionNomina() {
     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setCargando(true);
     // Declara unsubPagos; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const unsubPagos = useCases.admin.payments.subscribeByPeriod(empresaId, periodoActual, (dbPagos) => {
+    const unsubNominas = useCases.admin.payroll.subscribeByPeriod(empresaId, periodoActual, (records) => {
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-      setPagos(dbPagos || []);
-      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-      if (usuarios.length > 0) setCargando(false);
+      setPagos((records || []).map(paymentFromPayroll));
+      setCargando(false);
+    }, () => {
+      setPagos([]);
+      setCargando(false);
     });
 
     // Calcula unsubUsuarios; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
-    const unsubUsuarios = onSnapshot(query(collection(db, 'usuarios'), where('empresaId', '==', empresaId)), (snapshot) => {
-      // Calcula dbUsers; transforma la lista original en datos listos para renderizar o guardar.
-      const dbUsers = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as User);
+    const unsubUsuarios = useCases.admin.getAllUsers.subscribe(empresaId, (dbUsers) => {
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setUsuarios(dbUsers.filter(u => u.eliminado !== true && u.rol !== 'admin' && u.rol !== 'propietario'));
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-      setCargando(false);
-    }, () => {
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-      setUsuarios([]);
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setCargando(false);
     });
@@ -292,56 +283,21 @@ export default function GestionNomina() {
     // Devuelve el valor final calculado para esta funcion o caso de uso.
     return () => {
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      unsubPagos();
+      unsubNominas();
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       unsubUsuarios();
     };
   }, [user, periodoActual]);
 
-  // Calcula todos los pagos (reales y virtuales placeholders) para todos los empleados de la empresa
-  const todosLosPagos = useMemo(() => {
-    const empresaId = obtenerEmpresaIdAdmin(user) || '';
-    return usuarios.map((u) => {
-      const realPago = pagos.find((p) => p.usuario_id === u.id);
-      if (realPago) return realPago;
-
-      const calc = calcularNomina({
-        salario_base: u.salarioBase || 0,
-        horas_extra: 0,
-        valor_hora: 0,
-        bono: u.bonos_recurrentes || 0,
-        comision: u.comisiones_recurrentes || 0,
-        descuentos_adicionales: u.descuentos_recurrentes || 0,
-      });
-
-      const virtualPago: PagoNomina = {
-        id: undefined,
-        usuario_id: u.id,
-        usuarioNombre: u.nombre,
-        empresaId,
-        salario_bruto: calc.salario_bruto,
-        isss: calc.isss,
-        afp: calc.afp,
-        renta: calc.renta,
-        salario_neto: calc.salario_neto,
-        moneda: 'USD',
-        periodo: periodoActual,
-        fecha_pago: '',
-        estado: 'Pendiente' as const,
-      };
-      return virtualPago;
-    });
-  }, [usuarios, pagos, periodoActual, user]);
-
   // Inicializa totales; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const totales = useMemo(() => {
     // Calcula bruto; resume varios registros en un valor agregado usado por la UI o la regla de negocio.
-    const bruto = todosLosPagos.reduce((acc, p) => acc + (p.salario_bruto || 0), 0);
+    const bruto = pagos.reduce((acc, p) => acc + (p.salario_bruto || 0), 0);
     // Calcula neto; resume varios registros en un valor agregado usado por la UI o la regla de negocio.
-    const neto = todosLosPagos.reduce((acc, p) => acc + (p.salario_neto || 0), 0);
+    const neto = pagos.reduce((acc, p) => acc + (p.salario_neto || 0), 0);
     // Devuelve el valor final calculado para esta funcion o caso de uso.
-    return { bruto, neto, count: todosLosPagos.length };
-  }, [todosLosPagos]);
+    return { bruto, neto, count: pagos.length };
+  }, [pagos]);
 
   // Prepara guardarPerfilSalarial; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
   const guardarPerfilSalarial = async () => {
@@ -351,8 +307,6 @@ export default function GestionNomina() {
     setGuardandoPerfil(true);
     // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
     try {
-      // Prepara userRef; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
-      const userRef = doc(db, 'usuarios', usuarioSeleccionado.id);
       // Calcula updates; normaliza fechas para comparaciones, filtros o etiquetas visibles.
       const updates = {
         salarioBase: parseFloat(formPerfil.salarioBase) || 0,
@@ -362,30 +316,11 @@ export default function GestionNomina() {
         bonos_recurrentes: parseFloat(formPerfil.bonos_recurrentes) || 0,
         comisiones_recurrentes: parseFloat(formPerfil.comisiones_recurrentes) || 0,
         descuentos_recurrentes: parseFloat(formPerfil.descuentos_recurrentes) || 0,
-        afp_pertenece: formPerfil.afp_pertenece,
-        updatedAt: new Date().toISOString()
+        afp_pertenece: formPerfil.afp_pertenece
       };
 
       // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-      await updateDoc(userRef, updates);
-
-      // Declara empresaId; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const empresaId = obtenerEmpresaIdAdmin(user);
-      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-      if (empresaId && user) {
-        // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-        await addDoc(collection(db, 'audit_logs'), {
-          empresaId,
-          usuarioId: user.id,
-          usuarioNombre: user.nombre,
-          rol: user.rol,
-          accion: 'Actualización Perfil Salarial',
-          modulo: 'Nómina',
-          detalles: `Se actualizó el perfil de ${usuarioSeleccionado.nombre}`,
-          estado: 'Success',
-          timestamp: new Date().toISOString()
-        });
-      }
+      await useCases.admin.sensitiveProfiles.updateEmployeeProfile(usuarioSeleccionado.id, updates);
 
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setModalVisible(false);
@@ -402,12 +337,6 @@ export default function GestionNomina() {
     }
   };
 
-  // Declara fetchAsistenciasMes; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const fetchAsistenciasMes = async (userId: string) => {
-    // Devuelve el valor final calculado para esta funcion o caso de uso.
-    return { horasExtra: Math.floor(Math.random() * 5), valorHora: 5.50 };
-  };
-
   // Prepara generarNominaMasiva; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
   const generarNominaMasiva = async () => {
     // Declara empresaId; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -419,73 +348,15 @@ export default function GestionNomina() {
     setProcesandoMasivo(true);
     // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
     try {
-      // Declara batch; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const batch = writeBatch(db);
-      // Declara creados; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      let creados = 0;
-
-      // Recorre una coleccion para procesar cada elemento con la misma regla.
-      for (const u of usuarios) {
-        // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-        if (u.activo === false) continue;
-        // Declara yaExiste; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-        const yaExiste = pagos.find(p => p.usuario_id === u.id);
-        // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-        if (yaExiste) continue;
-
-        // Declara { horasExtra, valorHora }; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-        const { horasExtra, valorHora } = await fetchAsistenciasMes(u.id || '');
-        // Declara calculos; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-        const calculos = calcularNomina({
-          salario_base: u.salarioBase || 0,
-          horas_extra: horasExtra,
-          valor_hora: valorHora,
-          bono: u.bonos_recurrentes || 0,
-          comision: u.comisiones_recurrentes || 0,
-          descuentos_adicionales: u.descuentos_recurrentes || 0
-        });
-
-        // Prepara nuevoPagoRef; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
-        const nuevoPagoRef = doc(collection(db, 'payments'));
-        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-        batch.set(nuevoPagoRef, {
-          usuario_id: u.id,
-          usuarioNombre: u.nombre,
-          empresaId,
-          departamento: u.departamento,
-          cargo: u.cargo,
-          salario_bruto: calculos.salario_bruto,
-          isss: calculos.isss,
-          afp: calculos.afp,
-          renta: calculos.renta,
-          salario_neto: calculos.salario_neto,
-          moneda: 'USD',
-          periodo: periodoActual,
-          fecha_pago: new Date().toISOString(),
-          estado: 'Procesando',
-          creadoPor: user.nombre,
-          createdAt: new Date().toISOString()
-        });
-        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-        creados++;
-      }
+      const creados = await useCases.admin.payroll.generateForPeriod({
+        empresaId,
+        periodo: periodoActual,
+        actorId: user.id,
+        actorName: user.nombre || user.correo || 'Administrador',
+      });
 
       // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (creados > 0) {
-        // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-        await batch.commit();
-        // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-        await addDoc(collection(db, 'audit_logs'), {
-          empresaId,
-          usuarioId: user.id,
-          usuarioNombre: user.nombre,
-          rol: user.rol,
-          accion: 'Generación Masiva de Nómina',
-          modulo: 'Nómina',
-          detalles: `Se generaron ${creados} recibos para el periodo ${periodoActual}`,
-          estado: 'Success',
-          timestamp: new Date().toISOString()
-        });
         // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
         toast.success({ title: toastPayrollSuccessTitle, description: toastPayrollSuccessDescBase.replace('{count}', creados.toString()) });
       } else {
@@ -510,64 +381,15 @@ export default function GestionNomina() {
 
     setAprobandoTodo(true);
     try {
-      const batch = writeBatch(db);
-      let count = 0;
-
-      for (const p of todosLosPagos) {
-        if (p.estado === 'Pagado') continue;
-
-        if (!p.id) {
-          // Registro virtual, crearlo directamente como Pagado en Firestore
-          const userObj = usuarios.find(u => u.id === p.usuario_id);
-          const nuevoPagoRef = doc(collection(db, 'payments'));
-
-          batch.set(nuevoPagoRef, {
-            usuario_id: p.usuario_id,
-            usuarioNombre: p.usuarioNombre,
-            empresaId,
-            departamento: userObj?.departamento || '',
-            cargo: userObj?.cargo || '',
-            salario_bruto: p.salario_bruto,
-            isss: p.isss,
-            afp: p.afp,
-            renta: p.renta,
-            salario_neto: p.salario_neto,
-            moneda: 'USD',
-            periodo: periodoActual,
-            fecha_pago: new Date().toISOString(),
-            estado: 'Pagado',
-            creadoPor: user.nombre,
-            createdAt: new Date().toISOString()
-          });
-        } else {
-          // Registro real existente, actualizar a Pagado
-          const pagoRef = doc(db, 'payments', p.id);
-          batch.update(pagoRef, {
-            estado: 'Pagado',
-            fecha_pago: new Date().toISOString()
-          });
-        }
-
-        // Envía notificación al empleado
-        await enviarNotificacionPago(p);
-        count++;
-      }
+      const count = await useCases.admin.payroll.approveAllForPeriod({
+        empresaId,
+        periodo: periodoActual,
+        actorId: user.id,
+        actorName: user.nombre || user.correo || 'Administrador',
+        actorRole: user.rol,
+      });
 
       if (count > 0) {
-        await batch.commit();
-
-        await addDoc(collection(db, 'audit_logs'), {
-          empresaId,
-          usuarioId: user.id,
-          usuarioNombre: user.nombre,
-          rol: user.rol,
-          accion: 'Aprobación Masiva de Nómina',
-          modulo: 'Nómina',
-          detalles: `Se aprobaron ${count} nóminas para el periodo ${periodoActual}`,
-          estado: 'Success',
-          timestamp: new Date().toISOString()
-        });
-
         toast.success({ title: t('Nóminas Aprobadas'), description: `Se aprobaron ${count} nóminas correctamente.` });
       } else {
         toast.info({ title: t('Información'), description: t('Todas las nóminas ya se encuentran aprobadas.') });
@@ -580,94 +402,16 @@ export default function GestionNomina() {
     }
   };
 
-  // Envía una notificación en la app al empleado con todos los detalles de su sueldo
-  const enviarNotificacionPago = async (pago: PagoNomina) => {
-    try {
-      const userObj = usuarios.find(u => u.id === pago.usuario_id);
-      const salarioBase = userObj?.salarioBase || 0;
-
-      const msg = `Se ha realizado el pago correspondiente de tu nómina para el periodo ${pago.periodo}.\n\n` +
-        `Detalles del Sueldo:\n` +
-        `• Salario Base: $${salarioBase.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n` +
-        `• AFP: -$${(pago.afp || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n` +
-        `• ISSS: -$${(pago.isss || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n` +
-        `• ISR (Renta): -$${(pago.renta || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n` +
-        `• Salario Neto Recibido: $${(pago.salario_neto || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-      await addDoc(collection(db, 'notificaciones'), {
-        usuario_id: pago.usuario_id,
-        empresaId: pago.empresaId || obtenerEmpresaIdAdmin(user) || '',
-        titulo: 'Nómina Pagada',
-        mensaje: msg,
-        tipo: 'info',
-        leida: false,
-        fecha: new Date().toISOString()
-      });
-    } catch (e) {
-      console.error("Error al enviar notificación de pago:", e);
-    }
-  };
-
   // Prepara actualizarEstado; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
   const actualizarEstado = async (pago: PagoNomina, estado: 'Pagado' | 'Procesando' | 'Pendiente') => {
     const empresaId = obtenerEmpresaIdAdmin(user);
     if (!empresaId || !user) return;
 
     try {
-      let paymentId = pago.id;
-
-      if (!paymentId) {
-        // Generar un nuevo registro de pago real en Firestore
-        const userObj = usuarios.find(u => u.id === pago.usuario_id);
-        const nuevoPagoRef = doc(collection(db, 'payments'));
-        paymentId = nuevoPagoRef.id;
-
-        await setDoc(nuevoPagoRef, {
-          usuario_id: pago.usuario_id,
-          usuarioNombre: pago.usuarioNombre,
-          empresaId,
-          departamento: userObj?.departamento || '',
-          cargo: userObj?.cargo || '',
-          salario_bruto: pago.salario_bruto,
-          isss: pago.isss,
-          afp: pago.afp,
-          renta: pago.renta,
-          salario_neto: pago.salario_neto,
-          moneda: 'USD',
-          periodo: periodoActual,
-          fecha_pago: estado === 'Pagado' ? new Date().toISOString() : '',
-          estado,
-          creadoPor: user.nombre,
-          createdAt: new Date().toISOString()
-        });
-      } else {
-        // Actualizar el estado del pago existente
-        await useCases.admin.payments.updateStatus(paymentId, estado);
-        if (estado === 'Pagado') {
-          await updateDoc(doc(db, 'payments', paymentId), {
-            fecha_pago: new Date().toISOString()
-          });
-        }
-      }
-
-      // Registro en bitácora de auditoría
-      await addDoc(collection(db, 'audit_logs'), {
-        empresaId,
-        usuarioId: user.id,
-        usuarioNombre: user.nombre || 'Administrador',
-        rol: user.rol || 'admin',
-        accion: 'Actualización de Pago',
-        modulo: 'Nómina',
-        detalles: `${pago.usuarioNombre || 'Colaborador'} · ${estado}`,
-        estado: estado === 'Pagado' ? 'Success' : 'Warning',
-        ipAddress: 'Cliente Web',
-        timestamp: new Date().toISOString(),
+      await useCases.admin.payroll.updateStatus(pago.id, payrollStatusFromPayment(estado), {
+        id: user.id,
+        nombre: user.nombre || user.correo || 'Administrador',
       });
-
-      // Si el pago quedó como Pagado, enviar la notificación correspondiente
-      if (estado === 'Pagado') {
-        await enviarNotificacionPago(pago);
-      }
 
       const statusText = stateLabels[estado] || estado;
       toast.success({ title: toastStatusSuccessTitle, description: toastStatusSuccessDescBase.replace('{name}', pago.usuarioNombre || labelColaborador).replace('{status}', statusText) });
@@ -678,7 +422,7 @@ export default function GestionNomina() {
   };
 
   // Calcula pagosFiltrados; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
-  const pagosFiltrados = todosLosPagos.filter((p) => {
+  const pagosFiltrados = pagos.filter((p) => {
     // Declara coincide; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const coincide = (p.usuarioNombre || '').toLowerCase().includes(busqueda.toLowerCase());
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
@@ -1192,13 +936,9 @@ export default function GestionNomina() {
             {/* Logo de la empresa (o inicial de la empresa / business icon) */}
             <View style={estilos.exportModalImageContainer}>
               <View style={estilos.exportModalImagePicker}>
-                {logoEmpresa ? (
-                  <Image source={{ uri: logoEmpresa }} style={estilos.exportModalImage} resizeMode="contain" />
-                ) : (
-                  <View style={estilos.exportModalImagePlaceholder}>
-                    <MaterialIcons name="business" size={40} color={theme.purple} />
-                  </View>
-                )}
+                <View style={estilos.exportModalImagePlaceholder}>
+                  <MaterialIcons name="business" size={40} color={theme.purple} />
+                </View>
               </View>
             </View>
 

@@ -1,6 +1,10 @@
 {
   "name": "nexxus-monorepo",
   "private": true,
+  "scripts": {
+    "verify:security": "node scripts/verify-security.mjs",
+    "seed:super-admin": "npm --workspace backend run seed:super-admin"
+  },
   "workspaces": [
     "app",
     "backend"

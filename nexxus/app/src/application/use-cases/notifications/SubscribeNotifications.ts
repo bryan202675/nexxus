@@ -10,9 +10,9 @@ import { INotificationRepository } from '@/domain/repositories/INotificationRepo
 export class SubscribeNotifications {
   constructor(private repo: INotificationRepository) {}
 
-  execute(userId: string, callback: (notifications: Notification[]) => void): () => void {
+  execute(userId: string, empresaId: string | undefined, callback: (notifications: Notification[]) => void, limit?: number): () => void {
     if (this.repo.subscribeNotificationsByUser) {
-      return this.repo.subscribeNotificationsByUser(userId, callback);
+      return this.repo.subscribeNotificationsByUser(userId, empresaId, callback, limit);
     }
     return () => {};
   }

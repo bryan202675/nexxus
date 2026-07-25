@@ -7,7 +7,7 @@
  */
 
 // Importa { IAnnouncementRepository }; depende de contratos de repositorio sin acoplarse a una implementacion concreta.
-import { IAnnouncementRepository } from '@/domain/repositories/IAnnouncementRepository';
+import { CommunicationDirectory, IAnnouncementRepository, PublishAnnouncementInput } from '@/domain/repositories/IAnnouncementRepository';
 // Importa { Announcement }; usa tipos de dominio para que los datos mantengan estructura consistente.
 import { Announcement } from '@/domain/entities/Announcement';
 
@@ -38,5 +38,19 @@ export class AdminAnnouncementUseCases {
     }
     // Devuelve el valor final calculado para esta funcion o caso de uso.
     return () => {};
+  }
+
+  subscribeCommunicationDirectory(empresaId: string, callback: (directory: CommunicationDirectory) => void, onError?: () => void): () => void {
+    if (this.announcementRepository.subscribeCommunicationDirectory) {
+      return this.announcementRepository.subscribeCommunicationDirectory(empresaId, callback, onError);
+    }
+    return () => {};
+  }
+
+  async publish(input: PublishAnnouncementInput): Promise<string> {
+    if (this.announcementRepository.publishAnnouncement) {
+      return this.announcementRepository.publishAnnouncement(input);
+    }
+    return this.announcementRepository.createAnnouncement(input.announcement);
   }
 }

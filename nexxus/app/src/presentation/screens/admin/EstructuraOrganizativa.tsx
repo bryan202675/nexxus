@@ -1288,7 +1288,16 @@ export default function EstructuraOrganizativa() {
     {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
     <ScrollView
       style={[estilos.contenedor, isPhone && Platform.OS === 'web' ? { touchAction: 'pan-y', overflowY: 'auto' } as any : undefined]}
-      contentContainerStyle={[estilos.scrollContent, { paddingTop: isMobileOrTablet ? 126 : 260, padding: isMobileOrTablet ? 20 : 48 }, isPhone && { paddingTop: 90, paddingHorizontal: 12, paddingBottom: 72, alignItems: 'center' }, isPhone && Platform.OS === 'web' ? { touchAction: 'pan-y' } as any : undefined]}
+      contentContainerStyle={[
+        estilos.scrollContent,
+        {
+          paddingTop: isMobileOrTablet ? 126 : 260,
+          paddingHorizontal: isMobileOrTablet ? 20 : 48,
+          paddingBottom: isMobileOrTablet ? 20 : 48,
+        },
+        isPhone && { paddingTop: 90, paddingHorizontal: 12, paddingBottom: 72, alignItems: 'center' },
+        isPhone && Platform.OS === 'web' ? { touchAction: 'pan-y' } as any : undefined
+      ]}
       showsVerticalScrollIndicator={false}
       nestedScrollEnabled={false}
     >

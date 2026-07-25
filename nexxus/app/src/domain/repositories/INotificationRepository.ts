@@ -13,7 +13,7 @@ import { Notification } from '../entities/Notification';
  * Define el contrato de datos INotificationRepository; documenta campos esperados y evita pasar objetos ambiguos entre capas.
  */
 export interface INotificationRepository {
-  getNotificationsByUser(userId: string): Promise<Notification[]>;
-  subscribeNotificationsByUser?(userId: string, callback: (notifications: Notification[]) => void): () => void;
+  getNotificationsByUser(userId: string, empresaId?: string, limit?: number): Promise<Notification[]>;
+  subscribeNotificationsByUser?(userId: string, empresaId: string | undefined, callback: (notifications: Notification[]) => void, limit?: number): () => void;
   markAsRead(notificationId: string): Promise<void>;
 }

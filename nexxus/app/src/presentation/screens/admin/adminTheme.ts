@@ -15,8 +15,8 @@ import { Platform } from 'react-native';
  * Declaracion ADMIN. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
  */
 export const ADMIN = {
-  fondo: 'var(--nx-admin-fondo, #000000)',
-  fondoProfundo: 'var(--nx-admin-fondo-profundo, #000000)',
+  fondo: 'var(--nx-admin-fondo, #040404)',
+  fondoProfundo: 'var(--nx-admin-fondo-profundo, #040404)',
   fondoElevado: 'var(--nx-admin-fondo-elevado, rgba(12, 10, 26, 0.86))',
   fondoVidrio: 'var(--nx-admin-fondo-vidrio, rgba(13, 11, 30, 0.60))',
   fondoVidrioFuerte: 'var(--nx-admin-fondo-vidrio-fuerte, rgba(13, 11, 30, 0.92))',
@@ -126,10 +126,10 @@ export const ADMIN_THEMES: Record<AdminMode, AdminPalette> = {
   dark: {
     mode: 'dark',
     isDark: true,
-    bg: '#000000',
-    bgDeep: '#000000',
-    sidebar: '#000000',
-    sidebarStrong: '#000000',
+    bg: '#040404',
+    bgDeep: '#040404',
+    sidebar: '#040404',
+    sidebarStrong: '#040404',
     panel: 'rgba(13, 9, 27, 0.72)',
     panelStrong: 'rgba(15, 11, 34, 0.92)',
     chip: 'rgba(255,255,255,0.045)',
@@ -150,8 +150,8 @@ export const ADMIN_THEMES: Record<AdminMode, AdminPalette> = {
     navTint: 'dark',
     gradient: ['#7C3AED', '#A855F7', '#2563EB'],
     adminVars: {
-      '--nx-admin-fondo': '#000000',
-      '--nx-admin-fondo-profundo': '#000000',
+      '--nx-admin-fondo': '#040404',
+      '--nx-admin-fondo-profundo': '#040404',
       '--nx-admin-fondo-elevado': 'rgba(12, 10, 26, 0.86)',
       '--nx-admin-fondo-vidrio': 'rgba(13, 11, 30, 0.60)',
       '--nx-admin-fondo-vidrio-fuerte': 'rgba(13, 11, 30, 0.92)',

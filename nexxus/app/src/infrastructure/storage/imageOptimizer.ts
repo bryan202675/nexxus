@@ -3,7 +3,11 @@ import { validateUploadFile } from './fileValidation';
 
 const canvasAvailable = () => typeof document !== 'undefined' && typeof Image !== 'undefined';
 
-export async function optimizeImageForUpload(file: Blob | File, kind: Exclude<UploadKind, 'document'>): Promise<Blob> {
+export async function optimizeImageForUpload(file: Blob | File | string, kind: Exclude<UploadKind, 'document'>): Promise<any> {
+  if (typeof file === 'string') {
+    return file;
+  }
+
   const validated = await validateUploadFile(file, kind);
   const limits = UPLOAD_LIMITS[kind];
 

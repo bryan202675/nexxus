@@ -13,6 +13,7 @@ import { FirebaseTaskRepository } from './FirebaseTaskRepository';
 import { FirebaseAbsenceRepository } from './FirebaseAbsenceRepository';
 // Importa { FirebasePaymentRepository }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import { FirebasePaymentRepository } from './FirebasePaymentRepository';
+import { FirebasePayrollRepository } from './FirebasePayrollRepository';
 // Importa { FirebaseAppointmentRepository }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import { FirebaseAppointmentRepository } from './FirebaseAppointmentRepository';
 // Importa { FirebaseNotificationRepository }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
@@ -56,7 +57,7 @@ import { MarkNotificationRead } from '@/application/use-cases/notifications/Mark
 import { SubscribeNotifications } from '@/application/use-cases/notifications/SubscribeNotifications';
 
 // Importa { GetDocumentos, MarkDocumentRead }; ejecuta casos de uso que concentran reglas de negocio.
-import { GetDocumentos, MarkDocumentRead, GetCompanyDocuments, CreateDocument, DeleteDocument } from '@/application/use-cases/documents/DocumentUseCases';
+import { GetDocumentos, MarkDocumentRead, GetCompanyDocuments, CreateDocument, DeleteDocument, SubscribeCompanyDocuments, DeleteDocumentWithAsset, GetDocumentStorageStats } from '@/application/use-cases/documents/DocumentUseCases';
 // Importa { GetFocusSessions, SaveFocusSession }; ejecuta casos de uso que concentran reglas de negocio.
 import { GetFocusSessions, SaveFocusSession } from '@/application/use-cases/wellness/FocusSessionUseCases';
 // Importa { GetFeedbacks, SubmitFeedback }; ejecuta casos de uso que concentran reglas de negocio.
@@ -82,6 +83,16 @@ import { FirebaseAttendanceRepository } from './FirebaseAttendanceRepository';
 import { FirebaseInboxRepository } from './FirebaseInboxRepository';
 // Importa { FirebaseInternalRequestRepository, FirebaseChatContextualRepository }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import { FirebaseInternalRequestRepository, FirebaseChatContextualRepository } from './FirebaseFase2Repositories';
+import { FirebaseRequestReportRepository } from './FirebaseRequestReportRepository';
+import { FirebaseLeaderRepository } from './FirebaseLeaderRepository';
+import { FirebaseSuperAdminRepository } from './FirebaseSuperAdminRepository';
+import { FirebaseInternalChatRepository } from './FirebaseInternalChatRepository';
+import { FirebaseAiAssistantRepository } from './FirebaseAiAssistantRepository';
+import { FirebaseInventoryRepository } from './FirebaseInventoryRepository';
+import { FirebaseExportRepository } from './FirebaseExportRepository';
+import { FirebaseSensitiveProfileRepository } from './FirebaseSensitiveProfileRepository';
+import { FirebaseCompanySettingsRepository } from './FirebaseCompanySettingsRepository';
+import { FirebaseCompanyCalendarRepository } from './FirebaseCompanyCalendarRepository';
 
 // Importa { LoginUser }; ejecuta casos de uso que concentran reglas de negocio.
 import { LoginUser } from '@/application/use-cases/auth/LoginUser';
@@ -101,7 +112,7 @@ import { GetAllUsers } from '@/application/use-cases/admin/GetAllUsers';
 import { UpdateUserProfile } from '@/application/use-cases/admin/UpdateUserProfile';
 
 // Importa { RecordAttendance, GetAttendanceHistory, GetCurrentShift }; ejecuta casos de uso que concentran reglas de negocio.
-import { RecordAttendance, GetAttendanceHistory, GetCurrentShift } from '@/application/use-cases/attendance/AttendanceUseCases';
+import { RecordAttendance, GetAttendanceHistory, GetCurrentShift, GetCompanyAttendance, GetCompanyDailyAttendanceSummary } from '@/application/use-cases/attendance/AttendanceUseCases';
 // Importa { GetInbox, ResolveInboxItem, SubscribeToInbox }; ejecuta casos de uso que concentran reglas de negocio.
 import { GetInbox, ResolveInboxItem, SubscribeToInbox } from '@/application/use-cases/inbox/InboxUseCases';
 // Importa { CreateInternalRequest, GetInternalRequests, SendContextualMessage, SubscribeToChatContext }; ejecuta casos de uso que concentran reglas de negocio.
@@ -110,12 +121,23 @@ import { CreateInternalRequest, GetInternalRequests, SendContextualMessage, Subs
 // New Admin Use Cases
 // Importa { AdminPaymentUseCases }; ejecuta casos de uso que concentran reglas de negocio.
 import { AdminPaymentUseCases } from '@/application/use-cases/admin/AdminPaymentUseCases';
+import { AdminPayrollUseCases } from '@/application/use-cases/admin/AdminPayrollUseCases';
 // Importa { AdminDepartmentUseCases }; ejecuta casos de uso que concentran reglas de negocio.
 import { AdminDepartmentUseCases } from '@/application/use-cases/admin/AdminDepartmentUseCases';
 // Importa { AdminAuditLogUseCases }; ejecuta casos de uso que concentran reglas de negocio.
 import { AdminAuditLogUseCases } from '@/application/use-cases/admin/AdminAuditLogUseCases';
 // Importa { AdminAnnouncementUseCases }; ejecuta casos de uso que concentran reglas de negocio.
 import { AdminAnnouncementUseCases } from '@/application/use-cases/admin/AdminAnnouncementUseCases';
+import { AdminRequestReportUseCases } from '@/application/use-cases/admin/AdminRequestReportUseCases';
+import { LeaderUseCases } from '@/application/use-cases/leader/LeaderUseCases';
+import { SuperAdminUseCases } from '@/application/use-cases/admin/SuperAdminUseCases';
+import { InternalChatUseCases } from '@/application/use-cases/chat/InternalChatUseCases';
+import { AiAssistantUseCases } from '@/application/use-cases/ai/AiAssistantUseCases';
+import { InventoryUseCases } from '@/application/use-cases/inventory/InventoryUseCases';
+import { ExportUseCases } from '@/application/use-cases/admin/ExportUseCases';
+import { SensitiveProfileUseCases } from '@/application/use-cases/admin/SensitiveProfileUseCases';
+import { CompanySettingsUseCases } from '@/application/use-cases/admin/CompanySettingsUseCases';
+import { CompanyCalendarUseCases } from '@/application/use-cases/admin/CompanyCalendarUseCases';
 
 // ── Repositorios (REALEZ - FIREBASE) ──────────────────────────
 const authRepository = new FirebaseAuthRepository();
@@ -140,6 +162,7 @@ const absenceRepository = new FirebaseAbsenceRepository();
  * Pieza de repositorio paymentRepository. Representa operaciones de lectura/escritura usadas por los casos de negocio.
  */
 const paymentRepository = new FirebasePaymentRepository();
+const payrollRepository = new FirebasePayrollRepository();
 /**
  * Pieza de repositorio appointmentRepository. Representa operaciones de lectura/escritura usadas por los casos de negocio.
  */
@@ -188,6 +211,16 @@ const internalRequestRepository = new FirebaseInternalRequestRepository();
  * Pieza de repositorio chatContextualRepository. Representa operaciones de lectura/escritura usadas por los casos de negocio.
  */
 const chatContextualRepository = new FirebaseChatContextualRepository();
+const requestReportRepository = new FirebaseRequestReportRepository();
+const leaderRepository = new FirebaseLeaderRepository();
+const superAdminRepository = new FirebaseSuperAdminRepository();
+const internalChatRepository = new FirebaseInternalChatRepository();
+const aiAssistantRepository = new FirebaseAiAssistantRepository();
+const inventoryRepository = new FirebaseInventoryRepository();
+const exportRepository = new FirebaseExportRepository();
+const sensitiveProfileRepository = new FirebaseSensitiveProfileRepository();
+const companySettingsRepository = new FirebaseCompanySettingsRepository();
+const companyCalendarRepository = new FirebaseCompanyCalendarRepository();
 /**
  * Pieza de repositorio courseRepository. Representa operaciones de lectura/escritura usadas por los casos de negocio.
  */
@@ -234,16 +267,26 @@ export const useCases = {
     getAllUsers: new GetAllUsers(userRepository),
     updateUserProfile: new UpdateUserProfile(userRepository),
     payments: new AdminPaymentUseCases(paymentRepository),
+    payroll: new AdminPayrollUseCases(payrollRepository),
     departments: new AdminDepartmentUseCases(departmentRepository),
     auditLogs: new AdminAuditLogUseCases(auditLogRepository),
     announcements: new AdminAnnouncementUseCases(announcementRepository),
+    requestReports: new AdminRequestReportUseCases(requestReportRepository),
+    superAdmin: new SuperAdminUseCases(superAdminRepository),
+    exports: new ExportUseCases(exportRepository),
+    sensitiveProfiles: new SensitiveProfileUseCases(sensitiveProfileRepository),
+    companySettings: new CompanySettingsUseCases(companySettingsRepository),
+    calendar: new CompanyCalendarUseCases(companyCalendarRepository),
   },
   documents: {
     getDocumentos: new GetDocumentos(documentoRepository),
     marcarLeido: new MarkDocumentRead(documentoRepository),
     getByCompany: new GetCompanyDocuments(documentoRepository),
+    subscribeByCompany: new SubscribeCompanyDocuments(documentoRepository),
     create: new CreateDocument(documentoRepository),
     delete: new DeleteDocument(documentoRepository),
+    deleteWithAsset: new DeleteDocumentWithAsset(documentoRepository),
+    getStorageStats: new GetDocumentStorageStats(documentoRepository),
   },
   feedback: {
     getFeedbacks: new GetFeedbacks(feedbackRepository),
@@ -253,6 +296,8 @@ export const useCases = {
     record: new RecordAttendance(attendanceRepository),
     getHistory: new GetAttendanceHistory(attendanceRepository),
     getCurrentShift: new GetCurrentShift(attendanceRepository),
+    getCompany: new GetCompanyAttendance(attendanceRepository),
+    getDailySummary: new GetCompanyDailyAttendanceSummary(attendanceRepository),
   },
   inbox: {
     get: new GetInbox(inboxRepository),
@@ -263,12 +308,18 @@ export const useCases = {
     create: new CreateInternalRequest(internalRequestRepository),
     getByUser: new GetInternalRequests(internalRequestRepository),
   },
+  leader: new LeaderUseCases(leaderRepository),
   chat: {
     send: new SendContextualMessage(chatContextualRepository),
     subscribe: new SubscribeToChatContext(chatContextualRepository),
+    internal: new InternalChatUseCases(internalChatRepository),
   },
+  ai: new AiAssistantUseCases(aiAssistantRepository),
+  inventory: new InventoryUseCases(inventoryRepository),
   training: {
     getCourses: (empresaId: string) => courseRepository.getAll(empresaId),
     getCourseById: (id: string) => courseRepository.getById(id),
+    getProgressForUser: (empresaId: string, empleadoId: string) => courseRepository.getProgressForUser(empresaId, empleadoId),
+    completeModule: (cursoId: string, moduloIndex: number) => courseRepository.completeModule(cursoId, moduloIndex),
   }
 };

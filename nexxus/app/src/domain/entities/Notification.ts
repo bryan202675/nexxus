@@ -13,7 +13,7 @@ export interface Notification {
   empresaId: string;
   titulo: string;
   mensaje: string;
-  tipo: 'tarea' | 'anuncio' | 'privada' | 'info' | 'ausencia' | 'bienestar' | 'aprobacion';
+  tipo: 'tarea' | 'anuncio' | 'privada' | 'info' | 'ausencia' | 'bienestar' | 'aprobacion' | 'mensaje';
   leida: boolean;
   fecha: string;
 }

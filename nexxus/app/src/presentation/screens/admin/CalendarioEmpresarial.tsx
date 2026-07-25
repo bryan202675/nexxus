@@ -16,12 +16,10 @@ import { Alert, Animated, Easing, ScrollView, StyleSheet, Text as NativeText, Te
 import { AdminModal } from './AdminModal';
 import { AdminModalFormGlass } from './AdminModalFormGlass';
 
-// Importa { addDoc, collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, updateDoc, where } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
-import { addDoc, collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
 // Importa { CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Edit3, MapPin, Plus, Search, Trash2, Users, X }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Edit3, MapPin, Plus, Search, Trash2, Users, X } from 'lucide-react-native';
-// Importa { db } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
-import { db } from '@/infrastructure/firebase/firebaseConfig';
+import { useCases } from '@/infrastructure/firebase/container';
+import { CompanyCalendarCatalogItem, CompanyCalendarEvent, CompanyCalendarEventType } from '@/domain/entities/CompanyCalendar';
 // Importa { useAuth }; reutiliza hooks propios que encapsulan estado, auth o consultas.
 import { useAuth } from '@/presentation/hooks/useAuth';
 // Importa { ADMIN, sombraAdmin, sombraVioleta, useAdminAppearance }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
@@ -43,42 +41,17 @@ type VistaCalendario = 'mes' | 'semana' | 'dia' | 'agenda';
 /**
  * Describe la forma tipada TipoEvento; ayuda a que estados, props o respuestas mantengan una estructura predecible.
  */
-type TipoEvento = 'reunion' | 'recordatorio' | 'capacitacion' | 'vacaciones' | 'turno' | 'corporativo';
+type TipoEvento = CompanyCalendarEventType;
 
 /**
  * Describe la forma tipada EventoCalendario; ayuda a que estados, props o respuestas mantengan una estructura predecible.
  */
-type EventoCalendario = {
-  id?: string;
-  titulo: string;
-  descripcion?: string;
-  tipo: TipoEvento;
-  inicio: any;
-  fin: any;
-  empleadoIds?: string[];
-  empleadoNombres?: string[];
-  departamentoIds?: string[];
-  departamentos?: string[];
-  sedeIds?: string[];
-  sedes?: string[];
-  empresaId?: string;
-  creadoPor?: string;
-  creadoEn?: any;
-  actualizadoEn?: any;
-};
+type EventoCalendario = CompanyCalendarEvent;
 
 /**
  * Describe la forma tipada Catalogo; ayuda a que estados, props o respuestas mantengan una estructura predecible.
  */
-type Catalogo = {
-  id?: string;
-  nombre?: string;
-  name?: string;
-  correo?: string;
-  activo?: boolean;
-  estado_activo?: boolean;
-  empresaId?: string;
-};
+type Catalogo = CompanyCalendarCatalogItem;
 
 /**
  * Describe la forma tipada FormularioEvento; ayuda a que estados, props o respuestas mantengan una estructura predecible.
@@ -263,27 +236,14 @@ const CalendarioEmpresarial: React.FC = () => {
   useEffect(() => {
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!empresaId) return;
-    // Calcula consultas; transforma la lista original en datos listos para renderizar o guardar.
-    const consultas = [
-      onSnapshot(query(collection(db, 'calendario_empresarial'), where('empresaId', '==', empresaId)), (snapshot) => {
-        // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-        setEventos(snapshot.docs.map((documento) => ({ id: documento.id, ...documento.data() } as EventoCalendario)));
-      }),
-      onSnapshot(query(collection(db, 'usuarios'), where('empresaId', '==', empresaId)), (snapshot) => {
-        // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-        setUsuarios(snapshot.docs.map((documento) => ({ id: documento.id, ...documento.data() } as Catalogo)));
-      }),
-      onSnapshot(query(collection(db, 'departments'), where('empresaId', '==', empresaId)), (snapshot) => {
-        // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-        setDepartamentos(snapshot.docs.map((documento) => ({ id: documento.id, ...documento.data() } as Catalogo)));
-      }),
-      onSnapshot(query(collection(db, 'sedes'), where('empresaId', '==', empresaId)), (snapshot) => {
-        // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-        setSedes(snapshot.docs.map((documento) => ({ id: documento.id, ...documento.data() } as Catalogo)));
-      }),
-    ];
+    const unsubscribe = useCases.admin.calendar.subscribe(empresaId, (snapshot) => {
+      setEventos(snapshot.eventos);
+      setUsuarios(snapshot.usuarios);
+      setDepartamentos(snapshot.departamentos);
+      setSedes(snapshot.sedes);
+    });
     // Devuelve el valor final calculado para esta funcion o caso de uso.
-    return () => consultas.forEach((desuscribir) => desuscribir());
+    return () => unsubscribe();
   }, [empresaId]);
 
   // Inicializa eventosNormalizados; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -461,7 +421,6 @@ const CalendarioEmpresarial: React.FC = () => {
       sedeIds: sedeIds,
       sedes: sedeIds.map((id) => sedesPorId.get(id) || id),
       empresaId,
-      actualizadoEn: serverTimestamp(),
     };
 
     // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
@@ -469,15 +428,14 @@ const CalendarioEmpresarial: React.FC = () => {
       // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (eventoEditando?.id) {
         // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-        await updateDoc(doc(db, 'calendario_empresarial', eventoEditando.id), datos);
+        await useCases.admin.calendar.saveEvent({ ...datos, id: eventoEditando.id });
         // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
         toast.success({ title: 'Evento actualizado', description: 'Los cambios del evento se guardaron correctamente.' });
       } else {
         // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-        await addDoc(collection(db, 'calendario_empresarial'), {
+        await useCases.admin.calendar.saveEvent({
           ...datos,
           creadoPor: user?.id || (user as any)?.uid || user?.correo || 'admin',
-          creadoEn: serverTimestamp(),
         });
         // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
         toast.success({ title: 'Evento añadido', description: 'Se ha añadido el evento correctamente.' });
@@ -501,7 +459,7 @@ const CalendarioEmpresarial: React.FC = () => {
       // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
       try {
         // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-        await deleteDoc(doc(db, 'calendario_empresarial', eventoId));
+        await useCases.admin.calendar.deleteEvent(eventoId);
         // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
         toast.warning({ title: 'Evento eliminado', description: `"${evento.titulo}" fue eliminado del calendario.` });
       } catch (error: any) {

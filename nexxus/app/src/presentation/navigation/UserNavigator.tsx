@@ -12,11 +12,10 @@ import React from 'react';
 import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/bottom-tabs';
 // Importa { BlurView } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import { BlurView } from 'expo-blur';
-// Importa { StyleSheet, Platform, View, TouchableOpacity, Text } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { StyleSheet, Platform, View, TouchableOpacity, Text } from 'react-native';
+/// Importa { StyleSheet, Platform, View, TouchableOpacity } desde React Native; provee bloques nativos de layout, eventos y estilos.
+import { StyleSheet, Platform, View, TouchableOpacity } from 'react-native';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
-import { useTranslation } from 'react-i18next';
 
 // Importa MiPulso; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import MiPulso from '../screens/MiPulso';
@@ -26,10 +25,14 @@ import CentroTareas from '../screens/CentroTareas';
 import Recursos from '../screens/Recursos';
 // Importa ChatIA; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import ChatIA from '../screens/ChatIA';
+import ChatInterno from '../screens/ChatInterno';
+import PanelJefe from '../screens/PanelJefe';
 // Importa { SOMBRAS }; reutiliza tokens visuales y constantes comunes del sistema de diseno.
 import { SOMBRAS } from '@/shared/constants/diseno';
-// Importa { useTemaMobile }; accede a contexto compartido de usuario, tema o estado global.
+// Importa { useTemaMobile }; me accede a contexto compartido de usuario, tema o estado global.
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
+import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
+import { normalizeRole } from '@/shared/auth/roles';
 
 /**
  * Componente Tab. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
@@ -39,16 +42,8 @@ const Tab = createBottomTabNavigator();
  * Componente CustomTabBar. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 function CustomTabBar({ state, navigation }: BottomTabBarProps) {
-  const { t } = useTranslation();
   // Declara { colores, blurTint, intensidadBlur, esOscuro }; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
-  // Declara etiquetas; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const etiquetas: Record<string, string> = {
-    Home: t('app.home'),
-    Tareas: t('app.tasks'),
-    ChatIA: t('app.ai'),
-    Recursos: t('app.resources'),
-  };
 
   // Devuelve el JSX que React Native renderiza en pantalla.
   return (
@@ -81,7 +76,7 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
             };
 
             // Declara iconName; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-            let iconName: any = 'home';
+            let iconName: keyof typeof MaterialIcons.glyphMap = 'home';
 
             // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
             if (route.name === 'Home') {
@@ -90,6 +85,10 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
             } else if (route.name === 'Tareas') {
               // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
               iconName = 'assignment';
+            } else if (route.name === 'Equipo') {
+              iconName = 'groups';
+            } else if (route.name === 'Chat') {
+              iconName = 'chat';
             } else if (route.name === 'Recursos') {
               // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
               iconName = 'grid-view';
@@ -110,10 +109,9 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
                 {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                 <MaterialIcons
                   name={iconName}
-                  size={route.name === 'ChatIA' ? 22 : 21}
+                  size={route.name === 'ChatIA' ? 24 : 22}
                   color={isFocused ? '#FFFFFF' : colores.textoSuave}
                 />
-                {isFocused && <Text numberOfLines={1} style={estilos.activeLabel}>{etiquetas[route.name] || route.name}</Text>}
               </TouchableOpacity>
             );
           })}
@@ -127,6 +125,9 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
  * Componente UserNavigator. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 export default function UserNavigator() {
+  const { perfil } = useContextoUsuario();
+  const esJefe = normalizeRole(perfil?.rol) === 'jefe';
+
   // Devuelve el JSX que React Native renderiza en pantalla.
   return (
     // Componente de navegacion; define como se muestran rutas o pestañas dentro de la app.
@@ -140,6 +141,8 @@ export default function UserNavigator() {
       <Tab.Screen name="Home" component={MiPulso} />
       {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
       <Tab.Screen name="Tareas" component={CentroTareas} />
+      {esJefe && <Tab.Screen name="Equipo" component={PanelJefe} />}
+      <Tab.Screen name="Chat" component={ChatInterno} />
       {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
       <Tab.Screen name="ChatIA" component={ChatIA} />
       {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
@@ -176,11 +179,11 @@ const estilos = StyleSheet.create({
     // width fija o calcula el ancho del elemento.
     width: '100%',
     // maxWidth limita el ancho para mantener lectura y composicion.
-    maxWidth: 420,
+    maxWidth: 520,
     // height fija o calcula el alto del elemento.
-    height: 72,
+    height: 64,
     // borderRadius redondea esquinas para definir la forma visual.
-    borderRadius: 36,
+    borderRadius: 32,
     // overflow controla si el contenido se recorta o puede sobresalir.
     overflow: 'hidden',
     // backgroundColor define el fondo del bloque.
@@ -203,9 +206,7 @@ const estilos = StyleSheet.create({
     // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'space-between',
     // paddingHorizontal agrega espacio interno a izquierda y derecha.
-    paddingHorizontal: 10,
-    // gap define separacion uniforme entre elementos hijos.
-    gap: 8,
+    paddingHorizontal: 8,
   },
   // tabItem: estilo de lista o item; mantiene espaciado y lectura consistente en elementos repetidos.
   tabItem: {
@@ -217,14 +218,10 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     // justifyContent distribuye los hijos en el eje principal del contenedor.
     justifyContent: 'center',
-    // minWidth ajusta una propiedad visual especifica de este estilo.
-    minWidth: 52,
     // height fija o calcula el alto del elemento.
-    height: 50,
+    height: 46,
     // borderRadius redondea esquinas para definir la forma visual.
-    borderRadius: 25,
-    // gap define separacion uniforme entre elementos hijos.
-    gap: 6,
+    borderRadius: 23,
     // borderWidth define el grosor del borde visible.
     borderWidth: 1,
     // borderColor define el color del borde.
@@ -234,16 +231,5 @@ const estilos = StyleSheet.create({
   tabItemActive: {
     // backgroundColor define el fondo del bloque.
     backgroundColor: 'rgba(139, 92, 246, 0.82)',
-  },
-  // activeLabel: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-  activeLabel: {
-    // color define el color del texto o icono.
-    color: '#FFFFFF',
-    // fontSize controla el tamanio del texto.
-    fontSize: 11,
-    // fontWeight define el peso visual del texto.
-    fontWeight: '900',
-    // letterSpacing ajusta la separacion entre letras.
-    letterSpacing: 0,
   },
 });

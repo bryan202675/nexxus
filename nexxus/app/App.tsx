@@ -28,6 +28,7 @@ import { ProveedorUsuario, useContextoUsuario } from './src/presentation/context
 import { ProveedorTemaMobile } from './src/presentation/context/TemaMobileContext';
 // Importa { COLORES, ESPACIADO, RADIOS, SOMBRAS }; reutiliza tokens visuales y constantes comunes del sistema de diseno.
 import { COLORES, ESPACIADO, RADIOS, SOMBRAS } from './src/shared/constants/diseno';
+import { normalizeRole } from './src/shared/auth/roles';
 // Importa { LimitadorErrores }; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
 import { LimitadorErrores } from './src/presentation/components/LimitadorErrores';
 // Importa estilos o efectos secundarios; inicializa o consume configuracion de internacionalizacion.
@@ -119,6 +120,8 @@ import ReservaSesion from './src/presentation/screens/ReservaSesion';
 import ConfiguracionApp from './src/presentation/screens/ConfiguracionApp';
 // Importa CentroApoyo; conecta esta ruta o flujo con otra pantalla del modulo de presentacion.
 import CentroApoyo from './src/presentation/screens/CentroApoyo';
+import MisActivos from './src/presentation/screens/MisActivos';
+import MiSalario from './src/presentation/screens/MiSalario';
 // Importa CalendarioLaboral; conecta esta ruta o flujo con otra pantalla del modulo de presentacion.
 import CalendarioLaboral from './src/presentation/screens/CalendarioLaboral';
 
@@ -193,11 +196,12 @@ function EnrutadorPrincipal() {
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       haRedireccionado.current = true;
       // Redirección automática si ya está logueado
-      if (perfil.rol === 'admin') {
+      const rol = normalizeRole(perfil.rol);
+      if (rol === 'admin_empresa' || rol === 'super_admin') {
         console.log('[EnrutadorPrincipal] Redirecting to AppAdmin');
         // Ejecuta navegacion; cambia la pantalla activa manteniendo el flujo definido por React Navigation.
         navigation.reset({ index: 0, routes: [{ name: 'AppAdmin' }] });
-      } else if (perfil.rol === 'jefe') {
+      } else if (rol === 'jefe') {
         console.log('[EnrutadorPrincipal] Redirecting to AppJefe');
         // Ejecuta navegacion; cambia la pantalla activa manteniendo el flujo definido por React Navigation.
         navigation.reset({ index: 0, routes: [{ name: 'AppJefe' }] });
@@ -277,6 +281,8 @@ function EnrutadorPrincipal() {
       <Pila.Screen name="ReservaSesion" component={ReservaSesion} />
       {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
       <Pila.Screen name="CentroApoyo" component={CentroApoyo} />
+      <Pila.Screen name="MisActivos" component={MisActivos} />
+      <Pila.Screen name="MiSalario" component={MiSalario} />
       {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
       <Pila.Screen name="CalendarioLaboral" component={CalendarioLaboral} />
       {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}

@@ -59,13 +59,20 @@ import EstructuraOrganizativa from '../screens/admin/EstructuraOrganizativa';
 import GestionNomina from '../screens/admin/GestionNomina';
 // Importa ComunicacionAdmin; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import ComunicacionAdmin from '../screens/admin/ComunicacionAdmin';
+import MensajeriaInternaAdmin from '../screens/admin/MensajeriaInternaAdmin';
 import GestionDocumentos from '../screens/admin/GestionDocumentos';
 // Importa AuditoriaLogs; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import AuditoriaLogs from '../screens/admin/AuditoriaLogs';
 // Importa CalendarioEmpresarial; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import CalendarioEmpresarial from '../screens/admin/CalendarioEmpresarial';
+import CentroReportesSolicitudes from '../screens/admin/CentroReportesSolicitudes';
+import GestionAsistencia from '../screens/admin/GestionAsistencia';
+import GestionInventario from '../screens/admin/GestionInventario';
+import ChatIA from '../screens/ChatIA';
+import ChatIAAdmin from '../screens/admin/ChatIAAdmin';
 // Importa ConfiguracionAdmin; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import ConfiguracionAdmin from '../screens/admin/ConfiguracionAdmin';
+import SuperAdminDashboard from '../screens/admin/SuperAdminDashboard';
 import {
   AdminAppearanceContext,
   ADMIN_THEMES,
@@ -76,6 +83,7 @@ import {
 // Importa { AdminToastProvider }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import { AdminToastProvider } from '../screens/admin/adminToast';
 import { AdminTranslatedText, AdminTranslatedTextInput, AdminTranslationProvider } from '@/shared/i18n/AdminTranslatedText';
+import { isSuperAdminRole } from '@/shared/auth/roles';
 
 const Text = AdminTranslatedText;
 const TextInput = AdminTranslatedTextInput;
@@ -125,11 +133,17 @@ const obtenerFotoPerfil = (user: any) => {
  * Componente MENU_ITEMS. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 const MENU_ITEMS = [
+  { name: 'SuperAdminDashboard', label: 'Super Admin', icon: 'admin-panel-settings', superAdminOnly: true },
   { name: 'DashboardGeneral', label: 'Centro operativo', icon: 'dashboard-customize' },
+  { name: 'CentroReportesSolicitudes', label: 'Solicitudes', icon: 'assignment' },
+  { name: 'GestionAsistencia', label: 'Asistencia', icon: 'schedule' },
   { name: 'CalendarioEmpresarial', label: 'Calendario', icon: 'event-note' },
   { name: 'GestionPlantilla', label: 'Plantilla', icon: 'people-outline' },
   { name: 'EstructuraOrganizativa', label: 'Estructura', icon: 'account-tree' },
   { name: 'GestionNomina', label: 'Nómina', icon: 'payments' },
+  { name: 'GestionInventario', label: 'Inventario', icon: 'inventory-2' },
+  { name: 'MensajeriaInternaAdmin', label: 'Mensajería', icon: 'chat' },
+  { name: 'ChatIAAdmin', label: 'IA', icon: 'auto-awesome' },
   { name: 'ComunicacionAdmin', label: 'Comunicación', icon: 'forum' },
   { name: 'GestionDocumentos', label: 'Documentos', icon: 'folder' },
   { name: 'AuditoriaLogs', label: 'Auditoría', icon: 'manage-search' },
@@ -140,11 +154,17 @@ const MENU_ITEMS = [
  * Componente ADMIN_SEARCH_ITEMS. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 const ADMIN_SEARCH_ITEMS = [
+  { route: 'SuperAdminDashboard', title: 'Super Admin', detail: 'empresas, planes, pagos, auditoría global', superAdminOnly: true },
   { route: 'DashboardGeneral', title: 'Centro operativo', detail: 'productividad, aprobaciones, alertas, check-ins, actividad' },
+  { route: 'CentroReportesSolicitudes', title: 'Reportes y solicitudes', detail: 'ausencias, permisos, aprobaciones, reportes disciplinarios, desempeño' },
+  { route: 'GestionAsistencia', title: 'Asistencia y horarios', detail: 'entradas, salidas, tardanzas, horas trabajadas, salidas anticipadas' },
   { route: 'CalendarioEmpresarial', title: 'Calendario empresarial', detail: 'eventos, reuniones, feriados, agenda' },
   { route: 'GestionPlantilla', title: 'Plantilla', detail: 'empleados, sedes, roles, departamentos, tareas' },
   { route: 'EstructuraOrganizativa', title: 'Estructura organizativa', detail: 'departamentos, cargos, jerarquías, sedes' },
   { route: 'GestionNomina', title: 'Nómina', detail: 'pagos, salarios, planilla, compensación' },
+  { route: 'GestionInventario', title: 'Inventario e incidencias', detail: 'activos asignados, equipo, herramientas, reportes internos' },
+  { route: 'MensajeriaInternaAdmin', title: 'Mensajería interna', detail: 'conversaciones, mensajes, imágenes, documentos, soporte' },
+  { route: 'ChatIAAdmin', title: 'IA empresarial', detail: 'resumen semanal, asistencia, tareas, reportes, nómina, rendimiento' },
   { route: 'ComunicacionAdmin', title: 'Comunicación', detail: 'anuncios, notificaciones, mensajes' },
   { route: 'GestionDocumentos', title: 'Documentos', detail: 'pdf, archivos, cloudinary, almacenamiento, métricas' },
   { route: 'AuditoriaLogs', title: 'Auditoría', detail: 'logs, seguridad, eventos, actividad' },
@@ -174,11 +194,29 @@ const normalizarBusquedaAdmin = (valor: unknown) => String(valor || '')
  * Componente SCREEN_BANNERS. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 const SCREEN_BANNERS: Record<string, { title: string; eyebrow: string; description: string; icon: string }> = {
+  SuperAdminDashboard: {
+    title: 'Super Admin',
+    eyebrow: 'Nexxus Platform',
+    description: 'Control global de empresas, suscripciones, pagos y señales críticas de la plataforma.',
+    icon: 'admin-panel-settings',
+  },
   DashboardGeneral: {
     title: 'Centro operativo',
     eyebrow: 'Nexxus Command',
     description: 'Visión general de actividad, riesgo, productividad y señales vivas de la empresa.',
     icon: 'dashboard-customize',
+  },
+  CentroReportesSolicitudes: {
+    title: 'Reportes y solicitudes',
+    eyebrow: 'RRHH operativo',
+    description: 'Bandeja unificada de ausencias, solicitudes internas, reportes y aprobaciones con trazabilidad.',
+    icon: 'assignment',
+  },
+  GestionAsistencia: {
+    title: 'Asistencia y horarios',
+    eyebrow: 'Control operativo',
+    description: 'Entradas, salidas, tardanzas, horas trabajadas y salidas anticipadas según horario de empresa.',
+    icon: 'schedule',
   },
   CalendarioEmpresarial: {
     title: 'Calendario empresarial',
@@ -189,7 +227,7 @@ const SCREEN_BANNERS: Record<string, { title: string; eyebrow: string; descripti
   GestionPlantilla: {
     title: 'Gestión de plantilla',
     eyebrow: 'Personas y equipos',
-    description: 'Altas, edición, estados, tareas y control del personal activo.',
+    description: 'Géstion de todo tu equipo en un solo lugar.',
     icon: 'people-outline',
   },
   EstructuraOrganizativa: {
@@ -204,11 +242,29 @@ const SCREEN_BANNERS: Record<string, { title: string; eyebrow: string; descripti
     description: 'Salarios, estados de pago, configuración y trazabilidad financiera.',
     icon: 'payments',
   },
+  GestionInventario: {
+    title: 'Inventario e incidencias',
+    eyebrow: 'Activos internos',
+    description: 'Control de activos asignados, devoluciones e incidencias reportadas por empleados.',
+    icon: 'inventory-2',
+  },
   ComunicacionAdmin: {
     title: 'Comunicación',
     eyebrow: 'Mensajería empresarial',
     description: 'Anuncios, audiencias, notificaciones y canales internos.',
     icon: 'forum',
+  },
+  MensajeriaInternaAdmin: {
+    title: 'Mensajería',
+    eyebrow: 'Chat interno',
+    description: 'Conversaciones internas entre colaboradores.',
+    icon: 'chat',
+  },
+  ChatIAAdmin: {
+    title: 'IA empresarial',
+    eyebrow: 'Nexxus AI',
+    description: 'Consultas operativas de empresa, asistencia, rendimiento, reportes, nómina y señales ejecutivas con aislamiento por tenant.',
+    icon: 'auto-awesome',
   },
   GestionDocumentos: {
     title: 'Documentos',
@@ -769,6 +825,7 @@ function Sidebar({ state, navigation, sidebarOpen, setSidebarOpen }: BottomTabBa
           const menuItem = MENU_ITEMS.find(item => item.name === route.name);
           // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
           if (!menuItem) return null;
+          if ('superAdminOnly' in menuItem && menuItem.superAdminOnly && !isSuperAdminRole(user?.rol)) return null;
 
           // Declara onPress; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
           const onPress = () => {
@@ -888,6 +945,7 @@ function BannerPantalla({ routeName }: { routeName: string }) {
   return (
     // Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla.
     <Animated.View
+      pointerEvents="none"
       {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-admin-banner-shell' } as any : {})}
       style={[
         estilos.bannerContainer,
@@ -1356,10 +1414,14 @@ function NavbarHeader({ routeName, sidebarOpen, setSidebarOpen }: { routeName: s
       'GestionPlantilla',
       'EstructuraOrganizativa',
       'GestionNomina',
+      'MensajeriaInternaAdmin',
       'ComunicacionAdmin',
       'GestionDocumentos',
       'AuditoriaLogs',
       'ConfiguracionAdmin',
+      'SuperAdminDashboard',
+      'CentroReportesSolicitudes',
+      'GestionAsistencia',
     ];
     if (adminScreens.includes(route)) {
       navigation.navigate('AppAdmin', { screen: route, params });
@@ -1390,6 +1452,7 @@ function NavbarHeader({ routeName, sidebarOpen, setSidebarOpen }: { routeName: s
   const [profileOpen, setProfileOpen] = useState(false);
   // Inicializa adminSignals; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const adminSignals = useAdminSignals(user);
+  const isSuperAdmin = isSuperAdminRole(user?.rol);
   // Inicializa entrada; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const entrada = useRef(new Animated.Value(0)).current;
   // Inicializa pulso; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -1464,7 +1527,9 @@ function NavbarHeader({ routeName, sidebarOpen, setSidebarOpen }: { routeName: s
   const fotoPerfil = obtenerFotoPerfil(user);
   // Inicializa searchResults; combina rutas del admin con empleados, sedes, departamentos y cargos reales.
   const searchResults = useMemo<AdminSearchResult[]>(() => {
-    const rutas = ADMIN_SEARCH_ITEMS.map((item) => ({
+    const rutas = ADMIN_SEARCH_ITEMS
+    .filter((item) => !('superAdminOnly' in item) || !item.superAdminOnly || isSuperAdmin)
+    .map((item) => ({
       id: `route-${item.route}`,
       route: item.route,
       params: {},
@@ -1525,7 +1590,7 @@ function NavbarHeader({ routeName, sidebarOpen, setSidebarOpen }: { routeName: s
     return todos
       .filter((item) => normalizarBusquedaAdmin(`${item.title} ${item.detail} ${item.category} ${item.keywords}`).includes(term))
       .slice(0, 8);
-  }, [searchData, searchValue]);
+  }, [isSuperAdmin, searchData, searchValue]);
   const mostrarSearchResults = searchFocused || searchValue.trim().length > 0;
 
   // Declara navigateSearch; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -1678,7 +1743,7 @@ function NavbarHeader({ routeName, sidebarOpen, setSidebarOpen }: { routeName: s
         }} onClose={() => setProfileOpen(false)} />
       {mostrarSearchResults && renderSearchResultsPanel()}
       {/* BannerPantalla renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      {!isMobileOrTablet && <BannerPantalla routeName={routeName} />}
+      {!isMobileOrTablet && routeName !== 'ChatIAAdmin' && <BannerPantalla routeName={routeName} />}
     </View>
   );
 }
@@ -1772,7 +1837,15 @@ export default function AdminNavigator() {
             })}
           >
             {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
+            {isSuperAdminRole(user?.rol) && (
+              <Tab.Screen name="SuperAdminDashboard" component={SuperAdminDashboard} />
+            )}
+            {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
             <Tab.Screen name="DashboardGeneral" component={DashboardAdmin} />
+            {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
+            <Tab.Screen name="CentroReportesSolicitudes" component={CentroReportesSolicitudes} />
+            {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
+            <Tab.Screen name="GestionAsistencia" component={GestionAsistencia} />
             {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
             <Tab.Screen name="CalendarioEmpresarial" component={CalendarioEmpresarial} />
             {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
@@ -1781,6 +1854,11 @@ export default function AdminNavigator() {
             <Tab.Screen name="EstructuraOrganizativa" component={EstructuraOrganizativa} />
             {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
             <Tab.Screen name="GestionNomina" component={GestionNomina} />
+            <Tab.Screen name="GestionInventario" component={GestionInventario} />
+            {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
+            <Tab.Screen name="MensajeriaInternaAdmin" component={MensajeriaInternaAdmin} />
+            {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
+            <Tab.Screen name="ChatIAAdmin" component={ChatIAAdmin} />
             {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
             <Tab.Screen name="ComunicacionAdmin" component={ComunicacionAdmin} />
             {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}

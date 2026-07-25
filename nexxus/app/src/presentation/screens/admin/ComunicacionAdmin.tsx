@@ -14,12 +14,8 @@ import { useTranslation } from 'react-i18next';
 import { Animated, Easing, View, Text as NativeText, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, TextInput as NativeTextInput, Alert, Image, Platform, useWindowDimensions } from 'react-native';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
-// Importa { addDoc, collection, doc, onSnapshot, query, where, writeBatch } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
-import { addDoc, collection, doc, onSnapshot, query, where, writeBatch } from 'firebase/firestore';
 // Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import { LinearGradient } from 'expo-linear-gradient';
-// Importa { db } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
-import { db } from '@/infrastructure/firebase/firebaseConfig';
 // Importa { useCases } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
 import { useCases } from '@/infrastructure/firebase/container';
 // Importa { useAuth }; reutiliza hooks propios que encapsulan estado, auth o consultas.
@@ -31,6 +27,7 @@ import { ADMIN } from './adminTheme';
 // Importa { useAdminToast }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import { useAdminToast } from './adminToast';
 import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
+import { CommunicationCatalogItem, CommunicationDirectoryUser, CommunicationNotificationSummary } from '@/domain/repositories/IAnnouncementRepository';
 
 const Text = AdminTranslatedText;
 const TextInput = AdminTranslatedTextInput;
@@ -89,54 +86,17 @@ type OpcionCanal = {
   receptores: UsuarioComunicacion[];
 };
 
-type CatalogoComunicacion = {
-  id?: string;
-  nombre?: string;
-  name?: string;
-  departamentoId?: string;
-  departamentoNombre?: string;
-  sedeId?: string;
-  sedeNombre?: string;
-  descripcion?: string;
-  nivel?: string;
-  activo?: boolean;
-  activa?: boolean;
-};
+type CatalogoComunicacion = CommunicationCatalogItem;
 
 /**
  * Describe la forma tipada UsuarioComunicacion; ayuda a que estados, props o respuestas mantengan una estructura predecible.
  */
-type UsuarioComunicacion = {
-  id?: string;
-  nombre?: string;
-  correo?: string;
-  rol?: string;
-  departamento?: string;
-  departamentoId?: string;
-  cargo?: string;
-  cargoId?: string;
-  sede?: string;
-  sedeId?: string;
-  empresaId?: string;
-  empresa_id?: string;
-  activo?: boolean;
-  estado_activo?: boolean;
-  eliminado?: boolean;
-  foto_perfil?: string;
-  fotoPerfil?: string;
-  photoURL?: string;
-};
+type UsuarioComunicacion = CommunicationDirectoryUser;
 
 /**
  * Describe la forma tipada NotificacionComunicacion; ayuda a que estados, props o respuestas mantengan una estructura predecible.
  */
-type NotificacionComunicacion = {
-  id?: string;
-  tipo?: string;
-  leida?: boolean;
-  empresaId?: string;
-  fecha?: string;
-};
+type NotificacionComunicacion = CommunicationNotificationSummary;
 
 /**
  * Componente IconPanel. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
@@ -323,68 +283,30 @@ export default function ComunicacionAdmin() {
       return;
     }
 
-    // Declara cargadas; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const cargadas = new Set<string>();
-    // Declara marcarCarga; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const marcarCarga = (clave: string) => {
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      cargadas.add(clave);
-      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-      if (cargadas.size >= 7) setCargando(false);
-    };
-
     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setCargando(true);
     // Declara unsubFeeds; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const unsubFeeds = useCases.admin.announcements.subscribe(empresaId, (dbFeeds) => {
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setFeeds(dbFeeds || []);
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      marcarCarga('feeds');
+      setCargando(false);
     });
-    // Calcula unsubUsuarios; transforma la lista original en datos listos para renderizar o guardar.
-    const unsubUsuarios = onSnapshot(query(collection(db, 'usuarios'), where('empresaId', '==', empresaId)), (snapshot) => {
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-      setUsuarios(snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }) as UsuarioComunicacion).filter((usuario) => (usuario.empresaId || usuario.empresa_id) === empresaId));
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      marcarCarga('usuarios');
-    }, () => marcarCarga('usuarios'));
-    const unsubSedes = onSnapshot(query(collection(db, 'sedes'), where('empresaId', '==', empresaId)), (snapshot) => {
-      setSedesCatalogo(snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }) as CatalogoComunicacion));
-      marcarCarga('sedes');
-    }, () => marcarCarga('sedes'));
-    const unsubDepartamentos = onSnapshot(query(collection(db, 'departments'), where('empresaId', '==', empresaId)), (snapshot) => {
-      setDepartamentosCatalogo(snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }) as CatalogoComunicacion));
-      marcarCarga('departamentos');
-    }, () => marcarCarga('departamentos'));
-    const unsubCargos = onSnapshot(query(collection(db, 'cargos'), where('empresaId', '==', empresaId)), (snapshot) => {
-      setCargosCatalogo(snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }) as CatalogoComunicacion));
-      marcarCarga('cargos');
-    }, () => marcarCarga('cargos'));
-    const unsubRoles = onSnapshot(query(collection(db, 'roles_personalizados'), where('empresaId', '==', empresaId)), (snapshot) => {
-      setRolesCatalogo(snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }) as CatalogoComunicacion));
-      marcarCarga('roles');
-    }, () => marcarCarga('roles'));
-    // Calcula unsubNotificaciones; transforma la lista original en datos listos para renderizar o guardar.
-    const unsubNotificaciones = onSnapshot(query(collection(db, 'notificaciones'), where('empresaId', '==', empresaId)), (snapshot) => {
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-      setNotificaciones(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as NotificacionComunicacion));
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      marcarCarga('notificaciones');
-    }, () => marcarCarga('notificaciones'));
+    const unsubDirectory = useCases.admin.announcements.subscribeCommunicationDirectory(empresaId, (directory) => {
+      setUsuarios(directory.usuarios.filter((usuario) => (usuario.empresaId || usuario.empresa_id) === empresaId));
+      setSedesCatalogo(directory.sedes);
+      setDepartamentosCatalogo(directory.departamentos);
+      setCargosCatalogo(directory.cargos);
+      setRolesCatalogo(directory.roles);
+      setNotificaciones(directory.notificaciones);
+      setCargando(false);
+    }, () => setCargando(false));
 
     // Devuelve el valor final calculado para esta funcion o caso de uso.
     return () => {
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       unsubFeeds();
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      unsubUsuarios();
-      unsubSedes();
-      unsubDepartamentos();
-      unsubCargos();
-      unsubRoles();
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      unsubNotificaciones();
+      unsubDirectory();
     };
   }, [user]);
 
@@ -495,58 +417,36 @@ export default function ComunicacionAdmin() {
     try {
       // Declara prioridad; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const prioridad = texto.toLowerCase().includes('urgente') ? 'Urgente' : texto.toLowerCase().includes('crítico') ? 'Alta' : 'Normal';
-      // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-      const anuncioId = await useCases.admin.announcements.create({
-        empresaId,
-        creadoPorId: user?.id || '',
-        creadoPorNombre: user?.nombre || t('common.system'),
-        departamentoDestino: destino.tipo === 'departamento' ? destino.nombre : destino.tipo === 'todos' ? t('admin.comunicacion.todos') : destino.nombre,
-        alcance: destino.tipo,
-        canalDestino: destino.nombre,
-        sedeDestinoId: destino.tipo === 'sede' ? destino.id.replace('sede:', '') : undefined,
-        sedeDestino: destino.tipo === 'sede' ? destino.nombre : undefined,
-        departamentoDestinoId: destino.tipo === 'departamento' ? destino.id.replace('departamento:', '') : undefined,
-        cargoDestinoId: destino.tipo === 'cargo' ? destino.id.replace('cargo:', '') : undefined,
-        cargoDestino: destino.tipo === 'cargo' ? destino.nombre : undefined,
-        rolDestino: destino.tipo === 'rol' ? destino.nombre : undefined,
-        destinatarioIds: receptores.map((receptor) => receptor.id || '').filter(Boolean),
-        destinatarioNombres: receptores.map((receptor) => receptor.nombre || receptor.correo || 'Empleado').filter(Boolean),
-        destinatariosTotal: receptores.length,
-        prioridad,
-        mensaje: texto,
-      });
-      const fecha = new Date().toISOString();
-      for (let i = 0; i < receptores.length; i += 450) {
-        const batch = writeBatch(db);
-        receptores.slice(i, i + 450).forEach((receptor) => {
-          if (!receptor.id) return;
-          batch.set(doc(collection(db, 'notificaciones')), {
-            empresaId,
-            usuario_id: receptor.id,
-            titulo: destino.tipo === 'privado' ? 'Anuncio privado' : 'Nuevo anuncio',
-            mensaje: texto,
-            tipo: destino.tipo === 'privado' ? 'privada' : 'anuncio',
-            leida: false,
-            fecha,
-            anuncioId,
-            alcance: destino.tipo,
-            canalDestino: destino.nombre,
-          });
-        });
-        await batch.commit();
-      }
-      // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-      await addDoc(collection(db, 'audit_logs'), {
-        empresaId,
-        usuarioId: user?.id || '',
-        usuarioNombre: user?.nombre || t('admin.roles.admin'),
-        rol: user?.rol || 'admin',
-        accion: 'Publicación de Anuncio',
-        modulo: 'Mensajería',
-        detalles: `${destino.nombre} · ${destino.tipo} · ${receptores.length} receptores · ${prioridad}`,
-        estado: prioridad === 'Urgente' || prioridad === 'Alta' ? 'Warning' : 'Success',
-        ipAddress: 'Cliente Web',
-        timestamp: new Date().toISOString(),
+      await useCases.admin.announcements.publish({
+        announcement: {
+          empresaId,
+          creadoPorId: user?.id || '',
+          creadoPorNombre: user?.nombre || t('common.system'),
+          departamentoDestino: destino.tipo === 'departamento' ? destino.nombre : destino.tipo === 'todos' ? t('admin.comunicacion.todos') : destino.nombre,
+          alcance: destino.tipo,
+          canalDestino: destino.nombre,
+          sedeDestinoId: destino.tipo === 'sede' ? destino.id.replace('sede:', '') : undefined,
+          sedeDestino: destino.tipo === 'sede' ? destino.nombre : undefined,
+          departamentoDestinoId: destino.tipo === 'departamento' ? destino.id.replace('departamento:', '') : undefined,
+          cargoDestinoId: destino.tipo === 'cargo' ? destino.id.replace('cargo:', '') : undefined,
+          cargoDestino: destino.tipo === 'cargo' ? destino.nombre : undefined,
+          rolDestino: destino.tipo === 'rol' ? destino.nombre : undefined,
+          destinatarioIds: receptores.map((receptor) => receptor.id || '').filter(Boolean),
+          destinatarioNombres: receptores.map((receptor) => receptor.nombre || receptor.correo || 'Empleado').filter(Boolean),
+          destinatariosTotal: receptores.length,
+          prioridad,
+          mensaje: texto,
+        },
+        recipients: receptores.map((receptor) => ({
+          id: receptor.id || '',
+          nombre: receptor.nombre,
+          correo: receptor.correo,
+        })).filter((receptor) => receptor.id),
+        actor: {
+          id: user?.id || '',
+          nombre: user?.nombre || t('admin.roles.admin'),
+          rol: user?.rol || 'admin',
+        },
       });
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setMensaje('');

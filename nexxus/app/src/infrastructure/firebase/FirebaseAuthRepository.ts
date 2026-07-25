@@ -14,10 +14,11 @@ import {
   updateProfile,
   signInWithCustomToken
 } from 'firebase/auth';
-// Importa { doc, getDoc, setDoc, collection, query, where, getDocs } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
-import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
+// Importa { doc, getDoc, setDoc } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 // Importa { auth, db } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
-import { auth, db } from './firebaseConfig';
+import { httpsCallable } from 'firebase/functions';
+import { auth, db, functions } from './firebaseConfig';
 // Importa { IAuthRepository }; depende de contratos de repositorio sin acoplarse a una implementacion concreta.
 import { IAuthRepository } from '@/domain/repositories/IAuthRepository';
 // Importa { User }; usa tipos de dominio para que los datos mantengan estructura consistente.
@@ -50,81 +51,18 @@ export class FirebaseAuthRepository implements IAuthRepository {
   // loginEmpresarial agrupa una parte de la logica del modulo para mantener el flujo principal mas legible.
   async loginEmpresarial(codigoEmpresa: string, usuario: string, password: string): Promise<User> {
     try {
-      console.log(`[loginEmpresarial] Iniciando para empresa: ${codigoEmpresa}, usuario: ${usuario}`);
-      // 1. Buscar al usuario por codigoEmpresa y usuarioInterno
-      const q = query(
-        collection(db, 'usuarios'),
-        where('codigoEmpresa', '==', codigoEmpresa.toUpperCase()),
-        where('usuarioInterno', '==', usuario.toLowerCase())
-      );
-
-      const snapshot = await getDocs(q);
-      console.log(`[loginEmpresarial] Documentos encontrados en Firestore: ${snapshot.size}`);
-      
-      // Filtrar en cliente para admitir usuarios con campo 'eliminado' indefinido
-      const docValido = snapshot.docs.find(doc => doc.data().eliminado !== true);
-      
-      if (!docValido) {
-        console.warn('[loginEmpresarial] Usuario no encontrado o marcado como eliminado.');
-        throw new AuthError('auth/user-not-found', 'Usuario o código de empresa incorrectos.');
-      }
-
-      const userData = docValido.data() as User;
-      const userId = docValido.id;
-      console.log(`[loginEmpresarial] Usuario encontrado: ${userData.nombre}, ID: ${userId}, correo: ${userData.correo}`);
-
-      // 2. Validar password (En un sistema real esto se haría vía Cloud Function con hashing)
-      if (userData.passwordInterno !== password) {
-        console.warn('[loginEmpresarial] Validación de contraseña interna fallida.');
-        throw AuthError.invalidCredentials();
-      }
-
-      // 3. Autenticar en Firebase Auth
-      let finalUserId = userId;
-      if (userData.correo) {
-        try {
-          console.log(`[loginEmpresarial] Intentando iniciar sesión silenciosa en Firebase Auth con correo: ${userData.correo}`);
-          const userCred = await signInWithEmailAndPassword(auth, userData.correo, password);
-          console.log(`[loginEmpresarial] Sesión sincronizada con Firebase Auth. UID: ${userCred.user.uid}`);
-          
-          // Si el UID autenticado no coincide con el ID de Firestore, migramos/duplicamos el perfil
-          if (userCred.user.uid !== userId) {
-            console.warn(`[loginEmpresarial] UID mismatch! Firestore ID: ${userId}, Firebase Auth UID: ${userCred.user.uid}`);
-            const authUserDocRef = doc(db, 'usuarios', userCred.user.uid);
-            const authUserDoc = await getDoc(authUserDocRef);
-            if (!authUserDoc.exists()) {
-              await setDoc(authUserDocRef, {
-                ...userData,
-                id: userCred.user.uid,
-              });
-              console.log(`[loginEmpresarial] Perfil copiado al UID de Auth: ${userCred.user.uid}`);
-            }
-            finalUserId = userCred.user.uid;
-          }
-        } catch (e: any) {
-          console.warn(`[loginEmpresarial] Error al iniciar sesión silenciosa: ${e.code || e.message}`);
-          if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') {
-            console.log(`[loginEmpresarial] El usuario no existe en Firebase Auth, intentando crearlo...`);
-            try {
-              const userCred = await createUserWithEmailAndPassword(auth, userData.correo, password);
-              const newUid = userCred.user.uid;
-              await setDoc(doc(db, 'usuarios', newUid), {
-                ...userData,
-                id: newUid,
-              });
-              console.log(`[loginEmpresarial] Creado exitosamente en Firebase Auth y copiado a Firestore con UID: ${newUid}`);
-              finalUserId = newUid;
-            } catch (signUpError: any) {
-              console.error('[loginEmpresarial] Error crítico al crear usuario en Firebase Auth:', signUpError);
-            }
-          } else {
-            console.warn('[loginEmpresarial] Error de Firebase Auth no recuperable, usando sesión basada en Firestore.', e);
-          }
-        }
-      }
-
-      console.log(`[loginEmpresarial] Flujo finalizado con éxito. Retornando usuario ID: ${finalUserId}`);
-      return { ...userData, id: finalUserId };
+      const loginCallable = httpsCallable(functions, 'loginEmpresarial');
+      const result = await loginCallable({
+        codigoEmpresa,
+        usuario,
+        password,
+      });
+      const data = result.data as { token?: string };
+      if (!data.token) throw AuthError.invalidCredentials();
+      const credential = await signInWithCustomToken(auth, data.token);
+      const user = await this.getById(credential.user.uid);
+      if (!user) throw AuthError.userNotFound();
+      return user;
     } catch (error: any) {
       // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (error instanceof AuthError) throw error;

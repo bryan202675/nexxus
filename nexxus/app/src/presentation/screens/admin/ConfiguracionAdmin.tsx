@@ -44,6 +44,8 @@ import { changeLanguage } from '@/shared/i18n/config';
 import { useAdminAppearance } from './adminTheme';
 import { useApiTranslate } from '@/shared/i18n/useApiTranslate';
 import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
+import { PLAN_CATALOG, normalizePlan } from '@/shared/billing/plans';
+import { DEFAULT_ATTENDANCE_SCHEDULE } from '@/domain/services/attendancePolicy';
 
 const Text = AdminTranslatedText;
 
@@ -381,6 +383,12 @@ export default function ConfiguracionAdmin() {
   const [paisesLoaded, setPaisesLoaded] = useState<PrefijoPais[]>([]);
   const [editFoto, setEditFoto] = useState<string | null>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [horaEntrada, setHoraEntrada] = useState(DEFAULT_ATTENDANCE_SCHEDULE.horaEntrada);
+  const [horaSalida, setHoraSalida] = useState(DEFAULT_ATTENDANCE_SCHEDULE.horaSalida);
+  const [toleranciaMinutos, setToleranciaMinutos] = useState(String(DEFAULT_ATTENDANCE_SCHEDULE.toleranciaMinutos));
+  const [horasEsperadas, setHorasEsperadas] = useState(String(DEFAULT_ATTENDANCE_SCHEDULE.horasEsperadas));
+  const [isSavingSchedule, setIsSavingSchedule] = useState(false);
+  const [scheduleMessage, setScheduleMessage] = useState('');
 
   // Carga todos los países desde la API (igual que el registro de la Landing)
   useEffect(() => {
@@ -416,6 +424,28 @@ export default function ConfiguracionAdmin() {
     cargarPaises();
   }, []);
 
+  useEffect(() => {
+    const empresaId = user?.empresaId || (user as any)?.empresa_id || '';
+    let active = true;
+    const loadSchedule = async () => {
+      if (!empresaId) return;
+      try {
+        const settings = await useCases.admin.companySettings.getByCompany(empresaId);
+        if (!active) return;
+        setHoraEntrada(settings.asistencia.horaEntrada);
+        setHoraSalida(settings.asistencia.horaSalida);
+        setToleranciaMinutos(String(settings.asistencia.toleranciaMinutos));
+        setHorasEsperadas(String(settings.asistencia.horasEsperadas));
+      } catch (error: any) {
+        if (active) setScheduleMessage(error?.message || 'No se pudo cargar el horario laboral.');
+      }
+    };
+    loadSchedule();
+    return () => {
+      active = false;
+    };
+  }, [user?.empresaId, (user as any)?.empresa_id]);
+
   // Traducciones declaradas a nivel superior para respetar las reglas de Hooks
   // -- Modal de edición de perfil
   const tEditarPerfil = useApiTranslate('Editar Perfil');
@@ -434,6 +464,7 @@ export default function ConfiguracionAdmin() {
   const tTemaSection = useApiTranslate('Tema');
   const tCuentaSection = useApiTranslate('Cuenta');
   const tSistemaSection = useApiTranslate('Sistema');
+  const tPlanSection = useApiTranslate('Plan y módulos');
   // -- Insights
   const tModoOscuro = useApiTranslate('Modo oscuro');
   const tModoClaro = useApiTranslate('Modo claro');
@@ -441,6 +472,14 @@ export default function ConfiguracionAdmin() {
   // -- Pie y sesión
   const tCerrarSesion = useApiTranslate('Cerrar sesión');
   const tFooter = useApiTranslate('Nexxus Enterprise Platform · 2026');
+  const planActual = normalizePlan(user?.planActivo || user?.plan) || 'Starter';
+  const planInfo = PLAN_CATALOG[planActual];
+  const planFeatures = user?.planFeatures || planInfo.features;
+  const planLimits = user?.planLimits || planInfo.limits;
+  const empleadosLimite = planLimits.employees === null ? 'Ilimitados' : String(planLimits.employees);
+  const departamentosLimite = planLimits.departments === null ? 'Ilimitados' : String(planLimits.departments);
+  const sedesLimite = planLimits.branches === null ? 'Ilimitadas' : String(planLimits.branches);
+  const estadoSuscripcion = user?.subscriptionStatus || 'active';
 
   const handleOpenEditProfile = () => {
     if (user) {
@@ -532,6 +571,33 @@ export default function ConfiguracionAdmin() {
     }
   };
 
+  const handleSaveSchedule = async () => {
+    const empresaId = user?.empresaId || (user as any)?.empresa_id || '';
+    if (!empresaId || !user?.id) {
+      setScheduleMessage('No hay empresa activa para guardar el horario.');
+      return;
+    }
+    setIsSavingSchedule(true);
+    setScheduleMessage('');
+    try {
+      await useCases.admin.companySettings.saveAttendanceSchedule({
+        empresaId,
+        actorId: user.id,
+        schedule: {
+          horaEntrada: horaEntrada.trim(),
+          horaSalida: horaSalida.trim(),
+          toleranciaMinutos: Math.max(0, Number(toleranciaMinutos) || 0),
+          horasEsperadas: Math.max(1, Number(horasEsperadas) || DEFAULT_ATTENDANCE_SCHEDULE.horasEsperadas),
+        },
+      });
+      setScheduleMessage('Horario laboral guardado. Los próximos registros de asistencia usarán esta configuración.');
+    } catch (error: any) {
+      setScheduleMessage(error?.message || 'No se pudo guardar el horario laboral.');
+    } finally {
+      setIsSavingSchedule(false);
+    }
+  };
+
   // Devuelve el JSX que React Native renderiza en pantalla.
   return (
     // Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion.
@@ -604,6 +670,77 @@ export default function ConfiguracionAdmin() {
             preview="light"
           />
         </View>
+
+        <Text style={styles.sectionLabel}>{tPlanSection}</Text>
+        <SectionCard>
+          <OptionRow
+            icon="workspace-premium"
+            label={`Plan ${planActual}`}
+            sublabel={`${planInfo.description} · Estado: ${estadoSuscripcion}`}
+            right={<Text style={styles.planTag}>{empleadosLimite} empleados</Text>}
+          />
+          <View style={styles.separator} />
+          <OptionRow
+            icon="account-tree"
+            label="Límites operativos"
+            sublabel={`Departamentos: ${departamentosLimite} · Sedes: ${sedesLimite} · Almacenamiento: ${planLimits.storageGb}GB`}
+          />
+          <View style={styles.separator} />
+          <OptionRow
+            icon="auto-awesome"
+            label="IA y métricas"
+            sublabel={planFeatures.ai ? `IA activa · ${planLimits.aiRequestsMonthly} consultas mensuales` : 'IA no incluida en este plan'}
+            active={planFeatures.ai}
+          />
+          <View style={styles.separator} />
+          <OptionRow
+            icon="rule"
+            label="Módulos habilitados"
+            sublabel={[
+              planFeatures.reports ? 'Reportes' : null,
+              planFeatures.payroll ? 'Nómina' : null,
+              planFeatures.incidents ? 'Incidencias' : null,
+              planFeatures.inventory ? 'Inventario' : null,
+              planFeatures.internalChat ? 'Chat interno' : null,
+              planFeatures.exports ? 'Exportaciones' : null,
+              planFeatures.customBranding ? 'Marca personalizada' : null,
+            ].filter(Boolean).join(' · ') || 'Tareas, asistencia y solicitudes básicas'}
+          />
+        </SectionCard>
+
+        <Text style={styles.sectionLabel}>Horario laboral</Text>
+        <SectionCard>
+          <OptionRow
+            icon="schedule"
+            label="Configuración de asistencia"
+            sublabel="Define entrada, salida, tolerancia y horas esperadas para cálculos de tardanza, salidas anticipadas y horas extra."
+            active
+          />
+          <View style={styles.separator} />
+          <View style={styles.scheduleGrid}>
+            <View style={styles.scheduleField}>
+              <Text style={styles.inputLabel}>Entrada</Text>
+              <TextInput value={horaEntrada} onChangeText={setHoraEntrada} placeholder="08:00" placeholderTextColor={theme.muted} style={styles.textInput} />
+            </View>
+            <View style={styles.scheduleField}>
+              <Text style={styles.inputLabel}>Salida</Text>
+              <TextInput value={horaSalida} onChangeText={setHoraSalida} placeholder="17:00" placeholderTextColor={theme.muted} style={styles.textInput} />
+            </View>
+            <View style={styles.scheduleField}>
+              <Text style={styles.inputLabel}>Tolerancia (min)</Text>
+              <TextInput value={toleranciaMinutos} onChangeText={setToleranciaMinutos} keyboardType="numeric" placeholder="10" placeholderTextColor={theme.muted} style={styles.textInput} />
+            </View>
+            <View style={styles.scheduleField}>
+              <Text style={styles.inputLabel}>Horas esperadas</Text>
+              <TextInput value={horasEsperadas} onChangeText={setHorasEsperadas} keyboardType="numeric" placeholder="8" placeholderTextColor={theme.muted} style={styles.textInput} />
+            </View>
+          </View>
+          {scheduleMessage ? <Text style={styles.scheduleMessage}>{scheduleMessage}</Text> : null}
+          <TouchableOpacity disabled={isSavingSchedule} onPress={handleSaveSchedule} style={[styles.scheduleSaveButton, isSavingSchedule && styles.scheduleSaveButtonDisabled]} activeOpacity={0.84}>
+            {isSavingSchedule ? <ActivityIndicator size="small" color={CONTRAST_TEXT} /> : <MaterialIcons name="save" size={18} color={CONTRAST_TEXT} />}
+            <Text style={styles.scheduleSaveText}>{isSavingSchedule ? 'Guardando horario' : 'Guardar horario laboral'}</Text>
+          </TouchableOpacity>
+        </SectionCard>
 
         <Text style={styles.sectionLabel}>{tCuentaSection}</Text>
         {/* SectionCard renderiza una pieza visual reutilizable dentro de esta pantalla. */}
@@ -1394,6 +1531,55 @@ const crearEstilos = (theme: any, width?: number) => {
     backgroundColor: theme.border,
     // marginLeft ajusta una propiedad visual especifica de este estilo.
     marginLeft: isPhone ? 0 : 66,
+  },
+  planTag: {
+    color: CONTRAST_TEXT,
+    fontSize: 10,
+    fontWeight: '900',
+    backgroundColor: theme.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  scheduleGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: isPhone ? 10 : 12,
+    padding: isPhone ? 12 : 14,
+    paddingBottom: 2,
+  },
+  scheduleField: {
+    flexGrow: 1,
+    flexBasis: isPhone ? '100%' : '45%',
+    minWidth: isPhone ? '100%' : 180,
+  },
+  scheduleMessage: {
+    color: theme.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 17,
+    paddingHorizontal: isPhone ? 12 : 14,
+    paddingBottom: 8,
+  },
+  scheduleSaveButton: {
+    minHeight: 44,
+    marginHorizontal: isPhone ? 12 : 14,
+    marginBottom: isPhone ? 12 : 14,
+    borderRadius: 12,
+    backgroundColor: theme.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  scheduleSaveButtonDisabled: {
+    opacity: 0.62,
+  },
+  scheduleSaveText: {
+    color: CONTRAST_TEXT,
+    fontSize: 13,
+    fontWeight: '900',
   },
   // langRow: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   langRow: {

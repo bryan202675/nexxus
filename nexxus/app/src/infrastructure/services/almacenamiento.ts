@@ -93,12 +93,18 @@ export async function limpiarDatos(): Promise<void> {
 
 // --- Servicios de Almacenamiento en la Nube (Cloudinary) ---
 
-export async function subirFotoPerfil(userId: string, blob: Blob, empresaId = '', previousPublicId?: string | null, onProgress?: (progress: UploadProgress) => void): Promise<string> {
+export async function subirFotoPerfil(userId: string, blob: Blob | File | string, empresaId = '', previousPublicId?: string | null, onProgress?: (progress: UploadProgress) => void): Promise<string> {
   const uploaded = await subirFotoPerfilCompleta(userId, blob, empresaId, previousPublicId, onProgress);
   return uploaded.url;
 }
 
-export async function subirFotoPerfilCompleta(userId: string, blob: Blob, empresaId = '', previousPublicId?: string | null, onProgress?: (progress: UploadProgress) => void) {
-  const uploaded = await uploadProfilePhoto(blob, userId, empresaId, previousPublicId, onProgress);
+export async function subirFotoPerfilCompleta(userId: string, blob: Blob | File | string, empresaId = '', previousPublicId?: string | null, onProgress?: (progress: UploadProgress) => void) {
+  const uploaded = await uploadProfilePhoto(
+    blob as any,
+    userId,
+    empresaId,
+    previousPublicId || null,
+    onProgress
+  );
   return uploaded;
 }

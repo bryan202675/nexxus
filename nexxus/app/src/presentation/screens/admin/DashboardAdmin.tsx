@@ -2674,8 +2674,8 @@ const PerformanceSparkChart = ({ datos }: { datos: PuntoGrafico[] }) => {
               width={x1 - x0}
               height={iH + 4}
               fill="transparent"
-              onPressIn={() => setTooltipIdx(i)}
-              onPressOut={() => setTimeout(() => setTooltipIdx(-1), 1600)}
+              onPressIn={Platform.OS !== 'web' ? () => setTooltipIdx(i) : undefined}
+              onPressOut={Platform.OS !== 'web' ? () => setTimeout(() => setTooltipIdx(-1), 1600) : undefined}
               {...(Platform.OS === 'web' ? {
                 onMouseEnter: () => setTooltipIdx(i),
                 onMouseLeave: () => setTooltipIdx(-1),

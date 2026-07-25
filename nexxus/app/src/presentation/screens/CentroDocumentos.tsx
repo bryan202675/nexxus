@@ -10,6 +10,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   Linking,
+  Modal,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -85,12 +86,11 @@ export default function CentroDocumentos({ navigation }: Props) {
   // Declara estilos; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const estilos = crearEstilosDocumentos(colores, esOscuro);
 
-  // Declara manejarAbrir; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
+  const [docLecturaActivo, setDocLecturaActivo] = useState<Documento | null>(null);
+
   const manejarAbrir = async (doc: Documento) => {
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!doc.leido) await marcarDocumentoLeido(doc.id);
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-    if (doc.url) Linking.openURL(doc.url);
+    setDocLecturaActivo(doc);
   };
 
   // Inicializa docsFiltrados; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -423,6 +423,60 @@ export default function CentroDocumentos({ navigation }: Props) {
         {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* Modal interactivo de lectura de documentos informativos */}
+      {Boolean(docLecturaActivo) ? (
+        <Modal visible={true} animationType="slide" transparent>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' }}>
+            <View style={{ height: '88%', backgroundColor: colores.fondoProfundo || '#111827', borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' }}>
+              <BlurView intensity={intensidadBlur} tint={blurTint} style={{ flex: 1, padding: 20 }}>
+                {/* Encabezado del Modal */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: colores.borde }}>
+                  <View style={{ flex: 1, paddingRight: 12 }}>
+                    <Text style={{ fontSize: 18, fontWeight: '800', color: colores.texto }}>{docLecturaActivo?.titulo}</Text>
+                    <Text style={{ fontSize: 11, color: colores.textoSuave, marginTop: 4 }}>
+                      {docLecturaActivo?.categoria || docLecturaActivo?.tipo?.toUpperCase()} • {docLecturaActivo?.tamano || '1.5 MB'}
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setDocLecturaActivo(null)} style={{ padding: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)' }}>
+                    <Feather name="x" size={20} color={colores.texto} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Contenido del Documento */}
+                <ScrollView style={{ flex: 1, marginVertical: 16 }} showsVerticalScrollIndicator={false}>
+                  <Text style={{ fontSize: 14, color: colores.texto, lineHeight: 22, fontWeight: '400' }}>
+                    {docLecturaActivo?.contenido_completo || 'Este documento contiene normativa e información oficial verificada.'}
+                  </Text>
+                </ScrollView>
+
+                {/* Footer con acciones */}
+                <View style={{ gap: 10, paddingTop: 12, borderTopWidth: 1, borderTopColor: colores.borde }}>
+                  {docLecturaActivo?.url ? (
+                    <TouchableOpacity
+                      onPress={() => Linking.openURL(docLecturaActivo.url)}
+                      style={{ backgroundColor: 'rgba(59,130,246,0.15)', borderWidth: 1, borderColor: '#3B82F6', paddingVertical: 12, borderRadius: RADIOS.xl, alignItems: 'center' }}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={{ color: '#3B82F6', fontWeight: '800', fontSize: 14 }}>Abrir Enlace / PDF Externo</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (docLecturaActivo) marcarDocumentoLeido(docLecturaActivo.id);
+                      setDocLecturaActivo(null);
+                    }}
+                    style={{ backgroundColor: COLORES.primario, paddingVertical: 14, borderRadius: RADIOS.xl, alignItems: 'center' }}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 15 }}>Marcar como Leído y Entendido</Text>
+                  </TouchableOpacity>
+                </View>
+              </BlurView>
+            </View>
+          </View>
+        </Modal>
+      ) : null}
     </SafeAreaView>
   );
 }

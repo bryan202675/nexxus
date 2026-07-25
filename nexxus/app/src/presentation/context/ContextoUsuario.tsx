@@ -40,6 +40,7 @@ import { FocusSession } from '@/domain/entities/FocusSession';
 import { Feedback } from '@/domain/entities/Feedback';
 // Importa { InternalRequest, NuevaSolicitudInterna }; usa tipos de dominio para que los datos mantengan estructura consistente.
 import { InternalRequest, NuevaSolicitudInterna } from '@/domain/entities/InternalRequest';
+import type { AttendanceGeoPoint, AttendanceLocationStatus, AttendanceMethod } from '@/domain/entities/Attendance';
 // Importa { ContextualMessage }; depende de contratos de repositorio sin acoplarse a una implementacion concreta.
 import { ContextualMessage } from '@/domain/repositories/IFase2Repositories';
 // Importa { subirFotoPerfil }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
@@ -48,6 +49,12 @@ import { subirFotoPerfilCompleta } from '@/infrastructure/services/almacenamient
 /**
  * Define el contrato de datos EstadoContextoUsuario; documenta campos esperados y evita pasar objetos ambiguos entre capas.
  */
+interface AttendanceEventMetadata {
+  gps?: AttendanceGeoPoint;
+  metodoRegistro?: AttendanceMethod;
+  ubicacionEstado?: AttendanceLocationStatus;
+}
+
 interface EstadoContextoUsuario {
   perfil: User | null;
   uidUsuario: string | null;
@@ -91,7 +98,7 @@ interface EstadoContextoUsuario {
   marcarDocumentoLeido: (id: string) => Promise<void>;
   enviarFeedback: (dto: Omit<Feedback, 'id' | 'estado' | 'fecha'>) => Promise<void>;
   resolverItemInbox: (id: string) => Promise<void>;
-  registrarEventoAsistencia: (tipo: any, metadata?: any) => Promise<void>;
+  registrarEventoAsistencia: (tipo: 'entrada' | 'salida' | 'inicio_pausa' | 'fin_pausa', metadata?: AttendanceEventMetadata) => Promise<void>;
   enviarMensajeChat: (data: Omit<ContextualMessage, 'id' | 'timestamp'>) => Promise<void>;
   generarResumenJornada: () => Promise<string>;
   actualizarFotoPerfil: (blob: any) => Promise<void>;
@@ -152,6 +159,7 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (isAuthenticated && user) {
+      const empresaId = obtenerEmpresaId(user);
       // Declara unsubInbox; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const unsubInbox = useCases.inbox.subscribe.execute(user.id, (items) => {
         // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
@@ -162,7 +170,7 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
         // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
         setTareas(t);
       });
-      const unsubNotifications = useCases.notifications.subscribe.execute(user.id, (items) => {
+      const unsubNotifications = useCases.notifications.subscribe.execute(user.id, empresaId, (items) => {
         setNotificaciones(items);
       });
       // Devuelve el valor final calculado para esta funcion o caso de uso.
@@ -190,9 +198,9 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
       const [t, a, p, c, n, allUsers, docs, focus, feeds, ri] = await Promise.all([
         useCases.tasks.getTasks.execute(user.id),
         useCases.absences.getAbsences.execute(user.id),
-        useCases.payments.getPayments.execute(user.id),
+        useCases.payments.getPayments.execute(user.id, empresaId),
         useCases.appointments.getAppointments.execute(user.id),
-        useCases.notifications.getNotifications.execute(user.id),
+        useCases.notifications.getNotifications.execute(user.id, empresaId),
         useCases.admin.getAllUsers.execute(empresaId),
         useCases.documents.getDocumentos.execute(user.id),
         useCases.wellness.getFocusSessions.execute(user.id),
@@ -366,7 +374,7 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
   };
 
   // Declara registrarEventoAsistencia; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const registrarEventoAsistencia = async (tipo: any, metadata?: any) => {
+  const registrarEventoAsistencia = async (tipo: 'entrada' | 'salida' | 'inicio_pausa' | 'fin_pausa', metadata?: AttendanceEventMetadata) => {
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!user) return;
     // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
@@ -375,6 +383,9 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
       empresaId: obtenerEmpresaId(user),
       tipo,
       gps: metadata?.gps,
+      ubicacionGeo: metadata?.gps,
+      ubicacionEstado: metadata?.ubicacionEstado || (metadata?.gps ? 'granted' : 'unavailable'),
+      metodoRegistro: metadata?.metodoRegistro || (metadata?.gps ? 'ubicacion' : 'manual'),
       estado_aprobacion: 'pendiente',
     });
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
@@ -393,7 +404,7 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
   };
 
   // Declara actualizarFotoPerfil; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const actualizarFotoPerfil = async (blob: Blob) => {
+  const actualizarFotoPerfil = async (blob: Blob | File | string | any) => {
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!user) return;
     // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.

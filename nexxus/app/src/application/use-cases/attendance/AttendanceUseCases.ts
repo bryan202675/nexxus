@@ -46,3 +46,17 @@ export class GetCurrentShift {
     return this.repo.getCurrentShift(userId);
   }
 }
+
+export class GetCompanyAttendance {
+  constructor(private repo: IAttendanceRepository) {}
+  execute(empresaId: string, limit?: number) {
+    return this.repo.getByCompany(empresaId, limit);
+  }
+}
+
+export class GetCompanyDailyAttendanceSummary {
+  constructor(private repo: IAttendanceRepository) {}
+  execute(empresaId: string, dateIso: string, limit?: number) {
+    return this.repo.getDailySummaryByCompany(empresaId, dateIso, limit);
+  }
+}

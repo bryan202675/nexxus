@@ -10,6 +10,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Modal,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -34,7 +35,7 @@ import { useTranslation } from 'react-i18next';
 // Importa { useCases } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
 import { useCases } from '@/infrastructure/firebase/container';
 // Importa { Course }; usa tipos de dominio para que los datos mantengan estructura consistente.
-import { Course } from '@/domain/entities/Course';
+import { Course, TrainingProgress } from '@/domain/entities/Course';
 // Importa FondoMobilePremium; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
 // Importa { useTemaMobile }; accede a contexto compartido de usuario, tema o estado global.
@@ -70,30 +71,46 @@ export default function CentroAprendizaje({ navigation }: Props) {
   const estilos = crearEstilosAprendizaje(colores, esOscuro);
   // Inicializa [cursos, setCursos]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [cursos, setCursos] = useState<Course[]>([]);
+  const [avances, setAvances] = useState<TrainingProgress[]>([]);
   // Inicializa [cargando, setCargando]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState('');
   // Inicializa [categoria, setCategoria]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [categoria, setCategoria] = useState<CategoriaFiltro>('todo');
   // Inicializa [cursoActivoId, setCursoActivoId]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [cursoActivoId, setCursoActivoId] = useState<string | null>(null);
+  const [completandoModulo, setCompletandoModulo] = useState<string | null>(null);
+
+  const [moduloLecturaIndex, setModuloLecturaIndex] = useState<number | null>(null);
+  const [opcionQuiz, setOpcionQuiz] = useState<string | null>(null);
+  const [quizComprobado, setQuizComprobado] = useState<boolean>(false);
+  const [quizEsCorrecto, setQuizEsCorrecto] = useState<boolean>(false);
 
   // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
   useEffect(() => {
     // Declara activo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     let activo = true;
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-    if (perfil?.empresaId) {
+    if (perfil?.empresaId && perfil?.id) {
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setCargando(true);
+      setError('');
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-      useCases.training.getCourses(perfil.empresaId)
-        .then((res) => {
+      Promise.all([
+        useCases.training.getCourses(perfil.empresaId),
+        useCases.training.getProgressForUser(perfil.empresaId, perfil.id),
+      ])
+        .then(([res, progress]) => {
           // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
           if (!activo) return;
           // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
           setCursos(res);
+          setAvances(progress);
           // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
           setCursoActivoId((actual) => actual || res[0]?.id || null);
+        })
+        .catch(() => {
+          if (activo) setError(t('centroAprendizaje.load_error'));
         })
         .finally(() => {
           // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
@@ -102,6 +119,7 @@ export default function CentroAprendizaje({ navigation }: Props) {
     } else {
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setCursos([]);
+      setAvances([]);
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setCargando(false);
     }
@@ -110,20 +128,20 @@ export default function CentroAprendizaje({ navigation }: Props) {
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       activo = false;
     };
-  }, [perfil?.empresaId]);
+  }, [perfil?.empresaId, perfil?.id, t]);
 
   // Inicializa progresoPorCurso; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const progresoPorCurso = useMemo(() => {
     // Declara mapa; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const mapa = new Map<string, number>();
     // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-    (perfil?.progreso_capacitacion || []).forEach((avance) => {
+    avances.forEach((avance) => {
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      mapa.set(avance.curso_id, Math.max(0, Math.min(100, avance.porcentaje)));
+      mapa.set(avance.cursoId, Math.max(0, Math.min(100, avance.porcentaje)));
     });
     // Devuelve el valor final calculado para esta funcion o caso de uso.
     return mapa;
-  }, [perfil?.progreso_capacitacion]);
+  }, [avances]);
 
   // Inicializa categoriasDisponibles; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const categoriasDisponibles = useMemo(() => {
@@ -140,6 +158,25 @@ export default function CentroAprendizaje({ navigation }: Props) {
 
   // Declara cursoActivo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const cursoActivo = cursos.find((curso) => curso.id === cursoActivoId) || cursosFiltrados[0] || cursos[0];
+  const avanceCursoActivo = avances.find((avance) => avance.cursoId === cursoActivo?.id);
+  const modulosCompletadosCursoActivo = new Set(avanceCursoActivo?.modulosCompletados || []);
+
+  const completarModulo = async (cursoId: string, moduloIndex: number) => {
+    const key = `${cursoId}-${moduloIndex}`;
+    setCompletandoModulo(key);
+    setError('');
+    try {
+      const updated = await useCases.training.completeModule(cursoId, moduloIndex);
+      setAvances((actuales) => {
+        const restantes = actuales.filter((avance) => avance.id !== updated.id && avance.cursoId !== updated.cursoId);
+        return [...restantes, updated];
+      });
+    } catch {
+      setError(t('centroAprendizaje.progress_error'));
+    } finally {
+      setCompletandoModulo(null);
+    }
+  };
 
   // Inicializa resumen; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const resumen = useMemo(() => {
@@ -277,6 +314,13 @@ export default function CentroAprendizaje({ navigation }: Props) {
 
       {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
       <ScrollView contentContainerStyle={estilos.scroll} showsVerticalScrollIndicator={false}>
+        {error ? (
+          <View style={estilos.errorBox}>
+            <Feather name="alert-circle" size={16} color={COLORES.error} />
+            <Text style={estilos.errorText}>{error}</Text>
+          </View>
+        ) : null}
+
         {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
         <View style={estilos.resumenGrid}>
           {resumen.map((item) => (
@@ -334,6 +378,43 @@ export default function CentroAprendizaje({ navigation }: Props) {
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.heroProgreso}>{progresoPorCurso.get(cursoActivo.id) || 0}%</Text>
               </View>
+              {avanceCursoActivo?.certificadoEmitido ? (
+                <View style={estilos.certificadoBox}>
+                  <Feather name="award" size={18} color="#22C55E" />
+                  <View style={estilos.certificadoTexto}>
+                    <Text style={estilos.certificadoTitulo}>{t('centroAprendizaje.certificate_ready')}</Text>
+                    <Text style={estilos.certificadoCodigo}>{avanceCursoActivo.certificadoCodigo}</Text>
+                  </View>
+                </View>
+              ) : null}
+
+              <TouchableOpacity
+                onPress={() => {
+                  if (cursoActivo.modulos && cursoActivo.modulos.length > 0) {
+                    setModuloLecturaIndex(0);
+                    setOpcionQuiz(null);
+                    setQuizComprobado(false);
+                    setQuizEsCorrecto(false);
+                  }
+                }}
+                style={{
+                  marginTop: 14,
+                  backgroundColor: COLORES.primario,
+                  paddingVertical: 12,
+                  paddingHorizontal: 16,
+                  borderRadius: RADIOS.lg,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                }}
+                activeOpacity={0.84}
+              >
+                <Feather name="book-open" size={16} color="#FFFFFF" />
+                <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 14 }}>
+                  Comenzar / Leer Módulos del Curso
+                </Text>
+              </TouchableOpacity>
             </BlurView>
           </View>
         )}
@@ -423,27 +504,50 @@ export default function CentroAprendizaje({ navigation }: Props) {
             <View style={estilos.modulosCard}>
               {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
               <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.modulosContenido}>
-                {(cursoActivo.modulos || []).length > 0 ? cursoActivo.modulos.map((modulo, index) => (
-                  // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
-                  <View key={`${modulo.titulo}-${index}`} style={estilos.moduloFila}>
-                    {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-                    <View style={estilos.numeroModulo}>
-                      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                      <Text style={estilos.textoNumeroModulo}>{index + 1}</Text>
+                {(cursoActivo.modulos || []).length > 0 ? cursoActivo.modulos.map((modulo, index) => {
+                  const moduloCompletado = modulosCompletadosCursoActivo.has(index);
+                  const moduloKey = `${cursoActivo.id}-${index}`;
+                  return (
+                  <TouchableOpacity
+                    key={`${modulo.titulo}-${index}`}
+                    style={[estilos.moduloFila, moduloCompletado && estilos.moduloFilaCompletado]}
+                    onPress={() => {
+                      setModuloLecturaIndex(index);
+                      setOpcionQuiz(null);
+                      setQuizComprobado(false);
+                      setQuizEsCorrecto(false);
+                    }}
+                    activeOpacity={0.88}
+                  >
+                    <View style={[estilos.numeroModulo, moduloCompletado && estilos.numeroModuloCompleto]}>
+                      {moduloCompletado ? <Feather name="check" size={14} color="#FFFFFF" /> : <Text style={estilos.textoNumeroModulo}>{index + 1}</Text>}
                     </View>
-                    {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
                     <View style={estilos.infoModulo}>
-                      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                       <Text style={estilos.tituloModulo}>{modulo.titulo}</Text>
-                      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                       <Text style={estilos.tipoModulo}>
                         {modulo.video_url ? t('centroAprendizaje.module_types.video') : modulo.contenido_texto ? t('centroAprendizaje.module_types.reading') : t('centroAprendizaje.module_types.pending')}
                       </Text>
                     </View>
-                    {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                    <Feather name={modulo.video_url ? 'play-circle' : 'file-text'} size={18} color={colores.textoSuave} />
-                  </View>
-                )) : (
+                    <TouchableOpacity
+                      disabled={moduloCompletado || completandoModulo === moduloKey}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        completarModulo(cursoActivo.id, index);
+                      }}
+                      style={[estilos.botonModulo, moduloCompletado && estilos.botonModuloCompleto]}
+                      activeOpacity={0.84}
+                    >
+                      {completandoModulo === moduloKey ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <Text style={[estilos.botonModuloTexto, moduloCompletado && estilos.botonModuloTextoCompleto]}>
+                          {moduloCompletado ? t('centroAprendizaje.completed') : t('centroAprendizaje.mark_done')}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                  );
+                }) : (
                   // Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario.
                   <Text style={estilos.textoVacioInline}>{t('centroAprendizaje.no_modules')}</Text>
                 )}
@@ -455,6 +559,159 @@ export default function CentroAprendizaje({ navigation }: Props) {
         {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* Modal interactivo de lectura de módulos y evaluación corta */}
+      {cursoActivo && moduloLecturaIndex !== null && cursoActivo.modulos?.[moduloLecturaIndex] ? (() => {
+        const moduloActivo = cursoActivo.modulos[moduloLecturaIndex];
+        const moduloCompletado = modulosCompletadosCursoActivo.has(moduloLecturaIndex);
+        const evalData = moduloActivo.evaluacion_corta;
+
+        return (
+          <Modal visible={true} animationType="slide" transparent>
+            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.78)', justifyContent: 'flex-end' }}>
+              <View style={{ height: '90%', backgroundColor: colores.fondoProfundo || '#111827', borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' }}>
+                <BlurView intensity={intensidadBlur} tint={blurTint} style={{ flex: 1, padding: 20 }}>
+                  {/* Header */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: colores.borde }}>
+                    <View style={{ flex: 1, paddingRight: 12 }}>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: COLORES.primario, letterSpacing: 0.5 }}>
+                        MÓDULO {moduloLecturaIndex + 1} DE {cursoActivo.modulos.length}
+                      </Text>
+                      <Text style={{ fontSize: 18, fontWeight: '800', color: colores.texto, marginTop: 2 }}>{moduloActivo.titulo}</Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => setModuloLecturaIndex(null)}
+                      style={{ padding: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)' }}
+                    >
+                      <Feather name="x" size={20} color={colores.texto} />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Body Scroll */}
+                  <ScrollView style={{ flex: 1, marginVertical: 14 }} showsVerticalScrollIndicator={false}>
+                    {/* Contenido del Módulo */}
+                    <Text style={{ fontSize: 15, color: colores.texto, lineHeight: 24, fontWeight: '400', marginBottom: 20 }}>
+                      {moduloActivo.contenido_texto || 'Este módulo incluye guías informativas para el aprendizaje.'}
+                    </Text>
+
+                    {/* Evaluación Corta Interactiva */}
+                    {evalData ? (
+                      <View style={{ marginTop: 10, padding: 16, borderRadius: RADIOS.xl, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: colores.borde }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                          <MaterialIcons name="help-outline" size={20} color={COLORES.primario} />
+                          <Text style={{ fontSize: 14, fontWeight: '800', color: colores.texto }}>Evaluación de Comprensión</Text>
+                        </View>
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: colores.texto, marginBottom: 12 }}>{evalData.pregunta}</Text>
+
+                        {evalData.opciones.map((opcion) => {
+                          const seleccionada = opcionQuiz === opcion;
+                          return (
+                            <TouchableOpacity
+                              key={opcion}
+                              onPress={() => {
+                                setOpcionQuiz(opcion);
+                                setQuizComprobado(false);
+                              }}
+                              style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                gap: 10,
+                                padding: 12,
+                                borderRadius: RADIOS.lg,
+                                borderWidth: 1,
+                                borderColor: seleccionada ? COLORES.primario : colores.borde,
+                                backgroundColor: seleccionada ? `${COLORES.primario}1A` : 'transparent',
+                                marginBottom: 8,
+                              }}
+                              activeOpacity={0.8}
+                            >
+                              <View
+                                style={{
+                                  width: 18,
+                                  height: 18,
+                                  borderRadius: 9,
+                                  borderWidth: 2,
+                                  borderColor: seleccionada ? COLORES.primario : colores.textoSuave,
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                              >
+                                {seleccionada ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: COLORES.primario }} /> : null}
+                              </View>
+                              <Text style={{ fontSize: 13, color: colores.texto, flex: 1, fontWeight: seleccionada ? '700' : '400' }}>{opcion}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+
+                        {/* Botón de Comprobar */}
+                        {opcionQuiz && !quizComprobado ? (
+                          <TouchableOpacity
+                            onPress={() => {
+                              setQuizComprobado(true);
+                              setQuizEsCorrecto(opcionQuiz === evalData.respuestaCorrecta);
+                            }}
+                            style={{ backgroundColor: COLORES.primario, paddingVertical: 10, borderRadius: RADIOS.lg, alignItems: 'center', marginTop: 8 }}
+                          >
+                            <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 13 }}>Verificar Respuesta</Text>
+                          </TouchableOpacity>
+                        ) : null}
+
+                        {/* Banner de Feedback */}
+                        {quizComprobado ? (
+                          <View
+                            style={{
+                              marginTop: 12,
+                              padding: 12,
+                              borderRadius: RADIOS.lg,
+                              backgroundColor: quizEsCorrecto ? '#10B9811A' : '#EF44441A',
+                              borderWidth: 1,
+                              borderColor: quizEsCorrecto ? '#10B981' : '#EF4444',
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: 8,
+                            }}
+                          >
+                            <MaterialIcons name={quizEsCorrecto ? 'check-circle' : 'error'} size={20} color={quizEsCorrecto ? '#10B981' : '#EF4444'} />
+                            <Text style={{ fontSize: 12, fontWeight: '700', color: quizEsCorrecto ? '#10B981' : '#EF4444', flex: 1 }}>
+                              {quizEsCorrecto ? '¡Excelente! Respuesta correcta.' : 'Respuesta incorrecta. Inténtalo de nuevo.'}
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    ) : null}
+                  </ScrollView>
+
+                  {/* Action Buttons */}
+                  <View style={{ gap: 10, paddingTop: 12, borderTopWidth: 1, borderTopColor: colores.borde }}>
+                    <TouchableOpacity
+                      disabled={moduloCompletado}
+                      onPress={() => {
+                        completarModulo(cursoActivo.id, moduloLecturaIndex);
+                        setModuloLecturaIndex(null);
+                      }}
+                      style={{
+                        backgroundColor: moduloCompletado ? '#22C55E' : COLORES.primario,
+                        paddingVertical: 14,
+                        borderRadius: RADIOS.xl,
+                        alignItems: 'center',
+                        flexDirection: 'row',
+                        justifyContent: 'center',
+                        gap: 8,
+                      }}
+                      activeOpacity={0.85}
+                    >
+                      <Feather name={moduloCompletado ? 'check-circle' : 'award'} size={18} color="#FFFFFF" />
+                      <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 15 }}>
+                        {moduloCompletado ? 'Módulo Completado' : 'Completar Módulo y Marcar Progreso'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </BlurView>
+              </View>
+            </View>
+          </Modal>
+        );
+      })() : null}
     </SafeAreaView>
   );
 }
@@ -491,6 +748,8 @@ function crearEstilosAprendizaje(c: any, esOscuro: boolean) {
     iconoHeader: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: glassMicro, borderWidth: 1, borderColor: c.borde },
     // scroll: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     scroll: { paddingHorizontal: ESPACIADO.lg, paddingTop: ESPACIADO.sm },
+    errorBox: { minHeight: 42, borderRadius: RADIOS.lg, borderWidth: 1, borderColor: 'rgba(239,68,68,0.28)', backgroundColor: 'rgba(239,68,68,0.10)', flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: ESPACIADO.md, marginBottom: ESPACIADO.md },
+    errorText: { ...TIPOGRAFIA.cuerpoPequeno, color: COLORES.error, flex: 1, fontWeight: '700' },
     // resumenGrid: estilo de grilla; organiza elementos en filas o columnas con separacion controlada.
     resumenGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: ESPACIADO.sm, marginBottom: ESPACIADO.lg },
     // tarjetaResumen: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
@@ -521,6 +780,10 @@ function crearEstilosAprendizaje(c: any, esOscuro: boolean) {
     heroFooter: { flexDirection: 'row', alignItems: 'center', gap: ESPACIADO.sm, marginTop: ESPACIADO.lg },
     // heroProgreso: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     heroProgreso: { ...TIPOGRAFIA.leyenda, color: c.texto },
+    certificadoBox: { marginTop: ESPACIADO.md, minHeight: 52, borderRadius: RADIOS.lg, borderWidth: 1, borderColor: 'rgba(34,197,94,0.28)', backgroundColor: 'rgba(34,197,94,0.10)', flexDirection: 'row', alignItems: 'center', gap: 10, padding: ESPACIADO.md },
+    certificadoTexto: { flex: 1, minWidth: 0 },
+    certificadoTitulo: { ...TIPOGRAFIA.leyenda, color: c.texto },
+    certificadoCodigo: { ...TIPOGRAFIA.micro, color: c.textoSuave, marginTop: 2 },
     // seccion: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     seccion: { marginBottom: ESPACIADO.xl },
     // encabezadoSeccion: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
@@ -581,8 +844,10 @@ function crearEstilosAprendizaje(c: any, esOscuro: boolean) {
     modulosContenido: { padding: ESPACIADO.md, gap: ESPACIADO.sm },
     // moduloFila: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     moduloFila: { flexDirection: 'row', alignItems: 'center', gap: ESPACIADO.sm, paddingVertical: ESPACIADO.xs },
+    moduloFilaCompletado: { opacity: 0.92 },
     // numeroModulo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     numeroModulo: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(124,58,237,0.13)', borderWidth: 1, borderColor: 'rgba(139,92,246,0.25)' },
+    numeroModuloCompleto: { backgroundColor: '#22C55E', borderColor: 'rgba(34,197,94,0.48)' },
     // textoNumeroModulo: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
     textoNumeroModulo: { ...TIPOGRAFIA.micro, color: c.texto, fontSize: 10 },
     // infoModulo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
@@ -591,10 +856,12 @@ function crearEstilosAprendizaje(c: any, esOscuro: boolean) {
     tituloModulo: { ...TIPOGRAFIA.leyenda, color: c.texto },
     // tipoModulo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     tipoModulo: { ...TIPOGRAFIA.cuerpoPequeno, color: c.textoSuave, marginTop: 2 },
+    botonModulo: { minHeight: 34, minWidth: 96, borderRadius: RADIOS.completo, backgroundColor: COLORES.primario, alignItems: 'center', justifyContent: 'center', paddingHorizontal: ESPACIADO.md },
+    botonModuloCompleto: { backgroundColor: esOscuro ? 'rgba(34,197,94,0.18)' : 'rgba(34,197,94,0.12)', borderWidth: 1, borderColor: 'rgba(34,197,94,0.28)' },
+    botonModuloTexto: { ...TIPOGRAFIA.micro, color: '#FFFFFF', fontSize: 10 },
+    botonModuloTextoCompleto: { color: '#22C55E' },
     // textoVacioInline: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
     textoVacioInline: { ...TIPOGRAFIA.cuerpoPequeno, color: c.textoSuave, textAlign: 'center', paddingVertical: ESPACIADO.md },
   });
 }
-
-
 

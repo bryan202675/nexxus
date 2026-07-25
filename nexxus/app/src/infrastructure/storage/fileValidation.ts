@@ -86,38 +86,67 @@ const getImageDimensions = (file: Blob | File): Promise<{ width: number; height:
   });
 };
 
-export async function validateUploadFile(file: Blob | File, kind: UploadKind): Promise<ValidatedFile> {
+export async function validateUploadFile(file: Blob | File | string, kind: UploadKind): Promise<ValidatedFile> {
   const limits = UPLOAD_LIMITS[kind];
-  const extension = getExtension(file);
-  const declaredMime = String(file.type || '').toLowerCase().split(';')[0].trim();
-  const bytes = await readHeader(file);
+
+  if (typeof file === 'string' && file.startsWith('data:')) {
+    const mimeMatch = file.match(/^data:([^;]+);base64,/);
+    const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+    const size = Math.round((file.length - (file.indexOf(',') + 1)) * 0.75);
+    const extension = mime.includes('png') ? 'png' : mime.includes('webp') ? 'webp' : 'jpg';
+
+    if (size > limits.maxBytes) {
+      throw new Error(`El archivo supera el límite permitido de ${formatBytes(limits.maxBytes)}.`);
+    }
+
+    return {
+      file: file as any,
+      extension,
+      mime,
+      size,
+    };
+  }
+
+  const blobFile = file as Blob | File;
+  const extension = getExtension(blobFile);
+  const declaredMime = String(blobFile.type || '').toLowerCase().split(';')[0].trim();
+  const bytes = await readHeader(blobFile);
   const mime = detectMime(bytes, declaredMime);
 
-  if (file.size > limits.maxBytes) {
+  if (blobFile.size > limits.maxBytes) {
     throw new Error(`El archivo supera el límite permitido de ${formatBytes(limits.maxBytes)}.`);
   }
   if (extension && blockedExtensions.has(extension)) {
     throw new Error('Ese formato no está permitido por seguridad.');
   }
   if (extension && !limits.allowedExtensions.includes(extension)) {
-    throw new Error(kind === 'document' ? 'Solo se permiten documentos PDF.' : 'Solo se permiten imágenes JPG, PNG o WEBP.');
+    throw new Error(kind === 'document' ? 'Solo se permiten documentos PDF.' : kind === 'chatAttachment' ? 'Solo se permiten imágenes JPG, PNG, WEBP o PDF.' : 'Solo se permiten imágenes JPG, PNG o WEBP.');
   }
   if (!limits.allowedMimeTypes.includes(mime)) {
-    throw new Error(kind === 'document' ? 'El documento debe ser un PDF válido.' : 'La imagen debe ser JPG, PNG o WEBP válida.');
+    throw new Error(kind === 'document' ? 'El documento debe ser un PDF válido.' : kind === 'chatAttachment' ? 'El adjunto debe ser una imagen válida o un PDF.' : 'La imagen debe ser JPG, PNG o WEBP válida.');
   }
 
-  const dimensions = mime.startsWith('image/') ? await getImageDimensions(file) : null;
+  const dimensions = mime.startsWith('image/') ? await getImageDimensions(blobFile) : null;
   return {
-    file,
+    file: blobFile,
     extension,
     mime,
-    size: file.size,
+    size: blobFile.size,
     width: dimensions?.width,
     height: dimensions?.height,
   };
 }
 
-export async function hashFile(file: Blob | File): Promise<string> {
+export async function hashFile(file: Blob | File | string): Promise<string> {
+  if (typeof file === 'string') {
+    let hash = 0;
+    for (let i = 0; i < file.length; i++) {
+      hash = (hash << 5) - hash + file.charCodeAt(i);
+      hash |= 0;
+    }
+    return Math.abs(hash).toString(16).padStart(64, '0');
+  }
+
   let buffer: ArrayBuffer;
   if (typeof file.arrayBuffer === 'function') {
     buffer = await file.arrayBuffer();

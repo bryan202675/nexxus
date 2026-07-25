@@ -262,6 +262,7 @@ function traducirErrorFirebase(codigo: string | undefined) {
  * Componente Campo. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 function Campo({
+  autoComplete,
   error,
   label,
   onChange,
@@ -269,6 +270,7 @@ function Campo({
   type = 'text',
   value,
 }: {
+  autoComplete?: string;
   error?: string;
   label: string;
   onChange: (valor: string) => void;
@@ -287,6 +289,7 @@ function Campo({
       {/* input renderiza una pieza visual reutilizable dentro de esta pantalla. */}
       <input
         aria-invalid={Boolean(error)}
+        autoComplete={autoComplete}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         type={type}
@@ -1073,6 +1076,13 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
           logoUrl,
         },
         configuracion_id: configuracionRef.id,
+        asistencia: {
+          horaEntrada: '08:00',
+          horaSalida: '17:00',
+          horasEsperadas: 8,
+          toleranciaMinutos: 10,
+          metodoRegistroDefault: 'manual',
+        },
         departamentosIniciales: ['Administración', 'Recursos Humanos', 'Operaciones'],
         empresaId: empresaRef.id,
         updatedAt: serverTimestamp(),
@@ -1164,11 +1174,11 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
             // form renderiza una pieza visual reutilizable dentro de esta pantalla.
             <form className="nx-auth-form" onSubmit={enviarRegistro} noValidate>
               {/* Campo renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <Campo error={errores.nombre} label={t('landing_auth.field_name_label')} onChange={(valor) => actualizarRegistro('nombre', valor)} placeholder={t('landing_auth.field_name_placeholder')} value={registro.nombre} />
+              <Campo autoComplete="name" error={errores.nombre} label={t('landing_auth.field_name_label')} onChange={(valor) => actualizarRegistro('nombre', valor)} placeholder={t('landing_auth.field_name_placeholder')} value={registro.nombre} />
               {/* Campo renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <Campo error={errores.correo} label={t('landing_auth.field_email_label')} onChange={(valor) => actualizarRegistro('correo', valor)} placeholder={t('landing_auth.field_email_placeholder')} value={registro.correo} />
+              <Campo autoComplete="email" error={errores.correo} label={t('landing_auth.field_email_label')} onChange={(valor) => actualizarRegistro('correo', valor)} placeholder={t('landing_auth.field_email_placeholder')} value={registro.correo} />
               {/* Campo renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <Campo error={errores.password} label={t('landing_auth.field_password_label')} onChange={(valor) => actualizarRegistro('password', valor)} placeholder={t('landing_auth.field_password_placeholder')} type="password" value={registro.password} />
+              <Campo autoComplete="new-password" error={errores.password} label={t('landing_auth.field_password_label')} onChange={(valor) => actualizarRegistro('password', valor)} placeholder={t('landing_auth.field_password_placeholder')} type="password" value={registro.password} />
               {/* div renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <div className="nx-password-meter">
                 {/* i renderiza una pieza visual reutilizable dentro de esta pantalla. */}
@@ -1179,7 +1189,7 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
                 {reglasPassword(registro.password).map(([key, valido]) => <span key={key} className={valido ? 'valid' : ''}>{valido ? '✓' : '•'} {t(key)}</span>)}
               </div>
               {/* Campo renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <Campo error={errores.confirmarPassword} label={t('landing_auth.field_confirm_password_label')} onChange={(valor) => actualizarRegistro('confirmarPassword', valor)} placeholder={t('landing_auth.field_confirm_password_placeholder')} type="password" value={registro.confirmarPassword} />
+              <Campo autoComplete="new-password" error={errores.confirmarPassword} label={t('landing_auth.field_confirm_password_label')} onChange={(valor) => actualizarRegistro('confirmarPassword', valor)} placeholder={t('landing_auth.field_confirm_password_placeholder')} type="password" value={registro.confirmarPassword} />
               {errorGlobal ? <div className="nx-auth-error">{t(errorGlobal)}</div> : null}
               {/* StarButton renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <StarButton className="nx-auth-submit" type="submit">{cargando ? t('landing_auth.btn_register_loading') : t('landing_auth.btn_register')}</StarButton>
@@ -1190,9 +1200,9 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
             // form renderiza una pieza visual reutilizable dentro de esta pantalla.
             <form className="nx-auth-form" onSubmit={enviarLogin} noValidate>
               {/* Campo renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <Campo error={errores.loginCorreo} label={t('landing_auth.field_email_label')} onChange={(valor) => actualizarLogin('correo', valor)} placeholder={t('landing_auth.field_email_placeholder')} value={login.correo} />
+              <Campo autoComplete="email" error={errores.loginCorreo} label={t('landing_auth.field_email_label')} onChange={(valor) => actualizarLogin('correo', valor)} placeholder={t('landing_auth.field_email_placeholder')} value={login.correo} />
               {/* Campo renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <Campo error={errores.loginPassword} label={t('landing_auth.field_password_label')} onChange={(valor) => actualizarLogin('password', valor)} placeholder={t('landing_auth.field_login_password_placeholder')} type="password" value={login.password} />
+              <Campo autoComplete="current-password" error={errores.loginPassword} label={t('landing_auth.field_password_label')} onChange={(valor) => actualizarLogin('password', valor)} placeholder={t('landing_auth.field_login_password_placeholder')} type="password" value={login.password} />
               {errorGlobal ? <div className="nx-auth-error">{t(errorGlobal)}</div> : null}
               {/* StarButton renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <StarButton className="nx-auth-submit" type="submit">{cargando ? t('landing_auth.btn_login_loading') : t('landing_auth.btn_login')}</StarButton>

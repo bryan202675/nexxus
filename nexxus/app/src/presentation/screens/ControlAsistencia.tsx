@@ -39,6 +39,7 @@ import { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/consta
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 // Importa { useTemaMobile }; accede a contexto compartido de usuario, tema o estado global.
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
+import type { AttendanceGeoPoint, AttendanceLocationStatus, AttendanceMethod } from '@/domain/entities/Attendance';
 
 /**
  * Define el contrato de datos Props; documenta campos esperados y evita pasar objetos ambiguos entre capas.
@@ -46,6 +47,45 @@ import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 interface Props {
   navigation: any;
 }
+
+interface AttendanceCaptureMetadata {
+  gps?: AttendanceGeoPoint;
+  metodoRegistro: AttendanceMethod;
+  ubicacionEstado: AttendanceLocationStatus;
+}
+
+const capturarUbicacionAsistencia = (): Promise<AttendanceCaptureMetadata> => {
+  const geolocation = globalThis.navigator?.geolocation;
+  if (!geolocation) {
+    return Promise.resolve({ metodoRegistro: 'manual', ubicacionEstado: 'unavailable' });
+  }
+
+  return new Promise((resolve) => {
+    geolocation.getCurrentPosition(
+      (position) => {
+        const capturedAt = new Date().toISOString();
+        resolve({
+          metodoRegistro: 'ubicacion',
+          ubicacionEstado: 'granted',
+          gps: {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+            capturedAt,
+            validado_en_zona: false,
+          },
+        });
+      },
+      (error) => {
+        resolve({
+          metodoRegistro: 'manual',
+          ubicacionEstado: error.code === 1 ? 'denied' : 'unavailable',
+        });
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+    );
+  });
+};
 
 /**
  * Componente ControlAsistencia. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
@@ -63,6 +103,7 @@ export default function ControlAsistencia({ navigation }: Props) {
   const [segundos, setSegundos] = useState(0);
   // Inicializa [registrando, setRegistrando]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [registrando, setRegistrando] = useState(false);
+  const [ubicacionEstado, setUbicacionEstado] = useState<AttendanceLocationStatus>('unavailable');
 
   // Inicializa timerRef; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -141,10 +182,12 @@ export default function ControlAsistencia({ navigation }: Props) {
     setRegistrando(true);
     // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
     try {
+      const metadata = await capturarUbicacionAsistencia();
+      setUbicacionEstado(metadata.ubicacionEstado);
       // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (!estaActivo) {
         // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-        await registrarEventoAsistencia('entrada');
+        await registrarEventoAsistencia('entrada', metadata);
         // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
         await AsyncStorage.setItem('@asistencia_inicio', new Date().toISOString());
         // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
@@ -155,7 +198,7 @@ export default function ControlAsistencia({ navigation }: Props) {
         // Declara tiempoTrabajado; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
         const tiempoTrabajado = formatearTiempo(segundos);
         // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-        await registrarEventoAsistencia('salida');
+        await registrarEventoAsistencia('salida', metadata);
         // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
         await AsyncStorage.removeItem('@asistencia_inicio');
         // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
@@ -193,6 +236,11 @@ export default function ControlAsistencia({ navigation }: Props) {
 
   // Declara estilos; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const estilos = crearEstilos(colores, esOscuro);
+  const textoUbicacion = ubicacionEstado === 'granted'
+    ? 'Ubicación registrada'
+    : ubicacionEstado === 'denied'
+      ? 'Registro manual: ubicación denegada'
+      : 'Registro manual: ubicación no disponible';
 
   // Devuelve el JSX que React Native renderiza en pantalla.
   return (
@@ -232,6 +280,10 @@ export default function ControlAsistencia({ navigation }: Props) {
 
           {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={estilos.acciones}>
+            <View style={estilos.estadoUbicacion}>
+              <MaterialIcons name={ubicacionEstado === 'granted' ? 'my-location' : 'location-off'} size={16} color={ubicacionEstado === 'granted' ? COLORES.exito : colores.textoSecundario} />
+              <Text style={estilos.estadoUbicacionTexto}>{textoUbicacion}</Text>
+            </View>
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
             <TouchableOpacity 
               style={[estilos.botonPrincipal, registrando && estilos.botonDeshabilitado]} 
@@ -288,6 +340,8 @@ function crearEstilos(c: any, esOscuro: boolean) {
     estadoTexto: { fontSize: 12, fontWeight: '800', color: c.primarioClaro, marginTop: 10, textTransform: 'uppercase' },
     // acciones: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     acciones: { width: '100%', gap: ESPACIADO.md, paddingHorizontal: ESPACIADO.lg },
+    estadoUbicacion: { minHeight: 36, borderRadius: RADIOS.lg, borderWidth: 1, borderColor: c.borde, backgroundColor: glass, paddingHorizontal: ESPACIADO.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+    estadoUbicacionTexto: { ...TIPOGRAFIA.cuerpoPequeno, color: c.textoSecundario, fontWeight: '800', textAlign: 'center' },
     // botonPrincipal: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
     botonPrincipal: { width: '100%', borderRadius: RADIOS.xl, overflow: 'hidden', ...SOMBRAS.flotante },
     // gradienteBoton: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.

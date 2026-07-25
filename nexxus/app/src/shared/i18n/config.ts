@@ -76,7 +76,7 @@ const EN_TRANSLATION_OVERRIDES: TranslationTree = {
     hide_plan_benefits: 'Hide plan benefits',
     checkout_eyebrow: 'Get a plan',
     checkout_title: 'Complete your activation in minutes.',
-    checkout_subtitle: 'Choose a plan, add your company details and simulate payment to prepare your Nexxus workspace.',
+    checkout_subtitle: 'Choose a plan, add your company details and complete the secure authorization to prepare your Nexxus workspace.',
     checkout_selected_plan: 'Selected plan',
     checkout_step_company: 'Company details',
     checkout_step_company_text: 'We use this information to prepare the workspace and payment receipt.',
@@ -86,12 +86,12 @@ const EN_TRANSLATION_OVERRIDES: TranslationTree = {
     checkout_email: 'Email',
     checkout_phone: 'Phone',
     checkout_step_payment: 'Payment method',
-    checkout_step_payment_text: 'Enter a test card to review the payment experience for this plan.',
+    checkout_step_payment_text: 'Enter your payment details to authorize this plan.',
     checkout_card: 'Card number',
     checkout_expiry: 'Expiry',
     checkout_cvc: 'CVC',
     checkout_step_review: 'Confirmation',
-    checkout_step_review_text: 'Review the summary before completing the payment simulation.',
+    checkout_step_review_text: 'Review the summary before completing the authorization.',
     checkout_billing: 'Billing',
     checkout_total: 'Total',
     checkout_back: 'Back',
@@ -101,7 +101,7 @@ const EN_TRANSLATION_OVERRIDES: TranslationTree = {
     checkout_processing: 'Processing secure payment...',
     checkout_success_title: 'Subscription completed',
     checkout_success_text: 'You have successfully subscribed to the {{plan}} plan. You can now continue to the next step and create your company.',
-    checkout_new_payment: 'Run another test',
+    checkout_new_payment: 'Start another checkout',
     checkout_create_company: 'Create company',
     checkout_do_later: 'Do it later',
     checkout_plan_confirmed: '{{plan}} plan acquired',
@@ -120,7 +120,7 @@ const EN_TRANSLATION_OVERRIDES: TranslationTree = {
     checkout_error_required: 'This field is required.',
     checkout_error_email: 'Enter a valid email.',
     checkout_error_phone: 'Enter a valid phone number.',
-    checkout_error_card: 'Enter 12 to 19 digits for the test card.',
+    checkout_error_card: 'Enter 12 to 19 digits for the card.',
     checkout_error_expiry: 'Enter a valid future expiry date.',
     checkout_error_cvc: 'Enter a valid security code.',
     checkout_error_terms: 'You must accept the payment authorization.',
@@ -155,9 +155,9 @@ const EN_TRANSLATION_OVERRIDES: TranslationTree = {
     checkout_city: 'City',
     checkout_province: 'State or province',
     checkout_save_details: 'Save my details for faster checkout',
-    checkout_save_details_text: 'Your details remain protected inside this payment demonstration.',
+    checkout_save_details_text: 'Your details remain protected inside the secure checkout flow.',
     checkout_pay_with: 'Pay with',
-    checkout_authorization: 'By continuing, you authorize this payment simulation for the selected plan and billing cycle.',
+    checkout_authorization: 'By continuing, you authorize the selected plan and billing cycle.',
     checkout_plan_label: 'Selected plan',
     checkout_more_plan_info: 'More information about plans',
     checkout_auto_billing: 'Automatic billing',
@@ -378,6 +378,11 @@ const EN_TRANSLATION_OVERRIDES: TranslationTree = {
   bandejaUnificada: {
     pending_items: '{{count}} pending',
   },
+  'Nóminas Aprobadas': 'Approved Payrolls',
+  'Información': 'Information',
+  'Todas las nóminas ya se encuentran aprobadas.': 'All payrolls are already approved.',
+  'Error': 'Error',
+  'No se pudieron aprobar las nóminas.': 'The payrolls could not be approved.',
 };
 
 /**
@@ -422,11 +427,19 @@ const flattenTranslations = (tree: TranslationTree, prefix = '', output: Record<
 
 const humanizeMissingKey = (key: string) => {
   const lastSegment = key.split('.').pop() || key;
-  return lastSegment
+  // If it already has spaces, it's likely a natural language string. Just clean spaces and return it.
+  if (lastSegment.includes(' ')) {
+    return lastSegment.replace(/\s+/g, ' ').trim();
+  }
+
+  // Otherwise, it's an identifier like snake_case or camelCase. Humanize it.
+  const humanized = lastSegment
     .replace(/[_-]+/g, ' ')
     .replace(/\s+/g, ' ')
-    .trim()
-    .replace(/\b\w/g, (char) => char.toUpperCase()) || key;
+    .trim();
+
+  // Capitalize first letter of each word in a Unicode-aware way
+  return humanized.replace(/(^|\s)(\S)/g, (match, p1, p2) => p1 + p2.toUpperCase()) || key;
 };
 
 const applyLanguageOverrides = (language: string) => {

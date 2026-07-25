@@ -2,9 +2,10 @@ import { User } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, Timestamp, writeBatch } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { auth, db, functions } from '@/infrastructure/firebase/firebaseConfig';
+import { BillingCycle, getPlanEntitlements, NexxusPlan, normalizePlan, PLAN_ORDER } from '@/shared/billing/plans';
 
-export type NexxusPlan = 'Starter' | 'Business' | 'Enterprise';
-export type BillingCycle = 'monthly' | 'annual';
+export type { BillingCycle, NexxusPlan };
+export { getPlanEntitlements, normalizePlan, PLAN_ORDER };
 
 type PendingPurchase = {
   automaticBilling: boolean;
@@ -21,12 +22,7 @@ export type CancellationResult = {
   deletionAt: string;
 };
 
-export const PLAN_ORDER: NexxusPlan[] = ['Starter', 'Business', 'Enterprise'];
 const PENDING_PURCHASE_KEY = '@nexxus_pending_plan_purchase';
-
-export function normalizePlan(value: unknown): NexxusPlan | null {
-  return typeof value === 'string' && PLAN_ORDER.includes(value as NexxusPlan) ? value as NexxusPlan : null;
-}
 
 function valueDate(value: any): Date | null {
   if (!value) return null;
@@ -60,57 +56,10 @@ function readPendingPurchase(): PendingPurchase | null {
 
 async function confirmPendingPurchase(pending: PendingPurchase) {
   const confirmPurchase = httpsCallable<PendingPurchase, { confirmed: boolean; expiresAt: string; plan: NexxusPlan }>(functions, 'confirmPlanPurchase');
-  let confirmation: { confirmed: boolean; expiresAt: string; plan: NexxusPlan };
-  try {
-    confirmation = (await confirmPurchase(pending)).data;
-  } catch {
-    confirmation = await confirmPurchaseDirectly(pending);
-  }
+  const confirmation = (await confirmPurchase(pending)).data;
   if (!confirmation.confirmed || confirmation.plan !== pending.plan) throw new Error('El pago no pudo confirmarse en Firebase.');
   if (typeof window !== 'undefined') window.localStorage.removeItem(PENDING_PURCHASE_KEY);
   return confirmation;
-}
-
-async function confirmPurchaseDirectly(pending: PendingPurchase) {
-  const userRef = doc(db, 'usuarios', pending.userId);
-  const userSnapshot = await getDoc(userRef);
-  const userData = userSnapshot.exists() ? userSnapshot.data() : {};
-  const expiresAt = new Date();
-  if (pending.billing === 'annual') expiresAt.setFullYear(expiresAt.getFullYear() + 1);
-  else expiresAt.setMonth(expiresAt.getMonth() + 1);
-  const subscriptionData = {
-    automaticBilling: pending.automaticBilling,
-    plan: pending.plan,
-    planActivo: pending.plan,
-    planBilling: pending.billing,
-    planCancelAtPeriodEnd: false,
-    planCancellationRequestedAt: null,
-    planCodigoPromocional: pending.promotionCode || null,
-    planDataDeletionAt: null,
-    planExpiresAt: Timestamp.fromDate(expiresAt),
-    planGraceStartedAt: null,
-    planPaymentStatus: 'paid',
-    planPurchaseId: pending.purchaseId,
-    planStartedAt: serverTimestamp(),
-    planUpdatedAt: serverTimestamp(),
-    subscriptionStatus: 'active',
-  };
-  const batch = writeBatch(db);
-  batch.set(userRef, { id: pending.userId, ...subscriptionData }, { merge: true });
-  if (userData.empresaId) batch.set(doc(db, 'empresas', userData.empresaId), { ...subscriptionData, 'configuracion.plan': pending.plan }, { merge: true });
-  batch.set(doc(db, 'payments', pending.purchaseId), {
-    automaticBilling: pending.automaticBilling,
-    billing: pending.billing,
-    confirmedAt: serverTimestamp(),
-    empresaId: userData.empresaId || null,
-    expiresAt: Timestamp.fromDate(expiresAt),
-    plan: pending.plan,
-    promotionCode: pending.promotionCode || null,
-    status: 'confirmed',
-    userId: pending.userId,
-  }, { merge: true });
-  await batch.commit();
-  return { confirmed: true, expiresAt: expiresAt.toISOString(), plan: pending.plan };
 }
 
 export async function recoverPendingPlanPurchase(user: User) {
@@ -178,7 +127,10 @@ export async function schedulePlanCancellation(): Promise<CancellationResult> {
     };
     const batch = writeBatch(db);
     batch.set(userRef, cancellationData, { merge: true });
-    if (data.empresaId) batch.set(doc(db, 'empresas', data.empresaId), cancellationData, { merge: true });
+    if (data.empresaId) {
+      batch.set(doc(db, 'empresas', data.empresaId), cancellationData, { merge: true });
+      batch.set(doc(db, 'suscripciones', data.empresaId), cancellationData, { merge: true });
+    }
     await batch.commit();
     return { accessEndsAt: expiresAt.toISOString(), canceledAtPeriodEnd: true, deletionAt: deletionAt.toISOString() };
   }
