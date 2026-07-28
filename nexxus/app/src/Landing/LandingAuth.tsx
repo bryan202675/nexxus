@@ -6,9 +6,7 @@
  * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras Firebase al extender este archivo.
  */
 
-// Importa React, { DragEvent, FormEvent, useMemo, useState } desde React; habilita componentes, hooks y tipos base para esta pieza.
 import React, { DragEvent, FormEvent, useEffect, useMemo, useState } from 'react';
-// Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
 import {
   GoogleAuthProvider,
@@ -31,24 +29,17 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { uploadCompanyLogo, validateUploadFile } from '../infrastructure/storage/cloudinaryStorage';
-// Importa { auth, db } desde Firebase; habilita autenticacion, Firestore, Functions o mensajeria segun el modulo.
 import { auth, db } from '@/infrastructure/firebase/firebaseConfig';
-// Importa BorderGlow; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import BorderGlow from './BorderGlow';
-// Importa StarButton; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import StarButton from './StarButton';
 import { getActivePlan } from './planAccess';
-// Importa estilos CSS; aplica clases, animaciones o efectos visuales usados por este componente web.
 import './LandingAuth.css';
 
-/**
- * Describe la forma tipada VistaAuth; ayuda a que estados, props o respuestas mantengan una estructura predecible.
- */
+// ============================================================================
+// Tipos
+// ============================================================================
 type VistaAuth = 'registro' | 'login' | 'empresa';
 
-/**
- * Describe la forma tipada UsuarioPendiente; ayuda a que estados, props o respuestas mantengan una estructura predecible.
- */
 type UsuarioPendiente = {
   correo: string;
   nombre: string;
@@ -56,9 +47,6 @@ type UsuarioPendiente = {
   fotoPerfil?: string | null;
 };
 
-/**
- * Describe la forma tipada RegistroEstado; ayuda a que estados, props o respuestas mantengan una estructura predecible.
- */
 type RegistroEstado = {
   nombre: string;
   correo: string;
@@ -66,17 +54,11 @@ type RegistroEstado = {
   confirmarPassword: string;
 };
 
-/**
- * Describe la forma tipada LoginEstado; ayuda a que estados, props o respuestas mantengan una estructura predecible.
- */
 type LoginEstado = {
   correo: string;
   password: string;
 };
 
-/**
- * Describe la forma tipada EmpresaEstado; ayuda a que estados, props o respuestas mantengan una estructura predecible.
- */
 type EmpresaEstado = {
   ciudad: string;
   direccion: string;
@@ -86,14 +68,11 @@ type EmpresaEstado = {
   telefono: string;
 };
 
-/**
- * Describe la forma tipada Errores; ayuda a que estados, props o respuestas mantengan una estructura predecible.
- */
 type Errores = Record<string, string | undefined>;
 
-/**
- * Declaracion estadoRegistroInicial. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
- */
+// ============================================================================
+// Estados iniciales
+// ============================================================================
 const estadoRegistroInicial: RegistroEstado = {
   confirmarPassword: '',
   correo: '',
@@ -101,17 +80,11 @@ const estadoRegistroInicial: RegistroEstado = {
   password: '',
 };
 
-/**
- * Declaracion estadoLoginInicial. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
- */
 const estadoLoginInicial: LoginEstado = {
   correo: '',
   password: '',
 };
 
-/**
- * Declaracion estadoEmpresaInicial. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
- */
 const estadoEmpresaInicial: EmpresaEstado = {
   ciudad: '',
   direccion: '',
@@ -121,45 +94,27 @@ const estadoEmpresaInicial: EmpresaEstado = {
   telefono: '',
 };
 
-/**
- * Declaracion limpiarTexto. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
- */
+// ============================================================================
+// Validaciones y utilidades de texto
+// ============================================================================
 function limpiarTexto(valor: string) {
-  // Devuelve el valor final calculado para esta funcion o caso de uso.
   return valor.replace(/\s+/g, ' ').trim();
 }
 
-/**
- * Declaracion normalizar. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
- */
 function normalizar(valor: string) {
-  // Devuelve el valor final calculado para esta funcion o caso de uso.
   return limpiarTexto(valor).toLowerCase();
 }
 
-/**
- * Declaracion validarCorreo. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
- */
 function validarCorreo(correo: string) {
-  // Declara limpio; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const limpio = correo.trim().toLowerCase();
-  // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
   if (limpio !== correo || /\s/.test(correo)) return 'landing_auth.errors.email_spaces';
-  // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(limpio)) return 'landing_auth.errors.email_invalid';
-  // Declara dominio; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const dominio = limpio.split('@')[1] ?? '';
-  // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
   if (!dominio.includes('.') || dominio.length < 4) return 'landing_auth.errors.domain_invalid';
-  // Devuelve el valor final calculado para esta funcion o caso de uso.
   return undefined;
 }
 
-/**
- * Declaracion reglasPassword. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
- */
 function reglasPassword(password: string) {
-  // Devuelve el valor final calculado para esta funcion o caso de uso.
   return [
     ['landing_auth.password_req_min', password.length >= 8],
     ['landing_auth.password_req_upper', /[A-Z]/.test(password)],
@@ -169,14 +124,13 @@ function reglasPassword(password: string) {
   ] as const;
 }
 
-/**
- * Declaracion seguridadPassword. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
- */
 function seguridadPassword(password: string) {
-  // Devuelve el valor final calculado para esta funcion o caso de uso.
   return reglasPassword(password).filter(([, valido]) => valido).length;
 }
 
+// ============================================================================
+// Configuracion y utilidades de telefono
+// ============================================================================
 interface PhoneFormatConfig {
   minLength: number;
   maxLength: number;
@@ -243,24 +197,22 @@ function validarTelefono(telefono: string, prefix: string) {
   return undefined;
 }
 
-/**
- * Declaracion traducirErrorFirebase. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
- */
+// ============================================================================
+// Traduccion de errores de Firebase
+// ============================================================================
 function traducirErrorFirebase(codigo: string | undefined) {
-  // Declara errores; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const errores: Record<string, string> = {
     'auth/email-already-in-use': 'landing_auth.fb_errors.email_in_use',
     'auth/invalid-credential': 'landing_auth.fb_errors.invalid_credential',
     'auth/popup-closed-by-user': 'landing_auth.fb_errors.popup_closed',
     'auth/weak-password': 'landing_auth.fb_errors.weak_password',
   };
-  // Devuelve el valor final calculado para esta funcion o caso de uso.
   return errores[codigo ?? ''] ?? 'landing_auth.fb_errors.default';
 }
 
-/**
- * Componente Campo. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
- */
+// ============================================================================
+// Componentes auxiliares
+// ============================================================================
 function Campo({
   autoComplete,
   error,
@@ -278,15 +230,10 @@ function Campo({
   type?: string;
   value: string;
 }) {
-  // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { t } = useTranslation();
-  // Devuelve el JSX que React Native renderiza en pantalla.
   return (
-    // label renderiza una pieza visual reutilizable dentro de esta pantalla.
     <label className={`nx-auth-field ${error ? 'is-invalid' : ''}`}>
-      {/* span renderiza una pieza visual reutilizable dentro de esta pantalla. */}
       <span>{label}</span>
-      {/* input renderiza una pieza visual reutilizable dentro de esta pantalla. */}
       <input
         aria-invalid={Boolean(error)}
         autoComplete={autoComplete}
@@ -300,6 +247,7 @@ function Campo({
   );
 }
 
+// --- Utilidades de paises/ciudades (usadas por CustomSelect) ---
 const normalizarTexto = (texto: string) => {
   return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 };
@@ -344,9 +292,6 @@ function cleanCityName(value: string) {
     .trim();
 }
 
-/**
- * Componente CustomSelect. Un selector autocompletable con soporte para banderas y búsqueda.
- */
 function CustomSelect({
   label,
   error,
@@ -482,53 +427,48 @@ function CustomSelect({
   );
 }
 
-/**
- * Componente LandingAuth. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
- */
+// ============================================================================
+// Componente principal: LandingAuth
+// ============================================================================
 export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?: VistaAuth; planSeleccionado: string; returnTo?: string }) {
-  // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { t, i18n } = useTranslation();
-  // Inicializa [vista, setVista]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
+
+  // --- Estado: vista activa y datos de los formularios ---
   const [vista, setVista] = useState<VistaAuth>(modoInicial);
-  // Inicializa [registro, setRegistro]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [registro, setRegistro] = useState<RegistroEstado>(estadoRegistroInicial);
-  // Inicializa [login, setLogin]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [login, setLogin] = useState<LoginEstado>(estadoLoginInicial);
-  // Inicializa [empresa, setEmpresa]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [empresa, setEmpresa] = useState<EmpresaEstado>(estadoEmpresaInicial);
-  // Inicializa [usuarioPendiente, setUsuarioPendiente]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [usuarioPendiente, setUsuarioPendiente] = useState<UsuarioPendiente | null>(null);
-  // Inicializa [errores, setErrores]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [errores, setErrores] = useState<Errores>({});
-  // Inicializa [errorGlobal, setErrorGlobal]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [errorGlobal, setErrorGlobal] = useState('');
-  // Inicializa [cargando, setCargando]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [cargando, setCargando] = useState(false);
-  // Inicializa [logo, setLogo]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [logo, setLogo] = useState<File | null>(null);
-  // Inicializa [logoPreview, setLogoPreview]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [logoPreview, setLogoPreview] = useState('');
-  // Inicializa [pasoEmpresa, setPasoEmpresa]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [pasoEmpresa, setPasoEmpresa] = useState(1);
 
+  // --- Estado: paises y ciudades (autocompletado) ---
   const [paises, setPaises] = useState<CountryData[]>(FALLBACK_COUNTRIES);
   const [ciudades, setCiudades] = useState<string[]>([]);
   const [cargandoPaises, setCargandoPaises] = useState(false);
   const [cargandoCiudades, setCargandoCiudades] = useState(false);
 
+  // --- Estado: dropdowns abiertos ---
   const [paisAbierto, setPaisAbierto] = useState(false);
   const [ciudadAbierto, setCiudadAbierto] = useState(false);
   const [prefijoAbierto, setPrefijoAbierto] = useState(false);
 
+  // --- Estado: busqueda dentro de los dropdowns ---
   const [buscarPais, setBuscarPais] = useState('');
   const [buscarCiudad, setBuscarCiudad] = useState('');
   const [buscarPrefijo, setBuscarPrefijo] = useState('');
 
+  // --- Estado: prefijo telefonico seleccionado ---
   const [prefijoSeleccionado, setPrefijoSeleccionado] = useState('+503');
   const [prefijoPaisCodigo, setPrefijoPaisCodigo] = useState('SV');
   const mostrarPaisesEnIngles = i18n.language?.startsWith('en');
   const obtenerEtiquetaPais = (pais: CountryData) => mostrarPaisesEnIngles ? pais.englishName : pais.name;
 
+  // --- Helpers de navegacion y UI ---
   const navegarLanding = () => {
     window.history.pushState({}, '', '/landing');
     window.dispatchEvent(new Event('nexxus:navigate'));
@@ -541,6 +481,7 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
     setPrefijoAbierto(false);
   };
 
+  // Efecto: en modo "empresa", escucha la sesion y prepara el usuario pendiente de crear su empresa
   useEffect(() => {
     if (modoInicial !== 'empresa') return;
     return onAuthStateChanged(auth, (user) => {
@@ -559,6 +500,7 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
     });
   }, [modoInicial, t]);
 
+  // Efecto: cierra los dropdowns al hacer clic afuera, presionar Escape, o hacer scroll
   useEffect(() => {
     const handleDocumentClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -588,12 +530,14 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
     };
   }, []);
 
+  // Efecto: libera la URL temporal de previsualizacion del logo al cambiar o desmontar
   useEffect(() => {
     return () => {
       if (logoPreview) URL.revokeObjectURL(logoPreview);
     };
   }, [logoPreview]);
 
+  // Efecto: carga la lista de paises desde la API (con fallback a FALLBACK_COUNTRIES) al entrar en modo "empresa"
   useEffect(() => {
     if (vista !== 'empresa') return;
     let active = true;
@@ -632,6 +576,7 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
     };
   }, [vista, mostrarPaisesEnIngles]);
 
+  // Efecto: al cambiar el pais seleccionado, recarga la lista de ciudades desde la API
   useEffect(() => {
     setCiudades([]);
     if (empresa.ciudad) {
@@ -687,238 +632,150 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
   }, [empresa.pais, paises]);
 
 
-  // Inicializa passwordScore; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
+  // --- Valores computados ---
   const passwordScore = useMemo(() => seguridadPassword(registro.password), [registro.password]);
-  // Declara progresoOnboarding; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const progresoOnboarding = vista === 'empresa' ? (pasoEmpresa / 3) * 100 : usuarioPendiente ? 45 : 18;
 
-  // Declara actualizarRegistro; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
+  // --- Handlers: actualizar campos de cada formulario ---
   const actualizarRegistro = (campo: keyof RegistroEstado, valor: string) => {
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setRegistro((actual) => ({ ...actual, [campo]: valor }));
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setErrores((actual) => ({ ...actual, [campo]: undefined }));
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setErrorGlobal('');
   };
 
-  // Declara actualizarLogin; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const actualizarLogin = (campo: keyof LoginEstado, valor: string) => {
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setLogin((actual) => ({ ...actual, [campo]: valor }));
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setErrores((actual) => ({ ...actual, [campo]: undefined }));
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setErrorGlobal('');
   };
 
-  // Declara actualizarEmpresa; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const actualizarEmpresa = (campo: keyof EmpresaEstado, valor: string) => {
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setEmpresa((actual) => ({ ...actual, [campo]: valor }));
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setErrores((actual) => ({ ...actual, [campo]: undefined }));
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setErrorGlobal('');
   };
 
-  // Declara validarRegistro; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
+  // --- Validaciones de cada formulario ---
   const validarRegistro = () => {
-    // Declara nuevos; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const nuevos: Errores = {};
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (limpiarTexto(registro.nombre).length < 3) nuevos.nombre = 'landing_auth.errors.name';
-    // Declara errorCorreo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const errorCorreo = validarCorreo(registro.correo);
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (errorCorreo) nuevos.correo = errorCorreo;
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (passwordScore < 5) nuevos.password = 'landing_auth.errors.password_weak';
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!registro.confirmarPassword) nuevos.confirmarPassword = 'landing_auth.errors.password_confirm';
     else if (registro.confirmarPassword !== registro.password) nuevos.confirmarPassword = 'landing_auth.errors.password_mismatch';
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setErrores(nuevos);
-    // Devuelve el valor final calculado para esta funcion o caso de uso.
     return Object.keys(nuevos).length === 0;
   };
 
-  // Declara validarLogin; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const validarLogin = () => {
-    // Declara nuevos; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const nuevos: Errores = {};
-    // Declara errorCorreo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const errorCorreo = validarCorreo(login.correo);
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (errorCorreo) nuevos.loginCorreo = errorCorreo;
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!login.password) nuevos.loginPassword = 'landing_auth.errors.login_password';
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setErrores(nuevos);
-    // Devuelve el valor final calculado para esta funcion o caso de uso.
     return Object.keys(nuevos).length === 0;
   };
 
-  // Prepara validarEmpresa; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
   const validarEmpresa = async () => {
-    // Declara nuevos; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const nuevos: Errores = {};
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (limpiarTexto(empresa.nombre).length < 2) nuevos.nombreEmpresa = 'landing_auth.errors.company_name';
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (limpiarTexto(empresa.pais).length < 2) nuevos.pais = 'landing_auth.errors.country';
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (limpiarTexto(empresa.ciudad).length < 2) nuevos.ciudad = 'landing_auth.errors.city';
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (limpiarTexto(empresa.direccion).length < 6) nuevos.direccion = 'landing_auth.errors.address';
-    // Declara errorTelefono; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const errorTelefono = validarTelefono(empresa.telefono, prefijoSeleccionado);
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (errorTelefono) nuevos.telefono = errorTelefono;
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (limpiarTexto(empresa.sedePrincipal).length < 2) nuevos.sedePrincipal = 'landing_auth.errors.hq';
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!nuevos.nombreEmpresa) {
-      // Prepara duplicado; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
       const duplicado = await getDocs(query(collection(db, 'empresas'), where('nombre_normalizado', '==', normalizar(empresa.nombre)), limit(1)));
-      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (!duplicado.empty) nuevos.nombreEmpresa = 'landing_auth.errors.company_duplicate';
     }
 
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setErrores(nuevos);
-    // Devuelve el valor final calculado para esta funcion o caso de uso.
     return Object.keys(nuevos).length === 0;
   };
 
-  // Prepara continuarSegunUsuario; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
   const continuarSegunUsuario = () => {
     navegarLanding();
   };
 
-  // Declara enviarRegistro; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
+  // --- Envio de formularios: registro, login y login con Google ---
   const enviarRegistro = async (event: FormEvent) => {
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     event.preventDefault();
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!validarRegistro()) return;
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setCargando(true);
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setErrorGlobal('');
-    // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
     try {
-      // Declara credencial; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const credencial = await createUserWithEmailAndPassword(auth, registro.correo.trim().toLowerCase(), registro.password);
-      // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
       await updateProfile(credencial.user, { displayName: limpiarTexto(registro.nombre) });
       navegarLanding();
     } catch (error: any) {
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setErrorGlobal(traducirErrorFirebase(error.code));
     } finally {
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setCargando(false);
     }
   };
 
-  // Declara enviarLogin; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const enviarLogin = async (event: FormEvent) => {
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     event.preventDefault();
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!validarLogin()) return;
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setCargando(true);
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setErrorGlobal('');
-    // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
     try {
-      // Declara credencial; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const credencial = await signInWithEmailAndPassword(auth, login.correo.trim().toLowerCase(), login.password);
-      // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
       continuarSegunUsuario();
     } catch (error: any) {
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setErrorGlobal(traducirErrorFirebase(error.code));
     } finally {
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setCargando(false);
     }
   };
 
-  // Declara loginGoogle; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const loginGoogle = async () => {
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setCargando(true);
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setErrorGlobal('');
-    // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
     try {
-      // Declara proveedor; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const proveedor = new GoogleAuthProvider();
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       proveedor.setCustomParameters({ prompt: 'select_account' });
-      // Declara credencial; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const credencial = await signInWithPopup(auth, proveedor);
-      // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
       continuarSegunUsuario();
     } catch (error: any) {
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setErrorGlobal(traducirErrorFirebase(error.code));
     } finally {
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setCargando(false);
     }
   };
 
-  // Declara seleccionarLogo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
+  // --- Onboarding de empresa: logo y creacion final ---
   const seleccionarLogo = async (archivo?: File | null) => {
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!archivo) return;
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setErrores((actual) => ({ ...actual, logo: undefined }));
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setErrorGlobal('');
-    // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
     try {
       await validateUploadFile(archivo, 'companyLogo');
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setLogo(archivo);
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setLogoPreview((actual) => {
         if (actual) URL.revokeObjectURL(actual);
         return URL.createObjectURL(archivo);
       });
     } catch (error: any) {
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setErrores((actual) => ({ ...actual, logo: error.message }));
     }
   };
 
-  // Prepara crearEmpresa; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
   const crearEmpresa = async (event: FormEvent) => {
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     event.preventDefault();
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!usuarioPendiente) {
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setErrorGlobal('landing_auth.errors.auth_pending');
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setVista('registro');
-      // Devuelve el valor final calculado para esta funcion o caso de uso.
       return;
     }
 
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setCargando(true);
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setErrorGlobal('');
-    // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
     try {
-      // Declara valido; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
+      // 1. Validar datos de la empresa
       const valido = await validarEmpresa();
-      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (!valido) return;
       const usuarioActual = auth.currentUser;
       const planActivo = usuarioActual ? await getActivePlan(usuarioActual) : null;
@@ -929,19 +786,13 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
       const planSnapshot = await getDoc(doc(db, 'usuarios', usuarioPendiente.uid));
       const planData = planSnapshot.exists() ? planSnapshot.data() : {};
 
-      // Prepara empresaRef; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
+      // 2. Crear referencias y batch inicial (empresa + usuario admin)
       const empresaRef = doc(collection(db, 'empresas'));
-      // Prepara sedeRef; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
       const sedeRef = doc(collection(db, 'sedes'));
-      // Prepara departamentoRef; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
       const departamentoRef = doc(collection(db, 'departments'));
-      // Prepara configuracionRef; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
       const configuracionRef = doc(collection(db, 'configuraciones_empresa'));
-      // Declara batchInicial; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const batchInicial = writeBatch(db);
-      // Calcula ahoraIso; normaliza fechas para comparaciones, filtros o etiquetas visibles.
       const ahoraIso = new Date().toISOString();
-      // Declara empresaBase; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const empresaBase = {
         adminId: usuarioPendiente.uid,
         adminUid: usuarioPendiente.uid,
@@ -980,9 +831,7 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
         updatedAt: serverTimestamp(),
       };
 
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       batchInicial.set(empresaRef, empresaBase);
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       batchInicial.set(doc(db, 'usuarios', usuarioPendiente.uid), {
         activo: true,
         createdAt: ahoraIso,
@@ -1013,9 +862,9 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
         sedeId: sedeRef.id,
         telefono: `${prefijoSeleccionado.trim()} ${limpiarTexto(empresa.telefono)}`.trim(),
       }, { merge: true });
-      // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
       await batchInicial.commit();
 
+      // 3. Subir logo (si existe)
       let logoUrl = '';
       if (logo) {
         const uploaded = await uploadCompanyLogo(logo, empresaRef.id);
@@ -1037,9 +886,8 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
         }
       }
 
-      // Declara batchEstructura; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
+      // 4. Crear estructura inicial (sede, departamento, configuracion de la empresa)
       const batchEstructura = writeBatch(db);
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       batchEstructura.set(sedeRef, {
         activa: true,
         ciudad: limpiarTexto(empresa.ciudad),
@@ -1050,7 +898,6 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
         principal: true,
         createdAt: serverTimestamp(),
       });
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       batchEstructura.set(departamentoRef, {
         activo: true,
         createdAt: ahoraIso,
@@ -1063,7 +910,6 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
         productividad: 100,
         sectores: [],
       });
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       batchEstructura.set(configuracionRef, {
         ajustes: {
           idioma: 'es',
@@ -1087,32 +933,27 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
         empresaId: empresaRef.id,
         updatedAt: serverTimestamp(),
       });
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       batchEstructura.update(empresaRef, {
         sedes: [sedeRef.id],
         updatedAt: serverTimestamp(),
       });
-      // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
       await batchEstructura.commit();
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+      // 5. Redirigir a la app
       window.location.assign('/app');
     } catch (error: any) {
       const mensajeCloudinary = error.message;
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setErrorGlobal(mensajeCloudinary || 'landing_auth.errors.company_create_error');
     } finally {
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setCargando(false);
     }
   };
 
-  // Devuelve el JSX que React Native renderiza en pantalla.
+  // --- Render ---
   return (
     <>
       <BorderGlow className={`nx-auth-shell nx-auth-view-${vista} ${vista === 'empresa' ? 'nx-auth-shell-wide' : ''}`} backgroundColor="#fbfafc" glowColor="268 88 72" glowIntensity={0.38}>
-        {/* div renderiza una pieza visual reutilizable dentro de esta pantalla. */}
         <div className="nx-auth-layout">
-        {/* aside renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+        {/* Aside: progreso de onboarding (modo empresa) o showcase (registro/login) */}
         <aside className="nx-auth-aside">
           {vista === 'empresa' ? (
             <>
@@ -1154,7 +995,7 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
           )}
         </aside>
 
-        {/* section renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+        {/* Panel: formularios de registro, login o creacion de empresa */}
         <section className="nx-auth-panel">
           {vista !== 'empresa' ? (
             <header className="nx-auth-intro">
@@ -1170,45 +1011,35 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
             </header>
           ) : null}
 
+          {/* Formulario: Registro */}
           {vista === 'registro' ? (
-            // form renderiza una pieza visual reutilizable dentro de esta pantalla.
             <form className="nx-auth-form" onSubmit={enviarRegistro} noValidate>
-              {/* Campo renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <Campo autoComplete="name" error={errores.nombre} label={t('landing_auth.field_name_label')} onChange={(valor) => actualizarRegistro('nombre', valor)} placeholder={t('landing_auth.field_name_placeholder')} value={registro.nombre} />
-              {/* Campo renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <Campo autoComplete="email" error={errores.correo} label={t('landing_auth.field_email_label')} onChange={(valor) => actualizarRegistro('correo', valor)} placeholder={t('landing_auth.field_email_placeholder')} value={registro.correo} />
-              {/* Campo renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <Campo autoComplete="new-password" error={errores.password} label={t('landing_auth.field_password_label')} onChange={(valor) => actualizarRegistro('password', valor)} placeholder={t('landing_auth.field_password_placeholder')} type="password" value={registro.password} />
-              {/* div renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <div className="nx-password-meter">
-                {/* i renderiza una pieza visual reutilizable dentro de esta pantalla. */}
                 <i style={{ width: `${(passwordScore / 5) * 100}%` }} />
               </div>
-              {/* div renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <div className="nx-password-list">
                 {reglasPassword(registro.password).map(([key, valido]) => <span key={key} className={valido ? 'valid' : ''}>{valido ? '✓' : '•'} {t(key)}</span>)}
               </div>
-              {/* Campo renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <Campo autoComplete="new-password" error={errores.confirmarPassword} label={t('landing_auth.field_confirm_password_label')} onChange={(valor) => actualizarRegistro('confirmarPassword', valor)} placeholder={t('landing_auth.field_confirm_password_placeholder')} type="password" value={registro.confirmarPassword} />
               {errorGlobal ? <div className="nx-auth-error">{t(errorGlobal)}</div> : null}
-              {/* StarButton renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <StarButton className="nx-auth-submit" type="submit">{cargando ? t('landing_auth.btn_register_loading') : t('landing_auth.btn_register')}</StarButton>
             </form>
           ) : null}
 
+          {/* Formulario: Login */}
           {vista === 'login' ? (
-            // form renderiza una pieza visual reutilizable dentro de esta pantalla.
             <form className="nx-auth-form" onSubmit={enviarLogin} noValidate>
-              {/* Campo renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <Campo autoComplete="email" error={errores.loginCorreo} label={t('landing_auth.field_email_label')} onChange={(valor) => actualizarLogin('correo', valor)} placeholder={t('landing_auth.field_email_placeholder')} value={login.correo} />
-              {/* Campo renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <Campo autoComplete="current-password" error={errores.loginPassword} label={t('landing_auth.field_password_label')} onChange={(valor) => actualizarLogin('password', valor)} placeholder={t('landing_auth.field_login_password_placeholder')} type="password" value={login.password} />
               {errorGlobal ? <div className="nx-auth-error">{t(errorGlobal)}</div> : null}
-              {/* StarButton renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <StarButton className="nx-auth-submit" type="submit">{cargando ? t('landing_auth.btn_login_loading') : t('landing_auth.btn_login')}</StarButton>
             </form>
           ) : null}
 
+          {/* Alternativas de acceso: Google y cambio entre login/registro */}
           {vista !== 'empresa' ? (
             <div className="nx-auth-alternatives">
               <div className="nx-auth-divider"><span>{t('landing_auth.divider')}</span></div>
@@ -1230,24 +1061,18 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
             </div>
           ) : null}
 
+          {/* Formulario: Crear empresa (onboarding) */}
           {vista === 'empresa' ? (
-            // form renderiza una pieza visual reutilizable dentro de esta pantalla.
             <form className="nx-auth-form nx-company-form" onSubmit={crearEmpresa} noValidate>
-              {/* div renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <div className="nx-company-head">
-                {/* span renderiza una pieza visual reutilizable dentro de esta pantalla. */}
                 <span>{t('landing_auth.onboarding_step', { step: pasoEmpresa })}</span>
-                {/* strong renderiza una pieza visual reutilizable dentro de esta pantalla. */}
                 <strong>{usuarioPendiente?.nombre}</strong>
               </div>
-              {/* div renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <div
                 className="nx-logo-drop"
                 onDragOver={(event: DragEvent<HTMLDivElement>) => event.preventDefault()}
                 onDrop={(event: DragEvent<HTMLDivElement>) => {
-                  // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
                   event.preventDefault();
-                  // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
                   seleccionarLogo(event.dataTransfer.files?.[0]);
                 }}
               >
@@ -1257,14 +1082,10 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
                     <b>{t('landing_auth.logo_drop_label')}</b>
                   </>
                 )}
-                {/* span renderiza una pieza visual reutilizable dentro de esta pantalla. */}
                 <span>{t('landing_auth.logo_drop_hint')}</span>
-                {/* input renderiza una pieza visual reutilizable dentro de esta pantalla. */}
                 <input accept="image/png,image/jpeg,image/webp" onChange={(event) => seleccionarLogo(event.target.files?.[0])} type="file" />
               </div>
-              {/* div renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <div className="nx-company-grid">
-                {/* Campo renderiza una pieza visual reutilizable dentro de esta pantalla. */}
                 <Campo error={errores.nombreEmpresa} label={t('landing_auth.field_company_name_label')} onChange={(valor) => actualizarEmpresa('nombre', valor)} placeholder={t('landing_auth.field_company_name_placeholder')} value={empresa.nombre} />
                 <CustomSelect
                   label={t('landing_auth.field_country_label')}
@@ -1336,7 +1157,6 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
                   />
                 )}
 
-                {/* Campo renderiza una pieza visual reutilizable dentro de esta pantalla. */}
                 <Campo error={errores.direccion} label={t('landing_auth.field_address_label')} onChange={(valor) => actualizarEmpresa('direccion', valor)} placeholder={t('landing_auth.field_address_placeholder')} value={empresa.direccion} />
 
                 {/* Campo personalizado para Teléfono con prefijo del país seleccionado y banderas */}
@@ -1441,15 +1261,11 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
                   {errores.telefono ? <small style={{ color: '#ff9eb2', fontSize: '0.78rem' }}>{t(errores.telefono)}</small> : null}
                 </div>
 
-                {/* Campo renderiza una pieza visual reutilizable dentro de esta pantalla. */}
                 <Campo error={errores.sedePrincipal} label={t('landing_auth.field_hq_label')} onChange={(valor) => actualizarEmpresa('sedePrincipal', valor)} placeholder={t('landing_auth.field_hq_placeholder')} value={empresa.sedePrincipal} />
               </div>
               {errorGlobal ? <div className="nx-auth-error">{t(errorGlobal)}</div> : null}
-              {/* div renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <div className="nx-company-actions">
-                {/* button renderiza una pieza visual reutilizable dentro de esta pantalla. */}
                 <button className="nx-btn-ghost nx-auth-secondary" onClick={() => setVista('registro')} type="button">{t('landing_auth.btn_back')}</button>
-                {/* StarButton renderiza una pieza visual reutilizable dentro de esta pantalla. */}
                 <StarButton className="nx-auth-submit" type="submit">{cargando ? t('landing_auth.btn_create_loading') : t('landing_auth.btn_create')}</StarButton>
               </div>
             </form>

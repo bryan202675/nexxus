@@ -4,15 +4,13 @@
  * Proposito: Pantalla informativa publica para seguridad y privacidad de Nexxus.
  */
 
-import { createElement, ReactNode, useMemo } from 'react';
+import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import BorderGlow from './BorderGlow';
 import GlassSurface from './GlassSurface';
 import LandingFooter from './LandingFooter';
 import StarButton from './StarButton';
 import './Landing.css';
-
-const h = createElement;
 
 type PolicyKind = 'security' | 'privacy';
 
@@ -22,6 +20,10 @@ type PolicySection = {
   items: string[];
 };
 
+// ---------------------------------------------------------------------------
+// Contenido de cada tipo de política
+// ---------------------------------------------------------------------------
+
 const pageContent: Record<PolicyKind, {
   eyebrow: string;
   title: string;
@@ -29,6 +31,7 @@ const pageContent: Record<PolicyKind, {
   heroIcons: { icon: string; label: string }[];
   sections: PolicySection[];
 }> = {
+  // ---- Seguridad ----
   security: {
     eyebrow: 'landing.policy_security_eyebrow',
     title: 'landing.policy_security_title',
@@ -62,6 +65,7 @@ const pageContent: Record<PolicyKind, {
       },
     ],
   },
+  // ---- Privacidad ----
   privacy: {
     eyebrow: 'landing.policy_privacy_eyebrow',
     title: 'landing.policy_privacy_title',
@@ -97,6 +101,10 @@ const pageContent: Record<PolicyKind, {
   },
 };
 
+// ---------------------------------------------------------------------------
+// Utilidades de ruta
+// ---------------------------------------------------------------------------
+
 function currentKind(): PolicyKind {
   if (typeof window === 'undefined') return 'security';
   return window.location.pathname.includes('privacidad') ? 'privacy' : 'security';
@@ -112,20 +120,28 @@ function goTo(path: string) {
   window.location.assign(path);
 }
 
+// ---------------------------------------------------------------------------
+// Tarjeta con borde luminoso
+// ---------------------------------------------------------------------------
+
 function GlowCard({ children, className }: { children?: ReactNode; className: string }) {
-  return h(
-    BorderGlow,
-    {
-      backgroundColor: 'rgba(12, 9, 27, 0.76)',
-      className,
-      colors: ['#8b5cf6', '#a855f7', '#38bdf8'],
-      glowColor: '268 88 72',
-      glowIntensity: 0.7,
-      glowRadius: 24,
-    },
-    children
+  return (
+    <BorderGlow
+      backgroundColor="rgba(12, 9, 27, 0.76)"
+      className={className}
+      colors={['#8b5cf6', '#a855f7', '#38bdf8']}
+      glowColor="268 88 72"
+      glowIntensity={0.7}
+      glowRadius={24}
+    >
+      {children}
+    </BorderGlow>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Íconos de la página
+// ---------------------------------------------------------------------------
 
 const policyIconPaths: Record<string, string[]> = {
   audit: ['M4 5h16', 'M6 5v14h12V5', 'M9 10h6', 'M9 14h4'],
@@ -139,94 +155,138 @@ const policyIconPaths: Record<string, string[]> = {
 };
 
 function PolicyIcon({ name }: { name: string }) {
-  return h(
-    'svg',
-    { className: 'nx-policy-svg', fill: 'none', viewBox: '0 0 24 24', 'aria-hidden': true },
-    policyIconPaths[name].map((path, index) => h('path', { d: path, key: index, stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 1.8 }))
+  return (
+    <svg className="nx-policy-svg" fill="none" viewBox="0 0 24 24" aria-hidden={true}>
+      {policyIconPaths[name].map((path, index) => (
+        <path
+          d={path}
+          key={index}
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.8}
+        />
+      ))}
+    </svg>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Componente principal
+// ---------------------------------------------------------------------------
 
 export default function PolicyPage() {
   const { t } = useTranslation();
   const kind = currentKind();
   const content = pageContent[kind];
-  const alternate = useMemo(() => kind === 'security' ? {
-    label: 'landing.policy_view_privacy',
-    path: '/landing/privacidad',
-  } : {
-    label: 'landing.policy_view_security',
-    path: '/landing/seguridad',
-  }, [kind]);
+  const alternate = useMemo(
+    () =>
+      kind === 'security'
+        ? {
+            label: 'landing.policy_view_privacy',
+            path: '/landing/privacidad',
+          }
+        : {
+            label: 'landing.policy_view_security',
+            path: '/landing/seguridad',
+          },
+    [kind]
+  );
 
-  return h(
-    'main',
-    { className: `nx-landing nx-policy-page nx-policy-${kind}` },
-    h('div', { className: 'nx-orb nx-orb-a', 'aria-hidden': true }),
-    h('div', { className: 'nx-orb nx-orb-b', 'aria-hidden': true }),
-    h(
-      'div',
-      { className: 'nx-nav-layer' },
-      h(
-        GlassSurface,
-        {
-          as: 'nav',
-          backgroundOpacity: 0.08,
-          blur: 8,
-          borderRadius: 999,
-          brightness: 58,
-          displace: 0.25,
-          distortionScale: -34,
-          greenOffset: 3,
-          blueOffset: 6,
-          saturation: 1.24,
-          className: 'nx-nav nx-hero-nav is-floating is-ready is-pinned nx-policy-nav',
-          style: { top: 8 },
-        },
-        h(
-          'button',
-          { className: 'nx-policy-back', onClick: () => goTo('/landing'), 'aria-label': t('landing.footer_product') },
-          h(
-            'svg',
-            { fill: 'none', viewBox: '0 0 24 24', 'aria-hidden': true },
-            h('path', { d: 'M14 7l-5 5 5 5', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2.2 }),
-            h('path', { d: 'M9.5 12H18', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2.2 })
-          )
-        )
-      ),
-    ),
-    h(
-      'section',
-      { className: 'nx-policy-hero nx-reveal is-visible' },
-      h('div', null,
-        h('div', { className: 'nx-kicker' }, h('span', null), t(content.eyebrow)),
-        h('h1', null, t(content.title)),
-        h('p', null, t(content.subtitle)),
-        h('div', { className: 'nx-hero-actions' },
-          h(StarButton, { className: 'nx-btn nx-btn-primary', onClick: () => goTo('/landing/registro') }, t('landing.create_company')),
-          h('button', { className: 'nx-btn nx-btn-minimal', onClick: () => goTo(alternate.path) }, t(alternate.label))
-        )
-      ),
-      h('div', { className: 'nx-policy-icons', 'aria-label': t(content.eyebrow) },
-        content.heroIcons.map((item) =>
-          h('div', { className: 'nx-policy-icon', key: item.label },
-            h(PolicyIcon, { name: item.icon }),
-            h('span', null, t(item.label))
-          )
-        )
-      )
-    ),
-    h(
-      'section',
-      { className: 'nx-section nx-policy-content nx-reveal is-visible' },
-      content.sections.map((section, index) =>
-        h(GlowCard, { className: 'nx-policy-card', key: section.title },
-          h('div', { className: 'nx-card-topline' }, h('span', null, `0${index + 1}`)),
-          h('h2', null, t(section.title)),
-          h('p', null, t(section.text)),
-          h('ul', null, section.items.map((item) => h('li', { key: item }, t(item))))
-        )
-      )
-    ),
-    h(LandingFooter)
+  return (
+    <main className={`nx-landing nx-policy-page nx-policy-${kind}`}>
+      {/* Fondo decorativo */}
+      <div className="nx-orb nx-orb-a" aria-hidden={true} />
+      <div className="nx-orb nx-orb-b" aria-hidden={true} />
+
+      {/* Navegación (botón volver) */}
+      <div className="nx-nav-layer">
+        <GlassSurface
+          as="nav"
+          backgroundOpacity={0.08}
+          blur={8}
+          borderRadius={999}
+          brightness={58}
+          displace={0.25}
+          distortionScale={-34}
+          greenOffset={3}
+          blueOffset={6}
+          saturation={1.24}
+          className="nx-nav nx-hero-nav is-floating is-ready is-pinned nx-policy-nav"
+          style={{ top: 8 }}
+        >
+          <button
+            className="nx-policy-back"
+            onClick={() => goTo('/landing')}
+            aria-label={t('landing.footer_product')}
+          >
+            <svg fill="none" viewBox="0 0 24 24" aria-hidden={true}>
+              <path
+                d="M14 7l-5 5 5 5"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2.2}
+              />
+              <path
+                d="M9.5 12H18"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2.2}
+              />
+            </svg>
+          </button>
+        </GlassSurface>
+      </div>
+
+      {/* Hero: título, subtítulo, CTA e íconos */}
+      <section className="nx-policy-hero nx-reveal is-visible">
+        <div>
+          <div className="nx-kicker">
+            <span />
+            {t(content.eyebrow)}
+          </div>
+          <h1>{t(content.title)}</h1>
+          <p>{t(content.subtitle)}</p>
+          <div className="nx-hero-actions">
+            <StarButton className="nx-btn nx-btn-primary" onClick={() => goTo('/landing/registro')}>
+              {t('landing.create_company')}
+            </StarButton>
+            <button className="nx-btn nx-btn-minimal" onClick={() => goTo(alternate.path)}>
+              {t(alternate.label)}
+            </button>
+          </div>
+        </div>
+        <div className="nx-policy-icons" aria-label={t(content.eyebrow)}>
+          {content.heroIcons.map((item) => (
+            <div className="nx-policy-icon" key={item.label}>
+              <PolicyIcon name={item.icon} />
+              <span>{t(item.label)}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Contenido: tarjetas de secciones de la política */}
+      <section className="nx-section nx-policy-content nx-reveal is-visible">
+        {content.sections.map((section, index) => (
+          <GlowCard className="nx-policy-card" key={section.title}>
+            <div className="nx-card-topline">
+              <span>{`0${index + 1}`}</span>
+            </div>
+            <h2>{t(section.title)}</h2>
+            <p>{t(section.text)}</p>
+            <ul>
+              {section.items.map((item) => (
+                <li key={item}>{t(item)}</li>
+              ))}
+            </ul>
+          </GlowCard>
+        ))}
+      </section>
+
+      <LandingFooter />
+    </main>
   );
 }

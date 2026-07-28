@@ -10,9 +10,15 @@ import { getActivePlan, NexxusPlan, PLAN_ORDER } from './planAccess';
 import StarButton from './StarButton';
 import './Landing.css';
 
+// ============================================================================
+// Tipos
+// ============================================================================
 type BillingCycle = 'monthly' | 'annual';
 type IconName = 'activity' | 'ai' | 'analytics' | 'automation' | 'briefcase' | 'building' | 'chart' | 'check' | 'clock' | 'command' | 'database' | 'file' | 'lock' | 'message' | 'payroll' | 'shield' | 'spark' | 'users' | 'workflow' | 'zap';
 
+// ============================================================================
+// Contenido / copy (landingText)
+// ============================================================================
 const landingText = {
   meta: {
     title: 'Nexxus | Impulsa tu empresa con rendimiento real',
@@ -184,6 +190,9 @@ const landingText = {
   },
 };
 
+// ============================================================================
+// Datos de iconos (paths SVG)
+// ============================================================================
 const iconPaths: Record<IconName, string[]> = {
   activity: ['M22 12h-4l-3 8-6-16-3 8H2'],
   ai: ['M12 2l1.6 5.2L19 8.8l-5.4 1.6L12 16l-1.6-5.6L5 8.8l5.4-1.6L12 2z', 'M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z'],
@@ -207,6 +216,9 @@ const iconPaths: Record<IconName, string[]> = {
   zap: ['M13 2L3 14h8l-1 8 10-12h-8l1-8z'],
 };
 
+// ============================================================================
+// Componentes auxiliares
+// ============================================================================
 function Icon({ name }: { name: IconName }) {
   return (
     <svg className="nx-icon" fill="none" viewBox="0 0 24 24" aria-hidden="true">
@@ -233,6 +245,9 @@ function GlowCard({ animated = false, children, className }: { animated?: boolea
   );
 }
 
+// ============================================================================
+// Funciones utilitarias
+// ============================================================================
 function profileInitials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return 'N';
@@ -281,7 +296,11 @@ function priceFor(monthly: number, cycle: BillingCycle) {
   return cycle === 'annual' ? Math.round(monthly * 12 * 0.6) : monthly;
 }
 
+// ============================================================================
+// Componente principal: Landing
+// ============================================================================
 export default function Landing() {
+  // --- Estado (UI, navegacion, autenticacion/perfil) ---
   const [billing, setBilling] = useState<BillingCycle>('monthly');
   const [selectedPlan, setSelectedPlan] = useState('Business');
   const [plansExpanded, setPlansExpanded] = useState(false);
@@ -295,6 +314,7 @@ export default function Landing() {
   const [hasCompany, setHasCompany] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState(auth.currentUser?.photoURL || '');
   const [profileLetters, setProfileLetters] = useState(profileInitials(auth.currentUser?.displayName || auth.currentUser?.email || 'N'));
+  // --- Refs ---
   const rootRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLElement>(null);
   const mobileMenuTriggerRef = useRef<HTMLButtonElement>(null);
@@ -306,6 +326,7 @@ export default function Landing() {
   const navWasPinnedRef = useRef(false);
   const bounceTimerRef = useRef(0);
 
+  // Efecto: escucha cambios de sesion (Firebase Auth) y carga datos del usuario/empresa/plan
   useEffect(() => onAuthStateChanged(auth, async (user) => {
     setIsAuthenticated(Boolean(user));
     if (!user) {
@@ -326,6 +347,7 @@ export default function Landing() {
     getActivePlan(user).then(setActivePlan).catch(() => setActivePlan(null));
   }), []);
 
+  // Efecto: anima apertura/cierre del menu movil (GSAP) y maneja foco/teclado
   useEffect(() => {
     const menu = mobileMenuRef.current;
     const backdrop = mobileMenuBackdropRef.current;
@@ -405,6 +427,7 @@ export default function Landing() {
     };
   }, [menuMovilAbierto]);
 
+  // Efecto: cierra el menu movil automaticamente si la vista pasa a desktop
   useEffect(() => {
     const mobileQuery = window.matchMedia('(max-width: 980px)');
     const closeOnDesktop = (event: MediaQueryListEvent) => {
@@ -417,6 +440,7 @@ export default function Landing() {
     };
   }, []);
 
+  // Efecto: titulo/meta, animaciones de scroll-reveal, observers de seccion activa y medicion de performance
   useEffect(() => {
     document.title = landingText.meta.title;
     document.querySelector('meta[name="description"]')?.setAttribute('content', landingText.meta.description);
@@ -590,6 +614,7 @@ export default function Landing() {
     };
   }, []);
 
+  // --- Medicion y fijado (pin) del nav al hacer scroll ---
   const measureNavAnchor = () => {
     const hero = document.getElementById('hero');
     const copy = hero?.querySelector('.nx-hero-copy');
@@ -608,6 +633,7 @@ export default function Landing() {
     return true;
   };
 
+  // Efecto (layout): mide la posicion de reposo del nav antes de pintar
   useLayoutEffect(() => {
     const copy = document.querySelector<HTMLElement>('.nx-hero-copy');
     const measure = () => {
@@ -623,6 +649,7 @@ export default function Landing() {
     };
   }, []);
 
+  // Efecto: fija (pin) el nav en la parte superior al hacer scroll, con animacion
   useEffect(() => {
     const navPinTop = 8;
     const animateNavState = (kind: 'pin' | 'return') => {
@@ -715,6 +742,7 @@ export default function Landing() {
     };
   }, [navReady]);
 
+  // --- Handlers de UI ---
   const choosePlan = (plan: string) => setSelectedPlan(plan);
   const togglePlanBenefits = (plan: string) => {
     setSelectedPlan(plan);
@@ -755,6 +783,7 @@ export default function Landing() {
     goToLandingPath('/landing/crear-empresa');
   };
 
+  // --- Valores computados para el nav ---
   const navClassName = [
     'nx-nav',
     'nx-hero-nav',
@@ -763,11 +792,13 @@ export default function Landing() {
   ].filter(Boolean).join(' ');
   const navStyle = navReady ? ({ top: `${Math.max(8, navRestTopRef.current - window.scrollY)}px` } as CSSProperties) : undefined;
 
+  // --- Render ---
   return (
     <div className="nx-landing" ref={rootRef}>
       <div className="nx-orb nx-orb-a" aria-hidden="true" />
       <div className="nx-orb nx-orb-b" aria-hidden="true" />
 
+      {/* Hero */}
       <div className="nx-hero" id="hero">
         <div className="nx-hero-copy nx-reveal">
           <h1>{landingText.hero.title}</h1>
@@ -795,6 +826,7 @@ export default function Landing() {
         {navReady ? <div aria-hidden="true" className="nx-hero-nav-slot" style={{ height: navHeight }} /> : null}
       </div>
 
+      {/* Navegacion (flotante, con menu movil) */}
       <div className="nx-nav-layer">
         <GlassSurface
           as="nav"
@@ -904,6 +936,7 @@ export default function Landing() {
         </div>
       </div>
 
+      {/* Seccion de acceso segun estado de autenticacion */}
       <div className="nx-access-section nx-reveal" aria-live="polite">
         <div className={`nx-access-card ${authReady ? 'is-ready' : 'is-loading'}`}>
           {!authReady ? (
@@ -957,6 +990,7 @@ export default function Landing() {
         </div>
       </div>
 
+      {/* Sistema */}
       <div className="nx-section nx-reveal" id="sistema">
         <div className="nx-section-head">
           <span>{landingText.system.eyebrow}</span>
@@ -974,6 +1008,7 @@ export default function Landing() {
         </div>
       </div>
 
+      {/* Modulos */}
       <div className="nx-section nx-reveal" id="modulos">
         <div className="nx-section-head">
           <span>{landingText.modules.eyebrow}</span>
@@ -991,6 +1026,7 @@ export default function Landing() {
         </div>
       </div>
 
+      {/* Admin */}
       <div className="nx-admin-section nx-reveal" id="admin">
         <div className="nx-admin-copy">
           <span>{landingText.admin.eyebrow}</span>
@@ -1008,6 +1044,7 @@ export default function Landing() {
         </GlowCard>
       </div>
 
+      {/* Seguridad */}
       <div className="nx-section nx-reveal" id="seguridad">
         <div className="nx-section-head">
           <span>{landingText.security.eyebrow}</span>
@@ -1025,6 +1062,7 @@ export default function Landing() {
         </div>
       </div>
 
+      {/* Implementacion */}
       <div className="nx-section nx-reveal" id="implementacion">
         <div className="nx-section-head">
           <span>{landingText.implementation.eyebrow}</span>
@@ -1038,6 +1076,7 @@ export default function Landing() {
         </div>
       </div>
 
+      {/* Planes / Pricing */}
       <div className="nx-section nx-reveal" id="planes">
         <div className="nx-pricing-head">
           <div>
@@ -1100,6 +1139,7 @@ export default function Landing() {
         </div>
       </div>
 
+      {/* IA */}
       <section className="nx-ai-showcase nx-reveal" id="ia">
         <div className="nx-ai-showcase-main">
           <div className="nx-ai-showcase-copy">
@@ -1134,13 +1174,35 @@ export default function Landing() {
                   </svg>
                 </div>
                 <div className="nx-ai-mini-grid">
-                  <div className="nx-ai-mini-card is-alert"><span>Alertas activas</span><strong>7</strong><small>Requieren atención</small><div>{[52, 68, 61, 74, 58].map((height, index) => <i key={index} style={{ height: `${height}%` }} />)}</div></div>
-                  <div className="nx-ai-mini-card"><span>Tareas completadas</span><strong>128</strong><small>↑ 24%</small><div>{[38, 61, 34, 52, 84, 58, 71, 92, 67].map((height, index) => <i key={index} style={{ height: `${height}%` }} />)}</div></div>
+                  <div className="nx-ai-mini-card is-alert">
+                    <span>Alertas activas</span>
+                    <strong>7</strong>
+                    <small>Requieren atención</small>
+                    <div>
+                      {[52, 68, 61, 74, 58].map((height, index) => (
+                        <i key={index} style={{ height: `${height}%` }} />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="nx-ai-mini-card">
+                    <span>Tareas completadas</span>
+                    <strong>128</strong>
+                    <small>↑ 24%</small>
+                    <div>
+                      {[38, 61, 34, 52, 84, 58, 71, 92, 67].map((height, index) => (
+                        <i key={index} style={{ height: `${height}%` }} />
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 <div className="nx-ai-impact-card">
                   <span>Áreas con mayor impacto</span>
                   {[['Operaciones', 92], ['Logística', 78], ['Soporte', 65]].map(([label, value]) => (
-                    <div key={label}><small>{label}</small><i><b style={{ width: `${value}%` }} /></i><strong>{value}%</strong></div>
+                    <div key={label}>
+                      <small>{label}</small>
+                      <i><b style={{ width: `${value}%` }} /></i>
+                      <strong>{value}%</strong>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -1156,6 +1218,7 @@ export default function Landing() {
         <blockquote className="nx-ai-legend"><Icon name="spark" /><span>{landingText.testimonial}</span></blockquote>
       </section>
 
+      {/* CTA final */}
       <div className="nx-final-cta nx-reveal">
         <h2>{landingText.finalCta.title}</h2>
         <p>{landingText.finalCta.text}</p>
@@ -1164,6 +1227,7 @@ export default function Landing() {
         </StarButton>
       </div>
 
+      {/* Footer */}
       <LandingFooter onSection={(id) => scrollToId(id, navHeight)} />
     </div>
   );
