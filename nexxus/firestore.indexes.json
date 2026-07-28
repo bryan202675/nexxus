@@ -387,6 +387,62 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "empresas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "estado_activo",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fecha_creacion",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "empresas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "subscriptionStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fecha_creacion",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "empresas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "baneada",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fecha_creacion",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "usuarios",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "rol",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "nombre",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

@@ -20,6 +20,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 // Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFonts, DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold, DMSans_700Bold, DMSans_800ExtraBold } from '@expo-google-fonts/dm-sans';
 
 // Contextos y Config
 // Importa { ProveedorUsuario, useContextoUsuario }; accede a contexto compartido de usuario, tema o estado global.
@@ -301,6 +302,14 @@ function EnrutadorPrincipal() {
  * Componente App. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    DMSans_400Regular,
+    DMSans_500Medium,
+    DMSans_600SemiBold,
+    DMSans_700Bold,
+    DMSans_800ExtraBold,
+  });
+  
   const [rutaWebLanding, setRutaWebLanding] = useState(() => Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.pathname : '');
 
   useEffect(() => {
@@ -313,6 +322,14 @@ export default function App() {
       window.removeEventListener('nexxus:navigate', actualizarRuta);
     };
   }, []);
+
+  if (!fontsLoaded) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#7C3AED" />
+      </View>
+    );
+  }
 
   // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
   if (esRutaLandingWeb()) {

@@ -72,7 +72,15 @@ import ChatIA from '../screens/ChatIA';
 import ChatIAAdmin from '../screens/admin/ChatIAAdmin';
 // Importa ConfiguracionAdmin; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import ConfiguracionAdmin from '../screens/admin/ConfiguracionAdmin';
-import SuperAdminDashboard from '../screens/admin/SuperAdminDashboard';
+import SaResumen from '../screens/superadmin/SaResumen';
+import SaEmpresas from '../screens/superadmin/SaEmpresas';
+import SaUsuarios from '../screens/superadmin/SaUsuarios';
+import SaNexxusIA from '../screens/superadmin/SaNexxusIA';
+import SaPagosPlanes from '../screens/superadmin/SaPagosPlanes';
+import SaAuditoria from '../screens/superadmin/SaAuditoria';
+import SaSoporte from '../screens/superadmin/SaSoporte';
+import SaConfiguracion from '../screens/superadmin/SaConfiguracion';
+import SuperAdminLayout from '../screens/superadmin/SuperAdminLayout';
 import {
   AdminAppearanceContext,
   ADMIN_THEMES,
@@ -84,6 +92,14 @@ import {
 import { AdminToastProvider } from '../screens/admin/adminToast';
 import { AdminTranslatedText, AdminTranslatedTextInput, AdminTranslationProvider } from '@/shared/i18n/AdminTranslatedText';
 import { isSuperAdminRole } from '@/shared/auth/roles';
+import {
+  ADMIN_ROUTE_NAMES,
+  esPanelSuperAdmin,
+  getAdminMenu,
+  getAdminSearchItems,
+  getInitialRoute,
+  getScreenBanners,
+} from './adminMenuConfig';
 
 const Text = AdminTranslatedText;
 const TextInput = AdminTranslatedTextInput;
@@ -130,46 +146,14 @@ const obtenerFotoPerfil = (user: any) => {
 };
 
 /**
- * Componente MENU_ITEMS. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
+ * Declaracion etiquetaRolSidebar. Etiqueta legible del rol mostrado bajo el nombre en el sidebar.
  */
-const MENU_ITEMS = [
-  { name: 'SuperAdminDashboard', label: 'Super Admin', icon: 'admin-panel-settings', superAdminOnly: true },
-  { name: 'DashboardGeneral', label: 'Centro operativo', icon: 'dashboard-customize' },
-  { name: 'CentroReportesSolicitudes', label: 'Solicitudes', icon: 'assignment' },
-  { name: 'GestionAsistencia', label: 'Asistencia', icon: 'schedule' },
-  { name: 'CalendarioEmpresarial', label: 'Calendario', icon: 'event-note' },
-  { name: 'GestionPlantilla', label: 'Plantilla', icon: 'people-outline' },
-  { name: 'EstructuraOrganizativa', label: 'Estructura', icon: 'account-tree' },
-  { name: 'GestionNomina', label: 'Nómina', icon: 'payments' },
-  { name: 'GestionInventario', label: 'Inventario', icon: 'inventory-2' },
-  { name: 'MensajeriaInternaAdmin', label: 'Mensajería', icon: 'chat' },
-  { name: 'ChatIAAdmin', label: 'IA', icon: 'auto-awesome' },
-  { name: 'ComunicacionAdmin', label: 'Comunicación', icon: 'forum' },
-  { name: 'GestionDocumentos', label: 'Documentos', icon: 'folder' },
-  { name: 'AuditoriaLogs', label: 'Auditoría', icon: 'manage-search' },
-  { name: 'ConfiguracionAdmin', label: 'Configuración', icon: 'tune' },
-] as const;
+const etiquetaRolSidebar = (rol?: string | null) => {
+  if (esPanelSuperAdmin(rol)) return 'Super Admin';
+  if (rol === 'admin' || rol === 'admin_empresa') return 'Propietario';
+  return rol || 'Propietario';
+};
 
-/**
- * Componente ADMIN_SEARCH_ITEMS. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
- */
-const ADMIN_SEARCH_ITEMS = [
-  { route: 'SuperAdminDashboard', title: 'Super Admin', detail: 'empresas, planes, pagos, auditoría global', superAdminOnly: true },
-  { route: 'DashboardGeneral', title: 'Centro operativo', detail: 'productividad, aprobaciones, alertas, check-ins, actividad' },
-  { route: 'CentroReportesSolicitudes', title: 'Reportes y solicitudes', detail: 'ausencias, permisos, aprobaciones, reportes disciplinarios, desempeño' },
-  { route: 'GestionAsistencia', title: 'Asistencia y horarios', detail: 'entradas, salidas, tardanzas, horas trabajadas, salidas anticipadas' },
-  { route: 'CalendarioEmpresarial', title: 'Calendario empresarial', detail: 'eventos, reuniones, feriados, agenda' },
-  { route: 'GestionPlantilla', title: 'Plantilla', detail: 'empleados, sedes, roles, departamentos, tareas' },
-  { route: 'EstructuraOrganizativa', title: 'Estructura organizativa', detail: 'departamentos, cargos, jerarquías, sedes' },
-  { route: 'GestionNomina', title: 'Nómina', detail: 'pagos, salarios, planilla, compensación' },
-  { route: 'GestionInventario', title: 'Inventario e incidencias', detail: 'activos asignados, equipo, herramientas, reportes internos' },
-  { route: 'MensajeriaInternaAdmin', title: 'Mensajería interna', detail: 'conversaciones, mensajes, imágenes, documentos, soporte' },
-  { route: 'ChatIAAdmin', title: 'IA empresarial', detail: 'resumen semanal, asistencia, tareas, reportes, nómina, rendimiento' },
-  { route: 'ComunicacionAdmin', title: 'Comunicación', detail: 'anuncios, notificaciones, mensajes' },
-  { route: 'GestionDocumentos', title: 'Documentos', detail: 'pdf, archivos, cloudinary, almacenamiento, métricas' },
-  { route: 'AuditoriaLogs', title: 'Auditoría', detail: 'logs, seguridad, eventos, actividad' },
-  { route: 'ConfiguracionAdmin', title: 'Configuración', detail: 'tema, cuenta, preferencias, sistema' },
-] as const;
 
 type AdminSearchResult = {
   id: string;
@@ -189,102 +173,6 @@ const normalizarBusquedaAdmin = (valor: unknown) => String(valor || '')
   .replace(/[\u0300-\u036f]/g, '')
   .toLowerCase()
   .trim();
-
-/**
- * Componente SCREEN_BANNERS. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
- */
-const SCREEN_BANNERS: Record<string, { title: string; eyebrow: string; description: string; icon: string }> = {
-  SuperAdminDashboard: {
-    title: 'Super Admin',
-    eyebrow: 'Nexxus Platform',
-    description: 'Control global de empresas, suscripciones, pagos y señales críticas de la plataforma.',
-    icon: 'admin-panel-settings',
-  },
-  DashboardGeneral: {
-    title: 'Centro operativo',
-    eyebrow: 'Nexxus Command',
-    description: 'Visión general de actividad, riesgo, productividad y señales vivas de la empresa.',
-    icon: 'dashboard-customize',
-  },
-  CentroReportesSolicitudes: {
-    title: 'Reportes y solicitudes',
-    eyebrow: 'RRHH operativo',
-    description: 'Bandeja unificada de ausencias, solicitudes internas, reportes y aprobaciones con trazabilidad.',
-    icon: 'assignment',
-  },
-  GestionAsistencia: {
-    title: 'Asistencia y horarios',
-    eyebrow: 'Control operativo',
-    description: 'Entradas, salidas, tardanzas, horas trabajadas y salidas anticipadas según horario de empresa.',
-    icon: 'schedule',
-  },
-  CalendarioEmpresarial: {
-    title: 'Calendario empresarial',
-    eyebrow: 'Agenda central',
-    description: 'Eventos, feriados, reuniones y planificación operativa en un solo panel.',
-    icon: 'event-note',
-  },
-  GestionPlantilla: {
-    title: 'Gestión de plantilla',
-    eyebrow: 'Personas y equipos',
-    description: 'Géstion de todo tu equipo en un solo lugar.',
-    icon: 'people-outline',
-  },
-  EstructuraOrganizativa: {
-    title: 'Estructura organizativa',
-    eyebrow: 'Arquitectura interna',
-    description: 'Departamentos, jerarquías, líderes y distribución funcional de la empresa.',
-    icon: 'account-tree',
-  },
-  GestionNomina: {
-    title: 'Gestión de nómina',
-    eyebrow: 'Pagos y compensación',
-    description: 'Salarios, estados de pago, configuración y trazabilidad financiera.',
-    icon: 'payments',
-  },
-  GestionInventario: {
-    title: 'Inventario e incidencias',
-    eyebrow: 'Activos internos',
-    description: 'Control de activos asignados, devoluciones e incidencias reportadas por empleados.',
-    icon: 'inventory-2',
-  },
-  ComunicacionAdmin: {
-    title: 'Comunicación',
-    eyebrow: 'Mensajería empresarial',
-    description: 'Anuncios, audiencias, notificaciones y canales internos.',
-    icon: 'forum',
-  },
-  MensajeriaInternaAdmin: {
-    title: 'Mensajería',
-    eyebrow: 'Chat interno',
-    description: 'Conversaciones internas entre colaboradores.',
-    icon: 'chat',
-  },
-  ChatIAAdmin: {
-    title: 'IA empresarial',
-    eyebrow: 'Nexxus AI',
-    description: 'Consultas operativas de empresa, asistencia, rendimiento, reportes, nómina y señales ejecutivas con aislamiento por tenant.',
-    icon: 'auto-awesome',
-  },
-  GestionDocumentos: {
-    title: 'Documentos',
-    eyebrow: 'Almacenamiento controlado',
-    description: 'PDFs, uso por empresa, deduplicación y limpieza segura de archivos.',
-    icon: 'folder',
-  },
-  AuditoriaLogs: {
-    title: 'Auditoría',
-    eyebrow: 'Seguridad y eventos',
-    description: 'Logs, acciones críticas, advertencias y revisión de actividad del sistema.',
-    icon: 'manage-search',
-  },
-  ConfiguracionAdmin: {
-    title: 'Configuración',
-    eyebrow: 'Control del sistema',
-    description: 'Tema, idioma, accesos de navbar, cuenta, seguridad y preferencias del admin.',
-    icon: 'tune',
-  },
-};
 
 /**
  * Componente PARTICULAS. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
@@ -703,6 +591,8 @@ function Sidebar({ state, navigation, sidebarOpen, setSidebarOpen }: BottomTabBa
   const estilos = useMemo(() => crearEstilos(theme, width), [theme, width]);
   // Declara fotoPerfil; usa la imagen real del administrador cuando existe.
   const fotoPerfil = obtenerFotoPerfil(user);
+  // Declara menuItems; menú del panel de empresa o del super admin, según el rol de la sesión.
+  const menuItems = useMemo(() => getAdminMenu(user?.rol), [user?.rol]);
   // Inicializa entrada; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const entrada = useRef(new Animated.Value(0)).current;
   // Inicializa [logoUrl, setLogoUrl]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -796,7 +686,7 @@ function Sidebar({ state, navigation, sidebarOpen, setSidebarOpen }: BottomTabBa
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={estilos.logoTexto}>Nexxus</Text>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.logoSubtexto}>Enterprise Admin</Text>
+            <Text style={estilos.logoSubtexto}>{esPanelSuperAdmin(user?.rol) ? 'Platform Control' : 'Enterprise Admin'}</Text>
           </View>
         </View>
 
@@ -805,7 +695,7 @@ function Sidebar({ state, navigation, sidebarOpen, setSidebarOpen }: BottomTabBa
           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
           <Text style={estilos.assetSystemLabel}>Nexxus OS</Text>
           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={estilos.assetSystemValue}>{obtenerNombreEmpresa(user)}</Text>
+          <Text style={estilos.assetSystemValue}>{esPanelSuperAdmin(user?.rol) ? 'Nexxus Platform' : obtenerNombreEmpresa(user)}</Text>
           {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={estilos.assetSystemStatus}>
             {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
@@ -822,10 +712,9 @@ function Sidebar({ state, navigation, sidebarOpen, setSidebarOpen }: BottomTabBa
           // Declara isFocused; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
           const isFocused = state.index === index;
           // Declara menuItem; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-          const menuItem = MENU_ITEMS.find(item => item.name === route.name);
+          const menuItem = menuItems.find(item => item.name === route.name);
           // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
           if (!menuItem) return null;
-          if ('superAdminOnly' in menuItem && menuItem.superAdminOnly && !isSuperAdminRole(user?.rol)) return null;
 
           // Declara onPress; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
           const onPress = () => {
@@ -882,7 +771,7 @@ function Sidebar({ state, navigation, sidebarOpen, setSidebarOpen }: BottomTabBa
             {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
             <Text style={estilos.usuarioNombre} numberOfLines={1}>{user?.nombre || 'Propietario'}</Text>
             {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-            <Text style={estilos.usuarioRol} numberOfLines={1}>{user?.rol === 'admin' ? 'Propietario' : (user?.rol || 'Propietario')}</Text>
+            <Text style={estilos.usuarioRol} numberOfLines={1}>{etiquetaRolSidebar(user?.rol)}</Text>
           </View>
         </View>
       </View>
@@ -918,8 +807,10 @@ function BannerPantalla({ routeName }: { routeName: string }) {
   const estilos = useMemo(() => crearEstilos(theme, width), [theme, width]);
   // Inicializa entrada; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const entrada = useRef(new Animated.Value(0)).current;
+  // Declara banners; el set de banners depende de si la sesión es super admin o admin de empresa.
+  const banners = useMemo(() => getScreenBanners(user?.rol), [user?.rol]);
   // Declara data; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const data = SCREEN_BANNERS[routeName] || SCREEN_BANNERS.DashboardGeneral;
+  const data = banners[routeName] || banners[getInitialRoute(user?.rol)];
 
   // Declara eyebrow; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const eyebrow = data.eyebrow;
@@ -1319,7 +1210,7 @@ function AdminProfilePanel({ visible, user, onNavigate, onClose }: { visible: bo
             {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
             <Text style={estilos.usuarioNombre} numberOfLines={1}>{user?.nombre || 'Propietario'}</Text>
             {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-            <Text style={estilos.usuarioRol} numberOfLines={1}>{user?.rol === 'admin' ? 'Propietario' : (user?.rol || 'Propietario')}</Text>
+            <Text style={estilos.usuarioRol} numberOfLines={1}>{etiquetaRolSidebar(user?.rol)}</Text>
           </View>
         </View>
 
@@ -1408,22 +1299,7 @@ function NavbarHeader({ routeName, sidebarOpen, setSidebarOpen }: { routeName: s
   const navigation = useNavigation<any>();
   // Declara navigateAdmin; maneja la navegacion a pantallas del panel de admin (anidadas) o globales.
   const navigateAdmin = (route: string, params?: Record<string, any>) => {
-    const adminScreens = [
-      'DashboardGeneral',
-      'CalendarioEmpresarial',
-      'GestionPlantilla',
-      'EstructuraOrganizativa',
-      'GestionNomina',
-      'MensajeriaInternaAdmin',
-      'ComunicacionAdmin',
-      'GestionDocumentos',
-      'AuditoriaLogs',
-      'ConfiguracionAdmin',
-      'SuperAdminDashboard',
-      'CentroReportesSolicitudes',
-      'GestionAsistencia',
-    ];
-    if (adminScreens.includes(route)) {
+    if (ADMIN_ROUTE_NAMES.includes(route)) {
       navigation.navigate('AppAdmin', { screen: route, params });
     } else {
       navigation.navigate(route, params);
@@ -1525,10 +1401,11 @@ function NavbarHeader({ routeName, sidebarOpen, setSidebarOpen }: { routeName: s
   const avatar = (user?.nombre || 'Admin').substring(0, 1).toUpperCase();
   // Declara fotoPerfil; usa la imagen real del administrador cuando existe.
   const fotoPerfil = obtenerFotoPerfil(user);
+  // Declara banners; set de banners según el rol de la sesión (para resolver el icono de cada resultado).
+  const banners = useMemo(() => getScreenBanners(user?.rol), [user?.rol]);
   // Inicializa searchResults; combina rutas del admin con empleados, sedes, departamentos y cargos reales.
   const searchResults = useMemo<AdminSearchResult[]>(() => {
-    const rutas = ADMIN_SEARCH_ITEMS
-    .filter((item) => !('superAdminOnly' in item) || !item.superAdminOnly || isSuperAdmin)
+    const rutas = getAdminSearchItems(user?.rol)
     .map((item) => ({
       id: `route-${item.route}`,
       route: item.route,
@@ -1536,7 +1413,7 @@ function NavbarHeader({ routeName, sidebarOpen, setSidebarOpen }: { routeName: s
       title: item.title,
       detail: item.detail,
       category: 'Módulo',
-      icon: (SCREEN_BANNERS[item.route]?.icon || 'apps') as keyof typeof MaterialIcons.glyphMap,
+      icon: (banners[item.route]?.icon || 'apps') as keyof typeof MaterialIcons.glyphMap,
       keywords: `${item.title} ${item.detail}`,
     }));
 
@@ -1590,7 +1467,7 @@ function NavbarHeader({ routeName, sidebarOpen, setSidebarOpen }: { routeName: s
     return todos
       .filter((item) => normalizarBusquedaAdmin(`${item.title} ${item.detail} ${item.category} ${item.keywords}`).includes(term))
       .slice(0, 8);
-  }, [isSuperAdmin, searchData, searchValue]);
+  }, [user?.rol, banners, searchData, searchValue]);
   const mostrarSearchResults = searchFocused || searchValue.trim().length > 0;
 
   // Declara navigateSearch; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -1635,7 +1512,7 @@ function NavbarHeader({ routeName, sidebarOpen, setSidebarOpen }: { routeName: s
     </View>
   );
 
-  const screenTitle = SCREEN_BANNERS[routeName]?.title || routeName;
+  const screenTitle = banners[routeName]?.title || routeName;
 
   if (isMobileOrTablet && sidebarOpen) {
     return null;
@@ -1761,9 +1638,9 @@ export default function AdminNavigator() {
     : height;
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Inicializa [mode, setMode]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const [mode, setMode] = useState<AdminMode>('dark');
+  const [mode, setMode] = useState<AdminMode>(esPanelSuperAdmin(user?.rol) ? 'light' : 'dark');
   // Inicializa [currentRoute, setCurrentRoute] para controlar el encabezado estatico fuera del navegador.
-  const [currentRoute, setCurrentRoute] = useState('DashboardGeneral');
+  const [currentRoute, setCurrentRoute] = useState(getInitialRoute(user?.rol));
   // Declara theme; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const theme = ADMIN_THEMES[mode];
   // Inicializa estilos; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -1783,6 +1660,13 @@ export default function AdminNavigator() {
     () => [obtenerNombreEmpresa(user)],
     [user]
   );
+
+  // Forza el modo claro para el Super Admin si el usuario carga asíncronamente
+  useEffect(() => {
+    if (esPanelSuperAdmin(user?.rol)) {
+      setMode('light');
+    }
+  }, [user?.rol]);
 
   // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
   useEffect(() => {
@@ -1823,53 +1707,81 @@ export default function AdminNavigator() {
           <View pointerEvents="none" style={estilos.gridOverlay} />
           {/* CampoParticulas renderiza una pieza visual reutilizable dentro de esta pantalla. */}
           <CampoParticulas theme={theme} />
-          {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
-          <Tab.Navigator
-            tabBar={(props) => <Sidebar {...props} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />}
-            screenOptions={{
-              headerShown: false,
-              sceneStyle: estilos.contenidoPrincipal,
-            }}
-            screenListeners={({ route }) => ({
-              focus: () => {
-                setCurrentRoute(route.name);
-              },
-            })}
-          >
-            {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
-            {isSuperAdminRole(user?.rol) && (
-              <Tab.Screen name="SuperAdminDashboard" component={SuperAdminDashboard} />
-            )}
-            {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
-            <Tab.Screen name="DashboardGeneral" component={DashboardAdmin} />
-            {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
-            <Tab.Screen name="CentroReportesSolicitudes" component={CentroReportesSolicitudes} />
-            {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
-            <Tab.Screen name="GestionAsistencia" component={GestionAsistencia} />
-            {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
-            <Tab.Screen name="CalendarioEmpresarial" component={CalendarioEmpresarial} />
-            {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
-            <Tab.Screen name="GestionPlantilla" component={GestionPlantilla} />
-            {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
-            <Tab.Screen name="EstructuraOrganizativa" component={EstructuraOrganizativa} />
-            {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
-            <Tab.Screen name="GestionNomina" component={GestionNomina} />
-            <Tab.Screen name="GestionInventario" component={GestionInventario} />
-            {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
-            <Tab.Screen name="MensajeriaInternaAdmin" component={MensajeriaInternaAdmin} />
-            {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
-            <Tab.Screen name="ChatIAAdmin" component={ChatIAAdmin} />
-            {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
-            <Tab.Screen name="ComunicacionAdmin" component={ComunicacionAdmin} />
-            {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
-            <Tab.Screen name="GestionDocumentos" component={GestionDocumentos} />
-            {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
-            <Tab.Screen name="AuditoriaLogs" component={AuditoriaLogs} />
-            {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
-            <Tab.Screen name="ConfiguracionAdmin" component={ConfiguracionAdmin} />
-          </Tab.Navigator>
-          {/* Renderizado de cabecera fija y estatica a nivel raiz del modulo de administracion */}
-          <NavbarHeader routeName={currentRoute} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+          {esPanelSuperAdmin(user?.rol) ? (
+            <SuperAdminLayout currentRoute={currentRoute}>
+              <Tab.Navigator
+                key="sa"
+                tabBar={() => null}
+                sceneContainerStyle={{ backgroundColor: theme.bg }}
+                screenOptions={{
+                  headerShown: false,
+                  unmountOnBlur: true,
+                  sceneStyle: { flex: 1, backgroundColor: theme.bg },
+                } as any}
+                screenListeners={({ route }) => ({
+                  focus: () => {
+                    setCurrentRoute(route.name);
+                  },
+                })}
+              >
+                <Tab.Screen name="SaResumen" component={SaResumen} />
+                <Tab.Screen name="SaEmpresas" component={SaEmpresas} />
+                <Tab.Screen name="SaUsuarios" component={SaUsuarios} />
+                <Tab.Screen name="SaNexxusIA" component={SaNexxusIA} />
+                <Tab.Screen name="SaPagosPlanes" component={SaPagosPlanes} />
+                <Tab.Screen name="SaAuditoria" component={SaAuditoria} />
+                <Tab.Screen name="SaSoporte" component={SaSoporte} />
+                <Tab.Screen name="SaConfiguracion" component={SaConfiguracion} />
+              </Tab.Navigator>
+            </SuperAdminLayout>
+          ) : (
+            <>
+              {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. Key distinta por panel: si una sesion de soporte cambia el rol, el navegador se remonta limpio. */}
+              <Tab.Navigator
+                key="company"
+                tabBar={(props) => <Sidebar {...props} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />}
+                screenOptions={{
+                  headerShown: false,
+                  sceneStyle: estilos.contenidoPrincipal,
+                }}
+                screenListeners={({ route }) => ({
+                  focus: () => {
+                    setCurrentRoute(route.name);
+                  },
+                })}
+              >
+                {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
+                <Tab.Screen name="DashboardGeneral" component={DashboardAdmin} />
+                {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
+                <Tab.Screen name="CentroReportesSolicitudes" component={CentroReportesSolicitudes} />
+                {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
+                <Tab.Screen name="GestionAsistencia" component={GestionAsistencia} />
+                {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
+                <Tab.Screen name="CalendarioEmpresarial" component={CalendarioEmpresarial} />
+                {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
+                <Tab.Screen name="GestionPlantilla" component={GestionPlantilla} />
+                {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
+                <Tab.Screen name="EstructuraOrganizativa" component={EstructuraOrganizativa} />
+                {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
+                <Tab.Screen name="GestionNomina" component={GestionNomina} />
+                <Tab.Screen name="GestionInventario" component={GestionInventario} />
+                {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
+                <Tab.Screen name="MensajeriaInternaAdmin" component={MensajeriaInternaAdmin} />
+                {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
+                <Tab.Screen name="ChatIAAdmin" component={ChatIAAdmin} />
+                {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
+                <Tab.Screen name="ComunicacionAdmin" component={ComunicacionAdmin} />
+                {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
+                <Tab.Screen name="GestionDocumentos" component={GestionDocumentos} />
+                {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
+                <Tab.Screen name="AuditoriaLogs" component={AuditoriaLogs} />
+                {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
+                <Tab.Screen name="ConfiguracionAdmin" component={ConfiguracionAdmin} />
+              </Tab.Navigator>
+              {/* Renderizado de cabecera fija y estatica a nivel raiz del modulo de administracion */}
+              <NavbarHeader routeName={currentRoute} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+            </>
+          )}
         </View>
         </AdminTranslationProvider>
       </AdminToastProvider>
@@ -2587,7 +2499,7 @@ const crearEstilos = (theme: AdminPalette, width: number) => {
     // minWidth ajusta una propiedad visual especifica de este estilo.
     minWidth: 0,
     // outlineStyle ajusta una propiedad visual especifica de este estilo.
-    outlineStyle: 'none',
+    outlineStyle: 'none' as any,
     // borderWidth define el grosor del borde visible.
     borderWidth: 0,
     // color define el color del texto o icono.

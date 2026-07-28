@@ -139,7 +139,7 @@ export default function LoginEmpresarial({ navigation }: { navigation: any }) {
             {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
             <View style={estilos.inputGroup}>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={[estilos.label, { color: colores.textoSuave }]}>{t('landing_auth.workspace_login.field_company_code')}</Text>
+              <Text style={[estilos.label, { color: colores.textoSuave }]}>{t('landing_auth.workspace_login.field_company_code_optional')}</Text>
               {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
               <View style={[estilos.inputWrapper, { backgroundColor: colores.vidrio, borderColor: colores.borde }]}>
                 {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}

@@ -454,6 +454,20 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    match /auth_rate_limits/{id} {
+      allow read, write: if false;
+    }
+
+    match /ai_usage_daily/{id} {
+      allow read: if autenticado() && esSuperAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /plataforma_config/{id} {
+      allow read: if autenticado() && esSuperAdmin();
+      allow create, update, delete: if false;
+    }
+
     match /sensitive_change_history/{id} {
       allow read: if autenticado() && (esSuperAdmin() || (puedeLeerTenant(resource.data) && esAdminEmpresa()));
       allow create, update, delete: if false;

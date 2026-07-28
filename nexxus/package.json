@@ -8,5 +8,9 @@
   "workspaces": [
     "app",
     "backend"
-  ]
+  ],
+  "dependencies": {
+    "@expo-google-fonts/dm-sans": "^0.4.2",
+    "expo-font": "^57.0.1"
+  }
 }

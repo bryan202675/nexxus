@@ -792,7 +792,19 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
   };
 
   // Prepara continuarSegunUsuario; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
-  const continuarSegunUsuario = () => {
+  // Un super_admin entra directo a la app (panel de plataforma); el resto de roles vuelve a la landing,
+  // igual que antes. La comprobación de rol se hace contra Firestore, nunca contra el correo escrito.
+  const continuarSegunUsuario = async (uid: string) => {
+    try {
+      const snap = await getDoc(doc(db, 'usuarios', uid));
+      const rol = snap.exists() ? String(snap.data()?.rol || snap.data()?.role || '').trim().toLowerCase() : '';
+      if (rol === 'super_admin') {
+        window.location.assign('/workspace-login');
+        return;
+      }
+    } catch {
+      // Si falla la lectura del rol, se conserva el comportamiento previo (volver a la landing).
+    }
     navegarLanding();
   };
 
@@ -837,7 +849,7 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
       // Declara credencial; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const credencial = await signInWithEmailAndPassword(auth, login.correo.trim().toLowerCase(), login.password);
       // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-      continuarSegunUsuario();
+      await continuarSegunUsuario(credencial.user.uid);
     } catch (error: any) {
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setErrorGlobal(traducirErrorFirebase(error.code));
@@ -862,7 +874,7 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
       // Declara credencial; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const credencial = await signInWithPopup(auth, proveedor);
       // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-      continuarSegunUsuario();
+      await continuarSegunUsuario(credencial.user.uid);
     } catch (error: any) {
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setErrorGlobal(traducirErrorFirebase(error.code));

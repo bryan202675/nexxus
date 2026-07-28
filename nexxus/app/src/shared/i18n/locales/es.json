@@ -1813,6 +1813,7 @@
       "title": "Ingreso",
       "subtitle": "Ingresa tus credenciales corporativas para continuar.",
       "field_company_code": "Código de empresa",
+      "field_company_code_optional": "Código de empresa (opcional)",
       "field_company_code_placeholder": "Ej. NEXXUS",
       "field_user": "Usuario",
       "field_user_placeholder": "usuario01",

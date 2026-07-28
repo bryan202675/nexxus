@@ -25,7 +25,8 @@ export class LoginEmpresarial {
   // execute ejecuta una accion de negocio y delega lecturas o escrituras en repositorios/servicios.
   async execute(dto: LoginEmpresarialDTO): Promise<AuthResponseDTO> {
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-    if (!dto.codigoEmpresa || !dto.usuario || !dto.password) {
+    // El código de empresa es opcional: el super admin inicia sesión sin él (ver loginEmpresarial en backend/index.js).
+    if (!dto.usuario || !dto.password) {
       // Interrumpe el flujo con un error controlado para que la capa superior lo maneje.
       throw AuthError.invalidCredentials();
     }
@@ -34,7 +35,7 @@ export class LoginEmpresarial {
     try {
       // Declara user; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const user: User = await this.authRepository.loginEmpresarial(
-        dto.codigoEmpresa.trim().toUpperCase(),
+        (dto.codigoEmpresa || '').trim().toUpperCase(),
         dto.usuario.trim().toLowerCase(),
         dto.password
       );

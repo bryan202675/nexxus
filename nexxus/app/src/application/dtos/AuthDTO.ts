@@ -23,7 +23,8 @@ export interface LoginDTO {
 
 /** DTO para las credenciales de login empresarial */
 export interface LoginEmpresarialDTO {
-  codigoEmpresa: string;
+  /** Opcional: el super admin de plataforma inicia sesión sin código de empresa. */
+  codigoEmpresa?: string;
   usuario: string;
   password: string;
 }

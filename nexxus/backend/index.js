@@ -21,6 +21,11 @@ const {
   tenantIdOf,
 } = require("./security");
 const { writeAuditLog } = require("./audit");
+const {
+  INTERNAL_PASSWORD_ALGORITHM,
+  hashInternalPassword,
+  verifyInternalPassword,
+} = require("./passwords");
 
 // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
 if (!admin.apps.length) {
@@ -91,12 +96,34 @@ try {
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AQ.Ab8RN6LSO-zni600FpzCUoyyoCjFdE4xFaakw4RbZrF0KZ249g";
 const getGeminiModel = () => process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
 const getGeminiEndpoint = () => `https://generativelanguage.googleapis.com/v1beta/models/${getGeminiModel()}:generateContent`;
+
+// ⚠️ Verificar contra https://ai.google.dev/pricing antes de desplegar. USD por 1M tokens.
+// Los overrides por env permiten corregir precios sin redesplegar código.
+const GEMINI_PRICING_USD_PER_MILLION = {
+  "gemini-3.1-flash-lite": { input: 0.10, output: 0.40 },
+  "gemini-2.5-flash": { input: 0.30, output: 2.50 },
+  "gemini-2.5-pro": { input: 1.25, output: 10.00 },
+  default: { input: 0.10, output: 0.40 },
+};
+const AI_PRICING_VERSION = process.env.NEXXUS_AI_PRICING_VERSION || "2026-07";
+const geminiPricingFor = (model) => {
+  const envIn = Number(process.env.GEMINI_PRICE_INPUT_PER_M);
+  const envOut = Number(process.env.GEMINI_PRICE_OUTPUT_PER_M);
+  const base = GEMINI_PRICING_USD_PER_MILLION[model] || GEMINI_PRICING_USD_PER_MILLION.default;
+  return {
+    input: Number.isFinite(envIn) && envIn > 0 ? envIn : base.input,
+    output: Number.isFinite(envOut) && envOut > 0 ? envOut : base.output,
+  };
+};
+const computeAiCostUsd = (model, inputTokens, outputTokens) => {
+  const pricing = geminiPricingFor(model);
+  const cost = ((inputTokens || 0) / 1e6) * pricing.input + ((outputTokens || 0) / 1e6) * pricing.output;
+  return Math.round(cost * 1e8) / 1e8;
+};
 const FIRESTORE_BACKUP_BUCKET = process.env.NEXXUS_FIRESTORE_BACKUP_BUCKET || "";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
 const COMPANY_USER_ROLES = new Set(["admin_empresa", "jefe", "empleado"]);
-const INTERNAL_PASSWORD_ALGORITHM = "pbkdf2_sha256";
-const INTERNAL_PASSWORD_ITERATIONS = 210000;
 const firestoreAdminClient = new FirestoreAdminClient();
 
 const safeString = (value, maxLength = 160) => String(value || "").trim().slice(0, maxLength);
@@ -119,22 +146,6 @@ const normalizeCompanyUserRole = (role) => {
   return normalized;
 };
 const mapRoleForUserDocument = (role) => role === "admin_empresa" ? "admin" : role;
-const hashInternalPassword = (password) => {
-  const salt = crypto.randomBytes(16).toString("base64url");
-  const hash = crypto
-    .pbkdf2Sync(password, salt, INTERNAL_PASSWORD_ITERATIONS, 32, "sha256")
-    .toString("base64");
-  return `${INTERNAL_PASSWORD_ALGORITHM}$${INTERNAL_PASSWORD_ITERATIONS}$${salt}$${hash}`;
-};
-const verifyInternalPassword = (password, storedHash) => {
-  const [algorithm, iterationsValue, salt, expectedHash] = String(storedHash || "").split("$");
-  if (algorithm !== INTERNAL_PASSWORD_ALGORITHM || !salt || !expectedHash) return false;
-  const iterations = Number(iterationsValue);
-  if (!Number.isInteger(iterations) || iterations < 100000) return false;
-  const actual = crypto.pbkdf2Sync(password, salt, iterations, 32, "sha256");
-  const expected = Buffer.from(expectedHash, "base64");
-  return expected.length === actual.length && crypto.timingSafeEqual(actual, expected);
-};
 const sanitizeEmployeePayload = (payload) => {
   const clean = payload && typeof payload === "object" ? { ...payload } : {};
   delete clean.password;
@@ -683,23 +694,62 @@ exports.completeTrainingModule = onCall({ cors: true }, async (request) => {
   };
 });
 
+const enforceLoginRateLimit = async (key) => {
+  const now = Date.now();
+  const windowMs = 15 * 60 * 1000;
+  const attemptsLimit = 10;
+  const id = crypto.createHash("sha256").update(String(key || "")).digest("hex");
+  const ref = admin.firestore().collection("auth_rate_limits").doc(id);
+  const snap = await ref.get();
+  const data = snap.exists ? snap.data() : {};
+  const windowStart = Number(data.windowStart || 0);
+  const count = now - windowStart > windowMs ? 0 : Number(data.count || 0);
+  if (count >= attemptsLimit) {
+    throw new HttpsError("resource-exhausted", "Demasiados intentos. Intenta nuevamente en unos minutos.");
+  }
+  await ref.set({
+    windowStart: count === 0 ? now : windowStart,
+    count: count + 1,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+};
+
 exports.loginEmpresarial = onCall({ cors: true }, async (request) => {
   const codigoEmpresa = String(request.data?.codigoEmpresa || "").trim().toUpperCase();
   const usuarioInterno = String(request.data?.usuario || "").trim().toLowerCase();
   const password = String(request.data?.password || "");
-  if (!codigoEmpresa || !usuarioInterno || !password) {
-    throw new HttpsError("invalid-argument", "Código, usuario y contraseña son obligatorios.");
+  if (!usuarioInterno || !password) {
+    throw new HttpsError("invalid-argument", "Usuario y contraseña son obligatorios.");
   }
 
-  const snapshot = await admin.firestore().collection("usuarios")
-    .where("codigoEmpresa", "==", codigoEmpresa)
-    .where("usuarioInterno", "==", usuarioInterno)
-    .limit(2)
-    .get();
+  await enforceLoginRateLimit(`${codigoEmpresa}:${usuarioInterno}`);
 
-  const doc = snapshot.docs.find((entry) => entry.data()?.eliminado !== true);
+  let doc;
+  if (codigoEmpresa) {
+    const snapshot = await admin.firestore().collection("usuarios")
+      .where("codigoEmpresa", "==", codigoEmpresa)
+      .where("usuarioInterno", "==", usuarioInterno)
+      .limit(2)
+      .get();
+    doc = snapshot.docs.find((entry) => entry.data()?.eliminado !== true);
+  } else {
+    // Ruta de acceso del super admin: sin código de empresa, se busca por usuario y se exige
+    // que el documento tenga rol super_admin (nadie puede auto-asignarse ese rol, ver
+    // sinEscalarSuperAdmin en firestore.rules y normalizeCompanyUserRole en este archivo).
+    const snapshot = await admin.firestore().collection("usuarios")
+      .where("usuarioInterno", "==", usuarioInterno)
+      .limit(10)
+      .get();
+    doc = snapshot.docs.find((entry) => {
+      const entryData = entry.data() || {};
+      return entryData.eliminado !== true && normalizeRole(entryData.rol) === "super_admin";
+    });
+  }
   if (!doc) throw new HttpsError("unauthenticated", "Usuario o código de empresa incorrectos.");
   const userData = doc.data() || {};
+  if (userData.baneado === true) {
+    throw new HttpsError("permission-denied", "Esta cuenta fue bloqueada por un administrador de la plataforma.");
+  }
   const hashMatches = userData.passwordInternoHash && verifyInternalPassword(password, userData.passwordInternoHash);
   const legacyMatches = !hashMatches && typeof userData.passwordInterno === "string" && userData.passwordInterno === password;
   if (!hashMatches && !legacyMatches) {
@@ -1351,7 +1401,20 @@ const callGemini = async ({ caller, prompt, response, history = [] }) => {
     ?.map((part) => typeof part?.text === "string" ? part.text : "")
     .join("")
     .trim();
-  return text || null;
+  if (!text) return null;
+  const usage = json?.usageMetadata || {};
+  const inputTokens = Number(usage.promptTokenCount) || 0;
+  const thoughtsTokens = Number(usage.thoughtsTokenCount) || 0;
+  const outputTokens = (Number(usage.candidatesTokenCount) || 0) + thoughtsTokens;
+  const totalTokens = Number(usage.totalTokenCount) || (inputTokens + outputTokens);
+  return {
+    text,
+    model: getGeminiModel(),
+    inputTokens,
+    outputTokens,
+    thoughtsTokens,
+    totalTokens,
+  };
 };
 
 exports.askNexxusAI = onCall({ cors: true }, async (request) => {
@@ -1371,10 +1434,12 @@ exports.askNexxusAI = onCall({ cors: true }, async (request) => {
       : buildEmployeeAnswer(prompt, await getEmployeeAiContext(caller));
   }
   let provider = "deterministic";
+  const startedAt = Date.now();
   const history = Array.isArray(request.data?.history) ? request.data.history : [];
-  const geminiText = await callGemini({ caller, prompt, response, history });
-  if (geminiText) {
-    let cleanText = geminiText;
+  const gemini = await callGemini({ caller, prompt, response, history });
+  const latencyMs = Date.now() - startedAt;
+  if (gemini) {
+    let cleanText = gemini.text;
     let notifMatch;
     while ((notifMatch = cleanText.match(/\[NOTIFICATION:(\w+)\|([^|]+)\|([^\]]+)\]/))) {
       const tipo = notifMatch[1];
@@ -1463,15 +1528,27 @@ exports.askNexxusAI = onCall({ cors: true }, async (request) => {
     provider = "gemini_fallback";
   }
   const { FieldValue } = require("firebase-admin/firestore");
+  const usedModel = gemini?.model || (provider === "gemini_fallback" ? getGeminiModel() : null);
+  const inputTokens = gemini?.inputTokens ?? null;
+  const outputTokens = gemini?.outputTokens ?? null;
   await admin.firestore().collection("ai_usage").add({
     empresaId: caller.empresaId || null,
+    empresaNombre: safeString(caller.empresaNombre, 160) || null,
     userId: caller.id,
     rol: role,
     promptLength: prompt.length,
     tool: response.tool,
     fuentes: response.fuentes,
     provider,
-    model: provider === "gemini" ? getGeminiModel() : null,
+    model: usedModel,
+    inputTokens,
+    outputTokens,
+    thoughtsTokens: gemini?.thoughtsTokens ?? null,
+    totalTokens: gemini?.totalTokens ?? null,
+    costUsd: gemini ? computeAiCostUsd(usedModel, inputTokens, outputTokens) : 0,
+    costCurrency: "USD",
+    pricingVersion: AI_PRICING_VERSION,
+    latencyMs,
     status: provider === "gemini_fallback" ? "fallback" : "success",
     createdAt: FieldValue.serverTimestamp(),
   });
@@ -1485,6 +1562,636 @@ exports.askNexxusAI = onCall({ cors: true }, async (request) => {
     metadata: { tool: response.tool, promptLength: prompt.length, provider },
   });
   return response;
+});
+
+const ROLE_ALIAS_GROUPS = {
+  super_admin: ["super_admin"],
+  admin_empresa: ["admin", "admin_empresa"],
+  jefe: ["jefe", "jefe_sector"],
+  empleado: ["empleado", "psicologo"],
+};
+
+/**
+ * saPlatformStats: agregaciones count() en servidor para el Resumen Global del super admin.
+ * Solo lectura, sin descargar documentos completos (a diferencia de subscribePlatform en el cliente).
+ */
+exports.saPlatformStats = onCall({ cors: true }, async (request) => {
+  const caller = await getCaller(request.auth);
+  if (!isSuperAdmin(caller)) {
+    throw new HttpsError("permission-denied", "Solo el super admin puede ver las estadísticas de la plataforma.");
+  }
+
+  const db = admin.firestore();
+  const now = new Date();
+  const hace30d = admin.firestore.Timestamp.fromDate(new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000));
+
+  const countOf = async (q) => {
+    const snap = await q.count().get();
+    return snap.data().count;
+  };
+
+  const empresasRef = db.collection("empresas");
+  const usuariosRef = db.collection("usuarios");
+  const paymentsRef = db.collection("payments");
+
+  const [
+    empresasTotal,
+    empresasActivas,
+    empresasSuspendidas,
+    empresasExpiradas,
+    empresasBaneadas,
+    usuariosTotal,
+    usuariosActivos,
+    empresasNuevas30d,
+    ...porRolCounts
+  ] = await Promise.all([
+    countOf(empresasRef),
+    countOf(empresasRef.where("estado_activo", "==", true)),
+    countOf(empresasRef.where("subscriptionStatus", "==", "grace_period")),
+    countOf(empresasRef.where("subscriptionStatus", "==", "expired")),
+    countOf(empresasRef.where("baneada", "==", true)),
+    countOf(usuariosRef),
+    countOf(usuariosRef.where("activo", "==", true)),
+    countOf(empresasRef.where("fecha_creacion", ">=", hace30d)),
+    ...Object.values(ROLE_ALIAS_GROUPS).map((aliases) => countOf(usuariosRef.where("rol", "in", aliases))),
+  ]);
+
+  const porRol = Object.keys(ROLE_ALIAS_GROUPS).reduce((acc, role, index) => {
+    acc[role] = porRolCounts[index] || 0;
+    return acc;
+  }, {});
+
+  let usuariosNuevos30d = 0;
+  try {
+    usuariosNuevos30d = await countOf(usuariosRef.where("fecha_creacion", ">=", hace30d));
+  } catch (error) {
+    console.warn("saPlatformStats usuariosNuevos30d", error.message);
+  }
+
+  const porPlan = {};
+  let ingresosTotales = 0;
+  let ingresos30d = 0;
+  try {
+    const empresasSnap = await empresasRef.select("planActivo", "plan").get();
+    empresasSnap.docs.forEach((entry) => {
+      const data = entry.data() || {};
+      const plan = data.planActivo || data.plan || "Sin plan";
+      porPlan[plan] = (porPlan[plan] || 0) + 1;
+    });
+  } catch (error) {
+    console.warn("saPlatformStats porPlan", error.message);
+  }
+  try {
+    const paymentsSnap = await paymentsRef.where("status", "==", "paid").select("amount", "confirmedAt").get();
+    paymentsSnap.docs.forEach((entry) => {
+      const data = entry.data() || {};
+      const amount = Number(data.amount) || 0;
+      ingresosTotales += amount;
+      const confirmedAt = data.confirmedAt?.toDate ? data.confirmedAt.toDate() : null;
+      if (confirmedAt && confirmedAt >= hace30d.toDate()) ingresos30d += amount;
+    });
+  } catch (error) {
+    console.warn("saPlatformStats ingresos", error.message);
+  }
+
+  return {
+    empresasTotal,
+    empresasActivas,
+    empresasSuspendidas,
+    empresasExpiradas,
+    empresasBaneadas,
+    usuariosTotal,
+    usuariosActivos,
+    porRol,
+    porPlan,
+    empresasNuevas30d,
+    usuariosNuevos30d,
+    ingresosTotales,
+    ingresos30d,
+  };
+});
+
+const USER_OWNED_COLLECTIONS = [
+  "checkins", "focus_sessions", "asistencias", "pausas", "capacitacion_avances", "citas",
+  "feedbacks", "notificaciones", "nominas", "solicitudes_ausencia", "solicitudes_internas",
+];
+const USER_PATCH_FIELDS = [
+  "nombre", "correo", "telefono", "departamento", "departamentoId", "cargo", "cargoId",
+  "sede", "sedeId", "salarioBase", "usuarioInterno", "activo",
+];
+
+/**
+ * saSetCompanyBan: bloquea (reversible) el acceso de una empresa y de todos sus usuarios.
+ * A diferencia de applyCompanyAction (suspender/expirar, que solo tocan el estado de plan),
+ * esto además deshabilita las cuentas de Firebase Auth de todos los usuarios de la empresa.
+ */
+exports.saSetCompanyBan = onCall({ cors: true }, async (request) => {
+  const caller = await getCaller(request.auth);
+  if (!isSuperAdmin(caller)) throw new HttpsError("permission-denied", "Solo el super admin puede banear empresas.");
+  const empresaId = safeString(request.data?.empresaId, 120);
+  const banned = request.data?.banned === true;
+  const motivo = safeString(request.data?.motivo, 300);
+  if (!empresaId) throw new HttpsError("invalid-argument", "Empresa requerida.");
+
+  const db = admin.firestore();
+  const empresaRef = db.collection("empresas").doc(empresaId);
+  const empresaSnap = await empresaRef.get();
+  if (!empresaSnap.exists) throw new HttpsError("not-found", "No se encontró la empresa.");
+  const empresaData = empresaSnap.data() || {};
+
+  const empresaPatch = {
+    baneada: banned,
+    estado_activo: !banned,
+  };
+  if (banned) {
+    empresaPatch.bloqueoMotivo = motivo;
+    empresaPatch.bloqueoEn = admin.firestore.FieldValue.serverTimestamp();
+    empresaPatch.bloqueoPor = caller.id;
+  } else {
+    empresaPatch.bloqueoMotivo = admin.firestore.FieldValue.delete();
+    empresaPatch.bloqueoEn = admin.firestore.FieldValue.delete();
+    empresaPatch.bloqueoPor = admin.firestore.FieldValue.delete();
+  }
+  await empresaRef.set(empresaPatch, { merge: true });
+
+  const [snapA, snapB] = await Promise.all([
+    db.collection("usuarios").where("empresaId", "==", empresaId).get(),
+    db.collection("usuarios").where("empresa_id", "==", empresaId).get(),
+  ]);
+  const usuarios = [...new Map([...snapA.docs, ...snapB.docs].map((entry) => [entry.id, entry])).values()];
+
+  for (let index = 0; index < usuarios.length; index += 400) {
+    const batch = db.batch();
+    usuarios.slice(index, index + 400).forEach((docSnap) => {
+      batch.set(docSnap.ref, { activo: !banned, estado_activo: !banned, baneadoPorEmpresa: banned }, { merge: true });
+    });
+    await batch.commit();
+  }
+
+  await Promise.all(usuarios.map(async (docSnap) => {
+    await admin.auth().updateUser(docSnap.id, { disabled: banned }).catch((error) => {
+      if (error.code !== "auth/user-not-found") console.warn("saSetCompanyBan auth update", docSnap.id, error.message);
+    });
+    if (banned) await admin.auth().revokeRefreshTokens(docSnap.id).catch(() => {});
+  }));
+
+  await writeAuditLog({
+    actor: caller,
+    empresaId,
+    accion: banned ? "Empresa baneada" : "Empresa reactivada",
+    modulo: "Super Admin",
+    estado: banned ? "Warning" : "Success",
+    detalles: safeString(empresaData.nombre, 160) || empresaId,
+    targetId: empresaId,
+    metadata: { banned, motivo, usuariosAfectados: usuarios.length },
+  });
+
+  return { ok: true, empresaId, banned, usuariosAfectados: usuarios.length };
+});
+
+/**
+ * saSetUserBan: bloquea (reversible) el acceso de un usuario individual, de cualquier empresa/rol.
+ */
+exports.saSetUserBan = onCall({ cors: true }, async (request) => {
+  const caller = await getCaller(request.auth);
+  if (!isSuperAdmin(caller)) throw new HttpsError("permission-denied", "Solo el super admin puede banear usuarios.");
+  const userId = safeString(request.data?.userId, 120);
+  const banned = request.data?.banned === true;
+  const motivo = safeString(request.data?.motivo, 300);
+  if (!userId) throw new HttpsError("invalid-argument", "Usuario requerido.");
+  if (userId === caller.id) throw new HttpsError("failed-precondition", "No puedes banearte a ti mismo.");
+
+  const db = admin.firestore();
+  const userRef = db.collection("usuarios").doc(userId);
+  const userSnap = await userRef.get();
+  if (!userSnap.exists) throw new HttpsError("not-found", "No se encontró el usuario.");
+  const userData = userSnap.data() || {};
+  if (normalizeRole(userData.rol) === "super_admin") {
+    throw new HttpsError("permission-denied", "No puedes banear a otro super admin.");
+  }
+
+  const patch = { activo: !banned, estado_activo: !banned, baneado: banned };
+  if (banned) {
+    patch.bloqueoMotivo = motivo;
+    patch.bloqueoEn = admin.firestore.FieldValue.serverTimestamp();
+    patch.bloqueoPor = caller.id;
+  } else {
+    patch.bloqueoMotivo = admin.firestore.FieldValue.delete();
+    patch.bloqueoEn = admin.firestore.FieldValue.delete();
+    patch.bloqueoPor = admin.firestore.FieldValue.delete();
+  }
+  await userRef.set(patch, { merge: true });
+
+  await admin.auth().updateUser(userId, { disabled: banned }).catch((error) => {
+    if (error.code !== "auth/user-not-found") throw error;
+  });
+  if (banned) await admin.auth().revokeRefreshTokens(userId).catch(() => {});
+
+  await writeAuditLog({
+    actor: caller,
+    empresaId: tenantIdOf(userData),
+    accion: banned ? "Usuario baneado" : "Usuario reactivado",
+    modulo: "Super Admin",
+    estado: banned ? "Warning" : "Success",
+    detalles: safeString(userData.nombre, 160) || userId,
+    targetId: userId,
+    metadata: { banned, motivo, rolObjetivo: normalizeRole(userData.rol) },
+  });
+
+  return { ok: true, userId, banned };
+});
+
+/**
+ * saDeleteCompany: borrado en cascada total — cuentas de Firebase Auth de todos sus usuarios
+ * (incluido el propietario), sus documentos y todos los datos tenant-scoped. Irreversible.
+ * Reutiliza purgeCompanyData (la misma cascada del ciclo de vida automático de suscripciones),
+ * con deleteAuthUsers+deleteOwner=true, que ese camino automático nunca activa.
+ */
+exports.saDeleteCompany = onCall({ cors: true }, async (request) => {
+  const caller = await getCaller(request.auth);
+  if (!isSuperAdmin(caller)) throw new HttpsError("permission-denied", "Solo el super admin puede eliminar empresas.");
+  const empresaId = safeString(request.data?.empresaId, 120);
+  const confirmName = safeString(request.data?.confirmName, 160);
+  if (!empresaId || !confirmName) throw new HttpsError("invalid-argument", "Empresa y confirmación son obligatorias.");
+
+  const db = admin.firestore();
+  const empresaRef = db.collection("empresas").doc(empresaId);
+  const empresaSnap = await empresaRef.get();
+  if (!empresaSnap.exists) throw new HttpsError("not-found", "No se encontró la empresa.");
+  const empresaData = empresaSnap.data() || {};
+  const nombre = safeString(empresaData.nombre, 160);
+  if (confirmName.trim().toLowerCase() !== nombre.trim().toLowerCase()) {
+    throw new HttpsError("failed-precondition", "El nombre no coincide.");
+  }
+
+  // Se escribe ANTES del purgado y con empresaId:null — audit_logs está dentro de
+  // COMPANY_COLLECTIONS y un registro con el empresaId real sería barrido por su propia cascada.
+  await writeAuditLog({
+    actor: caller,
+    empresaId: null,
+    accion: "Eliminación total de empresa (iniciada)",
+    modulo: "Super Admin",
+    estado: "Error",
+    targetId: empresaId,
+    detalles: nombre,
+    metadata: { empresaEliminada: empresaId, codigo: safeString(empresaData.codigo, 60) },
+  });
+
+  const resultado = await purgeCompanyData(empresaSnap, { deleteAuthUsers: true, deleteOwner: true });
+
+  await writeAuditLog({
+    actor: caller,
+    empresaId: null,
+    accion: "Eliminación total de empresa (completada)",
+    modulo: "Super Admin",
+    estado: "Error",
+    targetId: empresaId,
+    detalles: nombre,
+    metadata: resultado,
+  });
+
+  return { ok: true, empresaId, usuariosEliminados: resultado.usuariosEliminados };
+});
+
+/**
+ * saDeleteUser: borra la cuenta de Firebase Auth y el documento de un usuario individual, más los
+ * datos propios de otras colecciones (checkins, asistencias, nóminas, etc.). Las tareas asignadas
+ * se reasignan a null en vez de borrarse — una tarea compartida no debe desaparecer. Irreversible.
+ */
+exports.saDeleteUser = onCall({ cors: true }, async (request) => {
+  const caller = await getCaller(request.auth);
+  if (!isSuperAdmin(caller)) throw new HttpsError("permission-denied", "Solo el super admin puede eliminar usuarios.");
+  const userId = safeString(request.data?.userId, 120);
+  const confirmName = safeString(request.data?.confirmName, 160);
+  const force = request.data?.force === true;
+  if (!userId || !confirmName) throw new HttpsError("invalid-argument", "Usuario y confirmación son obligatorios.");
+  if (userId === caller.id) throw new HttpsError("failed-precondition", "No puedes eliminar tu propia cuenta desde aquí.");
+
+  const db = admin.firestore();
+  const userRef = db.collection("usuarios").doc(userId);
+  const userSnap = await userRef.get();
+  if (!userSnap.exists) throw new HttpsError("not-found", "No se encontró el usuario.");
+  const userData = userSnap.data() || {};
+  if (normalizeRole(userData.rol) === "super_admin") {
+    throw new HttpsError("permission-denied", "No puedes eliminar a otro super admin.");
+  }
+  const nombre = safeString(userData.nombre, 160);
+  if (confirmName.trim().toLowerCase() !== nombre.trim().toLowerCase()) {
+    throw new HttpsError("failed-precondition", "El nombre no coincide.");
+  }
+
+  const empresaId = tenantIdOf(userData);
+  if (empresaId) {
+    const empresaSnap = await db.collection("empresas").doc(empresaId).get();
+    const empresaData = empresaSnap.data() || {};
+    const ownerId = empresaData.adminId || empresaData.adminUid || "";
+    if (ownerId === userId && !force) {
+      throw new HttpsError("failed-precondition", "Es el propietario de la empresa; elimina la empresa completa o transfiere la propiedad.");
+    }
+  }
+
+  let docsEliminados = 0;
+  for (const collectionName of USER_OWNED_COLLECTIONS) {
+    const snaps = await Promise.all([
+      db.collection(collectionName).where("usuario_id", "==", userId).get().catch(() => null),
+      db.collection(collectionName).where("userId", "==", userId).get().catch(() => null),
+      db.collection(collectionName).where("empleadoId", "==", userId).get().catch(() => null),
+    ]);
+    const refs = [...new Map(
+      snaps.filter(Boolean).flatMap((snap) => snap.docs).map((entry) => [entry.ref.path, entry.ref])
+    ).values()];
+    if (refs.length) {
+      await deleteDocumentRefs(refs);
+      docsEliminados += refs.length;
+    }
+  }
+
+  const tareasSnap = await db.collection("tareas").where("asignado_a", "==", userId).get().catch(() => null);
+  if (tareasSnap && !tareasSnap.empty) {
+    const batch = db.batch();
+    tareasSnap.docs.forEach((docSnap) => batch.set(docSnap.ref, { asignado_a: null }, { merge: true }));
+    await batch.commit();
+  }
+
+  await admin.auth().deleteUser(userId).catch((error) => {
+    if (error.code !== "auth/user-not-found") console.warn("saDeleteUser auth delete", error.message);
+  });
+  await db.recursiveDelete(userRef);
+
+  await writeAuditLog({
+    actor: caller,
+    empresaId,
+    accion: "Eliminación de usuario",
+    modulo: "Super Admin",
+    estado: "Error",
+    targetId: userId,
+    detalles: nombre,
+    metadata: { correo: safeString(userData.correo, 254), rol: normalizeRole(userData.rol), docsEliminados },
+  });
+
+  return { ok: true, userId };
+});
+
+/**
+ * saUpdateUser: edición de perfil, cambio de rol y/o de empresa por el super admin.
+ * No reutiliza updateEmployeeRole — esa función bloquea deliberadamente cualquier asignación de
+ * rol super_admin y exige mismaEmpresa(caller), guardas correctas para el camino de empresa pero
+ * incompatibles con lo que el super admin necesita hacer aquí.
+ */
+exports.saUpdateUser = onCall({ cors: true }, async (request) => {
+  const caller = await getCaller(request.auth);
+  if (!isSuperAdmin(caller)) throw new HttpsError("permission-denied", "Solo el super admin puede editar usuarios.");
+  const userId = safeString(request.data?.userId, 120);
+  if (!userId) throw new HttpsError("invalid-argument", "Usuario requerido.");
+  const patchInput = request.data?.patch && typeof request.data.patch === "object" ? request.data.patch : {};
+  const rolInput = request.data?.rol ? normalizeRole(request.data.rol) : null;
+  const empresaIdInput = request.data?.empresaId ? safeString(request.data.empresaId, 120) : null;
+
+  const db = admin.firestore();
+  const userRef = db.collection("usuarios").doc(userId);
+  const userSnap = await userRef.get();
+  if (!userSnap.exists) throw new HttpsError("not-found", "No se encontró el usuario.");
+  const before = userSnap.data() || {};
+  const rolAnterior = normalizeRole(before.rol);
+  const empresaAnterior = tenantIdOf(before);
+
+  const patch = {};
+  USER_PATCH_FIELDS.forEach((field) => {
+    if (!(field in patchInput)) return;
+    const value = patchInput[field];
+    if (field === "salarioBase") patch[field] = Number(value) || 0;
+    else if (field === "activo") patch[field] = Boolean(value);
+    else patch[field] = safeString(value, 200);
+  });
+  if (patch.activo !== undefined) patch.estado_activo = patch.activo;
+
+  let correoActualizado = false;
+  if (typeof patch.correo === "string" && patch.correo && patch.correo !== before.correo) {
+    assertValidEmail(patch.correo);
+    await admin.auth().updateUser(userId, { email: patch.correo }).catch((error) => {
+      if (error.code === "auth/email-already-exists") throw new HttpsError("already-exists", "Ya existe una cuenta con ese correo.");
+      throw error;
+    });
+    correoActualizado = true;
+  }
+
+  const camposModificados = Object.keys(patch);
+  let cambioRol = false;
+  let cambioEmpresa = false;
+  let nuevaEmpresaId = empresaAnterior;
+
+  if (rolInput && rolInput !== rolAnterior) {
+    patch.rol = mapRoleForUserDocument(rolInput);
+    patch.rolNormalizado = rolInput;
+    cambioRol = true;
+    camposModificados.push("rol");
+  }
+  if (empresaIdInput && empresaIdInput !== empresaAnterior) {
+    const empresaDestino = await db.collection("empresas").doc(empresaIdInput).get();
+    if (!empresaDestino.exists) throw new HttpsError("not-found", "La empresa destino no existe.");
+    const empresaDestinoData = empresaDestino.data() || {};
+    patch.empresaId = empresaIdInput;
+    patch.empresa_id = empresaIdInput;
+    patch.empresaNombre = safeString(empresaDestinoData.nombre, 160);
+    patch.codigoEmpresa = safeString(empresaDestinoData.codigo, 60);
+    patch.departamentoId = admin.firestore.FieldValue.delete();
+    patch.cargoId = admin.firestore.FieldValue.delete();
+    patch.sedeId = admin.firestore.FieldValue.delete();
+    nuevaEmpresaId = empresaIdInput;
+    cambioEmpresa = true;
+    camposModificados.push("empresaId");
+  }
+
+  if (Object.keys(patch).length > 0) {
+    await userRef.set(patch, { merge: true });
+  }
+
+  let changeId = null;
+  if (cambioRol || cambioEmpresa || correoActualizado) {
+    await admin.auth().setCustomUserClaims(userId, {
+      empresaId: nuevaEmpresaId || null,
+      rol: rolInput || rolAnterior,
+      role: rolInput || rolAnterior,
+    });
+    await admin.auth().revokeRefreshTokens(userId).catch(() => {});
+    if (cambioRol) {
+      const changeRef = db.collection("sensitive_change_history").doc();
+      await changeRef.set({
+        empresaId: nuevaEmpresaId || empresaAnterior,
+        empleadoId: userId,
+        empleadoNombre: safeString(before.nombre, 160),
+        actorId: caller.id,
+        actorName: safeString(caller.nombre, 160),
+        modulo: "Roles",
+        fields: ["rol"],
+        before: { rol: rolAnterior },
+        after: { rol: rolInput },
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      changeId = changeRef.id;
+    }
+  }
+
+  await writeAuditLog({
+    actor: caller,
+    empresaId: nuevaEmpresaId || empresaAnterior || null,
+    accion: "Actualización de usuario (super admin)",
+    modulo: "Super Admin",
+    targetId: userId,
+    detalles: safeString(before.nombre, 160) || userId,
+    metadata: {
+      camposModificados,
+      rolAnterior, rolNuevo: rolInput || rolAnterior,
+      empresaAnterior, empresaNueva: nuevaEmpresaId,
+      changeId,
+    },
+  });
+
+  return { ok: true, userId, changeId };
+});
+
+/**
+ * saResetPassword: restablece el acceso de un usuario en cualquiera de sus tres formas.
+ * Nunca se registra la contraseña en texto plano en la auditoría, solo el modo usado.
+ */
+exports.saResetPassword = onCall({ cors: true }, async (request) => {
+  const caller = await getCaller(request.auth);
+  if (!isSuperAdmin(caller)) throw new HttpsError("permission-denied", "Solo el super admin puede restablecer contraseñas.");
+  const userId = safeString(request.data?.userId, 120);
+  const mode = safeString(request.data?.mode, 20);
+  if (!userId || !["link", "set", "internal"].includes(mode)) {
+    throw new HttpsError("invalid-argument", "Modo de restablecimiento inválido.");
+  }
+
+  const db = admin.firestore();
+  const userSnap = await db.collection("usuarios").doc(userId).get();
+  if (!userSnap.exists) throw new HttpsError("not-found", "No se encontró el usuario.");
+  const userData = userSnap.data() || {};
+
+  let resetLink;
+  if (mode === "link") {
+    const correo = userData.correo || userData.email;
+    if (!correo) throw new HttpsError("failed-precondition", "El usuario no tiene correo registrado.");
+    resetLink = await admin.auth().generatePasswordResetLink(correo);
+  } else if (mode === "set") {
+    const newPassword = typeof request.data?.newPassword === "string" ? request.data.newPassword : "";
+    assertValidPassword(newPassword);
+    await admin.auth().updateUser(userId, { password: newPassword });
+    await admin.auth().revokeRefreshTokens(userId).catch(() => {});
+  } else {
+    const newPassword = typeof request.data?.newPassword === "string" ? request.data.newPassword : "";
+    assertValidPassword(newPassword);
+    await db.collection("usuarios").doc(userId).set({
+      passwordInternoHash: hashInternalPassword(newPassword),
+      passwordHashAlgorithm: INTERNAL_PASSWORD_ALGORITHM,
+      passwordUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      passwordInterno: admin.firestore.FieldValue.delete(),
+      passwordInicial: admin.firestore.FieldValue.delete(),
+    }, { merge: true });
+  }
+
+  await writeAuditLog({
+    actor: caller,
+    empresaId: tenantIdOf(userData),
+    accion: "Restablecimiento de contraseña",
+    modulo: "Super Admin",
+    estado: "Warning",
+    targetId: userId,
+    detalles: safeString(userData.nombre, 160) || userId,
+    metadata: { mode, correo: safeString(userData.correo, 254) },
+  });
+
+  return { ok: true, mode, resetLink };
+});
+
+/**
+ * saCreateCompany: alta de empresa por el super admin, reutilizando createCompanyWithOwner.
+ */
+exports.saCreateCompany = onCall({ cors: true }, async (request) => {
+  const caller = await getCaller(request.auth);
+  if (!isSuperAdmin(caller)) throw new HttpsError("permission-denied", "Solo el super admin puede crear empresas.");
+  const payload = request.data || {};
+  const nombreEmpresa = safeString(payload.nombreEmpresa, 120);
+  const nombreAdmin = safeString(payload.nombreAdmin, 120);
+  const correoAdmin = normalizeEmailInput(payload.correoAdmin);
+  const contrasenaAdmin = typeof payload.contrasenaAdmin === "string" ? payload.contrasenaAdmin : "";
+  assertCompanyPayload({ nombreEmpresa, nombreAdmin, correoAdmin, contrasenaAdmin });
+  const plan = PLAN_CATALOG[payload.plan] ? payload.plan : null;
+
+  try {
+    const result = await createCompanyWithOwner({
+      nombreEmpresa,
+      nombreAdmin,
+      correoAdmin,
+      contrasenaAdmin,
+      usuarioInterno: safeString(payload.usuarioInterno, 60),
+      giroActividad: safeString(payload.giroActividad, 120),
+      tamanoEquipo: safeString(payload.tamanoEquipo, 60),
+      plan,
+    });
+    await writeAuditLog({
+      actor: caller,
+      empresaId: result.empresaId,
+      accion: "Creación de empresa (super admin)",
+      modulo: "Super Admin",
+      targetId: result.empresaId,
+      detalles: nombreEmpresa,
+      metadata: { codigo: result.codigo, adminUid: result.adminUid, correoAdmin, plan },
+    });
+    return { ok: true, ...result };
+  } catch (error) {
+    if (error instanceof HttpsError) throw error;
+    if (error.code === "auth/email-already-exists") throw new HttpsError("already-exists", "Ya existe un usuario con ese correo.");
+    if (error.code === "auth/invalid-email") throw new HttpsError("invalid-argument", "Correo inválido.");
+    if (error.code === "auth/invalid-password") throw new HttpsError("invalid-argument", "La contraseña no cumple los requisitos mínimos.");
+    console.error("saCreateCompany failed", { code: error.code, message: error.message });
+    throw new HttpsError("internal", "No se pudo crear la empresa.");
+  }
+});
+
+/**
+ * saCreateUser: alta de usuario en cualquier empresa por el super admin (incluida la creación de
+ * otro admin_empresa, algo que crearUsuarioEmpresa no permite salvo que el llamante ya sea dueño).
+ * Omite el límite de plan (assertEmployeeCapacity) pero lo deja anotado en la auditoría.
+ */
+exports.saCreateUser = onCall({ cors: true }, async (request) => {
+  const caller = await getCaller(request.auth);
+  if (!isSuperAdmin(caller)) throw new HttpsError("permission-denied", "Solo el super admin puede crear usuarios.");
+  const payload = request.data || {};
+  const empresaId = safeString(payload.empresaId, 120);
+  if (!empresaId) throw new HttpsError("invalid-argument", "Empresa requerida.");
+  const empresaSnap = await admin.firestore().collection("empresas").doc(empresaId).get();
+  if (!empresaSnap.exists) throw new HttpsError("not-found", "No se encontró la empresa.");
+
+  try {
+    const result = await createCompanyUser({
+      empresaId,
+      nombre: safeString(payload.nombre, 120),
+      correo: normalizeEmailInput(payload.correo),
+      contrasena: typeof payload.contrasena === "string" ? payload.contrasena : "",
+      rol: payload.rol,
+      departamentoId: safeString(payload.departamentoId, 120),
+      actor: caller,
+      allowAdminRole: true,
+    });
+    await writeAuditLog({
+      actor: caller,
+      empresaId,
+      accion: "Creación de usuario (super admin)",
+      modulo: "Super Admin",
+      targetId: result.uid,
+      detalles: safeString(payload.nombre, 160),
+      metadata: { rol: result.rol, correo: safeString(payload.correo, 254) },
+    });
+    return { ok: true, uid: result.uid };
+  } catch (error) {
+    if (error instanceof HttpsError) throw error;
+    if (error.code === "auth/email-already-exists") throw new HttpsError("already-exists", "Ya existe un usuario con ese correo.");
+    if (error.code === "auth/invalid-password") throw new HttpsError("invalid-argument", "La contraseña no cumple los requisitos mínimos.");
+    if (error.code === "auth/invalid-email") throw new HttpsError("invalid-argument", "Correo inválido.");
+    console.error("saCreateUser failed", { code: error.code, message: error.message });
+    throw new HttpsError("internal", "No se pudo crear el usuario.");
+  }
 });
 
 exports.createSupportImpersonationSession = onCall({ cors: true }, async (request) => {
@@ -1573,6 +2280,96 @@ exports.createSupportImpersonationSession = onCall({ cors: true }, async (reques
 });
 
 /**
+ * createCompanyWithOwner: crea la cuenta Auth del propietario, la empresa y su documento de usuario.
+ * Compartida por el alta pública (crearEmpresaAdmin) y por saCreateCompany (super admin).
+ * Escribe codigoEmpresa/usuarioInterno/passwordInternoHash en el propietario: sin esto no puede
+ * usar nunca el login empresarial (bug que tenía crearEmpresaAdmin antes de esta extracción).
+ */
+const createCompanyWithOwner = async ({
+  nombreEmpresa,
+  nombreAdmin,
+  correoAdmin,
+  contrasenaAdmin,
+  giroActividad = '',
+  tamanoEquipo = '',
+  usuarioInterno = '',
+  plan = null,
+}) => {
+  const userRecord = await admin.auth().createUser({
+    email: correoAdmin,
+    password: contrasenaAdmin,
+    displayName: nombreAdmin,
+  });
+
+  // Generar un código de acceso de empresa único (ej. NEX-4927)
+  let codigo = '';
+  let unico = false;
+  const prefix = (nombreEmpresa || 'EMP').replace(/[^a-zA-Z]/g, '').substring(0, 3).toUpperCase() || 'EMP';
+  let attempts = 0;
+  while (!unico && attempts < 10) {
+    const num = Math.floor(1000 + Math.random() * 9000);
+    codigo = `${prefix}-${num}`;
+    const dup = await admin.firestore().collection('empresas').where('codigo', '==', codigo).get();
+    if (dup.empty) unico = true;
+    attempts++;
+  }
+  codigo = codigo || `${prefix}-1111`;
+
+  const empresaRef = admin.firestore().collection('empresas').doc();
+  await empresaRef.set({
+    id: empresaRef.id,
+    nombre: nombreEmpresa,
+    codigo,
+    giro: giroActividad || '',
+    tamanoEquipo: tamanoEquipo || '',
+    adminId: userRecord.uid,
+    fecha_creacion: admin.firestore.FieldValue.serverTimestamp(),
+    estado_activo: true,
+    ...(plan ? { plan, planActivo: plan } : {}),
+  });
+
+  const usuarioInternoNormalizado = safeString(usuarioInterno, 60).toLowerCase() || correoAdmin.split('@')[0];
+  const passwordInternoHash = hashInternalPassword(contrasenaAdmin);
+
+  await admin.firestore().collection('usuarios').doc(userRecord.uid).set({
+    id: userRecord.uid,
+    empresa_id: empresaRef.id,
+    empresaId: empresaRef.id,
+    empresaNombre: nombreEmpresa,
+    nombre: nombreAdmin,
+    correo: correoAdmin,
+    rol: 'admin',
+    rolNormalizado: 'admin_empresa',
+    departamento: 'Dirección General',
+    estado_activo: true,
+    activo: true,
+    eliminado: false,
+    codigoEmpresa: codigo,
+    usuarioInterno: usuarioInternoNormalizado,
+    passwordInternoHash,
+    passwordHashAlgorithm: INTERNAL_PASSWORD_ALGORITHM,
+    passwordUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    fecha_creacion: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  await admin.auth().setCustomUserClaims(userRecord.uid, {
+    empresaId: empresaRef.id,
+    rol: 'admin_empresa',
+    role: 'admin_empresa',
+  });
+
+  await admin.firestore().collection('logs').add({
+    empresa_id: empresaRef.id,
+    usuario_id: userRecord.uid,
+    accion: 'CREAR_EMPRESA_ADMIN',
+    modulo: 'AUTH',
+    fecha: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  return { empresaId: empresaRef.id, adminUid: userRecord.uid, codigo };
+};
+
+/**
  * crearEmpresaAdmin: Funcion callable invocada desde la app. Valida contexto, consulta o escribe Firebase y devuelve solo la informacion que la UI necesita.
  */
 exports.crearEmpresaAdmin = onCall({ cors: true }, async (request) => {
@@ -1585,80 +2382,12 @@ exports.crearEmpresaAdmin = onCall({ cors: true }, async (request) => {
   const giroActividad = safeString(payload.giroActividad, 120);
   const tamanoEquipo = safeString(payload.tamanoEquipo, 60);
   assertCompanyPayload({ nombreEmpresa, nombreAdmin, correoAdmin, contrasenaAdmin });
-  
+
   // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
   try {
-    // Declara userRecord; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const userRecord = await admin.auth().createUser({
-      email: correoAdmin,
-      password: contrasenaAdmin,
-      displayName: nombreAdmin,
-    });
-
-    // Generar un código de acceso de empresa único (ej. NEX-4927)
-    let codigo = '';
-    // Declara unico; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    let unico = false;
-    // Declara prefix; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const prefix = (nombreEmpresa || 'EMP').replace(/[^a-zA-Z]/g, '').substring(0, 3).toUpperCase() || 'EMP';
-    // Declara attempts; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    let attempts = 0;
-    // Repite el bloque hasta cumplir la condicion; se usa para buscar o construir un valor valido.
-    while (!unico && attempts < 10) {
-      // Declara num; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const num = Math.floor(1000 + Math.random() * 9000);
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      codigo = `${prefix}-${num}`;
-      // Prepara dup; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
-      const dup = await admin.firestore().collection('empresas').where('codigo', '==', codigo).get();
-      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-      if (dup.empty) {
-        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-        unico = true;
-      }
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      attempts++;
-    }
-
-    // Prepara empresaRef; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
-    const empresaRef = admin.firestore().collection('empresas').doc();
-    // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-    await empresaRef.set({
-      id: empresaRef.id,
-      nombre: nombreEmpresa,
-      codigo: codigo || `${prefix}-1111`,
-      giro: giroActividad || '',
-      tamanoEquipo: tamanoEquipo || '',
-      adminId: userRecord.uid,
-      fecha_creacion: admin.firestore.FieldValue.serverTimestamp(),
-      estado_activo: true
-    });
-
-    // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-    await admin.firestore().collection('usuarios').doc(userRecord.uid).set({
-      id: userRecord.uid,
-      empresa_id: empresaRef.id,
-      empresaId: empresaRef.id,
-      empresaNombre: nombreEmpresa,
-      nombre: nombreAdmin,
-      correo: correoAdmin,
-      rol: 'admin',
-      departamento: 'Dirección General',
-      estado_activo: true,
-      fecha_creacion: admin.firestore.FieldValue.serverTimestamp()
-    });
-
-    // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-    await admin.firestore().collection('logs').add({
-      empresa_id: empresaRef.id,
-      usuario_id: userRecord.uid,
-      accion: 'CREAR_EMPRESA_ADMIN',
-      modulo: 'AUTH',
-      fecha: admin.firestore.FieldValue.serverTimestamp()
-    });
-
+    const { empresaId } = await createCompanyWithOwner({ nombreEmpresa, nombreAdmin, correoAdmin, contrasenaAdmin, giroActividad, tamanoEquipo });
     // Devuelve el valor final calculado para esta funcion o caso de uso.
-    return { success: true, empresaId: empresaRef.id };
+    return { success: true, empresaId };
   } catch (error) {
     if (error instanceof HttpsError) throw error;
     if (error.code === 'auth/email-already-exists') {
@@ -1679,6 +2408,92 @@ exports.crearEmpresaAdmin = onCall({ cors: true }, async (request) => {
 /**
  * crearUsuarioEmpresa: Funcion callable invocada desde la app. Valida contexto, consulta o escribe Firebase y devuelve solo la informacion que la UI necesita.
  */
+/**
+ * createCompanyUser: crea la cuenta Auth y el documento de un usuario dentro de una empresa.
+ * Compartida por crearUsuarioEmpresa (admin de empresa) y saCreateUser (super admin, allowAdminRole=true).
+ */
+const createCompanyUser = async ({
+  empresaId,
+  nombre,
+  correo,
+  contrasena,
+  rol,
+  departamentoId = '',
+  empleado,
+  actor = null,
+  allowAdminRole = false,
+}) => {
+  const rolSolicitado = normalizeCompanyUserRole(rol);
+  const rolDocumento = mapRoleForUserDocument(rolSolicitado);
+
+  if (!nombre || !correo || !contrasena || !rolSolicitado) {
+    throw new HttpsError('invalid-argument', 'Nombre, correo, contraseña y rol son obligatorios.');
+  }
+  assertValidEmail(correo);
+  assertValidPassword(contrasena);
+  if (rolSolicitado === 'admin_empresa' && !allowAdminRole) {
+    throw new HttpsError('permission-denied', 'Solo un administrador de empresa puede crear otro administrador.');
+  }
+  if (rolSolicitado === 'empleado') {
+    await assertEmployeeCapacity(empresaId);
+  }
+
+  const userRecord = await admin.auth().createUser({
+    email: correo,
+    password: contrasena,
+    displayName: nombre,
+  });
+
+  const datosEmpleado = sanitizeEmployeePayload(empleado);
+  const passwordInternoHash = hashInternalPassword(contrasena);
+  const departamentoNombre = datosEmpleado.departamento || departamentoId || 'General';
+
+  await admin.firestore().collection('usuarios').doc(userRecord.uid).set({
+    ...datosEmpleado,
+    id: userRecord.uid,
+    empresa_id: empresaId,
+    empresaId: empresaId,
+    nombre: nombre,
+    correo: correo,
+    rol: rolDocumento,
+    rolNormalizado: rolSolicitado,
+    departamento_id: datosEmpleado.departamentoId || departamentoId || null,
+    departamentoId: datosEmpleado.departamentoId || null,
+    departamento: departamentoNombre,
+    estado_activo: true,
+    activo: true,
+    eliminado: false,
+    estado_onboarding: 'pendiente',
+    passwordInternoHash,
+    passwordHashAlgorithm: INTERNAL_PASSWORD_ALGORITHM,
+    passwordUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    fecha_creacion: admin.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+
+  await admin.firestore().collection('logs').add({
+    empresa_id: empresaId,
+    empresaId: empresaId,
+    usuario_id: actor?.id || null,
+    accion: 'CREAR_USUARIO',
+    modulo: 'AUTH',
+    detalles: userRecord.uid,
+    fecha: admin.firestore.FieldValue.serverTimestamp()
+  });
+
+  if (actor) {
+    await writeAuditLog({
+      actor,
+      empresaId,
+      accion: 'Creación de Empleado',
+      modulo: 'Plantilla',
+      detalles: `${nombre} · ${correo}`,
+      targetId: userRecord.uid,
+    });
+  }
+
+  return { uid: userRecord.uid, rol: rolSolicitado };
+};
+
 exports.crearUsuarioEmpresa = onCall({ cors: true }, async (request) => {
   // Declara { auth, data }; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const { auth, data } = request;
@@ -1688,7 +2503,7 @@ exports.crearUsuarioEmpresa = onCall({ cors: true }, async (request) => {
     // Interrumpe el flujo con un error controlado para que la capa superior lo maneje.
     throw new HttpsError('unauthenticated', 'Usuario no autenticado.');
   }
-  
+
   // Prepara callerDoc; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
   const callerDoc = await admin.firestore().collection('usuarios').doc(auth.uid).get();
   // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
@@ -1711,14 +2526,6 @@ exports.crearUsuarioEmpresa = onCall({ cors: true }, async (request) => {
     throw new HttpsError('permission-denied', 'Solo los administradores pueden crear usuarios.');
   }
 
-  // Declara { nombre, correo, contrasena, rol, departamento_id, empleado }; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const nombre = safeString(data?.nombre, 120);
-  const correo = normalizeEmailInput(data?.correo);
-  const contrasena = typeof data?.contrasena === 'string' ? data.contrasena : '';
-  const rolSolicitado = normalizeCompanyUserRole(data?.rol);
-  const rolDocumento = mapRoleForUserDocument(rolSolicitado);
-  const departamento_id = safeString(data?.departamento_id, 120);
-  const empleado = data?.empleado;
   // Declara empresa_id; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const empresa_id = callerData.empresa_id || callerData.empresaId;
 
@@ -1728,82 +2535,23 @@ exports.crearUsuarioEmpresa = onCall({ cors: true }, async (request) => {
     throw new HttpsError('failed-precondition', 'El administrador no tiene empresa asignada.');
   }
 
-  // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-  if (!nombre || !correo || !contrasena || !rolSolicitado) {
-    // Interrumpe el flujo con un error controlado para que la capa superior lo maneje.
-    throw new HttpsError('invalid-argument', 'Nombre, correo, contraseña y rol son obligatorios.');
-  }
-  assertValidEmail(correo);
-  assertValidPassword(contrasena);
-  if (rolSolicitado === 'admin_empresa' && rolCaller !== 'admin_empresa') {
-    throw new HttpsError('permission-denied', 'Solo un administrador de empresa puede crear otro administrador.');
-  }
-
-  if (rolSolicitado === 'empleado') {
-    await assertEmployeeCapacity(empresa_id);
-  }
-
   // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
   try {
-    // Declara userRecord; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const userRecord = await admin.auth().createUser({
-      email: correo,
-      password: contrasena,
-      displayName: nombre,
-    });
-
-    // Declara datosEmpleado; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const datosEmpleado = sanitizeEmployeePayload(empleado);
-    const passwordInternoHash = hashInternalPassword(contrasena);
-    // Declara departamentoNombre; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const departamentoNombre = datosEmpleado.departamento || departamento_id || 'General';
-
-    // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-    await admin.firestore().collection('usuarios').doc(userRecord.uid).set({
-      ...datosEmpleado,
-      id: userRecord.uid,
-      empresa_id: empresa_id,
+    const result = await createCompanyUser({
       empresaId: empresa_id,
-      nombre: nombre,
-      correo: correo,
-      rol: rolDocumento,
-      rolNormalizado: rolSolicitado,
-      departamento_id: datosEmpleado.departamentoId || departamento_id || null,
-      departamentoId: datosEmpleado.departamentoId || null,
-      departamento: departamentoNombre,
-      estado_activo: true,
-      activo: true,
-      eliminado: false,
-      estado_onboarding: 'pendiente',
-      passwordInternoHash,
-      passwordHashAlgorithm: INTERNAL_PASSWORD_ALGORITHM,
-      passwordUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      fecha_creacion: admin.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-
-    // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-    await admin.firestore().collection('logs').add({
-      empresa_id: empresa_id,
-      empresaId: empresa_id,
-      usuario_id: auth.uid,
-      accion: 'CREAR_USUARIO',
-      modulo: 'AUTH',
-      detalles: userRecord.uid,
-      fecha: admin.firestore.FieldValue.serverTimestamp()
-    });
-
-    await writeAuditLog({
+      nombre: safeString(data?.nombre, 120),
+      correo: normalizeEmailInput(data?.correo),
+      contrasena: typeof data?.contrasena === 'string' ? data.contrasena : '',
+      rol: data?.rol,
+      departamentoId: safeString(data?.departamento_id, 120),
+      empleado: data?.empleado,
       actor: { id: auth.uid, ...callerData },
-      empresaId: empresa_id,
-      accion: 'Creación de Empleado',
-      modulo: 'Plantilla',
-      detalles: `${nombre} · ${correo}`,
-      targetId: userRecord.uid,
+      allowAdminRole: rolCaller === 'admin_empresa',
     });
-
     // Devuelve el valor final calculado para esta funcion o caso de uso.
-    return { success: true, uid: userRecord.uid };
+    return { success: true, uid: result.uid };
   } catch (error) {
+    if (error instanceof HttpsError) throw error;
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (error.code === 'auth/email-already-exists') {
       // Interrumpe el flujo con un error controlado para que la capa superior lo maneje.
@@ -2354,11 +3102,72 @@ const companyDocumentRefs = async (collectionName, empresaId) => {
   return results.flatMap((snapshot) => snapshot.docs.map((entry) => entry.ref));
 };
 
+/**
+ * purgeCompanyData: cascada compartida de borrado de datos de una empresa.
+ * Usada por el ciclo de vida automático de suscripciones (conserva al propietario, sin tocar Auth)
+ * y por saDeleteCompany en el panel de super admin (deleteOwner+deleteAuthUsers=true, borrado total).
+ */
+const purgeCompanyData = async (companySnapshot, { deleteAuthUsers = false, deleteOwner = false } = {}) => {
+  const db = admin.firestore();
+  const company = companySnapshot.data() || {};
+  const empresaId = companySnapshot.id;
+  const ownerId = company.adminId || company.adminUid || "";
+
+  const assets = await db.collection("archivos_cloudinary").where("empresaId", "==", empresaId).get();
+  for (const asset of assets.docs) {
+    const data = asset.data() || {};
+    if (data.publicId) await destroyCloudinary(data.publicId, data.resourceType || "image").catch((error) => console.warn("company purge cloudinary", error.message));
+  }
+  if (company.logo_public_id && !assets.docs.some((entry) => entry.data()?.publicId === company.logo_public_id)) {
+    await destroyCloudinary(company.logo_public_id, "image").catch((error) => console.warn("company purge logo", error.message));
+  }
+
+  const employeeSnapshots = await Promise.all([
+    db.collection("usuarios").where("empresaId", "==", empresaId).get(),
+    db.collection("usuarios").where("empresa_id", "==", empresaId).get(),
+  ]);
+  const employees = [...new Map(employeeSnapshots.flatMap((snapshot) => snapshot.docs).map((entry) => [entry.id, entry])).values()];
+
+  let authUsersDeleted = 0;
+  for (const employee of employees) {
+    const isOwner = employee.id === ownerId;
+    if (isOwner && !deleteOwner) continue;
+    if (deleteAuthUsers) {
+      await admin.auth().deleteUser(employee.id)
+        .then(() => { authUsersDeleted += 1; })
+        .catch((error) => {
+          if (error.code !== "auth/user-not-found") console.warn("company purge auth delete", employee.id, error.message);
+        });
+    }
+    await db.recursiveDelete(employee.ref);
+  }
+
+  const refs = assets.docs.map((entry) => entry.ref);
+  for (const collectionName of COMPANY_COLLECTIONS) refs.push(...await companyDocumentRefs(collectionName, empresaId));
+  await deleteDocumentRefs(refs);
+
+  if (ownerId && !deleteOwner) {
+    await db.collection("usuarios").doc(ownerId).set({
+      automaticBilling: false,
+      empresa: admin.firestore.FieldValue.delete(),
+      empresaId: admin.firestore.FieldValue.delete(),
+      empresa_id: admin.firestore.FieldValue.delete(),
+      plan: admin.firestore.FieldValue.delete(),
+      planActivo: admin.firestore.FieldValue.delete(),
+      planPaymentStatus: "expired",
+      planUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      subscriptionStatus: "expired",
+    }, { merge: true });
+  }
+
+  await db.recursiveDelete(companySnapshot.ref);
+  return { empresaId, usuariosEliminados: employees.length, authUsersEliminados: authUsersDeleted };
+};
+
 const deleteExpiredCompany = async (companySnapshot) => {
   const db = admin.firestore();
   const company = companySnapshot.data() || {};
   if (company.subscriptionStatus !== "grace_period") return;
-  const empresaId = companySnapshot.id;
   const ownerId = company.adminId || company.adminUid || "";
   if (!ALLOW_SUBSCRIPTION_DATA_DELETION) {
     const expiredData = {
@@ -2377,42 +3186,7 @@ const deleteExpiredCompany = async (companySnapshot) => {
     await batch.commit();
     return;
   }
-  const assets = await db.collection("archivos_cloudinary").where("empresaId", "==", empresaId).get();
-  for (const asset of assets.docs) {
-    const data = asset.data() || {};
-    if (data.publicId) await destroyCloudinary(data.publicId, data.resourceType || "image").catch((error) => console.warn("subscription cleanup cloudinary", error.message));
-  }
-  if (company.logo_public_id && !assets.docs.some((entry) => entry.data()?.publicId === company.logo_public_id)) {
-    await destroyCloudinary(company.logo_public_id, "image").catch((error) => console.warn("subscription cleanup logo", error.message));
-  }
-
-  const employeeSnapshots = await Promise.all([
-    db.collection("usuarios").where("empresaId", "==", empresaId).get(),
-    db.collection("usuarios").where("empresa_id", "==", empresaId).get(),
-  ]);
-  const employees = [...new Map(employeeSnapshots.flatMap((snapshot) => snapshot.docs).map((entry) => [entry.id, entry])).values()];
-  for (const employee of employees) {
-    if (employee.id === ownerId) continue;
-    await db.recursiveDelete(employee.ref);
-  }
-
-  const refs = assets.docs.map((entry) => entry.ref);
-  for (const collectionName of COMPANY_COLLECTIONS) refs.push(...await companyDocumentRefs(collectionName, empresaId));
-  await deleteDocumentRefs(refs);
-  if (ownerId) {
-    await db.collection("usuarios").doc(ownerId).set({
-      automaticBilling: false,
-      empresa: admin.firestore.FieldValue.delete(),
-      empresaId: admin.firestore.FieldValue.delete(),
-      empresa_id: admin.firestore.FieldValue.delete(),
-      plan: admin.firestore.FieldValue.delete(),
-      planActivo: admin.firestore.FieldValue.delete(),
-      planPaymentStatus: "expired",
-      planUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      subscriptionStatus: "expired",
-    }, { merge: true });
-  }
-  await db.recursiveDelete(companySnapshot.ref);
+  await purgeCompanyData(companySnapshot, { deleteAuthUsers: false, deleteOwner: false });
 };
 
 exports.processSubscriptionLifecycle = onSchedule({ schedule: "every 24 hours", timeZone: "America/El_Salvador" }, async () => {
@@ -2445,6 +3219,66 @@ exports.processSubscriptionLifecycle = onSchedule({ schedule: "every 24 hours", 
     .where("planDataDeletionAt", "<=", now)
     .get();
   for (const companySnapshot of expired.docs) await deleteExpiredCompany(companySnapshot);
+});
+
+/**
+ * rollupAiUsageDaily: agrega el gasto de Nexxus AI del día anterior por empresa y por modelo, para
+ * que el panel de super admin (SaNexxusIA) no dependa de escanear ai_usage completo en rangos largos.
+ * Idempotente (merge:true) — puede re-ejecutarse sin duplicar cifras.
+ */
+exports.rollupAiUsageDaily = onSchedule({ schedule: "every 24 hours", timeZone: "America/El_Salvador" }, async () => {
+  const db = admin.firestore();
+  const ahora = new Date();
+  const inicioHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+  const inicioAyer = new Date(inicioHoy.getTime() - 24 * 60 * 60 * 1000);
+  const dia = inicioAyer.toISOString().slice(0, 10);
+
+  const snapshot = await db.collection("ai_usage")
+    .where("createdAt", ">=", admin.firestore.Timestamp.fromDate(inicioAyer))
+    .where("createdAt", "<", admin.firestore.Timestamp.fromDate(inicioHoy))
+    .get();
+
+  const porEmpresa = new Map();
+  snapshot.docs.forEach((entry) => {
+    const data = entry.data() || {};
+    if (typeof data.costUsd !== "number") return;
+    const empresaId = data.empresaId || null;
+    const key = empresaId || "plataforma";
+    const modelo = data.model || "desconocido";
+    const actual = porEmpresa.get(key) || {
+      empresaId,
+      empresaNombre: data.empresaNombre || (empresaId ? "" : "Plataforma"),
+      requests: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0, costUsd: 0, porModelo: {},
+    };
+    actual.requests += 1;
+    actual.inputTokens += Number(data.inputTokens) || 0;
+    actual.outputTokens += Number(data.outputTokens) || 0;
+    actual.totalTokens += Number(data.totalTokens) || 0;
+    actual.costUsd += Number(data.costUsd) || 0;
+    const modeloActual = actual.porModelo[modelo] || { requests: 0, costUsd: 0 };
+    modeloActual.requests += 1;
+    modeloActual.costUsd += Number(data.costUsd) || 0;
+    actual.porModelo[modelo] = modeloActual;
+    porEmpresa.set(key, actual);
+  });
+
+  const batch = db.batch();
+  for (const [key, valores] of porEmpresa.entries()) {
+    const ref = db.collection("ai_usage_daily").doc(`${dia}__${key}`);
+    batch.set(ref, {
+      dia,
+      empresaId: valores.empresaId,
+      empresaNombre: valores.empresaNombre,
+      requests: valores.requests,
+      inputTokens: valores.inputTokens,
+      outputTokens: valores.outputTokens,
+      totalTokens: valores.totalTokens,
+      costUsd: Math.round(valores.costUsd * 1e8) / 1e8,
+      porModelo: valores.porModelo,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+  }
+  if (porEmpresa.size > 0) await batch.commit();
 });
 
 exports.exportFirestoreBackup = onSchedule({ schedule: "every 24 hours", timeZone: "America/El_Salvador" }, async () => {
