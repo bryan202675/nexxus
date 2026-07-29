@@ -1,0 +1,25 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "nexxus-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--workspace", "app", "run", "web"],
+      "port": 8081
+    },
+    {
+      "name": "web-dashboard",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "web-dashboard", "start"],
+      "port": 3000
+    },
+    {
+      "name": "framer-static",
+      "url": "http://localhost:8099"
+    },
+    {
+      "name": "framer-static-v2",
+      "url": "http://localhost:8123"
+    }
+  ]
+}

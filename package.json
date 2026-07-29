@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "build:hosting": "bash scripts/build-hosting.sh"
+  },
+  "dependencies": {
+    "colorjs.io": "^0.7.1"
+  }
+}

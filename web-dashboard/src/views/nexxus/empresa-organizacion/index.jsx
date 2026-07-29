@@ -1,0 +1,903 @@
+import { useEffect, useMemo, useState } from "react";
+import {
+  doc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  addDoc,
+  collection,
+  serverTimestamp,
+} from "firebase/firestore";
+import {
+  MdOutlineAccountTree,
+  MdOutlinePeople,
+  MdOutlineWarningAmber,
+  MdOutlineTrendingUp,
+  MdOutlineApartment,
+  MdAdd,
+} from "react-icons/md";
+
+import NexxusCard from "views/nexxus/components/NexxusCard";
+import NexxusWidget from "views/nexxus/components/NexxusWidget";
+import DataTable from "views/nexxus/components/DataTable";
+import InputField from "components/fields/InputField";
+import { useAuth } from "context/AuthContext";
+import {
+  db,
+  subscribeDepartamentos,
+  subscribeSedes,
+  subscribeCargos,
+  subscribeRolesPersonalizados,
+  subscribeEmpleados,
+  subscribeTareas,
+} from "services/adminRepository";
+import { columnsDepartamentos, columnsSedes, columnsCargos, columnsRoles } from "./columns";
+
+const selectClasses =
+  "mt-2 flex h-12 w-full items-center justify-center rounded-xl border border-gray-200 bg-white/0 p-3 text-sm outline-none dark:!border-white/10 dark:text-white dark:bg-charcoal";
+const selectLabelClasses = "ml-3 text-sm font-bold text-navy-700 dark:text-white";
+
+const ESTADO_BADGE = {
+  sinJefe: { label: "Sin jefe", cls: "bg-amber-50 text-amber-600 dark:bg-amber-400/10 dark:text-amber-400" },
+  sobrecarga: { label: "Sobrecarga", cls: "bg-red-50 text-red-600 dark:bg-red-400/10 dark:text-red-400" },
+  estable: { label: "Estable", cls: "bg-green-50 text-green-600 dark:bg-green-400/10 dark:text-green-400" },
+};
+
+function EstadoBadge({ estado }) {
+  const info = ESTADO_BADGE[estado] || ESTADO_BADGE.estable;
+  return (
+    <span className={`rounded-full px-2 py-1 text-xs font-bold ${info.cls}`}>{info.label}</span>
+  );
+}
+
+const ActionButton = ({ children, className = "", busy, ...rest }) => (
+  <button
+    type="button"
+    disabled={busy}
+    className={`rounded-xl px-4 py-2 text-sm font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+    {...rest}
+  >
+    {busy ? "..." : children}
+  </button>
+);
+
+async function logAudit({ empresaId, usuarioId, usuarioNombre, accion, detalles }) {
+  try {
+    await addDoc(collection(db, "audit_logs"), {
+      empresaId,
+      usuarioId,
+      usuarioNombre,
+      accion,
+      modulo: "Estructura",
+      detalles,
+      estado: "Success",
+      timestamp: new Date().toISOString(),
+    });
+  } catch {
+    // El log de auditoría es un extra; nunca debe romper la operación principal.
+  }
+}
+
+export default function EstructuraOrganizativa() {
+  const { user, perfil, empresaId } = useAuth();
+  const actor = useMemo(
+    () => ({ id: user?.uid || "", nombre: perfil?.nombre || user?.email || "Admin" }),
+    [user, perfil]
+  );
+
+  const [departamentos, setDepartamentos] = useState(null);
+  const [sedes, setSedes] = useState(null);
+  const [cargos, setCargos] = useState(null);
+  const [roles, setRoles] = useState(null);
+  const [empleados, setEmpleados] = useState(null);
+  const [tareas, setTareas] = useState([]);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!empresaId) return undefined;
+    const onErr = (err) => setError(err.message || "No se pudo conectar con Firestore.");
+    const mapDocs = (setter) => (docs) => setter(docs.map((d) => ({ id: d.id, ...d.data() })));
+    const unsubs = [
+      subscribeDepartamentos(empresaId, mapDocs(setDepartamentos), onErr),
+      subscribeSedes(empresaId, mapDocs(setSedes), onErr),
+      subscribeCargos(empresaId, mapDocs(setCargos), onErr),
+      subscribeRolesPersonalizados(empresaId, mapDocs(setRoles), onErr),
+      subscribeEmpleados(empresaId, mapDocs(setEmpleados), onErr),
+      subscribeTareas(empresaId, mapDocs(setTareas), onErr),
+    ];
+    return () => unsubs.forEach((fn) => fn());
+  }, [empresaId]);
+
+  // --- Enriquecimiento de departamentos con métricas calculadas en cliente ---
+  const departamentosEnriquecidos = useMemo(() => {
+    if (!departamentos || !empleados) return [];
+    return departamentos.map((dep) => {
+      const nombreDep = (dep.nombre || "").trim().toLowerCase();
+      const usuariosDepto = empleados.filter(
+        (u) => (u.departamento || "").trim().toLowerCase() === nombreDep && nombreDep !== ""
+      );
+      const activos = usuariosDepto.filter((u) => u.activo !== false && u.estado_activo !== false);
+      const jefes = usuariosDepto.filter((u) => u.rol === "jefe");
+      const tareasDepto = (tareas || []).filter((t) => {
+        const tDep = (t.depto || t.departamento || "").trim().toLowerCase();
+        return tDep === nombreDep && nombreDep !== "";
+      });
+      const pendientes = tareasDepto.filter((t) => t.estado === "pendiente").length;
+      const completadas = tareasDepto.filter((t) => t.estado === "completada").length;
+      const totalTareas = tareasDepto.length;
+      const productividad = totalTareas > 0 ? Math.round((completadas / totalTareas) * 100) : 0;
+      const plazas = Math.max(dep.empleadosCount || 0, usuariosDepto.length);
+      const cobertura = plazas > 0 ? Math.round((activos.length / plazas) * 100) : 0;
+
+      let estado = "estable";
+      if (!dep.jefeId) estado = "sinJefe";
+      else if (cobertura > 100) estado = "sobrecarga";
+
+      return {
+        ...dep,
+        usuariosDepto,
+        activosCount: activos.length,
+        jefesCount: jefes.length,
+        tareasDepto,
+        pendientes,
+        completadas,
+        productividad,
+        plazas,
+        cobertura,
+        estado,
+      };
+    });
+  }, [departamentos, empleados, tareas]);
+
+  const kpis = useMemo(() => {
+    const totalEmpleados = (empleados || []).length;
+    const totalSectores = (departamentos || []).reduce((s, d) => s + (d.sectores?.length || 0), 0);
+    const sinJefe = departamentosEnriquecidos.filter((d) => d.estado === "sinJefe").length;
+    const productividadGlobal = departamentosEnriquecidos.length
+      ? Math.round(
+          departamentosEnriquecidos.reduce((s, d) => s + d.productividad, 0) /
+            departamentosEnriquecidos.length
+        )
+      : 0;
+    return {
+      totalEmpleados,
+      totalDepartamentos: (departamentos || []).length,
+      totalSectores,
+      sinJefe,
+      productividadGlobal,
+    };
+  }, [empleados, departamentos, departamentosEnriquecidos]);
+
+  const jefesDisponibles = useMemo(
+    () => (empleados || []).filter((u) => u.rol === "jefe" || u.rol === "admin_empresa" || u.rol === "admin"),
+    [empleados]
+  );
+
+  // --- Departamentos: crear ---
+  const [showCreateDept, setShowCreateDept] = useState(false);
+  const [createDeptForm, setCreateDeptForm] = useState({ nombre: "", sedeId: "", jefeId: "" });
+  const [creatingDept, setCreatingDept] = useState(false);
+  const [createDeptError, setCreateDeptError] = useState("");
+
+  const handleCrearDepartamento = async (e) => {
+    e.preventDefault();
+    if (!createDeptForm.nombre.trim()) {
+      setCreateDeptError("El nombre es obligatorio.");
+      return;
+    }
+    setCreatingDept(true);
+    setCreateDeptError("");
+    try {
+      const sede = (sedes || []).find((s) => s.id === createDeptForm.sedeId);
+      const jefe = jefesDisponibles.find((j) => j.id === createDeptForm.jefeId);
+      const ref = doc(collection(db, "departments"));
+      await setDoc(ref, {
+        empresaId,
+        nombre: createDeptForm.nombre.trim(),
+        sedeId: createDeptForm.sedeId || null,
+        sedeNombre: sede?.nombre || null,
+        jefeId: createDeptForm.jefeId || null,
+        jefeNombre: jefe?.nombre || null,
+        empleadosCount: 0,
+        sectores: [],
+        createdAt: serverTimestamp(),
+      });
+      await logAudit({
+        empresaId,
+        usuarioId: actor.id,
+        usuarioNombre: actor.nombre,
+        accion: "Crear departamento",
+        detalles: createDeptForm.nombre.trim(),
+      });
+      setCreateDeptForm({ nombre: "", sedeId: "", jefeId: "" });
+      setShowCreateDept(false);
+    } catch (err) {
+      setCreateDeptError(err.message || "No se pudo crear el departamento.");
+    } finally {
+      setCreatingDept(false);
+    }
+  };
+
+  // --- Departamentos: detalle / editar / eliminar ---
+  const [selectedDeptId, setSelectedDeptId] = useState(null);
+  const [deptEditMode, setDeptEditMode] = useState(false);
+  const [deptEditForm, setDeptEditForm] = useState({ nombre: "", sedeId: "", jefeId: "" });
+  const [savingDept, setSavingDept] = useState(false);
+  const [saveDeptError, setSaveDeptError] = useState("");
+  const [deptBusy, setDeptBusy] = useState(false);
+  const [deptActionError, setDeptActionError] = useState("");
+
+  const selectedDept = useMemo(
+    () => departamentosEnriquecidos.find((d) => d.id === selectedDeptId) || null,
+    [departamentosEnriquecidos, selectedDeptId]
+  );
+
+  useEffect(() => {
+    if (selectedDept) {
+      setDeptEditForm({
+        nombre: selectedDept.nombre || "",
+        sedeId: selectedDept.sedeId || "",
+        jefeId: selectedDept.jefeId || "",
+      });
+      setDeptEditMode(false);
+      setDeptActionError("");
+    }
+  }, [selectedDept]);
+
+  const handleGuardarDepartamento = async (e) => {
+    e.preventDefault();
+    if (!selectedDept) return;
+    setSavingDept(true);
+    setSaveDeptError("");
+    try {
+      const sede = (sedes || []).find((s) => s.id === deptEditForm.sedeId);
+      const jefe = jefesDisponibles.find((j) => j.id === deptEditForm.jefeId);
+      await updateDoc(doc(db, "departments", selectedDept.id), {
+        nombre: deptEditForm.nombre.trim(),
+        sedeId: deptEditForm.sedeId || null,
+        sedeNombre: sede?.nombre || null,
+        jefeId: deptEditForm.jefeId || null,
+        jefeNombre: jefe?.nombre || null,
+      });
+      await logAudit({
+        empresaId,
+        usuarioId: actor.id,
+        usuarioNombre: actor.nombre,
+        accion: "Editar departamento",
+        detalles: deptEditForm.nombre.trim(),
+      });
+      setDeptEditMode(false);
+    } catch (err) {
+      setSaveDeptError(err.message || "No se pudo guardar el departamento.");
+    } finally {
+      setSavingDept(false);
+    }
+  };
+
+  const handleEliminarDepartamento = async () => {
+    if (!selectedDept) return;
+    if (!window.confirm(`¿Eliminar el departamento "${selectedDept.nombre}"? Esta acción no se puede deshacer.`))
+      return;
+    setDeptBusy(true);
+    setDeptActionError("");
+    try {
+      await deleteDoc(doc(db, "departments", selectedDept.id));
+      await logAudit({
+        empresaId,
+        usuarioId: actor.id,
+        usuarioNombre: actor.nombre,
+        accion: "Eliminar departamento",
+        detalles: selectedDept.nombre,
+      });
+      setSelectedDeptId(null);
+    } catch (err) {
+      setDeptActionError(err.message || "No se pudo eliminar el departamento.");
+    } finally {
+      setDeptBusy(false);
+    }
+  };
+
+  const filasDepartamentos = useMemo(
+    () =>
+      departamentosEnriquecidos.map((dep) => ({
+        id: dep.id,
+        nombreLabel: dep.nombre,
+        sedeLabel: dep.sedeNombre || "—",
+        jefeLabel: dep.jefeNombre || "Sin asignar",
+        headcountLabel: `${dep.activosCount}/${dep.plazas}`,
+        coberturaLabel: `${dep.cobertura}%`,
+        estadoLabel: <EstadoBadge estado={dep.estado} />,
+      })),
+    [departamentosEnriquecidos]
+  );
+
+  const widgets = [
+    { icon: MdOutlinePeople, title: "Total empleados", subtitle: String(kpis.totalEmpleados) },
+    { icon: MdOutlineAccountTree, title: "Departamentos", subtitle: String(kpis.totalDepartamentos) },
+    { icon: MdOutlineApartment, title: "Sectores", subtitle: String(kpis.totalSectores) },
+    { icon: MdOutlineWarningAmber, title: "Sin jefe asignado", subtitle: String(kpis.sinJefe) },
+    { icon: MdOutlineTrendingUp, title: "Productividad global", subtitle: `${kpis.productividadGlobal}%` },
+  ];
+
+  const cargando = departamentos === null || sedes === null || cargos === null || roles === null || empleados === null;
+
+  if (!empresaId) {
+    return (
+      <p className="text-sm font-medium text-gray-600 dark:text-white/70">
+        Tu cuenta no tiene una empresa asociada.
+      </p>
+    );
+  }
+
+  return (
+    <div>
+      {error ? (
+        <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-500 dark:bg-red-400/10 dark:text-red-400">
+          {error}
+        </p>
+      ) : null}
+
+      {cargando ? (
+        <p className="text-sm font-medium text-gray-600 dark:text-white/70">Cargando estructura de la empresa...</p>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+            {widgets.map((w, i) => (
+              <NexxusWidget key={w.title} {...w} delay={i * 100} />
+            ))}
+          </div>
+
+          <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-bold text-navy-700 dark:text-white">Departamentos</h2>
+            <button
+              type="button"
+              onClick={() => setShowCreateDept((v) => !v)}
+              className="flex items-center gap-2 rounded-xl bg-brand-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-brand-600 dark:bg-brand-400"
+            >
+              <MdAdd className="h-5 w-5" /> Crear departamento
+            </button>
+          </div>
+
+          {showCreateDept ? (
+            <NexxusCard extra="mt-4 w-full p-4">
+              <form onSubmit={handleCrearDepartamento}>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <InputField
+                    label="Nombre"
+                    id="crear-depto-nombre"
+                    value={createDeptForm.nombre}
+                    onChange={(e) => setCreateDeptForm((f) => ({ ...f, nombre: e.target.value }))}
+                  />
+                  <div>
+                    <label htmlFor="crear-depto-sede" className={selectLabelClasses}>Sede</label>
+                    <select
+                      id="crear-depto-sede"
+                      value={createDeptForm.sedeId}
+                      onChange={(e) => setCreateDeptForm((f) => ({ ...f, sedeId: e.target.value }))}
+                      className={selectClasses}
+                    >
+                      <option value="">Sin sede</option>
+                      {(sedes || []).map((s) => (
+                        <option key={s.id} value={s.id}>{s.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="crear-depto-jefe" className={selectLabelClasses}>Jefe</label>
+                    <select
+                      id="crear-depto-jefe"
+                      value={createDeptForm.jefeId}
+                      onChange={(e) => setCreateDeptForm((f) => ({ ...f, jefeId: e.target.value }))}
+                      className={selectClasses}
+                    >
+                      <option value="">Sin asignar</option>
+                      {jefesDisponibles.map((j) => (
+                        <option key={j.id} value={j.id}>{j.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                {createDeptError ? (
+                  <p className="mt-3 text-sm font-medium text-red-500 dark:text-red-400">{createDeptError}</p>
+                ) : null}
+                <div className="mt-4 flex gap-3">
+                  <ActionButton type="submit" busy={creatingDept} className="bg-brand-500 hover:bg-brand-600 dark:bg-brand-400">
+                    Crear
+                  </ActionButton>
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateDept(false)}
+                    className="rounded-xl bg-gray-100 px-4 py-2 text-sm font-bold text-gray-600 dark:bg-white/5 dark:text-white/70"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            </NexxusCard>
+          ) : null}
+
+          <div className="mt-4">
+            {filasDepartamentos.length === 0 ? (
+              <NexxusCard extra="p-4">
+                <p className="text-sm font-medium text-gray-600 dark:text-white/70">
+                  Aún no hay departamentos creados.
+                </p>
+              </NexxusCard>
+            ) : (
+              <DataTable
+                title="Departamentos"
+                columnsData={columnsDepartamentos}
+                tableData={filasDepartamentos}
+                readOnly
+                onRowClick={(row) => setSelectedDeptId(row.id)}
+                delay={100}
+              />
+            )}
+          </div>
+
+          {selectedDept ? (
+            <NexxusCard extra="mt-8 w-full p-6" delay={100}>
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-navy-700 dark:text-white">{selectedDept.nombre}</h2>
+                  <p className="text-sm text-gray-600 dark:text-white/70">
+                    Sede: {selectedDept.sedeNombre || "—"} · Jefe: {selectedDept.jefeNombre || "Sin asignar"}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDeptId(null)}
+                  className="text-sm font-medium text-gray-600 hover:text-navy-700 dark:text-white/70 dark:hover:text-white"
+                >
+                  Cerrar ✕
+                </button>
+              </div>
+
+              <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-white/50">Plazas</p>
+                  <p className="mt-1 text-sm font-medium text-navy-700 dark:text-white">{selectedDept.plazas}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-white/50">Activos</p>
+                  <p className="mt-1 text-sm font-medium text-navy-700 dark:text-white">{selectedDept.activosCount}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-white/50">Jefes</p>
+                  <p className="mt-1 text-sm font-medium text-navy-700 dark:text-white">{selectedDept.jefesCount}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-white/50">Cobertura</p>
+                  <p className="mt-1 text-sm font-medium text-navy-700 dark:text-white">{selectedDept.cobertura}%</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-white/50">Tareas pendientes</p>
+                  <p className="mt-1 text-sm font-medium text-navy-700 dark:text-white">{selectedDept.pendientes}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-white/50">Productividad</p>
+                  <p className="mt-1 text-sm font-medium text-navy-700 dark:text-white">{selectedDept.productividad}%</p>
+                </div>
+              </div>
+
+              {selectedDept.sectores?.length > 0 ? (
+                <div className="mt-6">
+                  <p className="mb-2 text-sm font-bold text-navy-700 dark:text-white">Sectores</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedDept.sectores.map((sec) => (
+                      <span
+                        key={sec.id || sec.nombre}
+                        className="rounded-full bg-lightPrimary px-3 py-1 text-xs font-medium text-navy-700 dark:bg-charcoal-light dark:text-white"
+                      >
+                        {sec.nombre}
+                        {sec.responsableNombre ? ` · ${sec.responsableNombre}` : ""}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="mt-6">
+                {!deptEditMode ? (
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setDeptEditMode(true)}
+                      className="rounded-xl bg-lightPrimary px-4 py-2 text-sm font-bold text-brand-500 dark:bg-charcoal-light dark:text-white"
+                    >
+                      Editar departamento
+                    </button>
+                    <ActionButton
+                      busy={deptBusy}
+                      onClick={handleEliminarDepartamento}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      Eliminar
+                    </ActionButton>
+                  </div>
+                ) : (
+                  <form
+                    onSubmit={handleGuardarDepartamento}
+                    className="rounded-xl border border-gray-200 p-4 dark:border-white/10"
+                  >
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                      <InputField
+                        variant="auth"
+                        label="Nombre"
+                        id="edit-depto-nombre"
+                        value={deptEditForm.nombre}
+                        onChange={(e) => setDeptEditForm((f) => ({ ...f, nombre: e.target.value }))}
+                      />
+                      <div>
+                        <label htmlFor="edit-depto-sede" className={selectLabelClasses}>Sede</label>
+                        <select
+                          id="edit-depto-sede"
+                          value={deptEditForm.sedeId}
+                          onChange={(e) => setDeptEditForm((f) => ({ ...f, sedeId: e.target.value }))}
+                          className={selectClasses}
+                        >
+                          <option value="">Sin sede</option>
+                          {(sedes || []).map((s) => (
+                            <option key={s.id} value={s.id}>{s.nombre}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label htmlFor="edit-depto-jefe" className={selectLabelClasses}>Jefe</label>
+                        <select
+                          id="edit-depto-jefe"
+                          value={deptEditForm.jefeId}
+                          onChange={(e) => setDeptEditForm((f) => ({ ...f, jefeId: e.target.value }))}
+                          className={selectClasses}
+                        >
+                          <option value="">Sin asignar</option>
+                          {jefesDisponibles.map((j) => (
+                            <option key={j.id} value={j.id}>{j.nombre}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    {saveDeptError ? (
+                      <p className="mt-3 text-sm font-medium text-red-500 dark:text-red-400">{saveDeptError}</p>
+                    ) : null}
+                    <div className="mt-4 flex gap-3">
+                      <ActionButton
+                        type="submit"
+                        busy={savingDept}
+                        className="bg-brand-500 hover:bg-brand-600 dark:bg-brand-400"
+                      >
+                        Guardar
+                      </ActionButton>
+                      <button
+                        type="button"
+                        onClick={() => setDeptEditMode(false)}
+                        className="rounded-xl bg-gray-100 px-4 py-2 text-sm font-bold text-gray-600 dark:bg-white/5 dark:text-white/70"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </form>
+                )}
+                {deptActionError ? (
+                  <p className="mt-3 text-sm font-medium text-red-500 dark:text-red-400">{deptActionError}</p>
+                ) : null}
+              </div>
+            </NexxusCard>
+          ) : null}
+
+          <div className="mt-8 grid grid-cols-1 gap-5 xl:grid-cols-3">
+            <CatalogSection
+              title="Sedes"
+              coleccion="sedes"
+              empresaId={empresaId}
+              actor={actor}
+              items={sedes || []}
+              columns={columnsSedes}
+              fields={[
+                { key: "nombre", label: "Nombre" },
+                { key: "direccion", label: "Dirección" },
+              ]}
+              buildRow={(item) => ({
+                id: item.id,
+                nombreLabel: item.nombre || "—",
+                direccionLabel: item.direccion || "—",
+                empleadosLabel: String((empleados || []).filter((u) => u.sede === item.nombre).length),
+              })}
+              emptyMessage="Aún no hay sedes registradas."
+            />
+            <CatalogSection
+              title="Cargos"
+              coleccion="cargos"
+              empresaId={empresaId}
+              actor={actor}
+              items={cargos || []}
+              columns={columnsCargos}
+              fields={[
+                { key: "nombre", label: "Nombre" },
+                { key: "departamento", label: "Departamento" },
+              ]}
+              buildRow={(item) => ({
+                id: item.id,
+                nombreLabel: item.nombre || "—",
+                departamentoLabel: item.departamento || "—",
+                empleadosLabel: String((empleados || []).filter((u) => u.cargo === item.nombre).length),
+              })}
+              emptyMessage="Aún no hay cargos registrados."
+            />
+            <CatalogSection
+              title="Roles personalizados"
+              coleccion="roles_personalizados"
+              empresaId={empresaId}
+              actor={actor}
+              items={roles || []}
+              columns={columnsRoles}
+              fields={[
+                { key: "nombre", label: "Nombre" },
+                { key: "descripcion", label: "Descripción" },
+                { key: "permisos", label: "Permisos (separados por coma)", isList: true },
+              ]}
+              buildRow={(item) => ({
+                id: item.id,
+                nombreLabel: item.nombre || "—",
+                descripcionLabel: item.descripcion || "—",
+                permisosLabel: Array.isArray(item.permisos) ? item.permisos.join(", ") : item.permisos || "—",
+              })}
+              emptyMessage="Aún no hay roles personalizados."
+            />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// Sección genérica de catálogo simple (sedes / cargos / roles personalizados): listado +
+// crear/editar/eliminar. Estos documentos son ligeramente estructurados (id, empresaId, nombre
+// + campos variables), así que el formulario solo cubre los campos que definimos como relevantes
+// para esta pantalla, sin tocar el resto de propiedades del documento al guardar.
+function CatalogSection({ title, coleccion, empresaId, actor, items, columns, fields, buildRow, emptyMessage }) {
+  const emptyForm = () => Object.fromEntries(fields.map((f) => [f.key, ""]));
+
+  const [showCreate, setShowCreate] = useState(false);
+  const [createForm, setCreateForm] = useState(emptyForm());
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
+
+  const [selectedId, setSelectedId] = useState(null);
+  const [editMode, setEditMode] = useState(false);
+  const [editForm, setEditForm] = useState(emptyForm());
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState("");
+
+  const selected = useMemo(() => items.find((it) => it.id === selectedId) || null, [items, selectedId]);
+
+  useEffect(() => {
+    if (selected) {
+      const form = {};
+      fields.forEach((f) => {
+        const value = selected[f.key];
+        form[f.key] = f.isList && Array.isArray(value) ? value.join(", ") : value || "";
+      });
+      setEditForm(form);
+      setEditMode(false);
+      setActionError("");
+    }
+  }, [selected]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const toPayload = (form) => {
+    const payload = {};
+    fields.forEach((f) => {
+      if (f.isList) {
+        payload[f.key] = form[f.key]
+          .split(",")
+          .map((v) => v.trim())
+          .filter(Boolean);
+      } else {
+        payload[f.key] = form[f.key].trim();
+      }
+    });
+    return payload;
+  };
+
+  const handleCrear = async (e) => {
+    e.preventDefault();
+    if (!createForm.nombre.trim()) {
+      setCreateError("El nombre es obligatorio.");
+      return;
+    }
+    setCreating(true);
+    setCreateError("");
+    try {
+      const ref = doc(collection(db, coleccion));
+      await setDoc(ref, { empresaId, ...toPayload(createForm), createdAt: serverTimestamp() });
+      await logAudit({
+        empresaId,
+        usuarioId: actor.id,
+        usuarioNombre: actor.nombre,
+        accion: `Crear ${title.toLowerCase()}`,
+        detalles: createForm.nombre.trim(),
+      });
+      setCreateForm(emptyForm());
+      setShowCreate(false);
+    } catch (err) {
+      setCreateError(err.message || `No se pudo crear el registro de ${title.toLowerCase()}.`);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleGuardar = async (e) => {
+    e.preventDefault();
+    if (!selected) return;
+    setSaving(true);
+    setSaveError("");
+    try {
+      await setDoc(doc(db, coleccion, selected.id), toPayload(editForm), { merge: true });
+      await logAudit({
+        empresaId,
+        usuarioId: actor.id,
+        usuarioNombre: actor.nombre,
+        accion: `Editar ${title.toLowerCase()}`,
+        detalles: editForm.nombre.trim(),
+      });
+      setEditMode(false);
+    } catch (err) {
+      setSaveError(err.message || "No se pudo guardar el registro.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEliminar = async () => {
+    if (!selected) return;
+    if (!window.confirm(`¿Eliminar "${selected.nombre}"? Esta acción no se puede deshacer.`)) return;
+    setBusy(true);
+    setActionError("");
+    try {
+      await deleteDoc(doc(db, coleccion, selected.id));
+      await logAudit({
+        empresaId,
+        usuarioId: actor.id,
+        usuarioNombre: actor.nombre,
+        accion: `Eliminar ${title.toLowerCase()}`,
+        detalles: selected.nombre,
+      });
+      setSelectedId(null);
+    } catch (err) {
+      setActionError(err.message || "No se pudo eliminar el registro.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const filas = items.map(buildRow);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-bold text-navy-700 dark:text-white">{title}</h3>
+        <button
+          type="button"
+          onClick={() => setShowCreate((v) => !v)}
+          className="flex items-center gap-1 rounded-xl bg-lightPrimary px-3 py-2 text-xs font-bold text-brand-500 dark:bg-charcoal-light dark:text-white"
+        >
+          <MdAdd className="h-4 w-4" /> Nuevo
+        </button>
+      </div>
+
+      {showCreate ? (
+        <NexxusCard extra="mt-3 w-full p-4">
+          <form onSubmit={handleCrear}>
+            <div className="flex flex-col gap-3">
+              {fields.map((f) => (
+                <InputField
+                  key={f.key}
+                  label={f.label}
+                  id={`crear-${coleccion}-${f.key}`}
+                  value={createForm[f.key]}
+                  onChange={(e) => setCreateForm((form) => ({ ...form, [f.key]: e.target.value }))}
+                />
+              ))}
+            </div>
+            {createError ? (
+              <p className="mt-3 text-sm font-medium text-red-500 dark:text-red-400">{createError}</p>
+            ) : null}
+            <div className="mt-3 flex gap-2">
+              <ActionButton type="submit" busy={creating} className="bg-brand-500 hover:bg-brand-600 dark:bg-brand-400">
+                Crear
+              </ActionButton>
+              <button
+                type="button"
+                onClick={() => setShowCreate(false)}
+                className="rounded-xl bg-gray-100 px-4 py-2 text-sm font-bold text-gray-600 dark:bg-white/5 dark:text-white/70"
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </NexxusCard>
+      ) : null}
+
+      <div className="mt-3">
+        {filas.length === 0 ? (
+          <NexxusCard extra="p-4">
+            <p className="text-sm font-medium text-gray-600 dark:text-white/70">{emptyMessage}</p>
+          </NexxusCard>
+        ) : (
+          <DataTable
+            title={title}
+            columnsData={columns}
+            tableData={filas}
+            readOnly
+            onRowClick={(row) => setSelectedId(row.id)}
+          />
+        )}
+      </div>
+
+      {selected ? (
+        <NexxusCard extra="mt-3 w-full p-4">
+          <div className="flex items-start justify-between">
+            <h4 className="text-sm font-bold text-navy-700 dark:text-white">{selected.nombre}</h4>
+            <button
+              type="button"
+              onClick={() => setSelectedId(null)}
+              className="text-xs font-medium text-gray-600 hover:text-navy-700 dark:text-white/70 dark:hover:text-white"
+            >
+              Cerrar ✕
+            </button>
+          </div>
+
+          {!editMode ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setEditMode(true)}
+                className="rounded-xl bg-lightPrimary px-3 py-2 text-xs font-bold text-brand-500 dark:bg-charcoal-light dark:text-white"
+              >
+                Editar
+              </button>
+              <ActionButton busy={busy} onClick={handleEliminar} className="bg-red-600 hover:bg-red-700">
+                Eliminar
+              </ActionButton>
+            </div>
+          ) : (
+            <form onSubmit={handleGuardar} className="mt-3 rounded-xl border border-gray-200 p-3 dark:border-white/10">
+              <div className="flex flex-col gap-3">
+                {fields.map((f) => (
+                  <InputField
+                    key={f.key}
+                    variant="auth"
+                    label={f.label}
+                    id={`edit-${coleccion}-${f.key}`}
+                    value={editForm[f.key]}
+                    onChange={(e) => setEditForm((form) => ({ ...form, [f.key]: e.target.value }))}
+                  />
+                ))}
+              </div>
+              {saveError ? (
+                <p className="mt-3 text-sm font-medium text-red-500 dark:text-red-400">{saveError}</p>
+              ) : null}
+              <div className="mt-3 flex gap-2">
+                <ActionButton type="submit" busy={saving} className="bg-brand-500 hover:bg-brand-600 dark:bg-brand-400">
+                  Guardar
+                </ActionButton>
+                <button
+                  type="button"
+                  onClick={() => setEditMode(false)}
+                  className="rounded-xl bg-gray-100 px-4 py-2 text-sm font-bold text-gray-600 dark:bg-white/5 dark:text-white/70"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          )}
+          {actionError ? (
+            <p className="mt-3 text-sm font-medium text-red-500 dark:text-red-400">{actionError}</p>
+          ) : null}
+        </NexxusCard>
+      ) : null}
+    </div>
+  );
+}
