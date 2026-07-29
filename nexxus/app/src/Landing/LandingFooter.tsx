@@ -5,6 +5,10 @@ type LandingFooterProps = {
   onSection?: (id: string) => void;
 };
 
+// ---------------------------------------------------------------------------
+// Utilidades de navegación
+// ---------------------------------------------------------------------------
+
 function navigateTo(path: string) {
   window.history.pushState({}, '', path);
   window.dispatchEvent(new Event('nexxus:navigate'));
@@ -26,20 +30,43 @@ function scrollLandingSection(id: string, onSection?: (id: string) => void) {
   }, 80);
 }
 
+// ---------------------------------------------------------------------------
+// Ícono del footer
+// ---------------------------------------------------------------------------
+
 function FooterIcon({ name }: { name: 'mail' | 'shield' }) {
   const paths = {
     mail: ['M4 6h16v12H4z', 'M4 7l8 6 8-6'],
-    shield: ['M12 2l8 4v6c0 5-3.3 8.6-8 10-4.7-1.4-8-5-8-10V6l8-4z', 'M9 12l2 2 4-5'],
+    shield: [
+      'M12 2l8 4v6c0 5-3.3 8.6-8 10-4.7-1.4-8-5-8-10V6l8-4z',
+      'M9 12l2 2 4-5',
+    ],
   };
 
   return (
-    <svg className="nx-footer-icon" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+    <svg
+      className="nx-footer-icon"
+      fill="none"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
       {paths[name].map((path) => (
-        <path d={path} key={path} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} />
+        <path
+          d={path}
+          key={path}
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.8}
+        />
       ))}
     </svg>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Componente principal
+// ---------------------------------------------------------------------------
 
 export default function LandingFooter({ onSection }: LandingFooterProps) {
   const { t, i18n } = useTranslation();
@@ -47,52 +74,104 @@ export default function LandingFooter({ onSection }: LandingFooterProps) {
   return (
     <footer className="nx-footer">
       <div className="nx-footer-topline" />
+
       <div className="nx-footer-main">
+        {/* Marca + mensaje de confianza */}
         <div className="nx-footer-brand">
-          <strong>Nexxus</strong>
-          <p>Plataforma inteligente para operar personas, procesos y decisiones desde un solo lugar.</p>
+          <strong>
+            Nexxus
+          </strong>
+          <p>
+            Plataforma inteligente para operar personas, procesos y decisiones desde un solo lugar.
+          </p>
           <div className="nx-footer-trust">
             <FooterIcon name="shield" />
             <span>
-              <b>Operación segura.</b>
-              <small>Datos protegidos. Confianza empresarial.</small>
+              <b>
+                Operación segura.
+              </b>
+              <small>
+                Datos protegidos. Confianza empresarial.
+              </small>
             </span>
           </div>
         </div>
 
+        {/* Columna: Producto */}
         <nav className="nx-footer-column" aria-label="Producto">
-          <h3>Producto</h3>
-          <button onClick={() => scrollLandingSection('sistema', onSection)}>Sistema</button>
-          <button onClick={() => scrollLandingSection('modulos', onSection)}>Módulos</button>
-          <button onClick={() => scrollLandingSection('admin', onSection)}>Administrador</button>
-          <button onClick={() => scrollLandingSection('ia', onSection)}>Nexxus IA</button>
+          <h3>
+            Producto
+          </h3>
+          <button onClick={() => scrollLandingSection('sistema', onSection)}>
+            Sistema
+          </button>
+          <button onClick={() => scrollLandingSection('modulos', onSection)}>
+            Módulos
+          </button>
+          <button onClick={() => scrollLandingSection('admin', onSection)}>
+            Administrador
+          </button>
+          <button onClick={() => scrollLandingSection('ia', onSection)}>
+            Nexxus IA
+          </button>
         </nav>
 
+        {/* Columna: Planes */}
         <nav className="nx-footer-column" aria-label="Planes">
-          <h3>Planes</h3>
-          <button onClick={() => scrollLandingSection('planes', onSection)}>Precios</button>
-          <button onClick={() => scrollLandingSection('planes', onSection)}>Comparar planes</button>
-          <button onClick={() => navigateTo('/landing/registro')}>Registrarse</button>
+          <h3>
+            Planes
+          </h3>
+          <button onClick={() => scrollLandingSection('planes', onSection)}>
+            Precios
+          </button>
+          <button onClick={() => scrollLandingSection('planes', onSection)}>
+            Comparar planes
+          </button>
+          <button onClick={() => navigateTo('/landing/registro')}>
+            Registrarse
+          </button>
         </nav>
 
+        {/* Columna: Recursos */}
         <nav className="nx-footer-column" aria-label="Recursos">
-          <h3>Recursos</h3>
-          <button onClick={() => navigateTo('/landing/soporte')}>Centro de ayuda</button>
-          <a href="mailto:soporte@nexxus.app?subject=Soporte%20Nexxus">Soporte técnico</a>
-          <a href="mailto:facturacion@nexxus.app?subject=Facturacion%20Nexxus">Facturación</a>
+          <h3>
+            Recursos
+          </h3>
+          <button onClick={() => navigateTo('/landing/soporte')}>
+            Centro de ayuda
+          </button>
+          <a href="mailto:soporte@nexxus.app?subject=Soporte%20Nexxus">
+            Soporte técnico
+          </a>
+          <a href="mailto:facturacion@nexxus.app?subject=Facturacion%20Nexxus">
+            Facturación
+          </a>
         </nav>
 
+        {/* Columna: Empresa */}
         <nav className="nx-footer-column" aria-label="Empresa">
-          <h3>Empresa</h3>
-          <button onClick={() => navigateTo('/landing/seguridad')}>{t('landing.footer_security')}</button>
-          <button onClick={() => navigateTo('/landing/privacidad')}>{t('landing.footer_privacy')}</button>
-          <button onClick={() => navigateTo('/landing/soporte')}>{t('landing.footer_contact')}</button>
-          <button onClick={() => navigateTo('/landing/login')}>{t('landing.login')}</button>
-          <a href="http://localhost:3000/workspace/auth/sa-login">Nexxus admin</a>
+          <h3>
+            Empresa
+          </h3>
+          <button onClick={() => navigateTo('/landing/seguridad')}>
+            {t('landing.footer_security')}
+          </button>
+          <button onClick={() => navigateTo('/landing/privacidad')}>
+            {t('landing.footer_privacy')}
+          </button>
+          <button onClick={() => navigateTo('/landing/soporte')}>
+            {t('landing.footer_contact')}
+          </button>
+          <button onClick={() => navigateTo('/landing/login')}>
+            {t('landing.login')}
+          </button>
         </nav>
 
+        {/* Contacto + selector de idioma */}
         <div className="nx-footer-contact">
-          <h3>Contacto</h3>
+          <h3>
+            Contacto
+          </h3>
           <a href="mailto:soporte@nexxus.app?subject=Contacto%20Nexxus">
             <FooterIcon name="mail" />
             soporte@nexxus.app
@@ -102,16 +181,33 @@ export default function LandingFooter({ onSection }: LandingFooterProps) {
             ventas@nexxus.app
           </a>
           <div className="nx-footer-lang" aria-label={t('common.language')}>
-            <span>{t('common.language')}</span>
-            <button className={i18n.language === 'es' ? 'active' : ''} onClick={() => changeLanguage('es')}>ES</button>
-            <button className={i18n.language === 'en' ? 'active' : ''} onClick={() => changeLanguage('en')}>EN</button>
+            <span>
+              {t('common.language')}
+            </span>
+            <button
+              className={i18n.language === 'es' ? 'active' : ''}
+              onClick={() => changeLanguage('es')}
+            >
+              ES
+            </button>
+            <button
+              className={i18n.language === 'en' ? 'active' : ''}
+              onClick={() => changeLanguage('en')}
+            >
+              EN
+            </button>
           </div>
         </div>
       </div>
 
+      {/* Línea inferior */}
       <div className="nx-footer-bottom">
-        <span>© 2026 Nexxus. Todos los derechos reservados.</span>
-        <span>{t('landing.footer_tagline')}</span>
+        <span>
+          © 2026 Nexxus. Todos los derechos reservados.
+        </span>
+        <span>
+          {t('landing.footer_tagline')}
+        </span>
       </div>
     </footer>
   );

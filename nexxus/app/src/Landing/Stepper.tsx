@@ -21,6 +21,10 @@ type StepperProps = {
   stepContainerClassName?: string;
 };
 
+// ---------------------------------------------------------------------------
+// Componente principal (Stepper)
+// ---------------------------------------------------------------------------
+
 export default function Stepper({
   backButtonText = 'Back',
   canProceed = () => true,
@@ -52,6 +56,13 @@ export default function Stepper({
     else onStepChange(newStep);
   };
 
+  // Usada tanto por renderStepIndicator como por StepIndicator: fija la
+  // dirección de la animación según hacia dónde se navega y actualiza el paso.
+  const goToStep = (clicked: number) => {
+    setDirection(clicked > currentStep ? 1 : -1);
+    updateStep(clicked);
+  };
+
   return (
     <div className="nx-stepper-shell">
       <div className={`nx-stepper-card ${stepCircleContainerClassName}`}>
@@ -63,20 +74,14 @@ export default function Stepper({
                 {renderStepIndicator ? (
                   renderStepIndicator({
                     currentStep,
-                    onStepClick: (clicked) => {
-                      setDirection(clicked > currentStep ? 1 : -1);
-                      updateStep(clicked);
-                    },
+                    onStepClick: goToStep,
                     step: stepNumber,
                   })
                 ) : (
                   <StepIndicator
                     currentStep={currentStep}
                     disableStepIndicators={disableStepIndicators}
-                    onClickStep={(clicked) => {
-                      setDirection(clicked > currentStep ? 1 : -1);
-                      updateStep(clicked);
-                    }}
+                    onClickStep={goToStep}
                     step={stepNumber}
                   />
                 )}
@@ -86,7 +91,12 @@ export default function Stepper({
           })}
         </div>
 
-        <StepContentWrapper className={`nx-stepper-content ${contentClassName}`} currentStep={currentStep} direction={direction} isCompleted={isCompleted}>
+        <StepContentWrapper
+          className={`nx-stepper-content ${contentClassName}`}
+          currentStep={currentStep}
+          direction={direction}
+          isCompleted={isCompleted}
+        >
           {stepsArray[currentStep - 1]}
         </StepContentWrapper>
 
@@ -94,7 +104,14 @@ export default function Stepper({
           <div className={`nx-stepper-footer ${footerClassName}`}>
             <div className={`nx-stepper-nav ${currentStep !== 1 ? 'spread' : 'end'}`}>
               {currentStep !== 1 && (
-                <button className="nx-stepper-back" onClick={() => { setDirection(-1); updateStep(currentStep - 1); }} type="button">
+                <button
+                  className="nx-stepper-back"
+                  onClick={() => {
+                    setDirection(-1);
+                    updateStep(currentStep - 1);
+                  }}
+                  type="button"
+                >
                   {backButtonText}
                 </button>
               )}
@@ -125,10 +142,27 @@ function FragmentStep({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-function StepContentWrapper({ children, className, currentStep, direction, isCompleted }: { children: ReactNode; className: string; currentStep: number; direction: number; isCompleted: boolean }) {
+// ---------------------------------------------------------------------------
+// Contenido animado del paso
+// ---------------------------------------------------------------------------
+
+type StepContentWrapperProps = {
+  children: ReactNode;
+  className: string;
+  currentStep: number;
+  direction: number;
+  isCompleted: boolean;
+};
+
+function StepContentWrapper({ children, className, currentStep, direction, isCompleted }: StepContentWrapperProps) {
   const [parentHeight, setParentHeight] = useState(0);
   return (
-    <motion.div animate={{ height: isCompleted ? 0 : parentHeight }} className={className} style={{ overflow: 'hidden', position: 'relative' }} transition={{ duration: 0.38, type: 'spring' }}>
+    <motion.div
+      animate={{ height: isCompleted ? 0 : parentHeight }}
+      className={className}
+      style={{ overflow: 'hidden', position: 'relative' }}
+      transition={{ duration: 0.38, type: 'spring' }}
+    >
       <AnimatePresence custom={direction} initial={false} mode="sync">
         {!isCompleted && (
           <SlideTransition direction={direction} key={currentStep} onHeightReady={(height) => setParentHeight(height)}>
@@ -140,14 +174,29 @@ function StepContentWrapper({ children, className, currentStep, direction, isCom
   );
 }
 
-function SlideTransition({ children, direction, onHeightReady }: { children: ReactNode; direction: number; onHeightReady: (height: number) => void }) {
+type SlideTransitionProps = {
+  children: ReactNode;
+  direction: number;
+  onHeightReady: (height: number) => void;
+};
+
+function SlideTransition({ children, direction, onHeightReady }: SlideTransitionProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   useLayoutEffect(() => {
     if (containerRef.current) onHeightReady(containerRef.current.offsetHeight);
   }, [children, onHeightReady]);
 
   return (
-    <motion.div animate="center" custom={direction} exit="exit" initial="enter" ref={containerRef} style={{ left: 0, position: 'absolute', right: 0, top: 0 }} transition={{ duration: 0.36 }} variants={stepVariants}>
+    <motion.div
+      animate="center"
+      custom={direction}
+      exit="exit"
+      initial="enter"
+      ref={containerRef}
+      style={{ left: 0, position: 'absolute', right: 0, top: 0 }}
+      transition={{ duration: 0.36 }}
+      variants={stepVariants}
+    >
       {children}
     </motion.div>
   );
@@ -159,25 +208,61 @@ const stepVariants = {
   exit: (direction: number) => ({ opacity: 0, x: direction >= 0 ? '50%' : '-50%' }),
 };
 
+// ---------------------------------------------------------------------------
+// Componente público Step
+// ---------------------------------------------------------------------------
+
 export function Step({ children }: { children: ReactNode }) {
   return <div className="nx-step-default">{children}</div>;
 }
 
-function StepIndicator({ currentStep, disableStepIndicators, onClickStep, step }: { currentStep: number; disableStepIndicators: boolean; onClickStep: (step: number) => void; step: number }) {
+// ---------------------------------------------------------------------------
+// Indicadores de paso
+// ---------------------------------------------------------------------------
+
+type StepIndicatorProps = {
+  currentStep: number;
+  disableStepIndicators: boolean;
+  onClickStep: (step: number) => void;
+  step: number;
+};
+
+function StepIndicator({ currentStep, disableStepIndicators, onClickStep, step }: StepIndicatorProps) {
   const status = currentStep === step ? 'active' : currentStep < step ? 'inactive' : 'complete';
   return (
-    <motion.button animate={status} className="nx-step-indicator" initial={false} onClick={() => step !== currentStep && !disableStepIndicators && onClickStep(step)} style={disableStepIndicators ? { opacity: 0.5, pointerEvents: 'none' } : {}} type="button">
-      <motion.span className="nx-step-indicator-inner" transition={{ duration: 0.28 }} variants={{ active: { backgroundColor: '#8276ff' }, complete: { backgroundColor: '#8276ff' }, inactive: { backgroundColor: '#1d1b25' } }}>
+    <motion.button
+      animate={status}
+      className="nx-step-indicator"
+      initial={false}
+      onClick={() => step !== currentStep && !disableStepIndicators && onClickStep(step)}
+      style={disableStepIndicators ? { opacity: 0.5, pointerEvents: 'none' } : {}}
+      type="button"
+    >
+      <motion.span
+        className="nx-step-indicator-inner"
+        transition={{ duration: 0.28 }}
+        variants={{ active: { backgroundColor: '#8276ff' }, complete: { backgroundColor: '#8276ff' }, inactive: { backgroundColor: '#1d1b25' } }}
+      >
         {status === 'complete' ? <CheckIcon /> : status === 'active' ? <span className="nx-step-active-dot" /> : <span>{step}</span>}
       </motion.span>
     </motion.button>
   );
 }
 
-function StepConnector({ isComplete }: { isComplete: boolean }) {
+type StepConnectorProps = {
+  isComplete: boolean;
+};
+
+function StepConnector({ isComplete }: StepConnectorProps) {
   return (
     <span className="nx-step-connector">
-      <motion.span animate={isComplete ? 'complete' : 'incomplete'} className="nx-step-connector-inner" initial={false} transition={{ duration: 0.34 }} variants={{ complete: { backgroundColor: '#8276ff', width: '100%' }, incomplete: { backgroundColor: 'transparent', width: 0 } }} />
+      <motion.span
+        animate={isComplete ? 'complete' : 'incomplete'}
+        className="nx-step-connector-inner"
+        initial={false}
+        transition={{ duration: 0.34 }}
+        variants={{ complete: { backgroundColor: '#8276ff', width: '100%' }, incomplete: { backgroundColor: 'transparent', width: 0 } }}
+      />
     </span>
   );
 }
@@ -185,7 +270,14 @@ function StepConnector({ isComplete }: { isComplete: boolean }) {
 function CheckIcon() {
   return (
     <svg className="nx-step-check" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-      <motion.path animate={{ pathLength: 1 }} d="M5 13l4 4L19 7" initial={{ pathLength: 0 }} strokeLinecap="round" strokeLinejoin="round" transition={{ delay: 0.08, duration: 0.28, ease: 'easeOut', type: 'tween' }} />
+      <motion.path
+        animate={{ pathLength: 1 }}
+        d="M5 13l4 4L19 7"
+        initial={{ pathLength: 0 }}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        transition={{ delay: 0.08, duration: 0.28, ease: 'easeOut', type: 'tween' }}
+      />
     </svg>
   );
 }

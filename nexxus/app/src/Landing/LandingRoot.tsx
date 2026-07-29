@@ -2,6 +2,10 @@ import React, { useEffect, useState } from 'react';
 import './Landing.css';
 import '../shared/i18n/config';
 
+// ---------------------------------------------------------------------------
+// Tablas de rutas
+// ---------------------------------------------------------------------------
+
 const landingRoutes = ['/', '/landing', '/src/landing', '/src/landing/index', '/src/landing/index.tsx'];
 const nuevaRoutes = ['/landing/nueva'];
 const infoRoutes = ['/landing/seguridad', '/landing/privacidad'];
@@ -10,8 +14,14 @@ const checkoutRoutes = ['/landing/checkout'];
 const accountRoutes = ['/landing/cuenta'];
 const authRoutes = ['/landing/registro', '/landing/login', '/landing/crear-empresa'];
 
+// ---------------------------------------------------------------------------
+// Efectos de <head> / estilos globales
+// ---------------------------------------------------------------------------
+
 function injectLandingHead() {
   if (typeof document === 'undefined') return;
+
+  // Preconnects + fuente Sora
   if (!document.querySelector('link[data-nx-font]')) {
     const preconnectFonts = document.createElement('link');
     preconnectFonts.rel = 'preconnect';
@@ -31,6 +41,7 @@ function injectLandingHead() {
     document.head.insertBefore(font, document.head.firstChild);
   }
 
+  // Estilos globales de scroll (evitar rebote/scroll horizontal)
   if (!document.querySelector('style[data-nx-landing-scroll]')) {
     const style = document.createElement('style');
     style.setAttribute('data-nx-landing-scroll', 'true');
@@ -42,19 +53,27 @@ function injectLandingHead() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Resolución de superficie (routing)
+// ---------------------------------------------------------------------------
+
 function resolveSurface(pathname: string) {
-  if (nuevaRoutes.includes(pathname)) return require('./LandingNueva/index').default;
-  if (accountRoutes.includes(pathname)) return require('./AccountPage').default;
-  if (checkoutRoutes.includes(pathname)) return require('./CheckoutPage').default;
-  if (authRoutes.includes(pathname)) return require('./AuthPage').default;
-  if (supportRoutes.includes(pathname)) return require('./SupportPage').default;
-  if (infoRoutes.includes(pathname)) return require('./PolicyPage').default;
-  return require('./Index').default;
+  if (nuevaRoutes.includes(pathname)) return require('./LandingNueva/index').default; // landing "nueva"
+  if (accountRoutes.includes(pathname)) return require('./AccountPage').default; // cuenta
+  if (checkoutRoutes.includes(pathname)) return require('./CheckoutPage').default; // checkout
+  if (authRoutes.includes(pathname)) return require('./AuthPage').default; // registro / login / crear-empresa
+  if (supportRoutes.includes(pathname)) return require('./SupportPage').default; // soporte
+  if (infoRoutes.includes(pathname)) return require('./PolicyPage').default; // seguridad / privacidad
+  return require('./Index').default; // landing principal (fallback)
 }
 
 export function isLandingPath(pathname: string) {
   return [...landingRoutes, ...nuevaRoutes, ...infoRoutes, ...supportRoutes, ...checkoutRoutes, ...accountRoutes, ...authRoutes].includes(pathname);
 }
+
+// ---------------------------------------------------------------------------
+// Componente principal
+// ---------------------------------------------------------------------------
 
 export default function LandingRoot() {
   const [pathname, setPathname] = useState(() => (typeof window === 'undefined' ? '/landing' : window.location.pathname));

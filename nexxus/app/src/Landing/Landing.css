@@ -7,6 +7,8 @@
 
 /* Documentacion de estilos: las reglas siguientes definen clases consumidas por componentes React; mantener nombres estables evita romper el render web. */
 @import url("https://fonts.googleapis.com/css2?family=Sora:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800&display=swap");
+/* Fuente adicional solo para la sección de IA (.nx-ai-showcase): look tech/dashboard para títulos y datos. */
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
 
 :root {
   --nx-mx: 50vw;
@@ -26,6 +28,8 @@
   --nx-radius: 28px;
   --nx-page-pad: clamp(16px, 4vw, 24px);
   --nx-font: "Sora", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --nx-ai-font-display: "Space Grotesk", "Sora", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --nx-ai-font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --nx-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --nx-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --nx-ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
@@ -2003,180 +2007,116 @@ body {
   transform: scale(0.98);
 }
 
-/* .nx-ai-section: define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-ai-section {
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.92fr);
-  padding-bottom: clamp(18px, 3vw, 32px);
-}
-
-.nx-ai-proof-grid {
-  display: grid;
-  gap: 14px;
-  margin-top: 22px;
-}
-
-.nx-ai-proof {
-  align-items: flex-start;
-  background: rgba(255, 255, 255, 0.055);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 18px;
-  display: grid;
-  gap: 7px;
-  grid-template-columns: auto 1fr;
-  padding: 15px;
-}
-
-.nx-ai-proof .nx-icon {
-  color: var(--nx-cyan);
-  margin-top: 2px;
-}
-
-.nx-ai-proof strong {
-  color: #ffffff;
-  line-height: 1.2;
-}
-
-.nx-ai-proof small {
-  color: var(--nx-muted);
-  grid-column: 2;
-  line-height: 1.45;
-}
-
-/* .nx-ai-stream: define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-ai-stream {
-  border-radius: 32px;
-  padding: clamp(18px, 2.2vw, 24px);
-}
-
-.nx-ai-stream .border-glow-inner {
-  display: grid;
-  gap: 12px;
-}
-
-.nx-ai-stream-head {
-  align-items: center;
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 6px;
-}
-
-.nx-ai-stream-head span {
-  color: #ffffff;
-  font-weight: 900;
-}
-
-/* .nx-ai-stream div: define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-ai-signal {
-  align-items: center;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 18px;
-  display: flex;
-  gap: 12px;
-  margin-bottom: 12px;
-  padding: clamp(13px, 1.8vw, 16px);
-}
-
-/* .nx-ai-stream span: define reglas visuales para los elementos que usan este selector en la interfaz. */
-.nx-ai-signal span {
-  background: var(--nx-cyan);
-  border-radius: 999px;
-  height: 10px;
-  width: 10px;
-}
-
-.nx-ai-outcome {
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(56, 189, 248, 0.1));
-  border: 1px solid rgba(192, 132, 252, 0.18);
-  border-radius: 20px;
-  margin-top: 4px;
-  padding: 16px;
-}
-
-.nx-ai-outcome strong {
-  color: #ffffff;
-}
-
-.nx-ai-outcome p {
-  color: var(--nx-muted);
-  line-height: 1.55;
-  margin: 8px 0 0;
-}
+/* ============================================================================
+ * SECCIÓN IA — "HUD / Blueprint": mismo HTML que el diseño original
+ * (nx-ai-showcase-main, nx-ai-dashboard, nx-ai-feature-list, nx-ai-analytics,
+ * nx-ai-metrics, nx-ai-legend...), pero con un lenguaje visual totalmente
+ * distinto: esquinas vivas, marcos tipo visor/HUD, líneas de escaneo y
+ * tipografía mono protagonista, en vez del panel de vidrio redondeado.
+ * Colores y fuentes originales sin cambios (--nx-violet, --nx-purple,
+ * --nx-cyan, --nx-ai-font-display, --nx-ai-font-mono).
+ * ========================================================================= */
 
 .nx-ai-showcase {
+  background-image:
+    linear-gradient(rgba(167, 139, 250, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(167, 139, 250, 0.055) 1px, transparent 1px);
+  background-position: center top;
+  background-size: 42px 42px;
   margin: 0 auto;
   max-width: 1520px;
   overflow: hidden;
   padding: clamp(48px, 7vw, 92px) var(--nx-page-pad) clamp(30px, 5vw, 64px);
-}
-
-.nx-ai-showcase-main {
-  align-items: center;
-  display: grid;
-  gap: clamp(34px, 5vw, 72px);
-  grid-template-columns: minmax(0, 0.9fr) minmax(560px, 1.1fr);
-}
-
-.nx-ai-showcase-copy {
   position: relative;
 }
 
-.nx-ai-showcase-copy::after {
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.34), transparent 68%);
+.nx-ai-showcase::before {
+  background: linear-gradient(90deg, transparent, var(--nx-cyan), var(--nx-purple), transparent);
   content: '';
-  height: 320px;
-  pointer-events: none;
+  height: 1px;
+  left: 0;
+  opacity: 0.5;
   position: absolute;
-  right: -80px;
-  top: 42%;
-  width: 320px;
-  z-index: -1;
+  top: 0;
+  width: 100%;
+}
+
+.nx-ai-showcase-main {
+  align-items: start;
+  display: grid;
+  gap: clamp(34px, 5vw, 72px);
+  grid-template-columns: minmax(0, 0.82fr) minmax(560px, 1.18fr);
+}
+
+.nx-ai-showcase-copy {
+  position: sticky;
+  top: 100px;
+}
+
+.nx-ai-showcase-copy::after {
+  content: none;
 }
 
 .nx-ai-eyebrow {
   align-items: center;
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(168, 85, 247, 0.08));
-  border: 1px solid rgba(168, 85, 247, 0.34);
-  border-radius: 999px;
-  color: #f2ebff;
+  background: transparent;
+  border: 1px solid var(--nx-cyan);
+  border-radius: 0;
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  color: #fff;
   display: inline-flex;
-  font-size: 0.72rem;
-  font-weight: 800;
+  font-family: var(--nx-ai-font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
   gap: 9px;
-  letter-spacing: 0.13em;
-  padding: 10px 16px;
+  letter-spacing: 0.22em;
+  padding: 9px 14px;
   text-transform: uppercase;
 }
 
+.nx-ai-eyebrow::before {
+  content: '[';
+  margin-right: 2px;
+}
+
+.nx-ai-eyebrow::after {
+  content: ']';
+  margin-left: 2px;
+}
+
 .nx-ai-eyebrow .nx-icon {
-  color: #c084fc;
-  height: 18px;
-  width: 18px;
+  color: var(--nx-cyan);
+  height: 16px;
+  width: 16px;
 }
 
 .nx-ai-showcase-copy h2 {
-  color: #f8f6ff;
-  font-size: clamp(3rem, 5.6vw, 6rem);
-  letter-spacing: -0.055em;
-  line-height: 0.98;
-  margin: 24px 0;
-  max-width: 720px;
+  border-left: 3px solid var(--nx-violet);
+  color: #fff;
+  font-family: var(--nx-ai-font-display);
+  font-size: clamp(2.4rem, 4.6vw, 4.6rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  margin: 26px 0;
+  max-width: 640px;
+  padding-left: 22px;
 }
 
 .nx-ai-showcase-copy h2 em {
-  background: linear-gradient(100deg, #d8b4fe 0%, #a855f7 50%, #7c3aed 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: #fff;
   font-style: normal;
+  text-shadow: none;
 }
 
 .nx-ai-showcase-copy>p {
-  color: var(--nx-muted);
+  border-left: 3px solid transparent;
+  color: rgba(255, 255, 255, 0.75);
   font-size: clamp(1rem, 1.25vw, 1.17rem);
   line-height: 1.72;
   margin: 0;
-  max-width: 610px;
+  max-width: 560px;
+  padding-left: 22px;
 }
 
 .nx-ai-cta {
@@ -2184,86 +2124,119 @@ body {
   min-width: 250px;
 }
 
-.nx-ai-cta b {
-  font-size: 1.25rem;
-  margin-left: auto;
-}
+/* --- Panel principal: visor tipo HUD, sin curvas ------------------------ */
 
 .nx-ai-dashboard {
-  background: linear-gradient(145deg, rgba(11, 8, 28, 0.96), rgba(5, 4, 16, 0.92));
-  border: 1px solid rgba(202, 176, 255, 0.34);
-  border-radius: 30px;
-  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.42), 0 0 70px rgba(124, 58, 237, 0.12);
+  background: var(--nx-bg);
+  border: 1px solid rgba(167, 139, 250, 0.4);
+  border-radius: 0;
   overflow: hidden;
-  padding: clamp(18px, 2vw, 26px);
+  padding: 0;
+  position: relative;
+}
+
+.nx-ai-dashboard::before,
+.nx-ai-dashboard::after {
+  border: 2px solid var(--nx-cyan);
+  content: '';
+  height: 22px;
+  pointer-events: none;
+  position: absolute;
+  width: 22px;
+  z-index: 2;
+}
+
+.nx-ai-dashboard::before {
+  border-bottom: 0;
+  border-right: 0;
+  left: -1px;
+  top: -1px;
+}
+
+.nx-ai-dashboard::after {
+  border-left: 0;
+  border-top: 0;
+  bottom: -1px;
+  right: -1px;
 }
 
 .nx-ai-dashboard-head {
   align-items: center;
+  background: linear-gradient(90deg, rgba(130, 118, 255, 0.14), transparent 60%);
+  border-bottom: 1px solid rgba(167, 139, 250, 0.3);
   display: flex;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 0;
+  padding: 18px 24px;
 }
 
 .nx-ai-dashboard-head>strong {
   align-items: center;
   color: #fff;
   display: flex;
-  font-size: 1.12rem;
+  font-family: var(--nx-ai-font-mono);
+  font-size: 0.92rem;
+  font-weight: 600;
   gap: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .nx-ai-dashboard-head .nx-icon {
-  color: #a855f7;
-  height: 25px;
-  width: 25px;
+  color: var(--nx-cyan);
+  height: 20px;
+  width: 20px;
 }
 
 .nx-ai-dashboard-head>span {
   align-items: center;
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(167, 139, 250, 0.16);
-  border-radius: 999px;
-  color: #d7d0df;
+  background: transparent;
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  border-radius: 0;
+  color: rgba(255, 255, 255, 0.75);
   display: flex;
-  font-size: 0.72rem;
+  font-family: var(--nx-ai-font-mono);
+  font-size: 0.64rem;
   gap: 8px;
-  padding: 8px 12px;
+  letter-spacing: 0.08em;
+  padding: 6px 10px;
+  text-transform: uppercase;
 }
 
 .nx-ai-dashboard-head i {
   background: #4ade80;
   border-radius: 50%;
-  box-shadow: 0 0 12px rgba(74, 222, 128, 0.72);
+  box-shadow: 0 0 12px rgba(74, 222, 128, 0.75);
   height: 7px;
   width: 7px;
 }
 
 .nx-ai-dashboard-body {
   display: grid;
-  gap: 14px;
+  gap: 1px;
   grid-template-columns: minmax(230px, 0.9fr) minmax(280px, 1.1fr);
 }
 
 .nx-ai-feature-list,
 .nx-ai-analytics {
-  background: rgba(255, 255, 255, 0.018);
-  border: 1px solid rgba(167, 139, 250, 0.09);
-  border-radius: 18px;
+  background: rgba(130, 118, 255, 0.035);
+  border: 0;
+  border-radius: 0;
   min-width: 0;
 }
 
 .nx-ai-feature-list {
-  padding: 0 14px;
+  border-right: 1px solid rgba(167, 139, 250, 0.22);
+  padding: 0 20px;
 }
 
 .nx-ai-feature {
   align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.065);
+  border-bottom: 1px dashed rgba(167, 139, 250, 0.28);
   display: grid;
-  gap: 13px;
+  gap: 14px;
   grid-template-columns: auto 1fr;
-  padding: 14px 0;
+  padding: 17px 0;
 }
 
 .nx-ai-feature:last-child {
@@ -2272,19 +2245,25 @@ body {
 
 .nx-ai-feature>div {
   align-items: center;
-  background: linear-gradient(145deg, rgba(124, 58, 237, 0.48), rgba(73, 31, 128, 0.55));
-  border: 1px solid rgba(192, 132, 252, 0.22);
-  border-radius: 12px;
+  background: transparent;
+  border: 1px solid var(--nx-purple);
+  border-radius: 0;
+  color: var(--nx-purple);
   display: flex;
-  height: 42px;
+  height: 38px;
   justify-content: center;
-  width: 42px;
+  transform: rotate(45deg);
+  width: 38px;
+}
+
+.nx-ai-feature>div .nx-icon {
+  transform: rotate(-45deg);
 }
 
 .nx-ai-feature .nx-icon {
-  color: #d8b4fe;
-  height: 21px;
-  width: 21px;
+  color: var(--nx-purple);
+  height: 18px;
+  width: 18px;
 }
 
 .nx-ai-feature>span {
@@ -2294,235 +2273,300 @@ body {
 
 .nx-ai-feature strong {
   color: #fff;
-  font-size: 0.82rem;
+  font-family: var(--nx-ai-font-mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   line-height: 1.2;
+  text-transform: uppercase;
 }
 
 .nx-ai-feature small {
-  color: #a9a2b5;
-  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 0.72rem;
   line-height: 1.45;
 }
 
 .nx-ai-analytics {
   display: grid;
-  gap: 12px;
-  padding: 12px;
+  gap: 1px;
+  padding: 0;
 }
 
 .nx-ai-chart-card,
 .nx-ai-mini-card,
 .nx-ai-impact-card {
-  background: linear-gradient(145deg, rgba(20, 15, 45, 0.72), rgba(8, 6, 22, 0.9));
-  border: 1px solid rgba(167, 139, 250, 0.13);
-  border-radius: 14px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid rgba(167, 139, 250, 0.22);
+  border-radius: 0;
 }
 
 .nx-ai-chart-card {
-  min-height: 195px;
+  min-height: 175px;
   overflow: hidden;
-  padding: 14px;
+  padding: 18px 20px 0;
   position: relative;
 }
 
 .nx-ai-chart-card>span,
 .nx-ai-mini-card>span,
 .nx-ai-impact-card>span {
-  color: #e5dfed;
+  color: rgba(255, 255, 255, 0.7);
   display: block;
-  font-size: 0.7rem;
+  font-family: var(--nx-ai-font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .nx-ai-chart-card>strong,
 .nx-ai-mini-card>strong {
   color: #fff;
   display: block;
-  font-size: 1.7rem;
-  margin-top: 8px;
+  font-family: var(--nx-ai-font-mono);
+  font-size: 2rem;
+  font-weight: 600;
+  margin-top: 6px;
+  text-shadow: none;
 }
 
 .nx-ai-chart-card>small {
-  color: #4ade80;
+  color: rgba(255, 255, 255, 0.75);
+  font-family: var(--nx-ai-font-mono);
   font-size: 0.62rem;
 }
 
 .nx-ai-chart-card>small b {
-  color: #b8b1c2;
+  color: rgba(255, 255, 255, 0.6);
   font-weight: 500;
 }
 
 .nx-ai-line-chart {
   bottom: 0;
-  height: 110px;
+  height: 90px;
   left: 0;
+  opacity: 0.85;
   position: absolute;
   width: 100%;
 }
 
 .nx-ai-mini-grid {
   display: grid;
-  gap: 10px;
+  gap: 1px;
   grid-template-columns: 1fr 1fr;
 }
 
 .nx-ai-mini-card {
-  min-height: 112px;
-  padding: 12px;
+  border-right: 1px solid rgba(167, 139, 250, 0.22);
+  min-height: 110px;
+  padding: 16px 18px;
+}
+
+.nx-ai-mini-card:last-child {
+  border-right: 0;
 }
 
 .nx-ai-mini-card>strong {
-  font-size: 1.25rem;
-  margin-top: 5px;
+  font-size: 1.5rem;
+  margin-top: 4px;
 }
 
 .nx-ai-mini-card>small {
-  color: #4ade80;
+  color: rgba(255, 255, 255, 0.75);
   display: block;
-  font-size: 0.58rem;
+  font-family: var(--nx-ai-font-mono);
+  font-size: 0.6rem;
   margin-top: 2px;
 }
 
 .nx-ai-mini-card.is-alert>small {
-  color: #fb923c;
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .nx-ai-mini-card>div {
   align-items: end;
   display: flex;
-  gap: 4px;
-  height: 35px;
-  margin-top: 8px;
+  gap: 3px;
+  height: 30px;
+  margin-top: 10px;
 }
 
 .nx-ai-mini-card i {
-  background: linear-gradient(180deg, #a855f7, #6d28d9);
-  border-radius: 3px 3px 0 0;
+  background: var(--nx-purple);
+  border-radius: 0;
   flex: 1;
   min-width: 3px;
 }
 
 .nx-ai-mini-card.is-alert i {
-  background: linear-gradient(180deg, #fb923c, #c2410c);
+  background: #fb923c;
 }
 
 .nx-ai-impact-card {
-  padding: 13px;
+  border-bottom: 0;
+  padding: 18px 20px 20px;
 }
 
 .nx-ai-impact-card>span {
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .nx-ai-impact-card>div {
   align-items: center;
   display: grid;
-  gap: 8px;
-  grid-template-columns: 66px 1fr 30px;
-  margin-top: 8px;
+  gap: 10px;
+  grid-template-columns: 74px 1fr 34px;
+  margin-top: 10px;
 }
 
 .nx-ai-impact-card small {
-  color: #d5cfdd;
-  font-size: 0.58rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-family: var(--nx-ai-font-mono);
+  font-size: 0.6rem;
+  text-transform: uppercase;
 }
 
 .nx-ai-impact-card i {
   background: rgba(255, 255, 255, 0.07);
-  border-radius: 999px;
+  border-radius: 0;
   display: block;
-  height: 5px;
+  height: 3px;
   overflow: hidden;
 }
 
 .nx-ai-impact-card i b {
-  background: linear-gradient(90deg, #7c3aed, #d8b4fe);
+  background: var(--nx-cyan);
   border-radius: inherit;
+  box-shadow: 0 0 8px var(--nx-cyan);
   display: block;
   height: 100%;
 }
 
 .nx-ai-impact-card strong {
   color: #fff;
-  font-size: 0.62rem;
+  font-family: var(--nx-ai-font-mono);
+  font-size: 0.64rem;
   text-align: right;
 }
 
+/* --- Métricas: regla horizontal tipo HUD, sin caja ---------------------- */
+
 .nx-ai-metrics {
-  background: rgba(8, 6, 22, 0.74);
-  border: 1px solid rgba(167, 139, 250, 0.18);
-  border-radius: 24px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  border-top: 1px solid rgba(167, 139, 250, 0.3);
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  margin-top: 28px;
-  overflow: hidden;
+  margin-top: 40px;
+  overflow: visible;
+  padding-top: 26px;
+  position: relative;
 }
 
 .nx-ai-metric {
-  align-items: center;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  align-items: flex-start;
+  border-right: 1px dashed rgba(167, 139, 250, 0.3);
   display: flex;
-  gap: 16px;
+  flex-direction: column;
+  gap: 10px;
   min-width: 0;
-  padding: 22px 26px;
+  padding: 0 26px;
+}
+
+.nx-ai-metric:first-child {
+  padding-left: 0;
 }
 
 .nx-ai-metric:last-child {
   border-right: 0;
+  padding-right: 0;
 }
 
 .nx-ai-metric>span {
   align-items: center;
-  background: radial-gradient(circle at 35% 30%, rgba(168, 85, 247, 0.38), rgba(47, 26, 92, 0.38));
-  border: 1px solid rgba(168, 85, 247, 0.25);
-  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--nx-purple);
+  border-radius: 0;
   display: flex;
   flex: 0 0 auto;
-  height: 54px;
+  height: 34px;
   justify-content: center;
-  width: 54px;
+  width: 34px;
 }
 
 .nx-ai-metric .nx-icon {
-  color: #c084fc;
-  height: 26px;
-  width: 26px;
+  color: var(--nx-purple);
+  height: 18px;
+  width: 18px;
 }
 
 .nx-ai-metric>div {
-  display: grid;
+  display: flex;
+  flex-direction: column-reverse;
   gap: 4px;
 }
 
 .nx-ai-metric small {
-  color: #f1ecf8;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
   line-height: 1.25;
+  text-transform: uppercase;
 }
 
 .nx-ai-metric strong {
-  color: #a855f7;
-  font-size: 1.35rem;
+  color: #fff;
+  font-family: var(--nx-ai-font-mono);
+  font-size: 2rem;
+  font-weight: 600;
+  text-shadow: none;
 }
+
+/* --- Cita final: marco vivo con comilla gigante de fondo ---------------- */
 
 .nx-ai-legend {
   align-items: center;
-  background: linear-gradient(100deg, rgba(9, 7, 24, 0.92), rgba(18, 10, 39, 0.86));
-  border: 1px solid rgba(168, 85, 247, 0.32);
-  border-radius: 22px;
-  box-shadow: inset -16px 0 32px rgba(124, 58, 237, 0.12);
-  color: #e9e3f0;
+  background: transparent;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  border-left: 4px solid var(--nx-cyan);
+  border-radius: 0;
+  box-shadow: none;
+  color: #fff;
   display: flex;
+  font-family: var(--nx-ai-font-display);
   font-size: clamp(0.9rem, 1.25vw, 1.05rem);
+  font-weight: 500;
   gap: 18px;
   line-height: 1.55;
-  margin: 18px 0 0;
-  padding: 20px 28px;
+  margin: 30px 0 0;
+  overflow: hidden;
+  padding: 22px 30px;
+  position: relative;
+}
+
+.nx-ai-legend::before {
+  color: rgba(255, 255, 255, 0.08);
+  content: '"';
+  font-family: var(--nx-ai-font-display);
+  font-size: 9rem;
+  font-weight: 700;
+  line-height: 1;
+  position: absolute;
+  right: 12px;
+  top: -30px;
 }
 
 .nx-ai-legend .nx-icon {
-  color: #a855f7;
+  color: var(--nx-cyan);
   flex: 0 0 auto;
-  height: 28px;
-  width: 28px;
+  height: 26px;
+  width: 26px;
+}
+
+.nx-ai-legend span {
+  position: relative;
 }
 
 @media (max-width: 1120px) {
@@ -2532,6 +2576,7 @@ body {
 
   .nx-ai-showcase-copy {
     max-width: 800px;
+    position: static;
   }
 
   .nx-ai-dashboard {
@@ -2545,17 +2590,19 @@ body {
   }
 
   .nx-ai-feature-list {
+    border-bottom: 1px solid rgba(167, 139, 250, 0.22);
+    border-right: 0;
     display: grid;
     grid-template-columns: 1fr 1fr;
   }
 
   .nx-ai-feature:nth-child(odd) {
-    border-right: 1px solid rgba(255, 255, 255, 0.065);
-    padding-right: 12px;
+    border-right: 1px dashed rgba(167, 139, 250, 0.28);
+    padding-right: 14px;
   }
 
   .nx-ai-feature:nth-child(even) {
-    padding-left: 12px;
+    padding-left: 14px;
   }
 
   .nx-ai-metrics {
@@ -2567,23 +2614,25 @@ body {
   }
 
   .nx-ai-metric:nth-child(-n+2) {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px dashed rgba(167, 139, 250, 0.3);
+    margin-bottom: 18px;
+    padding-bottom: 18px;
+  }
+
+  .nx-ai-metric:nth-child(even) {
+    padding-left: 26px;
   }
 }
 
 @media (max-width: 520px) {
   .nx-ai-showcase {
+    background-size: 28px 28px;
     padding-left: 16px;
     padding-right: 16px;
   }
 
   .nx-ai-showcase-copy h2 {
-    font-size: clamp(2.5rem, 12vw, 3.4rem);
-  }
-
-  .nx-ai-dashboard {
-    border-radius: 22px;
-    padding: 14px;
+    font-size: clamp(2.3rem, 12vw, 3.2rem);
   }
 
   .nx-ai-dashboard-head>span {
@@ -2609,8 +2658,9 @@ body {
 
   .nx-ai-metric,
   .nx-ai-metric:nth-child(2) {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px dashed rgba(167, 139, 250, 0.3);
     border-right: 0;
+    padding-left: 0;
   }
 
   .nx-ai-metric:last-child {

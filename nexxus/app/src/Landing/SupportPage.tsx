@@ -4,7 +4,7 @@
  * Proposito: Pantalla publica de soporte y contacto.
  */
 
-import { createElement, ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import BorderGlow from './BorderGlow';
 import GlassSurface from './GlassSurface';
@@ -12,7 +12,9 @@ import LandingFooter from './LandingFooter';
 import StarButton from './StarButton';
 import './Landing.css';
 
-const h = createElement;
+// ---------------------------------------------------------------------------
+// Datos: canales de contacto, áreas de soporte e íconos
+// ---------------------------------------------------------------------------
 
 const supportChannels = [
   {
@@ -70,6 +72,10 @@ const supportIconPaths: Record<string, string[]> = {
   spark: ['M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8L12 2z'],
 };
 
+// ---------------------------------------------------------------------------
+// Utilidades de ruta
+// ---------------------------------------------------------------------------
+
 function goTo(path: string) {
   if (path.startsWith('/landing#') || path === '/landing' || path === '/landing/seguridad' || path === '/landing/privacidad' || path === '/landing/soporte' || path === '/landing/login' || path === '/landing/registro') {
     window.history.pushState({}, '', path);
@@ -84,110 +90,167 @@ function openExternal(href: string) {
   window.location.href = href;
 }
 
+// ---------------------------------------------------------------------------
+// Componentes de soporte
+// ---------------------------------------------------------------------------
+
 function GlowCard({ children, className }: { children?: ReactNode; className: string }) {
-  return h(
-    BorderGlow,
-    {
-      backgroundColor: 'rgba(12, 9, 27, 0.76)',
-      className,
-      colors: ['#8b5cf6', '#a855f7', '#38bdf8'],
-      glowColor: '268 88 72',
-      glowIntensity: 0.7,
-      glowRadius: 24,
-    },
-    children
+  return (
+    <BorderGlow
+      backgroundColor="rgba(12, 9, 27, 0.76)"
+      className={className}
+      colors={['#8b5cf6', '#a855f7', '#38bdf8']}
+      glowColor="268 88 72"
+      glowIntensity={0.7}
+      glowRadius={24}
+    >
+      {children}
+    </BorderGlow>
   );
 }
 
 function SupportIcon({ name }: { name: string }) {
-  return h(
-    'svg',
-    { className: 'nx-policy-svg', fill: 'none', viewBox: '0 0 24 24', 'aria-hidden': true },
-    supportIconPaths[name].map((path, index) => h('path', { d: path, key: index, stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 1.8 }))
+  return (
+    <svg className="nx-policy-svg" fill="none" viewBox="0 0 24 24" aria-hidden={true}>
+      {supportIconPaths[name].map((path, index) => (
+        <path
+          d={path}
+          key={index}
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.8}
+        />
+      ))}
+    </svg>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Componente principal
+// ---------------------------------------------------------------------------
 
 export default function SupportPage() {
   const { t } = useTranslation();
 
-  return h(
-    'main',
-    { className: 'nx-landing nx-policy-page nx-support-page' },
-    h('div', { className: 'nx-orb nx-orb-a', 'aria-hidden': true }),
-    h('div', { className: 'nx-orb nx-orb-b', 'aria-hidden': true }),
-    h(
-      'div',
-      { className: 'nx-nav-layer' },
-      h(
-        GlassSurface,
-        {
-          as: 'nav',
-          backgroundOpacity: 0.08,
-          blur: 8,
-          borderRadius: 999,
-          brightness: 58,
-          displace: 0.25,
-          distortionScale: -34,
-          greenOffset: 3,
-          blueOffset: 6,
-          saturation: 1.24,
-          className: 'nx-nav nx-hero-nav is-floating is-ready is-pinned nx-policy-nav',
-          style: { top: 8 },
-        },
-        h(
-          'button',
-          { className: 'nx-policy-back', onClick: () => goTo('/landing'), 'aria-label': 'Volver a la landing' },
-          h(
-            'svg',
-            { fill: 'none', viewBox: '0 0 24 24', 'aria-hidden': true },
-            h('path', { d: 'M14 7l-5 5 5 5', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2.2 }),
-            h('path', { d: 'M9.5 12H18', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2.2 })
-          )
-        )
-      ),
-    ),
-    h(
-      'section',
-      { className: 'nx-policy-hero nx-support-hero nx-reveal is-visible' },
-      h('div', null,
-        h('div', { className: 'nx-kicker' }, h('span', null), 'Soporte Nexxus'),
-        h('h1', null, 'Soporte y contacto para empresas que operan con Nexxus.'),
-        h('p', null, 'Centralizamos los canales de ayuda para implementación, soporte técnico, facturación y consultas de seguridad.'),
-        h('div', { className: 'nx-hero-actions' },
-          h(StarButton, { className: 'nx-btn nx-btn-primary', onClick: () => goTo('/landing/registro') }, t('landing.create_company')),
-          h('button', { className: 'nx-btn nx-btn-minimal', onClick: () => openExternal('mailto:soporte@nexxus.app?subject=Contacto%20Nexxus') }, 'Contactar soporte')
-        )
-      ),
-      h('div', { className: 'nx-support-summary', 'aria-label': 'Resumen de soporte' },
-        h('div', null, h(SupportIcon, { name: 'clock' }), h('strong', null, 'Mismo dia habil'), h('span', null, 'Primer contacto para solicitudes empresariales')),
-        h('div', null, h(SupportIcon, { name: 'shield' }), h('strong', null, 'Casos prioritarios'), h('span', null, 'Escalamiento para accesos y operacion critica')),
-        h('div', null, h(SupportIcon, { name: 'spark' }), h('strong', null, 'Acompanamiento'), h('span', null, 'Guia para activacion y crecimiento'))
-      )
-    ),
-    h(
-      'section',
-      { className: 'nx-section nx-support-channels nx-reveal is-visible' },
-      supportChannels.map((channel) =>
-        h(GlowCard, { className: 'nx-support-channel', key: channel.title },
-          h(SupportIcon, { name: channel.icon }),
-          h('h2', null, channel.title),
-          h('p', null, channel.text),
-          h('button', { onClick: () => openExternal(channel.href) }, channel.action)
-        )
-      )
-    ),
-    h(
-      'section',
-      { className: 'nx-section nx-policy-content nx-support-content nx-reveal is-visible' },
-      supportAreas.map((area, index) =>
-        h(GlowCard, { className: 'nx-policy-card', key: area.title },
-          h('div', { className: 'nx-card-topline' }, h('span', null, `0${index + 1}`)),
-          h('h2', null, area.title),
-          h('p', null, area.text),
-          h('ul', null, area.items.map((item) => h('li', { key: item }, item)))
-        )
-      )
-    ),
-    h(LandingFooter)
+  return (
+    <main className="nx-landing nx-policy-page nx-support-page">
+      {/* Fondo decorativo */}
+      <div className="nx-orb nx-orb-a" aria-hidden={true} />
+      <div className="nx-orb nx-orb-b" aria-hidden={true} />
+
+      {/* Navegación (botón volver) */}
+      <div className="nx-nav-layer">
+        <GlassSurface
+          as="nav"
+          backgroundOpacity={0.08}
+          blur={8}
+          borderRadius={999}
+          brightness={58}
+          displace={0.25}
+          distortionScale={-34}
+          greenOffset={3}
+          blueOffset={6}
+          saturation={1.24}
+          className="nx-nav nx-hero-nav is-floating is-ready is-pinned nx-policy-nav"
+          style={{ top: 8 }}
+        >
+          <button
+            className="nx-policy-back"
+            onClick={() => goTo('/landing')}
+            aria-label="Volver a la landing"
+          >
+            <svg fill="none" viewBox="0 0 24 24" aria-hidden={true}>
+              <path
+                d="M14 7l-5 5 5 5"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2.2}
+              />
+              <path
+                d="M9.5 12H18"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2.2}
+              />
+            </svg>
+          </button>
+        </GlassSurface>
+      </div>
+
+      {/* Hero: título, subtítulo, CTAs y resumen */}
+      <section className="nx-policy-hero nx-support-hero nx-reveal is-visible">
+        <div>
+          <div className="nx-kicker">
+            <span />
+            Soporte Nexxus
+          </div>
+          <h1>Soporte y contacto para empresas que operan con Nexxus.</h1>
+          <p>Centralizamos los canales de ayuda para implementación, soporte técnico, facturación y consultas de seguridad.</p>
+          <div className="nx-hero-actions">
+            <StarButton className="nx-btn nx-btn-primary" onClick={() => goTo('/landing/registro')}>
+              {t('landing.create_company')}
+            </StarButton>
+            <button
+              className="nx-btn nx-btn-minimal"
+              onClick={() => openExternal('mailto:soporte@nexxus.app?subject=Contacto%20Nexxus')}
+            >
+              Contactar soporte
+            </button>
+          </div>
+        </div>
+        <div className="nx-support-summary" aria-label="Resumen de soporte">
+          <div>
+            <SupportIcon name="clock" />
+            <strong>Mismo dia habil</strong>
+            <span>Primer contacto para solicitudes empresariales</span>
+          </div>
+          <div>
+            <SupportIcon name="shield" />
+            <strong>Casos prioritarios</strong>
+            <span>Escalamiento para accesos y operacion critica</span>
+          </div>
+          <div>
+            <SupportIcon name="spark" />
+            <strong>Acompanamiento</strong>
+            <span>Guia para activacion y crecimiento</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Canales de contacto */}
+      <section className="nx-section nx-support-channels nx-reveal is-visible">
+        {supportChannels.map((channel) => (
+          <GlowCard className="nx-support-channel" key={channel.title}>
+            <SupportIcon name={channel.icon} />
+            <h2>{channel.title}</h2>
+            <p>{channel.text}</p>
+            <button onClick={() => openExternal(channel.href)}>{channel.action}</button>
+          </GlowCard>
+        ))}
+      </section>
+
+      {/* Áreas de soporte */}
+      <section className="nx-section nx-policy-content nx-support-content nx-reveal is-visible">
+        {supportAreas.map((area, index) => (
+          <GlowCard className="nx-policy-card" key={area.title}>
+            <div className="nx-card-topline">
+              <span>{`0${index + 1}`}</span>
+            </div>
+            <h2>{area.title}</h2>
+            <p>{area.text}</p>
+            <ul>
+              {area.items.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </GlowCard>
+        ))}
+      </section>
+
+      <LandingFooter />
+    </main>
   );
 }

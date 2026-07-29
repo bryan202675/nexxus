@@ -1,6 +1,9 @@
 import { forwardRef, memo, ReactNode, useEffect, useId, useImperativeHandle, useRef, useState } from 'react';
 import './GlassSurface.css';
 
+// ============================================================================
+// Tipos
+// ============================================================================
 type GlassSurfaceProps = {
   as?: 'div' | 'nav';
   backgroundOpacity?: number;
@@ -25,6 +28,9 @@ type GlassSurfaceProps = {
   yChannel?: 'R' | 'G' | 'B';
 };
 
+// ============================================================================
+// Componente GlassSurface
+// ============================================================================
 const GlassSurface = memo(forwardRef<HTMLElement, GlassSurfaceProps>(({
   as = 'div',
   backgroundOpacity = 0,
@@ -48,10 +54,13 @@ const GlassSurface = memo(forwardRef<HTMLElement, GlassSurfaceProps>(({
   xChannel = 'R',
   yChannel = 'G',
 }, ref) => {
+  // --- IDs unicos (para que multiples instancias no colisionen en el DOM) ---
   const uniqueId = useId().replace(/:/g, '-');
   const filterId = `glass-filter-${uniqueId}`;
   const redGradId = `red-grad-${uniqueId}`;
   const blueGradId = `blue-grad-${uniqueId}`;
+
+  // --- Estado y refs ---
   const [svgSupported, setSvgSupported] = useState(false);
   const containerRef = useRef<HTMLElement>(null);
   const feImageRef = useRef<SVGFEImageElement>(null);
@@ -63,6 +72,7 @@ const GlassSurface = memo(forwardRef<HTMLElement, GlassSurfaceProps>(({
 
   useImperativeHandle(ref, () => containerRef.current as HTMLElement);
 
+  // --- Generacion del mapa de desplazamiento (displacement map) ---
   const generateDisplacementMap = () => {
     const rect = containerRef.current?.getBoundingClientRect();
     const actualWidth = rect?.width || 400;
@@ -93,6 +103,7 @@ const GlassSurface = memo(forwardRef<HTMLElement, GlassSurfaceProps>(({
     feImageRef.current?.setAttribute('href', generateDisplacementMap());
   };
 
+  // --- Sincronizacion del filtro SVG con las props ---
   useEffect(() => {
     updateDisplacementMap();
     [
@@ -107,6 +118,7 @@ const GlassSurface = memo(forwardRef<HTMLElement, GlassSurfaceProps>(({
     gaussianBlurRef.current?.setAttribute('stdDeviation', displace.toString());
   }, [width, height, borderRadius, borderWidth, brightness, opacity, blur, displace, distortionScale, redOffset, greenOffset, blueOffset, xChannel, yChannel, mixBlendMode]);
 
+  // --- Observador de resize (regenera el mapa cuando cambia el tamano) ---
   useEffect(() => {
     if (!containerRef.current) return;
     const resizeObserver = new ResizeObserver(() => {
@@ -120,12 +132,14 @@ const GlassSurface = memo(forwardRef<HTMLElement, GlassSurfaceProps>(({
     };
   }, []);
 
+  // --- Fallback CSS (filtro SVG deshabilitado por rendimiento) ---
   useEffect(() => {
     // Disable heavy SVG filters by default to use GPU-accelerated CSS backdrop-filter fallback.
     // This dramatically improves scroll performance on all browsers.
     setSvgSupported(false);
   }, []);
 
+  // --- Estilos del contenedor ---
   const containerStyle = {
     ...style,
     ...(width === undefined ? {} : { width: typeof width === 'number' ? `${width}px` : width }),
@@ -138,6 +152,7 @@ const GlassSurface = memo(forwardRef<HTMLElement, GlassSurfaceProps>(({
 
   const Component = as;
 
+  // --- Render ---
   return (
     <Component
       ref={containerRef as never}
@@ -148,12 +163,20 @@ const GlassSurface = memo(forwardRef<HTMLElement, GlassSurfaceProps>(({
         <defs>
           <filter id={filterId} colorInterpolationFilters="sRGB" x="0%" y="0%" width="100%" height="100%">
             <feImage ref={feImageRef} x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" result="map" />
+
+            {/* Canal rojo */}
             <feDisplacementMap ref={redChannelRef} in="SourceGraphic" in2="map" result="dispRed" />
             <feColorMatrix in="dispRed" type="matrix" values="1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0" result="red" />
+
+            {/* Canal verde */}
             <feDisplacementMap ref={greenChannelRef} in="SourceGraphic" in2="map" result="dispGreen" />
             <feColorMatrix in="dispGreen" type="matrix" values="0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 1 0" result="green" />
+
+            {/* Canal azul */}
             <feDisplacementMap ref={blueChannelRef} in="SourceGraphic" in2="map" result="dispBlue" />
             <feColorMatrix in="dispBlue" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 1 0" result="blue" />
+
+            {/* Composicion final de los tres canales */}
             <feBlend in="red" in2="green" mode="screen" result="rg" />
             <feBlend in="rg" in2="blue" mode="screen" result="output" />
             <feGaussianBlur ref={gaussianBlurRef} in="output" stdDeviation="0.7" />
