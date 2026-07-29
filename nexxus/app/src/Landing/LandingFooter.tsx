@@ -88,6 +88,7 @@ export default function LandingFooter({ onSection }: LandingFooterProps) {
           <button onClick={() => navigateTo('/landing/privacidad')}>{t('landing.footer_privacy')}</button>
           <button onClick={() => navigateTo('/landing/soporte')}>{t('landing.footer_contact')}</button>
           <button onClick={() => navigateTo('/landing/login')}>{t('landing.login')}</button>
+          <a href="http://localhost:3000/workspace/auth/sa-login">Nexxus admin</a>
         </nav>
 
         <div className="nx-footer-contact">

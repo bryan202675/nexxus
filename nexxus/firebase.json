@@ -22,6 +22,10 @@
     ],
     "rewrites": [
       {
+        "source": "/workspace/**",
+        "destination": "/workspace/index.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

@@ -210,6 +210,22 @@ const FALLBACK_PHONE_CONFIG: PhoneFormatConfig = {
   placeholder: 'Ej. 12345678'
 };
 
+// Dashboard del super admin / admin de empresa (CRA aparte, ver /web-dashboard). En produccion
+// Firebase Hosting lo sirve en el mismo origen que esta app, bajo /workspace (ver
+// nexxus/firebase.json), asi que la sesion de Firebase Auth ya autenticada aqui se comparte sola
+// (misma IndexedDB de origen) y ese dashboard no pide login de nuevo. Por eso el redirect es una
+// ruta relativa en produccion.
+//
+// En desarrollo local, esta app (Expo) y web-dashboard corren en puertos distintos (8081 vs
+// 3000) -- son origenes distintos de verdad. Una ruta relativa ahi se queda pegada al origen de
+// Expo (nunca sale de localhost:8081) y cae de vuelta al AdminNavigator viejo de React Native en
+// vez de llegar al dashboard nuevo. EXPO_PUBLIC_WORKSPACE_ORIGIN resuelve eso solo para dev: se
+// deja vacio en produccion (mismo origen, como debe ser) y se define en
+// nexxus/app/.env.local (gitignored) apuntando a http://localhost:3000 para probar localmente.
+const WORKSPACE_ORIGIN = process.env.EXPO_PUBLIC_WORKSPACE_ORIGIN || '';
+const WORKSPACE_DASHBOARD_PATH = `${WORKSPACE_ORIGIN}/workspace/admin/nexxus-superadmin`;
+const WORKSPACE_ADMIN_EMPRESA_PATH = `${WORKSPACE_ORIGIN}/workspace/admin/empresa-resumen`;
+
 function formatPhoneNumber(rawDigits: string, prefix: string): string {
   const config = PHONE_CONFIGS[prefix] || FALLBACK_PHONE_CONFIG;
   const clean = rawDigits.replace(/\D/g, '').slice(0, config.maxLength);
@@ -792,14 +808,19 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
   };
 
   // Prepara continuarSegunUsuario; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
-  // Un super_admin entra directo a la app (panel de plataforma); el resto de roles vuelve a la landing,
-  // igual que antes. La comprobación de rol se hace contra Firestore, nunca contra el correo escrito.
+  // super_admin y admin_empresa entran directo al nuevo dashboard (Horizon, servido en /workspace
+  // del mismo origen), cada uno a su propio panel; el resto de roles vuelve a la landing, igual
+  // que antes. La comprobación de rol se hace contra Firestore, nunca contra el correo escrito.
   const continuarSegunUsuario = async (uid: string) => {
     try {
       const snap = await getDoc(doc(db, 'usuarios', uid));
       const rol = snap.exists() ? String(snap.data()?.rol || snap.data()?.role || '').trim().toLowerCase() : '';
       if (rol === 'super_admin') {
-        window.location.assign('/workspace-login');
+        window.location.assign(WORKSPACE_DASHBOARD_PATH);
+        return;
+      }
+      if (rol === 'admin' || rol === 'admin_empresa') {
+        window.location.assign(WORKSPACE_ADMIN_EMPRESA_PATH);
         return;
       }
     } catch {

@@ -614,7 +614,11 @@ service cloud.firestore {
     }
 
     match /configuraciones_empresa/{id} {
-      allow read: if autenticado() && (esSuperAdmin() || accesoEmpresa(resource.data.empresaId));
+      // El doc se lee por id == empresaId antes de que exista (config con default en el
+      // cliente mientras el admin no la haya guardado); sin el chequeo resource==null, leer un
+      // doc inexistente evalua resource.data sobre null y Firestore lo reporta como "permission
+      // denied" en vez de simplemente no encontrado.
+      allow read: if autenticado() && (esSuperAdmin() || resource == null || accesoEmpresa(resource.data.empresaId));
       allow create: if autenticado() && puedeCrearTenant() && esAdminEmpresa();
       allow update, delete: if autenticado() && mantieneTenant() && esAdminEmpresa();
     }
