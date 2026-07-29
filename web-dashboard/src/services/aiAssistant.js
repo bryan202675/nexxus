@@ -228,8 +228,36 @@ async function callGemini({ caller, prompt, response, history = [] }) {
 const EVENT_TIPOS = ["reunion", "recordatorio", "capacitacion", "vacaciones", "turno", "corporativo"];
 const NOTIF_TIPOS = ["info", "tarea", "anuncio", "ausencia", "bienestar", "aprobacion"];
 
+// Nombres de ruta que el prompt de Gemini conoce (ver "Rutas disponibles del admin dashboard"
+// arriba) mapeados a los paths reales del router de web-dashboard.
+const REDIRECT_ROUTES = {
+  DashboardGeneral: "/workspace/admin/empresa-resumen",
+  CentroReportesSolicitudes: "/workspace/admin/empresa-solicitudes",
+  GestionAsistencia: "/workspace/admin/empresa-asistencia",
+  CalendarioEmpresarial: "/workspace/admin/empresa-calendario",
+  GestionPlantilla: "/workspace/admin/empresa-plantilla",
+  GestionNomina: "/workspace/admin/empresa-nomina",
+  GestionInventario: "/workspace/admin/empresa-inventario",
+  MensajeriaInternaAdmin: "/workspace/admin/empresa-mensajeria",
+  ComunicacionAdmin: "/workspace/admin/empresa-comunicacion",
+  GestionDocumentos: "/workspace/admin/empresa-documentos",
+  AuditoriaLogs: "/workspace/admin/empresa-auditoria",
+  ConfiguracionAdmin: "/workspace/admin/empresa-configuracion",
+};
+
 async function procesarTags(texto, caller) {
   let cleanText = texto;
+  let redirect = null;
+
+  const redirectMatch = cleanText.match(/\[REDIRECT:(\w+)\|([^\]]+)\]/);
+  if (redirectMatch) {
+    const [, ruta, etiqueta] = redirectMatch;
+    const path = REDIRECT_ROUTES[ruta];
+    if (path) {
+      redirect = { path, etiqueta: safeString(etiqueta, 60) };
+    }
+    cleanText = cleanText.replace(/\[REDIRECT:(\w+)\|([^\]]+)\]/, "").trim();
+  }
 
   let notifMatch;
   while ((notifMatch = cleanText.match(/\[NOTIFICATION:(\w+)\|([^|]+)\|([^\]]+)\]/))) {
@@ -272,7 +300,7 @@ async function procesarTags(texto, caller) {
     cleanText = cleanText.replace(/\[EVENT:([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^\]]+)\]/, "").trim();
   }
 
-  return cleanText;
+  return { cleanText, redirect };
 }
 
 // --- Orquestador principal, equivalente a exports.askNexxusAI pero corriendo en el navegador ---
@@ -288,8 +316,8 @@ export async function askNexxusAI({ caller, prompt, history = [] }) {
   const gemini = await callGemini({ caller, prompt: cleanPrompt, response, history });
   let provider = "deterministic";
   if (gemini) {
-    const cleanText = await procesarTags(gemini.text, caller);
-    response = { ...response, respuesta: cleanText };
+    const { cleanText, redirect } = await procesarTags(gemini.text, caller);
+    response = { ...response, respuesta: cleanText, redirect };
     provider = "gemini";
   }
 

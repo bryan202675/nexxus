@@ -6,16 +6,18 @@ import {
   MdOutlineSupervisorAccount,
   MdOutlineBadge,
 } from "react-icons/md";
-import { doc, updateDoc, deleteDoc, setDoc } from "firebase/firestore";
-import { getAuth, createUserWithEmailAndPassword, signOut } from "firebase/auth";
+import { doc, updateDoc, deleteDoc, setDoc, addDoc, collection } from "firebase/firestore";
+import { getAuth, createUserWithEmailAndPassword, signOut, signInWithEmailAndPassword, updatePassword } from "firebase/auth";
 
 import NexxusCard from "views/nexxus/components/NexxusCard";
 import NexxusWidget from "views/nexxus/components/NexxusWidget";
 import DataTable from "views/nexxus/components/DataTable";
+import Modal from "components/nexxus/Modal";
 import Avatar from "components/nexxus/Avatar";
 import InputField from "components/fields/InputField";
 
 import { useAuth } from "context/AuthContext";
+import { useEmpresaPlan, limiteAlcanzado } from "services/planEnforcement";
 import { getSecondaryApp } from "firebaseClient/firebaseConfig";
 import { db, subscribeEmpleados, subscribeSedes, subscribeCargos } from "services/adminRepository";
 import { etiquetaRol, ROLE_OPTIONS } from "services/saFormat";
@@ -46,7 +48,7 @@ const mapEmpleado = (docSnap) => {
     id: docSnap.id,
     nombre: textValue(data.nombre, "Sin nombre"),
     correo: textValue(data.correo, textValue(data.email)),
-    usuarioInterno: textValue(data.usuarioInterno),
+    usuario: textValue(data.usuario, textValue(data.usuarioInterno)),
     rol: normalizeRol(data.rol),
     rolOperativo: textValue(data.rolOperativo),
     cargoId: textValue(data.cargoId),
@@ -122,10 +124,11 @@ const SelectListaField = ({ label, id, value, onChange, opciones }) => (
   </div>
 );
 
-const EMPTY_CREATE_FORM = { nombre: "", correo: "", contrasena: "", rol: "empleado", cargo: "", departamento: "", sede: "" };
+const EMPTY_CREATE_FORM = { nombre: "", correo: "", usuario: "", contrasena: "", rol: "empleado", cargo: "", departamento: "", sede: "" };
 
 export default function GestionPlantilla() {
-  const { empresaId } = useAuth();
+  const { empresaId, user } = useAuth();
+  const { plan, planLimits, codigoEmpresa } = useEmpresaPlan();
 
   const [empleadosDocs, setEmpleadosDocs] = useState([]);
   const [sedes, setSedes] = useState([]);
@@ -149,6 +152,19 @@ export default function GestionPlantilla() {
   const [createForm, setCreateForm] = useState(EMPTY_CREATE_FORM);
   const [creatingEmpleado, setCreatingEmpleado] = useState(false);
   const [createError, setCreateError] = useState("");
+
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [taskForm, setTaskForm] = useState({
+    tipoAsignacion: "todos", // todos, empleados, departamentos, cargos, sedes
+    seleccionados: [],
+    titulo: "",
+    descripcion: "",
+    urgencia: "media",
+    fechaLimite: "",
+  });
+  const [assigningTask, setAssigningTask] = useState(false);
+  const [taskError, setTaskError] = useState("");
+  const [taskSuccess, setTaskSuccess] = useState("");
 
   useEffect(() => {
     if (!empresaId) return;
@@ -194,6 +210,8 @@ export default function GestionPlantilla() {
     setEditForm({
       nombre: selectedEmpleado.nombre || "",
       correo: selectedEmpleado.correo || "",
+      usuario: selectedEmpleado.usuario || "",
+      contrasena: selectedEmpleado.contrasena || "",
       telefono: selectedEmpleado.telefono || "",
       cargo: selectedEmpleado.cargo || "",
       departamento: selectedEmpleado.departamento || "",
@@ -249,9 +267,22 @@ export default function GestionPlantilla() {
     setBusyAction("guardar");
     setActionMsg("");
     try {
+      if (editForm.contrasena && editForm.contrasena !== selectedEmpleado.contrasena) {
+        const secondaryAuth = getAuth(getSecondaryApp());
+        try {
+          await signInWithEmailAndPassword(secondaryAuth, selectedEmpleado.correo, selectedEmpleado.contrasena);
+          await updatePassword(secondaryAuth.currentUser, editForm.contrasena);
+          await signOut(secondaryAuth);
+        } catch (authErr) {
+          throw new Error("No se pudo actualizar la contraseña de autenticación: " + authErr.message);
+        }
+      }
+
       await updateDoc(doc(db, "usuarios", selectedEmpleado.id), {
         nombre: editForm.nombre,
         correo: editForm.correo,
+        usuario: editForm.usuario,
+        contrasena: editForm.contrasena,
         telefono: editForm.telefono,
         cargo: editForm.cargo,
         departamento: editForm.departamento,
@@ -312,10 +343,16 @@ export default function GestionPlantilla() {
     }
   };
 
+  const limiteEmpleadosAlcanzado = limiteAlcanzado(empleadosDocs.length, planLimits.employees);
+
   const handleCrearEmpleado = async (event) => {
     event.preventDefault();
     setCreateError("");
     if (!empresaId) return;
+    if (limiteEmpleadosAlcanzado) {
+      setCreateError(`Tu plan ${plan} permite hasta ${planLimits.employees} empleados. Actualiza de plan para agregar más.`);
+      return;
+    }
     if (!createForm.nombre.trim() || !createForm.correo.trim() || createForm.contrasena.length < 6) {
       setCreateError("Nombre, correo y una contraseña de al menos 6 caracteres son obligatorios.");
       return;
@@ -335,6 +372,8 @@ export default function GestionPlantilla() {
         id: uid,
         nombre: createForm.nombre.trim(),
         correo: createForm.correo.trim().toLowerCase(),
+        usuario: createForm.usuario.trim(),
+        contrasena: createForm.contrasena,
         rol: createForm.rol,
         cargo: createForm.cargo,
         departamento: createForm.departamento,
@@ -351,6 +390,81 @@ export default function GestionPlantilla() {
       setCreateError(err.message || "No se pudo crear el empleado.");
     } finally {
       setCreatingEmpleado(false);
+    }
+  };
+
+  const handleAssignTask = async (e) => {
+    e.preventDefault();
+    setTaskError("");
+    setTaskSuccess("");
+    if (!taskForm.titulo.trim() || !taskForm.descripcion.trim()) {
+      setTaskError("El título y la descripción son obligatorios.");
+      return;
+    }
+    
+    if (taskForm.tipoAsignacion !== "todos" && taskForm.seleccionados.length === 0) {
+      setTaskError("Debes seleccionar al menos una opción para asignar.");
+      return;
+    }
+
+    setAssigningTask(true);
+    
+    try {
+      const dbEmpleados = empleados;
+      let targetEmpleados = [];
+      
+      switch (taskForm.tipoAsignacion) {
+        case "todos":
+          targetEmpleados = dbEmpleados;
+          break;
+        case "empleados":
+          targetEmpleados = dbEmpleados.filter(e => taskForm.seleccionados.includes(e.id));
+          break;
+        case "departamentos":
+          targetEmpleados = dbEmpleados.filter(e => e.departamento && taskForm.seleccionados.includes(e.departamento));
+          break;
+        case "cargos":
+          targetEmpleados = dbEmpleados.filter(e => e.cargo && taskForm.seleccionados.includes(e.cargo));
+          break;
+        case "sedes":
+          targetEmpleados = dbEmpleados.filter(e => e.sede && taskForm.seleccionados.includes(e.sede));
+          break;
+        default:
+          break;
+      }
+      
+      if (targetEmpleados.length === 0) {
+        throw new Error("No se encontraron empleados que coincidan con la selección.");
+      }
+      
+      const batchPromises = targetEmpleados.map(emp => 
+        addDoc(collection(db, "tareas"), {
+          empresaId,
+          asignadoA: emp.id,
+          asignadoNombre: emp.nombre,
+          titulo: taskForm.titulo.trim(),
+          descripcion: taskForm.descripcion.trim(),
+          urgencia: taskForm.urgencia,
+          fechaLimite: taskForm.fechaLimite || null,
+          estado: "pendiente",
+          creadoPor: user?.uid || "admin",
+          createdAt: new Date().toISOString()
+        })
+      );
+      
+      await Promise.all(batchPromises);
+      
+      setTaskSuccess(`Se han asignado ${targetEmpleados.length} tareas correctamente.`);
+      setTimeout(() => {
+        setShowTaskModal(false);
+        setTaskForm({ tipoAsignacion: "todos", seleccionados: [], titulo: "", descripcion: "", urgencia: "media", fechaLimite: "" });
+        setTaskSuccess("");
+      }, 2000);
+      
+    } catch (err) {
+      setTaskError(err.message || "Ocurrió un error al asignar las tareas.");
+    } finally {
+      setAssigningTask(false);
     }
   };
 
@@ -418,6 +532,15 @@ export default function GestionPlantilla() {
         </p>
       ) : null}
 
+      <div className="mb-6 flex flex-col justify-between gap-4 rounded-xl border border-brand-100 bg-brand-50 p-4 md:flex-row md:items-center dark:border-white/10 dark:bg-navy-900">
+        <div>
+          <h4 className="text-lg font-bold text-navy-700 dark:text-white">Código de Empresa: <span className="ml-2 rounded-lg bg-brand-500 px-3 py-1 text-white tracking-widest">{codigoEmpresa}</span></h4>
+          <p className="mt-1 text-sm text-gray-600 dark:text-white/60">
+            Comparte este código con tus empleados. Lo necesitarán para registrarse o iniciar sesión en la aplicación móvil.
+          </p>
+        </div>
+      </div>
+
       {loading ? (
         <p className="text-sm font-medium text-gray-600 dark:text-white/70">Cargando estadísticas...</p>
       ) : (
@@ -429,7 +552,7 @@ export default function GestionPlantilla() {
       )}
 
       <NexxusCard extra="mt-8 w-full p-4" delay={100}>
-        <div className="grid grid-cols-1 items-end gap-4 md:grid-cols-3 xl:grid-cols-6">
+        <div className="grid grid-cols-1 items-end gap-4 md:grid-cols-4 xl:grid-cols-7">
           <div>
             <label className={selectLabelClasses} htmlFor="filtro-departamento">
               Departamento
@@ -483,7 +606,7 @@ export default function GestionPlantilla() {
             </label>
             <select id="filtro-rol" className={selectClasses} value={filtroRol} onChange={(e) => setFiltroRol(e.target.value)}>
               <option value="">Todos</option>
-              {ROLE_OPTIONS.filter((opt) => opt.value !== "super_admin").map((opt) => (
+              {ROLE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
@@ -504,22 +627,38 @@ export default function GestionPlantilla() {
             </select>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col items-stretch gap-2">
             <button
               type="button"
+              disabled={limiteEmpleadosAlcanzado}
               onClick={() => setShowCreatePanel((prev) => !prev)}
-              className="flex h-12 w-full items-center justify-center rounded-xl bg-brand-500 text-sm font-bold text-white transition hover:bg-brand-600 dark:bg-brand-400"
+              title={limiteEmpleadosAlcanzado ? `Límite de ${planLimits.employees} empleados alcanzado en el plan ${plan}.` : undefined}
+              className="flex h-12 w-full items-center justify-center rounded-xl bg-brand-500 text-sm font-bold text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 dark:bg-brand-400 dark:disabled:bg-white/10 dark:disabled:text-white/40"
             >
               Crear empleado
+            </button>
+            {limiteEmpleadosAlcanzado ? (
+              <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                Límite de {planLimits.employees} empleados alcanzado.
+              </p>
+            ) : null}
+          </div>
+
+          <div className="flex flex-col items-stretch gap-2">
+            <button
+              type="button"
+              onClick={() => setShowTaskModal(true)}
+              className="flex h-12 w-full items-center justify-center rounded-xl border border-brand-500 text-brand-500 text-sm font-bold transition hover:bg-brand-50 dark:border-brand-400 dark:text-brand-400 dark:hover:bg-white/5"
+            >
+              Asignar Tarea
             </button>
           </div>
         </div>
       </NexxusCard>
 
-      {showCreatePanel ? (
-        <NexxusCard extra="mt-8 w-full p-4" delay={100}>
+      <Modal isOpen={showCreatePanel} onClose={() => setShowCreatePanel(false)} title="Crear empleado">
+        <div className="p-2">
           <form onSubmit={handleCrearEmpleado}>
-            <h2 className="mb-3 text-lg font-bold text-navy-700 dark:text-white">Crear empleado</h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <InputField
                 label="Nombre"
@@ -535,6 +674,13 @@ export default function GestionPlantilla() {
                 placeholder="correo@empresa.com"
                 value={createForm.correo}
                 onChange={(e) => setCreateForm((prev) => ({ ...prev, correo: e.target.value }))}
+              />
+              <InputField
+                label="Usuario"
+                id="crear-usuario"
+                placeholder="usuario123"
+                value={createForm.usuario}
+                onChange={(e) => setCreateForm((prev) => ({ ...prev, usuario: e.target.value }))}
               />
               <InputField
                 label="Contraseña inicial"
@@ -594,8 +740,8 @@ export default function GestionPlantilla() {
               </ActionButton>
             </div>
           </form>
-        </NexxusCard>
-      ) : null}
+        </div>
+      </Modal>
 
       <div className="mt-8">
         {loading ? (
@@ -605,18 +751,9 @@ export default function GestionPlantilla() {
         )}
       </div>
 
-      {selectedEmpleado ? (
-        <NexxusCard extra="mt-8 w-full p-4" delay={100}>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-navy-700 dark:text-white">{selectedEmpleado.nombre}</h2>
-            <button
-              type="button"
-              onClick={() => setSelectedEmpleado(null)}
-              className="text-sm font-medium text-gray-600 hover:text-navy-700 dark:text-white/70 dark:hover:text-white"
-            >
-              Cerrar
-            </button>
-          </div>
+      <Modal isOpen={!!selectedEmpleado} onClose={() => setSelectedEmpleado(null)} title={selectedEmpleado?.nombre || "Editar empleado"}>
+        {selectedEmpleado ? (
+        <div className="p-2">
 
           {editForm ? (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -627,10 +764,23 @@ export default function GestionPlantilla() {
                 onChange={(e) => setEditForm((f) => ({ ...f, nombre: e.target.value }))}
               />
               <InputField
-                label="Correo"
+                label="Correo (Login)"
                 id="editar-correo"
                 value={editForm.correo}
                 onChange={(e) => setEditForm((f) => ({ ...f, correo: e.target.value }))}
+              />
+              <InputField
+                label="Usuario"
+                id="editar-usuario"
+                value={editForm.usuario}
+                onChange={(e) => setEditForm((f) => ({ ...f, usuario: e.target.value }))}
+              />
+              <InputField
+                label="Contraseña"
+                id="editar-contrasena"
+                type="text"
+                value={editForm.contrasena}
+                onChange={(e) => setEditForm((f) => ({ ...f, contrasena: e.target.value }))}
               />
               <InputField
                 label="Teléfono"
@@ -705,8 +855,173 @@ export default function GestionPlantilla() {
               Eliminar
             </ActionButton>
           </div>
-        </NexxusCard>
-      ) : null}
+        </div>
+        ) : null}
+      </Modal>
+
+      {/* MODAL PARA ASIGNACION DE TAREAS MASIVAS */}
+      <Modal isOpen={showTaskModal} onClose={() => setShowTaskModal(false)} title="Asignación de Tareas">
+        <div className="p-2">
+          {taskSuccess ? (
+            <div className="mb-4 rounded-lg bg-green-50 p-4 text-green-700 dark:bg-green-400/10 dark:text-green-400">
+              {taskSuccess}
+            </div>
+          ) : (
+            <form onSubmit={handleAssignTask}>
+              {taskError && (
+                <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-500 dark:bg-red-400/10 dark:text-red-400">
+                  {taskError}
+                </p>
+              )}
+              
+              <div className="mb-4">
+                <label className="mb-2 block text-sm font-bold text-navy-700 dark:text-white">Destinatarios</label>
+                <select
+                  className={selectClasses}
+                  value={taskForm.tipoAsignacion}
+                  onChange={(e) => setTaskForm({ ...taskForm, tipoAsignacion: e.target.value, seleccionados: [] })}
+                >
+                  <option value="todos">Toda la empresa ({empleados.length} empleados)</option>
+                  <option value="departamentos">Por Departamento</option>
+                  <option value="cargos">Por Cargo</option>
+                  <option value="sedes">Por Sede</option>
+                  <option value="empleados">Empleados Específicos</option>
+                </select>
+              </div>
+
+              {taskForm.tipoAsignacion !== "todos" && (
+                <div className="mb-4 max-h-40 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50/50 p-3 dark:border-white/10 dark:bg-navy-900">
+                  {taskForm.tipoAsignacion === "departamentos" && departamentosDistintos.map(d => (
+                    <label key={d} className="mb-2 flex items-center gap-2 text-sm text-navy-700 dark:text-white">
+                      <input
+                        type="checkbox"
+                        checked={taskForm.seleccionados.includes(d)}
+                        onChange={(e) => {
+                          const newSel = e.target.checked 
+                            ? [...taskForm.seleccionados, d] 
+                            : taskForm.seleccionados.filter(s => s !== d);
+                          setTaskForm({...taskForm, seleccionados: newSel});
+                        }}
+                        className="rounded border-gray-300 dark:border-white/10 dark:bg-charcoal"
+                      />
+                      {d}
+                    </label>
+                  ))}
+                  {taskForm.tipoAsignacion === "cargos" && cargosDistintos.map(c => (
+                    <label key={c} className="mb-2 flex items-center gap-2 text-sm text-navy-700 dark:text-white">
+                      <input
+                        type="checkbox"
+                        checked={taskForm.seleccionados.includes(c)}
+                        onChange={(e) => {
+                          const newSel = e.target.checked 
+                            ? [...taskForm.seleccionados, c] 
+                            : taskForm.seleccionados.filter(s => s !== c);
+                          setTaskForm({...taskForm, seleccionados: newSel});
+                        }}
+                        className="rounded border-gray-300 dark:border-white/10 dark:bg-charcoal"
+                      />
+                      {c}
+                    </label>
+                  ))}
+                  {taskForm.tipoAsignacion === "sedes" && sedesDistintas.map(s => (
+                    <label key={s} className="mb-2 flex items-center gap-2 text-sm text-navy-700 dark:text-white">
+                      <input
+                        type="checkbox"
+                        checked={taskForm.seleccionados.includes(s)}
+                        onChange={(e) => {
+                          const newSel = e.target.checked 
+                            ? [...taskForm.seleccionados, s] 
+                            : taskForm.seleccionados.filter(sel => sel !== s);
+                          setTaskForm({...taskForm, seleccionados: newSel});
+                        }}
+                        className="rounded border-gray-300 dark:border-white/10 dark:bg-charcoal"
+                      />
+                      {s}
+                    </label>
+                  ))}
+                  {taskForm.tipoAsignacion === "empleados" && empleados.map(e => (
+                    <label key={e.id} className="mb-2 flex items-center gap-2 text-sm text-navy-700 dark:text-white">
+                      <input
+                        type="checkbox"
+                        checked={taskForm.seleccionados.includes(e.id)}
+                        onChange={(ev) => {
+                          const newSel = ev.target.checked 
+                            ? [...taskForm.seleccionados, e.id] 
+                            : taskForm.seleccionados.filter(s => s !== e.id);
+                          setTaskForm({...taskForm, seleccionados: newSel});
+                        }}
+                        className="rounded border-gray-300 dark:border-white/10 dark:bg-charcoal"
+                      />
+                      {e.nombre} ({e.rol}) {!e.activo && "(Inactivo)"}
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              <InputField
+                label="Título de la tarea"
+                id="tarea-titulo"
+                placeholder="Ej. Revisión mensual"
+                value={taskForm.titulo}
+                onChange={(e) => setTaskForm({ ...taskForm, titulo: e.target.value })}
+              />
+
+              <div className="mb-4">
+                <label className="mb-2 block text-sm font-bold text-navy-700 dark:text-white">Descripción</label>
+                <textarea
+                  className="w-full rounded-xl border border-gray-200 bg-white/0 p-3 text-sm outline-none dark:border-white/10 dark:bg-charcoal dark:text-white"
+                  rows={3}
+                  placeholder="Detalles de lo que se debe hacer..."
+                  value={taskForm.descripcion}
+                  onChange={(e) => setTaskForm({ ...taskForm, descripcion: e.target.value })}
+                ></textarea>
+              </div>
+
+              <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-bold text-navy-700 dark:text-white">Urgencia</label>
+                  <select
+                    className={selectClasses}
+                    value={taskForm.urgencia}
+                    onChange={(e) => setTaskForm({ ...taskForm, urgencia: e.target.value })}
+                  >
+                    <option value="baja">Baja</option>
+                    <option value="media">Media</option>
+                    <option value="alta">Alta</option>
+                    <option value="urgente">Urgente</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-bold text-navy-700 dark:text-white">Fecha límite (Opcional)</label>
+                  <input
+                    type="date"
+                    className="flex h-12 w-full items-center justify-center rounded-xl border border-gray-200 bg-white/0 p-3 text-sm outline-none dark:border-white/10 dark:bg-charcoal dark:text-white"
+                    value={taskForm.fechaLimite}
+                    onChange={(e) => setTaskForm({ ...taskForm, fechaLimite: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowTaskModal(false)}
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-navy-700 transition hover:bg-gray-100 dark:text-white dark:hover:bg-white/10"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={assigningTask}
+                  className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-600 disabled:opacity-50"
+                >
+                  {assigningTask ? "Asignando..." : "Asignar Tareas"}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

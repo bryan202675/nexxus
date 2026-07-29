@@ -12,6 +12,7 @@ import NexxusWidget from "views/nexxus/components/NexxusWidget";
 import DataTable from "views/nexxus/components/DataTable";
 import Avatar from "components/nexxus/Avatar";
 import InputField from "components/fields/InputField";
+import Modal from "components/nexxus/Modal";
 import { useAuth } from "context/AuthContext";
 import {
   getPlatformStats,
@@ -46,11 +47,11 @@ const ESTADO_OPTIONS = [
 
 function InfoField({ label, value }) {
   return (
-    <div>
+    <div className="min-w-0">
       <p className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-white/50">
         {label}
       </p>
-      <p className="mt-1 text-sm font-medium text-navy-700 dark:text-white">{value}</p>
+      <p className="mt-1 break-words text-sm font-medium text-navy-700 dark:text-white">{value}</p>
     </div>
   );
 }
@@ -377,10 +378,9 @@ export default function Empresas() {
         </button>
       </div>
 
-      {showCreatePanel ? (
-        <NexxusCard extra="mb-5 w-full p-4">
+      <Modal isOpen={showCreatePanel} onClose={() => setShowCreatePanel(false)} title="Crear empresa">
+        <div className="p-2">
           <form onSubmit={handleCrearEmpresa}>
-            <h2 className="mb-3 text-lg font-bold text-navy-700 dark:text-white">Crear empresa</h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <InputField
                 label="Nombre de la empresa"
@@ -441,8 +441,8 @@ export default function Empresas() {
               </button>
             </div>
           </form>
-        </NexxusCard>
-      ) : null}
+        </div>
+      </Modal>
 
       {statsError ? (
         <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-500 dark:bg-red-400/10 dark:text-red-400">
@@ -543,29 +543,8 @@ export default function Empresas() {
         )}
       </div>
 
-      {selectedId ? (
-        <NexxusCard extra="mt-5 w-full p-6" delay={150}>
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-4">
-              <Avatar src={detail.empresa?.logoUrl} name={detail.empresa?.nombre} size={14} />
-              <div>
-                <h2 className="text-xl font-bold text-navy-700 dark:text-white">
-                  {detail.empresa?.nombre || "Cargando..."}
-                </h2>
-                <p className="text-sm text-gray-600 dark:text-white/70">
-                  Código: {detail.empresa?.codigo || "—"}
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setSelectedId(null)}
-              className="text-sm font-medium text-gray-600 hover:text-navy-700 dark:text-white/70 dark:hover:text-white"
-            >
-              Cerrar ✕
-            </button>
-          </div>
-
+      <Modal isOpen={!!selectedId} onClose={() => setSelectedId(null)} title="Detalle de la empresa">
+        <div className="p-2">
           {detailError ? (
             <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-500 dark:bg-red-400/10 dark:text-red-400">
               {detailError}
@@ -584,6 +563,18 @@ export default function Empresas() {
             )
           ) : (
             <>
+              <div className="flex flex-col md:flex-row items-center gap-4">
+                <Avatar src={detail.empresa?.logoUrl} name={detail.empresa?.nombre} size={24} />
+                <div className="text-center md:text-left">
+                  <h2 className="text-2xl font-bold text-navy-700 dark:text-white">
+                    {detail.empresa?.nombre || "Cargando..."}
+                  </h2>
+                  <p className="text-sm text-gray-600 dark:text-white/70">
+                    Código: {detail.empresa?.codigo || "—"}
+                  </p>
+                </div>
+              </div>
+
               <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <InfoField label="Giro" value={detail.empresa.giro || "—"} />
                 <InfoField label="Tamaño de equipo" value={detail.empresa.tamanoEquipo || "—"} />
@@ -744,11 +735,12 @@ export default function Empresas() {
                     delay={100}
                   />
                 ) : (
-                  <NexxusCard extra="p-4" delay={100}>
+                  <div className="rounded-[20px] bg-white p-4 shadow-3xl shadow-shadow-500 dark:!bg-navy-800 dark:text-white dark:shadow-none">
+                    <h4 className="mb-2 text-lg font-bold text-navy-700 dark:text-white">Usuarios</h4>
                     <p className="text-sm font-medium text-gray-600 dark:text-white/70">
                       Esta empresa no tiene usuarios registrados.
                     </p>
-                  </NexxusCard>
+                  </div>
                 )}
                 {pagosFilas.length > 0 ? (
                   <DataTable
@@ -759,17 +751,18 @@ export default function Empresas() {
                     delay={150}
                   />
                 ) : (
-                  <NexxusCard extra="p-4" delay={150}>
+                  <div className="rounded-[20px] bg-white p-4 shadow-3xl shadow-shadow-500 dark:!bg-navy-800 dark:text-white dark:shadow-none">
+                    <h4 className="mb-2 text-lg font-bold text-navy-700 dark:text-white">Pagos recientes</h4>
                     <p className="text-sm font-medium text-gray-600 dark:text-white/70">
                       No hay pagos registrados para esta empresa.
                     </p>
-                  </NexxusCard>
+                  </div>
                 )}
               </div>
             </>
           )}
-        </NexxusCard>
-      ) : null}
+        </div>
+      </Modal>
     </div>
   );
 }

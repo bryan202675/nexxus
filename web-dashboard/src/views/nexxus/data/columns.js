@@ -1,15 +1,15 @@
-export const columnsDataCheck = [
-  { Header: "NAME", accessor: "name" },
-  { Header: "TEAM", accessor: "team" },
-  { Header: "QUANTITY", accessor: "quantity" },
-  { Header: "DATE", accessor: "date" },
-  { Header: "PROGRESS", accessor: "progress" },
+// Columnas para tablas con datos reales de Firestore (ver services/superAdminRepository.js).
+export const columnsEmpresasRecientes = [
+  { Header: "EMPRESA", accessor: "nombre" },
+  { Header: "PLAN", accessor: "plan" },
+  { Header: "ESTADO", accessor: "estado" },
+  { Header: "REGISTRADA", accessor: "fecha" },
 ];
 
-export const columnsDataComplex = [
-  { Header: "NAME", accessor: "name" },
-  { Header: "TEAM", accessor: "team" },
-  { Header: "STATUS", accessor: "status" },
-  { Header: "DATE", accessor: "date" },
-  { Header: "PROGRESS", accessor: "progress" },
+export const columnsActividadReciente = [
+  { Header: "ACCIÓN", accessor: "accion" },
+  { Header: "MÓDULO", accessor: "modulo" },
+  { Header: "EMPRESA", accessor: "empresa" },
+  { Header: "FECHA", accessor: "fecha" },
+  { Header: "ESTADO", accessor: "status" },
 ];

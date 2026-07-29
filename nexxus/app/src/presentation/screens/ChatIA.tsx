@@ -349,14 +349,14 @@ export default function ChatIA({ navigation }: Props) {
   const estilos = crearEstilosChat(colores, esOscuro);
 
   const parsearMensajeIA = (texto: string) => {
-    const match = texto.match(/\[REDIRECT:(\w+)\|([^\]]+)\]/);
+    const match = texto.match(/\[REDIRECT:\s*([^|]+?)\s*\|\s*([^\]]+?)\]/i) || texto.match(/\\?\[REDIRECT:\s*([^|]+?)\s*\|\s*([^\]]+?)\\?\]/i);
     if (match) {
-      const cleanText = texto.replace(/\[REDIRECT:(\w+)\|([^\]]+)\]/, '').trim();
+      const cleanText = texto.replace(/\\?\[REDIRECT:\s*([^|]+?)\s*\|\s*([^\]]+?)\\?\]/i, '').trim();
       return {
         texto: cleanText,
         redirect: {
-          ruta: match[1],
-          etiqueta: match[2],
+          ruta: match[1].trim(),
+          etiqueta: match[2].trim(),
         }
       };
     }
@@ -380,6 +380,12 @@ export default function ChatIA({ navigation }: Props) {
         titulo={t('chatIA.title')}
         subtitulo={t('chatIA.subtitle')}
         mostrarAtras
+        ocultarAccionesDerechas={true}
+        accionDerecha={
+          <TouchableOpacity onPress={limpiarHistorial} style={[estilos.iconoPlano, { backgroundColor: colores.vidrio, borderColor: colores.borde }]}>
+            <MaterialIcons name="cleaning-services" size={19} color={colores.texto} />
+          </TouchableOpacity>
+        }
       />
 
       {/* Contenedor que ajusta el layout cuando aparece el teclado. */}

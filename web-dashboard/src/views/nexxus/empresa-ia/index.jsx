@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { MdSend, MdOutlineAutoAwesome } from "react-icons/md";
+import { useNavigate } from "react-router-dom";
+import { MdSend, MdArrowForward } from "react-icons/md";
+import { BsStars } from "react-icons/bs";
 
 import NexxusCard from "views/nexxus/components/NexxusCard";
 import Avatar from "components/nexxus/Avatar";
 import { useAuth } from "context/AuthContext";
 import { askNexxusAI, isGeminiConfigured } from "services/aiAssistant";
+import { useEmpresaPlan, contarUsoMensualIA, limiteAlcanzado } from "services/planEnforcement";
 
 const SALUDO = {
   rol: "ia",
@@ -12,16 +15,26 @@ const SALUDO = {
 };
 
 export default function ChatIAAdmin() {
+  const navigate = useNavigate();
   const { user, perfil, empresaId, rol } = useAuth();
+  const { plan, planLimits } = useEmpresaPlan();
   const [mensajes, setMensajes] = useState([SALUDO]);
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState("");
+  const [usoMensual, setUsoMensual] = useState(null);
   const finRef = useRef(null);
 
   useEffect(() => {
     finRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [mensajes]);
+
+  useEffect(() => {
+    if (!empresaId) return;
+    contarUsoMensualIA(empresaId).then(setUsoMensual).catch(() => setUsoMensual(null));
+  }, [empresaId]);
+
+  const limiteIaAlcanzado = limiteAlcanzado(usoMensual ?? 0, planLimits.aiRequestsMonthly);
 
   const caller = {
     id: user?.uid || "",
@@ -34,6 +47,10 @@ export default function ChatIAAdmin() {
     event.preventDefault();
     const prompt = texto.trim();
     if (!prompt || enviando) return;
+    if (limiteIaAlcanzado) {
+      setError(`Alcanzaste el límite de ${planLimits.aiRequestsMonthly} consultas mensuales de Nexxus IA del plan ${plan}.`);
+      return;
+    }
     setError("");
     const historyForApi = mensajes.slice(-10);
     setMensajes((prev) => [...prev, { rol: "usuario", texto: prompt }]);
@@ -41,7 +58,11 @@ export default function ChatIAAdmin() {
     setEnviando(true);
     try {
       const respuesta = await askNexxusAI({ caller, prompt, history: historyForApi });
-      setMensajes((prev) => [...prev, { rol: "ia", texto: respuesta.respuesta, provider: respuesta.provider }]);
+      setMensajes((prev) => [
+        ...prev,
+        { rol: "ia", texto: respuesta.respuesta, provider: respuesta.provider, redirect: respuesta.redirect || null },
+      ]);
+      setUsoMensual((actual) => (actual ?? 0) + 1);
     } catch (err) {
       setError(err.message || "No se pudo consultar a Nexxus IA.");
       setMensajes((prev) => [...prev, { rol: "ia", texto: "No pude procesar esa consulta. Intenta de nuevo." }]);
@@ -74,7 +95,7 @@ export default function ChatIAAdmin() {
       <NexxusCard extra="flex h-[70vh] flex-col p-4">
         <div className="mb-3 flex items-center gap-2 border-b border-gray-100 pb-3 dark:border-white/10">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-lightPrimary dark:bg-charcoal-light">
-            <MdOutlineAutoAwesome className="h-5 w-5 text-brand-500 dark:text-white" />
+            <BsStars className="h-5 w-5 text-brand-500 dark:text-white" />
           </div>
           <div>
             <p className="text-sm font-bold text-navy-700 dark:text-white">Nexxus IA</p>
@@ -88,7 +109,7 @@ export default function ChatIAAdmin() {
               <div key={i} className={`flex items-end gap-2 ${m.rol === "usuario" ? "flex-row-reverse" : ""}`}>
                 {m.rol === "ia" ? (
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-lightPrimary dark:bg-charcoal-light">
-                    <MdOutlineAutoAwesome className="h-4 w-4 text-brand-500 dark:text-white" />
+                    <BsStars className="h-4 w-4 text-brand-500 dark:text-white" />
                   </div>
                 ) : (
                   <Avatar src={perfil?.foto_perfil} name={caller.nombre} size={8} />
@@ -101,13 +122,22 @@ export default function ChatIAAdmin() {
                   }`}
                 >
                   {m.texto}
+                  {m.redirect ? (
+                    <button
+                      type="button"
+                      onClick={() => navigate(m.redirect.path)}
+                      className="mt-2 flex items-center gap-1 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-brand-600 dark:bg-brand-400"
+                    >
+                      {m.redirect.etiqueta} <MdArrowForward className="h-3.5 w-3.5" />
+                    </button>
+                  ) : null}
                 </div>
               </div>
             ))}
             {enviando ? (
               <div className="flex items-end gap-2">
                 <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-lightPrimary dark:bg-charcoal-light">
-                  <MdOutlineAutoAwesome className="h-4 w-4 text-brand-500 dark:text-white" />
+                  <BsStars className="h-4 w-4 text-brand-500 dark:text-white" />
                 </div>
                 <div className="rounded-2xl bg-lightPrimary px-4 py-2 text-sm text-gray-500 dark:bg-charcoal-light dark:text-white/60">
                   Escribiendo...
@@ -123,18 +153,23 @@ export default function ChatIAAdmin() {
             type="text"
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
-            placeholder="Pregúntale algo a Nexxus IA..."
-            disabled={enviando}
+            placeholder={limiteIaAlcanzado ? "Límite mensual de Nexxus IA alcanzado" : "Pregúntale algo a Nexxus IA..."}
+            disabled={enviando || limiteIaAlcanzado}
             className="h-11 flex-1 rounded-xl border border-gray-200 bg-white/0 px-4 text-sm text-navy-700 outline-none dark:!border-charcoal-border dark:text-white dark:placeholder:text-white/40"
           />
           <button
             type="submit"
-            disabled={enviando || !texto.trim()}
+            disabled={enviando || !texto.trim() || limiteIaAlcanzado}
             className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-500 text-white transition disabled:cursor-not-allowed disabled:opacity-40 dark:bg-brand-400"
           >
             <MdSend className="h-5 w-5" />
           </button>
         </form>
+        {usoMensual !== null && planLimits.aiRequestsMonthly ? (
+          <p className="mt-2 text-xs text-gray-500 dark:text-white/50">
+            {usoMensual} / {planLimits.aiRequestsMonthly} consultas usadas este mes (plan {plan}).
+          </p>
+        ) : null}
       </NexxusCard>
     </div>
   );

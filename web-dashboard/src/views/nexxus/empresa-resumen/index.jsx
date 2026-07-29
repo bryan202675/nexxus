@@ -205,14 +205,14 @@ export default function DashboardAdmin() {
       {empleados === null ? (
         <p className="text-sm font-medium text-gray-600 dark:text-white/70">Cargando datos de la empresa...</p>
       ) : (
-        <>
+        <div className="flex flex-col gap-8">
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 3xl:grid-cols-6">
             {widgets.map((w, i) => (
               <NexxusWidget key={w.title} {...w} delay={i * 100} />
             ))}
           </div>
 
-          <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <TrendChart
               title="Tareas completadas (8 días)"
               total={String(metricas.tareasCompletadas)}
@@ -245,7 +245,7 @@ export default function DashboardAdmin() {
             </NexxusCard>
           </div>
 
-          <div className="mt-8 grid grid-cols-1 gap-5 xl:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
             <DataTable title="Actividad reciente" columnsData={columnsRecientes} tableData={actividadFilas} readOnly delay={100} />
             <NexxusCard extra="p-4" delay={150}>
               <h4 className="mb-4 text-lg font-bold text-navy-700 dark:text-white">Sin check-in hoy</h4>
@@ -264,7 +264,7 @@ export default function DashboardAdmin() {
             </NexxusCard>
           </div>
 
-          <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
             <NexxusCard extra="p-4" delay={100}>
               <p className="text-sm font-medium text-gray-600 dark:text-white/70">Entradas / salidas hoy</p>
               <p className="mt-1 text-xl font-bold text-navy-700 dark:text-white">
@@ -288,7 +288,7 @@ export default function DashboardAdmin() {
               </p>
             </NexxusCard>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

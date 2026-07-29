@@ -323,6 +323,21 @@ export default function App() {
     };
   }, []);
 
+  // Protege contra el back-forward cache del navegador (mismo mecanismo que web-dashboard):
+  // cerrar sesión y luego pulsar "atrás" puede repintar la última vista tal cual quedó congelada
+  // en memoria en vez de recargarla, sin volver a evaluar el estado de sesión actual. pageshow con
+  // persisted=true detecta ese caso y fuerza una recarga real. Va en el componente raíz (no en
+  // ContextoUsuario/Index.tsx por separado) para cubrir tanto la landing como el resto de la app
+  // con un solo listener siempre montado.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) window.location.reload();
+    };
+    window.addEventListener('pageshow', onPageShow);
+    return () => window.removeEventListener('pageshow', onPageShow);
+  }, []);
+
   if (!fontsLoaded) {
     return (
       <View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>

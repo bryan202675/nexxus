@@ -51,9 +51,9 @@ const RecordsTable = ({ title = "Records", columnsData, tableData, delay = 0 }) 
           );
         }
         return (
-          <p className="text-sm font-bold text-navy-700 dark:text-white">
+          <div className="text-sm font-bold text-navy-700 dark:text-white">
             {info.getValue()}
-          </p>
+          </div>
         );
       },
     })
@@ -78,7 +78,7 @@ const RecordsTable = ({ title = "Records", columnsData, tableData, delay = 0 }) 
         </div>
       </div>
 
-      <div className="mt-8 overflow-x-scroll xl:overflow-x-hidden">
+      <div className="mt-8 overflow-x-auto">
         <table className="w-full">
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (

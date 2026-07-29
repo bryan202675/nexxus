@@ -155,7 +155,13 @@ service cloud.firestore {
     }
 
     match /empresas/{empresaId} {
-      allow get, list: if autenticado() && (esSuperAdmin() || accesoEmpresa(empresaId));
+      // "list" queda abierto a cualquier autenticado (no solo tenant/superadmin) porque el
+      // registro de empresas nuevas necesita poder consultar "nombre_normalizado == X" para
+      // bloquear nombres duplicados ANTES de que el usuario tenga empresaId/rol asignado — en ese
+      // momento accesoEmpresa()/esAdminEmpresa() siempre son falsos. No expone datos sensibles de
+      // facturación por otro canal: create/update/delete siguen exigiendo dueño real o superadmin.
+      allow get: if autenticado() && (esSuperAdmin() || accesoEmpresa(empresaId));
+      allow list: if autenticado();
       allow create: if autenticado() && (
         esSuperAdmin() ||
         request.resource.data.adminId == request.auth.uid
@@ -353,6 +359,16 @@ service cloud.firestore {
       allow update, delete: if autenticado() && mantieneTenant() && esJefe();
     }
 
+    // FirebaseAnnouncementRepository.ts (nexxus/app) y adminRepository.js (web-dashboard) leen y
+    // escriben "announcements" (inglés) -- la coleccion real que usa la app de Comunicacion, no
+    // "anuncios" (que no tiene escrituras en ningun lado). Le faltaba esta regla por completo, por
+    // eso caia al deny-by-default de Firestore ("Missing or insufficient permissions").
+    match /announcements/{id} {
+      allow read: if autenticado() && puedeLeerTenant(resource.data);
+      allow create: if autenticado() && puedeCrearTenant() && esJefe();
+      allow update, delete: if autenticado() && mantieneTenant() && esJefe();
+    }
+
     match /conversaciones/{id} {
       allow read: if autenticado() && (
         esSuperAdmin() ||
@@ -380,10 +396,8 @@ service cloud.firestore {
     match /mensajes/{id} {
       allow read: if autenticado() && (
         esSuperAdmin() ||
-        (puedeLeerTenant(resource.data) && (
-          participaEnConversacion(resource.data.conversacionId) ||
-          esJefe()
-        ))
+        participaEnConversacion(resource.data.conversacionId) ||
+        (esJefe() && puedeLeerTenant(resource.data))
       );
       allow create: if autenticado() && puedeCrearTenant() &&
         request.resource.data.remitenteId == request.auth.uid &&

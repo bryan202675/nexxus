@@ -10,6 +10,7 @@ import {
 import NexxusCard from "views/nexxus/components/NexxusCard";
 import NexxusWidget from "views/nexxus/components/NexxusWidget";
 import DataTable from "views/nexxus/components/DataTable";
+import Modal from "components/nexxus/Modal";
 
 import { useAuth } from "context/AuthContext";
 import { db, subscribeInventario, subscribeIncidencias, subscribeEmpleados } from "services/adminRepository";
@@ -64,10 +65,12 @@ export default function GestionInventario() {
   const [formActivo, setFormActivo] = useState({ nombre: "", categoria: "", codigo: "", serie: "", ubicacion: "", notas: "" });
   const [creando, setCreando] = useState(false);
   const [crearError, setCrearError] = useState("");
+  const [showCrearActivo, setShowCrearActivo] = useState(false);
 
   const [formIncidencia, setFormIncidencia] = useState({ activoId: "", descripcion: "", prioridad: "media" });
   const [reportando, setReportando] = useState(false);
   const [reportarError, setReportarError] = useState("");
+  const [showReportarIncidencia, setShowReportarIncidencia] = useState(false);
 
   useEffect(() => {
     if (!empresaId) return undefined;
@@ -136,6 +139,7 @@ export default function GestionInventario() {
       });
       await registrarMovimiento(ref.id, "alta");
       setFormActivo({ nombre: "", categoria: "", codigo: "", serie: "", ubicacion: "", notas: "" });
+      setShowCrearActivo(false);
     } catch (err) {
       setCrearError(err.message || "No se pudo registrar el activo.");
     } finally {
@@ -206,6 +210,7 @@ export default function GestionInventario() {
         fechaCreacion: new Date().toISOString(),
       });
       setFormIncidencia({ activoId: "", descripcion: "", prioridad: "media" });
+      setShowReportarIncidencia(false);
     } catch (err) {
       setReportarError(err.message || "No se pudo reportar la incidencia.");
     } finally {
@@ -378,109 +383,151 @@ export default function GestionInventario() {
             ))}
           </div>
 
-          <NexxusCard extra="mt-8 w-full p-4">
-            <h4 className="mb-4 text-lg font-bold text-navy-700 dark:text-white">Registrar activo</h4>
-            {crearError ? (
-              <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-500 dark:bg-red-400/10 dark:text-red-400">
-                {crearError}
-              </p>
-            ) : null}
-            <form onSubmit={handleCrearActivo} className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6">
-              <input
-                type="text"
-                placeholder="Nombre"
-                value={formActivo.nombre}
-                onChange={(e) => setFormActivo((prev) => ({ ...prev, nombre: e.target.value }))}
-                className={inputClasses}
-              />
-              <input
-                type="text"
-                placeholder="Categoría"
-                value={formActivo.categoria}
-                onChange={(e) => setFormActivo((prev) => ({ ...prev, categoria: e.target.value }))}
-                className={inputClasses}
-              />
-              <input
-                type="text"
-                placeholder="Código"
-                value={formActivo.codigo}
-                onChange={(e) => setFormActivo((prev) => ({ ...prev, codigo: e.target.value }))}
-                className={inputClasses}
-              />
-              <input
-                type="text"
-                placeholder="Serie (opcional)"
-                value={formActivo.serie}
-                onChange={(e) => setFormActivo((prev) => ({ ...prev, serie: e.target.value }))}
-                className={inputClasses}
-              />
-              <input
-                type="text"
-                placeholder="Ubicación (opcional)"
-                value={formActivo.ubicacion}
-                onChange={(e) => setFormActivo((prev) => ({ ...prev, ubicacion: e.target.value }))}
-                className={inputClasses}
-              />
-              <button
-                type="submit"
-                disabled={creando}
-                className="h-11 rounded-xl bg-brand-500 px-4 text-sm font-bold text-white transition disabled:opacity-40 dark:bg-brand-400"
-              >
-                {creando ? "Guardando..." : "Registrar"}
-              </button>
-            </form>
-          </NexxusCard>
-
-          <div className="mt-8">
-            <DataTable title="Activos" columnsData={columnasActivos} tableData={filasActivos} delay={100} />
+          <div className="mt-8 flex items-center justify-between">
+            <h4 className="text-lg font-bold text-navy-700 dark:text-white">Activos</h4>
+            <button
+              type="button"
+              onClick={() => setShowCrearActivo(true)}
+              className="rounded-xl bg-brand-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-brand-600 dark:bg-brand-400"
+            >
+              Registrar activo
+            </button>
           </div>
 
-          <NexxusCard extra="mt-8 w-full p-4">
-            <h4 className="mb-4 text-lg font-bold text-navy-700 dark:text-white">Reportar incidencia</h4>
-            {reportarError ? (
-              <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-500 dark:bg-red-400/10 dark:text-red-400">
-                {reportarError}
-              </p>
-            ) : null}
-            <form onSubmit={handleReportarIncidencia} className="grid grid-cols-1 gap-3 md:grid-cols-4">
-              <select
-                value={formIncidencia.activoId}
-                onChange={(e) => setFormIncidencia((prev) => ({ ...prev, activoId: e.target.value }))}
-                className={inputClasses}
-              >
-                <option value="" className="dark:bg-charcoal">Selecciona un activo...</option>
-                {(activos || []).map((a) => (
-                  <option key={a.id} value={a.id} className="dark:bg-charcoal">
-                    {a.nombre} ({a.codigo})
-                  </option>
-                ))}
-              </select>
-              <input
-                type="text"
-                placeholder="Descripción"
-                value={formIncidencia.descripcion}
-                onChange={(e) => setFormIncidencia((prev) => ({ ...prev, descripcion: e.target.value }))}
-                className={`${inputClasses} md:col-span-2`}
-              />
-              <select
-                value={formIncidencia.prioridad}
-                onChange={(e) => setFormIncidencia((prev) => ({ ...prev, prioridad: e.target.value }))}
-                className={inputClasses}
-              >
-                <option value="baja" className="dark:bg-charcoal">Baja</option>
-                <option value="media" className="dark:bg-charcoal">Media</option>
-                <option value="alta" className="dark:bg-charcoal">Alta</option>
-                <option value="urgente" className="dark:bg-charcoal">Urgente</option>
-              </select>
-              <button
-                type="submit"
-                disabled={reportando}
-                className="h-11 rounded-xl bg-red-500 px-4 text-sm font-bold text-white transition disabled:opacity-40 dark:bg-red-400 md:col-span-4 xl:col-span-1"
-              >
-                {reportando ? "Enviando..." : "Reportar"}
-              </button>
-            </form>
-          </NexxusCard>
+          <Modal isOpen={showCrearActivo} onClose={() => setShowCrearActivo(false)} title="Registrar activo">
+            <div className="p-2">
+              {crearError ? (
+                <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-500 dark:bg-red-400/10 dark:text-red-400">
+                  {crearError}
+                </p>
+              ) : null}
+              <form onSubmit={handleCrearActivo} className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <input
+                  type="text"
+                  placeholder="Nombre"
+                  value={formActivo.nombre}
+                  onChange={(e) => setFormActivo((prev) => ({ ...prev, nombre: e.target.value }))}
+                  className={inputClasses}
+                />
+                <input
+                  type="text"
+                  placeholder="Categoría"
+                  value={formActivo.categoria}
+                  onChange={(e) => setFormActivo((prev) => ({ ...prev, categoria: e.target.value }))}
+                  className={inputClasses}
+                />
+                <input
+                  type="text"
+                  placeholder="Código"
+                  value={formActivo.codigo}
+                  onChange={(e) => setFormActivo((prev) => ({ ...prev, codigo: e.target.value }))}
+                  className={inputClasses}
+                />
+                <input
+                  type="text"
+                  placeholder="Serie (opcional)"
+                  value={formActivo.serie}
+                  onChange={(e) => setFormActivo((prev) => ({ ...prev, serie: e.target.value }))}
+                  className={inputClasses}
+                />
+                <input
+                  type="text"
+                  placeholder="Ubicación (opcional)"
+                  value={formActivo.ubicacion}
+                  onChange={(e) => setFormActivo((prev) => ({ ...prev, ubicacion: e.target.value }))}
+                  className={inputClasses}
+                />
+                <div className="flex gap-2 md:col-span-2">
+                  <button
+                    type="submit"
+                    disabled={creando}
+                    className="h-11 flex-1 rounded-xl bg-brand-500 px-4 text-sm font-bold text-white transition disabled:opacity-40 dark:bg-brand-400"
+                  >
+                    {creando ? "Guardando..." : "Registrar"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowCrearActivo(false)}
+                    className="h-11 flex-1 rounded-xl bg-gray-100 px-4 text-sm font-bold text-gray-600 transition dark:bg-white/5 dark:text-white/70"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </Modal>
+
+          <div className="mt-4">
+            <DataTable columnsData={columnasActivos} tableData={filasActivos} delay={100} />
+          </div>
+
+          <div className="mt-8 flex items-center justify-between">
+            <h4 className="text-lg font-bold text-navy-700 dark:text-white">Incidencias</h4>
+            <button
+              type="button"
+              onClick={() => setShowReportarIncidencia(true)}
+              className="rounded-xl bg-red-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-600 dark:bg-red-400"
+            >
+              Reportar incidencia
+            </button>
+          </div>
+
+          <Modal isOpen={showReportarIncidencia} onClose={() => setShowReportarIncidencia(false)} title="Reportar incidencia">
+            <div className="p-2">
+              {reportarError ? (
+                <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-500 dark:bg-red-400/10 dark:text-red-400">
+                  {reportarError}
+                </p>
+              ) : null}
+              <form onSubmit={handleReportarIncidencia} className="flex flex-col gap-3">
+                <select
+                  value={formIncidencia.activoId}
+                  onChange={(e) => setFormIncidencia((prev) => ({ ...prev, activoId: e.target.value }))}
+                  className={inputClasses}
+                >
+                  <option value="" className="dark:bg-charcoal">Selecciona un activo...</option>
+                  {(activos || []).map((a) => (
+                    <option key={a.id} value={a.id} className="dark:bg-charcoal">
+                      {a.nombre} ({a.codigo})
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  placeholder="Descripción"
+                  value={formIncidencia.descripcion}
+                  onChange={(e) => setFormIncidencia((prev) => ({ ...prev, descripcion: e.target.value }))}
+                  className={inputClasses}
+                />
+                <select
+                  value={formIncidencia.prioridad}
+                  onChange={(e) => setFormIncidencia((prev) => ({ ...prev, prioridad: e.target.value }))}
+                  className={inputClasses}
+                >
+                  <option value="baja" className="dark:bg-charcoal">Baja</option>
+                  <option value="media" className="dark:bg-charcoal">Media</option>
+                  <option value="alta" className="dark:bg-charcoal">Alta</option>
+                  <option value="urgente" className="dark:bg-charcoal">Urgente</option>
+                </select>
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={reportando}
+                    className="h-11 flex-1 rounded-xl bg-red-500 px-4 text-sm font-bold text-white transition disabled:opacity-40 dark:bg-red-400"
+                  >
+                    {reportando ? "Enviando..." : "Reportar"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowReportarIncidencia(false)}
+                    className="h-11 flex-1 rounded-xl bg-gray-100 px-4 text-sm font-bold text-gray-600 transition dark:bg-white/5 dark:text-white/70"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </Modal>
 
           <div className="mt-8">
             {filasIncidencias.length === 0 ? (

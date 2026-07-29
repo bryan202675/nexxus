@@ -7,6 +7,8 @@ const LEGEND_COLORS = ["#422AFB", "#6AD2FF", "#7551FF"];
 
 const DistributionChart = ({ title, series, labels, delay = 0 }) => {
   const isDark = useIsDarkMode();
+  const total = series.reduce((sum, value) => sum + value, 0);
+  const porcentajes = series.map((value) => (total > 0 ? Math.round((value / total) * 100) : 0));
 
   const options = useMemo(
     () => ({
@@ -51,7 +53,7 @@ const DistributionChart = ({ title, series, labels, delay = 0 }) => {
               </p>
             </div>
             <p className="mt-px text-xl font-bold text-navy-700 dark:text-white">
-              {series[i]}%
+              {porcentajes[i]}%
             </p>
           </div>
         ))}

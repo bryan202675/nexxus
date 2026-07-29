@@ -21,7 +21,9 @@ import NexxusCard from "views/nexxus/components/NexxusCard";
 import NexxusWidget from "views/nexxus/components/NexxusWidget";
 import DataTable from "views/nexxus/components/DataTable";
 import InputField from "components/fields/InputField";
+import Modal from "components/nexxus/Modal";
 import { useAuth } from "context/AuthContext";
+import { useEmpresaPlan, tieneFeature, limiteAlcanzado } from "services/planEnforcement";
 import {
   db,
   subscribeDepartamentos,
@@ -80,6 +82,8 @@ async function logAudit({ empresaId, usuarioId, usuarioNombre, accion, detalles 
 
 export default function EstructuraOrganizativa() {
   const { user, perfil, empresaId } = useAuth();
+  const { plan, planFeatures, planLimits } = useEmpresaPlan();
+  const tieneJefaturas = tieneFeature(planFeatures, "leaders");
   const actor = useMemo(
     () => ({ id: user?.uid || "", nombre: perfil?.nombre || user?.email || "Admin" }),
     [user, perfil]
@@ -179,8 +183,14 @@ export default function EstructuraOrganizativa() {
   const [creatingDept, setCreatingDept] = useState(false);
   const [createDeptError, setCreateDeptError] = useState("");
 
+  const limiteDepartamentosAlcanzado = limiteAlcanzado((departamentos || []).length, planLimits.departments);
+
   const handleCrearDepartamento = async (e) => {
     e.preventDefault();
+    if (limiteDepartamentosAlcanzado) {
+      setCreateDeptError(`Tu plan ${plan} permite hasta ${planLimits.departments} departamentos. Actualiza de plan para agregar más.`);
+      return;
+    }
     if (!createDeptForm.nombre.trim()) {
       setCreateDeptError("El nombre es obligatorio.");
       return;
@@ -351,15 +361,22 @@ export default function EstructuraOrganizativa() {
             <h2 className="text-lg font-bold text-navy-700 dark:text-white">Departamentos</h2>
             <button
               type="button"
+              disabled={limiteDepartamentosAlcanzado}
               onClick={() => setShowCreateDept((v) => !v)}
-              className="flex items-center gap-2 rounded-xl bg-brand-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-brand-600 dark:bg-brand-400"
+              title={limiteDepartamentosAlcanzado ? `Límite de ${planLimits.departments} departamentos alcanzado en el plan ${plan}.` : undefined}
+              className="flex items-center gap-2 rounded-xl bg-brand-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-brand-400"
             >
               <MdAdd className="h-5 w-5" /> Crear departamento
             </button>
           </div>
+          {limiteDepartamentosAlcanzado ? (
+            <p className="mt-2 text-xs font-medium text-amber-600 dark:text-amber-400">
+              Límite de {planLimits.departments} departamentos del plan {plan} alcanzado.
+            </p>
+          ) : null}
 
-          {showCreateDept ? (
-            <NexxusCard extra="mt-4 w-full p-4">
+          <Modal isOpen={showCreateDept} onClose={() => setShowCreateDept(false)} title="Crear departamento">
+            <div className="p-2">
               <form onSubmit={handleCrearDepartamento}>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   <InputField
@@ -389,12 +406,21 @@ export default function EstructuraOrganizativa() {
                       value={createDeptForm.jefeId}
                       onChange={(e) => setCreateDeptForm((f) => ({ ...f, jefeId: e.target.value }))}
                       className={selectClasses}
+                      disabled={!tieneJefaturas}
+                      title={!tieneJefaturas ? "Las jefaturas están disponibles desde el plan Business." : undefined}
                     >
                       <option value="">Sin asignar</option>
-                      {jefesDisponibles.map((j) => (
-                        <option key={j.id} value={j.id}>{j.nombre}</option>
-                      ))}
+                      {tieneJefaturas
+                        ? jefesDisponibles.map((j) => (
+                            <option key={j.id} value={j.id}>{j.nombre}</option>
+                          ))
+                        : null}
                     </select>
+                    {!tieneJefaturas ? (
+                      <p className="mt-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+                        Disponible desde el plan Business.
+                      </p>
+                    ) : null}
                   </div>
                 </div>
                 {createDeptError ? (
@@ -413,8 +439,8 @@ export default function EstructuraOrganizativa() {
                   </button>
                 </div>
               </form>
-            </NexxusCard>
-          ) : null}
+            </div>
+          </Modal>
 
           <div className="mt-4">
             {filasDepartamentos.length === 0 ? (
@@ -435,25 +461,12 @@ export default function EstructuraOrganizativa() {
             )}
           </div>
 
-          {selectedDept ? (
-            <NexxusCard extra="mt-8 w-full p-6" delay={100}>
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-navy-700 dark:text-white">{selectedDept.nombre}</h2>
-                  <p className="text-sm text-gray-600 dark:text-white/70">
-                    Sede: {selectedDept.sedeNombre || "—"} · Jefe: {selectedDept.jefeNombre || "Sin asignar"}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedDeptId(null)}
-                  className="text-sm font-medium text-gray-600 hover:text-navy-700 dark:text-white/70 dark:hover:text-white"
-                >
-                  Cerrar ✕
-                </button>
-              </div>
-
-              <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
+          <Modal isOpen={!!selectedDept} onClose={() => setSelectedDeptId(null)} title={selectedDept?.nombre || ""}>
+            {selectedDept ? (
+            <div className="p-2">
+              <p className="text-sm text-gray-600 dark:text-white/70">
+                Sede: {selectedDept.sedeNombre || "—"} · Jefe: {selectedDept.jefeNombre || "Sin asignar"}
+              </p>              <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-white/50">Plazas</p>
                   <p className="mt-1 text-sm font-medium text-navy-700 dark:text-white">{selectedDept.plazas}</p>
@@ -582,8 +595,9 @@ export default function EstructuraOrganizativa() {
                   <p className="mt-3 text-sm font-medium text-red-500 dark:text-red-400">{deptActionError}</p>
                 ) : null}
               </div>
-            </NexxusCard>
-          ) : null}
+            </div>
+            ) : null}
+          </Modal>
 
           <div className="mt-8 grid grid-cols-1 gap-5 xl:grid-cols-3">
             <CatalogSection
@@ -592,6 +606,7 @@ export default function EstructuraOrganizativa() {
               empresaId={empresaId}
               actor={actor}
               items={sedes || []}
+              limite={planLimits.branches}
               columns={columnsSedes}
               fields={[
                 { key: "nombre", label: "Nombre" },
@@ -655,7 +670,8 @@ export default function EstructuraOrganizativa() {
 // crear/editar/eliminar. Estos documentos son ligeramente estructurados (id, empresaId, nombre
 // + campos variables), así que el formulario solo cubre los campos que definimos como relevantes
 // para esta pantalla, sin tocar el resto de propiedades del documento al guardar.
-function CatalogSection({ title, coleccion, empresaId, actor, items, columns, fields, buildRow, emptyMessage }) {
+function CatalogSection({ title, coleccion, empresaId, actor, items, columns, fields, buildRow, emptyMessage, limite }) {
+  const limiteAlcanzadoAqui = typeof limite === "number" && items.length >= limite;
   const emptyForm = () => Object.fromEntries(fields.map((f) => [f.key, ""]));
 
   const [showCreate, setShowCreate] = useState(false);
@@ -703,6 +719,10 @@ function CatalogSection({ title, coleccion, empresaId, actor, items, columns, fi
 
   const handleCrear = async (e) => {
     e.preventDefault();
+    if (limiteAlcanzadoAqui) {
+      setCreateError(`Tu plan permite hasta ${limite} ${title.toLowerCase()}. Actualiza de plan para agregar más.`);
+      return;
+    }
     if (!createForm.nombre.trim()) {
       setCreateError("El nombre es obligatorio.");
       return;
@@ -780,15 +800,22 @@ function CatalogSection({ title, coleccion, empresaId, actor, items, columns, fi
         <h3 className="text-lg font-bold text-navy-700 dark:text-white">{title}</h3>
         <button
           type="button"
+          disabled={limiteAlcanzadoAqui}
           onClick={() => setShowCreate((v) => !v)}
-          className="flex items-center gap-1 rounded-xl bg-lightPrimary px-3 py-2 text-xs font-bold text-brand-500 dark:bg-charcoal-light dark:text-white"
+          title={limiteAlcanzadoAqui ? `Límite de ${limite} ${title.toLowerCase()} alcanzado en tu plan.` : undefined}
+          className="flex items-center gap-1 rounded-xl bg-lightPrimary px-3 py-2 text-xs font-bold text-brand-500 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-charcoal-light dark:text-white"
         >
           <MdAdd className="h-4 w-4" /> Nuevo
         </button>
       </div>
+      {limiteAlcanzadoAqui ? (
+        <p className="mt-2 text-xs font-medium text-amber-600 dark:text-amber-400">
+          Límite de {limite} {title.toLowerCase()} de tu plan alcanzado.
+        </p>
+      ) : null}
 
-      {showCreate ? (
-        <NexxusCard extra="mt-3 w-full p-4">
+      <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title={`Nuevo registro de ${title.toLowerCase()}`}>
+        <div className="p-2">
           <form onSubmit={handleCrear}>
             <div className="flex flex-col gap-3">
               {fields.map((f) => (
@@ -817,8 +844,8 @@ function CatalogSection({ title, coleccion, empresaId, actor, items, columns, fi
               </button>
             </div>
           </form>
-        </NexxusCard>
-      ) : null}
+        </div>
+      </Modal>
 
       <div className="mt-3">
         {filas.length === 0 ? (
@@ -836,25 +863,15 @@ function CatalogSection({ title, coleccion, empresaId, actor, items, columns, fi
         )}
       </div>
 
-      {selected ? (
-        <NexxusCard extra="mt-3 w-full p-4">
-          <div className="flex items-start justify-between">
-            <h4 className="text-sm font-bold text-navy-700 dark:text-white">{selected.nombre}</h4>
-            <button
-              type="button"
-              onClick={() => setSelectedId(null)}
-              className="text-xs font-medium text-gray-600 hover:text-navy-700 dark:text-white/70 dark:hover:text-white"
-            >
-              Cerrar ✕
-            </button>
-          </div>
-
+      <Modal isOpen={!!selected} onClose={() => setSelectedId(null)} title={selected?.nombre || "Detalles"}>
+        {selected ? (
+        <div className="p-2">
           {!editMode ? (
             <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() => setEditMode(true)}
-                className="rounded-xl bg-lightPrimary px-3 py-2 text-xs font-bold text-brand-500 dark:bg-charcoal-light dark:text-white"
+                className="rounded-xl bg-lightPrimary px-4 py-2 text-sm font-bold text-brand-500 dark:bg-charcoal-light dark:text-white"
               >
                 Editar
               </button>
@@ -896,8 +913,9 @@ function CatalogSection({ title, coleccion, empresaId, actor, items, columns, fi
           {actionError ? (
             <p className="mt-3 text-sm font-medium text-red-500 dark:text-red-400">{actionError}</p>
           ) : null}
-        </NexxusCard>
-      ) : null}
+        </div>
+        ) : null}
+      </Modal>
     </div>
   );
 }

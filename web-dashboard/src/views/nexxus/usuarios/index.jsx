@@ -12,6 +12,7 @@ import NexxusWidget from "views/nexxus/components/NexxusWidget";
 import DataTable from "views/nexxus/components/DataTable";
 import Avatar from "components/nexxus/Avatar";
 import InputField from "components/fields/InputField";
+import Modal from "components/nexxus/Modal";
 
 import {
   getPlatformStats,
@@ -157,6 +158,15 @@ export default function Usuarios() {
     return [...map.values()];
   }, [baseItems, extraItems]);
 
+  // Los docs de usuarios/{uid} guardan empresaId (referencia), no un empresaNombre
+  // denormalizado — sin este mapa, la columna "Empresa" salía vacía para prácticamente todos los
+  // usuarios reales en la vista sin filtrar. companies ya se carga para el selector de filtro.
+  const nombreEmpresaPorId = useMemo(() => {
+    const map = new Map();
+    companies.forEach((empresa) => map.set(empresa.id, empresa.nombre));
+    return map;
+  }, [companies]);
+
   const handleCargarMas = async () => {
     if (filtros.empresaId || !hayMas || !cursor) return;
     setLoadingMore(true);
@@ -283,7 +293,7 @@ export default function Usuarios() {
         ),
         correo: usuario.correo || "—",
         rol: etiquetaRol(usuario.rol),
-        empresa: usuario.empresaNombre || "—",
+        empresa: usuario.empresaNombre || nombreEmpresaPorId.get(usuario.empresaId) || "—",
         estado: (
           <span
             className={`rounded-full px-2 py-1 text-xs font-bold ${
@@ -304,7 +314,7 @@ export default function Usuarios() {
           </button>
         ),
       })),
-    [usuarios]
+    [usuarios, nombreEmpresaPorId]
   );
 
   return (
@@ -400,78 +410,88 @@ export default function Usuarios() {
         </div>
       </NexxusCard>
 
-      {showCreatePanel ? (
-        <NexxusCard extra="mt-5 w-full p-4" delay={100}>
+      <Modal isOpen={showCreatePanel} onClose={() => setShowCreatePanel(false)} title="Crear usuario">
+        <div className="p-2">
           <form onSubmit={handleCrearUsuario}>
-          <h2 className="mb-3 text-lg font-bold text-navy-700 dark:text-white">Crear usuario</h2>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <InputField
-              label="Nombre"
-              id="crear-nombre"
-              placeholder="Nombre completo"
-              value={createForm.nombre}
-              onChange={(e) => setCreateForm((prev) => ({ ...prev, nombre: e.target.value }))}
-            />
-            <InputField
-              label="Correo"
-              id="crear-correo"
-              type="email"
-              placeholder="correo@empresa.com"
-              value={createForm.correo}
-              onChange={(e) => setCreateForm((prev) => ({ ...prev, correo: e.target.value }))}
-            />
-            <InputField
-              label="Contraseña inicial"
-              id="crear-contrasena"
-              type="password"
-              placeholder="Mín. 8 caracteres"
-              value={createForm.contrasena}
-              onChange={(e) => setCreateForm((prev) => ({ ...prev, contrasena: e.target.value }))}
-            />
-            <div>
-              <label className={selectLabelClasses} htmlFor="crear-rol">
-                Rol
-              </label>
-              <select
-                id="crear-rol"
-                className={selectClasses}
-                value={createForm.rol}
-                onChange={(e) => setCreateForm((prev) => ({ ...prev, rol: e.target.value }))}
-              >
-                {ROLE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <InputField
+                label="Nombre"
+                id="crear-nombre"
+                placeholder="Nombre completo"
+                value={createForm.nombre}
+                onChange={(e) => setCreateForm((prev) => ({ ...prev, nombre: e.target.value }))}
+              />
+              <InputField
+                label="Correo"
+                id="crear-correo"
+                type="email"
+                placeholder="correo@empresa.com"
+                value={createForm.correo}
+                onChange={(e) => setCreateForm((prev) => ({ ...prev, correo: e.target.value }))}
+              />
+              <InputField
+                label="Contraseña inicial"
+                id="crear-contrasena"
+                type="password"
+                placeholder="Mín. 8 caracteres"
+                value={createForm.contrasena}
+                onChange={(e) => setCreateForm((prev) => ({ ...prev, contrasena: e.target.value }))}
+              />
+              <div>
+                <label className={selectLabelClasses} htmlFor="crear-rol">
+                  Rol
+                </label>
+                <select
+                  id="crear-rol"
+                  className={selectClasses}
+                  value={createForm.rol}
+                  onChange={(e) => setCreateForm((prev) => ({ ...prev, rol: e.target.value }))}
+                >
+                  {ROLE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={selectLabelClasses} htmlFor="crear-empresa">
+                  Empresa
+                </label>
+                <select
+                  id="crear-empresa"
+                  className={selectClasses}
+                  value={createForm.empresaId}
+                  onChange={(e) => setCreateForm((prev) => ({ ...prev, empresaId: e.target.value }))}
+                >
+                  <option value="">Selecciona una empresa</option>
+                  {companies.map((empresa) => (
+                    <option key={empresa.id} value={empresa.id}>
+                      {empresa.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div>
-              <label className={selectLabelClasses} htmlFor="crear-empresa">
-                Empresa
-              </label>
-              <select
-                id="crear-empresa"
-                className={selectClasses}
-                value={createForm.empresaId}
-                onChange={(e) => setCreateForm((prev) => ({ ...prev, empresaId: e.target.value }))}
+            <div className="mt-4 flex gap-3">
+              <button
+                type="submit"
+                disabled={creatingUser}
+                className="rounded-xl bg-brand-500 px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
               >
-                <option value="">Selecciona una empresa</option>
-                {companies.map((empresa) => (
-                  <option key={empresa.id} value={empresa.id}>
-                    {empresa.nombre}
-                  </option>
-                ))}
-              </select>
+                {creatingUser ? "Creando..." : "Crear usuario"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCreatePanel(false)}
+                className="rounded-xl bg-gray-100 px-4 py-2 text-sm font-bold text-gray-600 dark:bg-white/5 dark:text-white/70"
+              >
+                Cancelar
+              </button>
             </div>
-          </div>
-          <div className="mt-4">
-            <ActionButton type="submit" busy={creatingUser} className="bg-brand-500 dark:bg-brand-400">
-              Crear usuario
-            </ActionButton>
-          </div>
           </form>
-        </NexxusCard>
-      ) : null}
+        </div>
+      </Modal>
 
       <div className="mt-5">
         {loading ? (
@@ -500,26 +520,22 @@ export default function Usuarios() {
         )}
       </div>
 
-      {selectedUser ? (
-        <NexxusCard extra="mt-5 w-full p-4" delay={100}>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-navy-700 dark:text-white">
-              {selectedUser.nombre}
-              {selectedUser.esPropietario ? (
-                <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-xs font-bold text-amber-600 dark:bg-amber-400/10 dark:text-amber-400">
-                  <MdStar className="h-3.5 w-3.5" /> Propietario
-                </span>
-              ) : null}
-            </h2>
-            <button
-              type="button"
-              onClick={() => setSelectedUser(null)}
-              className="text-sm font-medium text-gray-600 hover:text-navy-700 dark:text-white/70 dark:hover:text-white"
-            >
-              Cerrar
-            </button>
+      <Modal
+        isOpen={!!selectedUser}
+        onClose={() => setSelectedUser(null)}
+        title={
+          <div className="flex items-center gap-2">
+            {selectedUser?.nombre}
+            {selectedUser?.esPropietario ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-xs font-bold text-amber-600 dark:bg-amber-400/10 dark:text-amber-400">
+                <MdStar className="h-3.5 w-3.5" /> Propietario
+              </span>
+            ) : null}
           </div>
-
+        }
+      >
+        {selectedUser ? (
+        <div className="p-2">
           {editForm ? (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <InputField
@@ -564,7 +580,7 @@ export default function Usuarios() {
           {actionMsg ? (
             <p className="mt-3 text-sm font-medium text-gray-600 dark:text-white/70">{actionMsg}</p>
           ) : null}
-          <div className="mt-3 flex flex-wrap gap-3">
+          <div className="mt-6 flex flex-wrap gap-3">
             <ActionButton
               busy={busyAction === "guardar"}
               onClick={handleGuardarUsuario}
@@ -573,7 +589,7 @@ export default function Usuarios() {
               Guardar cambios
             </ActionButton>
             <ActionButton busy={busyAction === "banear"} onClick={handleBanear} className="bg-orange-500">
-              {selectedUser.baneado ? "Desbanear" : "Banear"}
+              {selectedUser?.baneado ? "Desbanear" : "Banear"}
             </ActionButton>
             <ActionButton busy={busyAction === "reset"} onClick={handleResetPassword} className="bg-gray-500">
               Enviar correo de restablecimiento
@@ -582,8 +598,9 @@ export default function Usuarios() {
               Eliminar
             </ActionButton>
           </div>
-        </NexxusCard>
-      ) : null}
+        </div>
+        ) : null}
+      </Modal>
     </div>
   );
 }

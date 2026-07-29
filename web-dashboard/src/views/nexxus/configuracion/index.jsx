@@ -222,13 +222,22 @@ export default function Configuracion() {
 
           <NexxusCard extra="p-6" delay={200}>
             <h4 className="mb-4 text-lg font-bold text-navy-700 dark:text-white">Sesión</h4>
-            <button
-              type="button"
-              onClick={cerrarSesion}
-              className="w-full rounded-xl bg-red-500 px-5 py-2 text-sm font-medium text-white transition duration-250 hover:bg-red-600"
-            >
-              Cerrar sesión y salir a la landing
-            </button>
+            <div className="flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={() => window.location.assign(LANDING_URL)}
+                className="w-full rounded-xl border border-gray-200 px-5 py-2 text-sm font-medium text-navy-700 transition duration-250 hover:bg-gray-50 dark:!border-charcoal-border dark:text-white dark:hover:bg-charcoal-light"
+              >
+                Volver a la landing
+              </button>
+              <button
+                type="button"
+                onClick={cerrarSesion}
+                className="w-full rounded-xl bg-red-500 px-5 py-2 text-sm font-medium text-white transition duration-250 hover:bg-red-600"
+              >
+                Cerrar sesión y salir a la landing
+              </button>
+            </div>
           </NexxusCard>
         </div>
       </div>

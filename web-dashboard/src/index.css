@@ -13,6 +13,14 @@
 	}
 }
 
+/* body trae bg-lightPrimary fijo desde public/index.html (no puede llevar dark: ahi, es HTML
+   estatico); sin esto, en modo oscuro se ve una franja blanca donde el contenido no llena el
+   viewport completo (paginas cortas, scroll). ThemeContext pone/quita .dark en <body>. */
+html.dark,
+body.dark {
+	background-color: #0b1437;
+}
+
 input.defaultCheckbox::before {
 	content: url(../src/assets/svg/checked.svg); 
 	color: white;

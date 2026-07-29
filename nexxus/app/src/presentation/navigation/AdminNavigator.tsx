@@ -70,6 +70,13 @@ import GestionAsistencia from '../screens/admin/GestionAsistencia';
 import GestionInventario from '../screens/admin/GestionInventario';
 import ChatIA from '../screens/ChatIA';
 import ChatIAAdmin from '../screens/admin/ChatIAAdmin';
+import {
+  GestionNominaGated,
+  GestionDocumentosGated,
+  GestionInventarioGated,
+  MensajeriaInternaAdminGated,
+  ChatIAAdminGated,
+} from '../screens/admin/PlanGatedScreens';
 // Importa ConfiguracionAdmin; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import ConfiguracionAdmin from '../screens/admin/ConfiguracionAdmin';
 import SaResumen from '../screens/superadmin/SaResumen';
@@ -1763,16 +1770,16 @@ export default function AdminNavigator() {
                 {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
                 <Tab.Screen name="EstructuraOrganizativa" component={EstructuraOrganizativa} />
                 {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
-                <Tab.Screen name="GestionNomina" component={GestionNomina} />
-                <Tab.Screen name="GestionInventario" component={GestionInventario} />
+                <Tab.Screen name="GestionNomina" component={GestionNominaGated} />
+                <Tab.Screen name="GestionInventario" component={GestionInventarioGated} />
                 {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
-                <Tab.Screen name="MensajeriaInternaAdmin" component={MensajeriaInternaAdmin} />
+                <Tab.Screen name="MensajeriaInternaAdmin" component={MensajeriaInternaAdminGated} />
                 {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
-                <Tab.Screen name="ChatIAAdmin" component={ChatIAAdmin} />
+                <Tab.Screen name="ChatIAAdmin" component={ChatIAAdminGated} />
                 {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
                 <Tab.Screen name="ComunicacionAdmin" component={ComunicacionAdmin} />
                 {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
-                <Tab.Screen name="GestionDocumentos" component={GestionDocumentos} />
+                <Tab.Screen name="GestionDocumentos" component={GestionDocumentosGated} />
                 {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
                 <Tab.Screen name="AuditoriaLogs" component={AuditoriaLogs} />
                 {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}

@@ -13,6 +13,7 @@ import { auth, db } from "firebaseClient/firebaseConfig";
 import { db as adminDb, subscribeConfiguracionEmpresa } from "services/adminRepository";
 import { useAuth } from "context/AuthContext";
 import { useTheme } from "context/ThemeContext";
+import { useEmpresaPlan, FEATURE_LABELS } from "services/planEnforcement";
 import { LANDING_URL } from "services/nexxusLinks";
 import NexxusCard from "views/nexxus/components/NexxusCard";
 import InputField from "components/fields/InputField";
@@ -28,6 +29,7 @@ const DEFAULT_ASISTENCIA = {
 export default function ConfiguracionAdmin() {
   const { user, perfil, empresaId, signOut } = useAuth();
   const { dark, toggleDark } = useTheme();
+  const { plan, planFeatures, planLimits, subscriptionStatus: estadoPlan } = useEmpresaPlan();
 
   const usaPassword = user?.providerData?.some((p) => p.providerId === "password");
   const nombreActual = perfil?.nombre || user?.displayName || "";
@@ -158,9 +160,6 @@ export default function ConfiguracionAdmin() {
     window.location.assign(LANDING_URL);
   };
 
-  const plan = perfil?.planActivo || perfil?.plan;
-  const subscriptionStatus = perfil?.subscriptionStatus;
-  const tienePlan = Boolean(plan || subscriptionStatus);
 
   return (
     <div>
@@ -351,25 +350,54 @@ export default function ConfiguracionAdmin() {
             )}
           </NexxusCard>
 
-          {tienePlan ? (
-            <NexxusCard extra="p-6" delay={200}>
-              <h4 className="mb-4 text-lg font-bold text-navy-700 dark:text-white">Plan</h4>
-              <p className="text-sm text-navy-700 dark:text-white/80">Plan: {plan || "Sin plan"}</p>
-              <p className="text-sm text-navy-700 dark:text-white/80">
-                Estado: {subscriptionStatus || "—"}
-              </p>
-            </NexxusCard>
-          ) : null}
+          <NexxusCard extra="p-6" delay={200}>
+            <h4 className="mb-1 text-lg font-bold text-navy-700 dark:text-white">Plan: {plan}</h4>
+            <p className="mb-4 text-xs font-medium text-gray-500 dark:text-white/50">Estado: {estadoPlan}</p>
+
+            <p className="mb-2 text-xs font-bold uppercase text-gray-500 dark:text-white/40">Límites</p>
+            <ul className="mb-4 grid grid-cols-2 gap-x-3 gap-y-1 text-sm text-navy-700 dark:text-white/80">
+              <li>Empleados: {planLimits.employees ?? "Ilimitado"}</li>
+              <li>Departamentos: {planLimits.departments ?? "Ilimitado"}</li>
+              <li>Sedes: {planLimits.branches ?? "Ilimitado"}</li>
+              <li>Almacenamiento: {planLimits.storageGb} GB</li>
+              <li>Consultas IA/mes: {planLimits.aiRequestsMonthly}</li>
+            </ul>
+
+            <p className="mb-2 text-xs font-bold uppercase text-gray-500 dark:text-white/40">Funciones incluidas</p>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(FEATURE_LABELS).map(([key, label]) => (
+                <span
+                  key={key}
+                  className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                    planFeatures[key]
+                      ? "bg-green-50 text-green-600 dark:bg-green-400/10 dark:text-green-400"
+                      : "bg-gray-100 text-gray-400 dark:bg-white/5 dark:text-white/30"
+                  }`}
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+          </NexxusCard>
 
           <NexxusCard extra="p-6" delay={250}>
             <h4 className="mb-4 text-lg font-bold text-navy-700 dark:text-white">Sesión</h4>
-            <button
-              type="button"
-              onClick={cerrarSesion}
-              className="w-full rounded-xl bg-red-500 px-5 py-2 text-sm font-medium text-white transition duration-250 hover:bg-red-600"
-            >
-              Cerrar sesión y salir a la landing
-            </button>
+            <div className="flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={() => window.location.assign(LANDING_URL)}
+                className="w-full rounded-xl border border-gray-200 px-5 py-2 text-sm font-medium text-navy-700 transition duration-250 hover:bg-gray-50 dark:!border-charcoal-border dark:text-white dark:hover:bg-charcoal-light"
+              >
+                Volver a la landing
+              </button>
+              <button
+                type="button"
+                onClick={cerrarSesion}
+                className="w-full rounded-xl bg-red-500 px-5 py-2 text-sm font-medium text-white transition duration-250 hover:bg-red-600"
+              >
+                Cerrar sesión y salir a la landing
+              </button>
+            </div>
           </NexxusCard>
         </div>
       </div>

@@ -1,108 +1,168 @@
+import { useEffect, useMemo, useState } from "react";
+import {
+  MdOutlineBusiness,
+  MdCheckCircle,
+  MdOutlinePeople,
+  MdOutlineHowToReg,
+  MdOutlineAttachMoney,
+  MdOutlineTrendingUp,
+} from "react-icons/md";
+
 import NexxusWidget from "views/nexxus/components/NexxusWidget";
-import RevenueChart from "views/nexxus/components/RevenueChart";
 import TrendChart from "views/nexxus/components/TrendChart";
-import TrafficChart from "views/nexxus/components/TrafficChart";
 import DistributionChart from "views/nexxus/components/DistributionChart";
 import DataTable from "views/nexxus/components/DataTable";
 import RecordsTable from "views/nexxus/components/RecordsTable";
-import TaskList from "views/nexxus/components/TaskList";
-import MiniCalendarCard from "views/nexxus/components/MiniCalendarCard";
-import SystemPanel from "views/nexxus/components/SystemPanel";
 
-import { columnsDataCheck, columnsDataComplex } from "views/nexxus/data/columns";
-import { filterByScope } from "views/nexxus/data/roleFilter";
-import { dashboardConfig } from "views/nexxus/config/dashboardConfig";
-import { ROLES } from "views/nexxus/config/roles";
+import { columnsEmpresasRecientes, columnsActividadReciente } from "views/nexxus/data/columns";
+import { getPlatformStats, subscribePlatform } from "services/superAdminRepository";
+import { formatoMoneda, formatoFecha, etiquetaEstadoEmpresa } from "services/saFormat";
 
-import mockRecords from "views/nexxus/data/mockRecords.json";
-import mockComplexRecords from "views/nexxus/data/mockComplexRecords.json";
-import mockTasks from "views/nexxus/data/mockTasks.json";
-
-const config = dashboardConfig[ROLES.SUPERADMIN];
+const MESES_CORTOS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const AUDIT_STATUS_MAP = { Success: "Approved", Warning: "Error", Error: "Disable" };
 
 const SuperAdminDashboard = () => {
-  const rows = filterByScope(mockRecords, config.dataScope, config.tableRowLimit);
-  const complexRows = filterByScope(mockComplexRecords, config.dataScope, config.tableRowLimit);
-  const tasks = filterByScope(mockTasks, config.dataScope).slice(0, 6);
+  const [stats, setStats] = useState(null);
+  const [snapshot, setSnapshot] = useState({ empresas: [], pagos: [], auditoria: [] });
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    getPlatformStats()
+      .then((value) => active && setStats(value))
+      .catch((err) => active && setError(err.message || "No se pudieron cargar las estadísticas."));
+    const unsubscribe = subscribePlatform(
+      (value) => active && setSnapshot(value),
+      (err) => active && setError(err.message || "No se pudo conectar con Firestore.")
+    );
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, []);
+
+  const ingresosPorMes = useMemo(() => {
+    const buckets = new Map();
+    for (const pago of snapshot.pagos) {
+      if (!pago.createdAt) continue;
+      const date = new Date(pago.createdAt);
+      if (Number.isNaN(date.getTime())) continue;
+      const key = `${date.getFullYear()}-${date.getMonth()}`;
+      buckets.set(key, (buckets.get(key) || 0) + pago.amount);
+    }
+    const now = new Date();
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      months.push({ key, label: MESES_CORTOS[d.getMonth()], value: buckets.get(key) || 0 });
+    }
+    return months;
+  }, [snapshot.pagos]);
+
+  const empresasRecientes = useMemo(() => {
+    return [...snapshot.empresas]
+      .sort((a, b) => (b.fechaCreacion || "").localeCompare(a.fechaCreacion || ""))
+      .slice(0, 6)
+      .map((empresa) => ({
+        nombre: empresa.nombre,
+        plan: empresa.plan,
+        estado: etiquetaEstadoEmpresa(empresa.estado),
+        fecha: formatoFecha(empresa.fechaCreacion),
+      }));
+  }, [snapshot.empresas]);
+
+  // audit_logs no siempre guarda empresaNombre denormalizado (p.ej. aiAssistant.js solo guarda
+  // empresaId) -- sin este mapa, "Empresa" salía vacía para casi todos los registros.
+  const nombreEmpresaPorId = useMemo(() => {
+    const map = new Map();
+    snapshot.empresas.forEach((empresa) => map.set(empresa.id, empresa.nombre));
+    return map;
+  }, [snapshot.empresas]);
+
+  const actividadReciente = useMemo(() => {
+    return snapshot.auditoria
+      .filter((entry) => entry.modulo !== "IA")
+      .slice(0, 7)
+      .map((entry) => ({
+        accion: entry.accion,
+        modulo: entry.modulo,
+        empresa: entry.empresaNombre || nombreEmpresaPorId.get(entry.empresaId) || "—",
+        fecha: formatoFecha(entry.timestamp),
+        status: AUDIT_STATUS_MAP[entry.estado] || "Approved",
+      }));
+  }, [snapshot.auditoria, nombreEmpresaPorId]);
+
+  const distribucionPlanes = useMemo(() => {
+    const entries = Object.entries(stats?.porPlan || {}).sort((a, b) => b[1] - a[1]).slice(0, 4);
+    return {
+      labels: entries.map(([plan]) => plan),
+      series: entries.map(([, count]) => count),
+    };
+  }, [stats]);
+
+  const widgets = stats
+    ? [
+        { icon: MdOutlineBusiness, title: "Empresas totales", subtitle: String(stats.empresasTotal) },
+        { icon: MdCheckCircle, title: "Empresas activas", subtitle: String(stats.empresasActivas) },
+        { icon: MdOutlinePeople, title: "Usuarios totales", subtitle: String(stats.usuariosTotal) },
+        { icon: MdOutlineHowToReg, title: "Usuarios activos", subtitle: String(stats.usuariosActivos) },
+        { icon: MdOutlineAttachMoney, title: "Ingresos totales", subtitle: formatoMoneda(stats.ingresosTotales) },
+        { icon: MdOutlineTrendingUp, title: "Ingresos 30 días", subtitle: formatoMoneda(stats.ingresos30d) },
+      ]
+    : [];
 
   return (
     <div>
-      <h1 className="mb-4 text-2xl font-bold text-navy-700 dark:text-white">
-        {config.title}
-      </h1>
+      {error ? (
+        <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-500 dark:bg-red-400/10 dark:text-red-400">
+          {error}
+        </p>
+      ) : null}
 
-      <div className="mt-3 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-3 3xl:grid-cols-6">
-        {config.widgets.map((w, i) => (
-          <NexxusWidget key={w.title} {...w} delay={i * 100} />
-        ))}
-      </div>
+      {!stats ? (
+        <p className="text-sm font-medium text-gray-600 dark:text-white/70">Cargando estadísticas...</p>
+      ) : (
+        <div className="mt-3 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-3 3xl:grid-cols-6">
+          {widgets.map((w, i) => (
+            <NexxusWidget key={w.title} {...w} delay={i * 100} />
+          ))}
+        </div>
+      )}
 
       <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
         <TrendChart
-          title="Total Spent"
-          total="$142,830"
-          change="+5.12%"
-          series={[
-            { name: "Revenue", data: [58, 72, 55, 74, 60, 78], color: "#422AFB" },
-            { name: "Profit", data: [34, 46, 28, 50, 26, 52], color: "#6AD2FF" },
-          ]}
-          categories={["Feb", "Mar", "Apr", "May", "Jun", "Jul"]}
+          title="Ingresos por mes"
+          total={stats ? formatoMoneda(stats.ingresosTotales) : "—"}
+          change="Últimos 6 meses"
+          series={[{ name: "Ingresos", data: ingresosPorMes.map((m) => m.value), color: "#422AFB" }]}
+          categories={ingresosPorMes.map((m) => m.label)}
           delay={100}
         />
-        <RevenueChart
-          title="Weekly Revenue"
-          series={[
-            { name: "Company A", data: [420, 390, 360, 410, 350, 380, 400] },
-            { name: "Company B", data: [380, 360, 340, 370, 300, 330, 350] },
-            { name: "Company C", data: [360, 340, 310, 350, 290, 310, 330] },
-          ]}
-          categories={["17", "18", "19", "20", "21", "22", "23"]}
-          delay={150}
-        />
+        {distribucionPlanes.labels.length > 0 ? (
+          <DistributionChart
+            title="Distribución de planes"
+            series={distribucionPlanes.series}
+            labels={distribucionPlanes.labels}
+            delay={150}
+          />
+        ) : null}
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-2">
         <DataTable
-          title="Companies"
-          columnsData={columnsDataCheck}
-          tableData={rows.slice(0, 8)}
-          readOnly={config.readOnly}
+          title="Empresas recientes"
+          columnsData={columnsEmpresasRecientes}
+          tableData={empresasRecientes}
+          readOnly
           delay={100}
         />
-
-        <div className="grid grid-cols-1 gap-5 rounded-[20px] md:grid-cols-2">
-          <TrafficChart
-            title="Platform Traffic"
-            value="9,842"
-            unit="Visitors"
-            change="+5.12%"
-            data={[{ name: "Platform Traffic", data: [30, 45, 55, 35, 60, 65, 42] }]}
-            categories={["00", "04", "08", "12", "14", "16", "18"]}
-            delay={150}
-          />
-          <DistributionChart
-            title="Company Distribution"
-            series={[40, 25, 20, 15]}
-            labels={["Enterprise", "Mid-Market", "SMB", "Trial"]}
-            delay={200}
-          />
-        </div>
-
         <RecordsTable
-          title="All Employee Records"
-          columnsData={columnsDataComplex}
-          tableData={complexRows}
+          title="Actividad reciente"
+          columnsData={columnsActividadReciente}
+          tableData={actividadReciente}
           delay={150}
         />
-
-        <SystemPanel delay={200} />
-
-        <div className="grid grid-cols-1 gap-5 rounded-[20px] md:grid-cols-2">
-          <TaskList title="Tasks" tasks={tasks} readOnly={config.readOnly} delay={250} />
-          <div className="grid grid-cols-1 rounded-[20px]">
-            <MiniCalendarCard delay={300} />
-          </div>
-        </div>
       </div>
     </div>
   );

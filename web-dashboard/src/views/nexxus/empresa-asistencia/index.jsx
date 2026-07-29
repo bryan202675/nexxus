@@ -6,6 +6,7 @@ import NexxusWidget from "views/nexxus/components/NexxusWidget";
 import RecordsTable from "views/nexxus/components/RecordsTable";
 
 import { useAuth } from "context/AuthContext";
+import { useEmpresaPlan, tieneFeature } from "services/planEnforcement";
 import { subscribeAsistenciasHoy, subscribeEmpleados, subscribeConfiguracionEmpresa } from "services/adminRepository";
 
 const hoyISO = () => new Date().toISOString().slice(0, 10);
@@ -53,6 +54,8 @@ function csvEscape(value) {
 
 export default function GestionAsistencia() {
   const { empresaId } = useAuth();
+  const { planFeatures } = useEmpresaPlan();
+  const tieneExportar = tieneFeature(planFeatures, "exports");
 
   const [fechaJornada, setFechaJornada] = useState(hoyISO());
   const [asistencias, setAsistencias] = useState(null);
@@ -270,10 +273,11 @@ export default function GestionAsistencia() {
           <button
             type="button"
             onClick={handleExportar}
-            disabled={cargando || resumen.length === 0}
+            disabled={cargando || resumen.length === 0 || !tieneExportar}
+            title={!tieneExportar ? "Exportar datos está disponible desde el plan Business." : undefined}
             className="rounded-xl bg-brand-500 px-6 py-2 text-sm font-medium text-white transition duration-250 hover:bg-brand-600 disabled:opacity-40 dark:bg-brand-400 dark:hover:bg-brand-300"
           >
-            Exportar CSV
+            {tieneExportar ? "Exportar CSV" : "Exportar CSV (plan Business+)"}
           </button>
         </div>
       </NexxusCard>

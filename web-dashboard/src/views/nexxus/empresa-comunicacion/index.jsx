@@ -5,6 +5,7 @@ import { MdOutlineCampaign, MdOutlineGroups, MdOutlinePriorityHigh } from "react
 import NexxusCard from "views/nexxus/components/NexxusCard";
 import NexxusWidget from "views/nexxus/components/NexxusWidget";
 import RecordsTable from "views/nexxus/components/RecordsTable";
+import Modal from "components/nexxus/Modal";
 
 import { useAuth } from "context/AuthContext";
 import {
@@ -77,6 +78,7 @@ export default function ComunicacionAdmin() {
 
   const [form, setForm] = useState(FORM_VACIO);
   const [publicando, setPublicando] = useState(false);
+  const [showCrearAnuncio, setShowCrearAnuncio] = useState(false);
 
   useEffect(() => {
     if (!empresaId) return;
@@ -241,6 +243,7 @@ export default function ComunicacionAdmin() {
       });
 
       setForm(FORM_VACIO);
+      setShowCrearAnuncio(false);
     } catch (err) {
       setError(err.message || "No se pudo publicar el anuncio.");
     } finally {
@@ -274,168 +277,187 @@ export default function ComunicacionAdmin() {
             ))}
           </div>
 
-          <NexxusCard extra="mt-8 p-4" delay={100}>
-            <h4 className="mb-4 text-lg font-bold text-navy-700 dark:text-white">Nuevo anuncio</h4>
-            <form onSubmit={handlePublicar} className="flex flex-col gap-4">
-              <div>
-                <label htmlFor="com-mensaje" className="ml-3 text-sm font-bold text-navy-700 dark:text-white">
-                  Mensaje
-                </label>
-                <textarea
-                  id="com-mensaje"
-                  rows={4}
-                  value={form.mensaje}
-                  onChange={(e) => setForm((f) => ({ ...f, mensaje: e.target.value }))}
-                  className="mt-2 w-full rounded-xl border border-gray-200 bg-white/0 p-3 text-sm text-navy-700 outline-none dark:!border-white/10 dark:text-white"
-                  placeholder="Escribe el anuncio para tu equipo"
-                />
-              </div>
+          <div className="mt-8 flex items-center justify-between">
+            <h4 className="text-lg font-bold text-navy-700 dark:text-white">Anuncios</h4>
+            <button
+              type="button"
+              onClick={() => setShowCrearAnuncio(true)}
+              className="rounded-xl bg-brand-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-brand-600 dark:bg-brand-400"
+            >
+              Nuevo anuncio
+            </button>
+          </div>
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Modal isOpen={showCrearAnuncio} onClose={() => setShowCrearAnuncio(false)} title="Nuevo anuncio">
+            <div className="p-2">
+              <form onSubmit={handlePublicar} className="flex flex-col gap-4">
                 <div>
-                  <label htmlFor="com-prioridad" className="ml-3 text-sm font-bold text-navy-700 dark:text-white">
-                    Prioridad
+                  <label htmlFor="com-mensaje" className="ml-3 text-sm font-bold text-navy-700 dark:text-white">
+                    Mensaje
                   </label>
-                  <select
-                    id="com-prioridad"
-                    value={form.prioridad}
-                    onChange={(e) => setForm((f) => ({ ...f, prioridad: e.target.value }))}
-                    className="mt-2 h-12 w-full rounded-xl border border-gray-200 bg-white/0 px-3 text-sm text-navy-700 outline-none dark:!border-white/10 dark:bg-charcoal dark:text-white"
-                  >
-                    {PRIORIDADES.map((p) => (
-                      <option key={p} value={p} className="dark:bg-charcoal">
-                        {p}
-                      </option>
-                    ))}
-                  </select>
+                  <textarea
+                    id="com-mensaje"
+                    rows={4}
+                    value={form.mensaje}
+                    onChange={(e) => setForm((f) => ({ ...f, mensaje: e.target.value }))}
+                    className="mt-2 w-full rounded-xl border border-gray-200 bg-white/0 p-3 text-sm text-navy-700 outline-none dark:!border-white/10 dark:text-white"
+                    placeholder="Escribe el anuncio para tu equipo"
+                  />
                 </div>
 
-                <div>
-                  <label htmlFor="com-alcance" className="ml-3 text-sm font-bold text-navy-700 dark:text-white">
-                    Alcance
-                  </label>
-                  <select
-                    id="com-alcance"
-                    value={form.alcance}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        alcance: e.target.value,
-                        departamentoId: "",
-                        sedeId: "",
-                        rol: "",
-                        empleadoIds: [],
-                      }))
-                    }
-                    className="mt-2 h-12 w-full rounded-xl border border-gray-200 bg-white/0 px-3 text-sm text-navy-700 outline-none dark:!border-white/10 dark:bg-charcoal dark:text-white"
-                  >
-                    {ALCANCES.map((a) => (
-                      <option key={a.value} value={a.value} className="dark:bg-charcoal">
-                        {a.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="com-prioridad" className="ml-3 text-sm font-bold text-navy-700 dark:text-white">
+                      Prioridad
+                    </label>
+                    <select
+                      id="com-prioridad"
+                      value={form.prioridad}
+                      onChange={(e) => setForm((f) => ({ ...f, prioridad: e.target.value }))}
+                      className="mt-2 h-12 w-full rounded-xl border border-gray-200 bg-white/0 px-3 text-sm text-navy-700 outline-none dark:!border-white/10 dark:bg-charcoal dark:text-white"
+                    >
+                      {PRIORIDADES.map((p) => (
+                        <option key={p} value={p} className="dark:bg-charcoal">
+                          {p}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-              {form.alcance === "departamento" ? (
-                <div>
-                  <label htmlFor="com-departamento" className="ml-3 text-sm font-bold text-navy-700 dark:text-white">
-                    Departamento
-                  </label>
-                  <select
-                    id="com-departamento"
-                    value={form.departamentoId}
-                    onChange={(e) => setForm((f) => ({ ...f, departamentoId: e.target.value }))}
-                    className="mt-2 h-12 w-full rounded-xl border border-gray-200 bg-white/0 px-3 text-sm text-navy-700 outline-none dark:!border-white/10 dark:bg-charcoal dark:text-white"
-                  >
-                    <option value="" className="dark:bg-charcoal">Selecciona un departamento</option>
-                    {departamentos.map((dep) => (
-                      <option key={dep.id} value={dep.id} className="dark:bg-charcoal">
-                        {dep.nombre}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : null}
-
-              {form.alcance === "sede" ? (
-                <div>
-                  <label htmlFor="com-sede" className="ml-3 text-sm font-bold text-navy-700 dark:text-white">
-                    Sede
-                  </label>
-                  <select
-                    id="com-sede"
-                    value={form.sedeId}
-                    onChange={(e) => setForm((f) => ({ ...f, sedeId: e.target.value }))}
-                    className="mt-2 h-12 w-full rounded-xl border border-gray-200 bg-white/0 px-3 text-sm text-navy-700 outline-none dark:!border-white/10 dark:bg-charcoal dark:text-white"
-                  >
-                    <option value="" className="dark:bg-charcoal">Selecciona una sede</option>
-                    {sedes.map((sede) => (
-                      <option key={sede.id} value={sede.id} className="dark:bg-charcoal">
-                        {sede.nombre}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : null}
-
-              {form.alcance === "rol" ? (
-                <div>
-                  <label htmlFor="com-rol" className="ml-3 text-sm font-bold text-navy-700 dark:text-white">
-                    Rol
-                  </label>
-                  <select
-                    id="com-rol"
-                    value={form.rol}
-                    onChange={(e) => setForm((f) => ({ ...f, rol: e.target.value }))}
-                    className="mt-2 h-12 w-full rounded-xl border border-gray-200 bg-white/0 px-3 text-sm text-navy-700 outline-none dark:!border-white/10 dark:bg-charcoal dark:text-white"
-                  >
-                    <option value="" className="dark:bg-charcoal">Selecciona un rol</option>
-                    {ROLE_OPTIONS.map((r) => (
-                      <option key={r.value} value={r.value} className="dark:bg-charcoal">
-                        {etiquetaRol(r.value)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : null}
-
-              {form.alcance === "privado" ? (
-                <div>
-                  <p className="ml-3 text-sm font-bold text-navy-700 dark:text-white">Empleados destinatarios</p>
-                  <div className="mt-2 max-h-40 overflow-y-auto rounded-xl border border-gray-200 p-3 dark:!border-white/10">
-                    {empleadosActivos.length === 0 ? (
-                      <p className="text-sm text-gray-500 dark:text-white/50">No hay empleados activos en esta empresa.</p>
-                    ) : (
-                      empleadosActivos.map((emp) => (
-                        <label key={emp.id} className="flex items-center gap-2 py-1 text-sm text-navy-700 dark:text-white">
-                          <input
-                            type="checkbox"
-                            checked={form.empleadoIds.includes(emp.id)}
-                            onChange={() => toggleEmpleado(emp.id)}
-                          />
-                          {emp.nombre || emp.id}
-                        </label>
-                      ))
-                    )}
+                  <div>
+                    <label htmlFor="com-alcance" className="ml-3 text-sm font-bold text-navy-700 dark:text-white">
+                      Alcance
+                    </label>
+                    <select
+                      id="com-alcance"
+                      value={form.alcance}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          alcance: e.target.value,
+                          departamentoId: "",
+                          sedeId: "",
+                          rol: "",
+                          empleadoIds: [],
+                        }))
+                      }
+                      className="mt-2 h-12 w-full rounded-xl border border-gray-200 bg-white/0 px-3 text-sm text-navy-700 outline-none dark:!border-white/10 dark:bg-charcoal dark:text-white"
+                    >
+                      {ALCANCES.map((a) => (
+                        <option key={a.value} value={a.value} className="dark:bg-charcoal">
+                          {a.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
-              ) : null}
 
-              <div>
-                <button
-                  type="submit"
-                  disabled={publicando}
-                  className="flex h-11 items-center justify-center rounded-xl bg-brand-500 px-6 text-sm font-medium text-white transition duration-250 disabled:opacity-40 dark:bg-brand-400"
-                >
-                  {publicando ? "Publicando..." : "Publicar anuncio"}
-                </button>
-              </div>
-            </form>
-          </NexxusCard>
+                {form.alcance === "departamento" ? (
+                  <div>
+                    <label htmlFor="com-departamento" className="ml-3 text-sm font-bold text-navy-700 dark:text-white">
+                      Departamento
+                    </label>
+                    <select
+                      id="com-departamento"
+                      value={form.departamentoId}
+                      onChange={(e) => setForm((f) => ({ ...f, departamentoId: e.target.value }))}
+                      className="mt-2 h-12 w-full rounded-xl border border-gray-200 bg-white/0 px-3 text-sm text-navy-700 outline-none dark:!border-white/10 dark:bg-charcoal dark:text-white"
+                    >
+                      <option value="" className="dark:bg-charcoal">Selecciona un departamento</option>
+                      {departamentos.map((dep) => (
+                        <option key={dep.id} value={dep.id} className="dark:bg-charcoal">
+                          {dep.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
 
-          <div className="mt-8">
+                {form.alcance === "sede" ? (
+                  <div>
+                    <label htmlFor="com-sede" className="ml-3 text-sm font-bold text-navy-700 dark:text-white">
+                      Sede
+                    </label>
+                    <select
+                      id="com-sede"
+                      value={form.sedeId}
+                      onChange={(e) => setForm((f) => ({ ...f, sedeId: e.target.value }))}
+                      className="mt-2 h-12 w-full rounded-xl border border-gray-200 bg-white/0 px-3 text-sm text-navy-700 outline-none dark:!border-white/10 dark:bg-charcoal dark:text-white"
+                    >
+                      <option value="" className="dark:bg-charcoal">Selecciona una sede</option>
+                      {sedes.map((sede) => (
+                        <option key={sede.id} value={sede.id} className="dark:bg-charcoal">
+                          {sede.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
+
+                {form.alcance === "rol" ? (
+                  <div>
+                    <label htmlFor="com-rol" className="ml-3 text-sm font-bold text-navy-700 dark:text-white">
+                      Rol
+                    </label>
+                    <select
+                      id="com-rol"
+                      value={form.rol}
+                      onChange={(e) => setForm((f) => ({ ...f, rol: e.target.value }))}
+                      className="mt-2 h-12 w-full rounded-xl border border-gray-200 bg-white/0 px-3 text-sm text-navy-700 outline-none dark:!border-white/10 dark:bg-charcoal dark:text-white"
+                    >
+                      <option value="" className="dark:bg-charcoal">Selecciona un rol</option>
+                      {ROLE_OPTIONS.map((r) => (
+                        <option key={r.value} value={r.value} className="dark:bg-charcoal">
+                          {etiquetaRol(r.value)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
+
+                {form.alcance === "privado" ? (
+                  <div>
+                    <p className="ml-3 text-sm font-bold text-navy-700 dark:text-white">Empleados destinatarios</p>
+                    <div className="mt-2 max-h-40 overflow-y-auto rounded-xl border border-gray-200 p-3 dark:!border-white/10">
+                      {empleadosActivos.length === 0 ? (
+                        <p className="text-sm text-gray-500 dark:text-white/50">No hay empleados activos en esta empresa.</p>
+                      ) : (
+                        empleadosActivos.map((emp) => (
+                          <label key={emp.id} className="flex items-center gap-2 py-1 text-sm text-navy-700 dark:text-white">
+                            <input
+                              type="checkbox"
+                              checked={form.empleadoIds.includes(emp.id)}
+                              onChange={() => toggleEmpleado(emp.id)}
+                            />
+                            {emp.nombre || emp.id}
+                          </label>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={publicando}
+                    className="flex h-11 flex-1 items-center justify-center rounded-xl bg-brand-500 px-6 text-sm font-medium text-white transition duration-250 disabled:opacity-40 dark:bg-brand-400"
+                  >
+                    {publicando ? "Publicando..." : "Publicar anuncio"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowCrearAnuncio(false)}
+                    className="flex h-11 flex-1 items-center justify-center rounded-xl bg-gray-100 px-6 text-sm font-medium text-gray-600 transition duration-250 dark:bg-white/5 dark:text-white/70"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </Modal>
+
+          <div className="mt-4">
             {filasAnuncios.length === 0 ? (
               <p className="text-sm font-medium text-gray-600 dark:text-white/70">No hay anuncios registrados.</p>
             ) : (

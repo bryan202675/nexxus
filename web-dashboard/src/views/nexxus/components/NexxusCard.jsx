@@ -4,7 +4,7 @@ const NexxusCard = (props) => {
   const { extra = "", delay = 0, children, ...rest } = props;
   return (
     <div
-      className={`animate-fade-in-up relative flex flex-col rounded-[20px] bg-white bg-clip-border shadow-3xl shadow-shadow-500 transition-all duration-250 dark:!border dark:!border-charcoal-border dark:!bg-charcoal dark:text-white dark:shadow-none ${extra}`}
+      className={`animate-fade-in-up relative flex flex-col overflow-x-auto rounded-[20px] bg-white bg-clip-border shadow-3xl shadow-shadow-500 transition-all duration-250 dark:!border dark:!border-charcoal-border dark:!bg-charcoal dark:text-white dark:shadow-none ${extra}`}
       style={{ animationDelay: `${delay}ms` }}
       {...rest}
     >

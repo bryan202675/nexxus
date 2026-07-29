@@ -191,28 +191,40 @@ export default function Recursos({ navigation }: Props) {
           ) : (
             // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
             <View style={estilos.listaDocs}>
-              {documentosRecientes.map((documento) => (
-                // BotonAnimado renderiza una pieza visual reutilizable dentro de esta pantalla.
-                <BotonAnimado key={documento.id} style={estilos.docCard} onPress={() => marcarLeido(documento.id)}>
-                  {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
-                  <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.docContent}>
-                    {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-                    <View style={estilos.docIcono}>
-                      {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                      <MaterialIcons name={documento.leido ? 'task-alt' : 'insert-drive-file'} size={20} color={documento.leido ? COLORES.exito : COLORES.primario} />
-                    </View>
-                    {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-                    <View style={estilos.docTexto}>
-                      {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-                      <Text style={estilos.docTitulo} numberOfLines={1}>{documento.titulo}</Text>
-                      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                      <Text style={estilos.docMeta}>{documento.tipo.toUpperCase()} · {documento.leido ? t('recursos.read') : t('recursos.pending')}</Text>
-                    </View>
-                    {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                    <MaterialIcons name="chevron-right" size={22} color={colores.textoSuave} />
-                  </BlurView>
-                </BotonAnimado>
-              ))}
+              {documentosRecientes.map((documento) => {
+                const esLeido = documento.leido;
+                const colorTema = esLeido ? COLORES.exito : COLORES.primario;
+                return (
+                  // BotonAnimado renderiza una pieza visual reutilizable dentro de esta pantalla.
+                  <BotonAnimado key={documento.id} style={[estilos.docCard, !esLeido && { borderColor: `${COLORES.primario}40` }]} onPress={() => marcarLeido(documento.id)}>
+                    {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
+                    <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.docContent}>
+                      {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+                      <View style={[estilos.docIcono, { backgroundColor: `${colorTema}1A`, borderColor: `${colorTema}33` }]}>
+                        {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
+                        <MaterialIcons name={esLeido ? 'task-alt' : 'article'} size={24} color={colorTema} />
+                      </View>
+                      {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+                      <View style={estilos.docTexto}>
+                        {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
+                        <Text style={[estilos.docTitulo, !esLeido && { fontWeight: '800' }]} numberOfLines={1}>{documento.titulo}</Text>
+                        <View style={estilos.docTags}>
+                          <View style={estilos.badgeTipo}>
+                            <Text style={estilos.textoBadgeTipo}>{documento.tipo.toUpperCase()}</Text>
+                          </View>
+                          <Text style={estilos.puntoSeparador}>•</Text>
+                          <Text style={[estilos.textoEstado, { color: colorTema }]}>
+                            {esLeido ? t('recursos.read') : t('recursos.pending')}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={[estilos.botonAccionMini, { backgroundColor: esLeido ? `${COLORES.exito}1A` : `${COLORES.primario}1A` }]}>
+                        <Feather name={esLeido ? "check" : "download-cloud"} size={16} color={colorTema} />
+                      </View>
+                    </BlurView>
+                  </BotonAnimado>
+                );
+              })}
             </View>
           )}
         </View>
@@ -325,19 +337,25 @@ function crearEstilosRecursos(c: any, esOscuro: boolean) {
     // textoVacio: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
     textoVacio: { fontSize: 13, color: c.textoSuave, marginTop: ESPACIADO.sm },
     // listaDocs: estilo de lista o item; mantiene espaciado y lectura consistente en elementos repetidos.
-    listaDocs: { gap: ESPACIADO.sm },
+    listaDocs: { gap: ESPACIADO.md },
     // docCard: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
     docCard: { borderRadius: RADIOS.xl, overflow: 'hidden', borderWidth: 1, borderColor: c.borde },
     // docContent: estilo del area de contenido; controla padding, distribucion y separacion interna.
-    docContent: { minHeight: 76, padding: ESPACIADO.lg, flexDirection: 'row', alignItems: 'center', gap: ESPACIADO.md },
+    docContent: { padding: ESPACIADO.md, flexDirection: 'row', alignItems: 'center', gap: ESPACIADO.md },
     // docIcono: estilo de icono; ajusta tamanio, posicion o fondo del indicador visual.
-    docIcono: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: glassMini, borderWidth: 1, borderColor: c.borde },
+    docIcono: { width: 50, height: 50, borderRadius: RADIOS.xl, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
     // docTexto: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    docTexto: { flex: 1 },
+    docTexto: { flex: 1, justifyContent: 'center' },
     // docTitulo: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
-    docTitulo: { fontSize: 14, fontWeight: '700', color: c.texto },
-    // docMeta: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    docMeta: { fontSize: 11, color: c.textoSuave, marginTop: 2, fontWeight: '600' },
+    docTitulo: { fontSize: 15, fontWeight: '600', color: c.texto, marginBottom: 8, letterSpacing: -0.2 },
+    // docTags: contenedor de badges
+    docTags: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    // badgeTipo: etiqueta de tipo documento
+    badgeTipo: { backgroundColor: glassMini, paddingHorizontal: 8, paddingVertical: 4, borderRadius: RADIOS.sm, borderWidth: 1, borderColor: c.borde },
+    textoBadgeTipo: { fontSize: 10, fontWeight: '800', color: c.textoSuave, letterSpacing: 0.5 },
+    puntoSeparador: { color: c.textoSuave, fontSize: 10 },
+    textoEstado: { fontSize: 11, fontWeight: '700', letterSpacing: 0.2 },
+    botonAccionMini: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
     // atajosGrid / gridAtajos2x2: grilla de 2 columnas de ancho similar a PerfilLaboral
     gridAtajos2x2: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
     // cardAtajo2x2: tarjetas grandes y espaciosas en 2x2

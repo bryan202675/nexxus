@@ -3,13 +3,18 @@ import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Navbar from "components/navbar";
 import Sidebar from "components/sidebar";
 import Footer from "components/footer/Footer";
-import routes from "routes.js";
+import { getRoutesForRole } from "routes.js";
+import { useAuth } from "context/AuthContext";
 
 export default function Admin(props) {
   const { ...rest } = props;
   const location = useLocation();
+  const { esSuperAdmin } = useAuth();
+  const routes = getRoutesForRole(esSuperAdmin ? "super_admin" : "admin_empresa");
+  const defaultPath = esSuperAdmin ? "/admin/nexxus-superadmin" : "/admin/empresa-resumen";
+
   const [open, setOpen] = React.useState(true);
-  const [currentRoute, setCurrentRoute] = React.useState("Main Dashboard");
+  const [currentRoute, setCurrentRoute] = React.useState(routes[0]?.name || "");
 
   React.useEffect(() => {
     window.addEventListener("resize", () =>
@@ -18,6 +23,7 @@ export default function Admin(props) {
   }, []);
   React.useEffect(() => {
     getActiveRoute(routes);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
   const getActiveRoute = (routes) => {
@@ -75,14 +81,11 @@ export default function Admin(props) {
               secondary={getActiveNavbar(routes)}
               {...rest}
             />
-            <div className="pt-5s mx-auto mb-auto h-full min-h-[84vh] p-2 md:pr-2">
+            <div className="pt-8 mx-auto mb-auto h-full min-h-[84vh] p-2 md:pr-2">
               <Routes>
                 {getRoutes(routes)}
 
-                <Route
-                  path="/"
-                  element={<Navigate to="/admin/default" replace />}
-                />
+                <Route path="/" element={<Navigate to={defaultPath} replace />} />
               </Routes>
             </div>
             <div className="p-3">

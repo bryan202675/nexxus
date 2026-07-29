@@ -16,6 +16,7 @@ import {
 import NexxusCard from "views/nexxus/components/NexxusCard";
 import Avatar from "components/nexxus/Avatar";
 import InputField from "components/fields/InputField";
+import Modal from "components/nexxus/Modal";
 import { useAuth } from "context/AuthContext";
 import { db, subscribeEmpleados } from "services/adminRepository";
 
@@ -119,6 +120,7 @@ export default function MensajeriaInternaAdmin() {
   const [tituloNuevo, setTituloNuevo] = useState("");
   const [creando, setCreando] = useState(false);
   const [creandoError, setCreandoError] = useState("");
+  const [expandedImage, setExpandedImage] = useState(null);
 
   const mensajesFinRef = useRef(null);
 
@@ -509,13 +511,42 @@ export default function MensajeriaInternaAdmin() {
                               </span>
                             ) : null}
                             <div
-                              className={`rounded-2xl px-4 py-2 text-sm ${
+                              className={`flex flex-col gap-2 rounded-2xl px-4 py-2 text-sm ${
                                 esMio
                                   ? "rounded-tr-sm bg-brand-500 text-white dark:bg-brand-400"
                                   : "rounded-tl-sm bg-lightPrimary text-navy-700 dark:bg-white/10 dark:text-white"
                               }`}
                             >
-                              {m.texto}
+                              {(() => {
+                                const imgs = [];
+                                const add = (v) => {
+                                  if (typeof v === "string") imgs.push(v);
+                                  else if (v && typeof v === "object" && v.url) imgs.push(v.url);
+                                };
+                                if (Array.isArray(m.adjuntos)) m.adjuntos.forEach(add);
+                                else add(m.adjuntos);
+                                add(m.image);
+                                add(m.imageUrl);
+                                add(m.image_url);
+                                add(m.imagen);
+                                
+                                const validImages = imgs.filter(url => typeof url === "string" && url.trim() !== "");
+
+                                return (
+                                  <>
+                                    {validImages.map((imgUrl, i) => (
+                                      <img
+                                        key={i}
+                                        src={imgUrl}
+                                        alt="Adjunto"
+                                        className="max-h-48 cursor-pointer rounded-lg object-cover hover:opacity-90 transition-opacity"
+                                        onClick={() => setExpandedImage(imgUrl)}
+                                      />
+                                    ))}
+                                    {m.texto && <span>{m.texto}</span>}
+                                  </>
+                                );
+                              })()}
                             </div>
                             <span className="mt-0.5 text-[10px] text-gray-400 dark:text-white/40">
                               {formatoHora(m.timestamp)}
@@ -558,6 +589,14 @@ export default function MensajeriaInternaAdmin() {
           )}
         </NexxusCard>
       </div>
+
+      <Modal isOpen={!!expandedImage} onClose={() => setExpandedImage(null)} title="Visor de imagen">
+        {expandedImage ? (
+          <div className="flex items-center justify-center p-2">
+            <img src={expandedImage} alt="Ampliada" className="max-h-[70vh] rounded-xl object-contain" />
+          </div>
+        ) : null}
+      </Modal>
     </div>
   );
 }

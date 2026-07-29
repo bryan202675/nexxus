@@ -17,6 +17,7 @@ import NexxusCard from "views/nexxus/components/NexxusCard";
 import NexxusWidget from "views/nexxus/components/NexxusWidget";
 import RecordsTable from "views/nexxus/components/RecordsTable";
 import InputField from "components/fields/InputField";
+import Modal from "components/nexxus/Modal";
 import { useAuth } from "context/AuthContext";
 import { db, subscribeEmpleados, subscribeNominas } from "services/adminRepository";
 import { formatoMoneda } from "services/saFormat";
@@ -449,21 +450,10 @@ export default function GestionNomina() {
         ))}
       </div>
 
-      {editando ? (
-        <NexxusCard extra="mt-8 w-full p-6" delay={100}>
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold text-navy-700 dark:text-white">
-              Ajustar nómina de {editando.empleadoNombre}
-            </h3>
-            <button
-              type="button"
-              onClick={() => setEditando(null)}
-              className="text-sm font-medium text-gray-600 hover:text-navy-700 dark:text-white/70 dark:hover:text-white"
-            >
-              Cerrar ✕
-            </button>
-          </div>
-          <form onSubmit={handleGuardarEdicion} className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <Modal isOpen={!!editando} onClose={() => setEditando(null)} title={`Ajustar nómina de ${editando?.empleadoNombre || ""}`}>
+        {editando ? (
+        <div className="p-2">
+          <form onSubmit={handleGuardarEdicion} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <InputField
               variant="auth"
               label="Bonos"
@@ -513,8 +503,9 @@ export default function GestionNomina() {
               </button>
             </div>
           </form>
-        </NexxusCard>
-      ) : null}
+        </div>
+        ) : null}
+      </Modal>
 
       <div className="mt-8">
         {cargando ? (

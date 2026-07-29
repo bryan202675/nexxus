@@ -45,8 +45,9 @@ export const PLAN_CATALOG = {
 export const PLAN_NAMES = ["Starter", "Business", "Enterprise"];
 
 export function planEntitlements(plan) {
-  const config = PLAN_CATALOG[plan] || PLAN_CATALOG.Starter;
-  return { planFeatures: config.features, planLimits: config.limits };
+  const nombre = PLAN_NAMES.includes(plan) ? plan : "Starter";
+  const config = PLAN_CATALOG[nombre];
+  return { plan: nombre, planFeatures: config.features, planLimits: config.limits };
 }
 
 export function subscriptionExpiration(billing) {

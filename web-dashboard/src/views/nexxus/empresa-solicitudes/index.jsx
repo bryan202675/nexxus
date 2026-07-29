@@ -6,7 +6,9 @@ import NexxusCard from "views/nexxus/components/NexxusCard";
 import NexxusWidget from "views/nexxus/components/NexxusWidget";
 import RecordsTable from "views/nexxus/components/RecordsTable";
 import InputField from "components/fields/InputField";
+import Modal from "components/nexxus/Modal";
 import { useAuth } from "context/AuthContext";
+import { useEmpresaPlan, tieneFeature } from "services/planEnforcement";
 import {
   db,
   subscribeSolicitudesAusencia,
@@ -145,6 +147,8 @@ const INITIAL_FORM = { empleadoId: "", tipo: "disciplinario", titulo: "", descri
 
 export default function CentroReportesSolicitudes() {
   const { user, perfil, rol, empresaId } = useAuth();
+  const { planFeatures } = useEmpresaPlan();
+  const tieneReportes = tieneFeature(planFeatures, "reports");
 
   const [ausencias, setAusencias] = useState(null);
   const [internas, setInternas] = useState(null);
@@ -159,6 +163,7 @@ export default function CentroReportesSolicitudes() {
   const [accionando, setAccionando] = useState(null);
   const [form, setForm] = useState(INITIAL_FORM);
   const [creando, setCreando] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     if (!empresaId) return undefined;
@@ -176,10 +181,13 @@ export default function CentroReportesSolicitudes() {
 
   const items = useMemo(() => {
     if (cargando) return [];
-    return [...ausencias, ...internas, ...reportes].sort(
+    // "reports" (reportes disciplinarios) es funcionalidad de plan Business+; en Starter la
+    // bandeja solo muestra solicitudes (que sí están incluidas en todos los planes).
+    const reportesVisibles = tieneReportes ? reportes : [];
+    return [...ausencias, ...internas, ...reportesVisibles].sort(
       (a, b) => Date.parse(b.fechaCreacion) - Date.parse(a.fechaCreacion)
     );
-  }, [ausencias, internas, reportes, cargando]);
+  }, [ausencias, internas, reportes, cargando, tieneReportes]);
 
   const metricas = useMemo(
     () => ({
@@ -276,7 +284,7 @@ export default function CentroReportesSolicitudes() {
                 type="button"
                 disabled={accionando === item.id}
                 onClick={() => handleResolve(item, "aprobada")}
-                className="rounded-lg bg-green-50 px-2 py-1 text-xs font-bold text-green-600 transition duration-250 hover:bg-green-100 disabled:opacity-40 dark:bg-green-400/10 dark:text-green-400"
+                className="whitespace-nowrap rounded-lg bg-green-50 px-2 py-1 text-xs font-bold text-green-600 transition duration-250 hover:bg-green-100 disabled:opacity-40 dark:bg-green-400/10 dark:text-green-400"
               >
                 Aprobar
               </button>
@@ -284,7 +292,7 @@ export default function CentroReportesSolicitudes() {
                 type="button"
                 disabled={accionando === item.id}
                 onClick={() => handleResolve(item, "rechazada")}
-                className="rounded-lg bg-red-50 px-2 py-1 text-xs font-bold text-red-600 transition duration-250 hover:bg-red-100 disabled:opacity-40 dark:bg-red-400/10 dark:text-red-400"
+                className="whitespace-nowrap rounded-lg bg-red-50 px-2 py-1 text-xs font-bold text-red-600 transition duration-250 hover:bg-red-100 disabled:opacity-40 dark:bg-red-400/10 dark:text-red-400"
               >
                 Rechazar
               </button>
@@ -299,6 +307,10 @@ export default function CentroReportesSolicitudes() {
   const handleCrearReporte = async (event) => {
     event.preventDefault();
     setError("");
+    if (!tieneReportes) {
+      setError("Los reportes disciplinarios están disponibles desde el plan Business.");
+      return;
+    }
     const empleado = empleados.find((emp) => emp.id === form.empleadoId);
     if (!empleado || !form.descripcion.trim()) {
       setError("Selecciona un empleado y describe el reporte antes de guardarlo.");
@@ -346,6 +358,7 @@ export default function CentroReportesSolicitudes() {
       });
 
       setForm(INITIAL_FORM);
+      setShowModal(false);
     } catch (err) {
       setError(err.message || "No se pudo crear el reporte.");
     } finally {
@@ -413,21 +426,36 @@ export default function CentroReportesSolicitudes() {
                   </option>
                 ))}
               </select>
+              {tieneReportes ? (
+                <button
+                  type="button"
+                  onClick={() => setShowModal(true)}
+                  className="flex h-11 items-center justify-center rounded-xl bg-brand-500 px-6 text-sm font-medium text-white transition duration-250 hover:bg-brand-600 dark:bg-brand-400 dark:hover:bg-brand-300 md:ml-auto"
+                >
+                  Crear reporte
+                </button>
+              ) : (
+                <span
+                  title="Los reportes disciplinarios están disponibles desde el plan Business."
+                  className="flex h-11 items-center justify-center rounded-xl bg-gray-100 px-6 text-sm font-medium text-gray-400 dark:bg-white/5 dark:text-white/30 md:ml-auto"
+                >
+                  Crear reporte (plan Business+)
+                </span>
+              )}
             </div>
           </NexxusCard>
 
-          <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-            <div className="xl:col-span-2">
-              <RecordsTable
-                title="Bandeja unificada de solicitudes y reportes"
-                columnsData={COLUMNAS}
-                tableData={filaVisibles}
-                delay={100}
-              />
-            </div>
+          <div className="w-full">
+            <RecordsTable
+              title="Bandeja unificada de solicitudes y reportes"
+              columnsData={COLUMNAS}
+              tableData={filaVisibles}
+              delay={100}
+            />
+          </div>
 
-            <NexxusCard extra="p-4 h-fit">
-              <h4 className="mb-4 text-lg font-bold text-navy-700 dark:text-white">Crear reporte disciplinario</h4>
+          <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Crear reporte disciplinario">
+            <div className="p-2">
               <form onSubmit={handleCrearReporte} className="flex flex-col gap-4">
                 <div>
                   <label
@@ -517,8 +545,8 @@ export default function CentroReportesSolicitudes() {
                   {creando ? "Guardando..." : "Registrar reporte"}
                 </button>
               </form>
-            </NexxusCard>
-          </div>
+            </div>
+          </Modal>
         </>
       )}
     </div>

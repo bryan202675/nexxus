@@ -10,7 +10,7 @@ import NexxusCard from "views/nexxus/components/NexxusCard";
 import NexxusWidget from "views/nexxus/components/NexxusWidget";
 import DistributionChart from "views/nexxus/components/DistributionChart";
 
-import { subscribeAiUsage } from "services/superAdminRepository";
+import { subscribeAiUsage, loadMoreCompanies } from "services/superAdminRepository";
 import { formatoMoneda } from "services/saFormat";
 
 const LIMITE = 2000;
@@ -19,6 +19,23 @@ const hace30Dias = () => new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 const NexxusIA = () => {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState("");
+  const [companies, setCompanies] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+    loadMoreCompanies({}, 500, null)
+      .then((res) => active && setCompanies(res.items || []))
+      .catch(() => active && setCompanies([]));
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const nombreEmpresaPorId = useMemo(() => {
+    const map = new Map();
+    companies.forEach((empresa) => map.set(empresa.id, empresa.nombre));
+    return map;
+  }, [companies]);
 
   useEffect(() => {
     let active = true;
@@ -45,8 +62,9 @@ const NexxusIA = () => {
       totalQueries += 1;
       totalTokens += row.totalTokens || 0;
       estimatedCost += row.costUsd || 0;
-      if (row.empresaNombre) {
-        companiesMap[row.empresaNombre] = (companiesMap[row.empresaNombre] || 0) + 1;
+      const nombreEmpresa = row.empresaNombre || nombreEmpresaPorId.get(row.empresaId);
+      if (nombreEmpresa) {
+        companiesMap[nombreEmpresa] = (companiesMap[nombreEmpresa] || 0) + 1;
       }
       if (row.model) {
         models[row.model] = (models[row.model] || 0) + 1;
@@ -61,7 +79,7 @@ const NexxusIA = () => {
       .slice(0, 4);
 
     return { totalQueries, totalTokens, estimatedCost, models, topCompanies, topModels };
-  }, [rows]);
+  }, [rows, nombreEmpresaPorId]);
 
   const maxCompanyQueries = resumen.topCompanies.reduce((max, [, count]) => Math.max(max, count), 0);
 

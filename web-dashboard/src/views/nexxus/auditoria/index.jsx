@@ -3,7 +3,7 @@ import { MdSearch } from "react-icons/md";
 
 import NexxusCard from "views/nexxus/components/NexxusCard";
 import RecordsTable from "views/nexxus/components/RecordsTable";
-import { subscribeAuditGlobal, loadMoreAuditGlobal } from "services/superAdminRepository";
+import { subscribeAuditGlobal, loadMoreAuditGlobal, loadMoreCompanies } from "services/superAdminRepository";
 import { formatoFechaHora } from "services/saFormat";
 
 const LIMITE = 25;
@@ -37,6 +37,25 @@ export default function Auditoria() {
   const [error, setError] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [estado, setEstado] = useState("");
+  const [companies, setCompanies] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+    loadMoreCompanies({}, 500, null)
+      .then((res) => active && setCompanies(res.items || []))
+      .catch(() => active && setCompanies([]));
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // audit_logs no siempre guarda empresaNombre denormalizado (p.ej. aiAssistant.js solo guarda
+  // empresaId) -- sin este mapa, "Empresa" salía vacía para casi todos los registros.
+  const nombreEmpresaPorId = useMemo(() => {
+    const map = new Map();
+    companies.forEach((empresa) => map.set(empresa.id, empresa.nombre));
+    return map;
+  }, [companies]);
 
   useEffect(() => {
     let active = true;
@@ -95,12 +114,12 @@ export default function Auditoria() {
       .map((registro) => ({
         accion: registro.accion,
         modulo: registro.modulo,
-        empresaNombre: registro.empresaNombre || "—",
+        empresaNombre: registro.empresaNombre || nombreEmpresaPorId.get(registro.empresaId) || "—",
         actorNombre: registro.actorNombre || "—",
         fecha: formatoFechaHora(registro.timestamp),
         status: AUDIT_STATUS_MAP[registro.estado] || "Approved",
       }));
-  }, [registros, busqueda, estado]);
+  }, [registros, busqueda, estado, nombreEmpresaPorId]);
 
   return (
     <div>

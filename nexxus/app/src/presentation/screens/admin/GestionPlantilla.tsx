@@ -33,6 +33,7 @@ import { db, functions } from '@/infrastructure/firebase/firebaseConfig';
 import { useAuth } from '@/presentation/hooks/useAuth';
 // Importa { obtenerEmpresaIdAdmin }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import { obtenerEmpresaIdAdmin } from './adminUtils';
+import { useEmpresaPlan, limiteAlcanzado } from '@/presentation/hooks/useEmpresaPlan';
 // Importa { ADMIN, sombraAdmin, sombraVioleta }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import { ADMIN, sombraAdmin, sombraVioleta } from './adminTheme';
 // Importa { useAdminToast }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
@@ -882,6 +883,7 @@ export default function GestionPlantilla() {
 
   // Inicializa { user }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { user } = useAuth();
+  const { plan: planActual, planLimits } = useEmpresaPlan(obtenerEmpresaIdAdmin(user));
 
   // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
   useEffect(() => {
@@ -1601,6 +1603,16 @@ export default function GestionPlantilla() {
       toast.error({ title: toastImportCriticalTitle, description: 'No hay filas válidas para guardar.' });
       return;
     }
+    if (
+      typeof planLimits.employees === 'number' &&
+      usuarios.length + previewImportacion.validas.length > planLimits.employees
+    ) {
+      toast.error({
+        title: toastImportCriticalTitle,
+        description: `Tu plan ${planActual} permite hasta ${planLimits.employees} empleados (tienes ${usuarios.length} y la importación agregaría ${previewImportacion.validas.length}). Reduce el archivo o actualiza de plan.`,
+      });
+      return;
+    }
 
     setImportando(true);
     const codigoEmpresa = (empresa?.codigo || empresa?.nombre_normalizado || 'EMPRESA').toUpperCase();
@@ -2050,6 +2062,13 @@ export default function GestionPlantilla() {
 
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (modoFormulario === 'crear') {
+      if (limiteAlcanzado(usuarios.length, planLimits.employees)) {
+        toast.warning({
+          title: toastRequiredDataTitle,
+          description: `Tu plan ${planActual} permite hasta ${planLimits.employees} empleados. Actualiza de plan para agregar más.`,
+        });
+        return;
+      }
       // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (!usuarioInterno) {
         // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.

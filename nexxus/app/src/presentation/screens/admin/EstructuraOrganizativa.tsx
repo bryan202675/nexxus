@@ -30,6 +30,7 @@ import { db } from '@/infrastructure/firebase/firebaseConfig';
 import { useAuth } from '@/presentation/hooks/useAuth';
 // Importa { obtenerEmpresaIdAdmin }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import { obtenerEmpresaIdAdmin } from './adminUtils';
+import { useEmpresaPlan, limiteAlcanzado } from '@/presentation/hooks/useEmpresaPlan';
 // Importa { ADMIN }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import { ADMIN } from './adminTheme';
 // Importa { useAdminToast }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
@@ -594,6 +595,7 @@ export default function EstructuraOrganizativa() {
 
   // Inicializa { user }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { user } = useAuth();
+  const { plan: planActual, planLimits } = useEmpresaPlan(obtenerEmpresaIdAdmin(user));
 
   // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
   useEffect(() => {
@@ -931,6 +933,13 @@ export default function EstructuraOrganizativa() {
     const nombre = formSede.nombre.trim();
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!empresaId || !nombre || guardando) return;
+    if (modoModal === 'crear' && limiteAlcanzado(sedes.length, planLimits.branches)) {
+      toast.error({
+        title: t('alert.error'),
+        description: `Tu plan ${planActual} permite hasta ${planLimits.branches} sedes. Actualiza de plan para agregar más.`,
+      });
+      return;
+    }
     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setGuardando(true);
     // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
@@ -981,6 +990,13 @@ export default function EstructuraOrganizativa() {
     const nombre = formDepartamento.nombre.trim();
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!empresaId || !nombre || guardando) return;
+    if (modoModal === 'crear' && limiteAlcanzado(departamentos.length, planLimits.departments)) {
+      toast.error({
+        title: t('alert.error'),
+        description: `Tu plan ${planActual} permite hasta ${planLimits.departments} departamentos. Actualiza de plan para agregar más.`,
+      });
+      return;
+    }
     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setGuardando(true);
     // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.

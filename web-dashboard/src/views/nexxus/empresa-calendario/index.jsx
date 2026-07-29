@@ -10,6 +10,7 @@ import {
 import NexxusCard from "views/nexxus/components/NexxusCard";
 import NexxusWidget from "views/nexxus/components/NexxusWidget";
 import InputField from "components/fields/InputField";
+import Modal from "components/nexxus/Modal";
 
 import { useAuth } from "context/AuthContext";
 import { db, subscribeCalendario, subscribeEmpleados } from "services/adminRepository";
@@ -62,6 +63,7 @@ export default function CalendarioEmpresarial() {
   const [form, setForm] = useState(FORM_VACIO);
   const [editandoId, setEditandoId] = useState(null);
   const [guardando, setGuardando] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     if (!empresaId) return;
@@ -124,6 +126,7 @@ export default function CalendarioEmpresarial() {
       fin: toDatetimeLocal(toDate(evento.fin)),
       empleadoIds: evento.empleadoIds || [],
     });
+    setShowModal(true);
   };
 
   const toggleEmpleado = (id) => {
@@ -174,6 +177,7 @@ export default function CalendarioEmpresarial() {
         });
       }
       resetForm();
+      setShowModal(false);
     } catch (err) {
       setError(err.message || "No se pudo guardar el evento.");
     } finally {
@@ -189,6 +193,7 @@ export default function CalendarioEmpresarial() {
     try {
       await deleteDoc(doc(db, "calendario_empresarial", editandoId));
       resetForm();
+      setShowModal(false);
     } catch (err) {
       setError(err.message || "No se pudo eliminar el evento.");
     } finally {
@@ -222,11 +227,18 @@ export default function CalendarioEmpresarial() {
             ))}
           </div>
 
-          <div className="mt-8 grid grid-cols-1 gap-5 xl:grid-cols-2">
-            <NexxusCard extra="p-4" delay={100}>
-              <h4 className="mb-4 text-lg font-bold text-navy-700 dark:text-white">
-                {editandoId ? "Editar evento" : "Crear evento"}
-              </h4>
+          <div className="mt-8 flex justify-end">
+            <button
+              type="button"
+              onClick={() => { resetForm(); setShowModal(true); }}
+              className="flex h-11 items-center justify-center rounded-xl bg-brand-500 px-6 text-sm font-medium text-white transition duration-250 hover:bg-brand-600 dark:bg-brand-400 dark:hover:bg-brand-300"
+            >
+              Crear evento
+            </button>
+          </div>
+
+          <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editandoId ? "Editar evento" : "Crear evento"}>
+            <div className="p-2">
               <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 <InputField
                   label="Título"
@@ -317,7 +329,7 @@ export default function CalendarioEmpresarial() {
                     <>
                       <button
                         type="button"
-                        onClick={resetForm}
+                        onClick={() => setShowModal(false)}
                         disabled={guardando}
                         className="flex h-11 items-center justify-center rounded-xl bg-lightPrimary px-6 text-sm font-medium text-brand-500 transition duration-250 disabled:opacity-40 dark:bg-charcoal-light dark:text-white"
                       >
@@ -335,8 +347,10 @@ export default function CalendarioEmpresarial() {
                   ) : null}
                 </div>
               </form>
-            </NexxusCard>
+            </div>
+          </Modal>
 
+          <div className="mt-8">
             <NexxusCard extra="p-4" delay={150}>
               <h4 className="mb-4 text-lg font-bold text-navy-700 dark:text-white">Próximos eventos</h4>
               {eventosOrdenados.length === 0 ? (

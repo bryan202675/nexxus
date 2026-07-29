@@ -11,7 +11,7 @@ import NexxusCard from "./NexxusCard";
 
 const columnHelper = createColumnHelper();
 
-const DataTable = ({ title = "Data Table", columnsData, tableData, readOnly = false, delay = 0 }) => {
+const DataTable = ({ title = "Data Table", columnsData, tableData, readOnly = false, delay = 0, onRowClick }) => {
   const [sorting, setSorting] = useState([]);
 
   const columns = columnsData.map((col) =>
@@ -35,9 +35,9 @@ const DataTable = ({ title = "Data Table", columnsData, tableData, readOnly = fa
           );
         }
         return (
-          <p className="text-sm font-bold text-navy-700 dark:text-white">
+          <div className="text-sm font-bold text-navy-700 dark:text-white">
             {info.getValue()}
-          </p>
+          </div>
         );
       },
     })
@@ -60,7 +60,7 @@ const DataTable = ({ title = "Data Table", columnsData, tableData, readOnly = fa
         </div>
       </header>
 
-      <div className="mt-8 overflow-x-scroll xl:overflow-x-hidden">
+      <div className="mt-8 overflow-x-auto">
         <table className="w-full">
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -86,7 +86,10 @@ const DataTable = ({ title = "Data Table", columnsData, tableData, readOnly = fa
             {table.getRowModel().rows.map((row) => (
               <tr
                 key={row.id}
-                className="transition-colors duration-250 hover:bg-gray-50 dark:hover:bg-charcoal-light"
+                onClick={onRowClick ? () => onRowClick(row.original) : undefined}
+                className={`transition-colors duration-250 hover:bg-gray-50 dark:hover:bg-charcoal-light ${
+                  onRowClick ? "cursor-pointer" : ""
+                }`}
               >
                 {row.getVisibleCells().map((cell) => (
                   <td key={cell.id} className="min-w-[120px] border-white/0 py-3 pr-4">
