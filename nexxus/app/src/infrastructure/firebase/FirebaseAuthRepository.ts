@@ -51,7 +51,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
   // loginEmpresarial agrupa una parte de la logica del modulo para mantener el flujo principal mas legible.
   async loginEmpresarial(codigoEmpresa: string, usuario: string, password: string): Promise<User> {
     try {
-      const loginCallable = httpsCallable(functions, 'loginEmpresarial');
+      const loginCallable = httpsCallable(functions, 'loginEmpresarial', { timeout: 15000 });
       const result = await loginCallable({
         codigoEmpresa,
         usuario,
@@ -64,9 +64,12 @@ export class FirebaseAuthRepository implements IAuthRepository {
       if (!user) throw AuthError.userNotFound();
       return user;
     } catch (error: any) {
-      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (error instanceof AuthError) throw error;
-      // Interrumpe el flujo con un error controlado para que la capa superior lo maneje.
+      const code = String(error?.code || '');
+      const message = String(error?.message || '').toLowerCase();
+      if (code === 'functions/deadline-exceeded' || code === 'functions/unavailable' || message.includes('exceeded') || message.includes('timeout') || message.includes('network')) {
+        throw new AuthError('auth/network-timeout', 'Tiempo de espera agotado al conectar con el servidor. Verifica tu conexión a internet o el estado del backend.');
+      }
       throw AuthError.fromFirebase(error.code);
     }
   }
