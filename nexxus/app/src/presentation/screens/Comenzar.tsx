@@ -46,22 +46,9 @@ export default function Comenzar() {
 
     // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
     try {
-      // Declara user; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const user = await login({ correo, password: contrasena });
-      
-      // Redirigir según el rol
-      if (user.rol === 'admin') {
-        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-        navegacion.reset({ index: 0, routes: [{ name: 'AppAdmin' }] });
-      } else if (user.rol === 'jefe') {
-        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-        navegacion.reset({ index: 0, routes: [{ name: 'AppJefe' }] });
-      } else {
-        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-        navegacion.reset({ index: 0, routes: [{ name: 'AppEmpleado' }] });
-      }
+      await login({ correo, password: contrasena });
+      // La navegación se maneja automáticamente en App.tsx vía EnrutadorPrincipal
     } catch (err: any) {
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       Alert.alert(t('comenzar.alert_error_title'), err.userMessage || t('comenzar.alert_error_msg'));
     }
   };

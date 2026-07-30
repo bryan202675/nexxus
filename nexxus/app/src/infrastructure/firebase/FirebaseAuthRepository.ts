@@ -56,7 +56,7 @@ export class FirebaseAuthRepository implements IAuthRepository {
       // local, y el login nunca terminaba de completarse. Con el correo confirmado por el
       // servidor, cerramos el login con signInWithEmailAndPassword usando la MISMA contraseña
       // que el servidor ya validó como correcta.
-      const loginCallable = httpsCallable(functions, 'loginEmpresarial');
+      const loginCallable = httpsCallable(functions, 'loginEmpresarial', { timeout: 15000 });
       const result = await loginCallable({
         codigoEmpresa,
         usuario,
@@ -75,8 +75,13 @@ export class FirebaseAuthRepository implements IAuthRepository {
       if (auth.currentUser) {
         await signOut(auth).catch(() => {});
       }
-      const rawMsg = error?.message || error?.details?.message || (typeof error === 'string' ? error : undefined);
       if (error instanceof AuthError) throw error;
+      const code = String(error?.code || '');
+      const message = String(error?.message || '').toLowerCase();
+      if (code === 'functions/deadline-exceeded' || code === 'functions/unavailable' || message.includes('exceeded') || message.includes('timeout') || message.includes('network')) {
+        throw new AuthError('auth/network-timeout', 'Tiempo de espera agotado al conectar con el servidor. Verifica tu conexión a internet o el estado del backend.');
+      }
+      const rawMsg = error?.message || error?.details?.message || (typeof error === 'string' ? error : undefined);
       throw AuthError.fromFirebase(error?.code, rawMsg);
     }
   }

@@ -1719,7 +1719,6 @@ export default function AdminNavigator() {
               <Tab.Navigator
                 key="sa"
                 tabBar={() => null}
-                sceneContainerStyle={{ backgroundColor: theme.bg }}
                 screenOptions={{
                   headerShown: false,
                   unmountOnBlur: true,

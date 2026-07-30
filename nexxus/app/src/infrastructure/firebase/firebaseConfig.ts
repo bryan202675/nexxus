@@ -70,35 +70,49 @@ export const db = getFirestore(app);
  */
 export const functions = getFunctions(app);
 
-if (__DEV__) {
+if (__DEV__ && process.env.EXPO_PUBLIC_USE_EMULATOR !== 'false') {
   const { connectFunctionsEmulator } = require('firebase/functions');
-  let host = process.env.EXPO_PUBLIC_EMULATOR_HOST || (Platform.OS === 'web' ? 'localhost' : (Platform.OS === 'android' ? '10.0.2.2' : '192.168.1.23'));
-  if (Platform.OS !== 'web' && !process.env.EXPO_PUBLIC_EMULATOR_HOST) {
-    try {
-      const { NativeModules } = require('react-native');
-      const scriptURL = NativeModules.SourceCode?.scriptURL;
-      if (scriptURL) {
-        const match = scriptURL.match(/https?:\/\/([^:]+)/);
-        if (match && match[1]) {
-          host = match[1];
-        }
-      } else {
-        const Constants = require('expo-constants').default;
-        const hostUri = Constants.expoConfig?.hostUri || Constants.manifest?.hostUri || Constants.manifest?.debuggerHost;
-        if (hostUri) {
-          const localIp = hostUri.split(':')[0];
-          if (localIp) {
-            host = localIp;
+  let host = process.env.EXPO_PUBLIC_EMULATOR_HOST;
+
+  if (!host) {
+    if (Platform.OS === 'web') {
+      host = 'localhost';
+    } else {
+      try {
+        const { NativeModules } = require('react-native');
+        const scriptURL = NativeModules.SourceCode?.scriptURL;
+        if (scriptURL) {
+          const match = scriptURL.match(/https?:\/\/([^:]+)/);
+          if (match && match[1]) {
+            host = match[1];
           }
         }
+        if (!host) {
+          const Constants = require('expo-constants').default;
+          const hostUri = Constants.expoConfig?.hostUri || Constants.manifest?.hostUri || Constants.manifest?.debuggerHost;
+          if (hostUri) {
+            const localIp = hostUri.split(':')[0];
+            if (localIp) {
+              host = localIp;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Could not determine dynamic host, using fallback:", e);
       }
-    } catch (e) {
-      console.warn("Could not determine dynamic host, using fallback:", e);
+      if (!host) {
+        host = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
+      }
     }
   }
-  console.log(`[Firebase Emulator Config] Tentatively connecting to Functions Emulator at: ${host}:5001`);
-  connectFunctionsEmulator(functions, host, 5001);
-  console.log(`[Emulator] Conectado al emulador de Cloud Functions en ${host}:5001`);
+
+  console.log(`[Firebase Emulator Config] Connecting to Functions Emulator at: ${host}:5001`);
+  try {
+    connectFunctionsEmulator(functions, host, 5001);
+    console.log(`[Emulator] Conectado al emulador de Cloud Functions en ${host}:5001`);
+  } catch (err) {
+    console.warn("[Emulator] Error connecting to Functions emulator:", err);
+  }
 }
 /**
  * Declaracion messaging. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.

@@ -216,85 +216,52 @@ function EnrutadorPrincipal() {
     }
   }, [autenticado, cargando, perfil, navigation]);
 
-  // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-  if (cargando) {
-    // Devuelve el JSX que React Native renderiza en pantalla.
-    return (
-      // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
-      <View style={{ flex: 1, backgroundColor: COLORES.fondo, justifyContent: 'center', alignItems: 'center' }}>
-        {/* Indicador de carga; comunica que hay una operacion asincrona en progreso. */}
-        <ActivityIndicator size="large" color={COLORES.primarioClaro} />
-      </View>
-    );
-  }
-
-  // Devuelve el JSX que React Native renderiza en pantalla.
   return (
-    // Componente de navegacion; define como se muestran rutas o pestañas dentro de la app.
-    <Pila.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
-      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Pila.Screen name="Bienvenida" component={PantallaBienvenida} />
-      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Pila.Screen name="Comenzar" component={Comenzar} />
-      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Pila.Screen name="SeleccionRol" component={SeleccionRol} />
-      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Pila.Screen name="LoginEmpresarial" component={LoginEmpresarial} />
+    <View style={{ flex: 1 }}>
+      <Pila.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+        <Pila.Screen name="Bienvenida" component={PantallaBienvenida} />
+        <Pila.Screen name="Comenzar" component={Comenzar} />
+        <Pila.Screen name="SeleccionRol" component={SeleccionRol} />
+        <Pila.Screen name="LoginEmpresarial" component={LoginEmpresarial} />
 
-      {/* Rutas de Aplicación */}
-      <Pila.Screen name="AppAdmin" component={AdminNavigator} />
-      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Pila.Screen name="AppJefe" component={UserNavigator} />
-      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Pila.Screen name="AppEmpleado" component={UserNavigator} />
+        {/* Rutas de Aplicación */}
+        <Pila.Screen name="AppAdmin" component={AdminNavigator} />
+        <Pila.Screen name="AppJefe" component={UserNavigator} />
+        <Pila.Screen name="AppEmpleado" component={UserNavigator} />
 
-      {/* Pantallas Comunes y de Usuario */}
-      <Pila.Screen name="MiPulso" component={MiPulso} />
-      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Pila.Screen name="CheckInDiario" component={CheckInDiario} />
-      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Pila.Screen name="ControlAsistencia" component={ControlAsistencia} />
-      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Pila.Screen name="CentroTareas" component={CentroTareas} />
-      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Pila.Screen name="MisTareas" component={MisTareas} />
-      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Pila.Screen name="SolicitudesAusencia" component={SolicitudesAusencia} />
-      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Pila.Screen name="CentroDocumentos" component={CentroDocumentos} />
-      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Pila.Screen name="CentroAprendizaje" component={CentroAprendizaje} />
-      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Pila.Screen name="MisLogros" component={MisLogros} />
-      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Pila.Screen name="BusquedaGlobal" component={BusquedaGlobal} />
-      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Pila.Screen name="BandejaUnificada" component={BandejaUnificada} />
-      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Pila.Screen name="ChatIA" component={ChatIA} />
-      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Pila.Screen name="Notificaciones" component={Notificaciones} />
-      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Pila.Screen name="Recursos" component={Recursos} />
-      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Pila.Screen name="SolicitudesInternas" component={SolicitudesInternas} />
-      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Pila.Screen name="ReservaSesion" component={ReservaSesion} />
-      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Pila.Screen name="CentroApoyo" component={CentroApoyo} />
-      <Pila.Screen name="MisActivos" component={MisActivos} />
-      <Pila.Screen name="MiSalario" component={MiSalario} />
-      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Pila.Screen name="CalendarioLaboral" component={CalendarioLaboral} />
-      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Pila.Screen name="PerfilLaboral" component={PerfilLaboral} />
-      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Pila.Screen name="ConfiguracionApp" component={ConfiguracionApp} />
-      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Pila.Screen name="HistorialCompleto" component={HistorialCompleto} />
-      {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Pila.Screen name="SaberMas" component={SaberMas} />
-    </Pila.Navigator>
+        {/* Pantallas Comunes y de Usuario */}
+        <Pila.Screen name="MiPulso" component={MiPulso} />
+        <Pila.Screen name="CheckInDiario" component={CheckInDiario} />
+        <Pila.Screen name="ControlAsistencia" component={ControlAsistencia} />
+        <Pila.Screen name="CentroTareas" component={CentroTareas} />
+        <Pila.Screen name="MisTareas" component={MisTareas} />
+        <Pila.Screen name="SolicitudesAusencia" component={SolicitudesAusencia} />
+        <Pila.Screen name="CentroDocumentos" component={CentroDocumentos} />
+        <Pila.Screen name="CentroAprendizaje" component={CentroAprendizaje} />
+        <Pila.Screen name="MisLogros" component={MisLogros} />
+        <Pila.Screen name="BusquedaGlobal" component={BusquedaGlobal} />
+        <Pila.Screen name="BandejaUnificada" component={BandejaUnificada} />
+        <Pila.Screen name="ChatIA" component={ChatIA} />
+        <Pila.Screen name="Notificaciones" component={Notificaciones} />
+        <Pila.Screen name="Recursos" component={Recursos} />
+        <Pila.Screen name="SolicitudesInternas" component={SolicitudesInternas} />
+        <Pila.Screen name="ReservaSesion" component={ReservaSesion} />
+        <Pila.Screen name="CentroApoyo" component={CentroApoyo} />
+        <Pila.Screen name="MisActivos" component={MisActivos} />
+        <Pila.Screen name="MiSalario" component={MiSalario} />
+        <Pila.Screen name="CalendarioLaboral" component={CalendarioLaboral} />
+        <Pila.Screen name="PerfilLaboral" component={PerfilLaboral} />
+        <Pila.Screen name="ConfiguracionApp" component={ConfiguracionApp} />
+        <Pila.Screen name="HistorialCompleto" component={HistorialCompleto} />
+        <Pila.Screen name="SaberMas" component={SaberMas} />
+      </Pila.Navigator>
+
+      {cargando && (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: COLORES.fondo, justifyContent: 'center', alignItems: 'center', zIndex: 9999 }]}>
+          <ActivityIndicator size="large" color={COLORES.primarioClaro} />
+        </View>
+      )}
+    </View>
   );
 }
 

@@ -638,5 +638,7 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
     botonEnviar: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORES.primario, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' },
     // botonEnviarDeshabilitado: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
     botonEnviarDeshabilitado: { opacity: 0.42 },
+    // iconoPlano: estilo de boton icono secundario.
+    iconoPlano: { width: 38, height: 38, borderRadius: RADIOS.md, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
   });
 }
