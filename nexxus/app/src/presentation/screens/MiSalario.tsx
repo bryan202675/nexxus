@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
@@ -73,6 +74,15 @@ export default function MiSalario({ navigation }: Props) {
       setRefreshing(false);
     }
   };
+
+  // El listener en vivo de pagos a veces se queda colgado en RN al volver de segundo plano
+  // o con la red inestable -- forzar un fetch directo cada vez que se entra a esta pantalla
+  // garantiza que "Mi salario" nunca se quede mostrando datos viejos.
+  useFocusEffect(
+    useCallback(() => {
+      recargarDatos();
+    }, [recargarDatos])
+  );
 
   const downloadReceipt = async (payment: Payment) => {
     setDownloadingReceiptId(payment.id);

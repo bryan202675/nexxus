@@ -13,6 +13,7 @@ import DataTable from "views/nexxus/components/DataTable";
 import Avatar from "components/nexxus/Avatar";
 import InputField from "components/fields/InputField";
 import Modal from "components/nexxus/Modal";
+import CodigoEmpresaDisplay from "components/nexxus/CodigoEmpresaDisplay";
 import { useAuth } from "context/AuthContext";
 import {
   getPlatformStats,
@@ -570,7 +571,7 @@ export default function Empresas() {
                     {detail.empresa?.nombre || "Cargando..."}
                   </h2>
                   <p className="text-sm text-gray-600 dark:text-white/70">
-                    Código: {detail.empresa?.codigo || "—"}
+                    Código: <CodigoEmpresaDisplay code={detail.empresa?.codigo || "—"} />
                   </p>
                 </div>
               </div>

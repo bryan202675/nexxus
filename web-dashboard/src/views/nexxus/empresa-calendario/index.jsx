@@ -5,6 +5,8 @@ import {
   MdOutlineDateRange,
   MdOutlinePeopleAlt,
   MdOutlineEvent,
+  MdChevronLeft,
+  MdChevronRight,
 } from "react-icons/md";
 
 import NexxusCard from "views/nexxus/components/NexxusCard";
@@ -53,6 +55,31 @@ const inicioSemana = (fecha) => {
 
 const FORM_VACIO = { titulo: "", descripcion: "", tipo: "reunion", inicio: "", fin: "", empleadoIds: [] };
 
+const NOMBRES_MES = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
+const DIAS_SEMANA = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+
+const construirGrillaMes = (mesRef, eventos) => {
+  const primerDiaMes = new Date(mesRef.getFullYear(), mesRef.getMonth(), 1);
+  const inicioGrilla = inicioSemana(primerDiaMes);
+  const celdas = [];
+  for (let i = 0; i < 42; i += 1) {
+    const fecha = new Date(inicioGrilla);
+    fecha.setDate(inicioGrilla.getDate() + i);
+    const eventosDia = eventos
+      .filter((e) => e.inicioFecha && mismodia(e.inicioFecha, fecha))
+      .sort((a, b) => (a.inicioFecha?.getTime() || 0) - (b.inicioFecha?.getTime() || 0));
+    celdas.push({
+      fecha,
+      enMesActual: fecha.getMonth() === mesRef.getMonth(),
+      eventos: eventosDia,
+    });
+  }
+  return celdas;
+};
+
 export default function CalendarioEmpresarial() {
   const { user, empresaId } = useAuth();
 
@@ -64,6 +91,8 @@ export default function CalendarioEmpresarial() {
   const [editandoId, setEditandoId] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [mesRef, setMesRef] = useState(() => new Date());
+  const [diaSeleccionado, setDiaSeleccionado] = useState(null);
 
   useEffect(() => {
     if (!empresaId) return;
@@ -80,6 +109,11 @@ export default function CalendarioEmpresarial() {
       .map((e) => ({ ...e, inicioFecha: toDate(e.inicio), finFecha: toDate(e.fin) }))
       .sort((a, b) => (a.inicioFecha?.getTime() || 0) - (b.inicioFecha?.getTime() || 0));
   }, [eventos]);
+
+  const grillaMes = useMemo(
+    () => construirGrillaMes(mesRef, eventosOrdenados),
+    [mesRef, eventosOrdenados]
+  );
 
   const metricas = useMemo(() => {
     const lista = eventos || [];
@@ -352,41 +386,126 @@ export default function CalendarioEmpresarial() {
 
           <div className="mt-8">
             <NexxusCard extra="p-4" delay={150}>
-              <h4 className="mb-4 text-lg font-bold text-navy-700 dark:text-white">Próximos eventos</h4>
-              {eventosOrdenados.length === 0 ? (
-                <p className="text-sm font-medium text-gray-600 dark:text-white/70">No hay eventos registrados.</p>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  {eventosOrdenados.map((evento) => {
-                    const info = tipoInfo(evento.tipo);
-                    return (
-                      <button
-                        key={evento.id}
-                        type="button"
-                        onClick={() => seleccionarEvento(evento)}
-                        className={`flex flex-col gap-1 rounded-lg p-3 text-left transition-colors duration-250 hover:bg-gray-50 dark:hover:bg-charcoal-light ${
-                          editandoId === evento.id ? "bg-gray-50 dark:bg-charcoal-light" : ""
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-bold text-navy-700 dark:text-white">{evento.titulo}</p>
-                          <span className={`rounded-full px-2 py-1 text-xs font-bold ${info.badge}`}>{info.label}</span>
-                        </div>
-                        <p className="text-xs text-gray-500 dark:text-white/50">
-                          {formatoFechaHora(evento.inicioFecha)} — {formatoFechaHora(evento.finFecha)}
-                        </p>
-                        {evento.empleadoNombres?.length ? (
-                          <p className="text-xs text-gray-500 dark:text-white/50">
-                            {evento.empleadoNombres.join(", ")}
-                          </p>
-                        ) : null}
-                      </button>
-                    );
-                  })}
+              <div className="mb-4 flex items-center justify-between">
+                <h4 className="text-lg font-bold capitalize text-navy-700 dark:text-white">
+                  {NOMBRES_MES[mesRef.getMonth()]} {mesRef.getFullYear()}
+                </h4>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMesRef((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
+                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-navy-700 hover:bg-gray-50 dark:!border-white/10 dark:text-white dark:hover:bg-charcoal-light"
+                  >
+                    <MdChevronLeft size={20} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMesRef(new Date())}
+                    className="flex h-9 items-center justify-center rounded-lg border border-gray-200 px-3 text-xs font-bold text-navy-700 hover:bg-gray-50 dark:!border-white/10 dark:text-white dark:hover:bg-charcoal-light"
+                  >
+                    Hoy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMesRef((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
+                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-navy-700 hover:bg-gray-50 dark:!border-white/10 dark:text-white dark:hover:bg-charcoal-light"
+                  >
+                    <MdChevronRight size={20} />
+                  </button>
                 </div>
-              )}
+              </div>
+
+              <div className="grid grid-cols-7 gap-px overflow-hidden rounded-xl border border-gray-200 bg-gray-200 dark:!border-white/10 dark:bg-white/10">
+                {DIAS_SEMANA.map((d) => (
+                  <div
+                    key={d}
+                    className="bg-lightPrimary p-2 text-center text-xs font-bold uppercase text-gray-500 dark:bg-charcoal dark:text-white/50"
+                  >
+                    {d}
+                  </div>
+                ))}
+                {grillaMes.map((celda) => {
+                  const hoy = mismodia(celda.fecha, new Date());
+                  return (
+                    <div
+                      key={celda.fecha.toISOString()}
+                      className={`min-h-[104px] bg-white p-1.5 dark:bg-navy-800 ${
+                        celda.enMesActual ? "" : "opacity-40"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between px-1">
+                        <span
+                          className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+                            hoy
+                              ? "bg-brand-500 text-white dark:bg-brand-400"
+                              : "text-navy-700 dark:text-white"
+                          }`}
+                        >
+                          {celda.fecha.getDate()}
+                        </span>
+                      </div>
+                      <div className="mt-1 flex flex-col gap-1">
+                        {celda.eventos.slice(0, 3).map((evento) => {
+                          const info = tipoInfo(evento.tipo);
+                          return (
+                            <button
+                              key={evento.id}
+                              type="button"
+                              onClick={() => seleccionarEvento(evento)}
+                              title={`${evento.titulo} · ${formatoFechaHora(evento.inicioFecha)}`}
+                              className={`w-full truncate rounded px-1.5 py-0.5 text-left text-[11px] font-bold ${info.badge}`}
+                            >
+                              {evento.titulo}
+                            </button>
+                          );
+                        })}
+                        {celda.eventos.length > 3 ? (
+                          <button
+                            type="button"
+                            onClick={() => setDiaSeleccionado(celda)}
+                            className="w-full truncate rounded px-1.5 py-0.5 text-left text-[11px] font-bold text-gray-500 hover:underline dark:text-white/50"
+                          >
+                            +{celda.eventos.length - 3} más
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </NexxusCard>
           </div>
+
+          <Modal
+            isOpen={Boolean(diaSeleccionado)}
+            onClose={() => setDiaSeleccionado(null)}
+            title={diaSeleccionado ? formatoFechaHora(diaSeleccionado.fecha).split(",")[0] : "Eventos del día"}
+          >
+            <div className="flex flex-col gap-2 p-2">
+              {(diaSeleccionado?.eventos || []).map((evento) => {
+                const info = tipoInfo(evento.tipo);
+                return (
+                  <button
+                    key={evento.id}
+                    type="button"
+                    onClick={() => {
+                      setDiaSeleccionado(null);
+                      seleccionarEvento(evento);
+                    }}
+                    className="flex flex-col gap-1 rounded-lg p-3 text-left transition-colors duration-250 hover:bg-gray-50 dark:hover:bg-charcoal-light"
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-bold text-navy-700 dark:text-white">{evento.titulo}</p>
+                      <span className={`rounded-full px-2 py-1 text-xs font-bold ${info.badge}`}>{info.label}</span>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-white/50">
+                      {formatoFechaHora(evento.inicioFecha)} — {formatoFechaHora(evento.finFecha)}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </Modal>
         </>
       )}
     </div>

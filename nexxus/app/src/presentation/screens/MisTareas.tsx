@@ -381,9 +381,9 @@ export default function MisTareas({ navigation }: Props) {
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.modalTitulo}>{tareaSeleccionada?.titulo}</Text>
               {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-              <TouchableOpacity onPress={() => setTareaSeleccionada(null)}>
+              <TouchableOpacity style={estilos.modalCerrarIcono} onPress={() => setTareaSeleccionada(null)}>
                 {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                <MaterialIcons name="close" size={24} color={COLORES.texto} />
+                <MaterialIcons name="close" size={20} color={COLORES.texto} />
               </TouchableOpacity>
             </View>
             
@@ -542,17 +542,35 @@ const estilos = StyleSheet.create({
   // textoVacio: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
   textoVacio: { ...TIPOGRAFIA.cuerpo, color: COLORES.textoSuave, marginTop: ESPACIADO.md },
   // modalOverlay: estilo de modal; define presentacion de contenido flotante sobre la pantalla actual.
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  // modalContenido: estilo del area de contenido; controla padding, distribucion y separacion interna.
-  modalContenido: { width: '85%', borderRadius: RADIOS.xxl, padding: ESPACIADO.xl, overflow: 'hidden', borderWidth: 1, borderColor: COLORES.borde },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', alignItems: 'center', padding: ESPACIADO.lg },
+  // modalContenido: estilo del area de contenido; controla padding, distribucion y separacion interna. Antes
+  // dependía solo del BlurView (sin backgroundColor propio) para separarse visualmente del fondo -- con
+  // intensity baja se notaba poco y el contenido de la tarjeta de debajo se veía "mezclado" con el modal.
+  modalContenido: {
+    width: '100%',
+    maxWidth: 420,
+    borderRadius: RADIOS.xxl,
+    padding: ESPACIADO.xl,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: COLORES.borde,
+    backgroundColor: 'rgba(20, 16, 40, 0.92)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.4,
+    shadowRadius: 24,
+    elevation: 12,
+  },
   // modalHeader: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: ESPACIADO.lg },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: ESPACIADO.lg, paddingBottom: ESPACIADO.md, borderBottomWidth: 1, borderBottomColor: COLORES.borde },
   // modalTitulo: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
   modalTitulo: { ...TIPOGRAFIA.tituloSeccion, flex: 1, marginRight: 10 },
+  // modalCerrarIcono: botón de cerrar (X) con área táctil clara, separado del título.
+  modalCerrarIcono: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORES.superficieSuave },
   // modalScroll: estilo de modal; define presentacion de contenido flotante sobre la pantalla actual.
   modalScroll: { maxHeight: 300 },
   // modalLabel: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-  modalLabel: { fontSize: 11, fontWeight: '900', color: COLORES.textoSuave, textTransform: 'uppercase', marginTop: ESPACIADO.md, marginBottom: 4 },
+  modalLabel: { fontSize: 11, fontWeight: '900', color: COLORES.textoSuave, textTransform: 'uppercase', marginTop: ESPACIADO.md, marginBottom: 4, letterSpacing: 0.5 },
   // modalDesc: estilo de modal; define presentacion de contenido flotante sobre la pantalla actual.
   modalDesc: { ...TIPOGRAFIA.cuerpo, color: COLORES.textoSecundario, lineHeight: 22 },
   // comentario: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
@@ -561,8 +579,9 @@ const estilos = StyleSheet.create({
   textoComentario: { fontSize: 13, color: COLORES.texto },
   // textoVacioP: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
   textoVacioP: { fontSize: 13, color: COLORES.textoSuave, fontStyle: 'italic' },
-  // botonCerrarModal: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
-  botonCerrarModal: { marginTop: ESPACIADO.xl, paddingVertical: ESPACIADO.md, alignItems: 'center', backgroundColor: COLORES.superficieSuave, borderRadius: RADIOS.md },
+  // botonCerrarModal: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion. Ancho
+  // completo explícito (antes se encogía al contenido, lo que dejaba espacio vacío a su lado dentro del modal).
+  botonCerrarModal: { marginTop: ESPACIADO.xl, paddingVertical: ESPACIADO.md, alignItems: 'center', justifyContent: 'center', width: '100%', alignSelf: 'stretch', backgroundColor: COLORES.primario, borderRadius: RADIOS.md },
   // textoBotonCerrar: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-  textoBotonCerrar: { fontWeight: '700', color: COLORES.texto },
+  textoBotonCerrar: { fontWeight: '700', color: '#FFFFFF' },
 });

@@ -56,6 +56,7 @@ export default function PanelJefe() {
         empresaId,
         departamentoId: perfil.departamentoId,
         departamento: perfil.departamento,
+        rol: perfil.rol,
       },
       150,
       (nextDashboard) => {

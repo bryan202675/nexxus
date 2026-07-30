@@ -135,6 +135,7 @@ export default function UserNavigator() {
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
+        animation: 'shift'
       }}
     >
       {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}

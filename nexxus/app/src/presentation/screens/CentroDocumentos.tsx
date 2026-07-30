@@ -22,6 +22,7 @@ import {
   View,
 } from 'react-native';
 // Importa { Feather, MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
+import Markdown from 'react-native-markdown-display';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 // Importa { BlurView } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import { BlurView } from 'expo-blur';
@@ -88,8 +89,7 @@ export default function CentroDocumentos({ navigation }: Props) {
 
   const [docLecturaActivo, setDocLecturaActivo] = useState<Documento | null>(null);
 
-  const manejarAbrir = async (doc: Documento) => {
-    if (!doc.leido) await marcarDocumentoLeido(doc.id);
+  const manejarAbrir = (doc: Documento) => {
     setDocLecturaActivo(doc);
   };
 
@@ -445,9 +445,23 @@ export default function CentroDocumentos({ navigation }: Props) {
 
                 {/* Contenido del Documento */}
                 <ScrollView style={{ flex: 1, marginVertical: 16 }} showsVerticalScrollIndicator={false}>
-                  <Text style={{ fontSize: 14, color: colores.texto, lineHeight: 22, fontWeight: '400' }}>
+                  <Markdown style={{ 
+                    body: { fontSize: 15, color: colores.texto, lineHeight: 24, fontWeight: '400' },
+                    heading1: { fontSize: 24, lineHeight: 32, fontWeight: 'bold', color: colores.texto, marginTop: 16, marginBottom: 8 },
+                    heading2: { fontSize: 20, lineHeight: 28, fontWeight: 'bold', color: colores.texto, marginTop: 16, marginBottom: 8 },
+                    heading3: { fontSize: 18, lineHeight: 26, fontWeight: 'bold', color: colores.texto, marginTop: 12, marginBottom: 6 },
+                    heading4: { fontSize: 16, lineHeight: 24, fontWeight: 'bold', color: colores.texto, marginTop: 12, marginBottom: 6 },
+                    heading5: { fontSize: 15, lineHeight: 22, fontWeight: 'bold', color: colores.texto, marginTop: 8, marginBottom: 4 },
+                    heading6: { fontSize: 14, lineHeight: 20, fontWeight: 'bold', color: colores.texto, marginTop: 8, marginBottom: 4 },
+                    paragraph: { marginTop: 8, marginBottom: 8 },
+                    list_item: { marginTop: 4, marginBottom: 4 },
+                    strong: { fontWeight: 'bold' },
+                    em: { fontStyle: 'italic' },
+                    blockquote: { borderLeftWidth: 4, borderLeftColor: colores.primario, paddingLeft: 12, opacity: 0.8, backgroundColor: 'rgba(255,255,255,0.05)' },
+                    code_inline: { backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 4, borderRadius: 4, fontFamily: 'monospace' }
+                  }}>
                     {docLecturaActivo?.contenido_completo || 'Este documento contiene normativa e información oficial verificada.'}
-                  </Text>
+                  </Markdown>
                 </ScrollView>
 
                 {/* Footer con acciones */}

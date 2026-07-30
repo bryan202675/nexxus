@@ -1,8 +1,15 @@
 {
   "scripts": {
-    "build:hosting": "bash scripts/build-hosting.sh"
+    "build:hosting": "bash scripts/build-hosting.sh",
+    "dev": "concurrently -n functions,web,app -c yellow,cyan,magenta \"npm run dev:functions\" \"npm run dev:web\" \"npm run dev:app\"",
+    "dev:functions": "bash scripts/dev-functions.sh",
+    "dev:web": "npm --prefix web-dashboard start",
+    "dev:app": "npm --workspace app --prefix nexxus start"
   },
   "dependencies": {
     "colorjs.io": "^0.7.1"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.4"
   }
 }

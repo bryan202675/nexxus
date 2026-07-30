@@ -3,6 +3,7 @@ import gsap from 'gsap';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/infrastructure/firebase/firebaseConfig';
+import { destinoWorkspaceAdmin } from './workspaceRoutes';
 import BorderGlow from './BorderGlow';
 import GlassSurface from './GlassSurface';
 import LandingFooter from './LandingFooter';
@@ -312,6 +313,7 @@ export default function Landing() {
   const [isAuthenticated, setIsAuthenticated] = useState(Boolean(auth.currentUser));
   const [authReady, setAuthReady] = useState(false);
   const [hasCompany, setHasCompany] = useState(false);
+  const [rolUsuario, setRolUsuario] = useState('');
   const [profilePhoto, setProfilePhoto] = useState(auth.currentUser?.photoURL || '');
   const [profileLetters, setProfileLetters] = useState(profileInitials(auth.currentUser?.displayName || auth.currentUser?.email || 'N'));
   // --- Refs ---
@@ -332,6 +334,7 @@ export default function Landing() {
     if (!user) {
       setActivePlan(null);
       setHasCompany(false);
+      setRolUsuario('');
       setProfilePhoto('');
       setProfileLetters('N');
       setAuthReady(true);
@@ -341,6 +344,7 @@ export default function Landing() {
     const userData = userSnapshot?.exists() ? userSnapshot.data() : {};
     const profileName = String(userData.nombre || user.displayName || user.email?.split('@')[0] || 'N');
     setHasCompany(Boolean(userData.empresaId || userData.empresa_id || userData.empresaID));
+    setRolUsuario(String(userData.rol || userData.role || ''));
     setProfilePhoto(String(userData.foto_perfil || user.photoURL || ''));
     setProfileLetters(profileInitials(profileName));
     setAuthReady(true);
@@ -777,7 +781,7 @@ export default function Landing() {
       return;
     }
     if (hasCompany) {
-      window.location.assign('/app');
+      window.location.assign(destinoWorkspaceAdmin(rolUsuario));
       return;
     }
     goToLandingPath('/landing/crear-empresa');
@@ -919,7 +923,7 @@ export default function Landing() {
           </div>
           <div className="nx-mobile-menu-actions nx-mobile-menu-animate">
             {isAuthenticated ? (
-              <button className="nx-mobile-menu-access" onClick={() => window.location.assign('/app')}>
+              <button className="nx-mobile-menu-access" onClick={() => window.location.assign(destinoWorkspaceAdmin(rolUsuario))}>
                 Acceder a tu empresa
               </button>
             ) : (
@@ -965,7 +969,7 @@ export default function Landing() {
                 <p>{landingText.access.companyText}</p>
               </div>
               <div className="nx-access-actions">
-                <StarButton className="nx-btn nx-btn-primary" onClick={() => window.location.assign('/app')}>
+                <StarButton className="nx-btn nx-btn-primary" onClick={() => window.location.assign(destinoWorkspaceAdmin(rolUsuario))}>
                   {landingText.access.enterCompany}
                 </StarButton>
                 <button className="nx-btn nx-btn-minimal" onClick={() => goToLandingPath('/landing/cuenta')}>

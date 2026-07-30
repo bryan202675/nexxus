@@ -44,6 +44,7 @@ import { CreateAbsence } from '@/application/use-cases/absences/CreateAbsence';
 
 // Importa { GetPayments }; ejecuta casos de uso que concentran reglas de negocio.
 import { GetPayments } from '@/application/use-cases/payments/GetPayments';
+import { SubscribePayments } from '@/application/use-cases/payments/SubscribePayments';
 
 // Importa { GetAppointments }; ejecuta casos de uso que concentran reglas de negocio.
 import { GetAppointments } from '@/application/use-cases/appointments/GetAppointments';
@@ -253,6 +254,7 @@ export const useCases = {
   },
   payments: {
     getPayments: new GetPayments(paymentRepository),
+    subscribe: new SubscribePayments(paymentRepository),
   },
   appointments: {
     getAppointments: new GetAppointments(appointmentRepository),

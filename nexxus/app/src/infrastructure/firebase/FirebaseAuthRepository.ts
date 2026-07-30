@@ -6,13 +6,12 @@
  * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras Firebase al extender este archivo.
  */
 
-import { 
-  signInWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged, 
+import {
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
   createUserWithEmailAndPassword,
-  updateProfile,
-  signInWithCustomToken
+  updateProfile
 } from 'firebase/auth';
 // Importa { doc, getDoc, setDoc } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -51,23 +50,34 @@ export class FirebaseAuthRepository implements IAuthRepository {
   // loginEmpresarial agrupa una parte de la logica del modulo para mantener el flujo principal mas legible.
   async loginEmpresarial(codigoEmpresa: string, usuario: string, password: string): Promise<User> {
     try {
+      // El servidor valida usuario/código/contraseña contra Firestore (passwordInternoHash) y
+      // solo devuelve el correo real de la cuenta -- nunca minamos un custom token aquí porque
+      // eso requiere una cuenta de servicio con permiso signBlob que no existe en desarrollo
+      // local, y el login nunca terminaba de completarse. Con el correo confirmado por el
+      // servidor, cerramos el login con signInWithEmailAndPassword usando la MISMA contraseña
+      // que el servidor ya validó como correcta.
       const loginCallable = httpsCallable(functions, 'loginEmpresarial');
       const result = await loginCallable({
         codigoEmpresa,
         usuario,
         password,
       });
-      const data = result.data as { token?: string };
-      if (!data.token) throw AuthError.invalidCredentials();
-      const credential = await signInWithCustomToken(auth, data.token);
+      const data = result.data as { correo?: string };
+      if (!data.correo) throw AuthError.invalidCredentials();
+      const credential = await signInWithEmailAndPassword(auth, data.correo, password);
       const user = await this.getById(credential.user.uid);
-      if (!user) throw AuthError.userNotFound();
+      if (!user) {
+        console.error('[FirebaseAuthRepository.loginEmpresarial] signIn ok pero doc usuarios/' + credential.user.uid + ' no existe');
+        throw AuthError.userNotFound();
+      }
       return user;
     } catch (error: any) {
-      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
+      if (auth.currentUser) {
+        await signOut(auth).catch(() => {});
+      }
+      const rawMsg = error?.message || error?.details?.message || (typeof error === 'string' ? error : undefined);
       if (error instanceof AuthError) throw error;
-      // Interrumpe el flujo con un error controlado para que la capa superior lo maneje.
-      throw AuthError.fromFirebase(error.code);
+      throw AuthError.fromFirebase(error?.code, rawMsg);
     }
   }
 

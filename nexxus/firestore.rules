@@ -102,7 +102,10 @@ service cloud.firestore {
         "telefono",
         "estado_trabajo",
         "updatedAt",
-        "fecha_actualizacion"
+        "fecha_actualizacion",
+        "ultimoCheckIn",
+        "racha",
+        "estado_activo"
       ]);
     }
 
@@ -143,7 +146,7 @@ service cloud.firestore {
         (request.auth.uid == userId && usuarioAutoUpdateSeguro()) ||
         (esAdminEmpresa() && mantieneTenant())
       ) && sinPasswordPlanoEnUpdate() && sinEscalarSuperAdmin();
-      allow delete: if autenticado() && esSuperAdmin();
+      allow delete: if autenticado() && (esSuperAdmin() || (esAdminEmpresa() && puedeLeerTenant(resource.data)));
 
       match /{subcollection}/{docId} {
         allow read, write: if autenticado() && (
@@ -183,7 +186,7 @@ service cloud.firestore {
         (mantieneTenant() && esJefe()) ||
         resource.data.asignado_a == request.auth.uid
       );
-      allow delete: if autenticado() && mantieneTenant() && esJefe();
+      allow delete: if autenticado() && puedeLeerTenant(resource.data) && esJefe();
     }
 
     match /solicitudes_ausencia/{id} {
@@ -199,7 +202,7 @@ service cloud.firestore {
       );
       allow delete: if autenticado() && (
         esSuperAdmin() ||
-        (mantieneTenant() && esAdminEmpresa()) ||
+        (puedeLeerTenant(resource.data) && esAdminEmpresa()) ||
         resource.data.usuario_id == request.auth.uid
       );
     }
@@ -215,7 +218,7 @@ service cloud.firestore {
         (mantieneTenant() && esJefe()) ||
         resource.data.userId == request.auth.uid
       );
-      allow delete: if autenticado() && mantieneTenant() && esAdminEmpresa();
+      allow delete: if autenticado() && puedeLeerTenant(resource.data) && esAdminEmpresa();
     }
 
     match /reportes/{id} {
@@ -228,7 +231,7 @@ service cloud.firestore {
       allow update: if autenticado() && mantieneTenant() && esJefe();
       allow delete: if autenticado() && (
         esSuperAdmin() ||
-        (mantieneTenant() && esAdminEmpresa())
+        (puedeLeerTenant(resource.data) && esAdminEmpresa())
       );
     }
 
@@ -242,7 +245,7 @@ service cloud.firestore {
       allow update: if autenticado() && mantieneTenant() && esJefe();
       allow delete: if autenticado() && (
         esSuperAdmin() ||
-        (mantieneTenant() && esAdminEmpresa())
+        (puedeLeerTenant(resource.data) && esAdminEmpresa())
       );
     }
 
@@ -253,7 +256,11 @@ service cloud.firestore {
       );
       allow create: if autenticado() && puedeCrearTenant() &&
         request.resource.data.userId == request.auth.uid;
-      allow update, delete: if autenticado() && mantieneTenant() && esJefe();
+      allow update: if autenticado() && mantieneTenant() && (
+        esJefe() ||
+        resource.data.userId == request.auth.uid
+      );
+      allow delete: if autenticado() && puedeLeerTenant(resource.data) && esJefe();
     }
 
     match /payments/{id} {
@@ -262,10 +269,14 @@ service cloud.firestore {
         resource.data.usuario_id == request.auth.uid ||
         resource.data.userId == request.auth.uid
       );
-      allow create, update, delete: if autenticado() && (
+      allow create, update: if autenticado() && (
         esSuperAdmin() ||
         (puedeCrearTenant() && esAdminEmpresa()) ||
         (mantieneTenant() && esAdminEmpresa())
+      );
+      allow delete: if autenticado() && (
+        esSuperAdmin() ||
+        (puedeLeerTenant(resource.data) && esAdminEmpresa())
       );
     }
 
@@ -293,10 +304,14 @@ service cloud.firestore {
         resource.data.usuario_id == request.auth.uid ||
         resource.data.empleadoId == request.auth.uid
       );
-      allow create, update, delete: if autenticado() && (
+      allow create, update: if autenticado() && (
         esSuperAdmin() ||
         (puedeCrearTenant() && esAdminEmpresa()) ||
         (mantieneTenant() && esAdminEmpresa())
+      );
+      allow delete: if autenticado() && (
+        esSuperAdmin() ||
+        (puedeLeerTenant(resource.data) && esAdminEmpresa())
       );
     }
 
@@ -310,7 +325,7 @@ service cloud.firestore {
         resource.data.userId == request.auth.uid ||
         (mantieneTenant() && esAdminEmpresa())
       );
-      allow delete: if autenticado() && mantieneTenant() && esAdminEmpresa();
+      allow delete: if autenticado() && puedeLeerTenant(resource.data) && esAdminEmpresa();
     }
 
     match /inventario_activos/{id} {
@@ -322,7 +337,7 @@ service cloud.firestore {
       allow update: if autenticado() && mantieneTenant() && esJefe();
       allow delete: if autenticado() && (
         esSuperAdmin() ||
-        (mantieneTenant() && esAdminEmpresa())
+        (puedeLeerTenant(resource.data) && esAdminEmpresa())
       );
     }
 
@@ -342,7 +357,7 @@ service cloud.firestore {
       allow update: if autenticado() && mantieneTenant() && esJefe();
       allow delete: if autenticado() && (
         esSuperAdmin() ||
-        (mantieneTenant() && esAdminEmpresa())
+        (puedeLeerTenant(resource.data) && esAdminEmpresa())
       );
     }
 
@@ -356,7 +371,8 @@ service cloud.firestore {
     match /anuncios/{id} {
       allow read: if autenticado() && puedeLeerTenant(resource.data);
       allow create: if autenticado() && puedeCrearTenant() && esJefe();
-      allow update, delete: if autenticado() && mantieneTenant() && esJefe();
+      allow update: if autenticado() && mantieneTenant() && esJefe();
+      allow delete: if autenticado() && puedeLeerTenant(resource.data) && esJefe();
     }
 
     // FirebaseAnnouncementRepository.ts (nexxus/app) y adminRepository.js (web-dashboard) leen y
@@ -366,7 +382,8 @@ service cloud.firestore {
     match /announcements/{id} {
       allow read: if autenticado() && puedeLeerTenant(resource.data);
       allow create: if autenticado() && puedeCrearTenant() && esJefe();
-      allow update, delete: if autenticado() && mantieneTenant() && esJefe();
+      allow update: if autenticado() && mantieneTenant() && esJefe();
+      allow delete: if autenticado() && puedeLeerTenant(resource.data) && esJefe();
     }
 
     match /conversaciones/{id} {
@@ -389,7 +406,7 @@ service cloud.firestore {
       );
       allow delete: if autenticado() && (
         esSuperAdmin() ||
-        (mantieneTenant() && esAdminEmpresa())
+        (puedeLeerTenant(resource.data) && esAdminEmpresa())
       );
     }
 
@@ -405,7 +422,7 @@ service cloud.firestore {
       allow update: if autenticado() && mantieneTenant() && soloActualizaLecturaMensaje();
       allow delete: if autenticado() && (
         esSuperAdmin() ||
-        (mantieneTenant() && esAdminEmpresa())
+        (puedeLeerTenant(resource.data) && esAdminEmpresa())
       );
     }
 
@@ -424,7 +441,7 @@ service cloud.firestore {
       allow delete: if autenticado() && (
         resource.data.usuario_id == request.auth.uid ||
         resource.data.userId == request.auth.uid ||
-        (mantieneTenant() && esJefe())
+        (puedeLeerTenant(resource.data) && esJefe())
       );
     }
 
@@ -502,31 +519,36 @@ service cloud.firestore {
     match /calendario_empresarial/{id} {
       allow read: if autenticado() && puedeLeerTenant(resource.data);
       allow create: if autenticado() && puedeCrearTenant() && esJefe();
-      allow update, delete: if autenticado() && mantieneTenant() && esJefe();
+      allow update: if autenticado() && mantieneTenant() && esJefe();
+      allow delete: if autenticado() && puedeLeerTenant(resource.data) && esJefe();
     }
 
     match /sedes/{id} {
       allow read: if autenticado() && puedeLeerTenant(resource.data);
       allow create: if autenticado() && puedeCrearTenant() && esJefe();
-      allow update, delete: if autenticado() && mantieneTenant() && esJefe();
+      allow update: if autenticado() && mantieneTenant() && esJefe();
+      allow delete: if autenticado() && puedeLeerTenant(resource.data) && esJefe();
     }
 
     match /departments/{id} {
       allow read: if autenticado() && puedeLeerTenant(resource.data);
       allow create: if autenticado() && puedeCrearTenant() && esJefe();
-      allow update, delete: if autenticado() && mantieneTenant() && esJefe();
+      allow update: if autenticado() && mantieneTenant() && esJefe();
+      allow delete: if autenticado() && puedeLeerTenant(resource.data) && esJefe();
     }
 
     match /cargos/{id} {
       allow read: if autenticado() && puedeLeerTenant(resource.data);
       allow create: if autenticado() && puedeCrearTenant() && esJefe();
-      allow update, delete: if autenticado() && mantieneTenant() && esJefe();
+      allow update: if autenticado() && mantieneTenant() && esJefe();
+      allow delete: if autenticado() && puedeLeerTenant(resource.data) && esJefe();
     }
 
     match /roles_personalizados/{id} {
       allow read: if autenticado() && puedeLeerTenant(resource.data);
       allow create: if autenticado() && puedeCrearTenant() && esAdminEmpresa();
-      allow update, delete: if autenticado() && mantieneTenant() && esAdminEmpresa();
+      allow update: if autenticado() && mantieneTenant() && esAdminEmpresa();
+      allow delete: if autenticado() && puedeLeerTenant(resource.data) && esAdminEmpresa();
     }
 
     match /citas/{id} {
@@ -541,13 +563,14 @@ service cloud.firestore {
         resource.data.usuario_id == request.auth.uid ||
         (esPsicologo() && resource.data.especialista == obtenerUsuario().nombre)
       );
-      allow delete: if autenticado() && mantieneTenant() && esAdminEmpresa();
+      allow delete: if autenticado() && puedeLeerTenant(resource.data) && esAdminEmpresa();
     }
 
     match /especialistas/{id} {
       allow read: if autenticado() && (esSuperAdmin() || puedeLeerTenant(resource.data));
       allow create: if autenticado() && puedeCrearTenant() && esJefe();
-      allow update, delete: if autenticado() && mantieneTenant() && esJefe();
+      allow update: if autenticado() && mantieneTenant() && esJefe();
+      allow delete: if autenticado() && puedeLeerTenant(resource.data) && esJefe();
     }
 
     match /respuestas_formularios/{id} {
@@ -572,7 +595,7 @@ service cloud.firestore {
         resource.data.userId == request.auth.uid ||
         resource.data.usuario_id == request.auth.uid
       );
-      allow delete: if autenticado() && mantieneTenant() && esAdminEmpresa();
+      allow delete: if autenticado() && puedeLeerTenant(resource.data) && esAdminEmpresa();
     }
 
     match /chat_contextual/{id} {
@@ -589,7 +612,8 @@ service cloud.firestore {
       );
       allow create: if autenticado() && puedeCrearTenant() &&
         request.resource.data.userId == request.auth.uid;
-      allow update, delete: if autenticado() && mantieneTenant() && esJefe();
+      allow update: if autenticado() && mantieneTenant() && esJefe();
+      allow delete: if autenticado() && puedeLeerTenant(resource.data) && esJefe();
     }
 
     match /pausas/{id} {
@@ -610,13 +634,15 @@ service cloud.firestore {
         puedeLeerTenant(resource.data)
       );
       allow create: if autenticado() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if autenticado() && mantieneTenant() && esJefe();
+      allow update: if autenticado() && mantieneTenant() && esJefe();
+      allow delete: if autenticado() && puedeLeerTenant(resource.data) && esJefe();
     }
 
     match /cursos/{id} {
       allow read: if autenticado() && puedeLeerTenant(resource.data);
       allow create: if autenticado() && puedeCrearTenant() && esAdminEmpresa();
-      allow update, delete: if autenticado() && mantieneTenant() && esAdminEmpresa();
+      allow update: if autenticado() && mantieneTenant() && esAdminEmpresa();
+      allow delete: if autenticado() && puedeLeerTenant(resource.data) && esAdminEmpresa();
     }
 
     match /capacitacion_avances/{id} {
@@ -634,7 +660,8 @@ service cloud.firestore {
       // denied" en vez de simplemente no encontrado.
       allow read: if autenticado() && (esSuperAdmin() || resource == null || accesoEmpresa(resource.data.empresaId));
       allow create: if autenticado() && puedeCrearTenant() && esAdminEmpresa();
-      allow update, delete: if autenticado() && mantieneTenant() && esAdminEmpresa();
+      allow update: if autenticado() && mantieneTenant() && esAdminEmpresa();
+      allow delete: if autenticado() && puedeLeerTenant(resource.data) && esAdminEmpresa();
     }
 
     match /upload_rate_limits/{uid} {

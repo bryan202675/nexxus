@@ -211,6 +211,7 @@ export default function ChatInterno() {
   const [users, setUsers] = useState<ChatUser[]>([]);
   const [selectedConversationId, setSelectedConversationId] = useState<string>('');
   const [tecladoVisible, setTecladoVisible] = useState(false);
+  const [alturaTeclado, setAlturaTeclado] = useState(0);
 
   // Modals / State for creating new chats
   const [showNewChatModal, setShowNewChatModal] = useState(false);
@@ -501,14 +502,25 @@ export default function ChatInterno() {
     }
   };
 
+  // Se mide la altura REAL del teclado (e.endCoordinates.height) en vez de confiar únicamente en
+  // KeyboardAvoidingView con behavior="padding": en esta pantalla, con SafeAreaView + un header
+  // (NavbarEnterprise) + Animated.View envolviendo el contenido, ese comportamiento automático no
+  // calculaba bien el offset y la barra de escribir terminaba oculta detrás del teclado. Aplicar
+  // la altura medida directo como marginBottom es más confiable en este árbol de vistas.
   useEffect(() => {
     const showSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => setTecladoVisible(true)
+      (e) => {
+        setTecladoVisible(true);
+        setAlturaTeclado(e?.endCoordinates?.height || 0);
+      }
     );
     const hideSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => setTecladoVisible(false)
+      () => {
+        setTecladoVisible(false);
+        setAlturaTeclado(0);
+      }
     );
     return () => {
       showSub.remove();
@@ -918,7 +930,7 @@ export default function ChatInterno() {
         ) : null}
 
         <Animated.View style={[styles.flex, { opacity: chatFadeAnim, transform: [{ translateY: chatSlideAnim }] }]}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
+          <KeyboardAvoidingView behavior={undefined} style={styles.flex}>
           {/* Mensajes del chat */}
           <ScrollView
             ref={scrollRef}
@@ -1092,7 +1104,7 @@ export default function ChatInterno() {
                 {
                   backgroundColor: glassBg,
                   borderColor: '#EF4444',
-                  marginBottom: tecladoVisible ? 6 : (Platform.OS === 'ios' ? 88 : 78),
+                  marginBottom: alturaTeclado > 0 ? alturaTeclado + 6 : (Platform.OS === 'ios' ? 88 : 78),
                 },
               ]}
             >
@@ -1115,7 +1127,7 @@ export default function ChatInterno() {
                 {
                   backgroundColor: glassBg,
                   borderColor: colores.borde,
-                  marginBottom: tecladoVisible ? 6 : (Platform.OS === 'ios' ? 88 : 78),
+                  marginBottom: alturaTeclado > 0 ? alturaTeclado + 6 : (Platform.OS === 'ios' ? 88 : 78),
                 },
               ]}
             >

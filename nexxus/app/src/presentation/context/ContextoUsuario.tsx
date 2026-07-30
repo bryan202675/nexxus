@@ -173,6 +173,12 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
       const unsubNotifications = useCases.notifications.subscribe.execute(user.id, empresaId, (items) => {
         setNotificaciones(items);
       });
+      // Pagos: antes se leia una sola vez en fetchSaaSData y nunca se enteraba de cambios
+      // hechos desde el dashboard (nomina marcada como pagada), por eso solo se veia
+      // reflejado reiniciando la app. Listener en vivo igual que tareas/notificaciones.
+      const unsubPayments = useCases.payments.subscribe.execute(user.id, empresaId, (items) => {
+        setPagos(items);
+      });
       // Devuelve el valor final calculado para esta funcion o caso de uso.
       return () => {
         // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
@@ -180,6 +186,7 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
         // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
         unsubTasks();
         unsubNotifications();
+        unsubPayments();
       };
     }
   }, [isAuthenticated, user]);
@@ -195,8 +202,7 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
     // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
     try {
       // Declara [t, a, p, c, n, allUsers, docs, focus, feeds, ri]; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const [t, a, p, c, n, allUsers, docs, focus, feeds, ri] = await Promise.all([
-        useCases.tasks.getTasks.execute(user.id),
+      const [a, p, c, n, allUsers, docs, focus, feeds, ri] = await Promise.all([
         useCases.absences.getAbsences.execute(user.id),
         useCases.payments.getPayments.execute(user.id, empresaId),
         useCases.appointments.getAppointments.execute(user.id),
@@ -207,8 +213,9 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
         useCases.feedback.getFeedbacks.execute(user.id),
         useCases.requests.getByUser.execute(user.id),
       ]);
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-      setTareas(t);
+      // Tareas se manejan en el listener (unsubTasks). Pagos tiene listener propio (unsubPayments)
+      // pero en RN los listeners de Firestore a veces se quedan colgados al volver de segundo plano
+      // o con red inestable -- por eso "recargar" hace ademas este fetch directo como respaldo.
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setSolicitudes(a);
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
@@ -377,24 +384,36 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
   const registrarEventoAsistencia = async (tipo: 'entrada' | 'salida' | 'inicio_pausa' | 'fin_pausa', metadata?: AttendanceEventMetadata) => {
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!user) return;
-    // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-    await useCases.attendance.record.execute(user.id, {
-      userId: user.id,
-      empresaId: obtenerEmpresaId(user),
-      tipo,
-      gps: metadata?.gps,
-      ubicacionGeo: metadata?.gps,
-      ubicacionEstado: metadata?.ubicacionEstado || (metadata?.gps ? 'granted' : 'unavailable'),
-      metodoRegistro: metadata?.metodoRegistro || (metadata?.gps ? 'ubicacion' : 'manual'),
-      estado_aprobacion: 'pendiente',
-    });
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-    if (tipo === 'entrada' || tipo === 'salida') {
-      // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-      await marcarAsistencia(tipo);
+    try {
+      await useCases.attendance.record.execute(user.id, {
+        userId: user.id,
+        empresaId: obtenerEmpresaId(user),
+        tipo,
+        gps: metadata?.gps,
+        ubicacionGeo: metadata?.gps,
+        ubicacionEstado: metadata?.ubicacionEstado || (metadata?.gps ? 'granted' : 'unavailable'),
+        metodoRegistro: metadata?.metodoRegistro || (metadata?.gps ? 'ubicacion' : 'manual'),
+        estado_aprobacion: 'pendiente',
+      });
+    } catch (err) {
+      console.error("Error crítico al crear el registro de asistencia (asistencias collection):", err);
+      throw err;
     }
-    // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-    await fetchSaaSData();
+
+    if (tipo === 'entrada' || tipo === 'salida') {
+      try {
+        await marcarAsistencia(tipo);
+      } catch (err) {
+        console.error("Error no crítico al actualizar el perfil (usuarios collection):", err);
+        // No lanzamos el error para no bloquear la app, la asistencia ya se guardó.
+      }
+    }
+    
+    try {
+      await fetchSaaSData();
+    } catch (err) {
+      console.error("Error al recargar datos:", err);
+    }
   };
 
   // Declara enviarMensajeChat; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.

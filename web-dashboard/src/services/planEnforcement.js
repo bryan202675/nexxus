@@ -22,7 +22,47 @@ export function useEmpresaPlan() {
     setState((current) => ({ ...current, loading: true }));
     const unsub = onSnapshot(
       doc(db, "empresas", empresaId),
-      (snap) => setState({ loading: false, empresa: snap.exists() ? snap.data() : null }),
+      async (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          // Si la empresa no tiene un código asignado, generar uno único (como en GestionPlantilla.tsx)
+          if (!data.codigo && !data.codigoEmpresa) {
+            let uniqueCode = '';
+            let isUnique = false;
+            let attempts = 0;
+            const cleanName = (data.nombre || 'EMP').replace(/[^a-zA-Z]/g, '').substring(0, 3).toUpperCase() || 'EMP';
+
+            while (!isUnique && attempts < 5) {
+              const randomDigits = Math.floor(1000 + Math.random() * 9000);
+              uniqueCode = `${cleanName}-${randomDigits}`;
+              const checkSnap = await getDocs(query(collection(db, 'empresas'), where('codigo', '==', uniqueCode)));
+              if (checkSnap.empty) isUnique = true;
+              attempts++;
+            }
+
+            if (isUnique) {
+              try {
+                // Import dinámico para no engordar dependencias iniciales y reusar instancias
+                const { updateDoc, writeBatch } = await import("firebase/firestore");
+                await updateDoc(doc(db, 'empresas', empresaId), { codigo: uniqueCode });
+                data.codigo = uniqueCode; // Actualización optimista
+
+                const snapUsers = await getDocs(query(collection(db, 'usuarios'), where('empresaId', '==', empresaId)));
+                const batch = writeBatch(db);
+                snapUsers.docs.forEach(uDoc => {
+                  batch.update(doc(db, 'usuarios', uDoc.id), { codigoEmpresa: uniqueCode });
+                });
+                await batch.commit();
+              } catch (e) {
+                console.error("No se pudo generar el código retroactivamente", e);
+              }
+            }
+          }
+          setState({ loading: false, empresa: data });
+        } else {
+          setState({ loading: false, empresa: null });
+        }
+      },
       () => setState({ loading: false, empresa: null })
     );
     return () => unsub();

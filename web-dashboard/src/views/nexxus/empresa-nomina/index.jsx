@@ -236,19 +236,40 @@ export default function GestionNomina() {
         };
 
         // eslint-disable-next-line no-await-in-loop
-        await addDoc(collection(db, "nominas"), registro);
+        const nominaRef = await addDoc(collection(db, "nominas"), registro);
         try {
+          // "payments" es lo único que lee la app del empleado (MiSalario.tsx, vía
+          // FirebasePaymentRepository que filtra where("usuario_id","==",uid)) -- este espejo
+          // escribía "empleadoId" (nunca "usuario_id", el campo que de verdad se consulta) y solo
+          // "amount"/"status" en vez de todos los campos que espera Payment.ts (salario_neto,
+          // estado capitalizado 'Pagado'/'Pendiente', isss, afp, renta, etc). El query nunca
+          // encontraba nada, sin importar el monto o el estado real de la nómina.
           // eslint-disable-next-line no-await-in-loop
-          await addDoc(collection(db, "payments"), {
+          const paymentRef = await addDoc(collection(db, "payments"), {
             empresaId,
-            empleadoId: empleado.id,
-            empleadoNombre: registro.empleadoNombre,
+            usuario_id: empleado.id,
+            usuarioNombre: registro.empleadoNombre,
+            departamento: empleado.departamento || "",
             periodo: periodoActual,
-            amount: calculo.totalPagar,
-            status: "pendiente",
-            tipo: "nomina",
+            salario_base: salarioBase,
+            salario_bruto: calculo.salarioBruto,
+            isss: calculo.isss,
+            afp: calculo.afp,
+            renta: calculo.renta,
+            horas_extra: calculo.horasExtra,
+            valor_hora_extra: calculo.valorHoraExtra,
+            bono: 0,
+            comision: 0,
+            descuentos_adicionales: 0,
+            salario_neto: calculo.totalPagar,
+            moneda: "USD",
+            fecha_pago: "",
+            estado: "Pendiente",
+            creadoPor: user.uid,
             createdAt: serverTimestamp(),
           });
+          // eslint-disable-next-line no-await-in-loop
+          await updateDoc(nominaRef, { paymentId: paymentRef.id });
         } catch {
           // El espejo en payments es opcional; si falla no se bloquea la generación de nómina.
         }
@@ -259,6 +280,8 @@ export default function GestionNomina() {
       setGenerando(false);
     }
   };
+
+  const ESTADO_PAYMENT = { pendiente: "Pendiente", revisado: "Procesando", pagado: "Pagado" };
 
   const handleCambiarEstado = async (nomina, estado) => {
     if (!user) return;
@@ -272,6 +295,32 @@ export default function GestionNomina() {
         fechaAprobacion: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+      // Sin esto, el espejo en "payments" (lo único que lee la app del empleado) se quedaba
+      // congelado en "Pendiente" para siempre sin importar que el admin marcara la nómina como
+      // revisada o pagada aquí -- por eso el empleado veía "Sin pagos publicados" después de que
+      // ya se le había pagado.
+      if (nomina.paymentId) {
+        await updateDoc(doc(db, "payments", nomina.paymentId), {
+          estado: ESTADO_PAYMENT[estado] || "Pendiente",
+          ...(estado === "pagado" ? { fecha_pago: new Date().toISOString() } : {}),
+        });
+      }
+      // Al marcar como pagado, el empleado nunca se enteraba porque nada escribía en
+      // "notificaciones" -- el cambio de estado en "nominas" no dispara ninguna notificación por
+      // sí solo. Mismos nombres de campo que el resto de la app (usuario_id/userId) para que la
+      // bandeja de notificaciones de la app móvil la reciba igual que cualquier otra.
+      if (estado === "pagado" && nomina.empleadoId) {
+        await addDoc(collection(db, "notificaciones"), {
+          usuario_id: nomina.empleadoId,
+          userId: nomina.empleadoId,
+          empresaId,
+          titulo: "Pago de nómina realizado",
+          mensaje: `Se confirmó el pago de tu nómina del período ${nomina.periodo || periodoActual} por ${formatoMoneda(nomina.totalPagar || 0)}.`,
+          tipo: "info",
+          leida: false,
+          fecha: new Date().toISOString(),
+        });
+      }
     } catch (err) {
       setAccionError(err.message || "No se pudo actualizar el estado.");
     } finally {

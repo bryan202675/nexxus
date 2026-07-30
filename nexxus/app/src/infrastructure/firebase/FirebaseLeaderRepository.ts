@@ -84,7 +84,7 @@ const normalizeEvaluation = (id: string, data: Record<string, unknown>): Evaluat
 
 export class FirebaseLeaderRepository implements ILeaderRepository {
   subscribeDashboard(
-    leader: { id: string; nombre: string; empresaId: string; departamentoId?: string; departamento?: string },
+    leader: { id: string; nombre: string; empresaId: string; rol?: string; departamentoId?: string; departamento?: string },
     limitCount: number,
     callback: (dashboard: LeaderDashboard) => void,
     onError: (error: Error) => void
@@ -98,6 +98,7 @@ export class FirebaseLeaderRepository implements ILeaderRepository {
     };
 
     const teamScope = (user: User) => {
+      if (leader.rol === 'admin' || leader.rol === 'admin_empresa' || leader.rol === 'super_admin') return true;
       if (user.id === leader.id) return false;
       if (user.jefeId === leader.id) return true;
       if (leader.departamentoId && user.departamentoId === leader.departamentoId) return true;

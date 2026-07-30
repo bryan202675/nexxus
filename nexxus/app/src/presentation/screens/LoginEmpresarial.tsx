@@ -30,17 +30,73 @@ import { useTranslation } from 'react-i18next';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import FondoAurora from '@/presentation/components/FondoAurora';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
+import { AdminToastProvider, useAdminToast } from '@/presentation/screens/admin/adminToast';
+
+// Traduce el error de login a un mensaje que señala EXACTAMENTE qué campo revisar, en vez de un
+// "no se pudo iniciar sesión" genérico. Los codes vienen de dos lugares distintos con formas
+// distintas de error: el servidor (loginEmpresarial en backend/index.js, error.code tipo
+// "functions/unauthenticated") valida código+usuario+contraseña interna, y el propio Firebase
+// Auth del cliente (signInWithEmailAndPassword, error.code tipo "auth/invalid-credential") que
+// completa el login con la contraseña real -- si esta última falla justo después de que el
+// servidor la aceptó, es casi siempre una contraseña interna desincronizada de la real (ver
+// resetEmployeePassword en backend/index.js), así que ese caso tiene su propio mensaje.
+function mapearErrorLogin(err: any): { titulo: string; descripcion: string } {
+  const code = String(err?.code || '');
+  const mensajeServidor = err?.userMessage || err?.message || '';
+
+  if (code.includes('unauthenticated')) {
+    return {
+      titulo: 'Usuario o código de empresa incorrectos',
+      descripcion: 'Revisa el "Código de empresa" y el "Usuario". La contraseña no se llegó a verificar.',
+    };
+  }
+  if (code.includes('permission-denied')) {
+    return {
+      titulo: 'Cuenta bloqueada',
+      descripcion: mensajeServidor || 'Un administrador bloqueó esta cuenta. Contáctalo para reactivarla.',
+    };
+  }
+  if (code.includes('resource-exhausted')) {
+    return {
+      titulo: 'Demasiados intentos',
+      descripcion: 'Espera unos minutos antes de volver a intentar.',
+    };
+  }
+  if (code.includes('failed-precondition')) {
+    return {
+      titulo: 'Cuenta sin correo asociado',
+      descripcion: 'Pide a tu administrador que revise tu cuenta.',
+    };
+  }
+  if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/invalid-credentials') {
+    return {
+      titulo: 'Contraseña incorrecta',
+      descripcion: 'Tu usuario y código son correctos, pero la contraseña no coincide. Si estás seguro de que es correcta, pide a tu administrador que te la restablezca desde Plantilla.',
+    };
+  }
+  if (code === 'auth/user-not-found') {
+    return {
+      titulo: 'Cuenta no encontrada',
+      descripcion: 'Tu cuenta interna existe pero no tiene un usuario de acceso real. Contacta a tu administrador.',
+    };
+  }
+  return {
+    titulo: 'No se pudo iniciar sesión',
+    descripcion: mensajeServidor || 'Intenta de nuevo en unos segundos.',
+  };
+}
 
 /**
  * Componente LoginEmpresarial. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
-export default function LoginEmpresarial({ navigation }: { navigation: any }) {
+function LoginEmpresarialContent({ navigation }: { navigation: any }) {
   // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { t } = useTranslation();
   // Inicializa { loginEmpresarial }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { loginEmpresarial } = useContextoUsuario();
   // Declara { colores, blurTint, intensidadBlur, esOscuro }; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
+  const toast = useAdminToast();
   
   // Inicializa [loading, setLoading]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [loading, setLoading] = useState(false);
@@ -81,22 +137,38 @@ export default function LoginEmpresarial({ navigation }: { navigation: any }) {
 
   // Inicializa handleLogin; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const handleLogin = async () => {
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
+    // Solo super_admin entra sin codigoEmpresa (ver backend/index.js loginEmpresarial). Validar
+    // aqui evita el viaje al servidor solo para recibir "Usuario o codigo de empresa incorrectos"
+    // por un campo vacio, que confundia porque la etiqueta anterior decia "(opcional)".
+    if (!form.codigoEmpresa.trim()) {
+      const msg = 'Ingresa el código de tu empresa.';
+      setError(msg);
+      toast.warning({ title: 'Falta el código de empresa', description: msg });
+      return;
+    }
+    if (!form.usuario.trim()) {
+      const msg = 'Ingresa tu usuario.';
+      setError(msg);
+      toast.warning({ title: 'Falta el usuario', description: msg });
+      return;
+    }
+    if (!form.password) {
+      const msg = 'Ingresa tu contraseña.';
+      setError(msg);
+      toast.warning({ title: 'Falta la contraseña', description: msg });
+      return;
+    }
+
     setLoading(true);
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setError(null);
-    // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
     try {
-      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (!loginEmpresarial) throw new Error('Contexto de autenticación no disponible');
-      // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
       await loginEmpresarial(form);
-      // La navegación se maneja automáticamente en App.tsx vía useContextoUsuario
     } catch (e: any) {
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-      setError(e.userMessage || 'Error en el acceso empresarial');
+      const { titulo, descripcion } = mapearErrorLogin(e);
+      setError(descripcion);
+      toast.error({ title: titulo, description: descripcion });
     } finally {
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setLoading(false);
     }
   };
@@ -209,12 +281,12 @@ export default function LoginEmpresarial({ navigation }: { navigation: any }) {
             </View>
 
             {error && (
-              // Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla.
               <Animated.View style={estilos.errorContainer}>
-                {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                <MaterialIcons name="error-outline" size={16} color="#EF4444" />
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+                <MaterialIcons name="error-outline" size={18} color="#EF4444" />
                 <Text style={estilos.errorText}>{error}</Text>
+                <TouchableOpacity onPress={() => setError(null)} style={{ padding: 2 }}>
+                  <MaterialIcons name="close" size={16} color="#FCA5A5" />
+                </TouchableOpacity>
               </Animated.View>
             )}
 
@@ -264,6 +336,19 @@ export default function LoginEmpresarial({ navigation }: { navigation: any }) {
         </View>
       </KeyboardAvoidingView>
     </View>
+  );
+}
+
+/**
+ * Componente LoginEmpresarial. Envuelve LoginEmpresarialContent con su propio AdminToastProvider
+ * (mismo patrón que Landing/AccountPage.tsx) porque esta pantalla vive fuera de AdminNavigator,
+ * que es donde normalmente se monta el provider para las pantallas ya autenticadas.
+ */
+export default function LoginEmpresarial(props: { navigation: any }) {
+  return (
+    <AdminToastProvider>
+      <LoginEmpresarialContent {...props} />
+    </AdminToastProvider>
   );
 }
 
@@ -446,27 +531,24 @@ const estilos = StyleSheet.create({
   },
   // errorContainer: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
   errorContainer: {
-    // flexDirection decide si los hijos se ordenan en fila o columna.
     flexDirection: 'row',
-    // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
-    // backgroundColor define el fondo del bloque.
-    backgroundColor: 'rgba(239,68,68,0.1)',
-    // padding agrega espacio interno alrededor del contenido.
-    padding: 12,
-    // borderRadius redondea esquinas para definir la forma visual.
-    borderRadius: 12,
-    // gap define separacion uniforme entre elementos hijos.
-    gap: 8,
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(239,68,68,0.15)',
+    borderColor: 'rgba(239,68,68,0.35)',
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 14,
+    gap: 10,
+    marginTop: 4,
+    marginBottom: 4,
   },
-  // errorText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   errorText: {
-    // color define el color del texto o icono.
     color: '#EF4444',
-    // fontSize controla el tamanio del texto.
     fontSize: 13,
-    // fontWeight define el peso visual del texto.
-    fontWeight: '600',
+    fontWeight: '700',
+    flex: 1,
   },
   // loginBtn: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   loginBtn: {

@@ -19,6 +19,7 @@ import InputField from "components/fields/InputField";
 import Modal from "components/nexxus/Modal";
 import { useAuth } from "context/AuthContext";
 import { db, subscribeEmpleados } from "services/adminRepository";
+import { subirAdjuntoChat, validarAdjuntoChat } from "services/chatUpload";
 
 const textValue = (value, fallback = "") =>
   typeof value === "string" && value.trim().length > 0 ? value.trim() : fallback;
@@ -114,6 +115,8 @@ export default function MensajeriaInternaAdmin() {
 
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [subiendoArchivo, setSubiendoArchivo] = useState(false);
+  const fileInputRef = useRef(null);
 
   const [showNuevo, setShowNuevo] = useState(false);
   const [seleccionIds, setSeleccionIds] = useState([]);
@@ -211,6 +214,16 @@ export default function MensajeriaInternaAdmin() {
     [conversaciones, selectedId]
   );
 
+  // La foto guardada en conversaciones/{id}.participantes[].foto es una foto capturada al crear
+  // la conversación -- si el empleado no tenía foto en ese momento (o la cambió después), queda
+  // vacía o desactualizada para siempre ahí. Este mapa hace la búsqueda en vivo contra la lista
+  // de empleados ya suscrita, para no depender de ese snapshot congelado.
+  const fotoPorEmpleadoId = useMemo(() => {
+    const map = new Map();
+    empleados.forEach((emp) => { if (emp.foto) map.set(emp.id, emp.foto); });
+    return map;
+  }, [empleados]);
+
   const tituloConversacion = (c) => {
     if (textValue(c.titulo)) return c.titulo;
     const otros = (c.participantes || []).filter((p) => p.id !== user?.uid);
@@ -222,10 +235,11 @@ export default function MensajeriaInternaAdmin() {
     setSelectedId(id);
   };
 
-  const handleEnviarMensaje = async (e) => {
+  const handleEnviarMensaje = async (e, adjuntosForzados) => {
     e?.preventDefault?.();
     const contenido = texto.trim();
-    if (!contenido || !selectedId || enviando) return;
+    const adjuntos = adjuntosForzados || [];
+    if ((!contenido && adjuntos.length === 0) || !selectedId || enviando) return;
     setEnviando(true);
     try {
       await addDoc(collection(db, "mensajes"), {
@@ -234,12 +248,12 @@ export default function MensajeriaInternaAdmin() {
         remitenteId: user.uid,
         remitenteNombre: perfil?.nombre || user.email,
         texto: contenido,
-        adjuntos: [],
+        adjuntos,
         leidoPor: [user.uid],
         timestamp: new Date().toISOString(),
       });
       await updateDoc(doc(db, "conversaciones", selectedId), {
-        ultimoMensaje: contenido.slice(0, 120),
+        ultimoMensaje: contenido ? contenido.slice(0, 120) : "📎 Adjunto",
         ultimoMensajeAt: new Date().toISOString(),
       });
       setTexto("");
@@ -247,6 +261,39 @@ export default function MensajeriaInternaAdmin() {
       setMensajesError(err.message || "No se pudo enviar el mensaje.");
     } finally {
       setEnviando(false);
+    }
+  };
+
+  // El botón de adjuntar estaba deshabilitado ("Adjuntos próximamente"), aunque el hilo de
+  // mensajes ya sabe renderizar adjuntos (ver m.adjuntos abajo). Sube directo a Cloudinary sin
+  // Cloud Functions (mismo preset "unsigned" que usa la app móvil, ver services/chatUpload.js) y
+  // envía el archivo como su propio mensaje apenas termina de subir.
+  const handleSeleccionarArchivo = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !selectedId) return;
+    const error = validarAdjuntoChat(file);
+    if (error) {
+      setMensajesError(error);
+      return;
+    }
+    setSubiendoArchivo(true);
+    setMensajesError("");
+    try {
+      const subido = await subirAdjuntoChat(file, empresaId);
+      // La app móvil (ChatInterno.tsx) espera cada adjunto como OBJETO { url, tipo, mime, nombre }
+      // -- se estaba mandando el array como puros strings de URL, y attachment.url sobre un
+      // string es undefined, así que la imagen nunca se detectaba ni se renderizaba del otro lado.
+      await handleEnviarMensaje(null, [{
+        url: subido.url,
+        tipo: subido.mime === "application/pdf" ? "documento" : "imagen",
+        mime: subido.mime,
+        nombre: subido.nombre,
+      }]);
+    } catch (err) {
+      setMensajesError(err.message || "No se pudo subir el archivo.");
+    } finally {
+      setSubiendoArchivo(false);
     }
   };
 
@@ -407,7 +454,7 @@ export default function MensajeriaInternaAdmin() {
               <ul className="flex flex-col gap-1">
                 {conversaciones.map((c) => {
                   const otros = (c.participantes || []).filter((p) => p.id !== user?.uid);
-                  const fotoPreview = otros[0]?.foto;
+                  const fotoPreview = (otros[0] && fotoPorEmpleadoId.get(otros[0].id)) || otros[0]?.foto;
                   const activa = c.id === selectedId;
                   return (
                     <li key={c.id}>
@@ -469,7 +516,10 @@ export default function MensajeriaInternaAdmin() {
             <>
               <div className="mb-3 flex items-center gap-3 border-b border-gray-100 pb-3 dark:border-white/10">
                 <Avatar
-                  src={(conversacionSeleccionada.participantes || []).find((p) => p.id !== user?.uid)?.foto}
+                  src={(() => {
+                    const otro = (conversacionSeleccionada.participantes || []).find((p) => p.id !== user?.uid);
+                    return (otro && fotoPorEmpleadoId.get(otro.id)) || otro?.foto;
+                  })()}
                   name={tituloConversacion(conversacionSeleccionada)}
                   size={10}
                 />
@@ -561,13 +611,25 @@ export default function MensajeriaInternaAdmin() {
               </div>
 
               <form onSubmit={handleEnviarMensaje} className="mt-3 flex items-end gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  className="hidden"
+                  onChange={handleSeleccionarArchivo}
+                />
                 <button
                   type="button"
-                  disabled
-                  title="Adjuntos próximamente"
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-400 dark:bg-white/5 dark:text-white/30"
+                  disabled={subiendoArchivo || enviando}
+                  title="Adjuntar imagen o PDF"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-600 transition hover:bg-gray-200 disabled:opacity-50 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/10"
                 >
-                  <MdOutlineAttachFile className="h-5 w-5" />
+                  {subiendoArchivo ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  ) : (
+                    <MdOutlineAttachFile className="h-5 w-5" />
+                  )}
                 </button>
                 <textarea
                   value={texto}

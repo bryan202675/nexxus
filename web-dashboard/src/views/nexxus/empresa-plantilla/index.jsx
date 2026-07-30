@@ -7,7 +7,8 @@ import {
   MdOutlineBadge,
 } from "react-icons/md";
 import { doc, updateDoc, deleteDoc, setDoc, addDoc, collection } from "firebase/firestore";
-import { getAuth, createUserWithEmailAndPassword, signOut, signInWithEmailAndPassword, updatePassword } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, signOut } from "firebase/auth";
+import { httpsCallable } from "firebase/functions";
 
 import NexxusCard from "views/nexxus/components/NexxusCard";
 import NexxusWidget from "views/nexxus/components/NexxusWidget";
@@ -15,10 +16,12 @@ import DataTable from "views/nexxus/components/DataTable";
 import Modal from "components/nexxus/Modal";
 import Avatar from "components/nexxus/Avatar";
 import InputField from "components/fields/InputField";
+import CodigoEmpresaDisplay from "components/nexxus/CodigoEmpresaDisplay";
 
 import { useAuth } from "context/AuthContext";
 import { useEmpresaPlan, limiteAlcanzado } from "services/planEnforcement";
-import { getSecondaryApp } from "firebaseClient/firebaseConfig";
+import { getSecondaryApp, functions } from "firebaseClient/firebaseConfig";
+import { hashInternalPassword } from "services/internalPassword";
 import { db, subscribeEmpleados, subscribeSedes, subscribeCargos } from "services/adminRepository";
 import { etiquetaRol, ROLE_OPTIONS } from "services/saFormat";
 
@@ -145,6 +148,7 @@ export default function GestionPlantilla() {
   const [selectedEmpleado, setSelectedEmpleado] = useState(null);
   const [editForm, setEditForm] = useState(null);
   const [rolSeleccionado, setRolSeleccionado] = useState("");
+  const [nuevaContrasena, setNuevaContrasena] = useState("");
   const [busyAction, setBusyAction] = useState("");
   const [actionMsg, setActionMsg] = useState("");
 
@@ -211,7 +215,6 @@ export default function GestionPlantilla() {
       nombre: selectedEmpleado.nombre || "",
       correo: selectedEmpleado.correo || "",
       usuario: selectedEmpleado.usuario || "",
-      contrasena: selectedEmpleado.contrasena || "",
       telefono: selectedEmpleado.telefono || "",
       cargo: selectedEmpleado.cargo || "",
       departamento: selectedEmpleado.departamento || "",
@@ -219,6 +222,7 @@ export default function GestionPlantilla() {
       salarioBase: selectedEmpleado.salarioBase || 0,
     });
     setRolSeleccionado(selectedEmpleado.rol || "empleado");
+    setNuevaContrasena("");
     setActionMsg("");
   }, [selectedEmpleado]);
 
@@ -267,22 +271,10 @@ export default function GestionPlantilla() {
     setBusyAction("guardar");
     setActionMsg("");
     try {
-      if (editForm.contrasena && editForm.contrasena !== selectedEmpleado.contrasena) {
-        const secondaryAuth = getAuth(getSecondaryApp());
-        try {
-          await signInWithEmailAndPassword(secondaryAuth, selectedEmpleado.correo, selectedEmpleado.contrasena);
-          await updatePassword(secondaryAuth.currentUser, editForm.contrasena);
-          await signOut(secondaryAuth);
-        } catch (authErr) {
-          throw new Error("No se pudo actualizar la contraseña de autenticación: " + authErr.message);
-        }
-      }
-
       await updateDoc(doc(db, "usuarios", selectedEmpleado.id), {
         nombre: editForm.nombre,
         correo: editForm.correo,
         usuario: editForm.usuario,
-        contrasena: editForm.contrasena,
         telefono: editForm.telefono,
         cargo: editForm.cargo,
         departamento: editForm.departamento,
@@ -292,6 +284,36 @@ export default function GestionPlantilla() {
       setActionMsg("Cambios guardados.");
     } catch (err) {
       setActionMsg(err.message || "No se pudieron guardar los cambios.");
+    } finally {
+      setBusyAction("");
+    }
+  };
+
+  // Cambia la contraseña del empleado sin pedirle al admin la contraseña anterior. Antes esto
+  // intentaba iniciar sesión como el empleado usando una contraseña en texto plano guardada en
+  // Firestore (selectedEmpleado.contrasena) -- fallaba con "auth/missing-password" para
+  // cualquier empleado que nunca tuvo ese campo (p.ej. creado desde la app móvil, que solo
+  // guarda el hash, nunca el texto plano). El SDK de cliente de Firebase Auth no puede cambiar
+  // la contraseña de OTRO usuario sin conocer la anterior -- por diseño, para que nadie pueda
+  // secuestrar cuentas ajenas -- así que esto requiere sí o sí una Cloud Function con
+  // privilegios de Admin SDK (resetEmployeePassword, backend/index.js), que sincroniza en un
+  // solo paso la contraseña real de Firebase Auth y el hash interno que usa el login de la app
+  // móvil (loginEmpresarial).
+  const handleCambiarContrasena = async () => {
+    if (!selectedEmpleado) return;
+    if (nuevaContrasena.trim().length < 6) {
+      setActionMsg("La nueva contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
+    setBusyAction("password");
+    setActionMsg("");
+    try {
+      const resetPassword = httpsCallable(functions, "resetEmployeePassword");
+      await resetPassword({ empleadoId: selectedEmpleado.id, newPassword: nuevaContrasena });
+      setNuevaContrasena("");
+      setActionMsg("Contraseña actualizada.");
+    } catch (err) {
+      setActionMsg(err.message || "No se pudo cambiar la contraseña.");
     } finally {
       setBusyAction("");
     }
@@ -368,12 +390,25 @@ export default function GestionPlantilla() {
       const uid = credencial.user.uid;
       await signOut(secondaryAuth);
 
+      // usuarioInterno/passwordInternoHash/codigoEmpresa son los campos que backend/index.js
+      // (loginEmpresarial) busca para el login codigo+usuario+contraseña de la app movil. Sin
+      // ellos el empleado queda creado (entra con correo/contrasena aqui en el dashboard) pero
+      // nunca puede entrar desde la app movil, sin importar que escriba - bug real reportado.
+      // El hash (no la contraseña en texto plano) porque firestore.rules bloquea guardar
+      // "passwordInterno" en creates (sinPasswordPlanoEnCreate) -- por eso este screen daba
+      // "Missing or insufficient permissions" al intentar escribirla tal cual.
+      const usuarioInterno = createForm.usuario.trim().toLowerCase();
+      const passwordInternoHash = await hashInternalPassword(createForm.contrasena);
       await setDoc(doc(db, "usuarios", uid), {
         id: uid,
         nombre: createForm.nombre.trim(),
         correo: createForm.correo.trim().toLowerCase(),
         usuario: createForm.usuario.trim(),
+        usuarioInterno,
         contrasena: createForm.contrasena,
+        passwordInternoHash,
+        passwordHashAlgorithm: "pbkdf2_sha256",
+        codigoEmpresa,
         rol: createForm.rol,
         cargo: createForm.cargo,
         departamento: createForm.departamento,
@@ -381,6 +416,7 @@ export default function GestionPlantilla() {
         empresaId,
         activo: true,
         estado_activo: true,
+        eliminado: false,
         createdAt: new Date().toISOString(),
       });
 
@@ -437,18 +473,26 @@ export default function GestionPlantilla() {
         throw new Error("No se encontraron empleados que coincidan con la selección.");
       }
       
-      const batchPromises = targetEmpleados.map(emp => 
+      // Nombres de campo EXACTOS que espera nexxus/app/src/domain/entities/Task.ts y que
+      // FirebaseTaskRepository.ts usa para consultar ("where('asignado_a', ...)"). Esta pantalla
+      // antes escribía "asignadoA"/"urgencia"/"fechaLimite" (camelCase, valores en minúscula) --
+      // el empleado nunca veía la tarea porque el query del lado app.movil nunca encontraba
+      // coincidencias, no por ningún problema de permisos ni de sincronización.
+      const prioridadPorUrgencia = { baja: "Baja", media: "Media", alta: "Alta", urgente: "Urgente" };
+      const batchPromises = targetEmpleados.map(emp =>
         addDoc(collection(db, "tareas"), {
           empresaId,
-          asignadoA: emp.id,
-          asignadoNombre: emp.nombre,
+          asignado_a: emp.id,
+          asignado_nombre: emp.nombre,
           titulo: taskForm.titulo.trim(),
           descripcion: taskForm.descripcion.trim(),
-          urgencia: taskForm.urgencia,
-          fechaLimite: taskForm.fechaLimite || null,
+          prioridad: prioridadPorUrgencia[taskForm.urgencia] || "Media",
+          fecha_limite: taskForm.fechaLimite || null,
           estado: "pendiente",
-          creadoPor: user?.uid || "admin",
-          createdAt: new Date().toISOString()
+          progreso: 0,
+          jefe: user?.nombre || user?.correo || "Administrador",
+          depto: emp.departamento || "",
+          fecha_creacion: new Date().toISOString()
         })
       );
       
@@ -534,7 +578,12 @@ export default function GestionPlantilla() {
 
       <div className="mb-6 flex flex-col justify-between gap-4 rounded-xl border border-brand-100 bg-brand-50 p-4 md:flex-row md:items-center dark:border-white/10 dark:bg-navy-900">
         <div>
-          <h4 className="text-lg font-bold text-navy-700 dark:text-white">Código de Empresa: <span className="ml-2 rounded-lg bg-brand-500 px-3 py-1 text-white tracking-widest">{codigoEmpresa}</span></h4>
+          <h4 className="text-lg font-bold text-navy-700 dark:text-white">
+            Código de Empresa:{" "}
+            <span className="ml-2 rounded-lg bg-brand-500 px-3 py-1 text-white tracking-widest">
+              <CodigoEmpresaDisplay code={codigoEmpresa} />
+            </span>
+          </h4>
           <p className="mt-1 text-sm text-gray-600 dark:text-white/60">
             Comparte este código con tus empleados. Lo necesitarán para registrarse o iniciar sesión en la aplicación móvil.
           </p>
@@ -776,13 +825,6 @@ export default function GestionPlantilla() {
                 onChange={(e) => setEditForm((f) => ({ ...f, usuario: e.target.value }))}
               />
               <InputField
-                label="Contraseña"
-                id="editar-contrasena"
-                type="text"
-                value={editForm.contrasena}
-                onChange={(e) => setEditForm((f) => ({ ...f, contrasena: e.target.value }))}
-              />
-              <InputField
                 label="Teléfono"
                 id="editar-telefono"
                 value={editForm.telefono}
@@ -839,6 +881,20 @@ export default function GestionPlantilla() {
             </div>
             <ActionButton busy={busyAction === "rol"} onClick={handleCambiarRol} className="bg-blueSecondary">
               Cambiar rol
+            </ActionButton>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-gray-100 pt-4 dark:border-white/10">
+            <InputField
+              label="Nueva contraseña"
+              id="editar-nueva-contrasena"
+              type="text"
+              placeholder="Mínimo 6 caracteres"
+              value={nuevaContrasena}
+              onChange={(e) => setNuevaContrasena(e.target.value)}
+            />
+            <ActionButton busy={busyAction === "password"} onClick={handleCambiarContrasena} className="bg-orange-500">
+              Cambiar contraseña
             </ActionButton>
           </div>
 

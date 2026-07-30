@@ -17,7 +17,8 @@ const admin = require("firebase-admin");
 // como FieldValue/Timestamp -- quedaban undefined y tumbaban loginEmpresarial (y cualquier otra
 // funcion) con "Cannot read properties of undefined (reading 'serverTimestamp')" SOLO bajo el
 // emulador. El import del submodulo no pasa por ese proxy y evita el bug.
-const { FieldValue, Timestamp } = require("firebase-admin/firestore");
+const { FieldValue, Timestamp, FieldPath } = require("firebase-admin/firestore");
+
 const { v1: { FirestoreAdminClient } } = require("@google-cloud/firestore");
 const crypto = require("crypto");
 const {
@@ -622,6 +623,60 @@ exports.updateEmployeeRole = onCall({ cors: true }, async (request) => {
   return { ok: true, changeId: changeRef.id };
 });
 
+// Permite a un admin de empresa (o super admin) cambiar la contraseña de un empleado de su
+// propia empresa SIN pedirle la contraseña anterior. El SDK de cliente de Firebase Auth no puede
+// cambiar la contraseña de OTRO usuario sin re-autenticarse como él primero (por diseño, para que
+// nadie pueda secuestrar cuentas ajenas) -- de ahí que web-dashboard antes intentara iniciar
+// sesión como el empleado usando una contraseña en texto plano guardada en Firestore, y fallara
+// con "auth/missing-password" para cualquier empleado que nunca tuvo ese campo (p.ej. creado
+// desde la app móvil, que solo guarda el hash). admin.auth().updateUser() sí puede cambiarla
+// directamente porque corre con privilegios de Admin SDK -- y a diferencia de
+// createCustomToken(), esta llamada NO necesita una cuenta de servicio con permiso signBlob, así
+// que funciona igual en el emulador local que en producción.
+exports.resetEmployeePassword = onCall({ cors: true }, async (request) => {
+  const caller = await getCaller(request.auth);
+  if (!isAdmin(caller)) {
+    throw new HttpsError("permission-denied", "Solo administración puede cambiar contraseñas.");
+  }
+  const empleadoId = safeString(request.data?.empleadoId, 120);
+  const newPassword = typeof request.data?.newPassword === "string" ? request.data.newPassword : "";
+  if (!empleadoId) throw new HttpsError("invalid-argument", "Falta el empleado.");
+  assertValidPassword(newPassword);
+
+  const db = admin.firestore();
+  const employeeRef = db.collection("usuarios").doc(empleadoId);
+  const employeeSnap = await employeeRef.get();
+  if (!employeeSnap.exists) throw new HttpsError("not-found", "No se encontró el empleado.");
+  const employee = employeeSnap.data() || {};
+  const empresaId = tenantIdOf(employee);
+  if (!empresaId || !sameCompany(caller, empresaId)) {
+    throw new HttpsError("permission-denied", "No tienes acceso a este empleado.");
+  }
+  if (normalizeRole(employee.rol) === "super_admin") {
+    throw new HttpsError("permission-denied", "No puedes modificar un super admin.");
+  }
+
+  await admin.auth().updateUser(empleadoId, { password: newPassword });
+  await admin.auth().revokeRefreshTokens(empleadoId).catch(() => {});
+  await employeeRef.set({
+    passwordInternoHash: hashInternalPassword(newPassword),
+    passwordHashAlgorithm: INTERNAL_PASSWORD_ALGORITHM,
+    passwordUpdatedAt: FieldValue.serverTimestamp(),
+    passwordInterno: FieldValue.delete(),
+    passwordInicial: FieldValue.delete(),
+  }, { merge: true });
+
+  await writeAuditLog({
+    actor: caller,
+    empresaId,
+    accion: "Cambio de contraseña de empleado",
+    modulo: "Plantilla",
+    detalles: `Empleado ${empleadoId}`,
+    targetId: empleadoId,
+  });
+  return { ok: true };
+});
+
 exports.completeTrainingModule = onCall({ cors: true }, async (request) => {
   const caller = await getCaller(request.auth);
   if (!caller.empresaId) throw new HttpsError("failed-precondition", "Tu usuario no tiene empresa asociada.");
@@ -640,7 +695,7 @@ exports.completeTrainingModule = onCall({ cors: true }, async (request) => {
     if (!courseSnap.exists) throw new HttpsError("not-found", "No se encontró el curso.");
 
     const course = courseSnap.data() || {};
-    if (!sameCompany(caller, course.empresaId)) {
+    if (course.empresaId && course.empresaId !== "global" && course.empresaId !== "GLOBAL" && !sameCompany(caller, course.empresaId)) {
       throw new HttpsError("permission-denied", "No puedes acceder a cursos de otra empresa.");
     }
 
@@ -722,7 +777,8 @@ const enforceLoginRateLimit = async (key) => {
 };
 
 exports.loginEmpresarial = onCall({ cors: true }, async (request) => {
-  const codigoEmpresa = String(request.data?.codigoEmpresa || "").trim().toUpperCase();
+  const codigoEmpresaRaw = String(request.data?.codigoEmpresa || "").trim();
+  const codigoEmpresa = codigoEmpresaRaw.toUpperCase();
   const usuarioInterno = String(request.data?.usuario || "").trim().toLowerCase();
   const password = String(request.data?.password || "");
   if (!usuarioInterno || !password) {
@@ -732,17 +788,80 @@ exports.loginEmpresarial = onCall({ cors: true }, async (request) => {
   await enforceLoginRateLimit(`${codigoEmpresa}:${usuarioInterno}`);
 
   let doc;
-  if (codigoEmpresa) {
-    const snapshot = await admin.firestore().collection("usuarios")
-      .where("codigoEmpresa", "==", codigoEmpresa)
+  if (codigoEmpresaRaw) {
+    // 1) Verificar si existe la empresa con ese código
+    let empresaDoc = null;
+    
+    // Primero, probar búsqueda directa por "codigo" en mayúsculas (comportamiento original)
+    const empresaSnapUpper = await admin.firestore().collection("empresas")
+      .where("codigo", "==", codigoEmpresa)
+      .limit(1)
+      .get();
+      
+    if (!empresaSnapUpper.empty) {
+      empresaDoc = empresaSnapUpper.docs[0];
+    } else {
+      // Segundo, probar búsqueda por "codigo" exacto (por si tiene mayúsculas/minúsculas)
+      const empresaSnapRaw = await admin.firestore().collection("empresas")
+        .where("codigo", "==", codigoEmpresaRaw)
+        .limit(1)
+        .get();
+      if (!empresaSnapRaw.empty) {
+        empresaDoc = empresaSnapRaw.docs[0];
+      }
+    }
+
+    if (!empresaDoc) {
+      // Tercero, probar si el usuario introdujo el ID exacto del documento (case-sensitive)
+      const directDoc = await admin.firestore().collection("empresas").doc(codigoEmpresaRaw).get();
+      if (directDoc.exists) {
+        empresaDoc = directDoc;
+      } else if (codigoEmpresaRaw.length >= 8) {
+        // Cuarto, el web-dashboard le muestra al usuario el prefijo de 8 caracteres del ID de empresa
+        const prefixSnap = await admin.firestore().collection("empresas")
+          .where(FieldPath.documentId(), ">=", codigoEmpresaRaw)
+          .where(FieldPath.documentId(), "<=", codigoEmpresaRaw + "\uf8ff")
+          .limit(1)
+          .get();
+        if (!prefixSnap.empty) {
+          empresaDoc = prefixSnap.docs[0];
+        }
+      }
+    }
+
+    if (!empresaDoc) {
+      throw new HttpsError("not-found", "El código de empresa ingresado no existe.");
+    }
+
+    // 2) Buscar el usuario dentro de esa empresa
+    // El usuario en bd puede estar vinculado por "empresaId" o por variantes del "codigoEmpresa"
+    let snapshot = await admin.firestore().collection("usuarios")
+      .where("empresaId", "==", empresaDoc.id)
       .where("usuarioInterno", "==", usuarioInterno)
       .limit(2)
       .get();
+
+    if (snapshot.empty) {
+      const codigos = [codigoEmpresa, codigoEmpresaRaw];
+      if (empresaDoc.id) codigos.push(empresaDoc.id);
+      if (empresaDoc.data()?.codigo) codigos.push(empresaDoc.data().codigo);
+      
+      const unicos = [...new Set(codigos)].filter(Boolean);
+
+      snapshot = await admin.firestore().collection("usuarios")
+        .where("codigoEmpresa", "in", unicos)
+        .where("usuarioInterno", "==", usuarioInterno)
+        .limit(2)
+        .get();
+    }
     doc = snapshot.docs.find((entry) => entry.data()?.eliminado !== true);
+
+    if (!doc) {
+      throw new HttpsError("not-found", "El usuario ingresado no existe en esta empresa.");
+    }
   } else {
     // Ruta de acceso del super admin: sin código de empresa, se busca por usuario y se exige
-    // que el documento tenga rol super_admin (nadie puede auto-asignarse ese rol, ver
-    // sinEscalarSuperAdmin en firestore.rules y normalizeCompanyUserRole en este archivo).
+    // que el documento tenga rol super_admin (nadie puede auto-asignarse ese rol).
     const snapshot = await admin.firestore().collection("usuarios")
       .where("usuarioInterno", "==", usuarioInterno)
       .limit(10)
@@ -751,8 +870,11 @@ exports.loginEmpresarial = onCall({ cors: true }, async (request) => {
       const entryData = entry.data() || {};
       return entryData.eliminado !== true && normalizeRole(entryData.rol) === "super_admin";
     });
+    if (!doc) {
+      throw new HttpsError("not-found", "El usuario ingresado no existe.");
+    }
   }
-  if (!doc) throw new HttpsError("unauthenticated", "Usuario o código de empresa incorrectos.");
+
   const userData = doc.data() || {};
   if (userData.baneado === true) {
     throw new HttpsError("permission-denied", "Esta cuenta fue bloqueada por un administrador de la plataforma.");
@@ -760,7 +882,7 @@ exports.loginEmpresarial = onCall({ cors: true }, async (request) => {
   const hashMatches = userData.passwordInternoHash && verifyInternalPassword(password, userData.passwordInternoHash);
   const legacyMatches = !hashMatches && typeof userData.passwordInterno === "string" && userData.passwordInterno === password;
   if (!hashMatches && !legacyMatches) {
-    throw new HttpsError("unauthenticated", "Usuario o código de empresa incorrectos.");
+    throw new HttpsError("unauthenticated", "La contraseña ingresada es incorrecta.");
   }
   if (legacyMatches) {
     await doc.ref.set({
@@ -778,11 +900,12 @@ exports.loginEmpresarial = onCall({ cors: true }, async (request) => {
     rol,
     role: rol,
   });
-  const token = await admin.auth().createCustomToken(doc.id, {
-    empresaId: tenantIdOf(userData) || null,
-    rol,
-    role: rol,
-  });
+  const correo = safeString(userData.correo, 254);
+  if (!correo) {
+    // No debería pasar (todo flujo de creación de usuario escribe correo), pero si pasa no hay
+    // forma de completar el inicio de sesión.
+    throw new HttpsError("failed-precondition", "La cuenta no tiene un correo asociado. Contacta a tu administrador.");
+  }
   await writeAuditLog({
     actor: { id: doc.id, ...userData, rol },
     empresaId: tenantIdOf(userData),
@@ -791,7 +914,14 @@ exports.loginEmpresarial = onCall({ cors: true }, async (request) => {
     detalles: `Usuario interno ${usuarioInterno}`,
     targetId: doc.id,
   });
-  return { token };
+  // El cliente completa el inicio de sesión con signInWithEmailAndPassword(auth, correo,
+  // password) usando esta misma contraseña, que ya validamos arriba. Antes se minaba un custom
+  // token (admin.auth().createCustomToken), pero eso requiere una cuenta de servicio real con
+  // permiso iam.serviceAccounts.signBlob -- indisponible en el emulador local sin descargar una
+  // clave de cuenta de servicio, así que el login nunca completaba en desarrollo. Retornar el
+  // correo y dejar que el cliente firme con Firebase Auth normal evita depender de eso, tanto en
+  // local como en producción.
+  return { correo };
 });
 
 exports.confirmPlanPurchase = onCall({ cors: true }, async (request) => {
@@ -2462,6 +2592,7 @@ const createCompanyUser = async ({
   empleado,
   actor = null,
   allowAdminRole = false,
+  usuarioInterno = '',
 }) => {
   const rolSolicitado = normalizeCompanyUserRole(rol);
   const rolDocumento = mapRoleForUserDocument(rolSolicitado);
@@ -2478,6 +2609,13 @@ const createCompanyUser = async ({
     await assertEmployeeCapacity(empresaId);
   }
 
+  // El login empresarial de la app movil (loginEmpresarial) busca por codigoEmpresa+usuarioInterno,
+  // NO por correo/password de Firebase Auth. Sin estos dos campos el empleado recien creado nunca
+  // puede entrar sin importar que codigo escriba (bug real: faltaban por completo aqui, aunque si
+  // se escriben en createCompanyWithOwner para el dueño de la empresa).
+  const empresaSnap = await admin.firestore().collection('empresas').doc(empresaId).get();
+  const codigoEmpresa = safeString(empresaSnap.data()?.codigo, 60);
+
   const userRecord = await admin.auth().createUser({
     email: correo,
     password: contrasena,
@@ -2487,6 +2625,7 @@ const createCompanyUser = async ({
   const datosEmpleado = sanitizeEmployeePayload(empleado);
   const passwordInternoHash = hashInternalPassword(contrasena);
   const departamentoNombre = datosEmpleado.departamento || departamentoId || 'General';
+  const usuarioInternoNormalizado = safeString(usuarioInterno, 60).toLowerCase() || correo.split('@')[0].toLowerCase();
 
   await admin.firestore().collection('usuarios').doc(userRecord.uid).set({
     ...datosEmpleado,
@@ -2504,6 +2643,8 @@ const createCompanyUser = async ({
     activo: true,
     eliminado: false,
     estado_onboarding: 'pendiente',
+    codigoEmpresa,
+    usuarioInterno: usuarioInternoNormalizado,
     passwordInternoHash,
     passwordHashAlgorithm: INTERNAL_PASSWORD_ALGORITHM,
     passwordUpdatedAt: FieldValue.serverTimestamp(),
@@ -2531,7 +2672,7 @@ const createCompanyUser = async ({
     });
   }
 
-  return { uid: userRecord.uid, rol: rolSolicitado };
+  return { uid: userRecord.uid, rol: rolSolicitado, codigoEmpresa, usuarioInterno: usuarioInternoNormalizado };
 };
 
 exports.crearUsuarioEmpresa = onCall({ cors: true }, async (request) => {
@@ -2587,9 +2728,10 @@ exports.crearUsuarioEmpresa = onCall({ cors: true }, async (request) => {
       empleado: data?.empleado,
       actor: { id: auth.uid, ...callerData },
       allowAdminRole: rolCaller === 'admin_empresa',
+      usuarioInterno: safeString(data?.usuarioInterno, 60),
     });
     // Devuelve el valor final calculado para esta funcion o caso de uso.
-    return { success: true, uid: result.uid };
+    return { success: true, uid: result.uid, codigoEmpresa: result.codigoEmpresa, usuarioInterno: result.usuarioInterno };
   } catch (error) {
     if (error instanceof HttpsError) throw error;
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.

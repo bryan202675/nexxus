@@ -13,7 +13,7 @@ import { httpsCallable } from 'firebase/functions';
 import { db, functions } from './firebaseConfig';
 // Importa { Course, ICourseRepository }; usa tipos de dominio para que los datos mantengan estructura consistente.
 import { Course, ICourseRepository, TrainingProgress } from '@/domain/entities/Course';
-import { PREDEFINED_COURSES } from '@/shared/constants/predefinedContent';
+
 
 /**
  * Implementa FirebaseCourseRepository; agrupa comportamiento con estado interno o dependencias de infraestructura.
@@ -30,28 +30,12 @@ export class FirebaseCourseRepository implements ICourseRepository {
       customCourses = [];
     }
 
-    const predefinedMapped = PREDEFINED_COURSES.map((c) => ({
-      ...c,
-      empresaId,
-    }));
-
-    const merged = [...predefinedMapped];
-    for (const custom of customCourses) {
-      const idx = merged.findIndex((m) => m.id === custom.id);
-      if (idx >= 0) {
-        merged[idx] = custom;
-      } else {
-        merged.push(custom);
-      }
-    }
-
-    return merged;
+    return customCourses;
   }
 
   // getById agrupa una parte de la logica del modulo para mantener el flujo principal mas legible.
   async getById(id: string): Promise<Course | null> {
-    const predefined = PREDEFINED_COURSES.find((c) => c.id === id);
-    if (predefined) return predefined;
+
 
     try {
       const d = await getDoc(doc(db, 'cursos', id));

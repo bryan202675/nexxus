@@ -116,12 +116,7 @@ export default function CentroApoyo({ navigation }: Props) {
     },
   ];
 
-  // Declara estadoBienestar; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const estadoBienestar = (metrics?.promedioBienestar || 0) >= 75
-    ? t('centroApoyo.wellbeing_status.stable')
-    : (metrics?.promedioBienestar || 0) >= 50
-      ? t('centroApoyo.wellbeing_status.medium')
-      : t('centroApoyo.wellbeing_status.support_required');
+
 
   // Devuelve el JSX que React Native renderiza en pantalla.
   return (
@@ -153,8 +148,7 @@ export default function CentroApoyo({ navigation }: Props) {
           </View>
           {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={estilos.iconoHeader}>
-            {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-            <MaterialIcons name="support-agent" size={20} color={colores.textoSuave} />
+            <MaterialIcons name="live-help" size={20} color={colores.textoSuave} />
           </View>
         </BlurView>
       </View>
@@ -174,35 +168,6 @@ export default function CentroApoyo({ navigation }: Props) {
               <Text style={estilos.labelResumen}>{item.label}</Text>
             </View>
           ))}
-        </View>
-
-        {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-        <View style={estilos.panelPrincipal}>
-          {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
-          <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.panelContenido}>
-            {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-            <View style={estilos.panelTop}>
-              {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-              <View style={estilos.iconoPanel}>
-                {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                <Feather name="shield" size={22} color={COLORES.primarioClaro} />
-              </View>
-              {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-              <View style={estilos.panelTextos}>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.tituloPanel}>{t('centroApoyo.panel_title')}</Text>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.descPanel}>{t('centroApoyo.panel_desc')}</Text>
-              </View>
-            </View>
-            {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-            <View style={estilos.estadoBanda}>
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.estadoLabel}>{t('centroApoyo.wellbeing_status_label')}</Text>
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.estadoValor}>{estadoBienestar}</Text>
-            </View>
-          </BlurView>
         </View>
 
         {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
@@ -230,65 +195,15 @@ export default function CentroApoyo({ navigation }: Props) {
           </View>
         </View>
 
-        {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-        <View style={estilos.seccion}>
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-          <View style={estilos.encabezadoSeccion}>
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.tituloSeccion}>{t('centroApoyo.upcoming_appointments')}</Text>
-            {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-            <TouchableOpacity onPress={() => navigation.navigate('ReservaSesion')} activeOpacity={0.8}>
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.linkSeccion}>{t('centroApoyo.book')}</Text>
-            </TouchableOpacity>
-          </View>
-          {citasProximas.length > 0 ? (
-            // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
-            <View style={estilos.lista}>
-              {citasProximas.slice(0, 3).map((cita) => (
-                // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-                <TouchableOpacity key={cita.id} onPress={() => navigation.navigate('ReservaSesion')} activeOpacity={0.84} style={estilos.tarjetaCita}>
-                  {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
-                  <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.citaContenido}>
-                    {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-                    <View style={estilos.fechaCita}>
-                      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                      <Text style={estilos.mesCita}>{formatearMes(cita.fecha, i18n.language)}</Text>
-                      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                      <Text style={estilos.diaCita}>{formatearDia(cita.fecha, i18n.language)}</Text>
-                    </View>
-                    {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-                    <View style={estilos.infoCita}>
-                      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                      <Text style={estilos.tituloCita}>{cita.especialidad}</Text>
-                      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                      <Text style={estilos.metaCita}>{cita.especialista} • {cita.horario}</Text>
-                      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                      <Text style={estilos.tipoCita}>{cita.tipoSesion}</Text>
-                    </View>
-                    {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                    <Feather name="chevron-right" size={18} color={colores.textoSuave} />
-                  </BlurView>
-                </TouchableOpacity>
-              ))}
-            </View>
-          ) : (
-            // EstadoVacio renderiza una pieza visual reutilizable dentro de esta pantalla.
-            <EstadoVacio icono="calendar" texto={t('centroApoyo.no_appointments')} detalle={t('centroApoyo.no_appointments_detail')} estilos={estilos} blurTint={blurTint} intensidadBlur={intensidadBlur} colores={colores} />
-          )}
-        </View>
+
 
 
 
         {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
         <View style={estilos.seccion}>
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={estilos.encabezadoSeccion}>
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.tituloSeccion}>{t('centroApoyo.support_requests')}</Text>
-            {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
+            <Text style={estilos.tituloSeccion}>Solicitudes</Text>
             <TouchableOpacity onPress={() => navigation.navigate('SolicitudesInternas')} activeOpacity={0.8}>
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.linkSeccion}>{t('centroApoyo.view_all')}</Text>
             </TouchableOpacity>
           </View>
@@ -301,7 +216,7 @@ export default function CentroApoyo({ navigation }: Props) {
                   {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
                   <View style={estilos.iconoSolicitud}>
                     {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                    <Feather name={solicitud.tipo === 'incidente' ? 'alert-triangle' : 'tool'} size={18} color={COLORES.alerta} />
+                    <Feather name={solicitud.tipo === 'incidente' ? 'alert-triangle' : 'message-square'} size={18} color={COLORES.alerta} />
                   </View>
                   {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
                   <View style={estilos.infoSolicitud}>
@@ -317,7 +232,7 @@ export default function CentroApoyo({ navigation }: Props) {
             </View>
           ) : (
             // EstadoVacio renderiza una pieza visual reutilizable dentro de esta pantalla.
-            <EstadoVacio icono="tool" texto={t('centroApoyo.no_requests')} detalle={t('centroApoyo.no_requests_detail')} estilos={estilos} blurTint={blurTint} intensidadBlur={intensidadBlur} colores={colores} />
+            <EstadoVacio icono="message-square" texto={t('centroApoyo.no_requests')} detalle={t('centroApoyo.no_requests_detail')} estilos={estilos} blurTint={blurTint} intensidadBlur={intensidadBlur} colores={colores} />
           )}
         </View>
 

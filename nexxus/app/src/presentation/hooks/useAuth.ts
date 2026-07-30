@@ -8,6 +8,8 @@
 
 // Importa { useState, useEffect } desde React; habilita componentes, hooks y tipos base para esta pieza.
 import { useState, useEffect } from 'react';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '@/infrastructure/firebase/firebaseConfig';
 // Importa { useCases } desde Firebase; habilita autenticacion, Firestore, Storage, Functions o mensajeria segun el modulo.
 import { useCases } from '@/infrastructure/firebase/container';
 // Importa { User }; usa tipos de dominio para que los datos mantengan estructura consistente.
@@ -47,6 +49,20 @@ export function useAuth() {
     // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     checkSession();
   }, []);
+
+  // "user"/"perfil" solo se poblaba una vez al iniciar sesión (getById) y con updateUser()
+  // manuales en un par de pantallas -- cualquier cambio hecho por un admin desde el dashboard
+  // web (p.ej. asignar un salario) nunca llegaba a la sesión ya abierta del empleado hasta que
+  // cerraba sesión y volvía a entrar. Este listener mantiene el perfil sincronizado en vivo con
+  // el documento real en Firestore.
+  useEffect(() => {
+    if (!user?.id) return undefined;
+    const unsubscribe = onSnapshot(doc(db, 'usuarios', user.id), (snap) => {
+      if (!snap.exists()) return;
+      setUser((prev) => (prev ? { ...prev, ...(snap.data() as User), id: snap.id } : prev));
+    });
+    return () => unsubscribe();
+  }, [user?.id]);
 
   // Declara login; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const login = async (dto: LoginDTO) => {
@@ -88,9 +104,8 @@ export function useAuth() {
       // Devuelve el valor final calculado para esta funcion o caso de uso.
       return response.user;
     } catch (err: any) {
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-      setError(err.userMessage || 'Error en el acceso empresarial');
-      // Interrumpe el flujo con un error controlado para que la capa superior lo maneje.
+      const msg = err?.userMessage || err?.message || 'Error en el acceso empresarial';
+      setError(msg);
       throw err;
     } finally {
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.

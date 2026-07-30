@@ -17,7 +17,7 @@ const normalizeRole = (role) => {
 
 const tenantIdOf = (value = {}) => {
   const tenant = value.empresaId || value.empresa_id || value.empresaID || "";
-  return typeof tenant === "string" ? tenant.trim() : "";
+  return typeof tenant === "string" ? tenant.trim().toUpperCase() : "";
 };
 
 const isSuperAdmin = (caller) => normalizeRole(caller?.rol) === "super_admin";
@@ -32,7 +32,7 @@ const isLeader = (caller) => {
 
 const sameTenant = (caller, empresaId) => {
   if (isSuperAdmin(caller)) return true;
-  return tenantIdOf(caller) === String(empresaId || "").trim();
+  return tenantIdOf(caller) === String(empresaId || "").trim().toUpperCase();
 };
 
 module.exports = {

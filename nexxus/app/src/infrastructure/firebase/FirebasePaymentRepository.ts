@@ -139,6 +139,17 @@ export class FirebasePaymentRepository implements IPaymentRepository {
     });
   }
 
+  // subscribeByUser agrupa una parte de la logica del modulo para mantener el flujo principal mas legible.
+  subscribeByUser(userId: string, empresaId: string | undefined, callback: (payments: Payment[]) => void): () => void {
+    const constraints: any[] = [where('usuario_id', '==', userId)];
+    if (empresaId) constraints.push(where('empresaId', '==', empresaId));
+    constraints.push(orderBy('createdAt', 'desc'), limit(60));
+    const q = query(collection(db, this.col), ...constraints);
+    return onSnapshot(q, snap => {
+      callback(snap.docs.map(d => ({ id: d.id, ...d.data() } as Payment)));
+    });
+  }
+
   // subscribeAll agrupa una parte de la logica del modulo para mantener el flujo principal mas legible.
   subscribeAll(empresaId: string, callback: (payments: Payment[]) => void): () => void {
     // Prepara q; construye la referencia o consulta Firebase que se usara para leer/escribir datos.

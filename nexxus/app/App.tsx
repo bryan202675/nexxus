@@ -231,7 +231,7 @@ function EnrutadorPrincipal() {
   // Devuelve el JSX que React Native renderiza en pantalla.
   return (
     // Componente de navegacion; define como se muestran rutas o pestañas dentro de la app.
-    <Pila.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+    <Pila.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
       {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}
       <Pila.Screen name="Bienvenida" component={PantallaBienvenida} />
       {/* Pila.Screen renderiza una pieza visual reutilizable dentro de esta pantalla. */}

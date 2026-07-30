@@ -13,10 +13,8 @@ import { AppError } from './AppError';
  * Implementa AuthError; agrupa comportamiento con estado interno o dependencias de infraestructura.
  */
 export class AuthError extends AppError {
-  constructor(code: string, message: string) {
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-    super(code, message);
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+  constructor(code: string, message: string, userMessage?: string) {
+    super(code, message, userMessage);
     this.name = 'AuthError';
   }
 
@@ -45,15 +43,18 @@ export class AuthError extends AppError {
   }
 
   // fromFirebase agrupa una parte de la logica del modulo para mantener el flujo principal mas legible.
-  static fromFirebase(code: string): AuthError {
-    // Declara map; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
+  static fromFirebase(code: string, rawMessage?: string): AuthError {
     const map: Record<string, AuthError> = {
       'auth/user-not-found': AuthError.userNotFound(),
       'auth/wrong-password': AuthError.invalidCredentials(),
       'auth/invalid-credential': AuthError.invalidCredentials(),
       'auth/session-cookie-expired': AuthError.sessionExpired(),
     };
-    // Devuelve el valor final calculado para esta funcion o caso de uso.
+
+    if (rawMessage && !rawMessage.startsWith('INTERNAL') && !rawMessage.startsWith('Firebase:')) {
+      return new AuthError(code || 'auth/error', rawMessage, rawMessage);
+    }
+
     return map[code] ?? new AuthError(code, `Error de autenticación. (${code})`);
   }
 }

@@ -26,4 +26,5 @@ export interface IPaymentRepository {
   getAllPaymentHistory(empresaId: string): Promise<Payment[]>;
   subscribeByPeriod?(empresaId: string, periodo: string, callback: (payments: Payment[]) => void): () => void;
   subscribeAll?(empresaId: string, callback: (payments: Payment[]) => void): () => void;
+  subscribeByUser?(userId: string, empresaId: string | undefined, callback: (payments: Payment[]) => void): () => void;
 }

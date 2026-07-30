@@ -32,7 +32,7 @@ export class RecordCheckIn {
     // Declara saved; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const saved = await this.checkInRepository.save(userId, {
       ...dto,
-      empresaId: usuario?.empresaId || '',
+      empresaId: usuario?.empresaId || (usuario as any)?.empresa_id || '',
       usuarioNombre: usuario?.nombre || '',
       departamento: usuario?.departamento || '',
     });

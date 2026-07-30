@@ -13,7 +13,7 @@ import { httpsCallable } from 'firebase/functions';
 import { db, functions } from './firebaseConfig';
 // Importa { Documento, IDocumentoRepository }; usa tipos de dominio para que los datos mantengan estructura consistente.
 import { DocumentStorageStats, Documento, IDocumentoRepository } from '@/domain/entities/Documento';
-import { PREDEFINED_DOCUMENTS } from '@/shared/constants/predefinedContent';
+
 
 /**
  * Implementa FirebaseDocumentoRepository; agrupa comportamiento con estado interno o dependencias de infraestructura.
@@ -35,13 +35,11 @@ export class FirebaseDocumentoRepository implements IDocumentoRepository {
       customDocs = [];
     }
 
-    return [...PREDEFINED_DOCUMENTS, ...customDocs];
+    return customDocs;
   }
 
   // markAsRead agrupa una parte de la logica del modulo para mantener el flujo principal mas legible.
   async markAsRead(documentoId: string): Promise<void> {
-    const isPredefined = PREDEFINED_DOCUMENTS.some((d) => d.id === documentoId);
-    if (isPredefined) return;
 
     const docRef = doc(db, 'documentos', documentoId);
     await updateDoc(docRef, { leido: true });
@@ -56,7 +54,7 @@ export class FirebaseDocumentoRepository implements IDocumentoRepository {
     } catch {
       customDocs = [];
     }
-    return [...PREDEFINED_DOCUMENTS, ...customDocs];
+    return customDocs;
   }
 
   subscribeByCompany(empresaId: string, callback: (documentos: Documento[]) => void, onError?: () => void): () => void {

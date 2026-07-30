@@ -35,3 +35,7 @@ input.defaultCheckbox::before {
 input:checked.defaultCheckbox::before { 
 	opacity: 1;
 }
+
+.slashed-zero {
+	font-variant-numeric: slashed-zero;
+}

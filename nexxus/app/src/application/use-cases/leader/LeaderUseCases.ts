@@ -7,7 +7,7 @@ export class LeaderUseCases {
   constructor(private leaderRepository: ILeaderRepository) {}
 
   subscribeDashboard(
-    leader: { id: string; nombre: string; empresaId: string; departamentoId?: string; departamento?: string },
+    leader: { id: string; nombre: string; empresaId: string; rol?: string; departamentoId?: string; departamento?: string },
     limitCount: number,
     callback: (dashboard: LeaderDashboard) => void,
     onError: (error: Error) => void

@@ -7,7 +7,7 @@
  */
 
 // Importa React, { useRef, useEffect } desde React; habilita componentes, hooks y tipos base para esta pieza.
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 // Importa { View, Text, StyleSheet, Animated, SafeAreaView, StatusBar, Dimensions, TouchableOpacity, ScrollView } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
 import { View, Text, StyleSheet, Animated, SafeAreaView, StatusBar, Dimensions, TouchableOpacity, ScrollView } from 'react-native';
 // Importa { MaterialIcons, Feather }; aporta iconos reutilizables para comunicar acciones y estados visuales.
@@ -45,6 +45,17 @@ const { width } = Dimensions.get('window');
 export default function MiPulso({ navigation }: { navigation: any }) {
   // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { t } = useTranslation();
+  
+  const saludosVariados = [
+    "Bienvenid@",
+    "¡Hola de nuevo!",
+    "Qué bueno verte",
+    "Listo para trabajar",
+    "Excelente jornada",
+    "Vamos con todo"
+  ];
+  const [saludoAleatorio] = useState(() => saludosVariados[Math.floor(Math.random() * saludosVariados.length)]);
+  
   // Inicializa { perfil, metrics, tareas, documentos, solicitudes, notificaciones, focusSessions, cambiarEstadoTarea }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { perfil, metrics, tareas, documentos, solicitudes, notificaciones, focusSessions, cambiarEstadoTarea } = useContextoUsuario();
   // Declara { colores, blurTint, intensidadBlur, esOscuro }; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -119,7 +130,7 @@ export default function MiPulso({ navigation }: { navigation: any }) {
           {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
           <Text style={estilos.subtituloSaludo}>{t('miPulso.pending_tasks_msg', { count: tareasPendientes.length })}</Text>
           {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-          <View style={estilos.barraAuraContenedor}>
+          <TouchableOpacity style={estilos.barraAuraContenedor} onPress={() => navigation.navigate('BusquedaGlobal')} activeOpacity={0.8}>
             {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
             <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.barraAuraBlur}>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -127,7 +138,7 @@ export default function MiPulso({ navigation }: { navigation: any }) {
               {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <Feather name="arrow-up-right" size={16} color={colores.textoSuave} />
             </BlurView>
-          </View>
+          </TouchableOpacity>
           {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={estilos.chipsAura}>
             {[
@@ -184,7 +195,7 @@ export default function MiPulso({ navigation }: { navigation: any }) {
                   {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                   <MaterialIcons name="auto-awesome" size={16} color={COLORES.secundarioClaro} />
                   {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={estilos.bentoTituloPequeno}>{t('miPulso.ai_suggestion')}</Text>
+                  <Text style={estilos.bentoTituloPequeno}>{saludoAleatorio}</Text>
                 </View>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.textoIA}>{insightIA}</Text>
@@ -323,7 +334,6 @@ export default function MiPulso({ navigation }: { navigation: any }) {
               { titulo: 'Mi salario', desc: 'Recibos, neto y desglose', icono: 'credit-card' as const, destino: 'MiSalario' },
               { titulo: t('miPulso.documents'), desc: t('miPulso.documents_desc', { count: documentosPendientes }), icono: 'folder' as const, destino: 'CentroDocumentos' },
               { titulo: t('miPulso.history', { defaultValue: 'Mi Historial' }), desc: t('miPulso.history_desc', { defaultValue: 'Bitácora y nómina' }), icono: 'archive' as const, destino: 'HistorialCompleto' },
-              { titulo: t('miPulso.calendar'), desc: t('miPulso.calendar_desc'), icono: 'calendar' as const, destino: 'CalendarioLaboral' },
             ].map((item) => (
               // BotonAnimado renderiza una pieza visual reutilizable dentro de esta pantalla.
               <BotonAnimado key={item.titulo} style={estilos.operativoCard} onPress={() => navigation.navigate(item.destino)}>

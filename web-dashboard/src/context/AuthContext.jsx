@@ -44,6 +44,20 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  // El <title> estático de public/index.html ("Nexxus Super Admin") se quedaba en todas las
+  // pestañas sin importar el rol -- un admin de empresa normal veía "Nexxus Super Admin" en su
+  // propia pestaña del navegador, lo cual es confuso e incorrecto. Se actualiza aquí (no en cada
+  // pantalla) porque AuthContext es el único lugar que siempre tiene el rol ya resuelto.
+  useEffect(() => {
+    if (state.rol === "super_admin") {
+      document.title = "Nexxus Super Admin";
+    } else if (state.rol === "admin" || state.rol === "admin_empresa") {
+      document.title = "Nexxus Admin";
+    } else if (!state.loading && !state.user) {
+      document.title = "Nexxus Workspace";
+    }
+  }, [state.rol, state.loading, state.user]);
+
   // Protege contra el back-forward cache del navegador: sin esto, cerrar sesión y luego pulsar
   // "atrás" puede repintar la última vista autenticada tal cual quedó en memoria (el navegador
   // restaura la página congelada en vez de recargarla), sin volver a pasar por el guard de rol.

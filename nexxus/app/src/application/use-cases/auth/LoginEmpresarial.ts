@@ -42,14 +42,10 @@ export class LoginEmpresarial {
       // Devuelve el valor final calculado para esta funcion o caso de uso.
       return { user };
     } catch (error: any) {
-      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (error instanceof AuthError) throw error;
-      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (error?.code) {
-        // Interrumpe el flujo con un error controlado para que la capa superior lo maneje.
-        throw AuthError.fromFirebase(error.code);
+        throw AuthError.fromFirebase(error.code, error.message);
       }
-      // Interrumpe el flujo con un error controlado para que la capa superior lo maneje.
       throw error;
     }
   }

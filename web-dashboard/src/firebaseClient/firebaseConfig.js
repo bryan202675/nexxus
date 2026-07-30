@@ -1,6 +1,7 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth, browserLocalPersistence, setPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
 
 // Mismo proyecto que nexxus/app (nexxus/app/src/infrastructure/firebase/firebaseConfig.ts).
 // En produccion este dashboard se sirve en /workspace del mismo origen que esa app (Firebase
@@ -18,6 +19,16 @@ export const firebaseConfig = {
 export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const functions = getFunctions(app);
+
+// Solo en dev: conecta al emulador de Cloud Functions (nexxus/backend) para operaciones que
+// necesitan Admin SDK real (p.ej. resetear la contraseña de OTRO usuario -- el SDK de cliente no
+// puede hacer eso sin conocer la contraseña anterior, por diseño de Firebase Auth). En produccion
+// no hay Cloud Functions desplegadas (ver ARRANQUE.md), asi que estas llamadas solo funcionan
+// mientras se desarrolla localmente con `npm run dev` desde la raiz del repo.
+if (process.env.NODE_ENV === "development") {
+  connectFunctionsEmulator(functions, "localhost", 5001);
+}
 
 setPersistence(auth, browserLocalPersistence).catch(() => {});
 

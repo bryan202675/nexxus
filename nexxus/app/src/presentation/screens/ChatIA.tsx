@@ -382,7 +382,7 @@ export default function ChatIA({ navigation }: Props) {
         mostrarAtras
         ocultarAccionesDerechas={true}
         accionDerecha={
-          <TouchableOpacity onPress={limpiarHistorial} style={[estilos.iconoPlano, { backgroundColor: colores.vidrio, borderColor: colores.borde }]}>
+          <TouchableOpacity onPress={limpiarHistorial} style={[estilos.iconoHeader, { backgroundColor: colores.vidrio, borderColor: colores.borde }]}>
             <MaterialIcons name="cleaning-services" size={19} color={colores.texto} />
           </TouchableOpacity>
         }
