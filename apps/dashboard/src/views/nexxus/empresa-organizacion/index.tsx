@@ -181,6 +181,19 @@ export default function EstructuraOrganizativa() {
     };
   }, [empleados, departamentos, departamentosEnriquecidos]);
 
+  const deptoNombrePorId = useMemo(
+    () => Object.fromEntries((departamentos || []).map((d) => [d.id, d.nombre])),
+    [departamentos]
+  );
+
+  const opcionesDepartamentos = useMemo(
+    () => [
+      { value: "", label: "Sin departamento" },
+      ...(departamentos || []).map((d) => ({ value: d.id, label: d.nombre })),
+    ],
+    [departamentos]
+  );
+
   const jefesDisponibles = useMemo(
     () => (empleados || []).filter((u) => u.rol === "jefe" || u.rol === "admin_empresa" || u.rol === "admin"),
     [empleados]
@@ -628,11 +641,14 @@ export default function EstructuraOrganizativa() {
               actor={actor}
               items={cargos || []}
               columns={columnsCargos}
-              fields={[{ key: "titulo", label: "Nombre" }]}
+              fields={[
+                { key: "titulo", label: "Nombre" },
+                { key: "departamento_id", label: "Departamento", type: "select", options: opcionesDepartamentos },
+              ]}
               buildRow={(item) => ({
                 id: item.id,
                 nombreLabel: item.titulo || item.nombre || "—",
-                departamentoLabel: "—",
+                departamentoLabel: deptoNombrePorId[item.departamento_id] || "—",
                 empleadosLabel: String((empleados || []).filter((u) => u.cargo === (item.titulo || item.nombre)).length),
               })}
               emptyMessage="Aún no hay cargos registrados."
@@ -707,6 +723,10 @@ function CatalogSection({ title, coleccion, nombreColumn = "nombre", empresaId, 
           .split(",")
           .map((v) => v.trim())
           .filter(Boolean);
+      } else if (f.type === "select") {
+        // Los selects referencian ids (ej. departamento_id); "" debe guardarse
+        // como null, nunca como cadena vacía, o Postgres rechaza el uuid.
+        payload[f.key] = form[f.key] || null;
       } else {
         payload[f.key] = form[f.key].trim();
       }
@@ -814,15 +834,35 @@ function CatalogSection({ title, coleccion, nombreColumn = "nombre", empresaId, 
         <div className="p-2">
           <form onSubmit={handleCrear}>
             <div className="flex flex-col gap-3">
-              {fields.map((f) => (
-                <InputField
-                  key={f.key}
-                  label={f.label}
-                  id={`crear-${coleccion}-${f.key}`}
-                  value={createForm[f.key]}
-                  onChange={(e) => setCreateForm((form) => ({ ...form, [f.key]: e.target.value }))}
-                />
-              ))}
+              {fields.map((f) =>
+                f.type === "select" ? (
+                  <div key={f.key}>
+                    <label htmlFor={`crear-${coleccion}-${f.key}`} className={selectLabelClasses}>
+                      {f.label}
+                    </label>
+                    <select
+                      id={`crear-${coleccion}-${f.key}`}
+                      value={createForm[f.key]}
+                      onChange={(e) => setCreateForm((form) => ({ ...form, [f.key]: e.target.value }))}
+                      className={selectClasses}
+                    >
+                      {(f.options || []).map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <InputField
+                    key={f.key}
+                    label={f.label}
+                    id={`crear-${coleccion}-${f.key}`}
+                    value={createForm[f.key]}
+                    onChange={(e) => setCreateForm((form) => ({ ...form, [f.key]: e.target.value }))}
+                  />
+                )
+              )}
             </div>
             {createError ? (
               <p className="mt-3 text-sm font-medium text-red-500 dark:text-red-400">{createError}</p>
@@ -878,16 +918,36 @@ function CatalogSection({ title, coleccion, nombreColumn = "nombre", empresaId, 
           ) : (
             <form onSubmit={handleGuardar} className="mt-3 rounded-xl border border-gray-200 p-3 dark:border-white/10">
               <div className="flex flex-col gap-3">
-                {fields.map((f) => (
-                  <InputField
-                    key={f.key}
-                    variant="auth"
-                    label={f.label}
-                    id={`edit-${coleccion}-${f.key}`}
-                    value={editForm[f.key]}
-                    onChange={(e) => setEditForm((form) => ({ ...form, [f.key]: e.target.value }))}
-                  />
-                ))}
+                {fields.map((f) =>
+                  f.type === "select" ? (
+                    <div key={f.key}>
+                      <label htmlFor={`edit-${coleccion}-${f.key}`} className={selectLabelClasses}>
+                        {f.label}
+                      </label>
+                      <select
+                        id={`edit-${coleccion}-${f.key}`}
+                        value={editForm[f.key]}
+                        onChange={(e) => setEditForm((form) => ({ ...form, [f.key]: e.target.value }))}
+                        className={selectClasses}
+                      >
+                        {(f.options || []).map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <InputField
+                      key={f.key}
+                      variant="auth"
+                      label={f.label}
+                      id={`edit-${coleccion}-${f.key}`}
+                      value={editForm[f.key]}
+                      onChange={(e) => setEditForm((form) => ({ ...form, [f.key]: e.target.value }))}
+                    />
+                  )
+                )}
               </div>
               {saveError ? (
                 <p className="mt-3 text-sm font-medium text-red-500 dark:text-red-400">{saveError}</p>

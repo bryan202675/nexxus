@@ -73,7 +73,10 @@ export default function SaLogin() {
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/sa-login`,
+          // El dashboard vive bajo /workspace (ver basename en index.tsx y
+          // services/nexxusLinks.ts) -- sin el prefijo, al volver de Google
+          // React Router no encuentra ninguna ruta y la pantalla queda en blanco.
+          redirectTo: `${window.location.origin}/workspace/auth/sa-login`,
         },
       });
       if (oauthError) throw oauthError;

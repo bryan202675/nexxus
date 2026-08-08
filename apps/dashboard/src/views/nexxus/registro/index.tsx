@@ -184,7 +184,9 @@ export default function Registro() {
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/registro`,
+          // Mismo motivo que en sa-login/index.tsx: el dashboard vive bajo /workspace,
+          // hay que incluir el prefijo o la vuelta de Google queda en blanco.
+          redirectTo: `${window.location.origin}/workspace/auth/registro`,
         },
       });
       if (oauthError) throw oauthError;

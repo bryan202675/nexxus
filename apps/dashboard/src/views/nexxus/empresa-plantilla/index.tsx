@@ -99,6 +99,24 @@ const ActionButton = ({ children, className = "", busy, ...rest }) => (
 
 const CAMPO_VACIO = "__vacio__";
 
+// supabase-js lanza err.message = "Edge Function returned a non-2xx status code" para
+// CUALQUIER error de una Edge Function, sin importar la causa real -- el motivo real que
+// devolvio la funcion (ej. "correo ya registrado") viaja en err.context, que es la Response
+// HTTP cruda y hay que leerla aparte. Sin esto, cualquier error de una Edge Function se ve
+// igual en pantalla y no dice nada util.
+async function mensajeErrorEdgeFunction(err, fallback) {
+  try {
+    if (err?.context && typeof err.context.json === "function") {
+      const body = await err.context.clone().json();
+      if (body?.error) return body.error;
+      if (body?.message) return body.message;
+    }
+  } catch {
+    // El cuerpo no era JSON u otro fallo al leerlo; se usa el mensaje generico de abajo.
+  }
+  return err?.message || fallback;
+}
+
 const SelectListaField = ({ label, id, value, onChange, opciones }) => (
   <div>
     <label className={selectLabelClasses} htmlFor={id}>
@@ -233,8 +251,9 @@ export default function GestionPlantilla() {
   }, [selectedEmpleado]);
 
   const departamentosDistintos = useMemo(
-    () => [...new Set(empleados.map((e) => e.departamento).filter(Boolean))].sort(),
-    [empleados]
+    () =>
+      [...new Set([...departamentos.map((d) => d.nombre), ...empleados.map((e) => e.departamento)].filter(Boolean))].sort(),
+    [departamentos, empleados]
   );
   const cargosDistintos = useMemo(
     () => [...new Set([...cargos.map((c) => c.nombre), ...empleados.map((e) => e.cargo)].filter(Boolean))].sort(),
@@ -323,7 +342,7 @@ export default function GestionPlantilla() {
       setNuevaContrasena("");
       setActionMsg("Contraseña actualizada.");
     } catch (err) {
-      setActionMsg(err.message || "No se pudo cambiar la contraseña.");
+      setActionMsg(await mensajeErrorEdgeFunction(err, "No se pudo cambiar la contraseña."));
     } finally {
       setBusyAction("");
     }
@@ -341,7 +360,7 @@ export default function GestionPlantilla() {
       setActionMsg("Rol actualizado.");
       setSelectedEmpleado((prev) => (prev ? { ...prev, rol: rolSeleccionado } : prev));
     } catch (err) {
-      setActionMsg(err.message || "No se pudo cambiar el rol.");
+      setActionMsg(await mensajeErrorEdgeFunction(err, "No se pudo cambiar el rol."));
     } finally {
       setBusyAction("");
     }
@@ -426,7 +445,7 @@ export default function GestionPlantilla() {
       setCreateForm(EMPTY_CREATE_FORM);
       setShowCreatePanel(false);
     } catch (err) {
-      setCreateError(err.message || "No se pudo crear el empleado.");
+      setCreateError(await mensajeErrorEdgeFunction(err, "No se pudo crear el empleado."));
     } finally {
       setCreatingEmpleado(false);
     }

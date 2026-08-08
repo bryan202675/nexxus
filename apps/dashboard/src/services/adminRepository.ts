@@ -19,18 +19,26 @@ type SubscribeTableOptions = {
   extraFilter?: (query: any) => any;
 };
 
-function subscribeTable(table: string, empresaId: string, { orderColumn, ascending = true, limit, extraFilter }: SubscribeTableOptions = {}) {
+// Fetch puntual (sin suscripcion), misma forma de retorno que subscribeTable. Se usa como
+// refresco manual inmediato despues de crear/editar/eliminar, en vez de depender solo del
+// canal de Realtime -- si Realtime no esta habilitado para la tabla en el proyecto de
+// Supabase (Database > Replication) o llega con retraso, la lista se quedaba desactualizada
+// hasta recargar la pagina o remontar la pantalla.
+export async function fetchTableOnce(table: string, empresaId: string, { orderColumn, ascending = true, limit, extraFilter }: SubscribeTableOptions = {}) {
+  let q = supabase.from(table).select("*").eq("empresa_id", empresaId);
+  if (extraFilter) q = extraFilter(q);
+  if (orderColumn) q = q.order(orderColumn, { ascending });
+  if (limit) q = q.limit(limit);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data || []).map(asDocSnap);
+}
+
+function subscribeTable(table: string, empresaId: string, options: SubscribeTableOptions = {}) {
+  const { orderColumn, ascending = true, limit, extraFilter } = options;
   return (callback, onError) => {
     let active = true;
-    const fetchDocs = async () => {
-      let q = supabase.from(table).select("*").eq("empresa_id", empresaId);
-      if (extraFilter) q = extraFilter(q);
-      if (orderColumn) q = q.order(orderColumn, { ascending });
-      if (limit) q = q.limit(limit);
-      const { data, error } = await q;
-      if (error) throw error;
-      return (data || []).map(asDocSnap);
-    };
+    const fetchDocs = () => fetchTableOnce(table, empresaId, { orderColumn, ascending, limit, extraFilter });
     const run = () => {
       fetchDocs()
         .then((docs) => active && callback(docs))
