@@ -7,10 +7,7 @@ node_modules/
 # macOS
 .DS_Store
 
-# Environment & Secrets
-.env
-.env.*
-*.env
+# Secrets
 .mcp.json
 
 # Builds & Caches
@@ -18,4 +15,5 @@ dist/
 build/
 .next/
 .expo/
+
 
