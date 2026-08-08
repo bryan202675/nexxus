@@ -4,13 +4,13 @@
     {
       "name": "nexxus-web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--workspace", "app", "run", "web"],
+      "runtimeArgs": ["--workspace", "mobile", "run", "web"],
       "port": 8081
     },
     {
       "name": "web-dashboard",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "web-dashboard", "start"],
+      "runtimeArgs": ["--workspace", "dashboard", "start"],
       "port": 3000
     },
     {

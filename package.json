@@ -1,15 +1,23 @@
 {
+  "name": "nexxus-monorepo",
+  "private": true,
+  "packageManager": "npm@11.12.1",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "build:hosting": "bash scripts/build-hosting.sh",
-    "dev": "concurrently -n functions,web,app -c yellow,cyan,magenta \"npm run dev:functions\" \"npm run dev:web\" \"npm run dev:app\"",
-    "dev:functions": "bash scripts/dev-functions.sh",
-    "dev:web": "npm --prefix web-dashboard start",
-    "dev:app": "npm --workspace app --prefix nexxus start"
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "build:hosting": "bash scripts/build-hosting.sh"
   },
   "dependencies": {
     "colorjs.io": "^0.7.1"
   },
   "devDependencies": {
-    "concurrently": "^10.0.4"
+    "turbo": "^2.3.0"
   }
 }

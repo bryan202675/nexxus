@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# Arma el bundle unico de Firebase Hosting: la app Expo (landing + app) en la raiz y el
-# dashboard de Super Admin (CRA) en /workspace, mismo origen -> misma sesion de Firebase Auth.
+# Arma el bundle unico de hosting (Vercel): la app Expo (landing + app) en la raiz y el
+# dashboard de Super Admin en /workspace, mismo origen -> misma sesion de Supabase Auth.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-echo "==> Building nexxus/app (Expo web export)..."
-npm --workspace app --prefix nexxus run build:web
+echo "==> Building apps/mobile (Expo web export)..."
+npm --workspace mobile run build:web
 
-echo "==> Building web-dashboard (CRA)..."
-npm --prefix web-dashboard run build
+echo "==> Building apps/dashboard (Vite)..."
+npm --workspace dashboard run build
 
-echo "==> Merging web-dashboard build into nexxus/app/dist/workspace..."
-rm -rf nexxus/app/dist/workspace
-mkdir -p nexxus/app/dist/workspace
-cp -r web-dashboard/build/. nexxus/app/dist/workspace/
+echo "==> Merging apps/dashboard build into apps/mobile/dist/workspace..."
+rm -rf apps/mobile/dist/workspace
+mkdir -p apps/mobile/dist/workspace
+cp -r apps/dashboard/dist/. apps/mobile/dist/workspace/
 
-echo "==> Done. Deploy with: (cd nexxus && npx firebase deploy --only hosting)"
+echo "==> Done. Deploy with: npx vercel deploy --prebuilt=false (o via el dashboard/CI de Vercel)"

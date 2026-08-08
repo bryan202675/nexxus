@@ -1,1 +1,21 @@
-nexxus/app.zip
+# Dependencies
+node_modules/
+
+# Turborepo cache
+.turbo/
+
+# macOS
+.DS_Store
+
+# Environment & Secrets
+.env
+.env.*
+*.env
+.mcp.json
+
+# Builds & Caches
+dist/
+build/
+.next/
+.expo/
+
