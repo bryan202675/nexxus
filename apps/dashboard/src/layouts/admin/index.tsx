@@ -27,7 +27,7 @@ export default function Admin(props) {
   }, [location.pathname]);
 
   const getActiveRoute = (routes) => {
-    let activeRoute = "Main Dashboard";
+    const activeRoute = "Main Dashboard";
     for (let i = 0; i < routes.length; i++) {
       if (
         window.location.href.indexOf(
@@ -40,7 +40,7 @@ export default function Admin(props) {
     return activeRoute;
   };
   const getActiveNavbar = (routes) => {
-    let activeNavbar = false;
+    const activeNavbar = false;
     for (let i = 0; i < routes.length; i++) {
       if (
         window.location.href.indexOf(routes[i].layout + routes[i].path) !== -1

@@ -274,13 +274,26 @@ En los 3 archivos de pantalla (`DashboardAdmin`, `GestionPlantilla`, `Estructura
 
 ### Fase 6 — CI/CD real
 - **Objetivo:** pipeline que corra lint + typecheck + tests en cada PR, antes del deploy de Vercel.
-- **Archivos afectados:** `.github/workflows/*` (nuevo).
-- **Dependencias:** Fase 5 (no tiene sentido un CI que no corre tests).
-- **Riesgos:** ninguno si se hace bien; bajo si se mal configura (falsos positivos que bloqueen merges).
+- **Archivos afectados:** `.github/workflows/ci.yml` (nuevo), `eslint.config.js`/`.mjs` en los 3 paquetes (nuevos), `package.json` de los 3 paquetes (script `lint` + devDependencies de ESLint).
+- **Dependencias:** Fase 5.
+- **Riesgos:** ninguno — verificado localmente antes de confiar en que el CI lo detecte.
 - **Tiempo estimado:** 1 sesión.
-- **Estado:** Lista para iniciar (tras Fase 5).
+- **Estado:** ✅ Completada y verificada (`turbo run lint typecheck test build` → 10/10 tareas exitosas en los 3 paquetes).
 - **Prioridad:** Media.
-- **Checklist:** workflow de lint/typecheck/test en PR + workflow opcional de build preview.
+- **Checklist:**
+  - [x] ESLint configurado en `apps/mobile` (`eslint-config-expo`, la config oficial de Expo), `apps/dashboard` (`typescript-eslint` + `eslint-plugin-react-hooks`) y `packages/domain` (`typescript-eslint` base, sin JSX).
+  - [x] `no-explicit-any` desactivado deliberadamente en los 3 (el codebase ya usa `any` en puntos de integración con datos crudos, y `apps/dashboard/tsconfig.json` ya tiene `noUnusedLocals`/`noUnusedParameters` en `false` — prohibirlo generaría miles de hallazgos de churn sin valor real). `no-unused-vars` y `react-hooks/exhaustive-deps` quedan como advertencia visible, no error, para no bloquear el build por código heredado.
+  - [x] `.github/workflows/ci.yml`: dos jobs — `lint-typecheck-test` (corre en cada push/PR a `main`, ejecuta `turbo run lint`, `turbo run typecheck`, `turbo run test`) y `build-mobile` (depende del primero, corre `npm run build:hosting` como verificación de que el bundle de producción realmente compila). `concurrency` cancela runs viejos del mismo PR/branch para no gastar minutos de CI en pushes rápidos seguidos.
+  - [x] Sin GitHub Secrets: las variables de Supabase (URL + anon key publicable) ya viven en los `.env.*` commiteados de `apps/mobile`/`apps/dashboard` (repo privado, decisión explícita tuya de antes) — el build de CI las usa tal cual.
+  - [x] Verificado localmente con `turbo run lint typecheck test build` (10 tareas: lint×3, typecheck×3, test×2, build×2 — `apps/mobile` no tiene tests por las razones documentadas en Fase 5) antes de confiar en que el workflow real lo reproduzca igual.
+
+**Hallazgos y correcciones durante la configuración de ESLint:**
+
+1. **Bug real en `apps/mobile/src/presentation/screens/admin/ConfiguracionAdmin.tsx`**: un componente llamaba `useApiTranslate(sublabel)` **condicionalmente** (`sublabel ? useApiTranslate(sublabel) : undefined`), violando las reglas de hooks de React — si `sublabel` cambia entre definido/`undefined` en renders sucesivos del mismo componente, el orden de hooks se rompe y React puede corromper el estado de ese componente o de otros vecinos. `eslint-config-expo` lo marcó como único **error** (no advertencia) de las 330 incidencias totales en `apps/mobile`. Corregido llamando al hook siempre (`useApiTranslate(sublabel || '')`) — el hook ya maneja cadena vacía devolviendo `''`, y el JSX que lo consume ya hacía `null` check.
+2. **`prettier.config.js` en `apps/dashboard` usa `require()` estilo CommonJS** dentro de un paquete `"type": "module"` — no es un bug (Prettier carga su config con su propio loader, tolerante a esto), pero ESLint lo marcaba como error porque por defecto trata el archivo como parte del codebase lintado. Excluido junto con `tailwind.config.cjs`/`postcss.config.cjs` (config de build, no código de producto).
+3. **2 bugs `let` → `const` reales en `apps/dashboard/src/layouts/admin/index.tsx`** (`activeRoute`, `activeNavbar`): variables declaradas con `let` que nunca se reasignaban — sin impacto funcional, pero señal de que ese código nunca terminó de limpiarse tras un refactor anterior.
+4. **`packages/domain/eslint.config.js` generaba una advertencia de Node** por usar sintaxis ESM (`import`) dentro de un paquete sin `"type": "module"` — renombrado a `eslint.config.mjs` en vez de agregar `"type": "module"` al `package.json` (que podría afectar cómo Metro/otros bundlers resuelven el paquete al consumirlo desde `apps/mobile`).
+5. **330 advertencias reales quedan sin resolver en `apps/mobile`** (variables sin usar, dependencias faltantes en `useEffect`/`useMemo`, un `require()` suelto) — deliberadamente dejadas como advertencia y no como bloqueo: son el resultado natural de las Fases 3-4 (código movido y refactorizado a gran escala) y de una base de código de más de 100k líneas escrita antes de tener linter. Arreglarlas todas de una vez sería una fase propia, no un efecto secundario de configurar CI.
 
 ### Fase 7 — Centro Inteligente (Home real)
 - **Objetivo:** reemplazar los dashboards de widgets fijos (`MiPulso.tsx`, `DashboardAdmin.tsx`) por un home que compone contenido según prioridad/urgencia/rol, no solo listas fijas.

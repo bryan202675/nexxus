@@ -185,7 +185,7 @@ function OptionRow({
   const press = usePressScale();
 
   const translatedLabel = useApiTranslate(label);
-  const translatedSublabel = sublabel ? useApiTranslate(sublabel) : undefined;
+  const translatedSublabel = useApiTranslate(sublabel || '');
 
   // Devuelve el JSX que React Native renderiza en pantalla.
   return (

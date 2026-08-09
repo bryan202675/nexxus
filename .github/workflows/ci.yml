@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-typecheck-test:
+    name: Lint, typecheck y tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Lint (apps/mobile, apps/dashboard, packages/domain)
+        run: npx turbo run lint
+
+      - name: Typecheck (apps/mobile, apps/dashboard, packages/domain)
+        run: npx turbo run typecheck
+
+      - name: Tests (packages/domain, apps/dashboard)
+        run: npx turbo run test
+
+  build-mobile:
+    name: Build apps/mobile (Expo web export)
+    runs-on: ubuntu-latest
+    needs: lint-typecheck-test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      # Las variables de Supabase (URL + anon key publicable) ya viven en los .env.*
+      # commiteados de apps/mobile y apps/dashboard (repo privado, decision explicita
+      # del usuario) -- no hacen falta GitHub Secrets para este build.
+      - name: Build de hosting (apps/mobile + apps/dashboard combinados)
+        run: npm run build:hosting

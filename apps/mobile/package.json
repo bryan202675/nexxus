@@ -11,7 +11,8 @@
     "build": "expo export --platform web",
     "build:web": "expo export --platform web",
     "build:web:report": "npm run build:web && node scripts/report-web-bundle.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@expo-google-fonts/dm-sans": "^0.4.2",
@@ -57,6 +58,8 @@
   "devDependencies": {
     "@types/react": "~19.1.10",
     "@types/react-dom": "~19.1.7",
+    "eslint": "^9.25.0",
+    "eslint-config-expo": "~9.2.0",
     "react-refresh": "^0.18.0",
     "typescript": "~5.9.2"
   },
