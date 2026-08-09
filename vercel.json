@@ -1,13 +1,16 @@
 {
-  "buildCommand": "npm --workspace dashboard run build",
+  "buildCommand": "npm --workspace dashboard run build && cp apps/Landing/index.html apps/dashboard/dist/landing.html",
   "outputDirectory": "apps/dashboard/dist",
   "installCommand": "npm install",
   "rewrites": [
+    { "source": "/", "destination": "/landing.html" },
+    { "source": "/auth/(.*)", "destination": "/index.html" },
+    { "source": "/admin/(.*)", "destination": "/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
     {
-      "source": "/index.html",
+      "source": "/(.*)",
       "headers": [{ "key": "Cache-Control", "value": "no-store" }]
     }
   ]
