@@ -245,14 +245,32 @@ El resto de los ~180 errores de `tsc` fueron inferencias de tipos demasiado estr
 En los 3 archivos de pantalla (`DashboardAdmin`, `GestionPlantilla`, `EstructuraOrganizativa`) el componente principal en sí mismo sigue por encima de las ~400-500 líneas objetivo — la reducción salió de extraer tipos, constantes, helpers puros, estilos y subcomponentes visuales reutilizables a archivos propios, no de descomponer el cuerpo del componente con estado/efectos/handlers entrelazados. Esa descomposición más profunda (hooks de datos + subcomponentes de secciones del JSX) queda pendiente y tiene más sentido después de la Fase 5 (tests), para poder verificar cada extracción sin arriesgar romper flujos en producción sin red de seguridad.
 
 ### Fase 5 — Introducir tests automatizados (mínimo viable)
-- **Objetivo:** cobertura de los flujos críticos (login, CRUD de empleados, RLS) antes de refactors grandes.
-- **Archivos afectados:** nuevos, no modifica código existente.
-- **Dependencias:** ninguna técnica, pero tiene más sentido antes de la Fase 4.
-- **Riesgos:** ninguno (aditivo).
-- **Tiempo estimado:** por definir según qué framework de testing prefieras (no preguntado aún — ver sección 4).
-- **Estado:** Lista para iniciar. Framework confirmado: Vitest + Testing Library.
+- **Objetivo:** cobertura de los flujos críticos (login, CRUD de empleados) antes de refactors grandes.
+- **Archivos afectados:** `packages/domain` (vitest.config.ts + 6 archivos de test nuevos bajo `__tests__/`), `apps/dashboard` (vitest.config.ts, vitest.setup.ts, testing-types.d.ts + 3 archivos de test nuevos), `package.json` de ambos paquetes (script `test`).
+- **Dependencias:** ninguna técnica.
+- **Riesgos:** ninguno (aditivo, no toca código de producción salvo exports que ya deberían haber existido — ver hallazgos).
+- **Tiempo estimado:** 1 sesión.
+- **Estado:** ✅ Completada y verificada (52 tests, 9 archivos, `turbo run test` limpio en `domain` y `dashboard`; `turbo run typecheck` sigue limpio en los 3 paquetes tras agregar los tests).
 - **Prioridad:** Alta (habilita refactors seguros).
-- **Checklist:** por definir.
+- **Checklist:**
+  - [x] `packages/domain`: Vitest configurado (`vitest.config.ts`, entorno `node`) — 26 tests en 6 archivos:
+    - `LoginUser.test.ts` / `LoginEmpresarial.test.ts`: validación de credenciales vacías, normalización de `codigoEmpresa`/`usuario`, traducción de errores de infraestructura a `AuthError`, no reenvolver un `AuthError` ya lanzado.
+    - `tasks.test.ts` / `absences.test.ts`: delegación correcta de los casos de uso CRUD (`CreateTask`, `GetTasks`, `UpdateTask`, `CreateAbsence`, `GetAbsences`) hacia sus repositorios mockeados.
+    - `calcularRentaMensual.test.ts` / `payrollPolicy.test.ts`: los 4 tramos progresivos del ISR de El Salvador (incluyendo límites exactos de cada tramo) + ISSS/AFP/horas extra/descuentos de `calculatePayroll` — la lógica financiera más crítica del sistema.
+  - [x] `apps/dashboard`: Vitest + Testing Library configurados (`vitest.config.ts` con `jsdom`, `vitest.setup.ts` con `@testing-library/jest-dom`) — 26 tests en 3 archivos:
+    - `payrollCalc.test.ts`: mismo motor de nómina que `packages/domain`, verificado que el puerto a JS del dashboard mantiene el mismo comportamiento.
+    - `registro.test.ts`: validación de correo, reglas de contraseña (5 criterios), validación de teléfono por país (16 prefijos + fallback), validación del formulario de alta de empresa.
+    - `SaLogin.test.tsx`: primer test de integración con React Testing Library — renderiza la pantalla de login real, verifica que no llama a Supabase con campos vacíos, que normaliza el correo antes de autenticar, y que traduce el error de credenciales inválidas al español.
+  - [x] Ambos paquetes exponen `npm run test`, ya cableado a `turbo run test` (script raíz existente desde la Fase 1).
+
+**Hallazgos durante la escritura de tests:**
+
+1. **`validarCorreo` en `apps/dashboard/src/services/registro.ts` tiene una rama de validación de dominio inalcanzable**: el regex de formato (`[^\s@]+\.[^\s@]{2,}`) ya obliga a que el dominio tenga mínimo 4 caracteres, así que el chequeo posterior `dominio.length < 4` nunca puede ser verdadero. No es un bug con impacto (el correo sigue rechazándose por el regex anterior con un mensaje ligeramente distinto), documentado aquí en vez de "arreglado de paso" para no mezclar cambios de comportamiento con la introducción de tests.
+2. **`apps/dashboard/src/vitest.d.ts` colisionaba con el paquete `vitest`**: el `tsconfig.json` del dashboard tiene `paths: {"*": ["*"]}` con `baseUrl: "src"`, así que un archivo `src/vitest.d.ts` sombreaba la resolución del import `from 'vitest'` en los propios tests. Renombrado a `src/testing-types.d.ts`.
+
+**Deuda pendiente, documentada para no perderla:**
+- No se agregaron tests para `apps/mobile` (Expo/React Native) en esta fase. Vitest no tiene soporte oficial para renderizar componentes React Native (Metro vs. Vite/Rollup); la vía estándar de Expo es `jest-expo`, que introduciría un segundo test runner en el monorepo. Dado que la decisión confirmada es "Vitest + Testing Library" sin especificar la variante para RN, se dejó fuera de esta fase en vez de inventar una arquitectura de testing distinta sin tu confirmación — la lógica de negocio equivalente de `apps/mobile` (que reutiliza `packages/domain`) ya queda cubierta indirectamente por los tests del paquete `domain`.
+- Cobertura de RLS (mencionada en el objetivo original) no se abordó: requiere tests contra una instancia real (o local) de Postgres/Supabase, no unit tests — candidato para la Fase 6 (CI/CD) con un job dedicado, o para cuando haya un entorno de Supabase local reproducible en CI.
 
 ### Fase 6 — CI/CD real
 - **Objetivo:** pipeline que corra lint + typecheck + tests en cada PR, antes del deploy de Vercel.
