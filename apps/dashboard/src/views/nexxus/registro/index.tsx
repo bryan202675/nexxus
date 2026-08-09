@@ -186,7 +186,7 @@ export default function Registro() {
         options: {
           // Mismo motivo que en sa-login/index.tsx: el dashboard vive bajo /workspace,
           // hay que incluir el prefijo o la vuelta de Google queda en blanco.
-          redirectTo: `${window.location.origin}/workspace/auth/registro`,
+          redirectTo: `${window.location.origin}/auth/registro`,
         },
       });
       if (oauthError) throw oauthError;
