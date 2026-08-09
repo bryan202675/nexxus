@@ -37,6 +37,48 @@ import { useAdminToast } from './adminToast';
 import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
 import { BRAND, PLANTILLA_PURPLE } from './gestionPlantillaConstants';
 import { estilos } from './gestionPlantillaStyles';
+import {
+  UsuarioPlantilla,
+  DepartamentoCatalogo,
+  SedeCatalogo,
+  FilaImportacionEmpleado,
+  ErrorImportacionEmpleado,
+  FilaValidaImportacion,
+  PreviewImportacionEmpleados,
+  ConfirmacionEliminacion,
+  CargoCatalogo,
+  RolCatalogo,
+  TareaPlantilla,
+  CheckInPlantilla,
+  AsistenciaPlantilla,
+  AusenciaPlantilla,
+  FiltroEstado,
+  AlcanceTarea,
+  ModoFormulario,
+  SelectorActivo,
+  FormularioEmpleado,
+  FormularioTarea,
+  CrearEmpleadoLocalInput,
+  formularioInicial,
+  formularioTareaInicial,
+} from './gestionPlantillaTypes';
+import {
+  obtenerFecha,
+  mismoDia,
+  porcentaje,
+  normalizarSalarioUSD,
+  COLUMNAS_IMPORTACION_EMPLEADOS,
+  EJEMPLO_IMPORTACION_EMPLEADOS_BASE,
+  normalizarCodigoImportacion,
+  normalizarUsuarioImportacion,
+  normalizarCatalogoImportacion,
+  escaparCsv,
+  crearPasswordTemporalImportacion,
+  crearCsvPlantillaEmpleados,
+  parsearCsvPlantillaEmpleados,
+  conTiempoLimite,
+} from './gestionPlantillaHelpers';
+import { PremiumBadge, IconPanel, MiniRole, MetricRow, FormField, SelectorOpciones } from './GestionPlantillaVisuals';
 
 const Text = AdminTranslatedText;
 const TextInput = AdminTranslatedTextInput;

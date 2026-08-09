@@ -224,7 +224,7 @@ export type FormularioTarea = {
 /**
  * Declaracion formularioInicial. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
  */
-const formularioInicial: FormularioEmpleado = {
+export const formularioInicial: FormularioEmpleado = {
   nombre: '',
   usuarioInterno: '',
   contrasena: '',
@@ -240,7 +240,7 @@ const formularioInicial: FormularioEmpleado = {
 /**
  * Declaracion formularioTareaInicial. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
  */
-const formularioTareaInicial: FormularioTarea = {
+export const formularioTareaInicial: FormularioTarea = {
   titulo: '',
   descripcion: '',
   prioridad: 'Media',
