@@ -7,13 +7,16 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 // El "base" de assets solo aplica al build de producción: en dev, Vite sirve todo desde la raíz
 // del puerto 3000 (igual que hacía CRA con "homepage", que tampoco afectaba al dev server) --
 // la app igual navega bajo /workspace en dev porque BrowserRouter usa basename="/workspace" fijo.
-export default defineConfig(({ command }) => ({
-  base: command === 'build' ? '/workspace/' : '/',
-  plugins: [react(), tsconfigPaths()],
-  server: {
-    port: 3000,
-  },
-  build: {
-    outDir: 'dist',
-  },
-}));
+export default defineConfig(({ command }) => {
+  const base = process.env.VITE_ROUTER_BASENAME ? `${process.env.VITE_ROUTER_BASENAME}/` : '/';
+  return {
+    base,
+    plugins: [react(), tsconfigPaths()],
+    server: {
+      port: 3000,
+    },
+    build: {
+      outDir: 'dist',
+    },
+  };
+});

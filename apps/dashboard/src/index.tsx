@@ -8,8 +8,10 @@ import { ThemeProvider } from "context/ThemeContext";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 
+const basename = import.meta.env.VITE_ROUTER_BASENAME || "/";
+
 root.render(
-  <BrowserRouter basename="/workspace">
+  <BrowserRouter basename={basename}>
     <ThemeProvider>
       <AuthProvider>
         <App />
