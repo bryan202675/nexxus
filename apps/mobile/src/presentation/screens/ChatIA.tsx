@@ -41,6 +41,9 @@ import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import { useCases } from '@/infrastructure/container';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
+// Importa { SensitiveAiAction }; acciones sensibles sugeridas por la IA (Fase 8) que requieren
+// confirmacion humana explicita antes de ejecutarse -- ver ask-nexxus-ai (Edge Function).
+import { SensitiveAiAction } from 'domain/entities/AiAssistant';
 
 /**
  * Define el contrato de datos Props; documenta campos esperados y evita pasar objetos ambiguos entre capas.
@@ -57,6 +60,11 @@ interface Mensaje {
   rol: 'ia' | 'usuario';
   texto: string;
   hora: string;
+  /** Acciones sensibles sugeridas por la IA en este mensaje (p.ej. aprobar una solicitud) que
+   * esperan confirmacion humana explicita -- ver Fase 8 del plan. */
+  accionesSensibles?: SensitiveAiAction[];
+  /** Resultado de cada accion sensible ya resuelta por el usuario en este mensaje, por id. */
+  accionesResueltas?: Record<string, 'aprobada' | 'rechazada' | 'error'>;
 }
 
 /**
@@ -288,20 +296,42 @@ export default function ChatIA({ navigation }: Props) {
   }
 
   // manejarComandoIA usa el asistente server-side y conserva un respaldo local cuando Functions no responde.
-  async function manejarComandoIA(texto: string) {
+  async function manejarComandoIA(texto: string): Promise<{ texto: string; accionesSensibles?: SensitiveAiAction[] }> {
     try {
       const historyPayload = mensajes
         .filter((m) => m.rol === 'ia' || m.rol === 'usuario')
         .slice(-6)
         .map((m) => ({ rol: m.rol, texto: m.texto }));
       const respuesta = await useCases.ai.ask.execute(texto, historyPayload);
-      return respuesta.respuesta;
+      return { texto: respuesta.respuesta, accionesSensibles: respuesta.accionesSensibles };
     } catch (error: any) {
       console.error("[ChatIA] Error calling askNexxusAI:", error);
       if (error?.code === 'functions/failed-precondition' || error?.code === 'failed-precondition') {
-        return error?.message || 'Este módulo no está disponible para el plan actual de tu empresa.';
+        return { texto: error?.message || 'Este módulo no está disponible para el plan actual de tu empresa.' };
       }
-      return manejarComandoLocal(texto);
+      return { texto: await manejarComandoLocal(texto) };
+    }
+  }
+
+  // confirmarAccionSensible ejecuta una accion sensible sugerida por la IA solo cuando el usuario la
+  // confirma explicitamente aqui -- nunca se ejecuta sola. Vuelve a consultar el registro real antes
+  // de aprobar/rechazar, no confia en el payload de la IA para la mutacion.
+  async function confirmarAccionSensible(mensajeId: string, accion: SensitiveAiAction, estado: 'aprobada' | 'rechazada') {
+    if (!perfil) return;
+    try {
+      const item = await useCases.admin.requestReports.getById(accion.sourceCollection, accion.itemId);
+      if (!item || item.estado !== 'pendiente') {
+        throw new Error('Esta solicitud ya no está pendiente o no existe.');
+      }
+      await useCases.leader.resolveApproval(item, estado, { id: perfil.id, nombre: perfil.nombre, rol: perfil.rol });
+      guardarMensajes((anterior) => anterior.map((m) => m.id === mensajeId
+        ? { ...m, accionesResueltas: { ...m.accionesResueltas, [accion.id]: estado } }
+        : m));
+    } catch (error) {
+      console.error('[ChatIA] Error confirmando acción sensible:', error);
+      guardarMensajes((anterior) => anterior.map((m) => m.id === mensajeId
+        ? { ...m, accionesResueltas: { ...m.accionesResueltas, [accion.id]: 'error' } }
+        : m));
     }
   }
 
@@ -335,8 +365,9 @@ export default function ChatIA({ navigation }: Props) {
       const mensajeIA: Mensaje = {
         id: (Date.now() + 1).toString(),
         rol: 'ia',
-        texto: respuesta,
+        texto: respuesta.texto,
         hora: formatearHora(),
+        accionesSensibles: respuesta.accionesSensibles,
       };
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       guardarMensajes((anterior) => [...anterior, mensajeIA]);
@@ -451,6 +482,39 @@ export default function ChatIA({ navigation }: Props) {
                           <Text style={estilos.textoRedirect}>{parsed.redirect.etiqueta}</Text>
                         </TouchableOpacity>
                       )}
+                      {mensaje.accionesSensibles?.map((accion) => {
+                        const resultado = mensaje.accionesResueltas?.[accion.id];
+                        return (
+                          <View key={accion.id} style={estilos.tarjetaAccionSensible}>
+                            <View style={estilos.tarjetaAccionHeader}>
+                              <MaterialIcons name="shield" size={15} color={COLORES.alerta} />
+                              <Text style={estilos.tarjetaAccionTitulo} numberOfLines={2}>{accion.titulo}</Text>
+                            </View>
+                            {resultado ? (
+                              <Text style={[estilos.tarjetaAccionResultado, resultado === 'error' && estilos.tarjetaAccionResultadoError]}>
+                                {resultado === 'aprobada' ? 'Aprobada ✓' : resultado === 'rechazada' ? 'Rechazada' : 'No se pudo completar. Intenta desde Solicitudes.'}
+                              </Text>
+                            ) : (
+                              <View style={estilos.tarjetaAccionBotones}>
+                                <TouchableOpacity
+                                  style={[estilos.tarjetaAccionBoton, estilos.tarjetaAccionBotonRechazar]}
+                                  onPress={() => confirmarAccionSensible(mensaje.id, accion, 'rechazada')}
+                                  activeOpacity={0.85}
+                                >
+                                  <Text style={estilos.tarjetaAccionBotonTextoRechazar}>Rechazar</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  style={[estilos.tarjetaAccionBoton, estilos.tarjetaAccionBotonAprobar]}
+                                  onPress={() => confirmarAccionSensible(mensaje.id, accion, 'aprobada')}
+                                  activeOpacity={0.85}
+                                >
+                                  <Text style={estilos.tarjetaAccionBotonTextoAprobar}>Aprobar</Text>
+                                </TouchableOpacity>
+                              </View>
+                            )}
+                          </View>
+                        );
+                      })}
                       {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                       <Text style={estilos.horaIA}>{mensaje.hora}</Text>
                     </BlurView>
@@ -608,6 +672,18 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
     botonRedirect: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: ESPACIADO.sm, paddingVertical: 10, paddingHorizontal: ESPACIADO.md, borderRadius: RADIOS.lg, backgroundColor: COLORES.primario, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', alignSelf: 'flex-start' },
     // textoRedirect: estilo de texto del boton de redireccion.
     textoRedirect: { ...TIPOGRAFIA.cuerpoPequeno, color: '#ffffff', fontWeight: '700' },
+    // tarjetaAccionSensible: tarjeta de confirmacion para una accion sensible sugerida por la IA (Fase 8).
+    tarjetaAccionSensible: { marginTop: ESPACIADO.sm, padding: ESPACIADO.md, borderRadius: RADIOS.lg, backgroundColor: 'rgba(245,158,11,0.08)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.28)', gap: ESPACIADO.sm },
+    tarjetaAccionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    tarjetaAccionTitulo: { ...TIPOGRAFIA.cuerpoPequeno, color: c.texto, fontWeight: '700', flex: 1 },
+    tarjetaAccionBotones: { flexDirection: 'row', gap: ESPACIADO.sm },
+    tarjetaAccionBoton: { flex: 1, paddingVertical: 9, borderRadius: RADIOS.md, alignItems: 'center', borderWidth: 1 },
+    tarjetaAccionBotonRechazar: { backgroundColor: 'rgba(239,68,68,0.08)', borderColor: 'rgba(239,68,68,0.24)' },
+    tarjetaAccionBotonAprobar: { backgroundColor: COLORES.exito, borderColor: 'rgba(255,255,255,0.18)' },
+    tarjetaAccionBotonTextoRechazar: { ...TIPOGRAFIA.cuerpoPequeno, color: '#FCA5A5', fontWeight: '700' },
+    tarjetaAccionBotonTextoAprobar: { ...TIPOGRAFIA.cuerpoPequeno, color: '#ffffff', fontWeight: '700' },
+    tarjetaAccionResultado: { ...TIPOGRAFIA.cuerpoPequeno, color: COLORES.exito, fontWeight: '700' },
+    tarjetaAccionResultadoError: { color: COLORES.error },
     // horaIA: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     horaIA: { ...TIPOGRAFIA.micro, color: c.textoSuave, marginTop: ESPACIADO.sm, fontSize: 9 },
     // burbujaUsuario: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.

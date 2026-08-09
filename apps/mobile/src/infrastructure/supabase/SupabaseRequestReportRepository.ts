@@ -54,6 +54,14 @@ export class SupabaseRequestReportRepository implements IRequestReportRepository
     });
   }
 
+  async getById(sourceCollection: RequestReportItem['sourceCollection'], id: string): Promise<RequestReportItem | null> {
+    const entry = SOURCE_TABLES[sourceCollection];
+    if (!entry) throw new Error(`Colección desconocida: ${sourceCollection}`);
+    const { data, error } = await supabase.from(entry.table).select('*').eq('id', id).maybeSingle();
+    if (error) throw error;
+    return data ? mapRow(data, entry.source) : null;
+  }
+
   async createReport(input: NewReportInput): Promise<RequestReportItem> {
     const { data, error } = await supabase.from('reportes').insert({
       empresa_id: input.empresaId,

@@ -22,6 +22,9 @@ import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import { useCases } from '@/infrastructure/container';
 import { useAdminAppearance } from './adminTheme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+// Importa { SensitiveAiAction }; acciones sensibles sugeridas por la IA (Fase 8) que requieren
+// confirmacion humana explicita antes de ejecutarse -- ver ask-nexxus-ai (Edge Function).
+import { SensitiveAiAction } from 'domain/entities/AiAssistant';
 
 interface Props {
   navigation: any;
@@ -32,6 +35,11 @@ interface Mensaje {
   rol: 'ia' | 'usuario';
   texto: string;
   hora: string;
+  /** Acciones sensibles sugeridas por la IA en este mensaje (p.ej. aprobar una solicitud) que
+   * esperan confirmacion humana explicita -- ver Fase 8 del plan. */
+  accionesSensibles?: SensitiveAiAction[];
+  /** Resultado de cada accion sensible ya resuelta por el usuario en este mensaje, por id. */
+  accionesResueltas?: Record<string, 'aprobada' | 'rechazada' | 'error'>;
 }
 
 type IconoMaterial = React.ComponentProps<typeof MaterialIcons>['name'];
@@ -223,20 +231,42 @@ export default function ChatIAAdmin({ navigation }: Props) {
     return t('chatIA.responses.default');
   }
 
-  async function manejarComandoIA(texto: string) {
+  async function manejarComandoIA(texto: string): Promise<{ texto: string; accionesSensibles?: SensitiveAiAction[] }> {
     try {
       const historyPayload = mensajes
         .filter((m) => m.rol === 'ia' || m.rol === 'usuario')
         .slice(-6)
         .map((m) => ({ rol: m.rol, texto: m.texto }));
       const respuesta = await useCases.ai.ask.execute(texto, historyPayload);
-      return respuesta.respuesta;
+      return { texto: respuesta.respuesta, accionesSensibles: respuesta.accionesSensibles };
     } catch (error: any) {
       console.error("[ChatIAAdmin] Error calling askNexxusAI:", error);
       if (error?.code === 'functions/failed-precondition' || error?.code === 'failed-precondition') {
-        return error?.message || 'Este módulo no está disponible para el plan actual de tu empresa.';
+        return { texto: error?.message || 'Este módulo no está disponible para el plan actual de tu empresa.' };
       }
-      return manejarComandoLocal(texto);
+      return { texto: await manejarComandoLocal(texto) };
+    }
+  }
+
+  // confirmarAccionSensible ejecuta una accion sensible sugerida por la IA solo cuando el usuario la
+  // confirma explicitamente aqui -- nunca se ejecuta sola. Vuelve a consultar el registro real antes
+  // de aprobar/rechazar, no confia en el payload de la IA para la mutacion.
+  async function confirmarAccionSensible(mensajeId: string, accion: SensitiveAiAction, estado: 'aprobada' | 'rechazada') {
+    if (!perfil) return;
+    try {
+      const item = await useCases.admin.requestReports.getById(accion.sourceCollection, accion.itemId);
+      if (!item || item.estado !== 'pendiente') {
+        throw new Error('Esta solicitud ya no está pendiente o no existe.');
+      }
+      await useCases.admin.requestReports.resolve(item, estado, { id: perfil.id, nombre: perfil.nombre, rol: perfil.rol });
+      guardarMensajes((anterior) => anterior.map((m) => m.id === mensajeId
+        ? { ...m, accionesResueltas: { ...m.accionesResueltas, [accion.id]: estado } }
+        : m));
+    } catch (error) {
+      console.error('[ChatIAAdmin] Error confirmando acción sensible:', error);
+      guardarMensajes((anterior) => anterior.map((m) => m.id === mensajeId
+        ? { ...m, accionesResueltas: { ...m.accionesResueltas, [accion.id]: 'error' } }
+        : m));
     }
   }
 
@@ -260,8 +290,9 @@ export default function ChatIAAdmin({ navigation }: Props) {
       const mensajeIA: Mensaje = {
         id: (Date.now() + 1).toString(),
         rol: 'ia',
-        texto: respuesta,
+        texto: respuesta.texto,
         hora: formatearHora(),
+        accionesSensibles: respuesta.accionesSensibles,
       };
       guardarMensajes((anterior) => [...anterior, mensajeIA]);
       setTimeout(() => referenciaScroll.current?.scrollToEnd({ animated: true }), 80);
@@ -389,6 +420,39 @@ export default function ChatIAAdmin({ navigation }: Props) {
                                   <Text style={estilos.textoRedirect}>{parsed.redirect.etiqueta}</Text>
                                 </TouchableOpacity>
                               )}
+                              {mensaje.accionesSensibles?.map((accion) => {
+                                const resultado = mensaje.accionesResueltas?.[accion.id];
+                                return (
+                                  <View key={accion.id} style={estilos.tarjetaAccionSensible}>
+                                    <View style={estilos.tarjetaAccionHeader}>
+                                      <MaterialIcons name="shield" size={15} color="#F59E0B" />
+                                      <Text style={estilos.tarjetaAccionTitulo} numberOfLines={2}>{accion.titulo}</Text>
+                                    </View>
+                                    {resultado ? (
+                                      <Text style={[estilos.tarjetaAccionResultado, resultado === 'error' && estilos.tarjetaAccionResultadoError]}>
+                                        {resultado === 'aprobada' ? 'Aprobada ✓' : resultado === 'rechazada' ? 'Rechazada' : 'No se pudo completar. Intenta desde Solicitudes.'}
+                                      </Text>
+                                    ) : (
+                                      <View style={estilos.tarjetaAccionBotones}>
+                                        <TouchableOpacity
+                                          style={[estilos.tarjetaAccionBoton, estilos.tarjetaAccionBotonRechazar]}
+                                          onPress={() => confirmarAccionSensible(mensaje.id, accion, 'rechazada')}
+                                          activeOpacity={0.85}
+                                        >
+                                          <Text style={estilos.tarjetaAccionBotonTextoRechazar}>Rechazar</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                          style={[estilos.tarjetaAccionBoton, estilos.tarjetaAccionBotonAprobar]}
+                                          onPress={() => confirmarAccionSensible(mensaje.id, accion, 'aprobada')}
+                                          activeOpacity={0.85}
+                                        >
+                                          <Text style={estilos.tarjetaAccionBotonTextoAprobar}>Aprobar</Text>
+                                        </TouchableOpacity>
+                                      </View>
+                                    )}
+                                  </View>
+                                );
+                              })}
                               <Text style={estilos.horaIA}>{mensaje.hora}</Text>
                             </View>
                           </View>
@@ -621,7 +685,18 @@ function crearEstilosChat(theme: any, width: number) {
       color: '#ffffff',
       fontWeight: '700',
     },
-    horaIA: { 
+    tarjetaAccionSensible: { marginTop: 8, padding: 12, borderRadius: 14, backgroundColor: 'rgba(245,158,11,0.08)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.28)', gap: 8 },
+    tarjetaAccionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    tarjetaAccionTitulo: { fontSize: 13, color: '#F8FAFC', fontWeight: '700', flex: 1 },
+    tarjetaAccionBotones: { flexDirection: 'row', gap: 8 },
+    tarjetaAccionBoton: { flex: 1, paddingVertical: 9, borderRadius: 10, alignItems: 'center', borderWidth: 1 },
+    tarjetaAccionBotonRechazar: { backgroundColor: 'rgba(239,68,68,0.08)', borderColor: 'rgba(239,68,68,0.24)' },
+    tarjetaAccionBotonAprobar: { backgroundColor: '#22C55E', borderColor: 'rgba(255,255,255,0.18)' },
+    tarjetaAccionBotonTextoRechazar: { fontSize: 12, color: '#FCA5A5', fontWeight: '700' },
+    tarjetaAccionBotonTextoAprobar: { fontSize: 12, color: '#ffffff', fontWeight: '700' },
+    tarjetaAccionResultado: { fontSize: 12, color: '#22C55E', fontWeight: '700' },
+    tarjetaAccionResultadoError: { color: '#F87171' },
+    horaIA: {
       fontSize: 9, 
       color: theme.muted, 
       marginTop: 4,

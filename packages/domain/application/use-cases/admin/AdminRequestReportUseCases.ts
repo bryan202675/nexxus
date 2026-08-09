@@ -24,4 +24,8 @@ export class AdminRequestReportUseCases {
   createReport(input: NewReportInput): Promise<RequestReportItem> {
     return this.requestReportRepository.createReport(input);
   }
+
+  getById(sourceCollection: RequestReportItem['sourceCollection'], id: string): Promise<RequestReportItem | null> {
+    return this.requestReportRepository.getById(sourceCollection, id);
+  }
 }

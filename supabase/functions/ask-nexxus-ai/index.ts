@@ -56,11 +56,19 @@ async function buildContext(admin: SupabaseClient, caller: Caller): Promise<Reco
   return { alcance: "personal", tareas: tareas.data, ausencias: ausencias.data, nominas: nominas.data };
 }
 
-async function callGemini(prompt: string, context: unknown, history: { rol: string; texto: string }[]) {
+async function callGemini(prompt: string, context: unknown, history: { rol: string; texto: string }[], puedeAprobar: boolean) {
   if (!GEMINI_API_KEY) return null;
+  const instruccionAprobacion = puedeAprobar
+    ? ` Si el usuario pide aprobar o rechazar una solicitud de ausencia o interna que veas en el contexto (colección ` +
+      `"ausencias" o "solicitudes"), NO la apruebes tú mismo: emite [APPROVE:coleccion|id|titulo] (coleccion es ` +
+      `"solicitudes_ausencia" o "solicitudes_internas", id es el id real del registro en el contexto, titulo es un ` +
+      `resumen breve) para que el sistema le muestre al usuario una tarjeta de confirmación explícita antes de ` +
+      `aprobarla — nunca la des por aprobada en tu respuesta de texto.`
+    : '';
   const systemPrompt = `Eres el asistente de Nexxus (RRHH/nómina). Contexto en JSON: ${JSON.stringify(context).slice(0, 8000)}\n` +
     `Si corresponde, puedes emitir como texto literal las etiquetas [NOTIFICATION:tipo|titulo|mensaje], ` +
-    `[TASK:prioridad|titulo|descripcion|asignado_a] o [EVENT:tipo|titulo|inicio|fin|descripcion] para que el sistema cree ese registro.`;
+    `[TASK:prioridad|titulo|descripcion|asignado_a] o [EVENT:tipo|titulo|inicio|fin|descripcion] para que el sistema cree ese registro.` +
+    instruccionAprobacion;
   const contents = [
     ...history.slice(-6).map((h) => ({ role: h.rol === "usuario" ? "user" : "model", parts: [{ text: h.texto }] })),
     { role: "user", parts: [{ text: prompt }] },
@@ -85,6 +93,45 @@ async function callGemini(prompt: string, context: unknown, history: { rol: stri
     outputTokens: usage.candidatesTokenCount ?? null,
     totalTokens: usage.totalTokenCount ?? null,
   };
+}
+
+interface SensitiveAiAction {
+  id: string;
+  tipo: "aprobar_solicitud";
+  sourceCollection: "solicitudes_ausencia" | "solicitudes_internas";
+  itemId: string;
+  titulo: string;
+}
+
+const APPROVE_COLLECTIONS = new Set(["solicitudes_ausencia", "solicitudes_internas"]);
+
+/**
+ * Extrae [APPROVE:coleccion|id|titulo] SIN ejecutar nada -- a diferencia de
+ * NOTIFICATION/TASK/EVENT, aprobar una solicitud es una accion sensible que requiere
+ * confirmacion humana explicita en el cliente (ver Fase 8 del plan). Este parser solo
+ * recorta el tag del texto y devuelve la lista para que el cliente muestre una tarjeta
+ * de confirmacion; la mutacion real ocurre despues, cuando el usuario confirma, y en
+ * ese punto el cliente vuelve a consultar el registro real (nunca confia en este payload).
+ */
+function extractSensitiveActions(text: string): { clean: string; acciones: SensitiveAiAction[] } {
+  let clean = text;
+  const acciones: SensitiveAiAction[] = [];
+  let match: RegExpMatchArray | null;
+  while ((match = clean.match(/\[APPROVE:([^|]+)\|([^|]+)\|([^\]]+)\]/))) {
+    const coleccion = match[1].trim();
+    const itemId = match[2].trim();
+    if (APPROVE_COLLECTIONS.has(coleccion) && itemId) {
+      acciones.push({
+        id: `approve-${coleccion}-${itemId}`,
+        tipo: "aprobar_solicitud",
+        sourceCollection: coleccion as SensitiveAiAction["sourceCollection"],
+        itemId,
+        titulo: safeString(match[3], 120),
+      });
+    }
+    clean = clean.replace(match[0], "").trim();
+  }
+  return { clean, acciones };
 }
 
 async function applyActionTags(admin: SupabaseClient, caller: Caller, text: string): Promise<string> {
@@ -133,10 +180,16 @@ Deno.serve(withHandler(async (req, admin) => {
 
   const context = await buildContext(admin, caller);
   const startedAt = Date.now();
-  const gemini = await callGemini(prompt, context, history);
+  const puedeAprobar = CANONICAL_ROLE(caller.rol);
+  const gemini = await callGemini(prompt, context, history, puedeAprobar);
   const latencyMs = Date.now() - startedAt;
 
-  const respuesta = gemini ? await applyActionTags(admin, caller, gemini.text) : "El asistente de IA no está disponible en este momento.";
+  // Las acciones sensibles se extraen ANTES de aplicar los tags automaticos, para que nunca
+  // lleguen a applyActionTags (que solo conoce NOTIFICATION/TASK/EVENT) ni se ejecuten solas.
+  const { clean: textoSinAprobaciones, acciones: accionesSensibles } = gemini
+    ? extractSensitiveActions(gemini.text)
+    : { clean: "", acciones: [] as SensitiveAiAction[] };
+  const respuesta = gemini ? await applyActionTags(admin, caller, textoSinAprobaciones) : "El asistente de IA no está disponible en este momento.";
 
   await admin.from("ai_usage").insert({
     empresa_id: caller.empresa_id,
@@ -160,5 +213,9 @@ Deno.serve(withHandler(async (req, admin) => {
     provider: gemini ? "gemini" : "unavailable",
     latencyMs,
     costUsd: gemini ? computeCostUsd(gemini.model, gemini.inputTokens || 0, gemini.outputTokens || 0) : 0,
+    // Doble candado: aunque el modelo alucine un tag [APPROVE:] para un rol sin permiso, nunca se
+    // devuelve al cliente si puedeAprobar es falso (el prompt ya le pide no hacerlo, esto es el
+    // respaldo del lado del servidor).
+    accionesSensibles: puedeAprobar ? accionesSensibles : [],
   };
 }));
