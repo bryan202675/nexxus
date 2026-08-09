@@ -16,4 +16,7 @@ export type SignalItem = {
   detail: string;
   type: 'approval' | 'alert' | 'audit';
   tone: 'success' | 'warning' | 'danger' | 'info';
+  /** Fecha de referencia para el Centro Inteligente (urgencia por tiempo). Opcional: no todas las
+   * fuentes tienen una fecha significativa (p.ej. auditoria), en ese caso queda como 'normal'. */
+  dueDate?: string;
 };

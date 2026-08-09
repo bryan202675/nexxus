@@ -33,11 +33,29 @@ import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 // Importa DetalleTareaModal; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
 import DetalleTareaModal from '@/presentation/components/DetalleTareaModal';
-// Importa { Task }; usa tipos de dominio para que los datos mantengan estructura consistente.
-import { Task } from 'domain/entities/Task';
+// Importa el motor de priorizacion compartido (Centro Inteligente): mezcla tareas, notificaciones y
+// check-in pendiente en un solo feed ordenado por urgencia por tiempo (vencida > hoy > proxima > normal).
+import { buildPriorityFeed, mapTareasAPrioritySignals, mapNotificacionesAPrioritySignals, buildCheckInPendingSignal } from 'domain/services/priorityEngine';
+import { PrioritySignal } from 'domain/entities/PrioritySignal';
 
 // Calcula { width }; adapta el comportamiento o diseno segun plataforma/tamano disponible.
 const { width } = Dimensions.get('window');
+
+/** Color del punto de la línea de tiempo según la urgencia por fecha de la señal del Centro Inteligente. */
+const colorUrgencia = (urgencia: PrioritySignal['urgency']) => {
+  if (urgencia === 'vencida') return COLORES.error;
+  if (urgencia === 'hoy') return COLORES.alerta;
+  if (urgencia === 'proxima') return COLORES.primarioClaro;
+  return COLORES.exito;
+};
+
+/** Icono de Feather según la categoría de la señal del Centro Inteligente. */
+const iconoCategoria = (categoria: PrioritySignal['category']) => {
+  if (categoria === 'aprobacion') return 'file-text' as const;
+  if (categoria === 'asistencia') return 'clock' as const;
+  if (categoria === 'notificacion') return 'bell' as const;
+  return 'chevron-right' as const;
+};
 
 /**
  * Componente MiPulso. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
@@ -79,11 +97,22 @@ export default function MiPulso({ navigation }: { navigation: any }) {
   }, []);
 
   // Calcula tareasPendientes; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
-  const tareasPendientes = tareas.filter(t => t.estado !== 'completada').slice(0, 5);
+  const tareasPendientes = tareas.filter(t => t.estado !== 'completada');
   // Calcula tareasCompletadas; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
   const tareasCompletadas = tareas.filter(t => t.estado === 'completada').length;
-  // Calcula tareasUrgentes; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
-  const tareasUrgentes = tareas.filter(t => (t.prioridad === 'Urgente' || t.prioridad === 'Alta') && t.estado !== 'completada').length;
+  // Centro Inteligente: mezcla tareas + notificaciones + check-in pendiente en un solo feed
+  // ordenado por urgencia por tiempo (vencida > hoy > proxima > normal), reemplazando la lista
+  // fija de "tareas pendientes" que mostraba esta pantalla antes.
+  const feedPrioridades: PrioritySignal[] = React.useMemo(() => {
+    const ultimoCheckIn = metrics?.recentCheckIns?.[0] ?? null;
+    return buildPriorityFeed([
+      mapTareasAPrioritySignals(tareas),
+      mapNotificacionesAPrioritySignals(notificaciones),
+      buildCheckInPendingSignal(ultimoCheckIn) ? [buildCheckInPendingSignal(ultimoCheckIn)!] : [],
+    ], 6);
+  }, [tareas, notificaciones, metrics?.recentCheckIns]);
+  // Calcula tareasVencidas; cuenta las tareas del feed cuya fecha limite ya paso.
+  const tareasVencidas = feedPrioridades.filter(s => s.category === 'tarea' && s.urgency === 'vencida').length;
   // Calcula solicitudesPendientes; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
   const solicitudesPendientes = solicitudes.filter(s => s.estado === 'pendiente').length;
   // Calcula notificacionesNoLeidas; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
@@ -221,9 +250,9 @@ export default function MiPulso({ navigation }: { navigation: any }) {
           {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={estilos.cabeceraLista}>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.tituloSeccion}>{t('miPulso.daily_agenda')}</Text>
+            <Text style={estilos.tituloSeccion}>{t('miPulso.daily_agenda', { defaultValue: 'Prioridades de hoy' })}</Text>
             {/* BotonAnimado renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-            <BotonAnimado onPress={() => navigation.navigate('MisTareas')}>
+            <BotonAnimado onPress={() => navigation.navigate('CentroTareas')}>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.linkVerTodo}>{t('miPulso.see_all')}</Text>
             </BotonAnimado>
@@ -233,7 +262,7 @@ export default function MiPulso({ navigation }: { navigation: any }) {
           <View style={estilos.agendaContenedor}>
             {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
             <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.agendaBlur}>
-              {tareasPendientes.length === 0 ? (
+              {feedPrioridades.length === 0 ? (
                 // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
                 <View style={estilos.estadoVacioCompactoAgenda}>
                   {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
@@ -244,25 +273,36 @@ export default function MiPulso({ navigation }: { navigation: any }) {
               ) : (
                 // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
                 <View style={estilos.listaTareas}>
-                  {tareasPendientes.map((tarea, i) => (
+                  {feedPrioridades.map((senal, i) => (
                     // BotonAnimado renderiza una pieza visual reutilizable dentro de esta pantalla.
-                    <BotonAnimado key={tarea.id} style={[estilos.itemTarea, i !== tareasPendientes.length - 1 && estilos.itemTareaConBorde]} scaleTo={0.98} onPress={() => setTareaSeleccionadaId(tarea.id)}>
+                    <BotonAnimado
+                      key={senal.id}
+                      style={[estilos.itemTarea, i !== feedPrioridades.length - 1 && estilos.itemTareaConBorde]}
+                      scaleTo={0.98}
+                      onPress={() => {
+                        if (senal.category === 'tarea' && senal.routeParams?.tareaId) {
+                          setTareaSeleccionadaId(senal.routeParams.tareaId);
+                        } else {
+                          navigation.navigate(senal.route, senal.routeParams);
+                        }
+                      }}
+                    >
                       {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
                       <View style={estilos.timelineLinea}>
                         {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-                        <View style={estilos.timelinePunto} />
-                        {i !== tareasPendientes.length - 1 && <View style={estilos.timelineRaya} />}
+                        <View style={[estilos.timelinePunto, { backgroundColor: colorUrgencia(senal.urgency) }]} />
+                        {i !== feedPrioridades.length - 1 && <View style={estilos.timelineRaya} />}
                       </View>
                       {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
                       <View style={estilos.tareaContenido}>
                         {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-                        <Text style={estilos.tareaTitulo} numberOfLines={1}>{tarea.titulo}</Text>
-                        {tarea.descripcion ? <Text style={estilos.tareaDesc} numberOfLines={1}>{tarea.descripcion}</Text> : null}
+                        <Text style={estilos.tareaTitulo} numberOfLines={1}>{senal.title}</Text>
+                        {senal.detail ? <Text style={estilos.tareaDesc} numberOfLines={1}>{senal.detail}</Text> : null}
                       </View>
                       {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
                       <View style={estilos.tareaStatus}>
                         {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                        <Feather name="chevron-right" size={16} color={colores.textoSuave} />
+                        <Feather name={iconoCategoria(senal.category)} size={16} color={colores.textoSuave} />
                       </View>
                     </BotonAnimado>
                   ))}
@@ -304,11 +344,11 @@ export default function MiPulso({ navigation }: { navigation: any }) {
               {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
               <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.metricaContent}>
                 {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                <Feather name="alert-circle" size={18} color={COLORES.alerta} />
+                <Feather name="alert-circle" size={18} color={COLORES.error} />
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.metricaValor}>{tareasUrgentes}</Text>
+                <Text style={estilos.metricaValor}>{tareasVencidas}</Text>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.metricaLabel}>{t('miPulso.urgent')}</Text>
+                <Text style={estilos.metricaLabel}>{t('miPulso.overdue', { defaultValue: 'Vencidas' })}</Text>
               </BlurView>
             </View>
           </View>

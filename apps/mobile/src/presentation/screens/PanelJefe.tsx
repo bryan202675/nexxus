@@ -2,8 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { LeaderDashboard } from 'domain/entities/Leader';
+import { LeaderDashboard, LeaderTeamMember } from 'domain/entities/Leader';
 import { RequestReportItem } from 'domain/entities/RequestReport';
+// Centro Inteligente: ordena aprobaciones y equipo por urgencia por tiempo en vez de mostrarlos
+// en el orden en que llegan del repositorio -- ver packages/domain/services/priorityEngine.ts.
+import { mapAprobacionesReportAPrioritySignals } from 'domain/services/priorityEngine';
 import { LeaderEvaluationForm, LeaderEvaluationPayload } from '@/presentation/components/LeaderEvaluationForm';
 import { useCases } from '@/infrastructure/container';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
@@ -75,6 +78,21 @@ export default function PanelJefe() {
   const tareasEnProgreso = useMemo(
     () => dashboard.tareas.filter((task) => task.estado === 'en_progreso').length,
     [dashboard.tareas]
+  );
+
+  // Centro Inteligente: aprobaciones ordenadas por urgencia por tiempo (vencida primero), no por el
+  // orden en que llegan del repositorio.
+  const aprobacionesOrdenadas = useMemo(() => {
+    const senales = mapAprobacionesReportAPrioritySignals(dashboard.aprobaciones);
+    const scorePorId = new Map(senales.map((senal) => [senal.routeParams?.itemId, senal.score]));
+    return [...dashboard.aprobaciones].sort((a, b) => (scorePorId.get(b.id) ?? 0) - (scorePorId.get(a.id) ?? 0));
+  }, [dashboard.aprobaciones]);
+
+  // Centro Inteligente: equipo ordenado por carga urgente (más tareas vencidas primero), para que el
+  // jefe vea primero a quién necesita atender, no una lista fija en orden alfabético/de llegada.
+  const equipoOrdenado = useMemo(
+    () => [...dashboard.equipo].sort((a: LeaderTeamMember, b: LeaderTeamMember) => b.tareasVencidas - a.tareasVencidas),
+    [dashboard.equipo]
   );
 
   const resolver = async (item: RequestReportItem, estado: 'aprobada' | 'rechazada') => {
@@ -165,10 +183,10 @@ export default function PanelJefe() {
             </View>
 
             <Section title="Aprobaciones pendientes" icon="rule">
-              {dashboard.aprobaciones.length === 0 ? (
+              {aprobacionesOrdenadas.length === 0 ? (
                 <EmptyState icon="verified" title="Sin aprobaciones pendientes" text="Cuando tu equipo envie solicitudes, apareceran aqui para resolverlas." />
               ) : (
-                dashboard.aprobaciones.map((item) => (
+                aprobacionesOrdenadas.map((item) => (
                   <ApprovalCard
                     key={`${item.sourceCollection}-${item.id}`}
                     item={item}
@@ -181,10 +199,10 @@ export default function PanelJefe() {
             </Section>
 
             <Section title="Pulso del equipo" icon="monitor-heart">
-              {dashboard.equipo.length === 0 ? (
+              {equipoOrdenado.length === 0 ? (
                 <EmptyState icon="person-search" title="Sin equipo asignado" text="Asigna empleados a este jefe desde Gestion de Plantilla para activar este panel." />
               ) : (
-                dashboard.equipo.map((member) => (
+                equipoOrdenado.map((member) => (
                   <View key={member.id} style={styles.memberCard}>
                     <View style={styles.avatar}>
                       <Text style={styles.avatarText}>{member.nombre.slice(0, 1).toUpperCase()}</Text>

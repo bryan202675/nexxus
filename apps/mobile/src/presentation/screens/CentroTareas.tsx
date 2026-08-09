@@ -39,6 +39,9 @@ import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 // Importa DetalleTareaModal; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
 import DetalleTareaModal from '@/presentation/components/DetalleTareaModal';
+// Unica fuente de verdad para "vencida"/"hoy" por fecha limite (Centro Inteligente) -- no reintroducir
+// una comparacion de fechas propia aqui, ver packages/domain/services/priorityEngine.ts.
+import { computeUrgencyFromDate } from 'domain/services/priorityEngine';
 
 /**
  * Define el contrato de datos Props; documenta campos esperados y evita pasar objetos ambiguos entre capas.
@@ -69,9 +72,6 @@ export default function CentroTareas({ navigation }: Props) {
   // Inicializa fadeAnim; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  // Calcula hoyStr; normaliza fechas para comparaciones, filtros o etiquetas visibles.
-  const hoyStr = new Date().toISOString().split('T')[0];
-
   // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
   useEffect(() => {
     // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
@@ -81,9 +81,9 @@ export default function CentroTareas({ navigation }: Props) {
   // Calcula tareasFiltradas; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
   const tareasFiltradas = tareas.filter(t => {
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-    if (filtro === 'hoy') return t.fecha_limite === hoyStr && t.estado !== 'completada';
+    if (filtro === 'hoy') return computeUrgencyFromDate(t.fecha_limite) === 'hoy' && t.estado !== 'completada';
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-    if (filtro === 'vencidas') return t.fecha_limite && t.fecha_limite < hoyStr && t.estado !== 'completada';
+    if (filtro === 'vencidas') return computeUrgencyFromDate(t.fecha_limite) === 'vencida' && t.estado !== 'completada';
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (filtro === 'urgentes') return t.prioridad === 'Urgente' && t.estado !== 'completada';
     // Devuelve el valor final calculado para esta funcion o caso de uso.
@@ -136,7 +136,7 @@ export default function CentroTareas({ navigation }: Props) {
     // Declara isCompleted; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const isCompleted = item.estado === 'completada';
     // Declara isOverdue; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const isOverdue = item.fecha_limite && item.fecha_limite < hoyStr && !isCompleted;
+    const isOverdue = computeUrgencyFromDate(item.fecha_limite) === 'vencida' && !isCompleted;
 
     // Devuelve el JSX que React Native renderiza en pantalla.
     return (

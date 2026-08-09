@@ -80,11 +80,13 @@ import {
   formatearMoneda,
   porcentaje,
   mismoDia,
-  estaVencida,
 } from './dashboardAdminHelpers';
 import { estilos } from './dashboardAdminStyles';
 import { FondoHeaderTech, HeroMiniChart, PerformanceSparkChart, MobileSignalDonut, ChartSidePanel, LegendItem } from './DashboardCharts';
 import { MetricRow, ListItem, ApprovalItem, EmptyState, obtenerColorPrioridad, obtenerTextoPrioridad, obtenerTextoTipo, PremiumCard, IconWrapper } from './DashboardListItems';
+// Centro Inteligente: unica fuente de verdad para "vencida"/"proxima a vencer" y para el score de
+// urgencia -- ver packages/domain/services/priorityEngine.ts. No reintroducir un estaVencida propio aqui.
+import { computeUrgencyFromDate, computeSignalScore } from 'domain/services/priorityEngine';
 
 const Text = AdminTranslatedText;
 
@@ -408,7 +410,7 @@ export default function DashboardAdmin() {
     // Calcula tareasAltaPrioridad; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const tareasAltaPrioridad = tareas.filter((tarea) => tarea.prioridad === 'Alta').length;
     // Calcula tareasVencidas; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
-    const tareasVencidas = tareas.filter((tarea) => tarea.estado !== 'completada' && estaVencida(tarea.fecha_limite)).length;
+    const tareasVencidas = tareas.filter((tarea) => tarea.estado !== 'completada' && computeUrgencyFromDate(tarea.fecha_limite) === 'vencida').length;
     // Declara productividad; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const productividad = porcentaje(tareasCompletadas, tareas.length);
     // Calcula tiempoPromedioTareas; resume varios registros en un valor agregado usado por la UI o la regla de negocio.
@@ -674,13 +676,17 @@ export default function DashboardAdmin() {
           // Declara usuario; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
           const usuario = usuarios.find((item) => item.id === solicitud.usuario_id);
           // Devuelve el valor final calculado para esta funcion o caso de uso.
+          // Centro Inteligente: fecha_inicio es la fecha real de la ausencia (cuando "pasa"), no cuando
+          // se solicito -- es la referencia correcta de urgencia, no fecha_solicitud.
+          const fechaReferencia = solicitud.fecha_inicio || solicitud.fecha_solicitud || '';
           return {
             id: solicitud.id || '',
             tipo: 'ausencia' as const,
             titulo: solicitud.asunto || solicitud.tipo || 'Ausencia',
             empleado: solicitud.usuario_nombre || usuario?.nombre || 'Empleado',
             prioridad: solicitud.prioridad || solicitud.tipo || 'permiso',
-            fecha: solicitud.fecha_solicitud || '',
+            fecha: fechaReferencia,
+            score: computeSignalScore(computeUrgencyFromDate(fechaReferencia), fechaReferencia, solicitud.prioridad),
             fotoPerfil: usuario?.foto_perfil || usuario?.fotoPerfil || usuario?.photoURL || usuario?.avatarUrl || null,
             solicitud,
           };
@@ -690,6 +696,7 @@ export default function DashboardAdmin() {
         .map((solicitud) => {
           // Declara usuario; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
           const usuario = usuarios.find((item) => item.id === solicitud.userId);
+          const fechaReferencia = solicitud.fecha_inicio || solicitud.timestamp || '';
           // Devuelve el valor final calculado para esta funcion o caso de uso.
           return {
             id: solicitud.id || '',
@@ -697,12 +704,15 @@ export default function DashboardAdmin() {
             titulo: solicitud.titulo || solicitud.tipo || 'Solicitud interna',
             empleado: usuario?.nombre || 'Empleado',
             prioridad: solicitud.prioridad || 'media',
-            fecha: solicitud.timestamp || '',
+            fecha: fechaReferencia,
+            score: computeSignalScore(computeUrgencyFromDate(fechaReferencia), fechaReferencia, solicitud.prioridad),
             fotoPerfil: usuario?.foto_perfil || usuario?.fotoPerfil || usuario?.photoURL || usuario?.avatarUrl || null,
             solicitud,
           };
         }),
-    ].sort((a, b) => (obtenerFecha(b.fecha)?.getTime() || 0) - (obtenerFecha(a.fecha)?.getTime() || 0)).slice(0, 5);
+      // Centro Inteligente: ordena por urgencia por tiempo (vencida > hoy > proxima > normal) + prioridad
+      // declarada, no por fecha de envio -- ver packages/domain/services/priorityEngine.ts.
+    ].sort((a, b) => b.score - a.score).slice(0, 5);
 
     // Calcula alertasOperativas; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const alertasOperativas = [

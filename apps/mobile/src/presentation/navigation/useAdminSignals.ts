@@ -10,6 +10,9 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/infrastructure/supabase/supabaseClient';
 import { obtenerEmpresaId } from './adminNavigatorHelpers';
 import { SignalItem } from './adminNavigatorTypes';
+// Centro Inteligente: unica fuente de verdad para el score de urgencia por fecha -- ver
+// packages/domain/services/priorityEngine.ts.
+import { computeUrgencyFromDate, computeSignalScore } from 'domain/services/priorityEngine';
 
 /**
  * Hook useAdminSignals. Expone estado derivado y acciones reutilizables para componentes React.
@@ -33,9 +36,14 @@ export function useAdminSignals(user: any) {
     // Declara maps; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const maps = new Map<string, SignalItem[]>();
     // Declara publish; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
+    // Centro Inteligente: ordena por urgencia por tiempo (vencida > hoy > proxima > normal) antes de
+    // recortar a 9 -- antes se mostraba en el orden de llegada de cada tabla, no por urgencia real.
     const publish = () => {
+      const ordenados = Array.from(maps.values())
+        .flat()
+        .sort((a, b) => computeSignalScore(computeUrgencyFromDate(b.dueDate), b.dueDate) - computeSignalScore(computeUrgencyFromDate(a.dueDate), a.dueDate));
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-      setItems(Array.from(maps.values()).flat().slice(0, 9));
+      setItems(ordenados.slice(0, 9));
     };
 
     // Se suscribe a una tabla filtrada por empresa_id y republica el estado agregado en cada cambio.
@@ -55,19 +63,21 @@ export function useAdminSignals(user: any) {
 
     // Declara unsubscribers; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const unsubscribers = [
-      listen('ausencias', 'solicitudes_ausencia', 'id, tipo, motivo, estado, usuarios(nombre)', (doc) => doc.estado === 'pendiente' ? {
+      listen('ausencias', 'solicitudes_ausencia', 'id, tipo, motivo, estado, fecha_inicio, usuarios(nombre)', (doc) => doc.estado === 'pendiente' ? {
         id: `ausencia-${doc.id}`,
         title: doc.tipo || 'Ausencia pendiente',
         detail: doc.usuarios?.nombre || doc.motivo || 'Empleado',
         type: 'approval',
         tone: 'warning',
+        dueDate: doc.fecha_inicio,
       } : null),
-      listen('solicitudes', 'solicitudes_internas', 'id, tipo, detalle, estado', (doc) => doc.estado === 'pendiente' || doc.estado === 'revisado' ? {
+      listen('solicitudes', 'solicitudes_internas', 'id, tipo, detalle, estado, fecha_inicio', (doc) => doc.estado === 'pendiente' || doc.estado === 'revisado' ? {
         id: `solicitud-${doc.id}`,
         title: doc.tipo || 'Solicitud interna',
         detail: doc.detalle || 'Pendiente de revisión',
         type: 'approval',
         tone: 'warning',
+        dueDate: doc.fecha_inicio,
       } : null),
       listen('inbox', 'inbox_unificado', 'id, origen, contenido', (doc) => ({
         id: `inbox-${doc.id}`,

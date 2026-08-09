@@ -80,18 +80,5 @@ export const mismoDia = (fecha: Date | null) => {
   return fecha.getFullYear() === hoy.getFullYear() && fecha.getMonth() === hoy.getMonth() && fecha.getDate() === hoy.getDate();
 };
 
-/**
- * Declaracion estaVencida. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
- */
-export const estaVencida = (valor?: string) => {
-  // Declara fecha; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const fecha = obtenerFecha(valor);
-  // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-  if (!fecha) return false;
-  // Calcula hoy; normaliza fechas para comparaciones, filtros o etiquetas visibles.
-  const hoy = new Date();
-  // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-  hoy.setHours(0, 0, 0, 0);
-  // Devuelve el JSX que React Native renderiza en pantalla.
-  return fecha < hoy;
-};
+// estaVencida se elimino de aqui: usar computeUrgencyFromDate === 'vencida' desde
+// domain/services/priorityEngine (unica fuente de verdad, ver Fase 7 del plan).
