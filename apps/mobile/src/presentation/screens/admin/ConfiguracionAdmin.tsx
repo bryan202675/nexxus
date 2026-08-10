@@ -564,7 +564,7 @@ export default function ConfiguracionAdmin() {
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      window.location.href = '/landing/login';
+      window.location.href = '/';
     } else {
       // Ejecuta navegacion; cambia la pantalla activa manteniendo el flujo definido por React Navigation.
       navigation.reset({ index: 0, routes: [{ name: 'Bienvenida' }] });

@@ -7,4 +7,4 @@
 // sesion de Supabase Auth se comparte entre ellos ahi (localStorage es por origen), sin importar que
 // URL se use. VITE_NEXXUS_LANDING_URL (.env.development.local) solo sirve para que el botón apunte al
 // puerto correcto en dev; el login compartido real solo pasa en produccion (mismo origen).
-export const LANDING_URL = import.meta.env.VITE_NEXXUS_LANDING_URL || "/landing";
+export const LANDING_URL = import.meta.env.VITE_NEXXUS_LANDING_URL || "/";

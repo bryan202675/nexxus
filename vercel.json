@@ -4,7 +4,9 @@
   "installCommand": "npm install",
   "rewrites": [
     { "source": "/auth/(.*)", "destination": "/app.html" },
-    { "source": "/admin/(.*)", "destination": "/app.html" }
+    { "source": "/admin/(.*)", "destination": "/app.html" },
+    { "source": "/landing", "destination": "/index.html" },
+    { "source": "/landing/(.*)", "destination": "/index.html" }
   ],
   "headers": [
     {

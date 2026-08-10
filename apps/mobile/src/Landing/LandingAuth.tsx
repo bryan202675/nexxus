@@ -1114,7 +1114,7 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
           {vista !== 'empresa' ? (
             <header className="nx-auth-intro">
               <div className="nx-auth-brand-row">
-                <button className="nx-auth-back-button" onClick={() => window.location.assign('/landing')} type="button" aria-label={t('landing_auth.nav_back_home')}>
+                <button className="nx-auth-back-button" onClick={() => window.location.assign('/')} type="button" aria-label={t('landing_auth.nav_back_home')}>
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M15 18l-6-6 6-6" />
                   </svg>
