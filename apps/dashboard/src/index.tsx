@@ -1,6 +1,7 @@
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { SpeedInsights } from "@vercel/speed-insights/react";
+import { Analytics } from "@vercel/analytics/react";
 import "./index.css";
 
 import App from "./App";
@@ -17,6 +18,7 @@ root.render(
       <AuthProvider>
         <App />
         <SpeedInsights />
+        <Analytics />
       </AuthProvider>
     </ThemeProvider>
   </BrowserRouter>
