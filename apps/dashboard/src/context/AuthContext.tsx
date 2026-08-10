@@ -96,30 +96,16 @@ export function AuthProvider({ children }) {
     }
   }, [state.rol, state.loading, state.user, state.perfil]);
 
-  // Protege contra el back-forward cache del navegador: si el usuario cierra sesión y pulsa "atrás",
-  // recarga o verifica de inmediato la sesión para evitar que el navegador muestre una vista congelada
-  // y lo obliga a volver a loguearse.
+  // Protege contra el back-forward cache del navegador (bfcache): solo si la página fue restaurada
+  // congelada desde la memoria del navegador al pulsar "atrás", se fuerza una recarga.
   useEffect(() => {
-    const verificarSesionAlNavegar = () => {
-      supabase.auth.getSession().then(({ data }) => {
-        if (!data.session?.user) {
-          window.location.reload();
-        }
-      });
-    };
-    const onPageShow = (event) => {
+    const onPageShow = (event: PageTransitionEvent) => {
       if (event.persisted) {
         window.location.reload();
-      } else {
-        verificarSesionAlNavegar();
       }
     };
     window.addEventListener("pageshow", onPageShow);
-    window.addEventListener("popstate", verificarSesionAlNavegar);
-    return () => {
-      window.removeEventListener("pageshow", onPageShow);
-      window.removeEventListener("popstate", verificarSesionAlNavegar);
-    };
+    return () => window.removeEventListener("pageshow", onPageShow);
   }, []);
 
   const empresaNombre =
