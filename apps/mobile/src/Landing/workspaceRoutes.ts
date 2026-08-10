@@ -11,7 +11,7 @@
 export const WORKSPACE_ORIGIN = process.env.EXPO_PUBLIC_WORKSPACE_ORIGIN || '';
 
 export function destinoWorkspaceAuth(modo: 'login' | 'registro') {
-  const ruta = modo === 'login' ? '/workspace/auth/sa-login' : '/workspace/auth/registro';
+  const ruta = modo === 'login' ? '/auth/sa-login' : '/auth/registro';
   return `${WORKSPACE_ORIGIN}${ruta}`;
 }
 
@@ -20,7 +20,7 @@ export function destinoWorkspaceAuth(modo: 'login' | 'registro') {
 export function destinoWorkspaceAdmin(rol?: string | null) {
   const rolNormalizado = String(rol || '').trim().toLowerCase();
   const ruta = rolNormalizado === 'super_admin'
-    ? '/workspace/admin'
-    : '/workspace/admin/empresa-resumen';
+    ? '/admin'
+    : '/admin/empresa-resumen';
   return `${WORKSPACE_ORIGIN}${ruta}`;
 }

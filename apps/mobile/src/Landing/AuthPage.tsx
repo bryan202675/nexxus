@@ -27,7 +27,7 @@ function modoInicial() {
 }
 
 function destinoWorkspace(modo: string) {
-  const ruta = modo === 'login' ? '/workspace/auth/sa-login' : '/workspace/auth/registro';
+  const ruta = modo === 'login' ? '/auth/sa-login' : '/auth/registro';
   return `${WORKSPACE_ORIGIN}${ruta}`;
 }
 

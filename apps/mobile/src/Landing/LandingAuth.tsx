@@ -202,8 +202,8 @@ const FALLBACK_PHONE_CONFIG: PhoneFormatConfig = {
 // deja vacio en produccion (mismo origen, como debe ser) y se define en
 // nexxus/app/.env.local (gitignored) apuntando a http://localhost:3000 para probar localmente.
 const WORKSPACE_ORIGIN = process.env.EXPO_PUBLIC_WORKSPACE_ORIGIN || '';
-const WORKSPACE_DASHBOARD_PATH = `${WORKSPACE_ORIGIN}/workspace/admin/nexxus-superadmin`;
-const WORKSPACE_ADMIN_EMPRESA_PATH = `${WORKSPACE_ORIGIN}/workspace/admin/empresa-resumen`;
+const WORKSPACE_DASHBOARD_PATH = `${WORKSPACE_ORIGIN}/admin/nexxus-configuracion`;
+const WORKSPACE_ADMIN_EMPRESA_PATH = `${WORKSPACE_ORIGIN}/admin/empresa-resumen`;
 
 function formatPhoneNumber(rawDigits: string, prefix: string): string {
   const config = PHONE_CONFIGS[prefix] || FALLBACK_PHONE_CONFIG;
