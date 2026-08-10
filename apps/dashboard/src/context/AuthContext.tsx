@@ -96,17 +96,30 @@ export function AuthProvider({ children }) {
     }
   }, [state.rol, state.loading, state.user, state.perfil]);
 
-  // Protege contra el back-forward cache del navegador: sin esto, cerrar sesión y luego pulsar
-  // "atrás" puede repintar la última vista autenticada tal cual quedó en memoria (el navegador
-  // restaura la página congelada en vez de recargarla), sin volver a pasar por el guard de rol.
-  // pageshow con persisted=true detecta exactamente ese caso y fuerza una recarga real, que
-  // vuelve a evaluar el estado de sesión actual desde cero.
+  // Protege contra el back-forward cache del navegador: si el usuario cierra sesión y pulsa "atrás",
+  // recarga o verifica de inmediato la sesión para evitar que el navegador muestre una vista congelada
+  // y lo obliga a volver a loguearse.
   useEffect(() => {
+    const verificarSesionAlNavegar = () => {
+      supabase.auth.getSession().then(({ data }) => {
+        if (!data.session?.user) {
+          window.location.reload();
+        }
+      });
+    };
     const onPageShow = (event) => {
-      if (event.persisted) window.location.reload();
+      if (event.persisted) {
+        window.location.reload();
+      } else {
+        verificarSesionAlNavegar();
+      }
     };
     window.addEventListener("pageshow", onPageShow);
-    return () => window.removeEventListener("pageshow", onPageShow);
+    window.addEventListener("popstate", verificarSesionAlNavegar);
+    return () => {
+      window.removeEventListener("pageshow", onPageShow);
+      window.removeEventListener("popstate", verificarSesionAlNavegar);
+    };
   }, []);
 
   const empresaNombre =

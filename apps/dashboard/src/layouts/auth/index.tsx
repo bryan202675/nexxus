@@ -2,8 +2,25 @@ import Footer from "components/footer/FooterAuthDefault";
 import { Routes, Route, Navigate } from "react-router-dom";
 import routes from "routes";
 import FixedPlugin from "components/fixedPlugin/FixedPlugin";
+import { useAuth } from "context/AuthContext";
 
 export default function Auth() {
+  const authCtx = useAuth();
+  const loading = authCtx?.loading;
+  const user = authCtx?.user;
+
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-lightPrimary dark:!bg-navy-900">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-500 border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (user) {
+    return <Navigate to="/admin" replace />;
+  }
+
   const getRoutes = (routes) => {
     return routes.map((prop, key) => {
       if (prop.layout === "/auth") {
