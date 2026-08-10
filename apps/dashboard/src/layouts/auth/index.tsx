@@ -8,6 +8,8 @@ export default function Auth() {
   const authCtx = useAuth();
   const loading = authCtx?.loading;
   const user = authCtx?.user;
+  const esSuperAdmin = authCtx?.esSuperAdmin;
+  const esAdminEmpresa = authCtx?.esAdminEmpresa;
 
   if (loading) {
     return (
@@ -17,7 +19,8 @@ export default function Auth() {
     );
   }
 
-  if (user) {
+  // Redirigir únicamente si el usuario tiene sesión activa Y ROL DE ADMIN/SUPERADMIN
+  if (user && (esSuperAdmin || esAdminEmpresa)) {
     return <Navigate to="/admin" replace />;
   }
 
