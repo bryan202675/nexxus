@@ -5,7 +5,7 @@ import path from 'path';
 console.log('Iniciando Chromium en macOS para renderizar el sitio de Framer...');
 
 scrape({
-  urls: ['https://fluence.framer.website/'],
+  urls: ['https://nexxus-hr.framer.website/'],
   directory: path.resolve('./public/framer-site-completo'),
   plugins: [
     new PuppeteerPlugin({

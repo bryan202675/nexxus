@@ -146,7 +146,11 @@ export default function ConfiguracionAdmin() {
   };
 
   const cerrarSesion = async () => {
-    await signOut();
+    try {
+      await signOut();
+    } catch (err) {
+      console.error("Error al cerrar sesión:", err);
+    }
     window.location.assign(LANDING_URL);
   };
 

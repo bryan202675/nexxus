@@ -19,7 +19,11 @@ const Navbar = (props) => {
   const foto = perfil?.foto_perfil || user?.photoURL || "";
 
   const cerrarSesion = async () => {
-    await signOut();
+    try {
+      await signOut();
+    } catch (err) {
+      console.error("Error al cerrar sesión:", err);
+    }
     window.location.assign(LANDING_URL);
   };
 
