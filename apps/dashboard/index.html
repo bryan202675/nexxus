@@ -2,9 +2,24 @@
 <html lang="es">
   <head>
     <meta charset="utf-8" />
-    <link href="/favicon-light.png" rel="icon" media="(prefers-color-scheme: light)" />
-    <link href="/favicon-dark.png" rel="icon" media="(prefers-color-scheme: dark)" />
-    <link href="/favicon-dark.png" rel="apple-touch-icon" />
+    <link id="favicon-light" href="/favicon-light.png" rel="icon" type="image/png" media="(prefers-color-scheme: light)" />
+    <link id="favicon-dark" href="/favicon-dark.png" rel="icon" type="image/png" media="(prefers-color-scheme: dark)" />
+    <link rel="shortcut icon" href="/favicon-dark.png" />
+    <link rel="apple-touch-icon" href="/favicon-dark.png" />
+    <script>
+      (function() {
+        function setFavicon() {
+          var isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var href = isDark ? '/favicon-dark.png' : '/favicon-light.png';
+          var links = document.querySelectorAll("link[rel*='icon']");
+          links.forEach(function(l) { if (!l.media) l.href = href; });
+        }
+        setFavicon();
+        if (window.matchMedia) {
+          window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', setFavicon);
+        }
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#000000" />
     <meta name="description" content="Nexxus - Impulsa tu empresa con IA" />
