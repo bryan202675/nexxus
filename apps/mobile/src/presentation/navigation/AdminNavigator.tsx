@@ -58,6 +58,7 @@ import GestionNomina from '../screens/admin/GestionNomina';
 import ComunicacionAdmin from '../screens/admin/ComunicacionAdmin';
 import MensajeriaInternaAdmin from '../screens/admin/MensajeriaInternaAdmin';
 import GestionDocumentos from '../screens/admin/GestionDocumentos';
+import Automatizaciones from '../screens/admin/Automatizaciones';
 // Importa AuditoriaLogs; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import AuditoriaLogs from '../screens/admin/AuditoriaLogs';
 // Importa CalendarioEmpresarial; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
@@ -277,6 +278,7 @@ export default function AdminNavigator() {
                 <Tab.Screen name="ComunicacionAdmin" component={ComunicacionAdmin} />
                 {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
                 <Tab.Screen name="GestionDocumentos" component={GestionDocumentosGated} />
+                <Tab.Screen name="Automatizaciones" component={Automatizaciones} />
                 {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
                 <Tab.Screen name="AuditoriaLogs" component={AuditoriaLogs} />
                 {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}

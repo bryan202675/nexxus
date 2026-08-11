@@ -874,6 +874,19 @@ export default function ChatInterno() {
             perfil.nombre,
             input.trim() || 'Te envió un archivo adjunto.'
           ).catch((e) => console.error('Error enviando push:', e));
+          // Nexxus Brain (Fase 14): registra que estas dos personas se conectan por chat directo.
+          // Upsert con ignoreDuplicates -- reenviar mensajes entre las mismas dos personas no crea
+          // un edge nuevo cada vez, solo confirma que la relación ya existe.
+          useCases.graph.addRelation.execute({
+            empresaId,
+            origenTipo: 'usuario',
+            origenId: perfil.id,
+            relacionTipo: 'conversa_con',
+            destinoTipo: 'usuario',
+            destinoId: destinatarioId,
+            metadata: {},
+            creadoPor: perfil.id,
+          }).catch((e) => console.error('Error registrando relación en Nexxus Brain:', e));
         }
       }
       setInput('');

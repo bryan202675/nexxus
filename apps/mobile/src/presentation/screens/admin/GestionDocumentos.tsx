@@ -74,7 +74,7 @@ export default function GestionDocumentos() {
           documentTitle: file.name,
           onProgress: (event) => setProgreso(event.percent),
         });
-        await useCases.documents.create.execute({
+        const documentoId = await useCases.documents.create.execute({
           userId: destino.id,
           empresaId,
           titulo: file.name.replace(/\.pdf$/i, ''),
@@ -88,6 +88,17 @@ export default function GestionDocumentos() {
           fechaSubida: new Date().toISOString(),
           leido: false,
         });
+        // Nexxus Brain (Fase 14): registra que este empleado tiene acceso a este documento.
+        useCases.graph.addRelation.execute({
+          empresaId,
+          origenTipo: 'usuario',
+          origenId: destino.id,
+          relacionTipo: 'tiene_acceso_a',
+          destinoTipo: 'documento',
+          destinoId: documentoId,
+          metadata: {},
+          creadoPor: user.id,
+        }).catch((e) => console.error('Error registrando relación en Nexxus Brain:', e));
         // Bandeja Unificada (Fase 9): avisa al destinatario que tiene un documento nuevo. No bloquea
         // la subida si falla -- el documento ya quedó registrado.
         useCases.inbox.add.execute({

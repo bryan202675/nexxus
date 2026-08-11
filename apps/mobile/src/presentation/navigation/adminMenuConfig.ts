@@ -43,6 +43,7 @@ export const COMPANY_MENU_ITEMS: AdminMenuItem[] = [
   { name: 'ChatIAAdmin', label: 'IA', icon: 'auto-awesome' },
   { name: 'ComunicacionAdmin', label: 'Comunicación', icon: 'forum' },
   { name: 'GestionDocumentos', label: 'Documentos', icon: 'folder' },
+  { name: 'Automatizaciones', label: 'Automatizaciones', icon: 'bolt' },
   { name: 'AuditoriaLogs', label: 'Auditoría', icon: 'manage-search' },
   { name: 'ConfiguracionAdmin', label: 'Configuración', icon: 'tune' },
 ];
@@ -71,6 +72,7 @@ export const COMPANY_SEARCH_ITEMS: AdminSearchItem[] = [
   { route: 'ChatIAAdmin', title: 'IA empresarial', detail: 'resumen semanal, asistencia, tareas, reportes, nómina, rendimiento' },
   { route: 'ComunicacionAdmin', title: 'Comunicación', detail: 'anuncios, notificaciones, mensajes' },
   { route: 'GestionDocumentos', title: 'Documentos', detail: 'pdf, archivos, cloudinary, almacenamiento, métricas' },
+  { route: 'Automatizaciones', title: 'Automatizaciones', detail: 'reglas SI/ENTONCES, tareas vencidas, solicitudes pendientes, check-in faltante' },
   { route: 'AuditoriaLogs', title: 'Auditoría', detail: 'logs, seguridad, eventos, actividad' },
   { route: 'ConfiguracionAdmin', title: 'Configuración', detail: 'tema, cuenta, preferencias, sistema' },
 ];
@@ -158,6 +160,12 @@ export const COMPANY_SCREEN_BANNERS: Record<string, AdminScreenBanner> = {
     eyebrow: 'Almacenamiento controlado',
     description: 'PDFs, uso por empresa, deduplicación y limpieza segura de archivos.',
     icon: 'folder',
+  },
+  Automatizaciones: {
+    title: 'Automatizaciones',
+    eyebrow: 'Reglas SI/ENTONCES',
+    description: 'Tareas vencidas, solicitudes sin resolver y check-in faltante, notificados solos en la Bandeja Unificada.',
+    icon: 'bolt',
   },
   AuditoriaLogs: {
     title: 'Auditoría',

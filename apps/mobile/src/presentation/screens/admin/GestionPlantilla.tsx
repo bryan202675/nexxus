@@ -1623,9 +1623,26 @@ export default function GestionPlantilla() {
           jefe: user?.nombre || user?.correo || 'Administrador',
           alcance: alcanceTarea,
         },
-      })));
+      }).select('id').single()));
       const fallo = inserts.find((r) => r.error);
       if (fallo?.error) throw fallo.error;
+      // Nexxus Brain (Fase 14): registra que cada destinatario quedó asignado a su tarea nueva.
+      // No bloquea el flujo si falla -- las tareas ya quedaron creadas.
+      inserts.forEach((resultado, indice) => {
+        const tareaId = resultado.data?.id;
+        const empleado = destinatarios[indice];
+        if (!tareaId || !empleado?.id) return;
+        useCases.graph.addRelation.execute({
+          empresaId,
+          origenTipo: 'usuario',
+          origenId: empleado.id,
+          relacionTipo: 'asignado_a',
+          destinoTipo: 'tarea',
+          destinoId: tareaId,
+          metadata: {},
+          creadoPor: user?.id,
+        }).catch((e) => console.error('Error registrando relación en Nexxus Brain:', e));
+      });
       // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
       await registrarAuditoria('Asignación de Tareas', `${titulo} · ${destinatarios.length} destinatarios`);
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
