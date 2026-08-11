@@ -45,6 +45,8 @@ import type { AttendanceGeoPoint, AttendanceLocationStatus, AttendanceMethod } f
 import { ContextualMessage } from 'domain/repositories/IFase2Repositories';
 // Importa { subirFotoPerfil }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import { subirFotoPerfilCompleta } from '@/infrastructure/services/almacenamiento';
+// Fase 10: registra el push token del dispositivo apenas hay un usuario autenticado.
+import { usePushNotifications } from '@/presentation/hooks/usePushNotifications';
 
 /**
  * Define el contrato de datos EstadoContextoUsuario; documenta campos esperados y evita pasar objetos ambiguos entre capas.
@@ -129,6 +131,8 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
   const { user, isAuthenticated, loading: authLoading, error: authError, login, loginEmpresarial, logout, updateUser } = useAuth();
   // Declara { metrics, loading: wellnessLoading, fetchMetrics, recordCheckIn }; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const { metrics, loading: wellnessLoading, fetchMetrics, recordCheckIn } = useWellness(user?.id, user?.nombre);
+  // Fase 10: registro de push token, sin efecto en web/simulador (ver usePushNotifications).
+  usePushNotifications(isAuthenticated ? user?.id : null);
 
   // Inicializa [tareas, setTareas]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [tareas, setTareas] = useState<Task[]>([]);
@@ -312,6 +316,12 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
       // No bloquea el flujo principal (la solicitud ya se creo) si la bandeja falla al publicar.
       console.error('Error publicando en Bandeja Unificada:', e);
     }
+    // Fase 10: push real, en paralelo a la bandeja -- mismo criterio de "no bloquear si falla"
+    // (sin token registrado -- web, simulador, o el jefe nunca abrió la app en un dispositivo -- la
+    // Edge Function simplemente no envía nada, no es un error).
+    useCases.push.send.execute(user.jefeId, params.titulo, params.mensaje).catch((e) => {
+      console.error('Error enviando push:', e);
+    });
   };
 
   // Declara crearSolicitudAusencia; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.

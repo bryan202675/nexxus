@@ -152,6 +152,12 @@ export default function SaLogin() {
         </button>
 
         <p className="mt-4 text-sm text-gray-600 dark:text-white/70">
+          <Link to="/auth/recuperar-contrasena" className="font-medium text-brand-500 hover:text-brand-600 dark:text-brand-400">
+            ¿Olvidaste tu contraseña?
+          </Link>
+        </p>
+
+        <p className="mt-2 text-sm text-gray-600 dark:text-white/70">
           ¿No tienes cuenta?{" "}
           <Link to="/auth/registro" className="font-medium text-brand-500 hover:text-brand-600 dark:text-brand-400">
             Regístrate

@@ -303,6 +303,15 @@ function LoginEmpresarialContent({ navigation }: { navigation: any }) {
 
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
             <TouchableOpacity
+              style={estilos.forgotBtn}
+              onPress={() => navigation.navigate('RecuperarContrasena', { codigoEmpresa: form.codigoEmpresa, usuario: form.usuario })}
+            >
+              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
+              <Text style={[estilos.forgotBtnText, { color: colores.primarioClaro }]}>¿Olvidaste tu contraseña?</Text>
+            </TouchableOpacity>
+
+            {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
+            <TouchableOpacity
               style={estilos.backBtn}
               onPress={() => navigation.goBack()}
             >
@@ -575,6 +584,16 @@ const estilos = StyleSheet.create({
     fontWeight: '900',
     // letterSpacing ajusta la separacion entre letras.
     letterSpacing: 1,
+  },
+  // forgotBtn: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
+  forgotBtn: {
+    alignItems: 'center',
+    padding: 6,
+  },
+  // forgotBtnText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
+  forgotBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   // backBtn: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   backBtn: {

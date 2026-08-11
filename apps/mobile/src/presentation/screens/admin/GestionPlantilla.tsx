@@ -170,6 +170,8 @@ export default function GestionPlantilla() {
   const placeholderSede = useApiTranslate('Selecciona una sede');
   const labelPhone = useApiTranslate('Teléfono');
   const placeholderPhone = useApiTranslate('Ej. +123456789');
+  const labelPersonalEmail = useApiTranslate('Correo personal (opcional)');
+  const placeholderPersonalEmail = useApiTranslate('Para enviarle bienvenida y recuperación de contraseña');
   const labelSalary = useApiTranslate('Salario Base');
   const labelRoleSelector = useApiTranslate('Rol Operativo');
   const placeholderRoleSelector = useApiTranslate('Selecciona un rol');
@@ -918,10 +920,10 @@ export default function GestionPlantilla() {
     }
   };
 
-  const crearEmpleadoFirestore = async ({ nombre, correo, contrasena, rol, departamento_id, empleado }: CrearEmpleadoLocalInput) => {
+  const crearEmpleadoFirestore = async ({ nombre, correo, contrasena, rol, departamento_id, empleado, correoPersonal }: CrearEmpleadoLocalInput) => {
     if (!obtenerEmpresaIdAdmin(user)) throw new Error(toastSessionErrorDesc);
     const { data, error } = await supabase.functions.invoke('crear-usuario-empresa', {
-      body: { nombre, correo, contrasena, rol, departamento_id, empleado },
+      body: { nombre, correo, contrasena, rol, departamento_id, empleado, correoPersonal },
     });
     if (error) throw new Error(error.message || 'No se pudo crear el usuario.');
     return data as { uid?: string };
@@ -1105,6 +1107,7 @@ export default function GestionPlantilla() {
       jefeId: empleado.jefeId || '',
       telefono: empleado.telefono || '',
       salarioBase: empleado.salarioBase ? String(Math.round(Number(empleado.salarioBase))) : '',
+      correoPersonal: empleado.correo_personal || '',
     });
     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setSelectorActivo(null);
@@ -1448,6 +1451,7 @@ export default function GestionPlantilla() {
           contrasena: formulario.contrasena.trim(),
           rol: formulario.rol,
           departamento_id: payload.departamentoId || payload.departamento,
+          correoPersonal: formulario.correoPersonal.trim(),
           empleado: {
             ...payload,
             correo: correoInterno,
@@ -1510,6 +1514,7 @@ export default function GestionPlantilla() {
               sede_id: payload.sedeId || null,
               telefono: payload.telefono,
               salario_base: payload.salarioBase,
+              correo_personal: formulario.correoPersonal.trim() || null,
             }).eq('id', empleadoSeleccionado.id))
           );
           if (updateError) throw updateError;
@@ -2372,6 +2377,8 @@ export default function GestionPlantilla() {
               />
               {/* FormField renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <FormField label={labelPhone} value={formulario.telefono} onChangeText={(valor) => actualizarFormulario('telefono', valor)} placeholder={placeholderPhone} />
+              {/* FormField renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+              <FormField label={labelPersonalEmail} value={formulario.correoPersonal} onChangeText={(valor) => actualizarFormulario('correoPersonal', valor)} placeholder={placeholderPersonalEmail} />
               {/* FormField renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <FormField label={labelSalary} value={formulario.salarioBase ? `$${formulario.salarioBase}` : ''} onChangeText={(valor) => actualizarFormulario('salarioBase', normalizarSalarioUSD(valor))} placeholder="$0" />
             </View>

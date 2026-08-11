@@ -868,6 +868,12 @@ export default function ChatInterno() {
             titulo: perfil.nombre,
             mensaje: input.trim() || 'Te envió un archivo adjunto.',
           }).catch((e) => console.error('Error publicando en Bandeja Unificada:', e));
+          // Fase 10: push real, en paralelo. Sin token registrado, la Edge Function no envía nada.
+          useCases.push.send.execute(
+            destinatarioId,
+            perfil.nombre,
+            input.trim() || 'Te envió un archivo adjunto.'
+          ).catch((e) => console.error('Error enviando push:', e));
         }
       }
       setInput('');

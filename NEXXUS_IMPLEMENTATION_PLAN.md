@@ -368,21 +368,49 @@ En los 3 archivos de pantalla (`DashboardAdmin`, `GestionPlantilla`, `Estructura
 - **Objetivo:** registrar tokens Expo Push, enviar push desde Edge Functions en eventos clave (tarea asignada, solicitud aprobada, etc).
 - **Archivos afectados:** `apps/mobile` (nuevo hook de registro), nueva Edge Function de envío, `push_tokens` (ya existe).
 - **Dependencias:** ninguna dura.
-- **Riesgos:** requiere proyecto Expo con EAS configurado si se usa Expo Push Service — a confirmar alcance de builds nativos (ver preguntas).
+- **Riesgos:** requiere `expo.extra.eas.projectId` en `app.json` (se obtiene con `eas init`, acción de cuenta que solo puede hacer el usuario) para que `getExpoPushTokenAsync` funcione. Sin ese id, el hook hace `console.warn` y no registra token — no rompe nada, pero tampoco envía push todavía.
 - **Tiempo estimado:** 1-2 sesiones.
-- **Estado:** Pospuesta — alcance móvil se redujo a "solo Expo Web" por ahora, sin builds nativos EAS. Se retoma si el alcance de plataformas cambia; mientras tanto, baja prioridad.
+- **Estado:** Implementada (retomada por instrucción explícita del usuario, a pesar de que el alcance móvil general sigue siendo "solo Expo Web" — este código queda listo para cuando haya builds nativos o se corra `eas init`).
 - **Prioridad:** Media.
-- **Checklist:** por definir.
+- **Constraint técnico importante:** desde Expo SDK 53 (este proyecto está en SDK 54), **Expo Go en Android ya no soporta push remoto** (removido por Expo) — solo Expo Go en iOS lo soporta para pruebas sin dev build. Para Android hace falta un dev build (`eas build --profile development`) para probar push de verdad. La infraestructura está construida igual de completa para ambas plataformas; es una limitación de testing, no de diseño.
+- **Checklist:**
+  - [x] `PushToken` (entidad), `IPushTokenRepository`, `IPushSenderRepository` en `packages/domain`.
+  - [x] `RegisterPushToken`, `UnregisterPushToken`, `GetPushTokens`, `SendPushNotification` (casos de uso) en `packages/domain/application/use-cases/push/PushTokenUseCases.ts`.
+  - [x] `SupabasePushTokenRepository` (upsert idempotente por `usuario_id,token`) y `SupabasePushSenderRepository` (invoca la Edge Function) en `apps/mobile/src/infrastructure/supabase/`.
+  - [x] Hook `usePushNotifications` (`apps/mobile/src/presentation/hooks/usePushNotifications.ts`): pide permisos, obtiene el token de Expo (si hay `projectId`), registra en Supabase. No hace nada en `Platform.OS === 'web'` ni en simuladores (`Device.isDevice`).
+  - [x] Conectado en `ContextoUsuario.tsx`: se llama al hook con el usuario autenticado; `publicarAprobacionPendiente` ahora también envía push (en paralelo al insert en Bandeja Unificada, con `.catch()` propio que no bloquea el flujo principal).
+  - [x] Push conectado a los mismos 2 triggers de Fase 9 que sí escriben en Bandeja Unificada: documento nuevo (`GestionDocumentos.tsx`) y mensaje directo 1:1 (`ChatInterno.tsx`).
+  - [x] Nueva Edge Function `send-push-notification` (`supabase/functions/send-push-notification/index.ts`): valida `sameCompany` contra el destinatario, junta todos los tokens del usuario desde `push_tokens`, llama al Expo Push Service (`https://exp.host/--/api/v2/push/send`), y borra automáticamente los tokens que Expo reporta como `DeviceNotRegistered`.
+  - [x] Config de plugin `expo-notifications` agregada a `app.json` (icono + color).
+  - [x] Verificado: `npx tsc --noEmit` limpio en `apps/mobile` y `packages/domain`, `turbo run typecheck test lint` limpio (0 errores, solo warnings preexistentes) en los 3 paquetes, `expo export --platform web` sin errores, landing renderizada en navegador sin errores reales.
+  - [ ] **`send-push-notification` NO desplegada a Supabase** — requiere `supabase functions deploy send-push-notification`, pendiente de confirmación explícita del usuario (igual que el resto de Edge Functions nuevas/actualizadas de fases previas).
+  - [ ] `expo.extra.eas.projectId` no configurado — requiere que el usuario corra `eas init` una vez (acción de cuenta, no puedo hacerla yo). Sin esto, ningún token se registra realmente todavía.
+  - [ ] Push por eventos adicionales (tarea asignada, solicitud aprobada/rechazada) no conectados — mismo alcance deliberadamente acotado que Fase 9: solo se conectó donde ya existía el trigger de Bandeja Unificada, para no inventar nuevos puntos de notificación sin pedirlo.
 
 ### Fase 11 — Email transaccional
-- **Objetivo:** recuperación de contraseña por email, notificaciones importantes por correo.
-- **Archivos afectados:** nueva Edge Function, configuración de proveedor.
+- **Objetivo:** recuperación de contraseña por email, correo de bienvenida al crear empleado.
+- **Archivos afectados:** `supabase/functions/_shared/gmail.ts` (nuevo), `supabase/functions/_shared/emailTemplates.ts` (nuevo), `supabase/functions/_shared/company.ts`, `supabase/functions/crear-usuario-empresa/index.ts`, `apps/mobile/src/presentation/screens/admin/GestionPlantilla.tsx`, `apps/mobile/src/presentation/screens/admin/gestionPlantillaTypes.ts`, `supabase/migrations/0013_usuarios_correo_personal.sql`.
 - **Dependencias:** ninguna.
-- **Riesgos:** bajo, pero depende 100% de qué proveedor elijas (ver preguntas) — Supabase Auth ya tiene flujo de recuperación por email nativo si se configura SMTP/proveedor en el dashboard de Supabase, lo cual podría cubrir la mitad de este alcance sin código nuevo.
-- **Tiempo estimado:** 1 sesión.
-- **Estado:** Lista para iniciar. Proveedor confirmado: Resend.
+- **Decisión de proveedor (cambió durante la fase):** se descartó Resend — sin dominio verificado, Resend solo entrega a la casilla dueña de la cuenta (confirmado en su documentación pública), lo cual no sirve para enviar a empleados reales. Se usa **Gmail API vía OAuth2** en su lugar: envía a cualquier destinatario desde ya, usando una cuenta Gmail dedicada (`notificaciones.nexxus@gmail.com` o similar) autorizada una vez vía Google Cloud Console + OAuth Playground.
+- **Hallazgo clave que redefinió el alcance:** los empleados creados por un admin (`GestionPlantilla.tsx`) reciben un correo de login **sintético e inexistente** (`usuario@CODIGOEMPRESA.nexxus`, ver `_shared/company.ts`), no un correo real. Solo la cuenta que registra la empresa (`LandingAuth.tsx`) tiene correo real. Se agregó `correo_personal` (columna nueva, opcional) a `usuarios` para poder mandarles correo sin tocar el login.
+- **Estado:** Bienvenida por email y recuperación de contraseña self-service implementadas y verificadas (typecheck/lint limpios, probado en navegador). Secrets de Gmail ya configurados en Supabase por el usuario. Falta desplegar y agregar las Redirect URLs en Supabase Auth.
 - **Prioridad:** Media.
-- **Checklist:** por definir.
+- **Checklist:**
+  - [x] Migración `0013_usuarios_correo_personal.sql`: columna `correo_personal` (nullable) en `usuarios`, separada del `correo` de login.
+  - [x] `_shared/gmail.ts`: helper de envío vía Gmail API (refresh de access token OAuth2 + `users.messages.send` con MIME base64url), lee `GMAIL_CLIENT_ID`/`GMAIL_CLIENT_SECRET`/`GMAIL_REFRESH_TOKEN`/`GMAIL_SENDER_EMAIL` de secrets. **Secrets ya configurados por el usuario en Supabase** (Project Settings → Edge Functions → Secrets).
+  - [x] `_shared/emailTemplates.ts`: plantillas HTML de bienvenida y recuperación (diseño simple a propósito, pendiente de definir look final).
+  - [x] `createCompanyUser` (`_shared/company.ts`) guarda `correo_personal` y, si viene lleno, dispara el correo de bienvenida en paralelo (no bloquea la creación del usuario si el envío falla).
+  - [x] Campo "Correo personal (opcional)" en el formulario de alta/edición de empleado (`GestionPlantilla.tsx`).
+  - [x] **Recuperación de contraseña self-service, construida en las dos superficies reales de login** (confirmado con el usuario: admin/jefe/empleado usan `LoginEmpresarial.tsx` en Expo; también existe `sa-login` en web-dashboard con correo real):
+    - Edge Function `solicitar-recuperacion-password`: resuelve por `correo` (admin) o `codigoEmpresa`+`usuarioInterno` (empresarial, misma lógica de `login_empresarial`), destino = `correo` si `admin_empresa`/`super_admin`, si no `correo_personal`. Respuesta siempre genérica (no revela existencia de la cuenta) + rate limit reusando `auth_rate_limits`.
+    - Edge Function `sincronizar-password-interno`: tras `supabase.auth.updateUser`, sincroniza `usuarios.password_interno_hash` — sin esto el reset quedaba roto para login empresarial (existe el error `auth/password-desync` ya anticipado en `LoginEmpresarial.tsx` para justo este caso).
+    - `apps/mobile`: pantallas `RecuperarContrasena.tsx` y `RestablecerContrasena.tsx`, link en `LoginEmpresarial.tsx`, `linking` config en `App.tsx` para que el enlace del correo aterrice en la pantalla correcta.
+    - `apps/dashboard`: vistas `recuperar-contrasena` y `restablecer-contrasena`, rutas en `routes.tsx`, link en `sa-login`.
+  - [x] **Expo Web ahora se despliega dentro del mismo proyecto de Vercel, bajo `/app`** (decisión del usuario, en vez de un proyecto de Vercel separado): `vercel.json` corre `expo export --platform web` con `EXPO_PUBLIC_BASE_URL=/app` y copia `apps/mobile/dist` a `apps/dashboard/dist/app`; `apps/mobile/app.config.js` (nuevo) aplica `experiments.baseUrl` SOLO cuando esa variable existe, así que `expo start --web`/el preview local de esta sesión siguen sirviendo desde la raíz sin cambios. Verificado con un servidor estático local que replica las `rewrites` de Vercel (filesystem-first, igual que el comportamiento real): `/app`, `/app/restablecer-contrasena`, assets `/app/_expo/...`, `/auth/sa-login`, `/landing` y `/` responden 200 sin pisarse entre sí.
+  - [x] Verificado: `turbo run typecheck test lint` limpio (0 errores) en los 3 paquetes; build completo de Vercel simulado localmente end-to-end.
+  - [ ] **Redirect URLs pendientes en Supabase Auth** (Authentication → URL Configuration): agregar `<dominio-prod>/auth/restablecer-contrasena` y `<dominio-prod>/app/restablecer-contrasena` (y las versiones `localhost` para pruebas) — sin esto Supabase rechaza el `redirectTo` aunque el código esté bien. Falta que el usuario confirme el dominio de producción exacto.
+  - [ ] **Nada desplegado todavía** — ni las Edge Functions (`crear-usuario-empresa`, `solicitar-recuperacion-password`, `sincronizar-password-interno`, funciones compartidas) ni el nuevo `vercel.json`/`app.config.js` están en producción, pendiente de confirmación explícita para hacer commit + push + deploy.
+  - [ ] Importación masiva por CSV (`confirmarImportacion`) no incluye columna de correo personal — decisión deliberada, se puede agregar después.
 
 ### Fase 12 — Pagos reales
 - **Objetivo:** reemplazar el simulador de `confirm-plan-purchase` por un gateway real.

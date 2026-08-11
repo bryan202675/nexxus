@@ -100,6 +100,12 @@ export default function GestionDocumentos() {
           titulo: file.name.replace(/\.pdf$/i, ''),
           mensaje: `${user.nombre || 'Administración'} te compartió un documento nuevo.`,
         }).catch((e) => console.error('Error publicando en Bandeja Unificada:', e));
+        // Fase 10: push real, en paralelo. Sin token registrado, la Edge Function no envía nada.
+        useCases.push.send.execute(
+          destino.id,
+          file.name.replace(/\.pdf$/i, ''),
+          `${user.nombre || 'Administración'} te compartió un documento nuevo.`
+        ).catch((e) => console.error('Error enviando push:', e));
         toast.success({ title: uploaded.reused ? 'Documento reutilizado' : 'Documento subido', description: 'El archivo quedó registrado sin duplicar espacio innecesario.' });
         cargarStats().catch(() => {});
       } catch (error: any) {

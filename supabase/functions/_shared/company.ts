@@ -3,6 +3,8 @@
 
 import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { HttpError, assertValidEmail, assertValidPassword, hashPasswordInterno, safeString } from "./nexxus.ts";
+import { sendEmail } from "./gmail.ts";
+import { plantillaBienvenidaEmpleado } from "./emailTemplates.ts";
 
 const COMPANY_USER_ROLES = new Set(["admin_empresa", "jefe", "empleado"]);
 
@@ -105,6 +107,7 @@ export async function createCompanyUser(admin: SupabaseClient, params: {
   actorId?: string | null;
   allowAdminRole: boolean;
   usuarioInterno?: string;
+  correoPersonal?: string;
 }) {
   const rol = normalizeCompanyUserRole(params.rol);
   if (!params.nombre || !params.correo || !params.contrasena) {
@@ -119,7 +122,7 @@ export async function createCompanyUser(admin: SupabaseClient, params: {
     await assertEmployeeCapacity(admin, params.empresaId);
   }
 
-  const { data: empresa } = await admin.from("empresas").select("codigo").eq("id", params.empresaId).maybeSingle();
+  const { data: empresa } = await admin.from("empresas").select("codigo, nombre").eq("id", params.empresaId).maybeSingle();
   const codigoEmpresa = safeString(empresa?.codigo, 60);
 
   const { data: userRecord, error: createError } = await admin.auth.admin.createUser({
@@ -139,11 +142,13 @@ export async function createCompanyUser(admin: SupabaseClient, params: {
   const usuarioInterno = safeString(params.usuarioInterno, 60).toLowerCase() || params.correo.split("@")[0].toLowerCase();
   const passwordHash = await hashPasswordInterno(admin, params.contrasena);
 
+  const correoPersonal = safeString(params.correoPersonal, 254).toLowerCase() || null;
   const { error: usuarioError } = await admin.from("usuarios").insert({
     id: uid,
     empresa_id: params.empresaId,
     nombre: params.nombre,
     correo: params.correo,
+    correo_personal: correoPersonal,
     rol,
     usuario_interno: usuarioInterno,
     password_interno_hash: passwordHash,
@@ -152,6 +157,19 @@ export async function createCompanyUser(admin: SupabaseClient, params: {
   if (usuarioError) {
     await admin.auth.admin.deleteUser(uid).catch(() => {});
     throw new HttpError(500, usuarioError.message);
+  }
+
+  if (correoPersonal) {
+    const { subject, html } = plantillaBienvenidaEmpleado({
+      nombre: params.nombre,
+      nombreEmpresa: safeString(empresa?.nombre, 120) || codigoEmpresa,
+      codigoEmpresa,
+      usuarioInterno,
+      contrasenaTemporal: params.contrasena,
+    });
+    sendEmail(correoPersonal, subject, html).catch((error) => {
+      console.error("[createCompanyUser] No se pudo enviar el correo de bienvenida:", error);
+    });
   }
 
   return { uid, rol, codigoEmpresa, usuarioInterno };

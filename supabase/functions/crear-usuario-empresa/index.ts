@@ -17,6 +17,7 @@ Deno.serve(withHandler(async (req, admin) => {
     actorId: caller.id,
     allowAdminRole: caller.rol === "admin_empresa",
     usuarioInterno: safeString(body?.usuarioInterno, 60),
+    correoPersonal: safeString(body?.correoPersonal, 254),
   });
 
   await writeAuditLog(admin, {

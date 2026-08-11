@@ -2,6 +2,8 @@ import React from "react";
 
 import SaLogin from "views/nexxus/sa-login";
 import Registro from "views/nexxus/registro";
+import RecuperarContrasena from "views/nexxus/recuperar-contrasena";
+import RestablecerContrasena from "views/nexxus/restablecer-contrasena";
 import SuperAdminDashboard from "views/nexxus/superadmin-dashboard";
 import Empresas from "views/nexxus/empresas";
 import Usuarios from "views/nexxus/usuarios";
@@ -223,6 +225,18 @@ const authRoutes = [
     layout: "/auth",
     path: "registro",
     component: <Registro />,
+  },
+  {
+    name: "Recuperar contraseña",
+    layout: "/auth",
+    path: "recuperar-contrasena",
+    component: <RecuperarContrasena />,
+  },
+  {
+    name: "Restablecer contraseña",
+    layout: "/auth",
+    path: "restablecer-contrasena",
+    component: <RestablecerContrasena />,
   },
 ];
 

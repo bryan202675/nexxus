@@ -45,6 +45,8 @@ import { SupabaseDocumentoRepository } from './supabase/SupabaseDocumentoReposit
 import { SupabaseFeedbackRepository } from './supabase/SupabaseFeedbackRepository';
 import { SupabaseAttendanceRepository } from './supabase/SupabaseAttendanceRepository';
 import { SupabaseInboxRepository } from './supabase/SupabaseInboxRepository';
+import { SupabasePushTokenRepository } from './supabase/SupabasePushTokenRepository';
+import { SupabasePushSenderRepository } from './supabase/SupabasePushSenderRepository';
 import { SupabaseInternalRequestRepository, SupabaseChatContextualRepository } from './supabase/SupabaseFase2Repositories';
 import { SupabaseRequestReportRepository } from './supabase/SupabaseRequestReportRepository';
 import { SupabaseLeaderRepository } from './supabase/SupabaseLeaderRepository';
@@ -68,6 +70,7 @@ import { UpdateUserProfile } from 'domain/application/use-cases/admin/UpdateUser
 
 import { RecordAttendance, GetAttendanceHistory, GetCurrentShift, GetCompanyAttendance, GetCompanyDailyAttendanceSummary } from 'domain/application/use-cases/attendance/AttendanceUseCases';
 import { GetInbox, ResolveInboxItem, SubscribeToInbox, AddInboxItem } from 'domain/application/use-cases/inbox/InboxUseCases';
+import { RegisterPushToken, UnregisterPushToken, GetPushTokens, SendPushNotification } from 'domain/application/use-cases/push/PushTokenUseCases';
 import { CreateInternalRequest, GetInternalRequests, SendContextualMessage, SubscribeToChatContext } from 'domain/application/use-cases/fase2/Fase2UseCases';
 
 import { AdminPaymentUseCases } from 'domain/application/use-cases/admin/AdminPaymentUseCases';
@@ -104,6 +107,8 @@ const documentoRepository = new SupabaseDocumentoRepository();
 const feedbackRepository = new SupabaseFeedbackRepository();
 const attendanceRepository = new SupabaseAttendanceRepository();
 const inboxRepository = new SupabaseInboxRepository();
+const pushTokenRepository = new SupabasePushTokenRepository();
+const pushSenderRepository = new SupabasePushSenderRepository();
 const internalRequestRepository = new SupabaseInternalRequestRepository();
 const chatContextualRepository = new SupabaseChatContextualRepository();
 const requestReportRepository = new SupabaseRequestReportRepository();
@@ -196,6 +201,12 @@ export const useCases = {
     resolve: new ResolveInboxItem(inboxRepository),
     subscribe: new SubscribeToInbox(inboxRepository),
     add: new AddInboxItem(inboxRepository),
+  },
+  push: {
+    register: new RegisterPushToken(pushTokenRepository),
+    unregister: new UnregisterPushToken(pushTokenRepository),
+    getByUser: new GetPushTokens(pushTokenRepository),
+    send: new SendPushNotification(pushSenderRepository),
   },
   requests: {
     create: new CreateInternalRequest(internalRequestRepository),

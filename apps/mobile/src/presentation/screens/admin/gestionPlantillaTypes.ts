@@ -27,6 +27,7 @@ export type UsuarioPlantilla = {
   jefeId?: string;
   jefeNombre?: string;
   salarioBase?: number;
+  correo_personal?: string;
   empresaId?: string;
   activo?: boolean;
   estado_activo?: boolean;
@@ -206,6 +207,7 @@ export type FormularioEmpleado = {
   jefeId: string;
   telefono: string;
   salarioBase: string;
+  correoPersonal: string;
 };
 
 /**
@@ -235,6 +237,7 @@ export const formularioInicial: FormularioEmpleado = {
   jefeId: '',
   telefono: '',
   salarioBase: '',
+  correoPersonal: '',
 };
 
 /**
@@ -258,4 +261,5 @@ export type CrearEmpleadoLocalInput = {
   rol: string;
   departamento_id?: string;
   empleado: Record<string, any>;
+  correoPersonal?: string;
 };

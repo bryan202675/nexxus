@@ -79,6 +79,8 @@ import Comenzar from './src/presentation/screens/Comenzar';
 import SeleccionRol from './src/presentation/screens/SeleccionRol';
 // Importa LoginEmpresarial; conecta esta ruta o flujo con otra pantalla del modulo de presentacion.
 import LoginEmpresarial from './src/presentation/screens/LoginEmpresarial';
+import RecuperarContrasena from './src/presentation/screens/RecuperarContrasena';
+import RestablecerContrasena from './src/presentation/screens/RestablecerContrasena';
 
 // Pantallas Usuario
 // Importa MiPulso; conecta esta ruta o flujo con otra pantalla del modulo de presentacion.
@@ -225,6 +227,8 @@ function EnrutadorPrincipal() {
         <Pila.Screen name="Comenzar" component={Comenzar} />
         <Pila.Screen name="SeleccionRol" component={SeleccionRol} />
         <Pila.Screen name="LoginEmpresarial" component={LoginEmpresarial} />
+        <Pila.Screen name="RecuperarContrasena" component={RecuperarContrasena} />
+        <Pila.Screen name="RestablecerContrasena" component={RestablecerContrasena} />
 
         {/* Rutas de Aplicación */}
         <Pila.Screen name="AppAdmin" component={AdminNavigator} />
@@ -266,6 +270,22 @@ function EnrutadorPrincipal() {
     </View>
   );
 }
+
+// Fase 11: mapea la ruta web /restablecer-contrasena a la pantalla de recuperación -- sin esto,
+// abrir el enlace de recuperación desde el correo aterrizaría siempre en Bienvenida (initialRoute)
+// en vez de en RestablecerContrasena. Solo se mapea esta pantalla a propósito: es el único punto
+// de entrada externo (enlace de correo) que necesita URL propia hoy.
+// EXPO_PUBLIC_BASE_URL: en produccion (Vercel) este app se sirve bajo /app -- ver vercel.json y
+// app.config.js. En local esa variable no existe, asi que la ruta queda igual que antes.
+const BASE_URL_PATH = (process.env.EXPO_PUBLIC_BASE_URL || '').replace(/^\/|\/$/g, '');
+const linkingConfig = {
+  prefixes: [],
+  config: {
+    screens: {
+      RestablecerContrasena: BASE_URL_PATH ? `${BASE_URL_PATH}/restablecer-contrasena` : 'restablecer-contrasena',
+    },
+  },
+};
 
 /**
  * Componente App. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
@@ -367,7 +387,7 @@ export default function App() {
           {/* Configura la barra de estado del sistema para que combine con el fondo de esta pantalla. */}
           <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
           {/* NavigationContainer renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <NavigationContainer>
+          <NavigationContainer linking={linkingConfig}>
             {/* LimitadorErrores renderiza una pieza visual reutilizable dentro de esta pantalla. */}
             <LimitadorErrores>
               {/* EnrutadorPrincipal renderiza una pieza visual reutilizable dentro de esta pantalla. */}
