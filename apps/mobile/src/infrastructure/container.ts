@@ -67,7 +67,7 @@ import { GetAllUsers } from 'domain/application/use-cases/admin/GetAllUsers';
 import { UpdateUserProfile } from 'domain/application/use-cases/admin/UpdateUserProfile';
 
 import { RecordAttendance, GetAttendanceHistory, GetCurrentShift, GetCompanyAttendance, GetCompanyDailyAttendanceSummary } from 'domain/application/use-cases/attendance/AttendanceUseCases';
-import { GetInbox, ResolveInboxItem, SubscribeToInbox } from 'domain/application/use-cases/inbox/InboxUseCases';
+import { GetInbox, ResolveInboxItem, SubscribeToInbox, AddInboxItem } from 'domain/application/use-cases/inbox/InboxUseCases';
 import { CreateInternalRequest, GetInternalRequests, SendContextualMessage, SubscribeToChatContext } from 'domain/application/use-cases/fase2/Fase2UseCases';
 
 import { AdminPaymentUseCases } from 'domain/application/use-cases/admin/AdminPaymentUseCases';
@@ -195,6 +195,7 @@ export const useCases = {
     get: new GetInbox(inboxRepository),
     resolve: new ResolveInboxItem(inboxRepository),
     subscribe: new SubscribeToInbox(inboxRepository),
+    add: new AddInboxItem(inboxRepository),
   },
   requests: {
     create: new CreateInternalRequest(internalRequestRepository),

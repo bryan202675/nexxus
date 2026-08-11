@@ -340,13 +340,29 @@ En los 3 archivos de pantalla (`DashboardAdmin`, `GestionPlantilla`, `Estructura
 
 ### Fase 9 — Bandeja Unificada real
 - **Objetivo:** ampliar `inbox_unificado` (hoy solo `origen` + `contenido`) para soportar `titulo`, `estado`, `prioridad`, `tipo`, y que agregue de verdad mensajes + notificaciones + solicitudes + aprobaciones + alertas + documentos + eventos en un solo lugar accionable (no solo lectura).
-- **Archivos afectados:** nueva migración de schema, `BandejaUnificada.tsx`, posible Edge Function/trigger que centralice inserciones desde otras tablas.
+- **Archivos afectados:** `supabase/migrations/0012_inbox_unificado_columnas.sql` (nuevo, **no aplicado**), `packages/domain/application/use-cases/inbox/InboxUseCases.ts`, `apps/mobile/src/infrastructure/container.ts`, `apps/mobile/src/presentation/context/ContextoUsuario.tsx`.
 - **Dependencias:** Fase 3.
 - **Riesgos:** bajo, es aditivo sobre una tabla que ya existe.
-- **Tiempo estimado:** 2-3 sesiones.
-- **Estado:** Lista para iniciar (tras Fase 3).
+- **Tiempo estimado:** 2-3 sesiones — **esta pasada cubrió el hallazgo principal y 3 flujos reales de escritura** (ver checklist y deuda restante).
+- **Estado:** 🔶 En progreso — incremento grande completo y verificado, **código sin commitear ni desplegar** (instrucción explícita: "continua con la fase 9 no despliegues ni hagas commit aun", luego "continua con todos").
 - **Prioridad:** Media.
-- **Checklist:** por definir.
+- **Checklist:**
+  - [x] **Hallazgo central de esta fase**: `BandejaUnificada.tsx` (pantalla, 264 líneas) y `SupabaseInboxRepository` (lectura/escritura) ya estaban completamente construidos y funcionando — pero `InboxUseCases` (capa de dominio) solo exponía `GetInbox`/`ResolveInboxItem`/`SubscribeToInbox`, **nunca `AddInboxItem`**. El repositorio sabía escribir (`addItem`), pero ningún flujo de la app podía llamarlo: la bandeja podía leerse y resolverse, pero nunca recibía contenido real. Ese era el "no solo lectura" pendiente, no un problema de schema.
+  - [x] `titulo`/`estado`/`prioridad`/`tipo` **ya existían de facto**, solo que anidados dentro de `contenido` (jsonb) en vez de como columnas propias — `SupabaseInboxRepository.mapRow`/`addItem` ya los leía/escribía ahí correctamente. No era el gap real del objetivo original.
+  - [x] `AddInboxItem` (nuevo caso de uso) + `useCases.inbox.add` (cableado en el container).
+  - [x] **3 flujos reales conectados** (cada uno con `.catch()` propio — si publicar en la bandeja falla, la acción principal ya se completó y no se bloquea):
+    1. **Aprobaciones** (`crearSolicitudAusencia` y `crearSolicitudInterna` en `ContextoUsuario.tsx`, comparten el helper `publicarAprobacionPendiente`): publica `tipo: 'aprobacion'` al jefe directo del solicitante (`user.jefeId`) — sin ese dato, no publica nada (ver deuda).
+    2. **Documentos** (`GestionDocumentos.tsx`, admin sube un PDF para un empleado): publica `tipo: 'documento'` (tipo nuevo, agregado a `InboxItem` — antes el enum no lo contemplaba) al empleado destino.
+    3. **Mensajes** (`ChatInterno.tsx`, `sendMessage`): publica `tipo: 'mensaje'` al otro participante, **solo en chats directos (1:1)** — en chats de equipo/departamento publicar por cada mensaje inundaría la bandeja de todo el grupo, decisión deliberada de no hacerlo.
+  - [x] **Migración de schema escrita pero NO aplicada** (`0012_inbox_unificado_columnas.sql`): promueve `titulo`/`mensaje`/`estado`/`prioridad`/`tipo`/`origen_ref_id` de `contenido` (jsonb) a columnas reales + backfill + índices por `estado`/`prioridad` — aditiva y reversible, pero el código actual sigue leyendo/escribiendo vía jsonb a propósito (aplicar la migración sin actualizar el código no rompe nada; actualizar el código para depender de las columnas nuevas *antes* de aplicar la migración sí rompería el runtime — por eso quedan desacoplados hasta que confirmes el despliegue).
+  - [x] Verificado: `turbo run typecheck test lint` limpio (0 errores) en los 3 paquetes, `expo export --platform web` sin errores, landing renderizada en navegador sin errores reales (un `ERR_EMPTY_RESPONSE` transitorio del proxy del sandbox, mismo tipo de ruido ya documentado en la Fase 2 — no afecta la app).
+  - [ ] **Sin commitear ni desplegar** — instrucción explícita del usuario, pendiente de confirmación.
+  - [ ] Flujos restantes, deliberadamente no conectados (requieren una decisión de negocio o infraestructura que no existe todavía, no es "no me dio tiempo"):
+    - **Tareas vencidas** (`tipo: 'tarea_vencida'`): no es un evento de creación, necesita un chequeo periódico/reactivo — encaja mejor con la Fase 13 (Automatizaciones) que con esta fase.
+    - **Alertas críticas de admin** (`tipo: 'notificacion_critica'`, desde `audit_logs` u otras señales): no hay un evento claro de "a quién avisar y cuándo" sin inventar una regla de negocio (¿todo error de auditoría? ¿solo ciertos módulos?) — dejado para cuando se defina esa regla explícitamente.
+    - **Eventos de calendario**: los eventos de `calendario_empresarial` son por diseño visibles para toda la empresa/departamento (no un destinatario único), igual que el caso de chats grupales — publicar a cada persona por cada evento tendría el mismo problema de inundar la bandeja.
+  - [ ] Solicitudes de empleados **sin `jefeId` asignado** no publican nada (no se adivina a qué admin asignarlo) — decisión deliberada para no inventar lógica de negocio, documentada aquí en vez de resuelta a medias.
+  - [ ] Migrar `SupabaseInboxRepository` de `contenido` (jsonb) a las columnas reales de `0012_...sql`, una vez esa migración esté aplicada en Supabase.
 
 ### Fase 10 — Notificaciones push reales
 - **Objetivo:** registrar tokens Expo Push, enviar push desde Edge Functions en eventos clave (tarea asignada, solicitud aprobada, etc).

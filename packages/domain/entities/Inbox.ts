@@ -11,7 +11,7 @@ export interface InboxItem {
   userId: string;
   empresaId: string;
   origenRefId: string; // ID de tarea, solicitud, ticket, etc.
-  tipo: 'tarea_vencida' | 'aprobacion' | 'mensaje' | 'ticket' | 'cambio_turno' | 'notificacion_critica';
+  tipo: 'tarea_vencida' | 'aprobacion' | 'mensaje' | 'ticket' | 'cambio_turno' | 'notificacion_critica' | 'documento';
   prioridad: 'urgente' | 'normal';
   estado: 'pendiente' | 'resuelto';
   titulo: string;

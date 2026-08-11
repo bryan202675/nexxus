@@ -36,6 +36,18 @@ export class ResolveInboxItem {
 }
 
 /**
+ * Publica un item real en la Bandeja Unificada de un usuario (Fase 9). El repositorio ya sabia
+ * escribir (`addItem`), pero no habia forma de llamarlo desde la app -- sin este caso de uso la
+ * bandeja solo podia leerse/resolverse, nunca recibir contenido real.
+ */
+export class AddInboxItem {
+  constructor(private repo: IInboxRepository) {}
+  execute(item: Omit<InboxItem, 'id' | 'timestamp'>) {
+    return this.repo.addItem(item);
+  }
+}
+
+/**
  * Implementa SubscribeToInbox; agrupa comportamiento con estado interno o dependencias de infraestructura.
  */
 export class SubscribeToInbox {

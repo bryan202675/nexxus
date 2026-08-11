@@ -1552,6 +1552,7 @@
       "ticket": "SOPORTE",
       "cambio_turno": "TURNO",
       "notificacion_critica": "CRÍTICA",
+      "documento": "DOCUMENTO",
       "general": "GENERAL"
     }
   },

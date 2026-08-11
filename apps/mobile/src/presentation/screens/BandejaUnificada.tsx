@@ -70,6 +70,10 @@ export default function BandejaUnificada({ navigation }: Props) {
         // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
         Alert.alert(t('bandejaUnificada.approval_alert_title'), t('bandejaUnificada.approval_alert_msg'));
         break;
+      case 'documento':
+        // Ejecuta navegacion; cambia la pantalla activa manteniendo el flujo definido por React Navigation.
+        navigation.navigate('CentroDocumentos');
+        break;
       default:
         break;
     }
@@ -133,6 +137,7 @@ export default function BandejaUnificada({ navigation }: Props) {
       case 'ticket': return 'tag';
       case 'cambio_turno': return 'refresh-cw';
       case 'notificacion_critica': return 'alert-triangle';
+      case 'documento': return 'file';
       default: return 'bell';
     }
   };

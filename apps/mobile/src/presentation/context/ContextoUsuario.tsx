@@ -292,12 +292,39 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
     await fetchSaaSData();
   };
 
+  // Bandeja Unificada (Fase 9): publica un item real de "aprobacion pendiente" para el jefe directo
+  // del solicitante, si lo tiene asignado. Sin jefeId no se adivina un destinatario -- se documenta
+  // como limitacion conocida en vez de asignarlo a "cualquier admin".
+  const publicarAprobacionPendiente = async (params: { titulo: string; mensaje: string; origenRefId: string }) => {
+    if (!user?.jefeId) return;
+    try {
+      await useCases.inbox.add.execute({
+        userId: user.jefeId,
+        empresaId: obtenerEmpresaId(user),
+        origenRefId: params.origenRefId,
+        tipo: 'aprobacion',
+        prioridad: 'normal',
+        estado: 'pendiente',
+        titulo: params.titulo,
+        mensaje: params.mensaje,
+      });
+    } catch (e) {
+      // No bloquea el flujo principal (la solicitud ya se creo) si la bandeja falla al publicar.
+      console.error('Error publicando en Bandeja Unificada:', e);
+    }
+  };
+
   // Declara crearSolicitudAusencia; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const crearSolicitudAusencia = async (dto: any) => {
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!user) return;
     // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
     await useCases.absences.createAbsence.execute({ ...dto, usuario_id: user.id, usuario_nombre: user.nombre, empresaId: obtenerEmpresaId(user) });
+    await publicarAprobacionPendiente({
+      titulo: `Ausencia: ${dto.asunto || dto.tipo || 'Solicitud'}`,
+      mensaje: `${user.nombre} solicitó una ausencia.`,
+      origenRefId: '',
+    });
     // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
     await fetchSaaSData();
   };
@@ -307,7 +334,12 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!user) return;
     // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-    await useCases.requests.create.execute(user.id, { ...dto, empresaId: obtenerEmpresaId(user) });
+    const creada = await useCases.requests.create.execute(user.id, { ...dto, empresaId: obtenerEmpresaId(user) });
+    await publicarAprobacionPendiente({
+      titulo: creada.titulo || 'Solicitud interna',
+      mensaje: `${user.nombre} envió una solicitud interna.`,
+      origenRefId: creada.id,
+    });
     // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
     await fetchSaaSData();
   };

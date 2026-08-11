@@ -853,6 +853,23 @@ export default function ChatInterno() {
         texto: input.trim(),
         adjuntos: pendingAttachments,
       });
+      // Bandeja Unificada (Fase 9): solo para chats directos (1:1) -- en chats de equipo/departamento
+      // publicar por cada participante inundaría la bandeja de todos con cada mensaje del grupo.
+      if (selectedConversation.tipo === 'directa') {
+        const destinatarioId = selectedConversation.participanteIds?.find((id) => id !== perfil.id);
+        if (destinatarioId) {
+          useCases.inbox.add.execute({
+            userId: destinatarioId,
+            empresaId,
+            origenRefId: selectedConversation.id,
+            tipo: 'mensaje',
+            prioridad: 'normal',
+            estado: 'pendiente',
+            titulo: perfil.nombre,
+            mensaje: input.trim() || 'Te envió un archivo adjunto.',
+          }).catch((e) => console.error('Error publicando en Bandeja Unificada:', e));
+        }
+      }
       setInput('');
       setPendingAttachments([]);
     } catch (err: any) {

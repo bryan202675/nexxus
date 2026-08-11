@@ -88,6 +88,18 @@ export default function GestionDocumentos() {
           fechaSubida: new Date().toISOString(),
           leido: false,
         });
+        // Bandeja Unificada (Fase 9): avisa al destinatario que tiene un documento nuevo. No bloquea
+        // la subida si falla -- el documento ya quedó registrado.
+        useCases.inbox.add.execute({
+          userId: destino.id,
+          empresaId,
+          origenRefId: uploaded.publicId || '',
+          tipo: 'documento',
+          prioridad: 'normal',
+          estado: 'pendiente',
+          titulo: file.name.replace(/\.pdf$/i, ''),
+          mensaje: `${user.nombre || 'Administración'} te compartió un documento nuevo.`,
+        }).catch((e) => console.error('Error publicando en Bandeja Unificada:', e));
         toast.success({ title: uploaded.reused ? 'Documento reutilizado' : 'Documento subido', description: 'El archivo quedó registrado sin duplicar espacio innecesario.' });
         cargarStats().catch(() => {});
       } catch (error: any) {
