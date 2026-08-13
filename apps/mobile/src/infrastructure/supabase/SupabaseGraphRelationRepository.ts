@@ -33,7 +33,14 @@ export class SupabaseGraphRelationRepository implements IGraphRelationRepository
         metadata: relation.metadata || {},
         creado_por: relation.creadoPor || null,
       }, { onConflict: 'empresa_id,origen_tipo,origen_id,relacion_tipo,destino_tipo,destino_id', ignoreDuplicates: true });
-    if (error) throw error;
+
+    if (error) {
+      if (error.code === '42501' || error.message?.includes('policy') || error.message?.includes('row-level security')) {
+        console.warn('[SupabaseGraphRelationRepository] Omitiendo registro de relación secundaria por RLS de Supabase:', error.message);
+        return;
+      }
+      throw error;
+    }
   }
 
   async getRelationsForEntity(empresaId: string, tipo: GraphEntityType, entidadId: string): Promise<GraphRelation[]> {

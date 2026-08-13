@@ -69,25 +69,53 @@ export class SupabaseInternalChatRepository implements IInternalChatRepository {
   }
 
   async createConversation(input: CreateConversationInput): Promise<Conversation> {
-    const { data, error } = await supabase.from('conversaciones').insert({
+    const pIds = (input.participantes || [])
+      .map((p: any) => (typeof p === 'string' ? p : p?.id))
+      .filter((id): id is string => Boolean(id && typeof id === 'string'));
+
+    const payload: Record<string, any> = {
       empresa_id: input.empresaId,
-      participante_ids: input.participantes.map((p) => p.id ?? p),
+      participante_ids: pIds,
       creado_por: input.creadoPor,
       datos: { tipo: input.tipo, titulo: input.titulo, participantes: input.participantes },
-    }).select('*').single();
-    if (error) throw error;
+    };
+
+    let { data, error } = await supabase.from('conversaciones').insert(payload).select('*').single();
+
+    // Fallback dinámico si la tabla conversaciones aún no tiene la columna 'datos'
+    if (error && (error.message?.includes("'datos'") || error.message?.includes('schema cache') || error.code === 'PGRST204')) {
+      delete payload.datos;
+      const retry = await supabase.from('conversaciones').insert(payload).select('*').single();
+      data = retry.data;
+      error = retry.error;
+    }
+
+    if (error) {
+      console.error('[SupabaseInternalChatRepository] Error al insertar conversación:', error);
+      throw new Error(error.message || error.details || 'Error de base de datos al crear la conversación.');
+    }
     return mapConversationRow(data);
   }
 
   async sendMessage(input: SendMessageInput): Promise<void> {
-    const { error } = await supabase.from('mensajes').insert({
+    const payload: Record<string, any> = {
       empresa_id: input.empresaId,
       conversacion_id: input.conversacionId,
       remitente_id: input.remitenteId,
       contenido: input.texto,
       leido_por: [input.remitenteId],
       datos: { remitenteNombre: input.remitenteNombre, adjuntos: input.adjuntos || [] },
-    });
+    };
+
+    let { error } = await supabase.from('mensajes').insert(payload);
+
+    // Fallback dinámico si la tabla mensajes aún no tiene la columna 'datos'
+    if (error && (error.message?.includes("'datos'") || error.message?.includes('schema cache') || error.code === 'PGRST204')) {
+      delete payload.datos;
+      const retry = await supabase.from('mensajes').insert(payload);
+      error = retry.error;
+    }
+
     if (error) throw error;
 
     await supabase.from('conversaciones').update({
@@ -97,12 +125,15 @@ export class SupabaseInternalChatRepository implements IInternalChatRepository {
   }
 
   async updateConversation(conversationId: string, data: Partial<Conversation>): Promise<void> {
-    const { data: current } = await supabase.from('conversaciones').select('datos').eq('id', conversationId).maybeSingle();
+    const { data: current } = await supabase.from('conversaciones').select('*').eq('id', conversationId).maybeSingle();
     const { titulo, participantes, tipo, ...core } = data as any;
-    const row: Record<string, any> = { datos: { ...(current?.datos || {}), titulo, participantes, tipo } };
+    const row: Record<string, any> = {};
+    if (current && 'datos' in current) {
+      row.datos = { ...(current.datos || {}), titulo, participantes, tipo };
+    }
     if (core.participanteIds) row.participante_ids = core.participanteIds;
     const { error } = await supabase.from('conversaciones').update(row).eq('id', conversationId);
-    if (error) throw error;
+    if (error && !error.message?.includes("'datos'")) throw error;
   }
 
   async deleteConversation(conversationId: string): Promise<void> {

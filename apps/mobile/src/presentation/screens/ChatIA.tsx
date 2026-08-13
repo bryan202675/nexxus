@@ -28,19 +28,15 @@ import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 // Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import { LinearGradient } from 'expo-linear-gradient';
-// Importa { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA }; reutiliza tokens visuales y constantes comunes del sistema de diseno.
-import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA } from '@/shared/constants/diseno';
-// Importa { useContextoUsuario }; accede a contexto compartido de usuario, tema o estado global.
+import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA, SOMBRAS } from '@/shared/constants/diseno';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
-// Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
-// Importa FondoMobilePremium; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
-// Importa { useTemaMobile }; accede a contexto compartido de usuario, tema o estado global.
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import { useCases } from '@/infrastructure/container';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
+import BotonAnimado from '@/presentation/components/BotonAnimado';
 // Importa { SensitiveAiAction }; acciones sensibles sugeridas por la IA (Fase 8) que requieren
 // confirmacion humana explicita antes de ejecutarse -- ver ask-nexxus-ai (Edge Function).
 import { SensitiveAiAction } from 'domain/entities/AiAssistant';
@@ -413,9 +409,11 @@ export default function ChatIA({ navigation }: Props) {
         mostrarAtras
         ocultarAccionesDerechas={true}
         accionDerecha={
-          <TouchableOpacity onPress={limpiarHistorial} style={[estilos.iconoHeader, { backgroundColor: colores.vidrio, borderColor: colores.borde }]}>
-            <MaterialIcons name="cleaning-services" size={19} color={colores.texto} />
-          </TouchableOpacity>
+          <BotonAnimado onPress={limpiarHistorial} scaleTo={0.94}>
+            <View style={[estilos.iconoHeader, { backgroundColor: colores.vidrio, borderColor: colores.borde }]}>
+              <MaterialIcons name="cleaning-services" size={19} color={colores.texto} />
+            </View>
+          </BotonAnimado>
         }
       />
 
@@ -437,7 +435,7 @@ export default function ChatIA({ navigation }: Props) {
                 {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
                 <View style={estilos.avatarIA}>
                   {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                  <MaterialIcons name="auto-awesome" size={24} color={COLORES.primario} />
+                  <MaterialIcons name="auto-awesome" size={24} color={colores.texto} />
                 </View>
                 {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
                 <View style={estilos.panelTextos}>
@@ -473,14 +471,14 @@ export default function ChatIA({ navigation }: Props) {
                       {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                       <Text style={estilos.textoBurbujaIA}>{parsed.texto}</Text>
                       {parsed.redirect && (
-                        <TouchableOpacity
-                          style={estilos.botonRedirect}
+                        <BotonAnimado
                           onPress={() => navigation.navigate(parsed.redirect.ruta)}
-                          activeOpacity={0.8}
+                          scaleTo={0.96}
+                          style={estilos.botonRedirect}
                         >
-                          <MaterialIcons name="double-arrow" size={14} color="#ffffff" />
+                          <MaterialIcons name="double-arrow" size={14} color={esOscuro ? '#000000' : '#FFFFFF'} />
                           <Text style={estilos.textoRedirect}>{parsed.redirect.etiqueta}</Text>
-                        </TouchableOpacity>
+                        </BotonAnimado>
                       )}
                       {mensaje.accionesSensibles?.map((accion) => {
                         const resultado = mensaje.accionesResueltas?.[accion.id];
@@ -496,20 +494,20 @@ export default function ChatIA({ navigation }: Props) {
                               </Text>
                             ) : (
                               <View style={estilos.tarjetaAccionBotones}>
-                                <TouchableOpacity
+                                <BotonAnimado
                                   style={[estilos.tarjetaAccionBoton, estilos.tarjetaAccionBotonRechazar]}
                                   onPress={() => confirmarAccionSensible(mensaje.id, accion, 'rechazada')}
-                                  activeOpacity={0.85}
+                                  scaleTo={0.96}
                                 >
                                   <Text style={estilos.tarjetaAccionBotonTextoRechazar}>Rechazar</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
+                                </BotonAnimado>
+                                <BotonAnimado
                                   style={[estilos.tarjetaAccionBoton, estilos.tarjetaAccionBotonAprobar]}
                                   onPress={() => confirmarAccionSensible(mensaje.id, accion, 'aprobada')}
-                                  activeOpacity={0.85}
+                                  scaleTo={0.96}
                                 >
                                   <Text style={estilos.tarjetaAccionBotonTextoAprobar}>Aprobar</Text>
-                                </TouchableOpacity>
+                                </BotonAnimado>
                               </View>
                             )}
                           </View>
@@ -557,13 +555,16 @@ export default function ChatIA({ navigation }: Props) {
           {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={estilos.sugerencias}>
             {SUGERENCIAS_RAPIDAS.map((sugerencia) => (
-              // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-              <TouchableOpacity key={sugerencia.comando} onPress={() => enviarMensaje(t(sugerencia.etiquetaKey))} style={estilos.chipSugerencia} activeOpacity={0.82}>
-                {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                <MaterialIcons name={sugerencia.icono} size={14} color={colores.primarioClaro} />
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.textoChip}>{t(sugerencia.etiquetaKey)}</Text>
-              </TouchableOpacity>
+              <BotonAnimado
+                key={sugerencia.comando}
+                onPress={() => enviarMensaje(t(sugerencia.etiquetaKey))}
+                scaleTo={0.96}
+              >
+                <View style={estilos.chipSugerencia}>
+                  <MaterialIcons name={sugerencia.icono} size={14} color={colores.texto} />
+                  <Text style={estilos.textoChip}>{t(sugerencia.etiquetaKey)}</Text>
+                </View>
+              </BotonAnimado>
             ))}
           </ScrollView>
 
@@ -583,11 +584,15 @@ export default function ChatIA({ navigation }: Props) {
                 multiline
                 maxLength={500}
               />
-              {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-              <TouchableOpacity onPress={() => enviarMensaje(textoEntrada)} style={[estilos.botonEnviar, !textoEntrada.trim() && estilos.botonEnviarDeshabilitado]} disabled={!textoEntrada.trim()} activeOpacity={0.88}>
-                {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                <MaterialIcons name="north-east" size={18} color="#ffffff" />
-              </TouchableOpacity>
+              <BotonAnimado
+                disabled={!textoEntrada.trim()}
+                onPress={() => enviarMensaje(textoEntrada)}
+                scaleTo={0.94}
+              >
+                <View style={[estilos.botonEnviar, !textoEntrada.trim() && estilos.botonEnviarDeshabilitado]}>
+                  <MaterialIcons name="north-east" size={18} color={esOscuro ? '#000000' : '#FFFFFF'} />
+                </View>
+              </BotonAnimado>
             </BlurView>
           </View>
         </View>
@@ -600,121 +605,69 @@ export default function ChatIA({ navigation }: Props) {
  * Mapa de estilos crearEstilosChat. Centraliza reglas visuales para que el JSX se mantenga legible y consistente.
  */
 function crearEstilosChat(c: any, esOscuro: boolean) {
-  // Declara glass; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const glass = esOscuro ? 'rgba(255,255,255,0.025)' : 'rgba(255,255,255,0.75)';
-  // Declara glassMini; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const glassMini = esOscuro ? 'rgba(255,255,255,0.045)' : 'rgba(255,255,255,0.6)';
-  // Devuelve el valor final calculado para esta funcion o caso de uso.
+  const glass = esOscuro ? 'rgba(24, 24, 38, 0.88)' : 'rgba(255, 255, 255, 0.94)';
+  const glassMini = esOscuro ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)';
+
   return StyleSheet.create({
-    // contenedor: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
     contenedor: { flex: 1, backgroundColor: c.fondo },
-    // flex: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     flex: { flex: 1 },
-    // fondoAbsoluto: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     fondoAbsoluto: { ...StyleSheet.absoluteFillObject, zIndex: -1, overflow: 'hidden' },
-    // header: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
     header: { marginHorizontal: ESPACIADO.md, marginTop: Platform.OS === 'ios' ? ESPACIADO.xs : ESPACIADO.sm, borderRadius: 28, overflow: 'hidden' },
-    // headerVidrio: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
     headerVidrio: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 12, paddingVertical: 11, backgroundColor: glass, overflow: 'hidden', borderWidth: 1, borderColor: c.borde, borderRadius: 28 },
-    // botonRegresar: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
     botonRegresar: { width: 38, height: 38, borderRadius: 19, backgroundColor: glassMini, borderWidth: 1, borderColor: c.borde, alignItems: 'center', justifyContent: 'center' },
-    // headerCentro: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
     headerCentro: { flex: 1, minWidth: 0 },
-    // tituloPantalla: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
     tituloPantalla: { fontSize: 17, fontWeight: '900', letterSpacing: 0, color: c.texto },
-    // subtituloPantalla: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
     subtituloPantalla: { fontSize: 11, fontWeight: '700', color: c.textoSuave, marginTop: 2 },
-    // iconoHeader: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
     iconoHeader: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: glassMini, borderWidth: 1, borderColor: c.borde },
-    // scrollChat: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     scrollChat: { paddingHorizontal: ESPACIADO.lg, paddingTop: ESPACIADO.sm, paddingBottom: ESPACIADO.md },
-    // panelIA: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    panelIA: { borderRadius: RADIOS.xxl, overflow: 'hidden', borderWidth: 1, borderColor: c.borde, backgroundColor: glass, marginBottom: ESPACIADO.lg },
-    // panelContenido: estilo del area de contenido; controla padding, distribucion y separacion interna.
+    panelIA: { borderRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: c.borde, backgroundColor: glass, marginBottom: ESPACIADO.lg, ...SOMBRAS.flotante },
     panelContenido: { padding: ESPACIADO.lg },
-    // orbeChatWrap: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     orbeChatWrap: { alignItems: 'center', marginTop: ESPACIADO.sm, marginBottom: ESPACIADO.lg },
-    // panelTop: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    panelTop: { flexDirection: 'row', alignItems: 'center', gap: ESPACIADO.md, marginBottom: ESPACIADO.lg },
-    // avatarIA: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    avatarIA: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(124,58,237,0.13)', borderWidth: 1, borderColor: 'rgba(139,92,246,0.24)' },
-    // panelTextos: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
+    panelTop: { flexDirection: 'row', alignItems: 'center', gap: ESPACIADO.md },
+    avatarIA: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: glassMini, borderWidth: 1, borderColor: c.borde },
     panelTextos: { flex: 1 },
-    // nombreIA: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    nombreIA: { ...TIPOGRAFIA.tituloTarjeta, color: c.texto, fontSize: 18 },
-    // descripcionIA: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    descripcionIA: { ...TIPOGRAFIA.cuerpoPequeno, color: c.textoSecundario, marginTop: 3 },
-    // contextoGrid: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
+    nombreIA: { fontSize: 17, fontWeight: '900', color: c.texto },
+    descripcionIA: { fontSize: 12, color: c.textoSuave, marginTop: 2, lineHeight: 17 },
     contextoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: ESPACIADO.sm },
-    // contextoCard: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
     contextoCard: { width: '48.5%', minHeight: 82, borderRadius: RADIOS.lg, padding: ESPACIADO.md, backgroundColor: glass, borderWidth: 1, borderColor: c.borde, justifyContent: 'space-between' },
-    // contextoValor: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
     contextoValor: { ...TIPOGRAFIA.tituloTarjeta, color: c.texto, fontSize: 22 },
-    // contextoLabel: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
     contextoLabel: { ...TIPOGRAFIA.micro, color: c.textoSuave, fontSize: 9 },
-    // divisorTiempo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     divisorTiempo: { flexDirection: 'row', alignItems: 'center', gap: ESPACIADO.sm, marginBottom: ESPACIADO.md },
-    // lineaDivisor: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     lineaDivisor: { flex: 1, height: 1, backgroundColor: c.borde },
-    // textoDivisor: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    textoDivisor: { ...TIPOGRAFIA.micro, color: c.textoSuave, fontSize: 10 },
-    // filaBurbuja: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    filaBurbuja: { marginBottom: ESPACIADO.sm, maxWidth: '88%' },
-    // filaBurbujaUsuario: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
+    textoDivisor: { ...TIPOGRAFIA.micro, color: c.textoSuave, fontSize: 10, fontWeight: '700' },
+    filaBurbuja: { marginBottom: ESPACIADO.md, maxWidth: '86%' },
     filaBurbujaUsuario: { alignSelf: 'flex-end' },
-    // burbujaIA: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    burbujaIA: { borderRadius: RADIOS.xl, borderBottomLeftRadius: 5, overflow: 'hidden', borderWidth: 1, borderColor: esOscuro ? 'rgba(124, 58, 237, 0.15)' : 'rgba(124, 58, 237, 0.08)', backgroundColor: esOscuro ? 'rgba(30, 27, 50, 0.85)' : '#F3F4F6' },
-    // burbujaContenido: estilo del area de contenido; controla padding, distribucion y separacion interna.
-    burbujaContenido: { padding: ESPACIADO.md },
-    // textoBurbujaIA: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    textoBurbujaIA: { ...TIPOGRAFIA.cuerpo, color: c.texto, lineHeight: 22 },
-    // botonRedirect: estilo de boton de redireccion dinamica.
-    botonRedirect: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: ESPACIADO.sm, paddingVertical: 10, paddingHorizontal: ESPACIADO.md, borderRadius: RADIOS.lg, backgroundColor: COLORES.primario, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', alignSelf: 'flex-start' },
-    // textoRedirect: estilo de texto del boton de redireccion.
-    textoRedirect: { ...TIPOGRAFIA.cuerpoPequeno, color: '#ffffff', fontWeight: '700' },
-    // tarjetaAccionSensible: tarjeta de confirmacion para una accion sensible sugerida por la IA (Fase 8).
-    tarjetaAccionSensible: { marginTop: ESPACIADO.sm, padding: ESPACIADO.md, borderRadius: RADIOS.lg, backgroundColor: 'rgba(245,158,11,0.08)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.28)', gap: ESPACIADO.sm },
+    burbujaIA: { borderRadius: 24, borderBottomLeftRadius: 6, overflow: 'hidden', borderWidth: 1, borderColor: c.borde, backgroundColor: glass, ...SOMBRAS.flotante },
+    burbujaContenido: { padding: 16 },
+    textoBurbujaIA: { fontSize: 14, color: c.texto, lineHeight: 22 },
+    botonRedirect: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 16, backgroundColor: esOscuro ? '#FFFFFF' : '#000000', alignSelf: 'flex-start' },
+    textoRedirect: { fontSize: 13, color: esOscuro ? '#000000' : '#FFFFFF', fontWeight: '800' },
+    tarjetaAccionSensible: { marginTop: 12, padding: 14, borderRadius: 18, backgroundColor: esOscuro ? 'rgba(245,158,11,0.12)' : 'rgba(245,158,11,0.08)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.3)', gap: 10 },
     tarjetaAccionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    tarjetaAccionTitulo: { ...TIPOGRAFIA.cuerpoPequeno, color: c.texto, fontWeight: '700', flex: 1 },
-    tarjetaAccionBotones: { flexDirection: 'row', gap: ESPACIADO.sm },
-    tarjetaAccionBoton: { flex: 1, paddingVertical: 9, borderRadius: RADIOS.md, alignItems: 'center', borderWidth: 1 },
-    tarjetaAccionBotonRechazar: { backgroundColor: 'rgba(239,68,68,0.08)', borderColor: 'rgba(239,68,68,0.24)' },
-    tarjetaAccionBotonAprobar: { backgroundColor: COLORES.exito, borderColor: 'rgba(255,255,255,0.18)' },
-    tarjetaAccionBotonTextoRechazar: { ...TIPOGRAFIA.cuerpoPequeno, color: '#FCA5A5', fontWeight: '700' },
-    tarjetaAccionBotonTextoAprobar: { ...TIPOGRAFIA.cuerpoPequeno, color: '#ffffff', fontWeight: '700' },
-    tarjetaAccionResultado: { ...TIPOGRAFIA.cuerpoPequeno, color: COLORES.exito, fontWeight: '700' },
+    tarjetaAccionTitulo: { fontSize: 13, color: c.texto, fontWeight: '800', flex: 1 },
+    tarjetaAccionBotones: { flexDirection: 'row', gap: 10 },
+    tarjetaAccionBoton: { flex: 1, height: 38, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+    tarjetaAccionBotonRechazar: { backgroundColor: 'rgba(239,68,68,0.1)', borderColor: 'rgba(239,68,68,0.3)' },
+    tarjetaAccionBotonAprobar: { backgroundColor: esOscuro ? '#FFFFFF' : '#000000', borderColor: 'transparent' },
+    tarjetaAccionBotonTextoRechazar: { fontSize: 12, color: '#EF4444', fontWeight: '800' },
+    tarjetaAccionBotonTextoAprobar: { fontSize: 12, color: esOscuro ? '#000000' : '#FFFFFF', fontWeight: '800' },
+    tarjetaAccionResultado: { fontSize: 12, color: COLORES.exito, fontWeight: '800' },
     tarjetaAccionResultadoError: { color: COLORES.error },
-    // horaIA: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    horaIA: { ...TIPOGRAFIA.micro, color: c.textoSuave, marginTop: ESPACIADO.sm, fontSize: 9 },
-    // burbujaUsuario: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    burbujaUsuario: { padding: ESPACIADO.md, borderRadius: RADIOS.xl, borderBottomRightRadius: 5, backgroundColor: 'rgba(124,58,237,0.68)', borderWidth: 1, borderColor: 'rgba(139,92,246,0.35)' },
-    // textoBurbujaUsuario: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    textoBurbujaUsuario: { ...TIPOGRAFIA.cuerpoGrande, color: '#fff' },
-    // horaUsuario: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    horaUsuario: { ...TIPOGRAFIA.micro, color: 'rgba(255,255,255,0.62)', marginTop: ESPACIADO.sm, fontSize: 9, textAlign: 'right' },
-    // indicadorEscribiendo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    indicadorEscribiendo: { flexDirection: 'row', gap: 6, alignItems: 'center', paddingVertical: 2 },
-    // puntoEscritura: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    puntoEscritura: { width: 8, height: 8, borderRadius: 8, backgroundColor: COLORES.primarioClaro },
-    // contenedorEntrada: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
+    horaIA: { fontSize: 10, color: c.textoSuave, marginTop: 8, fontWeight: '600' },
+    burbujaUsuario: { padding: 16, borderRadius: 24, borderBottomRightRadius: 6, backgroundColor: esOscuro ? '#FFFFFF' : '#000000', ...SOMBRAS.flotante },
+    textoBurbujaUsuario: { fontSize: 14, color: esOscuro ? '#000000' : '#FFFFFF', lineHeight: 22, fontWeight: '600' },
+    horaUsuario: { fontSize: 10, color: esOscuro ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.7)', marginTop: 6, textAlign: 'right', fontWeight: '600' },
+    indicadorEscribiendo: { flexDirection: 'row', gap: 6, alignItems: 'center', paddingVertical: 4 },
+    puntoEscritura: { width: 8, height: 8, borderRadius: 4, backgroundColor: c.texto },
     contenedorEntrada: { paddingBottom: Platform.OS === 'ios' ? 90 : 100, paddingTop: ESPACIADO.xs },
-    // sugerencias: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    sugerencias: { paddingHorizontal: ESPACIADO.lg, gap: ESPACIADO.xs, paddingBottom: ESPACIADO.sm },
-    // chipSugerencia: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    chipSugerencia: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: ESPACIADO.md, paddingVertical: 9, borderRadius: RADIOS.completo, backgroundColor: glass, borderWidth: 1, borderColor: c.borde },
-    // textoChip: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    textoChip: { ...TIPOGRAFIA.cuerpoPequeno, fontWeight: '700', color: c.texto },
-    // barraMensaje: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    barraMensaje: { marginHorizontal: ESPACIADO.lg, borderRadius: RADIOS.xxl, overflow: 'hidden', borderWidth: 1, borderColor: c.borde, backgroundColor: glass },
-    // barraMensajeContenido: estilo del area de contenido; controla padding, distribucion y separacion interna.
-    barraMensajeContenido: { minHeight: 62, flexDirection: 'row', alignItems: 'flex-end', gap: ESPACIADO.sm, paddingLeft: ESPACIADO.md, paddingRight: ESPACIADO.xs, paddingVertical: ESPACIADO.xs },
-    // entrada: estilo de campo de formulario; controla contenedor, texto y distribucion de la entrada.
-    entrada: { flex: 1, fontSize: 15, lineHeight: 22, color: c.texto, maxHeight: 100, paddingVertical: ESPACIADO.sm },
-    // botonEnviar: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
-    botonEnviar: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORES.primario, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' },
-    // botonEnviarDeshabilitado: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
-    botonEnviarDeshabilitado: { opacity: 0.42 },
-    // iconoPlano: estilo de boton icono secundario.
+    sugerencias: { paddingHorizontal: ESPACIADO.lg, gap: 8, paddingBottom: 10 },
+    chipSugerencia: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, height: 38, borderRadius: 20, backgroundColor: glass, borderWidth: 1, borderColor: c.borde, ...SOMBRAS.flotante },
+    textoChip: { fontSize: 12, fontWeight: '800', color: c.texto },
+    barraMensaje: { marginHorizontal: ESPACIADO.lg, borderRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: c.borde, backgroundColor: glass, ...SOMBRAS.flotante },
+    barraMensajeContenido: { minHeight: 58, flexDirection: 'row', alignItems: 'flex-end', gap: ESPACIADO.sm, paddingLeft: 16, paddingRight: 6, paddingVertical: 6 },
+    entrada: { flex: 1, fontSize: 14, lineHeight: 20, color: c.texto, maxHeight: 100, paddingVertical: 8 },
+    botonEnviar: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: esOscuro ? '#FFFFFF' : '#000000' },
+    botonEnviarDeshabilitado: { opacity: 0.4 },
     iconoPlano: { width: 38, height: 38, borderRadius: RADIOS.md, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
   });
 }

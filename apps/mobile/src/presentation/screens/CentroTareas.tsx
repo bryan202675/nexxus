@@ -1,12 +1,11 @@
 /**
  * Documentacion Nexxus - apps/mobile/src/presentation/screens/CentroTareas.tsx
  * Capa: presentacion.
- * Proposito: Pantalla de la experiencia del empleado. Lee contexto de usuario, muestra informacion operativa y conserva las acciones de navegacion existentes.
- * Dependencias clave: imports superiores y contratos tipados del propio modulo.
- * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras de datos al extender este archivo.
+ * Proposito: Pantalla de gestión de tareas del empleado ("Centro de Tareas"). Rediseñada con estética Glassmorphism Bento,
+ * Hero Banner de progreso general, filtros en cápsulas glass de alto contraste (Blanco/Negro sin morados)
+ * y tarjetas de tareas con micro-interacciones.
  */
 
-// Importa React, { useState, useRef, useEffect } desde React; habilita componentes, hooks y tipos base para esta pieza.
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -15,269 +14,265 @@ import {
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
-  FlatList,
   Animated,
+  Easing,
+  FlatList,
 } from 'react-native';
-// Importa { Feather }; aporta iconos reutilizables para comunicar acciones y estados visuales.
-import { Feather } from '@expo/vector-icons';
-// Importa { BlurView } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
+import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-
-// Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
-// Importa { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA }; reutiliza tokens visuales y constantes comunes del sistema de diseno.
-import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA } from '@/shared/constants/diseno';
-// Importa { useContextoUsuario }; accede a contexto compartido de usuario, tema o estado global.
+
+import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA, SOMBRAS } from '@/shared/constants/diseno';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
-// Importa { Task }; usa tipos de dominio para que los datos mantengan estructura consistente.
 import { Task } from 'domain/entities/Task';
-// Importa FondoMobilePremium; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
-// Importa NavbarEnterprise; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
 import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
-// Importa { useTemaMobile }; accede a contexto compartido de usuario, tema o estado global.
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
-// Importa DetalleTareaModal; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
 import DetalleTareaModal from '@/presentation/components/DetalleTareaModal';
-// Unica fuente de verdad para "vencida"/"hoy" por fecha limite (Centro Inteligente) -- no reintroducir
-// una comparacion de fechas propia aqui, ver packages/domain/services/priorityEngine.ts.
+import BotonAnimado from '@/presentation/components/BotonAnimado';
 import { computeUrgencyFromDate } from 'domain/services/priorityEngine';
 
-/**
- * Define el contrato de datos Props; documenta campos esperados y evita pasar objetos ambiguos entre capas.
- */
 interface Props {
   navigation: any;
 }
 
-/**
- * Describe la forma tipada FiltroEstado; ayuda a que estados, props o respuestas mantengan una estructura predecible.
- */
-type FiltroEstado = 'todos' | 'hoy' | 'vencidas' | 'urgentes';
+type FiltroEstado = 'todos' | 'hoy' | 'urgentes' | 'vencidas';
 
-/**
- * Componente CentroTareas. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
- */
 export default function CentroTareas({ navigation }: Props) {
-  // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { t } = useTranslation();
-  // Inicializa { tareas, actualizarTarea, cambiarEstadoTarea }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { tareas, actualizarTarea, cambiarEstadoTarea } = useContextoUsuario();
-  // Declara { colores, esOscuro }; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const { colores, esOscuro } = useTemaMobile();
-  // Inicializa [filtro, setFiltro]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const [filtro, setFiltro] = useState<FiltroEstado>('todos');
-  // Inicializa [tareaSeleccionadaId, setTareaSeleccionadaId]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const [tareaSeleccionadaId, setTareaSeleccionadaId] = useState<string | null>(null);
-  // Inicializa fadeAnim; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
 
-  // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+  const [filtro, setFiltro] = useState<FiltroEstado>('todos');
+  const [tareaSeleccionadaId, setTareaSeleccionadaId] = useState<string | null>(null);
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
+
   useEffect(() => {
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-    Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        tension: 55,
+        friction: 9,
+        useNativeDriver: true,
+      }),
+    ]).start();
   }, []);
 
-  // Calcula tareasFiltradas; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
   const tareasFiltradas = tareas.filter(t => {
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (filtro === 'hoy') return computeUrgencyFromDate(t.fecha_limite) === 'hoy' && t.estado !== 'completada';
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (filtro === 'vencidas') return computeUrgencyFromDate(t.fecha_limite) === 'vencida' && t.estado !== 'completada';
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (filtro === 'urgentes') return t.prioridad === 'Urgente' && t.estado !== 'completada';
-    // Devuelve el valor final calculado para esta funcion o caso de uso.
     return true;
   });
 
-  // Declara tareaSeleccionada; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const tareaSeleccionada = tareas.find(t => t.id === tareaSeleccionadaId) || null;
-  // Declara siguienteTarea; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const siguienteTarea = tareasFiltradas.find(t => t.estado !== 'completada') || tareasFiltradas[0];
-  // Calcula completadas; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
   const completadas = tareas.filter(t => t.estado === 'completada').length;
-  // Declara progresoGeneral; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
+  const vencidasCount = tareas.filter(t => computeUrgencyFromDate(t.fecha_limite) === 'vencida' && t.estado !== 'completada').length;
+  const pendientesCount = tareas.filter(t => t.estado !== 'completada').length;
   const progresoGeneral = tareas.length ? Math.round((completadas / tareas.length) * 100) : 0;
 
-  // Declara manejarCambioProgreso; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const manejarCambioProgreso = async (tarea: Task, incremento: number) => {
-    // Declara nuevoProgreso; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     let nuevoProgreso = (tarea.progreso || 0) + incremento;
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (nuevoProgreso > 100) nuevoProgreso = 100;
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (nuevoProgreso < 0) nuevoProgreso = 0;
 
-    // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
     await actualizarTarea(tarea.id, { progreso: nuevoProgreso });
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (nuevoProgreso === 100 && tarea.estado !== 'completada') {
-      // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
       await cambiarEstadoTarea(tarea.id, 'completada');
     }
   };
 
-  // Declara getPriorityColor; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const getPriorityColor = (p: string) => {
-    // Selecciona comportamiento segun el valor recibido y evita condicionales repetidos.
     switch (p?.toLowerCase()) {
-      case 'urgente': return '#EF4444';
-      case 'alta': return '#F59E0B';
+      case 'urgente': return COLORES.error;
+      case 'alta': return COLORES.alerta;
       case 'media': return '#3B82F6';
-      default: return '#10B981';
+      default: return COLORES.exito;
     }
   };
 
-  // Declara estilos; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const estilos = crearEstilosTareas(colores, esOscuro);
 
-  // Declara renderTarea; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const renderTarea = ({ item }: { item: Task }) => {
-    // Declara isCompleted; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const isCompleted = item.estado === 'completada';
-    // Declara isOverdue; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const isOverdue = computeUrgencyFromDate(item.fecha_limite) === 'vencida' && !isCompleted;
 
-    // Devuelve el JSX que React Native renderiza en pantalla.
     return (
-      // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-      <TouchableOpacity
+      <BotonAnimado
         style={estilos.filaTarea}
-        activeOpacity={0.7}
+        scaleTo={0.98}
         onPress={() => setTareaSeleccionadaId(item.id)}
       >
-        {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
         <TouchableOpacity
           style={estilos.checkBoton}
           onPress={() => manejarCambioProgreso(item, isCompleted ? -100 : 100)}
+          activeOpacity={0.7}
         >
           {isCompleted ? (
-            // Icono visual; refuerza el significado de la accion, estado o categoria mostrada.
-            <Feather name="check-circle" size={18} color={colores.textoSuave} />
+            <Feather name="check-circle" size={20} color={COLORES.exito} />
           ) : (
-            // Icono visual; refuerza el significado de la accion, estado o categoria mostrada.
-            <Feather name="circle" size={18} color={colores.bordeFuerte} />
+            <Feather name="circle" size={20} color={esOscuro ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.3)'} />
           )}
         </TouchableOpacity>
 
-        {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
         <View style={estilos.contenidoTarea}>
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={estilos.headerFila}>
-            {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
             <Text style={[estilos.tituloTarea, isCompleted && estilos.tituloCompletado]} numberOfLines={1}>
               {item.titulo}
             </Text>
             {item.proyecto && (
-              // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
               <View style={estilos.badgeProyecto}>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.textoBadge}>{item.proyecto.substring(0, 3).toUpperCase()}</Text>
+                <Text style={estilos.textoBadge}>{item.proyecto.substring(0, 4).toUpperCase()}</Text>
               </View>
             )}
           </View>
 
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={estilos.footerFila}>
-            {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
             <View style={estilos.metadatosFila}>
               {item.prioridad && (
-                // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
                 <View style={[estilos.puntoPrioridad, { backgroundColor: getPriorityColor(item.prioridad) }]} />
               )}
               {item.fecha_limite && (
-                // Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario.
                 <Text style={[estilos.textoMeta, isOverdue && estilos.textoVencido]}>
                   {item.fecha_limite}
                 </Text>
               )}
               {item.progreso !== undefined && item.progreso > 0 && !isCompleted && (
-                // Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario.
                 <Text style={estilos.textoMeta}>• {item.progreso}%</Text>
               )}
             </View>
           </View>
         </View>
-      </TouchableOpacity>
+
+        <Feather name="chevron-right" size={16} color={esOscuro ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.3)'} />
+      </BotonAnimado>
     );
   };
 
-  // Declara filtros; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const filtros: { id: FiltroEstado, label: string }[] = [
+  const filtros: { id: FiltroEstado; label: string }[] = [
     { id: 'todos', label: t('centroTareas.filter_all') },
     { id: 'hoy', label: t('centroTareas.filter_today') },
     { id: 'urgentes', label: t('centroTareas.filter_urgent') },
     { id: 'vencidas', label: t('centroTareas.filter_overdue') },
   ];
 
-  // Devuelve el JSX que React Native renderiza en pantalla.
   return (
-    // Contenedor seguro de la pantalla; respeta areas del dispositivo como notch, barra superior y bordes.
     <SafeAreaView style={estilos.contenedor}>
-      {/* Configura la barra de estado del sistema para que combine con el fondo de esta pantalla. */}
-      <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} />
-      {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+      <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
       <View style={estilos.fondoAbsoluto}>
-        {/* Elemento de fondo visual; construye la atmosfera grafica de la pantalla sin cambiar los datos. */}
         <FondoMobilePremium />
       </View>
 
-      {/* NavbarEnterprise renderiza una pieza visual reutilizable dentro de esta pantalla. */}
       <NavbarEnterprise titulo={t('centroTareas.title')} />
 
-      {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-      <View style={estilos.headerMensaje}>
-        {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-        <Text style={estilos.eyebrow}>{t('centroTareas.title')}</Text>
-        {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-        <Text style={estilos.titulo}>{t('centroTareas.hero_title')}</Text>
-        {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-        <Text style={estilos.subtitulo}>{t('centroTareas.hero_subtitle')}</Text>
-      </View>
+      <Animated.View style={{ flex: 1, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+        {/* Encabezado y Banner Bento de Progreso */}
+        <View style={estilos.headerMensaje}>
+          <Text style={estilos.eyebrow}>{t('centroTareas.title')}</Text>
+          <Text style={estilos.titulo}>{t('centroTareas.hero_title')}</Text>
+          <Text style={estilos.subtitulo}>{t('centroTareas.hero_subtitle')}</Text>
 
-      {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-      <View style={estilos.filtrosContenedor}>
-        {filtros.map((f) => (
-          // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-          <TouchableOpacity
-            key={f.id}
-            onPress={() => setFiltro(f.id)}
-            style={[estilos.chipFiltro, filtro === f.id && estilos.chipActivo]}
-          >
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={[estilos.textoChip, filtro === f.id && estilos.textoChipActivo]}>
-              {f.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+          {/* Hero Banner Bento de Avance General */}
+          <View style={estilos.heroProgressCard}>
+            <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.heroProgressBlur}>
+              <View style={estilos.heroProgressHeader}>
+                <View style={estilos.heroIconWrap}>
+                  <Feather name="target" size={18} color={esOscuro ? '#FFFFFF' : '#000000'} />
+                </View>
+                <View style={estilos.heroBadge}>
+                  <Text style={estilos.heroBadgeText}>{progresoGeneral}% Avance</Text>
+                </View>
+              </View>
 
-      {/* Animated.FlatList renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Animated.FlatList
-        data={tareasFiltradas}
-        keyExtractor={(item) => item.id}
-        renderItem={renderTarea}
-        contentContainerStyle={estilos.lista}
-        style={{ opacity: fadeAnim }}
-        ItemSeparatorComponent={() => <View style={estilos.separadorLinea} />}
-        ListEmptyComponent={
-          <View style={estilos.vacio}>
-            {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-            <Feather name="inbox" size={48} color={colores.bordeFuerte} />
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.textoVacio}>{t('centroTareas.empty_msg')}</Text>
+              {/* Barra de Progreso Visual */}
+              <View style={estilos.progressBarTrack}>
+                <View style={[estilos.progressBarFill, { width: `${progresoGeneral}%` }]} />
+              </View>
+
+              <View style={estilos.statsRow}>
+                <View style={estilos.statItem}>
+                  <Text style={estilos.statValue}>{pendientesCount}</Text>
+                  <Text style={estilos.statLabel}>Pendientes</Text>
+                </View>
+                <View style={estilos.statDivider} />
+                <View style={estilos.statItem}>
+                  <Text style={estilos.statValue}>{completadas}</Text>
+                  <Text style={estilos.statLabel}>Completadas</Text>
+                </View>
+                <View style={estilos.statDivider} />
+                <View style={estilos.statItem}>
+                  <Text style={[estilos.statValue, vencidasCount > 0 && { color: COLORES.error }]}>{vencidasCount}</Text>
+                  <Text style={estilos.statLabel}>Vencidas</Text>
+                </View>
+              </View>
+            </BlurView>
           </View>
-        }
-      />
+        </View>
 
-      {/* DetalleTareaModal renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+        {/* Chips de Filtrado en Cápsula Glass de Alto Contraste */}
+        <View style={estilos.filtrosContenedor}>
+          {filtros.map((f) => {
+            const isSelected = filtro === f.id;
+            return (
+              <TouchableOpacity
+                key={f.id}
+                onPress={() => setFiltro(f.id)}
+                style={[
+                  estilos.chipFiltro,
+                  isSelected && {
+                    backgroundColor: esOscuro ? '#FFFFFF' : '#000000',
+                    borderColor: esOscuro ? '#FFFFFF' : '#000000',
+                  },
+                ]}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    estilos.textoChip,
+                    isSelected && {
+                      color: esOscuro ? '#000000' : '#FFFFFF',
+                    },
+                  ]}
+                >
+                  {f.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Lista de Tareas con Tarjetas Glass Bento */}
+        <FlatList
+          data={tareasFiltradas}
+          keyExtractor={(item) => item.id}
+          renderItem={renderTarea}
+          contentContainerStyle={estilos.lista}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={estilos.vacio}>
+              <View style={estilos.vacioIconWrap}>
+                <Feather name="inbox" size={32} color={colores.textoSuave} />
+              </View>
+              <Text style={estilos.textoVacio}>{t('centroTareas.empty_msg')}</Text>
+            </View>
+          }
+        />
+      </Animated.View>
+
       <DetalleTareaModal
         visible={tareaSeleccionada !== null}
         tarea={tareaSeleccionada}
         onClose={() => setTareaSeleccionadaId(null)}
         onCambiarEstado={cambiarEstadoTarea}
-        onAbrirChat={(tarea) => {
-          // Ejecuta navegacion; cambia la pantalla activa manteniendo el flujo definido por React Navigation.
+        onAbrirChat={() => {
           navigation.navigate('ChatIA');
         }}
       />
@@ -285,71 +280,69 @@ export default function CentroTareas({ navigation }: Props) {
   );
 }
 
-/**
- * Mapa de estilos crearEstilosTareas. Centraliza reglas visuales para que el JSX se mantenga legible y consistente.
- */
 function crearEstilosTareas(c: any, esOscuro: boolean) {
-  // Declara glass; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const glass = esOscuro ? 'rgba(255,255,255,0.045)' : 'rgba(255,255,255,0.75)';
-  // Declara glassMini; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const glassMini = esOscuro ? 'rgba(255,255,255,0.055)' : 'rgba(255,255,255,0.55)';
-  // Devuelve el valor final calculado para esta funcion o caso de uso.
+  const glass = esOscuro ? 'rgba(10, 10, 24, 0.65)' : 'rgba(255, 255, 255, 0.72)';
+  const glassMini = esOscuro ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)';
+  const glassBorder = esOscuro ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)';
+
   return StyleSheet.create({
-    // contenedor: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
     contenedor: { flex: 1, backgroundColor: c.fondo },
-    // fondoAbsoluto: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     fondoAbsoluto: { ...StyleSheet.absoluteFillObject, zIndex: -1 },
-    // headerMensaje: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
-    headerMensaje: { marginTop: ESPACIADO.md, paddingHorizontal: ESPACIADO.lg, marginBottom: ESPACIADO.sm },
-    // eyebrow: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    eyebrow: { ...TIPOGRAFIA.micro, color: c.textoSuave, fontSize: 13, textTransform: 'uppercase', letterSpacing: 1.5, fontWeight: '700' },
-    // titulo: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
-    titulo: { ...TIPOGRAFIA.tituloPantalla, color: c.texto, fontSize: 28, marginTop: 4, letterSpacing: -0.5 },
-    // subtitulo: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
-    subtitulo: { ...TIPOGRAFIA.cuerpoPequeno, color: c.textoSuave, marginTop: 6, lineHeight: 18 },
-    // filtrosContenedor: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
-    filtrosContenedor: { flexDirection: 'row', paddingHorizontal: ESPACIADO.lg, gap: ESPACIADO.sm, marginBottom: ESPACIADO.md },
-    // chipFiltro: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    chipFiltro: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 18, backgroundColor: glass, borderWidth: 1, borderColor: c.borde },
-    // chipActivo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    chipActivo: { backgroundColor: esOscuro ? '#FFFFFF' : c.primario },
-    // textoChip: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
+    headerMensaje: { marginTop: ESPACIADO.md, paddingHorizontal: ESPACIADO.md, marginBottom: ESPACIADO.sm },
+    eyebrow: { ...TIPOGRAFIA.micro, color: c.textoSuave, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.5, fontWeight: '800' },
+    titulo: { fontSize: 30, fontWeight: '900', color: esOscuro ? '#FFFFFF' : '#000000', marginTop: 4, letterSpacing: -0.5 },
+    subtitulo: { fontSize: 13, color: c.textoSuave, marginTop: 4, lineHeight: 18 },
+    heroProgressCard: {
+      borderRadius: 24,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: glassBorder,
+      backgroundColor: glass,
+      marginTop: ESPACIADO.md,
+      ...SOMBRAS.flotante,
+    },
+    heroProgressBlur: { padding: ESPACIADO.md },
+    heroProgressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+    heroIconWrap: { width: 36, height: 36, borderRadius: 18, backgroundColor: glassMini, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: glassBorder },
+    heroBadge: { backgroundColor: glassMini, paddingHorizontal: 11, paddingVertical: 5, borderRadius: RADIOS.completo, borderWidth: 1, borderColor: glassBorder },
+    heroBadgeText: { fontSize: 11, fontWeight: '800', color: esOscuro ? '#FFFFFF' : '#000000' },
+    progressBarTrack: { height: 8, borderRadius: 4, backgroundColor: glassMini, overflow: 'hidden', marginBottom: 14, borderWidth: 1, borderColor: glassBorder },
+    progressBarFill: { height: '100%', backgroundColor: esOscuro ? '#FFFFFF' : '#000000', borderRadius: 4 },
+    statsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' },
+    statItem: { alignItems: 'center' },
+    statValue: { fontSize: 18, fontWeight: '900', color: esOscuro ? '#FFFFFF' : '#000000' },
+    statLabel: { fontSize: 11, fontWeight: '700', color: c.textoSecundario, marginTop: 2 },
+    statDivider: { width: 1, height: 24, backgroundColor: glassBorder },
+    filtrosContenedor: { flexDirection: 'row', paddingHorizontal: ESPACIADO.md, gap: ESPACIADO.xs, marginBottom: ESPACIADO.md },
+    chipFiltro: { paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, backgroundColor: glass, borderWidth: 1, borderColor: glassBorder, ...SOMBRAS.suave },
     textoChip: { fontSize: 11, fontWeight: '800', color: c.textoSuave },
-    // textoChipActivo: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    textoChipActivo: { color: esOscuro ? '#5B21B6' : '#fff' },
-    // lista: estilo de lista o item; mantiene espaciado y lectura consistente en elementos repetidos.
-    lista: { paddingBottom: 100, paddingHorizontal: ESPACIADO.lg },
-    // filaTarea: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    filaTarea: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: ESPACIADO.md, paddingHorizontal: ESPACIADO.md, borderRadius: 13, backgroundColor: glass, marginBottom: 8, borderWidth: 1, borderColor: c.borde },
-    // checkBoton: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
-    checkBoton: { marginTop: 2, marginRight: ESPACIADO.sm, padding: 2 },
-    // contenidoTarea: estilo del area de contenido; controla padding, distribucion y separacion interna.
+    lista: { paddingBottom: 110, paddingHorizontal: ESPACIADO.md },
+    filaTarea: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 14,
+      paddingHorizontal: ESPACIADO.md,
+      borderRadius: 20,
+      backgroundColor: glass,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: glassBorder,
+      ...SOMBRAS.flotante,
+    },
+    checkBoton: { marginRight: 12, padding: 2 },
     contenidoTarea: { flex: 1 },
-    // headerFila: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
     headerFila: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
-    // tituloTarea: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
-    tituloTarea: { fontSize: 15, fontWeight: '500', color: c.texto, flexShrink: 1 },
-    // tituloCompletado: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
+    tituloTarea: { fontSize: 15, fontWeight: '800', color: esOscuro ? '#FFFFFF' : '#000000', flexShrink: 1 },
     tituloCompletado: { color: c.textoSuave, textDecorationLine: 'line-through' },
-    // badgeProyecto: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    badgeProyecto: { backgroundColor: glassMini, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-    // textoBadge: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    textoBadge: { fontSize: 10, fontWeight: '600', color: c.textoSecundario, letterSpacing: 0.5 },
-    // footerFila: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
+    badgeProyecto: { backgroundColor: glassMini, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, borderWidth: 1, borderColor: glassBorder },
+    textoBadge: { fontSize: 10, fontWeight: '800', color: esOscuro ? '#FFFFFF' : '#000000', letterSpacing: 0.5 },
     footerFila: { flexDirection: 'row', marginTop: 4 },
-    // metadatosFila: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     metadatosFila: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    // puntoPrioridad: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    puntoPrioridad: { width: 6, height: 6, borderRadius: 3 },
-    // textoMeta: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    textoMeta: { fontSize: 12, color: c.textoSuave },
-    // textoVencido: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    textoVencido: { color: '#EF4444' },
-    // separadorLinea: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    separadorLinea: { height: 0 },
-    // vacio: estilo de estado vacio; presenta mensajes cuando no hay datos disponibles.
-    vacio: { alignItems: 'center', justifyContent: 'center', marginTop: 100 },
-    // textoVacio: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    textoVacio: { fontSize: 14, color: c.textoSuave, marginTop: ESPACIADO.md },
+    puntoPrioridad: { width: 7, height: 7, borderRadius: 3.5 },
+    textoMeta: { fontSize: 12, fontWeight: '700', color: c.textoSuave },
+    textoVencido: { color: COLORES.error, fontWeight: '800' },
+    vacio: { alignItems: 'center', justifyContent: 'center', marginTop: 60, paddingVertical: 40 },
+    vacioIconWrap: { width: 60, height: 60, borderRadius: 30, backgroundColor: glassMini, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: glassBorder, marginBottom: 12 },
+    textoVacio: { fontSize: 14, fontWeight: '700', color: c.textoSuave },
   });
 }

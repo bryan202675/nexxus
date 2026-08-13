@@ -228,9 +228,38 @@ export default function MensajeriaInternaAdmin() {
     return map;
   }, [empleados]);
 
+  const empleadoPorId = useMemo(() => {
+    const map = new Map();
+    empleados.forEach((emp) => map.set(emp.id, emp));
+    return map;
+  }, [empleados]);
+
+  const obtenerParticipantesDeConv = (c) => {
+    if (!c) return [];
+    if (Array.isArray(c.participantes) && c.participantes.length > 0) {
+      return c.participantes.map((p) => ({
+        ...p,
+        nombre: p.nombre || empleadoPorId.get(p.id)?.nombre || "Empleado",
+        foto: fotoPorEmpleadoId.get(p.id) || p.foto || empleadoPorId.get(p.id)?.foto || "",
+      }));
+    }
+    return (c.participanteIds || []).map((id) => {
+      if (id === user?.id) {
+        return { id: user.id, nombre: perfil?.nombre || user?.email || "Yo", foto: textValue(perfil?.foto_perfil) };
+      }
+      const emp = empleadoPorId.get(id);
+      return {
+        id,
+        nombre: emp?.nombre || "Empleado",
+        foto: emp?.foto || "",
+      };
+    });
+  };
+
   const tituloConversacion = (c) => {
     if (textValue(c.titulo)) return c.titulo;
-    const otros = (c.participantes || []).filter((p) => p.id !== user?.id);
+    const participantesCalculados = obtenerParticipantesDeConv(c);
+    const otros = participantesCalculados.filter((p) => p.id !== user?.id);
     if (otros.length > 0) return otros.map((p) => p.nombre).join(", ");
     return "Conversación";
   };
@@ -245,15 +274,25 @@ export default function MensajeriaInternaAdmin() {
     const adjuntos = adjuntosForzados || [];
     if ((!contenido && adjuntos.length === 0) || !selectedId || enviando) return;
     setEnviando(true);
+    setMensajesError("");
     try {
-      const { error: insertError } = await supabase.from("mensajes").insert({
+      const payload = {
         empresa_id: empresaId,
         conversacion_id: selectedId,
         remitente_id: user.id,
         contenido,
         leido_por: [user.id],
         datos: { remitenteNombre: perfil?.nombre || user.email, adjuntos },
-      });
+      };
+      let { error: insertError } = await supabase.from("mensajes").insert(payload);
+
+      // Fallback dinámico si la tabla mensajes en el esquema de Supabase aún no incluye la columna 'datos'
+      if (insertError && (insertError.message?.includes("datos") || insertError.code === "PGRST204")) {
+        delete (payload as any).datos;
+        const retry = await supabase.from("mensajes").insert(payload);
+        insertError = retry.error;
+      }
+
       if (insertError) throw insertError;
       const { error: updateError } = await supabase
         .from("conversaciones")
@@ -327,18 +366,31 @@ export default function MensajeriaInternaAdmin() {
         ...participantesSeleccionados.map((emp) => ({ id: emp.id, nombre: emp.nombre, foto: emp.foto })),
       ];
       const tipo = seleccionIds.length === 1 ? "directa" : "equipo";
-      const { data: nueva, error: insertError } = await supabase
+      const payload = {
+        empresa_id: empresaId,
+        participante_ids: [user.id, ...seleccionIds],
+        creado_por: user.id,
+        ultimo_mensaje: "",
+        ultimo_mensaje_at: new Date().toISOString(),
+        datos: { tipo, titulo: textValue(tituloNuevo), participantes },
+      };
+      let { data: nueva, error: insertError } = await supabase
         .from("conversaciones")
-        .insert({
-          empresa_id: empresaId,
-          participante_ids: [user.id, ...seleccionIds],
-          creado_por: user.id,
-          ultimo_mensaje: "",
-          ultimo_mensaje_at: new Date().toISOString(),
-          datos: { tipo, titulo: textValue(tituloNuevo), participantes },
-        })
+        .insert(payload)
         .select("id")
         .single();
+
+      if (insertError && (insertError.message?.includes("datos") || insertError.code === "PGRST204")) {
+        delete (payload as any).datos;
+        const retry = await supabase
+          .from("conversaciones")
+          .insert(payload)
+          .select("id")
+          .single();
+        nueva = retry.data;
+        insertError = retry.error;
+      }
+
       if (insertError) throw insertError;
       setShowNuevo(false);
       setSeleccionIds([]);
@@ -469,8 +521,9 @@ export default function MensajeriaInternaAdmin() {
             ) : (
               <ul className="flex flex-col gap-1">
                 {conversaciones.map((c) => {
-                  const otros = (c.participantes || []).filter((p) => p.id !== user?.id);
-                  const fotoPreview = (otros[0] && fotoPorEmpleadoId.get(otros[0].id)) || otros[0]?.foto;
+                  const participantes = obtenerParticipantesDeConv(c);
+                  const otros = participantes.filter((p) => p.id !== user?.id);
+                  const fotoPreview = otros[0]?.foto;
                   const activa = c.id === selectedId;
                   return (
                     <li key={c.id}>
@@ -533,8 +586,8 @@ export default function MensajeriaInternaAdmin() {
               <div className="mb-3 flex items-center gap-3 border-b border-gray-100 pb-3 dark:border-white/10">
                 <Avatar
                   src={(() => {
-                    const otro = (conversacionSeleccionada.participantes || []).find((p) => p.id !== user?.id);
-                    return (otro && fotoPorEmpleadoId.get(otro.id)) || otro?.foto;
+                    const otros = obtenerParticipantesDeConv(conversacionSeleccionada).filter((p) => p.id !== user?.id);
+                    return otros[0]?.foto;
                   })()}
                   name={tituloConversacion(conversacionSeleccionada)}
                   size={10}
@@ -544,7 +597,7 @@ export default function MensajeriaInternaAdmin() {
                     {tituloConversacion(conversacionSeleccionada)}
                   </p>
                   <p className="truncate text-xs text-gray-500 dark:text-white/50">
-                    {(conversacionSeleccionada.participantes || []).map((p) => p.nombre).join(", ")}
+                    {obtenerParticipantesDeConv(conversacionSeleccionada).map((p) => p.nombre).join(", ")}
                   </p>
                 </div>
               </div>
@@ -568,12 +621,19 @@ export default function MensajeriaInternaAdmin() {
                   <div className="flex flex-col gap-2">
                     {mensajes.map((m) => {
                       const esMio = m.remitenteId === user?.id;
+                      const empInfo = empleadoPorId.get(m.remitenteId);
+                      const remitenteNombre = empInfo?.nombre || m.remitenteNombre || "Colaborador";
+                      const remitenteFoto = fotoPorEmpleadoId.get(m.remitenteId) || empInfo?.foto || "";
+
                       return (
-                        <div key={m.id} className={`flex ${esMio ? "justify-end" : "justify-start"}`}>
+                        <div key={m.id} className={`flex items-end gap-2.5 ${esMio ? "justify-end" : "justify-start"}`}>
+                          {!esMio ? (
+                            <Avatar src={remitenteFoto} name={remitenteNombre} size={8} />
+                          ) : null}
                           <div className={`max-w-[75%] ${esMio ? "items-end" : "items-start"} flex flex-col`}>
                             {!esMio ? (
-                              <span className="mb-0.5 ml-1 text-[11px] font-medium text-gray-500 dark:text-white/50">
-                                {m.remitenteNombre}
+                              <span className="mb-0.5 ml-1 text-[11px] font-bold text-navy-700 dark:text-white/80">
+                                {remitenteNombre}
                               </span>
                             ) : null}
                             <div

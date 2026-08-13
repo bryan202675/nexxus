@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  Easing,
   Image,
   Keyboard,
   KeyboardAvoidingView,
@@ -31,6 +32,7 @@ import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
+import { SOMBRAS } from '@/shared/constants/diseno';
 
 const obtenerEmpresaId = (perfil: { empresaId?: string } | null) => {
   const empresaId = perfil?.empresaId || '';
@@ -219,35 +221,9 @@ export default function ChatInterno() {
   const [searchQuery, setSearchQuery] = useState('');
   const [groupName, setGroupName] = useState('');
 
-  // Message & attachments state (multiple attachments preview like WhatsApp)
-  const [input, setInput] = useState('');
-  const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
-  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
-  
-  // Async status
-  const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState('');
+  const modalFadeAnim = useRef(new Animated.Value(0)).current;
+  const modalScaleAnim = useRef(new Animated.Value(0.88)).current;
 
-  // Preferencias locales para silenciar, bloquear y menú de opciones
-  const [mutedConvIds, setMutedConvIds] = useState<string[]>([]);
-  const [blockedConvIds, setBlockedConvIds] = useState<string[]>([]);
-  const [actionMenuConv, setActionMenuConv] = useState<Conversation | null>(null);
-  const [deletingConv, setDeletingConv] = useState(false);
-
-  // Modales y estados para renombrar, abandonar y agregar miembros
-  const [showRenameModal, setShowRenameModal] = useState(false);
-  const [targetConvToRename, setTargetConvToRename] = useState<Conversation | null>(null);
-  const [renameInput, setRenameInput] = useState('');
-
-  const [showAddMembersModal, setShowAddMembersModal] = useState(false);
-  const [targetConvToAddMembers, setTargetConvToAddMembers] = useState<Conversation | null>(null);
-  const [newMembersSelectedIds, setNewMembersSelectedIds] = useState<string[]>([]);
-
-  const scrollRef = useRef<ScrollView>(null);
-  const empresaId = obtenerEmpresaId(perfil);
-
-  // Animaciones de entrada suave al chat
   const chatFadeAnim = useRef(new Animated.Value(0)).current;
   const chatSlideAnim = useRef(new Animated.Value(20)).current;
 
@@ -258,18 +234,225 @@ export default function ChatInterno() {
       Animated.parallel([
         Animated.timing(chatFadeAnim, {
           toValue: 1,
-          duration: 220,
+          duration: 320,
+          easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.spring(chatSlideAnim, {
           toValue: 0,
+          tension: 65,
           friction: 9,
-          tension: 50,
           useNativeDriver: true,
         }),
       ]).start();
     }
   }, [selectedConversationId]);
+
+  useEffect(() => {
+    if (showNewChatModal) {
+      modalFadeAnim.setValue(0);
+      modalScaleAnim.setValue(0.88);
+      Animated.parallel([
+        Animated.timing(modalFadeAnim, {
+          toValue: 1,
+          duration: 260,
+          useNativeDriver: true,
+        }),
+        Animated.spring(modalScaleAnim, {
+          toValue: 1,
+          tension: 70,
+          friction: 9,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [showNewChatModal]);
+
+  const cerrarNuevoChatModalConAnimacion = (cb?: () => void) => {
+    Animated.parallel([
+      Animated.timing(modalFadeAnim, {
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+      Animated.timing(modalScaleAnim, {
+        toValue: 0.88,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowNewChatModal(false);
+      setSelectedUserIds([]);
+      setGroupName('');
+      if (cb) cb();
+    });
+  };
+
+  // Preferencias locales para silenciar, bloquear y menú de opciones
+  const [mutedConvIds, setMutedConvIds] = useState<string[]>([]);
+  const [blockedConvIds, setBlockedConvIds] = useState<string[]>([]);
+  const [actionMenuConv, setActionMenuConv] = useState<Conversation | null>(null);
+  const [deletingConv, setDeletingConv] = useState(false);
+
+  // Modales y estados para renombrar y agregar miembros
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [targetConvToRename, setTargetConvToRename] = useState<Conversation | null>(null);
+  const [renameInput, setRenameInput] = useState('');
+
+  const [showAddMembersModal, setShowAddMembersModal] = useState(false);
+  const [targetConvToAddMembers, setTargetConvToAddMembers] = useState<Conversation | null>(null);
+  const [newMembersSelectedIds, setNewMembersSelectedIds] = useState<string[]>([]);
+
+  const actionFadeAnim = useRef(new Animated.Value(0)).current;
+  const actionScaleAnim = useRef(new Animated.Value(0.88)).current;
+
+  useEffect(() => {
+    if (actionMenuConv) {
+      actionFadeAnim.setValue(0);
+      actionScaleAnim.setValue(0.88);
+      Animated.parallel([
+        Animated.timing(actionFadeAnim, {
+          toValue: 1,
+          duration: 260,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.spring(actionScaleAnim, {
+          toValue: 1,
+          tension: 70,
+          friction: 9,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [actionMenuConv]);
+
+  const cerrarActionMenuModalConAnimacion = (cb?: () => void) => {
+    Animated.parallel([
+      Animated.timing(actionFadeAnim, {
+        toValue: 0,
+        duration: 220,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(actionScaleAnim, {
+        toValue: 0.88,
+        duration: 220,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setActionMenuConv(null);
+      if (cb) cb();
+    });
+  };
+
+  const renameFadeAnim = useRef(new Animated.Value(0)).current;
+  const renameScaleAnim = useRef(new Animated.Value(0.88)).current;
+
+  useEffect(() => {
+    if (showRenameModal) {
+      renameFadeAnim.setValue(0);
+      renameScaleAnim.setValue(0.88);
+      Animated.parallel([
+        Animated.timing(renameFadeAnim, {
+          toValue: 1,
+          duration: 260,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.spring(renameScaleAnim, {
+          toValue: 1,
+          tension: 70,
+          friction: 9,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [showRenameModal]);
+
+  const cerrarRenameModalConAnimacion = (cb?: () => void) => {
+    Animated.parallel([
+      Animated.timing(renameFadeAnim, {
+        toValue: 0,
+        duration: 220,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(renameScaleAnim, {
+        toValue: 0.88,
+        duration: 220,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowRenameModal(false);
+      if (cb) cb();
+    });
+  };
+
+  const addMembersFadeAnim = useRef(new Animated.Value(0)).current;
+  const addMembersScaleAnim = useRef(new Animated.Value(0.88)).current;
+
+  useEffect(() => {
+    if (showAddMembersModal) {
+      addMembersFadeAnim.setValue(0);
+      addMembersScaleAnim.setValue(0.88);
+      Animated.parallel([
+        Animated.timing(addMembersFadeAnim, {
+          toValue: 1,
+          duration: 260,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.spring(addMembersScaleAnim, {
+          toValue: 1,
+          tension: 70,
+          friction: 9,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [showAddMembersModal]);
+
+  const cerrarAddMembersModalConAnimacion = (cb?: () => void) => {
+    Animated.parallel([
+      Animated.timing(addMembersFadeAnim, {
+        toValue: 0,
+        duration: 220,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(addMembersScaleAnim, {
+        toValue: 0.88,
+        duration: 220,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowAddMembersModal(false);
+      if (cb) cb();
+    });
+  };
+
+  // Message & attachments state (multiple attachments preview like WhatsApp)
+  const [input, setInput] = useState('');
+  const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  
+  // Async status
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
+
+
+
+
+
+  const scrollRef = useRef<ScrollView>(null);
+  const empresaId = obtenerEmpresaId(perfil);
+
+
 
   const handleCloseChat = () => {
     Animated.parallel([
@@ -649,7 +832,19 @@ export default function ChatInterno() {
   };
 
   const handleStartConversation = async () => {
-    if (!perfil || !empresaId || selectedUsers.length === 0) return;
+    if (!perfil || !perfil.id) {
+      setError('No se pudo identificar tu perfil de usuario.');
+      return;
+    }
+    if (!empresaId) {
+      setError('No se encontró el identificador de la empresa.');
+      return;
+    }
+    if (selectedUsers.length === 0) {
+      setError('Selecciona al menos un integrante para iniciar.');
+      return;
+    }
+
     setSending(true);
     setError('');
     try {
@@ -658,8 +853,8 @@ export default function ChatInterno() {
         const existing = conversations.find(
           (c) =>
             c.tipo === 'directa' &&
-            c.participanteIds.includes(perfil.id) &&
-            c.participanteIds.includes(other.id)
+            c.participanteIds?.includes(perfil.id) &&
+            c.participanteIds?.includes(other.id)
         );
         if (existing) {
           setSelectedConversationId(existing.id);
@@ -667,19 +862,19 @@ export default function ChatInterno() {
           const created = await useCases.chat.internal.createConversation({
             empresaId,
             tipo: 'directa',
-            titulo: other.nombre,
+            titulo: other.nombre || 'Chat Directo',
             creadoPor: perfil.id,
             participantes: [
               {
                 id: perfil.id,
-                nombre: perfil.nombre,
-                rol: perfil.rol,
+                nombre: perfil.nombre || 'Colaborador',
+                rol: perfil.rol || 'Empleado',
                 foto_perfil: (perfil as any).foto_perfil || (perfil as any).fotoPerfil || (perfil as any).photoURL || (perfil as any).avatarUrl,
               },
               {
                 id: other.id,
-                nombre: other.nombre,
-                rol: other.rol,
+                nombre: other.nombre || 'Colaborador',
+                rol: other.rol || 'Empleado',
                 foto_perfil: other.foto_perfil || other.fotoPerfil || other.photoURL || other.avatarUrl || other.foto,
               },
             ],
@@ -699,18 +894,18 @@ export default function ChatInterno() {
           titulo: title,
           creadoPor: perfil.id,
           participantes: [
-            { id: perfil.id, nombre: perfil.nombre, rol: perfil.rol },
-            ...selectedUsers.map((item) => ({ id: item.id, nombre: item.nombre, rol: item.rol })),
+            { id: perfil.id, nombre: perfil.nombre || 'Colaborador', rol: perfil.rol || 'Empleado' },
+            ...selectedUsers.map((item) => ({ id: item.id, nombre: item.nombre || 'Colaborador', rol: item.rol || 'Empleado' })),
           ],
         });
         setSelectedConversationId(created.id);
       }
-      setSelectedUserIds([]);
       setSearchQuery('');
-      setShowNewChatModal(false);
-      setGroupName('');
-    } catch {
-      setError('No se pudo crear la conversación.');
+      cerrarNuevoChatModalConAnimacion();
+    } catch (err: any) {
+      console.error('[ChatInterno] Error al crear conversación:', err);
+      const msg = err?.message || err?.error_description || err?.details || 'No se pudo crear la conversación.';
+      setError(msg);
     } finally {
       setSending(false);
     }
@@ -903,6 +1098,444 @@ export default function ChatInterno() {
   const glassBg = esOscuro ? 'rgba(15,15,24,0.65)' : 'rgba(255,255,255,0.72)';
   const cardBg = esOscuro ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.85)';
 
+  // Modal Flotante Cristalino para Opciones de Conversación (Silenciar, Bloquear, Borrar, etc)
+  const renderActionMenuModal = () => {
+    if (!actionMenuConv) return null;
+
+    return (
+      <Modal
+        visible={!!actionMenuConv}
+        transparent
+        animationType="none"
+        onRequestClose={() => cerrarActionMenuModalConAnimacion()}
+      >
+        <Animated.View style={[styles.actionMenuOverlay, { opacity: actionFadeAnim }]}>
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => cerrarActionMenuModalConAnimacion()}
+            style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', padding: 20 }}
+          >
+            <Animated.View
+              style={[
+                styles.actionMenuCard,
+                {
+                  backgroundColor: esOscuro ? 'rgba(20,20,32,0.96)' : 'rgba(255,255,255,0.96)',
+                  borderColor: colores.borde,
+                  opacity: actionFadeAnim,
+                  transform: [{ scale: actionScaleAnim }],
+                },
+              ]}
+            >
+              <TouchableOpacity activeOpacity={1} onPress={(e) => (e as any)?.stopPropagation?.()}>
+                <View style={styles.actionMenuHeader}>
+                  <Text style={[styles.actionMenuTitle, { color: colores.texto }]} numberOfLines={1}>
+                    {getTituloConversacion(actionMenuConv, perfil?.id || '', users)}
+                  </Text>
+                  <TouchableOpacity onPress={() => cerrarActionMenuModalConAnimacion()}>
+                    <MaterialIcons name="close" size={20} color={colores.textoSuave} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Option 1: Cambiar Nombre */}
+                <TouchableOpacity
+                  style={styles.actionMenuItem}
+                  onPress={() => cerrarActionMenuModalConAnimacion(() => openRenameModal(actionMenuConv!))}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.actionMenuIconWrap, { backgroundColor: colores.vidrio }]}>
+                    <MaterialIcons name="edit" size={20} color={colores.texto} />
+                  </View>
+                  <View style={styles.actionMenuTextWrap}>
+                    <Text style={[styles.actionMenuItemText, { color: colores.texto }]}>
+                      Modificar nombre
+                    </Text>
+                    <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
+                      {actionMenuConv.tipo === 'equipo' ? 'Cambiar nombre del grupo' : 'Cambiar apodo del contacto'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+
+                {/* Option 2: Silenciar */}
+                <TouchableOpacity
+                  style={styles.actionMenuItem}
+                  onPress={() => toggleMuteConv(actionMenuConv!.id)}
+                  activeOpacity={0.7}
+                >
+                  <View
+                    style={[
+                      styles.actionMenuIconWrap,
+                      { backgroundColor: mutedConvIds.includes(actionMenuConv.id) ? 'rgba(245,158,11,0.15)' : colores.vidrio },
+                    ]}
+                  >
+                    <MaterialIcons
+                      name={mutedConvIds.includes(actionMenuConv.id) ? 'notifications-active' : 'notifications-off'}
+                      size={20}
+                      color={mutedConvIds.includes(actionMenuConv.id) ? '#F59E0B' : colores.texto}
+                    />
+                  </View>
+                  <View style={styles.actionMenuTextWrap}>
+                    <Text style={[styles.actionMenuItemText, { color: colores.texto }]}>
+                      {mutedConvIds.includes(actionMenuConv.id) ? 'Desactivar silencio' : 'Silenciar chat'}
+                    </Text>
+                    <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
+                      {mutedConvIds.includes(actionMenuConv.id) ? 'Recibir notificaciones' : 'Silenciar notificaciones de este chat'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+
+                {/* Option 3: Conditional (Grupo vs Directo) */}
+                {actionMenuConv.tipo === 'equipo' ? (
+                  <>
+                    <TouchableOpacity
+                      style={styles.actionMenuItem}
+                      onPress={() => cerrarActionMenuModalConAnimacion(() => handleChangeGroupPhoto(actionMenuConv!))}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[styles.actionMenuIconWrap, { backgroundColor: colores.vidrio }]}>
+                        <MaterialIcons name="add-a-photo" size={20} color={colores.texto} />
+                      </View>
+                      <View style={styles.actionMenuTextWrap}>
+                        <Text style={[styles.actionMenuItemText, { color: colores.texto }]}>
+                          Cambiar foto del grupo
+                        </Text>
+                        <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
+                          Actualizar la foto de perfil de este grupo
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.actionMenuItem}
+                      onPress={() => cerrarActionMenuModalConAnimacion(() => openAddMembersModal(actionMenuConv!))}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[styles.actionMenuIconWrap, { backgroundColor: colores.vidrio }]}>
+                        <MaterialIcons name="person-add" size={20} color={colores.texto} />
+                      </View>
+                      <View style={styles.actionMenuTextWrap}>
+                        <Text style={[styles.actionMenuItemText, { color: colores.texto }]}>
+                          Añadir personas
+                        </Text>
+                        <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
+                          Agregar más integrantes a este equipo
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.actionMenuItem}
+                      onPress={() => cerrarActionMenuModalConAnimacion(() => handleLeaveGroup(actionMenuConv!))}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[styles.actionMenuIconWrap, { backgroundColor: 'rgba(239,68,68,0.15)' }]}>
+                        <MaterialIcons name="logout" size={20} color="#EF4444" />
+                      </View>
+                      <View style={styles.actionMenuTextWrap}>
+                        <Text style={[styles.actionMenuItemText, { color: '#EF4444' }]}>
+                          Abandonar grupo
+                        </Text>
+                        <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
+                          Salir de esta conversación de equipo
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.actionMenuItem}
+                    onPress={() => toggleBlockConv(actionMenuConv.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      style={[
+                        styles.actionMenuIconWrap,
+                        { backgroundColor: blockedConvIds.includes(actionMenuConv.id) ? 'rgba(239,68,68,0.15)' : colores.vidrio },
+                      ]}
+                    >
+                      <MaterialIcons
+                        name={blockedConvIds.includes(actionMenuConv.id) ? 'lock-open' : 'block'}
+                        size={20}
+                        color={blockedConvIds.includes(actionMenuConv.id) ? '#EF4444' : colores.texto}
+                      />
+                    </View>
+                    <View style={styles.actionMenuTextWrap}>
+                      <Text style={[styles.actionMenuItemText, { color: colores.texto }]}>
+                        {blockedConvIds.includes(actionMenuConv.id) ? 'Desbloquear chat' : 'Bloquear chat'}
+                      </Text>
+                      <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
+                        {blockedConvIds.includes(actionMenuConv.id) ? 'Permitir enviar mensajes nuevamente' : 'Impedir el envío de nuevos mensajes'}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+
+                <View style={[styles.actionMenuDivider, { backgroundColor: colores.borde }]} />
+
+                <TouchableOpacity
+                  style={styles.actionMenuItem}
+                  onPress={() => cerrarActionMenuModalConAnimacion(() => handleDeleteConv(actionMenuConv!))}
+                  activeOpacity={0.7}
+                  disabled={deletingConv}
+                >
+                  <View style={[styles.actionMenuIconWrap, { backgroundColor: 'rgba(239,68,68,0.15)' }]}>
+                    {deletingConv ? (
+                      <ActivityIndicator size="small" color="#EF4444" />
+                    ) : (
+                      <MaterialIcons name="delete-outline" size={20} color="#EF4444" />
+                    )}
+                  </View>
+                  <View style={styles.actionMenuTextWrap}>
+                    <Text style={[styles.actionMenuItemText, { color: '#EF4444' }]}>
+                      Borrar conversación
+                    </Text>
+                    <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
+                      Eliminar el historial completo de mensajes
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              </TouchableOpacity>
+            </Animated.View>
+          </TouchableOpacity>
+        </Animated.View>
+      </Modal>
+    );
+  };
+
+  // Modal Flotante Cristalino para Renombrar Conversación / Contacto
+  const renderRenameModal = () => {
+    if (!showRenameModal || !targetConvToRename) return null;
+
+    return (
+      <Modal
+        visible={showRenameModal}
+        transparent
+        animationType="none"
+        onRequestClose={() => cerrarRenameModalConAnimacion()}
+      >
+        <Animated.View style={[styles.actionMenuOverlay, { opacity: renameFadeAnim }]}>
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => cerrarRenameModalConAnimacion()}
+            style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', padding: 20 }}
+          >
+            <Animated.View
+              style={[
+                styles.actionMenuCard,
+                {
+                  backgroundColor: esOscuro ? 'rgba(20,20,32,0.96)' : 'rgba(255,255,255,0.96)',
+                  borderColor: colores.borde,
+                  opacity: renameFadeAnim,
+                  transform: [{ scale: renameScaleAnim }],
+                },
+              ]}
+            >
+              <TouchableOpacity activeOpacity={1} onPress={(e) => (e as any)?.stopPropagation?.()}>
+                <View style={styles.actionMenuHeader}>
+                  <Text style={[styles.actionMenuTitle, { color: colores.texto, fontWeight: '900' }]}>
+                    {targetConvToRename.tipo === 'equipo' ? 'Renombrar equipo' : 'Editar nombre de contacto'}
+                  </Text>
+                  <TouchableOpacity onPress={() => cerrarRenameModalConAnimacion()}>
+                    <MaterialIcons name="close" size={20} color={colores.textoSuave} />
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={{ fontSize: 13, color: colores.textoSuave, marginTop: 2, marginBottom: 12 }}>
+                  Ingresa el nuevo apodo o nombre visible para esta conversación.
+                </Text>
+
+                <TextInput
+                  value={renameInput}
+                  onChangeText={setRenameInput}
+                  placeholder="Escribe el nombre personalizado..."
+                  placeholderTextColor={colores.textoSuave}
+                  style={[
+                    styles.groupInput,
+                    {
+                      color: colores.texto,
+                      borderColor: colores.borde,
+                      backgroundColor: colores.vidrio,
+                      borderRadius: 20,
+                      height: 48,
+                      paddingHorizontal: 16,
+                      marginBottom: 16,
+                    },
+                  ]}
+                  autoFocus
+                />
+
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10 }}>
+                  <BotonAnimado
+                    onPress={() => cerrarRenameModalConAnimacion()}
+                    scaleTo={0.96}
+                    style={[
+                      styles.btnSecondary,
+                      { borderColor: colores.borde, borderRadius: 16, height: 42, paddingHorizontal: 18 },
+                    ]}
+                  >
+                    <Text style={{ color: colores.texto, fontSize: 13, fontWeight: '800' }}>Cancelar</Text>
+                  </BotonAnimado>
+                  <BotonAnimado
+                    disabled={sending || !renameInput.trim()}
+                    onPress={() => cerrarRenameModalConAnimacion(() => handleSaveRename())}
+                    scaleTo={0.96}
+                    style={[
+                      styles.createBtn,
+                      {
+                        backgroundColor: esOscuro ? '#FFFFFF' : '#000000',
+                        borderRadius: 16,
+                        height: 42,
+                        paddingHorizontal: 20,
+                      },
+                      (sending || !renameInput.trim()) && { opacity: 0.5 },
+                    ]}
+                  >
+                    {sending ? (
+                      <ActivityIndicator size="small" color={esOscuro ? '#000000' : '#FFFFFF'} />
+                    ) : (
+                      <Text style={{ color: esOscuro ? '#000000' : '#FFFFFF', fontSize: 13, fontWeight: '900' }}>
+                        Guardar cambios
+                      </Text>
+                    )}
+                  </BotonAnimado>
+                </View>
+              </TouchableOpacity>
+            </Animated.View>
+          </TouchableOpacity>
+        </Animated.View>
+      </Modal>
+    );
+  };
+
+  // Modal Flotante Cristalino para Añadir Personas al Grupo
+  const renderAddMembersModal = () => {
+    if (!showAddMembersModal || !targetConvToAddMembers) return null;
+
+    const availableUsers = users.filter((u) => !targetConvToAddMembers.participanteIds?.includes(u.id));
+
+    return (
+      <Modal
+        visible={showAddMembersModal}
+        transparent
+        animationType="none"
+        onRequestClose={() => cerrarAddMembersModalConAnimacion()}
+      >
+        <Animated.View style={[styles.actionMenuOverlay, { opacity: addMembersFadeAnim }]}>
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => cerrarAddMembersModalConAnimacion()}
+            style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', padding: 20 }}
+          >
+            <Animated.View
+              style={[
+                styles.actionMenuCard,
+                {
+                  backgroundColor: esOscuro ? 'rgba(20,20,32,0.96)' : 'rgba(255,255,255,0.96)',
+                  borderColor: colores.borde,
+                  maxHeight: '80%',
+                  opacity: addMembersFadeAnim,
+                  transform: [{ scale: addMembersScaleAnim }],
+                },
+              ]}
+            >
+              <TouchableOpacity activeOpacity={1} onPress={(e) => (e as any)?.stopPropagation?.()}>
+                <View style={styles.actionMenuHeader}>
+                  <Text style={[styles.actionMenuTitle, { color: colores.texto, fontWeight: '900' }]}>
+                    Añadir personas al grupo
+                  </Text>
+                  <TouchableOpacity onPress={() => cerrarAddMembersModalConAnimacion()}>
+                    <MaterialIcons name="close" size={20} color={colores.textoSuave} />
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView style={{ maxHeight: 280, marginVertical: 12 }}>
+                  {availableUsers.length === 0 ? (
+                    <Text style={[styles.noResultsText, { color: colores.textoSuave, textAlign: 'center', marginVertical: 16 }]}>
+                      Todos los integrantes ya pertenecen a este grupo.
+                    </Text>
+                  ) : (
+                    availableUsers.map((u) => {
+                      const selected = newMembersSelectedIds.includes(u.id);
+                      return (
+                        <TouchableOpacity
+                          key={u.id}
+                          onPress={() => toggleNewMemberSelection(u.id)}
+                          style={[
+                            styles.userOption,
+                            selected && { backgroundColor: esOscuro ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' },
+                          ]}
+                          activeOpacity={0.8}
+                        >
+                          <View style={styles.userAvatar}>
+                            <Text style={styles.avatarLetter}>{(u.nombre || 'U').charAt(0).toUpperCase()}</Text>
+                          </View>
+                          <View style={styles.userInfo}>
+                            <Text style={[styles.userName, { color: colores.texto, fontWeight: '800' }]} numberOfLines={1}>
+                              {u.nombre}
+                            </Text>
+                            <Text style={[styles.userRole, { color: colores.textoSuave }]} numberOfLines={1}>
+                              {u.correo || u.rol || 'Colaborador'}
+                            </Text>
+                          </View>
+                          <View
+                            style={[
+                              styles.checkbox,
+                              selected && {
+                                backgroundColor: esOscuro ? '#FFFFFF' : '#000000',
+                                borderColor: esOscuro ? '#FFFFFF' : '#000000',
+                              },
+                            ]}
+                          >
+                            {selected ? <MaterialIcons name="check" size={14} color={esOscuro ? '#000000' : '#FFFFFF'} /> : null}
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })
+                  )}
+                </ScrollView>
+
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
+                  <BotonAnimado
+                    onPress={() => cerrarAddMembersModalConAnimacion()}
+                    scaleTo={0.96}
+                    style={[
+                      styles.btnSecondary,
+                      { borderColor: colores.borde, borderRadius: 16, height: 42, paddingHorizontal: 18 },
+                    ]}
+                  >
+                    <Text style={{ color: colores.texto, fontSize: 13, fontWeight: '800' }}>Cancelar</Text>
+                  </BotonAnimado>
+                  <BotonAnimado
+                    disabled={sending || newMembersSelectedIds.length === 0}
+                    onPress={() => cerrarAddMembersModalConAnimacion(() => handleSaveAddMembers())}
+                    scaleTo={0.96}
+                    style={[
+                      styles.createBtn,
+                      {
+                        backgroundColor: esOscuro ? '#FFFFFF' : '#000000',
+                        borderRadius: 16,
+                        height: 42,
+                        paddingHorizontal: 20,
+                      },
+                      (sending || newMembersSelectedIds.length === 0) && { opacity: 0.5 },
+                    ]}
+                  >
+                    {sending ? (
+                      <ActivityIndicator size="small" color={esOscuro ? '#000000' : '#FFFFFF'} />
+                    ) : (
+                      <Text style={{ color: esOscuro ? '#000000' : '#FFFFFF', fontSize: 13, fontWeight: '900' }}>
+                        Añadir ({newMembersSelectedIds.length})
+                      </Text>
+                    )}
+                  </BotonAnimado>
+                </View>
+              </TouchableOpacity>
+            </Animated.View>
+          </TouchableOpacity>
+        </Animated.View>
+      </Modal>
+    );
+  };
+
   if (!perfil || !empresaId) {
     return (
       <SafeAreaView style={[styles.contenedor, { backgroundColor: colores.fondo }]}>
@@ -937,8 +1570,9 @@ export default function ChatInterno() {
           <FondoMobilePremium />
         </View>
 
-        {/* Header de conversación activa utilizando el componente uniforme NavbarEnterprise */}
-        <NavbarEnterprise
+        <Animated.View style={{ flex: 1, opacity: chatFadeAnim, transform: [{ translateY: chatSlideAnim }] }}>
+          {/* Header de conversación activa utilizando el componente uniforme NavbarEnterprise */}
+          <NavbarEnterprise
           titulo={activeTitle}
           subtitulo={selectedConversation.tipo === 'equipo' ? `${selectedConversation.participantes?.length || 2} miembros` : 'Chat directo'}
           mostrarAtras
@@ -965,8 +1599,7 @@ export default function ChatInterno() {
           </TouchableOpacity>
         ) : null}
 
-        <Animated.View style={[styles.flex, { opacity: chatFadeAnim, transform: [{ translateY: chatSlideAnim }] }]}>
-          <KeyboardAvoidingView behavior={undefined} style={styles.flex}>
+        <KeyboardAvoidingView behavior={undefined} style={styles.flex}>
           {/* Mensajes del chat */}
           <ScrollView
             ref={scrollRef}
@@ -1007,16 +1640,16 @@ export default function ChatInterno() {
                     style={[
                       styles.messageBubble,
                       own
-                        ? [styles.bubbleOwn, { backgroundColor: esOscuro ? 'rgba(124,58,237,0.85)' : 'rgba(124,58,237,0.92)' }]
+                        ? [styles.bubbleOwn, { backgroundColor: esOscuro ? '#FFFFFF' : '#000000', borderColor: esOscuro ? '#FFFFFF' : '#000000' }]
                         : [styles.bubbleOther, { backgroundColor: cardBg, borderColor: colores.borde }],
                     ]}
                   >
                     {!own ? (
-                      <Text style={[styles.senderName, { color: colores.primarioClaro }]}>{senderName}</Text>
+                      <Text style={[styles.senderName, { color: colores.textoSecundario }]}>{senderName}</Text>
                     ) : null}
                     
                     {message.texto ? (
-                      <Text style={own ? styles.textOwn : [styles.textOther, { color: colores.texto }]}>
+                      <Text style={own ? [styles.textOwn, { color: esOscuro ? '#000000' : '#FFFFFF' }] : [styles.textOther, { color: colores.texto }]}>
                         {message.texto}
                       </Text>
                     ) : null}
@@ -1054,15 +1687,15 @@ export default function ChatInterno() {
                               setPreviewImageUrl(attachment.url);
                             }
                           }}
-                          style={[styles.attachmentCard, { borderColor: own ? 'rgba(255,255,255,0.2)' : colores.borde }]}
+                          style={[styles.attachmentCard, { borderColor: own ? (esOscuro ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)') : colores.borde }]}
                           activeOpacity={0.8}
                         >
-                          <MaterialIcons name="picture-as-pdf" size={24} color={own ? '#FFFFFF' : '#EF4444'} />
+                          <MaterialIcons name="picture-as-pdf" size={24} color={own ? (esOscuro ? '#000000' : '#FFFFFF') : '#EF4444'} />
                           <View style={styles.attachmentCopy}>
-                            <Text style={[styles.attachmentName, { color: own ? '#FFFFFF' : colores.texto }]} numberOfLines={1}>
+                            <Text style={[styles.attachmentName, { color: own ? (esOscuro ? '#000000' : '#FFFFFF') : colores.texto }]} numberOfLines={1}>
                               {attachment.nombre}
                             </Text>
-                            <Text style={[styles.attachmentMeta, { color: own ? 'rgba(255,255,255,0.7)' : colores.textoSuave }]}>
+                            <Text style={[styles.attachmentMeta, { color: own ? (esOscuro ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.7)') : colores.textoSuave }]}>
                               {formatBytes(attachment.size)}
                             </Text>
                           </View>
@@ -1070,7 +1703,7 @@ export default function ChatInterno() {
                       );
                     })}
 
-                    <Text style={own ? styles.timeOwn : [styles.timeOther, { color: colores.textoSuave }]}>
+                    <Text style={own ? [styles.timeOwn, { color: esOscuro ? 'rgba(0,0,0,0.65)' : 'rgba(255,255,255,0.75)' }] : [styles.timeOther, { color: colores.textoSuave }]}>
                       {new Date(message.timestamp).toLocaleTimeString('es-SV', { hour: '2-digit', minute: '2-digit' })}
                     </Text>
                   </View>
@@ -1138,23 +1771,56 @@ export default function ChatInterno() {
               style={[
                 styles.blockedBanner,
                 {
-                  backgroundColor: glassBg,
-                  borderColor: '#EF4444',
+                  backgroundColor: esOscuro ? 'rgba(239, 68, 68, 0.08)' : 'rgba(239, 68, 68, 0.05)',
+                  borderColor: 'rgba(239, 68, 68, 0.35)',
+                  borderRadius: 24,
+                  padding: 16,
+                  marginHorizontal: 16,
                   marginBottom: alturaTeclado > 0 ? alturaTeclado + 6 : (Platform.OS === 'ios' ? 88 : 78),
+                  ...SOMBRAS.flotante,
                 },
               ]}
             >
-              <MaterialIcons name="block" size={20} color="#EF4444" />
-              <Text style={[styles.blockedText, { color: colores.texto }]}>
-                Esta conversación está bloqueada.
-              </Text>
-              <TouchableOpacity
-                onPress={() => toggleBlockConv(selectedConversation.id)}
-                style={styles.unblockBtn}
-                activeOpacity={0.8}
+              <View
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 21,
+                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: 1,
+                  borderColor: 'rgba(239, 68, 68, 0.3)',
+                }}
               >
-                <Text style={styles.unblockText}>Desbloquear</Text>
-              </TouchableOpacity>
+                <MaterialIcons name="security" size={22} color="#EF4444" />
+              </View>
+
+              <View style={{ flex: 1, marginHorizontal: 10 }}>
+                <Text style={{ fontSize: 14, fontWeight: '900', color: colores.texto }}>
+                  Conversación bloqueada
+                </Text>
+                <Text style={{ fontSize: 12, color: colores.textoSuave, marginTop: 2 }} numberOfLines={1}>
+                  No se pueden enviar ni recibir mensajes.
+                </Text>
+              </View>
+
+              <BotonAnimado
+                onPress={() => toggleBlockConv(selectedConversation.id)}
+                scaleTo={0.96}
+                style={{
+                  backgroundColor: '#EF4444',
+                  borderRadius: 16,
+                  height: 40,
+                  paddingHorizontal: 14,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <MaterialIcons name="lock-open" size={16} color="#FFFFFF" />
+                <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '900' }}>Desbloquear</Text>
+              </BotonAnimado>
             </View>
           ) : (
             <View
@@ -1190,14 +1856,15 @@ export default function ChatInterno() {
               onPress={sendMessage}
               style={[
                 styles.sendBtn,
+                { backgroundColor: esOscuro ? '#FFFFFF' : '#000000' },
                 (sending || (!input.trim() && pendingAttachments.length === 0)) && styles.sendBtnDisabled,
               ]}
               activeOpacity={0.8}
             >
               {sending ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <ActivityIndicator size="small" color={esOscuro ? '#000000' : '#FFFFFF'} />
               ) : (
-                <MaterialIcons name="send" size={18} color="#FFFFFF" />
+                <MaterialIcons name="send" size={18} color={esOscuro ? '#000000' : '#FFFFFF'} />
               )}
             </TouchableOpacity>
           </View>
@@ -1248,6 +1915,11 @@ export default function ChatInterno() {
             </TouchableOpacity>
           </Modal>
         ) : null}
+
+        {/* Modales de opciones, renombrar y añadir integrantes dentro del chat activo */}
+        {renderActionMenuModal()}
+        {renderRenameModal()}
+        {renderAddMembersModal()}
       </SafeAreaView>
     );
   }
@@ -1295,10 +1967,10 @@ export default function ChatInterno() {
             setGroupName('');
             setShowNewChatModal(true);
           }}
-          style={styles.newChatBtn}
+          style={[styles.newChatBtn, { backgroundColor: esOscuro ? '#FFFFFF' : '#000000', borderColor: esOscuro ? '#FFFFFF' : '#000000' }]}
           activeOpacity={0.85}
         >
-          <MaterialIcons name="add-comment" size={20} color="#FFFFFF" />
+          <MaterialIcons name="add-comment" size={20} color={esOscuro ? '#000000' : '#FFFFFF'} />
         </TouchableOpacity>
       </View>
 
@@ -1307,37 +1979,41 @@ export default function ChatInterno() {
         <Modal
           visible={showNewChatModal}
           transparent
-          animationType="slide"
-          onRequestClose={() => {
-            setShowNewChatModal(false);
-            setSelectedUserIds([]);
-            setGroupName('');
-          }}
+          animationType="none"
+          onRequestClose={() => cerrarNuevoChatModalConAnimacion()}
         >
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={() => setShowNewChatModal(false)}
-            style={styles.actionMenuOverlay}
-          >
+          <Animated.View style={[styles.actionMenuOverlay, { opacity: modalFadeAnim }]}>
             <TouchableOpacity
               activeOpacity={1}
-              onPress={(e) => (e as any)?.stopPropagation?.()}
+              onPress={() => cerrarNuevoChatModalConAnimacion()}
+              style={StyleSheet.absoluteFill}
+            />
+
+            <Animated.View
               style={[
                 styles.actionMenuCard,
-                { backgroundColor: esOscuro ? 'rgba(24,24,38,0.96)' : 'rgba(255,255,255,0.96)', borderColor: colores.borde, maxHeight: '85%' },
+                {
+                  backgroundColor: esOscuro ? 'rgba(10, 10, 24, 0.94)' : 'rgba(255, 255, 255, 0.96)',
+                  borderColor: esOscuro ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)',
+                  transform: [{ scale: modalScaleAnim }],
+                  maxWidth: 440,
+                  borderRadius: 32,
+                  padding: 22,
+                  maxHeight: '82%',
+                },
               ]}
             >
               <View style={styles.actionMenuHeader}>
-                <Text style={[styles.actionMenuTitle, { color: colores.texto }]}>
+                <Text style={[styles.actionMenuTitle, { color: esOscuro ? '#FFFFFF' : '#000000', fontSize: 18, fontWeight: '900' }]}>
                   Nueva conversación
                 </Text>
-                <TouchableOpacity onPress={() => setShowNewChatModal(false)}>
-                  <MaterialIcons name="close" size={20} color={colores.textoSuave} />
+                <TouchableOpacity onPress={() => cerrarNuevoChatModalConAnimacion()}>
+                  <MaterialIcons name="close" size={22} color={colores.textoSuave} />
                 </TouchableOpacity>
               </View>
 
               {/* Búsqueda dentro del modal */}
-              <View style={[styles.searchBox, { backgroundColor: cardBg, borderColor: colores.borde, marginVertical: 6 }]}>
+              <View style={[styles.searchBox, { backgroundColor: cardBg, borderColor: colores.borde, marginVertical: 6, borderRadius: 20 }]}>
                 <MaterialIcons name="search" size={18} color={colores.textoSuave} />
                 <TextInput
                   value={searchQuery}
@@ -1357,9 +2033,15 @@ export default function ChatInterno() {
               {selectedUsers.length > 0 ? (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectedRow}>
                   {selectedUsers.map((user) => (
-                    <TouchableOpacity key={user.id} onPress={() => toggleSelectedUser(user.id)} style={styles.userChip}>
-                      <Text style={styles.chipText} numberOfLines={1}>{user.nombre}</Text>
-                      <MaterialIcons name="close" size={14} color="#FFFFFF" />
+                    <TouchableOpacity
+                      key={user.id}
+                      onPress={() => toggleSelectedUser(user.id)}
+                      style={[styles.userChip, { backgroundColor: esOscuro ? '#FFFFFF' : '#000000' }]}
+                    >
+                      <Text style={[styles.chipText, { color: esOscuro ? '#000000' : '#FFFFFF', fontWeight: '800' }]} numberOfLines={1}>
+                        {user.nombre}
+                      </Text>
+                      <MaterialIcons name="close" size={14} color={esOscuro ? '#000000' : '#FFFFFF'} />
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
@@ -1372,7 +2054,7 @@ export default function ChatInterno() {
                   onChangeText={setGroupName}
                   placeholder="Nombre del grupo (opcional)"
                   placeholderTextColor={colores.textoSuave}
-                  style={[styles.groupInput, { color: colores.texto, borderColor: colores.borde, marginVertical: 6 }]}
+                  style={[styles.groupInput, { color: colores.texto, borderColor: colores.borde, marginVertical: 6, borderRadius: 16 }]}
                 />
               ) : null}
 
@@ -1390,7 +2072,7 @@ export default function ChatInterno() {
                       <TouchableOpacity
                         key={user.id}
                         onPress={() => toggleSelectedUser(user.id)}
-                        style={[styles.userOption, selected && styles.userOptionSelected]}
+                        style={[styles.userOption, selected && { backgroundColor: esOscuro ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}
                         activeOpacity={0.8}
                       >
                         <View style={styles.userAvatar}>
@@ -1401,15 +2083,23 @@ export default function ChatInterno() {
                           )}
                         </View>
                         <View style={styles.userInfo}>
-                          <Text style={[styles.userName, { color: colores.texto }]} numberOfLines={1}>
+                          <Text style={[styles.userName, { color: colores.texto, fontWeight: '800' }]} numberOfLines={1}>
                             {user.nombre}
                           </Text>
                           <Text style={[styles.userRole, { color: colores.textoSuave }]} numberOfLines={1}>
                             {user.correo || user.rol || 'Colaborador'}
                           </Text>
                         </View>
-                        <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
-                          {selected ? <MaterialIcons name="check" size={14} color="#FFFFFF" /> : null}
+                        <View
+                          style={[
+                            styles.checkbox,
+                            selected && {
+                              backgroundColor: esOscuro ? '#FFFFFF' : '#000000',
+                              borderColor: esOscuro ? '#FFFFFF' : '#000000',
+                            },
+                          ]}
+                        >
+                          {selected ? <MaterialIcons name="check" size={14} color={esOscuro ? '#000000' : '#FFFFFF'} /> : null}
                         </View>
                       </TouchableOpacity>
                     );
@@ -1419,20 +2109,41 @@ export default function ChatInterno() {
 
               {/* Botón de acción para crear chat o grupo */}
               {selectedUsers.length > 0 ? (
-                <TouchableOpacity
+                <BotonAnimado
                   disabled={sending}
                   onPress={handleStartConversation}
-                  style={[styles.createBtn, { marginTop: 8 }]}
-                  activeOpacity={0.85}
+                  scaleTo={0.96}
+                  style={[
+                    styles.createBtn,
+                    {
+                      backgroundColor: esOscuro ? '#FFFFFF' : '#000000',
+                      borderRadius: 20,
+                      height: 48,
+                      marginTop: 10,
+                    },
+                    sending && { opacity: 0.8 },
+                  ]}
                 >
-                  <MaterialIcons name={selectedUsers.length > 1 ? 'group-add' : 'chat'} size={18} color="#FFFFFF" />
-                  <Text style={styles.createBtnText}>
-                    {selectedUsers.length > 1 ? 'Crear chat de grupo' : 'Iniciar conversación'}
+                  {sending ? (
+                    <ActivityIndicator size="small" color={esOscuro ? '#000000' : '#FFFFFF'} />
+                  ) : (
+                    <MaterialIcons
+                      name={selectedUsers.length > 1 ? 'group-add' : 'chat'}
+                      size={19}
+                      color={esOscuro ? '#000000' : '#FFFFFF'}
+                    />
+                  )}
+                  <Text style={[styles.createBtnText, { color: esOscuro ? '#000000' : '#FFFFFF', fontWeight: '900', fontSize: 14 }]}>
+                    {sending
+                      ? 'Creando conversación...'
+                      : selectedUsers.length > 1
+                      ? 'Crear chat de grupo'
+                      : 'Iniciar conversación'}
                   </Text>
-                </TouchableOpacity>
+                </BotonAnimado>
               ) : null}
-            </TouchableOpacity>
-          </TouchableOpacity>
+            </Animated.View>
+          </Animated.View>
         </Modal>
       ) : null}
 
@@ -1511,343 +2222,13 @@ export default function ChatInterno() {
         )}
       </ScrollView>
 
-      {/* Modal de opciones de conversación (Silenciar, Bloquear, Borrar) */}
-      {actionMenuConv ? (
-        <Modal
-          visible={!!actionMenuConv}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setActionMenuConv(null)}
-        >
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={() => setActionMenuConv(null)}
-            style={styles.actionMenuOverlay}
-          >
-            <TouchableOpacity
-              activeOpacity={1}
-              onPress={(e) => (e as any)?.stopPropagation?.()}
-              style={[
-                styles.actionMenuCard,
-                { backgroundColor: esOscuro ? 'rgba(24,24,38,0.96)' : 'rgba(255,255,255,0.96)', borderColor: colores.borde },
-              ]}
-            >
-              <View style={styles.actionMenuHeader}>
-                <Text style={[styles.actionMenuTitle, { color: colores.texto }]} numberOfLines={1}>
-                  {getTituloConversacion(actionMenuConv, perfil.id, users)}
-                </Text>
-                <TouchableOpacity onPress={() => setActionMenuConv(null)}>
-                  <MaterialIcons name="close" size={20} color={colores.textoSuave} />
-                </TouchableOpacity>
-              </View>
+      {/* Modal de opciones de conversación (Silenciar, Bloquear, Borrar, etc) */}
+      {renderActionMenuModal()}
 
-              {/* Option 1: Cambiar Nombre */}
-              <TouchableOpacity
-                style={styles.actionMenuItem}
-                onPress={() => openRenameModal(actionMenuConv)}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.actionMenuIconWrap, { backgroundColor: colores.vidrio }]}>
-                  <MaterialIcons name="edit" size={20} color={colores.texto} />
-                </View>
-                <View style={styles.actionMenuTextWrap}>
-                  <Text style={[styles.actionMenuItemText, { color: colores.texto }]}>
-                    Modificar nombre
-                  </Text>
-                  <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
-                    {actionMenuConv.tipo === 'equipo' ? 'Cambiar nombre del grupo' : 'Cambiar apodo del contacto'}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              {/* Option 2: Silenciar */}
-              <TouchableOpacity
-                style={styles.actionMenuItem}
-                onPress={() => toggleMuteConv(actionMenuConv.id)}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.actionMenuIconWrap, { backgroundColor: mutedConvIds.includes(actionMenuConv.id) ? 'rgba(245,158,11,0.15)' : colores.vidrio }]}>
-                  <MaterialIcons
-                    name={mutedConvIds.includes(actionMenuConv.id) ? 'notifications-active' : 'notifications-off'}
-                    size={20}
-                    color={mutedConvIds.includes(actionMenuConv.id) ? '#F59E0B' : colores.texto}
-                  />
-                </View>
-                <View style={styles.actionMenuTextWrap}>
-                  <Text style={[styles.actionMenuItemText, { color: colores.texto }]}>
-                    {mutedConvIds.includes(actionMenuConv.id) ? 'Desactivar silencio' : 'Silenciar chat'}
-                  </Text>
-                  <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
-                    {mutedConvIds.includes(actionMenuConv.id) ? 'Recibir notificaciones' : 'Silenciar notificaciones de este chat'}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              {/* Option 3: Conditional (Grupo -> Cambiar Foto, Añadir miembros & Abandonar | Directo -> Bloquear) */}
-              {actionMenuConv.tipo === 'equipo' ? (
-                <>
-                  <TouchableOpacity
-                    style={styles.actionMenuItem}
-                    onPress={() => handleChangeGroupPhoto(actionMenuConv)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={[styles.actionMenuIconWrap, { backgroundColor: colores.vidrio }]}>
-                      <MaterialIcons name="add-a-photo" size={20} color={colores.texto} />
-                    </View>
-                    <View style={styles.actionMenuTextWrap}>
-                      <Text style={[styles.actionMenuItemText, { color: colores.texto }]}>
-                        Cambiar foto del grupo
-                      </Text>
-                      <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
-                        Actualizar la foto de perfil de este grupo
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.actionMenuItem}
-                    onPress={() => openAddMembersModal(actionMenuConv)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={[styles.actionMenuIconWrap, { backgroundColor: colores.vidrio }]}>
-                      <MaterialIcons name="person-add" size={20} color={colores.texto} />
-                    </View>
-                    <View style={styles.actionMenuTextWrap}>
-                      <Text style={[styles.actionMenuItemText, { color: colores.texto }]}>
-                        Añadir personas
-                      </Text>
-                      <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
-                        Agregar más integrantes a este equipo
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.actionMenuItem}
-                    onPress={() => handleLeaveGroup(actionMenuConv)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={[styles.actionMenuIconWrap, { backgroundColor: 'rgba(239,68,68,0.15)' }]}>
-                      <MaterialIcons name="logout" size={20} color="#EF4444" />
-                    </View>
-                    <View style={styles.actionMenuTextWrap}>
-                      <Text style={[styles.actionMenuItemText, { color: '#EF4444' }]}>
-                        Abandonar grupo
-                      </Text>
-                      <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
-                        Salir de esta conversación de equipo
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <TouchableOpacity
-                  style={styles.actionMenuItem}
-                  onPress={() => toggleBlockConv(actionMenuConv.id)}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.actionMenuIconWrap, { backgroundColor: blockedConvIds.includes(actionMenuConv.id) ? 'rgba(239,68,68,0.15)' : colores.vidrio }]}>
-                    <MaterialIcons
-                      name={blockedConvIds.includes(actionMenuConv.id) ? 'lock-open' : 'block'}
-                      size={20}
-                      color={blockedConvIds.includes(actionMenuConv.id) ? '#EF4444' : colores.texto}
-                    />
-                  </View>
-                  <View style={styles.actionMenuTextWrap}>
-                    <Text style={[styles.actionMenuItemText, { color: colores.texto }]}>
-                      {blockedConvIds.includes(actionMenuConv.id) ? 'Desbloquear chat' : 'Bloquear chat'}
-                    </Text>
-                    <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
-                      {blockedConvIds.includes(actionMenuConv.id) ? 'Permitir enviar mensajes nuevamente' : 'Impedir el envío de nuevos mensajes'}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              )}
-
-              <View style={[styles.actionMenuDivider, { backgroundColor: colores.borde }]} />
-
-              <TouchableOpacity
-                style={styles.actionMenuItem}
-                onPress={() => handleDeleteConv(actionMenuConv)}
-                activeOpacity={0.7}
-                disabled={deletingConv}
-              >
-                <View style={[styles.actionMenuIconWrap, { backgroundColor: 'rgba(239,68,68,0.15)' }]}>
-                  {deletingConv ? (
-                    <ActivityIndicator size="small" color="#EF4444" />
-                  ) : (
-                    <MaterialIcons name="delete-outline" size={20} color="#EF4444" />
-                  )}
-                </View>
-                <View style={styles.actionMenuTextWrap}>
-                  <Text style={[styles.actionMenuItemText, { color: '#EF4444' }]}>
-                    Borrar conversación
-                  </Text>
-                  <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
-                    Eliminar el historial completo de mensajes
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </Modal>
-      ) : null}
-
-      {/* Modal para renombrar conversación o contacto */}
-      {showRenameModal && targetConvToRename ? (
-        <Modal
-          visible={showRenameModal}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowRenameModal(false)}
-        >
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={() => setShowRenameModal(false)}
-            style={styles.actionMenuOverlay}
-          >
-            <TouchableOpacity
-              activeOpacity={1}
-              onPress={(e) => (e as any)?.stopPropagation?.()}
-              style={[
-                styles.actionMenuCard,
-                { backgroundColor: esOscuro ? 'rgba(24,24,38,0.96)' : 'rgba(255,255,255,0.96)', borderColor: colores.borde },
-              ]}
-            >
-              <View style={styles.actionMenuHeader}>
-                <Text style={[styles.actionMenuTitle, { color: colores.texto }]}>
-                  {targetConvToRename.tipo === 'equipo' ? 'Renombrar equipo' : 'Editar nombre de contacto'}
-                </Text>
-                <TouchableOpacity onPress={() => setShowRenameModal(false)}>
-                  <MaterialIcons name="close" size={20} color={colores.textoSuave} />
-                </TouchableOpacity>
-              </View>
-
-              <TextInput
-                value={renameInput}
-                onChangeText={setRenameInput}
-                placeholder="Nombre personalizado"
-                placeholderTextColor={colores.textoSuave}
-                style={[styles.groupInput, { color: colores.texto, borderColor: colores.borde, marginVertical: 12 }]}
-                autoFocus
-              />
-
-              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
-                <TouchableOpacity
-                  onPress={() => setShowRenameModal(false)}
-                  style={[styles.btnSecondary, { borderColor: colores.borde }]}
-                >
-                  <Text style={{ color: colores.texto, fontSize: 13, fontWeight: '700' }}>Cancelar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  disabled={sending || !renameInput.trim()}
-                  onPress={handleSaveRename}
-                  style={[styles.createBtn, { flex: 0, paddingHorizontal: 16 }, (sending || !renameInput.trim()) && { opacity: 0.5 }]}
-                >
-                  {sending ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '800' }}>Guardar</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </Modal>
-      ) : null}
-
-      {/* Modal para añadir más personas al grupo */}
-      {showAddMembersModal && targetConvToAddMembers ? (
-        <Modal
-          visible={showAddMembersModal}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowAddMembersModal(false)}
-        >
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={() => setShowAddMembersModal(false)}
-            style={styles.actionMenuOverlay}
-          >
-            <TouchableOpacity
-              activeOpacity={1}
-              onPress={(e) => (e as any)?.stopPropagation?.()}
-              style={[
-                styles.actionMenuCard,
-                { backgroundColor: esOscuro ? 'rgba(24,24,38,0.96)' : 'rgba(255,255,255,0.96)', borderColor: colores.borde, maxHeight: '80%' },
-              ]}
-            >
-              <View style={styles.actionMenuHeader}>
-                <Text style={[styles.actionMenuTitle, { color: colores.texto }]}>
-                  Añadir personas al grupo
-                </Text>
-                <TouchableOpacity onPress={() => setShowAddMembersModal(false)}>
-                  <MaterialIcons name="close" size={20} color={colores.textoSuave} />
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView style={{ maxHeight: 280, marginVertical: 8 }}>
-                {users
-                  .filter((u) => !targetConvToAddMembers.participanteIds?.includes(u.id))
-                  .length === 0 ? (
-                  <Text style={[styles.noResultsText, { color: colores.textoSuave, textAlign: 'center', marginVertical: 16 }]}>
-                    Todos los integrantes ya pertenecen a este grupo.
-                  </Text>
-                ) : (
-                  users
-                    .filter((u) => !targetConvToAddMembers.participanteIds?.includes(u.id))
-                    .map((u) => {
-                      const selected = newMembersSelectedIds.includes(u.id);
-                      return (
-                        <TouchableOpacity
-                          key={u.id}
-                          onPress={() => toggleNewMemberSelection(u.id)}
-                          style={[styles.userOption, selected && styles.userOptionSelected]}
-                          activeOpacity={0.8}
-                        >
-                          <View style={styles.userAvatar}>
-                            <Text style={styles.avatarLetter}>{(u.nombre || 'U').charAt(0).toUpperCase()}</Text>
-                          </View>
-                          <View style={styles.userInfo}>
-                            <Text style={[styles.userName, { color: colores.texto }]} numberOfLines={1}>
-                              {u.nombre}
-                            </Text>
-                            <Text style={[styles.userRole, { color: colores.textoSuave }]} numberOfLines={1}>
-                              {u.correo || u.rol || 'Colaborador'}
-                            </Text>
-                          </View>
-                          <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
-                            {selected ? <MaterialIcons name="check" size={14} color="#FFFFFF" /> : null}
-                          </View>
-                        </TouchableOpacity>
-                      );
-                    })
-                )}
-              </ScrollView>
-
-              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>
-                <TouchableOpacity
-                  onPress={() => setShowAddMembersModal(false)}
-                  style={[styles.btnSecondary, { borderColor: colores.borde }]}
-                >
-                  <Text style={{ color: colores.texto, fontSize: 13, fontWeight: '700' }}>Cancelar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  disabled={sending || newMembersSelectedIds.length === 0}
-                  onPress={handleSaveAddMembers}
-                  style={[styles.createBtn, { flex: 0, paddingHorizontal: 16 }, (sending || newMembersSelectedIds.length === 0) && { opacity: 0.5 }]}
-                >
-                  {sending ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '800' }}>Añadir ({newMembersSelectedIds.length})</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </Modal>
-      ) : null}
+      {/* Modales de opciones, renombrar y añadir integrantes */}
+      {renderActionMenuModal()}
+      {renderRenameModal()}
+      {renderAddMembersModal()}
     </SafeAreaView>
   );
 }
@@ -2474,11 +2855,12 @@ const styles = StyleSheet.create({
   },
   actionMenuCard: {
     width: '100%',
-    maxWidth: 380,
-    borderRadius: 24,
+    maxWidth: 440,
+    borderRadius: 32,
     borderWidth: 1,
-    padding: 18,
+    padding: 22,
     gap: 12,
+    ...SOMBRAS.flotante,
   },
   actionMenuHeader: {
     flexDirection: 'row',

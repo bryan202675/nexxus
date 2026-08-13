@@ -1,12 +1,10 @@
 /**
  * Documentacion Nexxus - apps/mobile/src/presentation/screens/LoginEmpresarial.tsx
  * Capa: presentacion.
- * Proposito: Pantalla de la experiencia del empleado. Lee contexto de usuario, muestra informacion operativa y conserva las acciones de navegacion existentes.
- * Dependencias clave: imports superiores y contratos tipados del propio modulo.
- * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras de datos al extender este archivo.
+ * Proposito: Pantalla de inicio de sesión empresarial. Rediseñada con estética profesional premium basada en prototypes/mobile-login.html.
+ * Rendimiento optimizado: Precarga de imágenes para cambio de tema instantáneo y animaciones ultra fluidas.
  */
 
-// Importa React, { useState, useRef, useEffect } desde React; habilita componentes, hooks y tipos base para esta pieza.
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -22,25 +20,24 @@ import {
   StatusBar,
   Image,
   Keyboard,
+  SafeAreaView,
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
-import FondoAurora from '@/presentation/components/FondoAurora';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import { AdminToastProvider, useAdminToast } from '@/presentation/screens/admin/adminToast';
+import BotonAnimado from '@/presentation/components/BotonAnimado';
 
-// Traduce el error de login a un mensaje que señala EXACTAMENTE qué campo revisar, en vez de un
-// "no se pudo iniciar sesión" genérico. La RPC login_empresarial (ver
-// supabase/migrations/0003_auth_login_empresarial.sql) ya devuelve mensajes en español
-// específicos por caso (código inexistente, usuario inexistente, cuenta bloqueada, demasiados
-// intentos, contraseña incorrecta, cuenta sin correo) -- SupabaseAuthRepository los propaga como
-// AuthError.userMessage, así que basta con mostrarlos tal cual en vez de re-adivinar el caso por
-// un código de error (la RPC no usa códigos, siempre el mismo 'auth/invalid-credential').
-// auth/user-not-found sigue siendo un caso aparte: significa que el login interno pasó pero no
-// existe una cuenta real de Supabase Auth vinculada (falta sincronizar).
+// Importación estática pre-cargada para cambio de tema instantáneo en memoria nativa
+const FONDO_OSCURO = require('../../../assets/fondoNexxus.jpg');
+const FONDO_CLARO = require('../../../assets/fondoNexxusClaro.jpg');
+const ISO_OSCURO = require('../../../assets/isoNexxus.png');
+const ISO_CLARO = require('../../../assets/isoNexxusBlack.png');
+
 function mapearErrorLogin(err: any): { titulo: string; descripcion: string } {
   const code = String(err?.code || '');
   const mensajeServidor = err?.userMessage || err?.message || '';
@@ -69,60 +66,52 @@ function mapearErrorLogin(err: any): { titulo: string; descripcion: string } {
   };
 }
 
-/**
- * Componente LoginEmpresarial. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
- */
 function LoginEmpresarialContent({ navigation }: { navigation: any }) {
-  // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { t } = useTranslation();
-  // Inicializa { loginEmpresarial }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { loginEmpresarial } = useContextoUsuario();
-  // Declara { colores, blurTint, intensidadBlur, esOscuro }; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
+  const { colores, blurTint, intensidadBlur, esOscuro, alternarModo } = useTemaMobile();
   const toast = useAdminToast();
-  
-  // Inicializa [loading, setLoading]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
+
   const [loading, setLoading] = useState(false);
-  // Inicializa [error, setError]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [error, setError] = useState<string | null>(null);
 
-  // Inicializa [form, setForm]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [form, setForm] = useState({
     codigoEmpresa: '',
     usuario: '',
     password: '',
   });
-  // Inicializa [showPassword, setShowPassword]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [showPassword, setShowPassword] = useState(false);
 
-  // Inicializa fadeAnim; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  // Inicializa slideAnim; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const slideAnim = useRef(new Animated.Value(20)).current;
+  // Animaciones de entrada escalonadas
+  const animHeader = useRef(new Animated.Value(0)).current;
+  const animWelcome = useRef(new Animated.Value(0)).current;
+  const animForm = useRef(new Animated.Value(0)).current;
 
-  // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
   useEffect(() => {
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
+    const easingCurva = Easing.bezier(0.16, 1, 0.3, 1);
+    Animated.stagger(100, [
+      Animated.timing(animHeader, {
         toValue: 1,
-        duration: 800,
+        duration: 650,
+        easing: easingCurva,
         useNativeDriver: true,
       }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 800,
-        easing: Easing.out(Easing.back(1.5)),
+      Animated.timing(animWelcome, {
+        toValue: 1,
+        duration: 650,
+        easing: easingCurva,
+        useNativeDriver: true,
+      }),
+      Animated.timing(animForm, {
+        toValue: 1,
+        duration: 650,
+        easing: easingCurva,
         useNativeDriver: true,
       }),
     ]).start();
   }, []);
 
-  // Inicializa handleLogin; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const handleLogin = async () => {
-    // Solo super_admin entra sin codigoEmpresa (ver backend/index.js loginEmpresarial). Validar
-    // aqui evita el viaje al servidor solo para recibir "Usuario o codigo de empresa incorrectos"
-    // por un campo vacio, que confundia porque la etiqueta anterior decia "(opcional)".
     if (!form.codigoEmpresa.trim()) {
       const msg = 'Ingresa el código de tu empresa.';
       setError(msg);
@@ -156,186 +145,237 @@ function LoginEmpresarialContent({ navigation }: { navigation: any }) {
     }
   };
 
-  // Devuelve el JSX que React Native renderiza en pantalla.
+  const estilos = crearEstilos(colores, esOscuro);
+
   return (
-    // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
     <View style={estilos.container}>
-      {/* Configura la barra de estado del sistema para que combine con el fondo de esta pantalla. */}
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      {/* Elemento de fondo visual; construye la atmosfera grafica de la pantalla sin cambiar los datos. */}
-      <FondoAurora />
-      {/* Contenedor que ajusta el layout cuando aparece el teclado. */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={estilos.keyboardView}
-      >
-        {/* Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-        <Animated.View style={[
-          estilos.content,
-          { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
-        ]}>
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-          <View style={estilos.header}>
-            <Image
-              source={require('../../../assets/logozz.png')}
-              style={estilos.logoImagen}
-              resizeMode="contain"
-            />
+      <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
 
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={[estilos.title, { color: colores.texto }]}>Tu asistente empresarial</Text>
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={[estilos.subtitle, { color: colores.textoSecundario }]}>{t('landing_auth.workspace_login.subtitle')}</Text>
+      {/* Imágenes de fondo pre-renderizadas superpuestas para cambio de tema instantáneo de 1 frame */}
+      <Image source={FONDO_OSCURO} style={[estilos.imagenFondo, { opacity: esOscuro ? 1 : 0 }]} resizeMode="cover" />
+      <Image source={FONDO_CLARO} style={[estilos.imagenFondo, { opacity: esOscuro ? 0 : 1 }]} resizeMode="cover" />
 
-          </View>
+      {/* Overlay con degradado para garantizar legibilidad */}
+      <LinearGradient
+        colors={
+          esOscuro
+            ? ['rgba(0, 0, 0, 0.4)', 'rgba(0, 0, 0, 0.25)', 'rgba(0, 0, 0, 0.88)']
+            : ['rgba(248, 250, 255, 0.45)', 'rgba(248, 250, 255, 0.25)', 'rgba(248, 250, 255, 0.88)']
+        }
+        style={estilos.degradadoOverlay}
+      />
 
-          {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
-          <BlurView intensity={intensidadBlur} tint={blurTint} style={[estilos.form, { backgroundColor: esOscuro ? 'rgba(10,10,24,0.48)' : 'rgba(255,255,255,0.58)', borderColor: colores.borde }]}>
-            {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-            <View style={estilos.inputGroup}>
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={[estilos.label, { color: colores.textoSuave }]}>{t('landing_auth.workspace_login.field_company_code_optional')}</Text>
-              {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-              <View style={[estilos.inputWrapper, { backgroundColor: colores.vidrio, borderColor: colores.borde }]}>
-                {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                <MaterialIcons name="business" size={20} color={colores.textoSuave} style={estilos.inputIcon} />
-                {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
-                <TextInput
-                  style={[estilos.input, { color: colores.texto }]}
-                  placeholder={t('landing_auth.workspace_login.field_company_code_placeholder')}
-                  placeholderTextColor={colores.textoSuave}
-                  value={form.codigoEmpresa}
-                  onChangeText={(v) => setForm({ ...form, codigoEmpresa: v })}
-                  autoCapitalize="characters"
-                  onSubmitEditing={Keyboard.dismiss}
-                />
-              </View>
-            </View>
-
-            {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-            <View style={estilos.inputGroup}>
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={[estilos.label, { color: colores.textoSuave }]}>{t('landing_auth.workspace_login.field_user')}</Text>
-              {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-              <View style={[estilos.inputWrapper, { backgroundColor: colores.vidrio, borderColor: colores.borde }]}>
-                {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                <Ionicons name="person-outline" size={18} color={colores.textoSuave} style={estilos.inputIcon} />
-                {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
-                <TextInput
-                  style={[estilos.input, { color: colores.texto }]}
-                  placeholder={t('landing_auth.workspace_login.field_user_placeholder')}
-                  placeholderTextColor={colores.textoSuave}
-                  value={form.usuario}
-                  onChangeText={(v) => setForm({ ...form, usuario: v })}
-                  autoCapitalize="none"
-                  onSubmitEditing={Keyboard.dismiss}
-                />
-              </View>
-            </View>
-
-            {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-            <View style={estilos.inputGroup}>
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={[estilos.label, { color: colores.textoSuave }]}>{t('landing_auth.workspace_login.field_pass')}</Text>
-              {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-              <View style={[estilos.inputWrapper, { backgroundColor: colores.vidrio, borderColor: colores.borde }]}>
-                {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                <Ionicons name="lock-closed-outline" size={18} color={colores.textoSuave} style={estilos.inputIcon} />
-                {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
-                <TextInput
-                  style={[estilos.input, { color: colores.texto }]}
-                  placeholder={t('landing_auth.workspace_login.field_pass_placeholder')}
-                  placeholderTextColor={colores.textoSuave}
-                  value={form.password}
-                  onChangeText={(v) => setForm({ ...form, password: v })}
-                  secureTextEntry={!showPassword}
-                  onSubmitEditing={Keyboard.dismiss}
-                />
-                {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={estilos.eyeBtn}>
-                  {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                  <Ionicons 
-                    name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                    size={18} 
-                    color={colores.textoSuave} 
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {error && (
-              <Animated.View style={estilos.errorContainer}>
-                <MaterialIcons name="error-outline" size={18} color="#EF4444" />
-                <Text style={estilos.errorText}>{error}</Text>
-                <TouchableOpacity onPress={() => setError(null)} style={{ padding: 2 }}>
-                  <MaterialIcons name="close" size={16} color="#FCA5A5" />
-                </TouchableOpacity>
-              </Animated.View>
-            )}
-
-            {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-            <TouchableOpacity
-              style={estilos.loginBtn}
-              onPress={handleLogin}
-              disabled={loading}
-              activeOpacity={0.8}
+      <SafeAreaView style={estilos.areaSegura}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={estilos.keyboardView}
+        >
+          <ScrollView
+            contentContainerStyle={estilos.scrollContainer}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Header superior: Retroceder, Logotipo y Cambio de Tema */}
+            <Animated.View
+              style={[
+                estilos.header,
+                {
+                  opacity: animHeader,
+                  transform: [
+                    {
+                      translateY: animHeader.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [20, 0],
+                      }),
+                    },
+                  ],
+                },
+              ]}
             >
-              {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-              <LinearGradient
-                colors={[colores.primario, colores.primarioClaro]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={estilos.btnGradient}
-              >
-                {loading ? (
-                  // Indicador de carga; comunica que hay una operacion asincrona en progreso.
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <>
-                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                    <Text style={estilos.btnText}>{t('landing_auth.workspace_login.btn_login')}</Text>
-                    {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                    <MaterialIcons name="arrow-forward" size={18} color="#FFFFFF" />
-                  </>
+              {/* Botón retroceder glass */}
+              <BotonAnimado onPress={() => navigation.goBack()} scaleTo={0.92}>
+                <BlurView intensity={intensidadBlur + 25} tint={blurTint} style={estilos.botonGlassHeader}>
+                  <Feather name="arrow-left" size={20} color={esOscuro ? '#FFFFFF' : '#0F172A'} />
+                </BlurView>
+              </BotonAnimado>
+
+              {/* Logo Central */}
+              <View style={estilos.logoContenedor}>
+                <View style={estilos.logoWrap}>
+                  <Image source={ISO_OSCURO} style={[estilos.logoImagen, { opacity: esOscuro ? 1 : 0 }]} resizeMode="contain" />
+                  <Image source={ISO_CLARO} style={[estilos.logoImagen, { opacity: esOscuro ? 0 : 1 }]} resizeMode="contain" />
+                </View>
+                <Text style={estilos.logoTexto}>
+                  Nexxus<Text style={estilos.logoPunto}>.</Text>
+                </Text>
+              </View>
+
+              {/* Botón cambiar tema glass */}
+              <BotonAnimado onPress={() => alternarModo()} scaleTo={0.92}>
+                <BlurView intensity={intensidadBlur + 25} tint={blurTint} style={estilos.botonGlassHeader}>
+                  <Feather name={esOscuro ? 'sun' : 'moon'} size={20} color={esOscuro ? '#FFFFFF' : '#0F172A'} />
+                </BlurView>
+              </BotonAnimado>
+            </Animated.View>
+
+            {/* Títulos principales */}
+            <Animated.View
+              style={[
+                estilos.bloqueBienvenida,
+                {
+                  opacity: animWelcome,
+                  transform: [
+                    {
+                      translateY: animWelcome.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [20, 0],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              <Text style={estilos.titulo}>Bienvenido</Text>
+              <Text style={estilos.subtitulo}>Inicia sesión en tu espacio de trabajo.</Text>
+            </Animated.View>
+
+            {/* Panel de Formulario Glass Panel */}
+            <Animated.View
+              style={[
+                estilos.animWrapForm,
+                {
+                  opacity: animForm,
+                  transform: [
+                    {
+                      translateY: animForm.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [20, 0],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              <BlurView intensity={intensidadBlur + 30} tint={blurTint} style={estilos.formPanel}>
+                
+                {/* Campo Código de Empresa */}
+                <View style={estilos.inputGroup}>
+                  <Text style={estilos.label}>
+                    {t('landing_auth.workspace_login.field_company_code_optional') || 'CÓDIGO DE EMPRESA'}
+                  </Text>
+                  <View style={estilos.inputWrapper}>
+                    <Feather name="briefcase" size={18} color={esOscuro ? 'rgba(255,255,255,0.6)' : 'rgba(15,23,42,0.6)'} style={estilos.inputIcon} />
+                    <TextInput
+                      style={estilos.input}
+                      placeholder={t('landing_auth.workspace_login.field_company_code_placeholder') || 'EJ. NEXXUS'}
+                      placeholderTextColor={esOscuro ? 'rgba(255,255,255,0.4)' : 'rgba(15,23,42,0.4)'}
+                      value={form.codigoEmpresa}
+                      onChangeText={(v) => setForm({ ...form, codigoEmpresa: v })}
+                      autoCapitalize="characters"
+                      onSubmitEditing={Keyboard.dismiss}
+                    />
+                  </View>
+                </View>
+
+                {/* Campo Usuario */}
+                <View style={estilos.inputGroup}>
+                  <Text style={estilos.label}>
+                    {t('landing_auth.workspace_login.field_user') || 'USUARIO'}
+                  </Text>
+                  <View style={estilos.inputWrapper}>
+                    <Feather name="user" size={18} color={esOscuro ? 'rgba(255,255,255,0.6)' : 'rgba(15,23,42,0.6)'} style={estilos.inputIcon} />
+                    <TextInput
+                      style={estilos.input}
+                      placeholder={t('landing_auth.workspace_login.field_user_placeholder') || 'nombre.apellido'}
+                      placeholderTextColor={esOscuro ? 'rgba(255,255,255,0.4)' : 'rgba(15,23,42,0.4)'}
+                      value={form.usuario}
+                      onChangeText={(v) => setForm({ ...form, usuario: v })}
+                      autoCapitalize="none"
+                      onSubmitEditing={Keyboard.dismiss}
+                    />
+                  </View>
+                </View>
+
+                {/* Campo Contraseña */}
+                <View style={estilos.inputGroup}>
+                  <Text style={estilos.label}>
+                    {t('landing_auth.workspace_login.field_pass') || 'CONTRASEÑA'}
+                  </Text>
+                  <View style={estilos.inputWrapper}>
+                    <Feather name="lock" size={18} color={esOscuro ? 'rgba(255,255,255,0.6)' : 'rgba(15,23,42,0.6)'} style={estilos.inputIcon} />
+                    <TextInput
+                      style={estilos.input}
+                      placeholder={t('landing_auth.workspace_login.field_pass_placeholder') || '••••••••'}
+                      placeholderTextColor={esOscuro ? 'rgba(255,255,255,0.4)' : 'rgba(15,23,42,0.4)'}
+                      value={form.password}
+                      onChangeText={(v) => setForm({ ...form, password: v })}
+                      secureTextEntry={!showPassword}
+                      onSubmitEditing={Keyboard.dismiss}
+                    />
+                    <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={estilos.eyeBtn}>
+                      <Feather
+                        name={showPassword ? 'eye-off' : 'eye'}
+                        size={18}
+                        color={esOscuro ? 'rgba(255,255,255,0.6)' : 'rgba(15,23,42,0.6)'}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Banner de error */}
+                {error && (
+                  <View style={estilos.errorContainer}>
+                    <MaterialIcons name="error-outline" size={18} color="#EF4444" />
+                    <Text style={estilos.errorText}>{error}</Text>
+                    <TouchableOpacity onPress={() => setError(null)} style={{ padding: 2 }}>
+                      <MaterialIcons name="close" size={16} color="#FCA5A5" />
+                    </TouchableOpacity>
+                  </View>
                 )}
-              </LinearGradient>
-            </TouchableOpacity>
 
-            {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-            <TouchableOpacity
-              style={estilos.forgotBtn}
-              onPress={() => navigation.navigate('RecuperarContrasena', { codigoEmpresa: form.codigoEmpresa, usuario: form.usuario })}
-            >
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={[estilos.forgotBtnText, { color: colores.primarioClaro }]}>¿Olvidaste tu contraseña?</Text>
-            </TouchableOpacity>
+                {/* Botón Iniciar Sesión (Completamente negro en modo claro, blanco en modo oscuro) */}
+                <BotonAnimado style={estilos.botonWrapSubmit} onPress={handleLogin} disabled={loading} scaleTo={0.96}>
+                  <View style={estilos.botonSubmit}>
+                    {loading ? (
+                      <ActivityIndicator color={esOscuro ? '#000000' : '#FFFFFF'} size="small" />
+                    ) : (
+                      <>
+                        <Text style={estilos.textoBotonSubmit}>
+                          {t('landing_auth.workspace_login.btn_login') || 'Iniciar Sesión'}
+                        </Text>
+                        <Feather
+                          name="arrow-right"
+                          size={20}
+                          color={esOscuro ? '#000000' : '#FFFFFF'}
+                          style={estilos.iconoBotonSubmit}
+                        />
+                      </>
+                    )}
+                  </View>
+                </BotonAnimado>
 
-            {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-            <TouchableOpacity
-              style={estilos.backBtn}
-              onPress={() => navigation.goBack()}
-            >
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={[estilos.backBtnText, { color: colores.textoSecundario }]}>{t('landing_auth.workspace_login.back')}</Text>
-            </TouchableOpacity>
-          </BlurView>
-        </Animated.View>
+                {/* Enlaces de pie de formulario */}
+                <View style={estilos.filaEnlacesFooter}>
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate('RecuperarContrasena', { codigoEmpresa: form.codigoEmpresa, usuario: form.usuario })}
+                  >
+                    <Text style={estilos.textoEnlace}>¿Olvidaste tu contraseña?</Text>
+                  </TouchableOpacity>
 
-        {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-        <View style={estilos.footer}>
-          {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={estilos.footerText}>Nexxus Enterprise System · v1.2</Text>
-        </View>
-      </KeyboardAvoidingView>
+                  <TouchableOpacity onPress={() => navigation.navigate('CentroApoyo')}>
+                    <Text style={estilos.textoEnlace}>Ayuda</Text>
+                  </TouchableOpacity>
+                </View>
+
+              </BlurView>
+            </Animated.View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </View>
   );
 }
 
-/**
- * Componente LoginEmpresarial. Envuelve LoginEmpresarialContent con su propio AdminToastProvider
- * (mismo patrón que Landing/AccountPage.tsx) porque esta pantalla vive fuera de AdminNavigator,
- * que es donde normalmente se monta el provider para las pantallas ya autenticadas.
- */
 export default function LoginEmpresarial(props: { navigation: any }) {
   return (
     <AdminToastProvider>
@@ -344,287 +384,192 @@ export default function LoginEmpresarial(props: { navigation: any }) {
   );
 }
 
-/**
- * Mapa de estilos estilos. Centraliza reglas visuales para que el JSX se mantenga legible y consistente.
- */
-const estilos = StyleSheet.create({
-  // container: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
-  container: {
-    // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
-    flex: 1,
-    // backgroundColor define el fondo del bloque.
-    backgroundColor: '#070712',
-  },
-  // keyboardView: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  keyboardView: {
-    // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
-    flex: 1,
-    // justifyContent distribuye los hijos en el eje principal del contenedor.
-    justifyContent: 'center',
-    // paddingHorizontal agrega espacio interno a izquierda y derecha.
-    paddingHorizontal: 24,
-    // paddingVertical agrega espacio interno arriba y abajo.
-    paddingVertical: 18,
-  },
-  // content: estilo del area de contenido; controla padding, distribucion y separacion interna.
-  content: {
-    // width fija o calcula el ancho del elemento.
-    width: '100%',
-    // maxWidth limita el ancho para mantener lectura y composicion.
-    maxWidth: 400,
-    // alignSelf ajusta una propiedad visual especifica de este estilo.
-    alignSelf: 'center',
-  },
-  // header: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
-  header: {
-    // alignItems alinea los hijos en el eje transversal del contenedor.
-    alignItems: 'center',
-    // marginBottom separa este bloque del siguiente elemento.
-    marginBottom: 20,
-  },
-  // kicker: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  kicker: {
-    // fontSize controla el tamanio del texto.
-    fontSize: 10,
-    // fontWeight define el peso visual del texto.
-    fontWeight: '900',
-    // letterSpacing ajusta la separacion entre letras.
-    letterSpacing: 2,
-    // marginTop separa este bloque del elemento anterior.
-    marginTop: 18,
-    // textTransform ajusta una propiedad visual especifica de este estilo.
-    textTransform: 'uppercase',
-  },
-  // title: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
-  title: {
-    // fontSize controla el tamanio del texto.
-    fontSize: 28,
-    // fontWeight define el peso visual del texto.
-    fontWeight: '700',
-    // letterSpacing ajusta la separacion entre letras.
-    letterSpacing: 0,
-    // marginTop separa este bloque del elemento anterior.
-    marginTop: 8,
-    // textAlign alinea el texto dentro de su contenedor.
-    textAlign: 'center',
-    // maxWidth limita el ancho para mantener lectura y composicion.
-    maxWidth: 300,
-  },
-  // subtitle: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
-  subtitle: {
-    // fontSize controla el tamanio del texto.
-    fontSize: 12,
-    // textAlign alinea el texto dentro de su contenedor.
-    textAlign: 'center',
-    // marginTop separa este bloque del elemento anterior.
-    marginTop: 16,
-    // lineHeight ajusta una propiedad visual especifica de este estilo.
-    lineHeight: 18,
-    // paddingHorizontal agrega espacio interno a izquierda y derecha.
-    paddingHorizontal: 20,
-    // maxWidth limita el ancho para mantener lectura y composicion.
-    maxWidth: 300,
-  },
-  // orbe: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  logoImagen: {
-    width: 150,
-    height: 100,
-    alignSelf: 'center',
-    marginBottom: 10,
-  },
-  // puntos: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  puntos: {
-    // flexDirection decide si los hijos se ordenan en fila o columna.
-    flexDirection: 'row',
-    // gap define separacion uniforme entre elementos hijos.
-    gap: 6,
-    // marginTop separa este bloque del elemento anterior.
-    marginTop: 14,
-  },
-  // punto: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  punto: {
-    // width fija o calcula el ancho del elemento.
-    width: 5,
-    // height fija o calcula el alto del elemento.
-    height: 5,
-    // borderRadius redondea esquinas para definir la forma visual.
-    borderRadius: 3,
-  },
-  // form: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  form: {
-    // gap define separacion uniforme entre elementos hijos.
-    gap: 14,
-    // borderRadius redondea esquinas para definir la forma visual.
-    borderRadius: 24,
-    // borderWidth define el grosor del borde visible.
-    borderWidth: 1,
-    // overflow controla si el contenido se recorta o puede sobresalir.
-    overflow: 'hidden',
-    // padding agrega espacio interno alrededor del contenido.
-    padding: 16,
-    // shadowColor define el color base de sombra.
-    shadowColor: '#7C3AED',
-    // shadowOffset define direccion y distancia de sombra.
-    shadowOffset: { width: 0, height: 24 },
-    // shadowOpacity controla intensidad de sombra.
-    shadowOpacity: 0.22,
-    // shadowRadius suaviza o expande la sombra.
-    shadowRadius: 36,
-    // elevation agrega sombra en Android.
-    elevation: 10,
-  },
-  // inputGroup: estilo de campo de formulario; controla contenedor, texto y distribucion de la entrada.
-  inputGroup: {
-    // gap define separacion uniforme entre elementos hijos.
-    gap: 10,
-  },
-  // label: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-  label: {
-    // fontSize controla el tamanio del texto.
-    fontSize: 10,
-    // fontWeight define el peso visual del texto.
-    fontWeight: '800',
-    // letterSpacing ajusta la separacion entre letras.
-    letterSpacing: 1.5,
-  },
-  // inputWrapper: estilo de campo de formulario; controla contenedor, texto y distribucion de la entrada.
-  inputWrapper: {
-    // flexDirection decide si los hijos se ordenan en fila o columna.
-    flexDirection: 'row',
-    // alignItems alinea los hijos en el eje transversal del contenedor.
-    alignItems: 'center',
-    // borderRadius redondea esquinas para definir la forma visual.
-    borderRadius: 16,
-    // borderWidth define el grosor del borde visible.
-    borderWidth: 1,
-    // paddingHorizontal agrega espacio interno a izquierda y derecha.
-    paddingHorizontal: 16,
-    // height fija o calcula el alto del elemento.
-    height: 52,
-  },
-  // inputIcon: estilo de campo de formulario; controla contenedor, texto y distribucion de la entrada.
-  inputIcon: {
-    // marginRight ajusta una propiedad visual especifica de este estilo.
-    marginRight: 12,
-  },
-  // input: estilo de campo de formulario; controla contenedor, texto y distribucion de la entrada.
-  input: {
-    // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
-    flex: 1,
-    // fontSize controla el tamanio del texto.
-    fontSize: 15,
-    // fontWeight define el peso visual del texto.
-    fontWeight: '600',
-  },
-  // eyeBtn: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  eyeBtn: {
-    // padding agrega espacio interno alrededor del contenido.
-    padding: 8,
-  },
-  // errorContainer: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
-  errorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(239,68,68,0.15)',
-    borderColor: 'rgba(239,68,68,0.35)',
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 14,
-    gap: 10,
-    marginTop: 4,
-    marginBottom: 4,
-  },
-  errorText: {
-    color: '#EF4444',
-    fontSize: 13,
-    fontWeight: '700',
-    flex: 1,
-  },
-  // loginBtn: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  loginBtn: {
-    // marginTop separa este bloque del elemento anterior.
-    marginTop: 6,
-    // borderRadius redondea esquinas para definir la forma visual.
-    borderRadius: 18,
-    // overflow controla si el contenido se recorta o puede sobresalir.
-    overflow: 'hidden',
-    // elevation agrega sombra en Android.
-    elevation: 8,
-    // shadowColor define el color base de sombra.
-    shadowColor: '#7C3AED',
-    // shadowOffset define direccion y distancia de sombra.
-    shadowOffset: { width: 0, height: 4 },
-    // shadowOpacity controla intensidad de sombra.
-    shadowOpacity: 0.3,
-    // shadowRadius suaviza o expande la sombra.
-    shadowRadius: 12,
-  },
-  // btnGradient: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  btnGradient: {
-    // flexDirection decide si los hijos se ordenan en fila o columna.
-    flexDirection: 'row',
-    // alignItems alinea los hijos en el eje transversal del contenedor.
-    alignItems: 'center',
-    // justifyContent distribuye los hijos en el eje principal del contenedor.
-    justifyContent: 'center',
-    // height fija o calcula el alto del elemento.
-    height: 54,
-    // gap define separacion uniforme entre elementos hijos.
-    gap: 10,
-  },
-  // btnText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  btnText: {
-    // color define el color del texto o icono.
-    color: '#FFFFFF',
-    // fontSize controla el tamanio del texto.
-    fontSize: 14,
-    // fontWeight define el peso visual del texto.
-    fontWeight: '900',
-    // letterSpacing ajusta la separacion entre letras.
-    letterSpacing: 1,
-  },
-  // forgotBtn: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  forgotBtn: {
-    alignItems: 'center',
-    padding: 6,
-  },
-  // forgotBtnText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  forgotBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  // backBtn: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  backBtn: {
-    // alignItems alinea los hijos en el eje transversal del contenedor.
-    alignItems: 'center',
-    // padding agrega espacio interno alrededor del contenido.
-    padding: 12,
-  },
-  // backBtnText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  backBtnText: {
-    // fontSize controla el tamanio del texto.
-    fontSize: 14,
-    // fontWeight define el peso visual del texto.
-    fontWeight: '600',
-  },
-  // footer: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  footer: {
-    // marginTop separa este bloque del elemento anterior.
-    marginTop: 14,
-    // alignItems alinea los hijos en el eje transversal del contenedor.
-    alignItems: 'center',
-  },
-  // footerText: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  footerText: {
-    // color define el color del texto o icono.
-    color: 'rgba(255,255,255,0.2)',
-    // fontSize controla el tamanio del texto.
-    fontSize: 11,
-    // fontWeight define el peso visual del texto.
-    fontWeight: '600',
-    // letterSpacing ajusta la separacion entre letras.
-    letterSpacing: 1,
-  },
-});
+function crearEstilos(c: any, esOscuro: boolean) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: esOscuro ? '#000000' : '#FFFFFF',
+    },
+    imagenFondo: {
+      ...StyleSheet.absoluteFillObject,
+      width: '100%',
+      height: '100%',
+    },
+    degradadoOverlay: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    areaSegura: {
+      flex: 1,
+    },
+    keyboardView: {
+      flex: 1,
+    },
+    scrollContainer: {
+      flexGrow: 1,
+      paddingHorizontal: 24,
+      paddingTop: 16,
+      paddingBottom: 28,
+      justifyContent: 'space-between',
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 12,
+    },
+    botonGlassHeader: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: esOscuro ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.12)',
+      backgroundColor: esOscuro ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.5)',
+    },
+    logoContenedor: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    logoWrap: {
+      width: 28,
+      height: 28,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    logoImagen: {
+      position: 'absolute',
+      width: 28,
+      height: 28,
+    },
+    logoTexto: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: esOscuro ? '#FFFFFF' : '#000000',
+      letterSpacing: -0.5,
+    },
+    logoPunto: {
+      color: '#A855F7',
+    },
+    bloqueBienvenida: {
+      marginVertical: 20,
+      paddingHorizontal: 4,
+    },
+    titulo: {
+      fontSize: 32,
+      fontWeight: '700',
+      color: esOscuro ? '#FFFFFF' : '#000000',
+      letterSpacing: -0.8,
+      marginBottom: 6,
+    },
+    subtitulo: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: esOscuro ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.65)',
+    },
+    animWrapForm: {
+      width: '100%',
+      maxWidth: 420,
+      alignSelf: 'center',
+      marginBottom: 12,
+    },
+    formPanel: {
+      borderRadius: 28,
+      padding: 24,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: esOscuro ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.1)',
+      backgroundColor: esOscuro ? 'rgba(20, 15, 30, 0.65)' : 'rgba(255, 255, 255, 0.65)',
+      gap: 16,
+    },
+    inputGroup: {
+      gap: 8,
+    },
+    label: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: esOscuro ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)',
+      letterSpacing: 0.8,
+      textTransform: 'uppercase',
+    },
+    inputWrapper: {
+      height: 52,
+      borderRadius: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      borderWidth: 1,
+      borderColor: esOscuro ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
+      backgroundColor: esOscuro ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.6)',
+    },
+    inputIcon: {
+      marginRight: 12,
+    },
+    input: {
+      flex: 1,
+      fontSize: 15,
+      fontWeight: '600',
+      color: esOscuro ? '#FFFFFF' : '#000000',
+    },
+    eyeBtn: {
+      padding: 6,
+    },
+    errorContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: 'rgba(239, 68, 68, 0.12)',
+      borderWidth: 1,
+      borderColor: 'rgba(239, 68, 68, 0.3)',
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      gap: 8,
+    },
+    errorText: {
+      flex: 1,
+      fontSize: 13,
+      fontWeight: '500',
+      color: '#EF4444',
+    },
+    botonWrapSubmit: {
+      marginTop: 8,
+    },
+    botonSubmit: {
+      height: 56,
+      borderRadius: 9999,
+      // Completamente negro en modo claro (#000000), blanco en modo oscuro (#FFFFFF)
+      backgroundColor: esOscuro ? '#FFFFFF' : '#000000',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 20,
+      shadowColor: esOscuro ? '#FFFFFF' : '#000000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: esOscuro ? 0.25 : 0.2,
+      shadowRadius: 16,
+      elevation: 6,
+    },
+    textoBotonSubmit: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: esOscuro ? '#000000' : '#FFFFFF',
+    },
+    iconoBotonSubmit: {
+      marginLeft: 8,
+    },
+    filaEnlacesFooter: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: 4,
+      paddingHorizontal: 4,
+    },
+    textoEnlace: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: esOscuro ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)',
+    },
+  });
+}

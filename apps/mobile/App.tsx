@@ -9,7 +9,7 @@
 // Importa React, { useEffect, useRef, useState } desde React; habilita componentes, hooks y tipos base para esta pieza.
 import React, { useEffect, useRef, useState } from 'react';
 // Importa { View, Text, StatusBar, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { View, Text, StatusBar, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StatusBar, StyleSheet, TouchableOpacity, ActivityIndicator, Platform, Image as RNImage } from 'react-native';
 // Importa { NavigationContainer, useNavigation }; permite declarar navegacion, rutas y transiciones entre pantallas.
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { useCases } from './src/infrastructure/container';
@@ -36,6 +36,24 @@ import { normalizeRole } from './src/shared/auth/roles';
 import { LimitadorErrores } from './src/presentation/components/LimitadorErrores';
 // Importa estilos o efectos secundarios; inicializa o consume configuracion de internacionalizacion.
 import './src/shared/i18n/config';
+
+// Precarga global de imágenes en caché nativa (0ms delay en navegación entre pantallas)
+const RECURSOS_FONDOS = [
+  require('./assets/fondoNexxus.jpg'),
+  require('./assets/fondoNexxusClaro.jpg'),
+  require('./assets/isoNexxus.png'),
+  require('./assets/isoNexxusBlack.png'),
+  require('./assets/logoNexxus.png'),
+];
+
+RECURSOS_FONDOS.forEach((recurso) => {
+  try {
+    const src = RNImage.resolveAssetSource(recurso);
+    if (src?.uri) {
+      RNImage.prefetch(src.uri);
+    }
+  } catch (e) {}
+});
 
 // Deshabilitar overscroll/bounce en web (evita ver el fondo al hacer scroll)
 if (Platform.OS === 'web' && typeof document !== 'undefined') {

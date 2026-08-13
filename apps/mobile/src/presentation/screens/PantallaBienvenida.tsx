@@ -1,9 +1,8 @@
 /**
  * Documentacion Nexxus - apps/mobile/src/presentation/screens/PantallaBienvenida.tsx
  * Capa: presentacion.
- * Proposito: Pantalla de la experiencia del empleado. Lee contexto de usuario, muestra informacion operativa y conserva las acciones de navegacion existentes.
- * Dependencias clave: imports superiores y contratos tipados del propio modulo.
- * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras de datos al extender este archivo.
+ * Proposito: Pantalla de bienvenida (Onboarding) de la app móvil. Rediseñada con estética profesional premium basada en prototypes/mobile-onboarding.html.
+ * Rendimiento optimizado: Precarga de imágenes para cambio de tema instantáneo y animaciones ultra fluidas.
  */
 
 import React, { useEffect, useRef } from 'react';
@@ -16,316 +15,362 @@ import {
   StatusBar,
   Dimensions,
   Image,
+  Easing,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialIcons, Feather } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { BlurView } from 'expo-blur';
-import FondoAurora from '@/presentation/components/FondoAurora';
-import { ESPACIADO, RADIOS, TIPOGRAFIA, SOMBRAS } from '@/shared/constants/diseno';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
 
-// Calcula { width }; adapta el comportamiento o diseno segun plataforma/tamano disponible.
+// Importación estática pre-cargada para cambio de tema instantáneo en memoria nativa
+const FONDO_OSCURO = require('../../../assets/fondoNexxus.jpg');
+const FONDO_CLARO = require('../../../assets/fondoNexxusClaro.jpg');
+const ISO_OSCURO = require('../../../assets/isoNexxus.png');
+const ISO_CLARO = require('../../../assets/isoNexxusBlack.png');
+
 const { width } = Dimensions.get('window');
 
-/**
- * Componente PantallaBienvenida. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
- */
 export default function PantallaBienvenida() {
-  // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { t } = useTranslation();
-  // Declara navegacion; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const navegacion = useNavigation<any>();
-  // Inicializa animacionEntrada; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const animacionEntrada = useRef(new Animated.Value(0)).current;
-  // Declara { colores, blurTint, intensidadBlur, esOscuro }; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
-  // Declara estilos; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const estilos = crearEstilos(colores, esOscuro);
+  const { colores, blurTint, intensidadBlur, esOscuro, alternarModo } = useTemaMobile();
 
-  // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
+  // Animaciones de entrada ultra fluidas
+  const animHeader = useRef(new Animated.Value(0)).current;
+  const animTitle = useRef(new Animated.Value(0)).current;
+  const animSub = useRef(new Animated.Value(0)).current;
+  const animButtons = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-    Animated.timing(animacionEntrada, {
-      toValue: 1,
-      duration: 900,
-      useNativeDriver: true,
-    }).start();
+    // Easing idéntico al prototipo cubic-bezier(0.16, 1, 0.3, 1)
+    const easingCurva = Easing.bezier(0.16, 1, 0.3, 1);
+
+    Animated.stagger(100, [
+      Animated.timing(animHeader, {
+        toValue: 1,
+        duration: 700,
+        easing: easingCurva,
+        useNativeDriver: true,
+      }),
+      Animated.timing(animTitle, {
+        toValue: 1,
+        duration: 700,
+        easing: easingCurva,
+        useNativeDriver: true,
+      }),
+      Animated.timing(animSub, {
+        toValue: 1,
+        duration: 700,
+        easing: easingCurva,
+        useNativeDriver: true,
+      }),
+      Animated.timing(animButtons, {
+        toValue: 1,
+        duration: 700,
+        easing: easingCurva,
+        useNativeDriver: true,
+      }),
+    ]).start();
   }, []);
+
+  const estilos = crearEstilos(colores, esOscuro);
 
   return (
     <View style={estilos.contenedor}>
-      <StatusBar barStyle="light-content" />
-      <FondoAurora />
+      <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
+
+      {/* Imágenes de fondo pre-renderizadas superpuestas para cambio de tema instantáneo de 1 frame */}
+      <Image
+        source={FONDO_OSCURO}
+        style={[estilos.imagenFondo, { opacity: esOscuro ? 1 : 0 }]}
+        resizeMode="cover"
+      />
+      <Image
+        source={FONDO_CLARO}
+        style={[estilos.imagenFondo, { opacity: esOscuro ? 0 : 1 }]}
+        resizeMode="cover"
+      />
+
+      {/* Overlay con degradado continuo para garantizar legibilidad */}
+      <LinearGradient
+        colors={
+          esOscuro
+            ? ['rgba(0, 0, 0, 0.4)', 'rgba(0, 0, 0, 0.1)', 'rgba(0, 0, 0, 0.85)']
+            : ['rgba(248, 250, 255, 0.4)', 'rgba(248, 250, 255, 0.1)', 'rgba(248, 250, 255, 0.85)']
+        }
+        style={estilos.degradadoOverlay}
+      />
+
       <SafeAreaView style={estilos.areaSegura}>
-        <Animated.View
-          style={[
-            estilos.contenido,
-            {
-              opacity: animacionEntrada,
-              transform: [
+        <View style={estilos.contenidoPrincipal}>
+          {/* Header con Isotipo superpuesto y Marca */}
+          <Animated.View
+            style={[
+              estilos.header,
+              {
+                opacity: animHeader,
+                transform: [
+                  {
+                    translateY: animHeader.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [24, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <View style={estilos.logoContenedor}>
+              <View style={estilos.logoWrap}>
+                <Image
+                  source={ISO_OSCURO}
+                  style={[estilos.logoImagen, { opacity: esOscuro ? 1 : 0 }]}
+                  resizeMode="contain"
+                />
+                <Image
+                  source={ISO_CLARO}
+                  style={[estilos.logoImagen, { opacity: esOscuro ? 0 : 1 }]}
+                  resizeMode="contain"
+                />
+              </View>
+              <Text style={estilos.logoTexto}>
+                Nexxus<Text style={estilos.logoPunto}>.</Text>
+              </Text>
+            </View>
+          </Animated.View>
+
+          {/* Área inferior con Título, Subtítulo y Botones */}
+          <View style={estilos.bloqueInferior}>
+            <Animated.Text
+              style={[
+                estilos.titulo,
                 {
-                  translateY: animacionEntrada.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [30, 0],
-                  }),
+                  opacity: animTitle,
+                  transform: [
+                    {
+                      translateY: animTitle.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [24, 0],
+                      }),
+                    },
+                  ],
                 },
-              ],
-            },
-          ]}
-        >
-          <View style={estilos.bloqueHero}>
-            <Image
-              source={require('../../../assets/logozz.png')}
-              style={estilos.logoImagen}
-              resizeMode="contain"
-            />
-            <Text style={estilos.titulo}>{t('pantallaBienvenida.title')}</Text>
-            <Text style={estilos.subtitulo}>
-              {t('pantallaBienvenida.subtitle')}
-            </Text>
-          </View>
-
-          <View style={estilos.tarjetaResumenContainer}>
-            <BlurView intensity={intensidadBlur + 20} tint={blurTint} style={estilos.tarjetaResumen}>
-              <View style={estilos.filaResumen}>
-                <View style={[estilos.iconoContenedor, { backgroundColor: 'rgba(124,58,237,0.15)' }]}>
-                  <Feather name="activity" size={16} color="#A78BFA" />
-                </View>
-                <Text style={estilos.textoResumen}>{t('pantallaBienvenida.feature_1')}</Text>
-              </View>
-              
-              <View style={estilos.divisor} />
-              
-              <View style={estilos.filaResumen}>
-                <View style={[estilos.iconoContenedor, { backgroundColor: 'rgba(56,189,248,0.15)' }]}>
-                  <Feather name="cpu" size={16} color="#38BDF8" />
-                </View>
-                <Text style={estilos.textoResumen}>{t('pantallaBienvenida.feature_2')}</Text>
-              </View>
-
-              <View style={estilos.divisor} />
-
-              <View style={estilos.filaResumen}>
-                <View style={[estilos.iconoContenedor, { backgroundColor: 'rgba(52,211,153,0.15)' }]}>
-                  <Feather name="shield" size={16} color="#34D399" />
-                </View>
-                <Text style={estilos.textoResumen}>{t('pantallaBienvenida.feature_3')}</Text>
-              </View>
-            </BlurView>
-          </View>
-
-          <View style={estilos.grupoBotones}>
-            <BotonAnimado 
-              style={estilos.botonWrap} 
-              onPress={() => navegacion.navigate('LoginEmpresarial')}
-              scaleTo={0.96}
+              ]}
             >
-              <LinearGradient 
-                colors={[colores.primario, colores.primarioClaro]} 
-                start={{ x: 0, y: 0 }} 
-                end={{ x: 1, y: 1 }} 
-                style={estilos.botonPrincipal}
+              {'Eleva tu\nEmpresa'}
+            </Animated.Text>
+
+            <Animated.Text
+              style={[
+                estilos.subtitulo,
+                {
+                  opacity: animSub,
+                  transform: [
+                    {
+                      translateY: animSub.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [24, 0],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              El sistema operativo inteligente que transforma la gestión de talento en El Salvador.
+            </Animated.Text>
+
+            {/* Fila de Botones de Acción */}
+            <Animated.View
+              style={[
+                estilos.filaBotones,
+                {
+                  opacity: animButtons,
+                  transform: [
+                    {
+                      translateY: animButtons.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [24, 0],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              {/* Acción Principal: Comenzar (Negro completo en modo claro, Blanco completo en modo oscuro) */}
+              <BotonAnimado
+                style={estilos.botonWrapPrincipal}
+                onPress={() => navegacion.navigate('LoginEmpresarial')}
+                scaleTo={0.96}
               >
-                <Text style={estilos.textoBotonPrincipal}>{t('pantallaBienvenida.btn_start')}</Text>
-                <MaterialIcons name="business" size={20} color="#FFFFFF" />
-              </LinearGradient>
-            </BotonAnimado>
+                <View style={estilos.botonPrincipal}>
+                  <Text style={estilos.textoBotonPrincipal}>
+                    {t('pantallaBienvenida.btn_start') || 'Comenzar'}
+                  </Text>
+                  <Feather
+                    name="arrow-up-right"
+                    size={22}
+                    color={esOscuro ? '#000000' : '#FFFFFF'}
+                    style={estilos.iconoBotonPrincipal}
+                  />
+                </View>
+              </BotonAnimado>
+
+              {/* Botón Glass para Cambio de Tema */}
+              <BotonAnimado
+                style={estilos.botonWrapGlass}
+                onPress={() => alternarModo()}
+                scaleTo={0.92}
+              >
+                <BlurView intensity={intensidadBlur + 25} tint={blurTint} style={estilos.botonGlass}>
+                  <Feather
+                    name={esOscuro ? 'sun' : 'moon'}
+                    size={22}
+                    color={esOscuro ? '#FFFFFF' : '#0F172A'}
+                  />
+                </BlurView>
+              </BotonAnimado>
+
+              {/* Botón Glass para Soporte */}
+              <BotonAnimado
+                style={estilos.botonWrapGlass}
+                onPress={() => navegacion.navigate('CentroApoyo')}
+                scaleTo={0.92}
+              >
+                <BlurView intensity={intensidadBlur + 25} tint={blurTint} style={estilos.botonGlass}>
+                  <Feather
+                    name="help-circle"
+                    size={22}
+                    color={esOscuro ? '#FFFFFF' : '#0F172A'}
+                  />
+                </BlurView>
+              </BotonAnimado>
+            </Animated.View>
           </View>
-        </Animated.View>
+        </View>
       </SafeAreaView>
     </View>
   );
 }
 
-/**
- * Mapa de estilos crearEstilos. Centraliza reglas visuales para que el JSX se mantenga legible y consistente.
- */
 function crearEstilos(c: any, esOscuro: boolean) {
-  // Devuelve el valor final calculado para esta funcion o caso de uso.
   return StyleSheet.create({
-    // contenedor: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
     contenedor: {
-      // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
       flex: 1,
-      // backgroundColor define el fondo del bloque.
-      backgroundColor: c.fondo,
+      backgroundColor: esOscuro ? '#000000' : '#FFFFFF',
     },
-    // areaSegura: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
+    imagenFondo: {
+      ...StyleSheet.absoluteFillObject,
+      width: '100%',
+      height: '100%',
+    },
+    degradadoOverlay: {
+      ...StyleSheet.absoluteFillObject,
+    },
     areaSegura: {
-      // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
       flex: 1,
     },
-    // contenido: estilo del area de contenido; controla padding, distribucion y separacion interna.
-    contenido: {
-      // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
+    contenidoPrincipal: {
       flex: 1,
-      // paddingHorizontal agrega espacio interno a izquierda y derecha.
-      paddingHorizontal: ESPACIADO.xl,
-      // paddingTop separa el contenido del borde superior.
-      paddingTop: ESPACIADO.md,
-      // paddingBottom separa el contenido del borde inferior.
-      paddingBottom: ESPACIADO.xxl,
-      // justifyContent distribuye los hijos en el eje principal del contenedor.
+      paddingHorizontal: 28,
+      paddingTop: 16,
+      paddingBottom: 28,
       justifyContent: 'space-between',
     },
-    // header: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
     header: {
-      // alignItems alinea los hijos en el eje transversal del contenedor.
-      alignItems: 'center',
-      // marginBottom separa este bloque del siguiente elemento.
-      marginBottom: ESPACIADO.sm,
+      paddingTop: 16,
     },
-    // bloqueHero: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    bloqueHero: {
-      // alignItems alinea los hijos en el eje transversal del contenedor.
+    logoContenedor: {
+      flexDirection: 'row',
       alignItems: 'center',
-      // gap define separacion uniforme entre elementos hijos.
-      gap: ESPACIADO.md,
+      gap: 10,
     },
-    // logoImagen: estilo local para mostrar el nuevo logotipo de la empresa.
+    logoWrap: {
+      width: 32,
+      height: 32,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
     logoImagen: {
-      width: 180,
-      height: 120,
-      marginBottom: ESPACIADO.xs,
+      position: 'absolute',
+      width: 32,
+      height: 32,
     },
-    // titulo: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
-    titulo: {
-      // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
-      ...TIPOGRAFIA.hero,
-      // color define el color del texto o icono.
-      color: c.texto,
-      // textAlign alinea el texto dentro de su contenedor.
-      textAlign: 'center',
-      // letterSpacing ajusta la separacion entre letras.
+    logoTexto: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: esOscuro ? '#FFFFFF' : '#000000',
       letterSpacing: -0.5,
     },
-    // subtitulo: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
+    logoPunto: {
+      color: '#A855F7',
+    },
+    bloqueInferior: {
+      gap: 16,
+      marginBottom: 12,
+    },
+    titulo: {
+      fontSize: 44,
+      lineHeight: 48,
+      fontWeight: '700',
+      color: esOscuro ? '#FFFFFF' : '#000000',
+      letterSpacing: -1,
+    },
     subtitulo: {
-      // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
-      ...TIPOGRAFIA.cuerpoGrande,
-      // color define el color del texto o icono.
-      color: c.textoSecundario,
-      // textAlign alinea el texto dentro de su contenedor.
-      textAlign: 'center',
-      // maxWidth limita el ancho para mantener lectura y composicion.
-      maxWidth: 320,
-      // lineHeight ajusta una propiedad visual especifica de este estilo.
-      lineHeight: 24,
+      fontSize: 15,
+      lineHeight: 22,
+      fontWeight: '500',
+      color: esOscuro ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)',
+      maxWidth: 270,
+      marginBottom: 12,
     },
-    // tarjetaResumenContainer: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
-    tarjetaResumenContainer: {
-      // borderRadius redondea esquinas para definir la forma visual.
-      borderRadius: RADIOS.xl,
-      // overflow controla si el contenido se recorta o puede sobresalir.
-      overflow: 'hidden',
-      // borderWidth define el grosor del borde visible.
-      borderWidth: 1,
-      // borderColor define el color del borde.
-      borderColor: c.borde,
-      // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
-      ...SOMBRAS.flotante,
-    },
-    // tarjetaResumen: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
-    tarjetaResumen: {
-      // padding agrega espacio interno alrededor del contenido.
-      padding: ESPACIADO.lg,
-      // backgroundColor define el fondo del bloque.
-      backgroundColor: c.vidrio,
-      // gap define separacion uniforme entre elementos hijos.
-      gap: ESPACIADO.md,
-    },
-    // filaResumen: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    filaResumen: {
-      // flexDirection decide si los hijos se ordenan en fila o columna.
+    filaBotones: {
       flexDirection: 'row',
-      // alignItems alinea los hijos en el eje transversal del contenedor.
       alignItems: 'center',
-      // gap define separacion uniforme entre elementos hijos.
-      gap: ESPACIADO.md,
+      gap: 12,
     },
-    // iconoContenedor: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
-    iconoContenedor: {
-      // width fija o calcula el ancho del elemento.
-      width: 36,
-      // height fija o calcula el alto del elemento.
-      height: 36,
-      // borderRadius redondea esquinas para definir la forma visual.
-      borderRadius: 18,
-      // alignItems alinea los hijos en el eje transversal del contenedor.
-      alignItems: 'center',
-      // justifyContent distribuye los hijos en el eje principal del contenedor.
-      justifyContent: 'center',
-      // borderWidth define el grosor del borde visible.
-      borderWidth: 1,
-      // borderColor define el color del borde.
-      borderColor: 'rgba(255,255,255,0.1)',
-    },
-    // divisor: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    divisor: {
-      // height fija o calcula el alto del elemento.
-      height: 1,
-      // backgroundColor define el fondo del bloque.
-      backgroundColor: esOscuro ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
-      // marginLeft ajusta una propiedad visual especifica de este estilo.
-      marginLeft: 52,
-    },
-    // textoResumen: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    textoResumen: {
-      // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
-      ...TIPOGRAFIA.cuerpo,
-      // fontWeight define el peso visual del texto.
-      fontWeight: '600',
-      // color define el color del texto o icono.
-      color: c.texto,
-      // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
+    botonWrapPrincipal: {
       flex: 1,
     },
-    // grupoBotones: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
-    grupoBotones: {
-      // marginTop separa este bloque del elemento anterior.
-      marginTop: ESPACIADO.md,
-    },
-    // botonWrap: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
-    botonWrap: {
-      // width fija o calcula el ancho del elemento.
-      width: '100%',
-      // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
-      ...SOMBRAS.flotante,
-    },
-    // botonPrincipal: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
     botonPrincipal: {
-      // height fija o calcula el alto del elemento.
-      height: 64,
-      // borderRadius redondea esquinas para definir la forma visual.
-      borderRadius: RADIOS.xl,
-      // flexDirection decide si los hijos se ordenan en fila o columna.
+      height: 58,
+      borderRadius: 9999,
+      // Completamente blanco en modo oscuro, completamente negro (#000000) en modo claro
+      backgroundColor: esOscuro ? '#FFFFFF' : '#000000',
       flexDirection: 'row',
-      // alignItems alinea los hijos en el eje transversal del contenedor.
       alignItems: 'center',
-      // justifyContent distribuye los hijos en el eje principal del contenedor.
       justifyContent: 'center',
-      // gap define separacion uniforme entre elementos hijos.
-      gap: ESPACIADO.sm,
-      // borderWidth define el grosor del borde visible.
-      borderWidth: 1,
-      // borderColor define el color del borde.
-      borderColor: 'rgba(255,255,255,0.15)',
+      paddingHorizontal: 20,
+      shadowColor: esOscuro ? '#FFFFFF' : '#000000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: esOscuro ? 0.25 : 0.2,
+      shadowRadius: 16,
+      elevation: 6,
     },
-    // textoBotonPrincipal: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
     textoBotonPrincipal: {
-      // fontSize controla el tamanio del texto.
       fontSize: 17,
-      // fontWeight define el peso visual del texto.
-      fontWeight: '800',
-      // color define el color del texto o icono.
-      color: '#FFFFFF',
-      // letterSpacing ajusta la separacion entre letras.
-      letterSpacing: 0.5,
-      // textTransform ajusta una propiedad visual especifica de este estilo.
-      textTransform: 'uppercase',
+      fontWeight: '700',
+      color: esOscuro ? '#000000' : '#FFFFFF',
+    },
+    iconoBotonPrincipal: {
+      marginLeft: 6,
+    },
+    botonWrapGlass: {
+      width: 58,
+      height: 58,
+    },
+    botonGlass: {
+      width: 58,
+      height: 58,
+      borderRadius: 29,
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: esOscuro ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.15)',
+      backgroundColor: esOscuro ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.5)',
     },
   });
 }
