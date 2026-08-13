@@ -12,6 +12,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StatusBar, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 // Importa { NavigationContainer, useNavigation }; permite declarar navegacion, rutas y transiciones entre pantallas.
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
+import { useCases } from './src/infrastructure/container';
+import { applyPlanCatalog } from './src/shared/billing/plans';
 // Importa { createNativeStackNavigator }; permite declarar navegacion, rutas y transiciones entre pantallas.
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 // Importa { SafeAreaProvider } desde react-native-safe-area-context; agrega una dependencia externa necesaria para este modulo.
@@ -300,6 +302,13 @@ export default function App() {
   });
   
   const [rutaWebLanding, setRutaWebLanding] = useState(() => Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.pathname : '');
+
+  // Fase 15: precarga el catálogo real de planes desde la tabla `planes` una sola vez al arrancar,
+  // antes de que cualquier pantalla necesite gating por plan. Si falla (sin red, etc.) se queda con
+  // el respaldo hardcodeado de shared/billing/plans.ts -- no rompe nada, solo no está actualizado.
+  useEffect(() => {
+    useCases.plans.getAll.execute().then(applyPlanCatalog).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;

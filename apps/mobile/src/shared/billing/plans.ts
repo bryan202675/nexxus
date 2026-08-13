@@ -1,42 +1,18 @@
-export type NexxusPlan = 'Starter' | 'Business' | 'Enterprise';
-export type BillingCycle = 'monthly' | 'annual';
+/**
+ * Fase 15: la tabla `planes` de Supabase es la fuente de verdad (ver
+ * packages/domain/application/use-cases/plans/PlanUseCases.ts y
+ * apps/mobile/src/infrastructure/supabase/SupabasePlanRepository.ts). Este archivo mantiene la
+ * misma API pública que usaban los 9+ call sites existentes (PLAN_CATALOG, PLAN_ORDER,
+ * getPlanEntitlements, normalizePlan) para no tener que tocar cada consumidor, pero ya no es él
+ * quien define los datos: `applyPlanCatalog()` los sobreescribe (mutando el mismo objeto, no
+ * reasignándolo, para que todos los que ya importaron PLAN_CATALOG vean los valores frescos) en
+ * cuanto App.tsx resuelve `useCases.plans.getAll.execute()` al arrancar. Los valores de abajo solo
+ * se usan como estado inicial mientras esa carga está en vuelo (o si falla) -- son un respaldo, no
+ * el catálogo real.
+ */
+import type { NexxusPlan, BillingCycle, PlanFeatureKey, PlanFeatureFlags, PlanLimits, PlanCatalogEntry } from 'domain/entities/Plan';
 
-export type PlanFeatureKey =
-  | 'employees'
-  | 'tasks'
-  | 'attendance'
-  | 'reports'
-  | 'payroll'
-  | 'requests'
-  | 'documents'
-  | 'incidents'
-  | 'inventory'
-  | 'internalChat'
-  | 'ai'
-  | 'metrics'
-  | 'leaders'
-  | 'exports'
-  | 'superAdmin'
-  | 'customBranding';
-
-export type PlanFeatureFlags = Record<PlanFeatureKey, boolean>;
-
-export interface PlanLimits {
-  employees: number | null;
-  departments: number | null;
-  branches: number | null;
-  storageGb: number;
-  aiRequestsMonthly: number;
-}
-
-export interface PlanCatalogEntry {
-  name: NexxusPlan;
-  monthly: number;
-  annual: number;
-  description: string;
-  limits: PlanLimits;
-  features: PlanFeatureFlags;
-}
+export type { NexxusPlan, BillingCycle, PlanFeatureKey, PlanFeatureFlags, PlanLimits, PlanCatalogEntry };
 
 const starterFeatures: PlanFeatureFlags = {
   employees: true,
@@ -83,6 +59,8 @@ const enterpriseFeatures: PlanFeatureFlags = {
 
 export const PLAN_ORDER: NexxusPlan[] = ['Starter', 'Business', 'Enterprise'];
 
+// Respaldo -- ver comentario del encabezado. Coincide con el seed original de la tabla `planes`
+// (0011_seed_planes.sql), pero de ahí en adelante quien manda es la tabla.
 export const PLAN_CATALOG: Record<NexxusPlan, PlanCatalogEntry> = {
   Starter: {
     name: 'Starter',
@@ -109,6 +87,17 @@ export const PLAN_CATALOG: Record<NexxusPlan, PlanCatalogEntry> = {
     features: enterpriseFeatures,
   },
 };
+
+// Sobreescribe PLAN_CATALOG en el mismo objeto (no lo reasigna) con lo que devolvió la tabla
+// `planes` -- así todos los módulos que ya hicieron `import { PLAN_CATALOG }` ven los datos reales
+// la próxima vez que los lean, sin necesidad de re-importar nada.
+export function applyPlanCatalog(entries: PlanCatalogEntry[]) {
+  for (const entry of entries) {
+    if (entry.name in PLAN_CATALOG) {
+      PLAN_CATALOG[entry.name] = entry;
+    }
+  }
+}
 
 export function normalizePlan(value: unknown): NexxusPlan | null {
   return typeof value === 'string' && PLAN_ORDER.includes(value as NexxusPlan) ? value as NexxusPlan : null;

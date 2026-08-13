@@ -47,6 +47,7 @@ import { SupabaseAttendanceRepository } from './supabase/SupabaseAttendanceRepos
 import { SupabaseInboxRepository } from './supabase/SupabaseInboxRepository';
 import { SupabasePushTokenRepository } from './supabase/SupabasePushTokenRepository';
 import { SupabasePushSenderRepository } from './supabase/SupabasePushSenderRepository';
+import { SupabasePlanRepository } from './supabase/SupabasePlanRepository';
 import { SupabaseAutomationRuleRepository } from './supabase/SupabaseAutomationRuleRepository';
 import { SupabaseGraphRelationRepository } from './supabase/SupabaseGraphRelationRepository';
 import { SupabaseInternalRequestRepository, SupabaseChatContextualRepository } from './supabase/SupabaseFase2Repositories';
@@ -73,6 +74,7 @@ import { UpdateUserProfile } from 'domain/application/use-cases/admin/UpdateUser
 import { RecordAttendance, GetAttendanceHistory, GetCurrentShift, GetCompanyAttendance, GetCompanyDailyAttendanceSummary } from 'domain/application/use-cases/attendance/AttendanceUseCases';
 import { GetInbox, ResolveInboxItem, SubscribeToInbox, AddInboxItem } from 'domain/application/use-cases/inbox/InboxUseCases';
 import { RegisterPushToken, UnregisterPushToken, GetPushTokens, SendPushNotification } from 'domain/application/use-cases/push/PushTokenUseCases';
+import { GetPlans } from 'domain/application/use-cases/plans/PlanUseCases';
 import { GetAutomationRules, CreateAutomationRule, SetAutomationRuleActive, DeleteAutomationRule, RunAutomationRulesNow } from 'domain/application/use-cases/automations/AutomationRuleUseCases';
 import { AddGraphRelation, GetEntityRelations } from 'domain/application/use-cases/graph/GraphRelationUseCases';
 import { CreateInternalRequest, GetInternalRequests, SendContextualMessage, SubscribeToChatContext } from 'domain/application/use-cases/fase2/Fase2UseCases';
@@ -112,6 +114,7 @@ const feedbackRepository = new SupabaseFeedbackRepository();
 const attendanceRepository = new SupabaseAttendanceRepository();
 const inboxRepository = new SupabaseInboxRepository();
 const pushTokenRepository = new SupabasePushTokenRepository();
+const planRepository = new SupabasePlanRepository();
 const pushSenderRepository = new SupabasePushSenderRepository();
 const automationRuleRepository = new SupabaseAutomationRuleRepository();
 const graphRelationRepository = new SupabaseGraphRelationRepository();
@@ -213,6 +216,9 @@ export const useCases = {
     unregister: new UnregisterPushToken(pushTokenRepository),
     getByUser: new GetPushTokens(pushTokenRepository),
     send: new SendPushNotification(pushSenderRepository),
+  },
+  plans: {
+    getAll: new GetPlans(planRepository),
   },
   automations: {
     getByCompany: new GetAutomationRules(automationRuleRepository),

@@ -8,11 +8,11 @@
 |---|---|
 | Monorepo | Turborepo, layout `apps/mobile` + `apps/dashboard` + `packages/domain` |
 | Dashboard web | Reescribir con **Vite + TypeScript** (reemplaza CRA) |
-| Plataformas móviles | **Solo Expo Web por ahora** — sin builds nativos EAS. Push nativo (Fase 10) queda pospuesto/reducido a alcance web si se retoma. |
+| Plataformas móviles | **Solo Expo Web por ahora** — sin builds nativos EAS. Push (Fase 10) sí está implementado y desplegado para web/futuros builds nativos, vía Expo Notifications + Gmail API. |
 | Proveedor de IA | **Gemini 2.5 Flash** (ya integrado, se mantiene) |
-| Pagos | **Simulador se mantiene** — Fase 12 (gateway real) queda de baja prioridad hasta que haya necesidad real de cobrar |
+| Pagos | **Simulador se mantiene indefinidamente por decisión de negocio** — Nexxus sigue en fase de demo, sin empresas reales esperando cobrar; Fase 12 (gateway real) no se retoma hasta que exista esa necesidad. |
 | Planes | Se mantienen Starter $20 / Business $50 / Enterprise $200 ya sembrados |
-| Email transaccional | **Resend** |
+| Email transaccional | **Gmail API (OAuth2)** — se descartó Resend porque sin dominio verificado solo entrega a la casilla dueña de la cuenta, no a destinatarios reales. |
 | Automatizaciones + Nexxus Brain | Modelo de datos **+ 2-3 reglas/relaciones reales funcionando**, no solo esquema vacío |
 | Testing | **Vitest + Testing Library** |
 | IA autónoma | Puede sugerir acciones sensibles (aprobaciones, etc.) pero requiere **confirmación humana explícita** antes de ejecutarlas; crear notificaciones/tareas/eventos (ya existente) sigue siendo automático |
@@ -354,7 +354,7 @@ En los 3 archivos de pantalla (`DashboardAdmin`, `GestionPlantilla`, `Estructura
     1. **Aprobaciones** (`crearSolicitudAusencia` y `crearSolicitudInterna` en `ContextoUsuario.tsx`, comparten el helper `publicarAprobacionPendiente`): publica `tipo: 'aprobacion'` al jefe directo del solicitante (`user.jefeId`) — sin ese dato, no publica nada (ver deuda).
     2. **Documentos** (`GestionDocumentos.tsx`, admin sube un PDF para un empleado): publica `tipo: 'documento'` (tipo nuevo, agregado a `InboxItem` — antes el enum no lo contemplaba) al empleado destino.
     3. **Mensajes** (`ChatInterno.tsx`, `sendMessage`): publica `tipo: 'mensaje'` al otro participante, **solo en chats directos (1:1)** — en chats de equipo/departamento publicar por cada mensaje inundaría la bandeja de todo el grupo, decisión deliberada de no hacerlo.
-  - [x] **Migración de schema escrita pero NO aplicada** (`0012_inbox_unificado_columnas.sql`): promueve `titulo`/`mensaje`/`estado`/`prioridad`/`tipo`/`origen_ref_id` de `contenido` (jsonb) a columnas reales + backfill + índices por `estado`/`prioridad` — aditiva y reversible, pero el código actual sigue leyendo/escribiendo vía jsonb a propósito (aplicar la migración sin actualizar el código no rompe nada; actualizar el código para depender de las columnas nuevas *antes* de aplicar la migración sí rompería el runtime — por eso quedan desacoplados hasta que confirmes el despliegue).
+  - [x] **Migración de schema aplicada** (2026-08-13, `0012_inbox_unificado_columnas.sql`): promueve `titulo`/`mensaje`/`estado`/`prioridad`/`tipo`/`origen_ref_id` de `contenido` (jsonb) a columnas reales + backfill + índices por `estado`/`prioridad`. El código (`SupabaseInboxRepository`) sigue leyendo/escribiendo vía jsonb a propósito — migrar el código para depender de las columnas nuevas queda como mejora aparte, no bloqueante.
   - [x] Verificado: `turbo run typecheck test lint` limpio (0 errores) en los 3 paquetes, `expo export --platform web` sin errores, landing renderizada en navegador sin errores reales (un `ERR_EMPTY_RESPONSE` transitorio del proxy del sandbox, mismo tipo de ruido ya documentado en la Fase 2 — no afecta la app).
   - [ ] **Sin commitear ni desplegar** — instrucción explícita del usuario, pendiente de confirmación.
   - [ ] Flujos restantes, deliberadamente no conectados (requieren una decisión de negocio o infraestructura que no existe todavía, no es "no me dio tiempo"):
@@ -370,7 +370,7 @@ En los 3 archivos de pantalla (`DashboardAdmin`, `GestionPlantilla`, `Estructura
 - **Dependencias:** ninguna dura.
 - **Riesgos:** requiere `expo.extra.eas.projectId` en `app.json` (se obtiene con `eas init`, acción de cuenta que solo puede hacer el usuario) para que `getExpoPushTokenAsync` funcione. Sin ese id, el hook hace `console.warn` y no registra token — no rompe nada, pero tampoco envía push todavía.
 - **Tiempo estimado:** 1-2 sesiones.
-- **Estado:** Implementada (retomada por instrucción explícita del usuario, a pesar de que el alcance móvil general sigue siendo "solo Expo Web" — este código queda listo para cuando haya builds nativos o se corra `eas init`).
+- **Estado:** ✅ Completada y desplegada. `eas init` corrido (2026-08-13) — `projectId` en `app.json`. Edge Function `send-push-notification` desplegada.
 - **Prioridad:** Media.
 - **Constraint técnico importante:** desde Expo SDK 53 (este proyecto está en SDK 54), **Expo Go en Android ya no soporta push remoto** (removido por Expo) — solo Expo Go en iOS lo soporta para pruebas sin dev build. Para Android hace falta un dev build (`eas build --profile development`) para probar push de verdad. La infraestructura está construida igual de completa para ambas plataformas; es una limitación de testing, no de diseño.
 - **Checklist:**
@@ -383,8 +383,8 @@ En los 3 archivos de pantalla (`DashboardAdmin`, `GestionPlantilla`, `Estructura
   - [x] Nueva Edge Function `send-push-notification` (`supabase/functions/send-push-notification/index.ts`): valida `sameCompany` contra el destinatario, junta todos los tokens del usuario desde `push_tokens`, llama al Expo Push Service (`https://exp.host/--/api/v2/push/send`), y borra automáticamente los tokens que Expo reporta como `DeviceNotRegistered`.
   - [x] Config de plugin `expo-notifications` agregada a `app.json` (icono + color).
   - [x] Verificado: `npx tsc --noEmit` limpio en `apps/mobile` y `packages/domain`, `turbo run typecheck test lint` limpio (0 errores, solo warnings preexistentes) en los 3 paquetes, `expo export --platform web` sin errores, landing renderizada en navegador sin errores reales.
-  - [ ] **`send-push-notification` NO desplegada a Supabase** — requiere `supabase functions deploy send-push-notification`, pendiente de confirmación explícita del usuario (igual que el resto de Edge Functions nuevas/actualizadas de fases previas).
-  - [ ] `expo.extra.eas.projectId` no configurado — requiere que el usuario corra `eas init` una vez (acción de cuenta, no puedo hacerla yo). Sin esto, ningún token se registra realmente todavía.
+  - [x] `send-push-notification` desplegada (2026-08-13).
+  - [x] `expo.extra.eas.projectId` configurado (2026-08-13, `eas init` corrido por el usuario) — `dbe743ab-dc02-4e26-9b3b-d227a2f4e99e`, `owner: bryan202675`.
   - [ ] Push por eventos adicionales (tarea asignada, solicitud aprobada/rechazada) no conectados — mismo alcance deliberadamente acotado que Fase 9: solo se conectó donde ya existía el trigger de Bandeja Unificada, para no inventar nuevos puntos de notificación sin pedirlo.
 
 ### Fase 11 — Email transaccional
@@ -415,12 +415,12 @@ En los 3 archivos de pantalla (`DashboardAdmin`, `GestionPlantilla`, `Estructura
 ### Fase 12 — Pagos reales
 - **Objetivo:** reemplazar el simulador de `confirm-plan-purchase` por un gateway real.
 - **Archivos afectados:** `supabase/functions/confirm-plan-purchase`, `apps/mobile` (Checkout), tabla `payments`/`suscripciones`.
-- **Dependencias:** ninguna técnica, pero es una decisión de negocio grande (¿cobras ya o sigues en fase de validación con pagos simulados?).
+- **Decisión del usuario (2026-08-12):** Nexxus sigue en fase de demo — no hay empresas reales esperando pagar. Se descarta integrar un gateway real por ahora; no es una omisión, es una decisión explícita de negocio. El simulador actual (`confirm-plan-purchase` + `NEXXUS_ALLOW_UNVERIFIED_PAID_CHECKOUT`) ya modela correctamente `payments`/`suscripciones` en USD con ciclo mensual/anual, así que conectar un gateway real más adelante no debería requerir rediseñar el esquema, solo sustituir el paso de cobro.
+- **Cuando se retome, definir primero (no antes de que haya necesidad real de cobrar):** qué pasarela opera con cuenta de comercio en El Salvador (Stripe no opera cuentas salvadoreñas directamente — habría que evaluar Wompi, PayPal, dLocal, un adquirente local, o Stripe solo si hay una entidad legal fuera de El Salvador) y si se necesita facturación electrónica DTE (obligatoria en El Salvador) o basta con el recibo del gateway.
 - **Riesgos:** manejar dinero real mal implementado es el riesgo más alto de todo el plan — requiere webhooks idempotentes, reconciliación, manejo de reintentos.
-- **Tiempo estimado:** por definir (es la fase más sensible).
-- **Estado:** Pospuesta — se mantiene el simulador de pagos. Se retoma cuando haya necesidad real de cobrar.
-- **Prioridad:** Depende de si ya necesitas cobrar o no.
-- **Checklist:** por definir.
+- **Estado:** Pospuesta indefinidamente por decisión de negocio, no técnica. Se mantiene el simulador.
+- **Prioridad:** Ninguna por ahora.
+- **Checklist:** N/A hasta que se retome.
 
 ### Fase 13 — Automatizaciones (motor de reglas SI/ENTONCES)
 - **Objetivo:** arquitectura base (tabla de reglas, triggers/Edge Function evaluadora) + UI mínima para 2-3 reglas de ejemplo.
@@ -428,7 +428,7 @@ En los 3 archivos de pantalla (`DashboardAdmin`, `GestionPlantilla`, `Estructura
 - **Dependencias:** Fase 3 (reusa `packages/domain`), Fase 9 (publica resultados en `inbox_unificado`, mismo shape que usa `SupabaseInboxRepository`).
 - **Riesgos:** ninguno detectado sobre datos existentes — es aditivo (tablas nuevas, sin tocar `usuarios`/`tareas`/etc). El riesgo real es de alcance de negocio (qué reglas valen la pena), ya resuelto con las 3 plantillas reales de abajo.
 - **Tiempo estimado:** 1 sesión.
-- **Estado:** ✅ Completada y verificada (`turbo run typecheck lint test` limpio en los 3 paquetes, `expo export --platform web` sin errores). **Migración y Edge Function sin aplicar/desplegar** — mismo criterio que Fases 9-11: pendiente de confirmación explícita.
+- **Estado:** ✅ Completada, verificada y **desplegada** (migración `0014` aplicada, Edge Function `evaluate-automation-rules` activa, `get_advisors` sin hallazgos nuevos de seguridad).
 - **Prioridad:** Baja-Media.
 - **Checklist:**
   - [x] **Modelo de datos** (`0014_automatizacion_reglas.sql`): `automatizacion_reglas` (empresa_id, nombre, `trigger_tipo` enum, `condiciones` jsonb, `accion_destino` enum, `activa`) + `automatizacion_ejecuciones` (log de idempotencia, unique por `regla_id+entidad_tipo+entidad_id+ciclo` — el mismo hallazgo se vuelve a avisar al día siguiente si sigue vigente, pero nunca dos veces el mismo día). RLS: lectura jefe+, escritura (crear/activar/borrar) solo admin_empresa+; el log de ejecuciones solo lo escribe la Edge Function (service_role, sin policy de insert para clientes).
@@ -437,7 +437,7 @@ En los 3 archivos de pantalla (`DashboardAdmin`, `GestionPlantilla`, `Estructura
   - [x] **`SupabaseAutomationRuleRepository`**: CRUD directo sobre `automatizacion_reglas` + `runNow` que invoca la Edge Function vía `supabase.functions.invoke`. Cableado en `container.ts` bajo `useCases.automations.*`.
   - [x] **Pantalla `Automatizaciones.tsx`** (admin, registrada en `AdminNavigator`/`adminMenuConfig` — nueva entrada de menú, búsqueda y banner): botón **"Evaluar ahora"** que corre la Edge Function real y muestra cuántas notificaciones se publicaron por regla; **3 plantillas de un toque** (una por cada `trigger_tipo`, con los parámetros por defecto ya decididos: 48h para solicitudes, 10am UTC para check-in) que crean una regla real y activa en la empresa del admin — se deshabilitan solas si ya existe una regla de ese tipo, para no invitar a crear duplicados; formulario de regla personalizada (nombre, disparador, destino, umbral) para casos fuera de las 3 plantillas; lista de reglas con toggle activa/inactiva y borrado.
   - [x] Verificado: `turbo run typecheck lint test` limpio (0 errores) en los 3 paquetes, `expo export --platform web` exporta sin errores, sin errores de consola en el navegador.
-  - [ ] **Migración y Edge Function sin aplicar/desplegar** — requiere `supabase db push` (o aplicar `0014_automatizacion_reglas.sql` a mano) y `supabase functions deploy evaluate-automation-rules`, pendiente de confirmación explícita del usuario.
+  - [x] **Migración y Edge Function aplicadas/desplegadas** (2026-08-13).
   - [ ] **Programación automática (cron) no implementada**: hoy las reglas solo se evalúan cuando un admin pulsa "Evaluar ahora". `pg_cron` y `pg_net` están disponibles en el proyecto de Supabase (verificado, no instalados) para programar la evaluación periódica sin intervención manual, pero encadenar `cron.schedule` → `net.http_post` → Edge Function requiere decidir cómo autenticar esa llamada (la función hoy exige JWT de un admin real vía `getCaller`) sin exponer la `service_role key` en la definición del cron job — cambio de superficie de seguridad que preferí no improvisar sin confirmación. Queda documentado como siguiente paso, no como pendiente técnico trivial.
 
 ### Fase 14 — Nexxus Brain (grafo empresarial)
@@ -446,7 +446,7 @@ En los 3 archivos de pantalla (`DashboardAdmin`, `GestionPlantilla`, `Estructura
 - **Dependencias:** ninguna dura; reutiliza `packages/domain` (Fase 3) y se conecta a flujos ya existentes de tareas (Fase 4), documentos y mensajería (ambos ya tocados en la Fase 9).
 - **Riesgos:** ninguno detectado sobre datos existentes — tabla nueva y aditiva, los 3 puntos de escritura van con `.catch()` propio (si falla registrar la relación, la acción principal — asignar tarea, compartir documento, enviar mensaje — ya se completó y no se bloquea).
 - **Tiempo estimado:** 1 sesión.
-- **Estado:** ✅ Completada y verificada (`turbo run typecheck lint test` limpio en los 3 paquetes, `expo export --platform web` sin errores). **Migración sin aplicar** — mismo criterio que Fases 9-11 y 13: pendiente de confirmación explícita.
+- **Estado:** ✅ Completada, verificada y **desplegada** (migración `0015` aplicada, `get_advisors` sin hallazgos nuevos de seguridad).
 - **Prioridad:** Baja (explícitamente "preparar arquitectura", no una feature visible — por eso esta fase, a diferencia de la 13, no agrega una pantalla nueva: solo el modelo de datos y los casos de uso quedan disponibles para que una UI futura los consuma).
 - **Checklist:**
   - [x] **Modelo de datos** (`0015_grafo_relaciones.sql`): tabla genérica `grafo_relaciones` (origen_tipo/origen_id → relación → destino_tipo/destino_id, ambos de un enum `grafo_entidad_tipo` con 6 tipos de entidad ya reales en el esquema: usuario, tarea, documento, solicitud_ausencia, solicitud_interna, departamento) en vez de una tabla de grafo/`pgvector` completa — no hay todavía un caso de uso que necesite similitud semántica o recorridos de grafo complejos, solo "qué está conectado con qué". Unique constraint por `(empresa, origen, relación, destino)`: el mismo par de entidades con la misma relación es una sola fila, no un log por evento. Índices en ambos sentidos (origen y destino) para no hacer full scan al pedir las relaciones de cualquier entidad. RLS: lectura jefe+ (ver el grafo completo de la empresa es un privilegio operativo, igual que el resto de paneles), escritura para cualquier usuario de la empresa (a diferencia de tareas/documentos, la mensajería interna —una de las 3 relaciones reales— la usa cualquier empleado, no solo jefe+).
@@ -457,19 +457,25 @@ En los 3 archivos de pantalla (`DashboardAdmin`, `GestionPlantilla`, `Estructura
     2. **`usuario --tiene_acceso_a--> documento`**: en `GestionDocumentos.tsx`, justo después de crear el registro del documento (se capturó el id de retorno de `useCases.documents.create`, antes descartado) y junto al aviso de Bandeja Unificada/push ya existentes de la Fase 9/10.
     3. **`usuario --conversa_con--> usuario`**: en `ChatInterno.tsx`, mismo punto donde la Fase 9 ya publica en Bandeja Unificada — solo para chats directos (1:1), mismo criterio que esa fase para no inundar el grafo con edges de grupos/departamentos.
   - [x] Verificado: `turbo run typecheck lint test` limpio (0 errores) en los 3 paquetes, `expo export --platform web` exporta sin errores.
-  - [ ] **Migración sin aplicar** — requiere `supabase db push` (o aplicar `0015_grafo_relaciones.sql` a mano), pendiente de confirmación explícita del usuario. Sin la tabla creada, los 3 `useCases.graph.addRelation.execute(...)` fallan silenciosamente vía su `.catch()` — no rompen nada, pero tampoco graban relaciones hasta que se aplique.
+  - [x] **Migración aplicada** (2026-08-13) — los 3 `useCases.graph.addRelation.execute(...)` ya graban relaciones reales.
   - [ ] **Sin UI propia, a propósito** (ver nota de prioridad arriba): el grafo es consultable vía `useCases.graph.getForEntity` pero no hay ninguna pantalla que lo muestre todavía — se agregará cuando haya un caso de uso concreto que lo necesite (p.ej. mostrar en el perfil de un empleado sus tareas/documentos/conversaciones relacionadas), no antes.
   - [ ] **Solo 3 de los 6 tipos de entidad del enum tienen relaciones reales hoy** (usuario, tarea, documento) — `solicitud_ausencia`, `solicitud_interna` y `departamento` quedan en el enum listos para cuando se conecte una relación real que los use (p.ej. `usuario --pertenece_a--> departamento` al asignar `departamento_id` en `GestionPlantilla`), no se inventó una relación forzada solo para "usar" cada tipo.
 
 ### Fase 15 — Limpieza final
 - **Objetivo:** eliminar `app.zip`, `package-lock.json.bak`, resolver vulnerabilidades npm reportadas (61 en `web-dashboard`, a re-auditar tras Fase 2), unificar planes (una sola fuente de verdad entre `shared/billing/plans.ts` y la tabla `planes`).
-- **Archivos afectados:** varios, puntuales.
-- **Dependencias:** después de Fase 2 (para no perder tiempo arreglando vulnerabilidades de CRA si se va a reemplazar por Vite).
-- **Riesgos:** ninguno.
-- **Tiempo estimado:** 1 sesión.
-- **Estado:** Lista para iniciar (tras Fase 2, para no arreglar vulnerabilidades de CRA que Vite hace irrelevantes).
-- **Prioridad:** Baja (cosmético/housekeeping, no bloquea nada).
-- **Checklist:** por definir.
+- **Archivos afectados:** `packages/domain/entities/Plan.ts` (nuevo), `packages/domain/repositories/IPlanRepository.ts` (nuevo), `packages/domain/application/use-cases/plans/PlanUseCases.ts` (nuevo), `apps/mobile/src/infrastructure/supabase/SupabasePlanRepository.ts` (nuevo), `apps/mobile/src/infrastructure/container.ts`, `apps/mobile/src/shared/billing/plans.ts`, `apps/mobile/App.tsx`, `apps/dashboard/src/services/checkout.ts`, `apps/dashboard/src/App.tsx`, `supabase/migrations/0016_planes_select_publico.sql`.
+- **Estado:** ✅ Completada y verificada.
+- **Prioridad:** Baja (housekeeping, no bloquea nada).
+- **Checklist:**
+  - [x] `app.zip` / `package-lock.json.bak`: ya no existían en el repo, nada que borrar.
+  - [x] **`npm audit`**: bajó de 61 (pre-Vite) a 25 en dependencias de producción (11 moderate, 14 high). Aplicado `npm audit fix` sin `--force` (único cambio seguro posible, ajuste menor en `package-lock.json`). **Decisión del usuario:** el resto queda documentado como riesgo aceptado, sin tocar versiones mayores — la mayoría requiere Expo SDK 54→57 + React Native 0.72→mayor (cambio grande, re-verificación completa de `apps/mobile`) o no tiene fix disponible (`xlsx`, `linkify-it`, `markdown-it`, `react-native-markdown-display`); `react-router`/`react-router-dom` sí tienen fix pero cruzan v6→v7 (breaking). Ninguna es explotable sin acceso al código fuente (son de build tooling, no de runtime expuesto) — razonable para una demo.
+  - [x] **Planes unificados — la tabla `planes` de Supabase es ahora la fuente de verdad** (decisión del usuario). Antes había **3 copias** con los mismos números hardcodeados a mano (`apps/mobile/src/shared/billing/plans.ts`, `apps/dashboard/src/services/checkout.ts`, y la tabla `planes`), sin nada que las mantuviera sincronizadas.
+    - Nueva capa compartida en `packages/domain` (`Plan` entity, `IPlanRepository`, caso de uso `GetPlans` con cache en memoria — los planes cambian con muy poca frecuencia, no vale la pena refetchear en cada render) + `SupabasePlanRepository` en `apps/mobile`.
+    - **Diseño elegido para no reescribir los 9+ call sites existentes:** `plans.ts` (mobile) y `checkout.ts` (dashboard) mantienen exactamente la misma API pública (`PLAN_CATALOG`, `PLAN_ORDER`, `getPlanEntitlements`, etc.) — los valores hardcodeados ahora son solo el estado inicial/respaldo; `applyPlanCatalog()`/`refreshPlanCatalog()` los sobreescriben mutando el mismo objeto (no reasignándolo) en cuanto `App.tsx` de cada app resuelve el fetch real al arrancar. Ningún consumidor existente tuvo que cambiar su código.
+    - **Hallazgo real durante la verificación:** la política RLS `planes_select` exigía `auth.uid() IS NOT NULL` — bloqueaba exactamente el caso que más lo necesita, la pantalla pública de registro (`apps/dashboard/.../registro`, antes de iniciar sesión). Corregido en `0016_planes_select_publico.sql` (`for select using (true)`) — los precios de un plan no son información sensible, es normal que sean públicos como cualquier página de pricing. Solo `SELECT` es público; `INSERT`/`UPDATE`/`DELETE` siguen restringidos a `es_super_admin()`.
+    - Verificado end-to-end a nivel API: antes del fix de RLS, `fetch` con anon key devolvía `[]`; después, las 3 filas reales. Prueba adicional cambiando temporalmente `Starter.precio` en la base (revertida después) para confirmar que el mecanismo de sobreescritura es el correcto en el diseño, no solo que compila.
+  - [x] Verificado: `turbo run typecheck test lint` limpio (0 errores) en los 3 paquetes tras un `npm install` completo (el `node_modules` raíz había quedado incompleto, sin `eslint`/`vitest` instalados — se detectó y arregló en el camino).
+  - [x] Migración `0016_planes_select_publico.sql` aplicada.
 
 ---
 

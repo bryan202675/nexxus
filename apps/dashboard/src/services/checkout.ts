@@ -8,6 +8,12 @@
 // misma simulación (ninguna tarjeta real se cobra) y activa el plan como parte del mismo batch de
 // creación de empresa en services/registro.js — no como una escritura aparte, para no depender de
 // permisos de "auto-otorgarse un plan" que Firestore rules bloquea intencionalmente fuera de ese flujo.
+//
+// Fase 15: la tabla `planes` de Supabase es la fuente de verdad (mismo criterio que
+// apps/mobile/src/shared/billing/plans.ts). PLAN_CATALOG de abajo es el respaldo/estado inicial;
+// refreshPlanCatalog() lo sobreescribe (mutando el mismo objeto) con lo que devuelva la tabla en
+// cuanto App.tsx la llame al arrancar.
+import { supabase } from "supabaseClient/supabaseConfig";
 
 export const PLAN_CATALOG = {
   Starter: {
@@ -43,6 +49,20 @@ export const PLAN_CATALOG = {
 };
 
 export const PLAN_NAMES = ["Starter", "Business", "Enterprise"];
+
+export async function refreshPlanCatalog() {
+  const { data, error } = await supabase.from("planes").select("nombre, precio, limites");
+  if (error || !data) return;
+  for (const row of data as any[]) {
+    if (!PLAN_NAMES.includes(row.nombre)) continue;
+    (PLAN_CATALOG as any)[row.nombre] = {
+      monthly: Number(row.precio) || 0,
+      annual: Number(row.limites?.annual) || 0,
+      limits: row.limites?.limits || {},
+      features: row.limites?.features || {},
+    };
+  }
+}
 
 export function planEntitlements(plan) {
   const nombre = PLAN_NAMES.includes(plan) ? plan : "Starter";

@@ -1,11 +1,19 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
 import AdminLayout from "layouts/admin";
 import AuthLayout from "layouts/auth";
 import RequireSuperAdmin from "components/auth/RequireSuperAdmin";
+import { refreshPlanCatalog } from "services/checkout";
 
 const App = () => {
+  // Fase 15: precarga el catálogo real de planes desde la tabla `planes` una sola vez al
+  // arrancar (mismo criterio que apps/mobile/App.tsx). Si falla, se queda con el respaldo
+  // hardcodeado de services/checkout.ts.
+  useEffect(() => {
+    refreshPlanCatalog().catch(() => {});
+  }, []);
+
   return (
     <Routes>
       <Route path="auth/*" element={<AuthLayout />} />
