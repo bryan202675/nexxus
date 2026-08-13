@@ -1,0 +1,20 @@
+{
+  "short_name": "Nexxus",
+  "name": "Nexxus - Impulsa tu empresa con IA",
+  "icons": [
+    {
+      "src": "favicon-dark.png",
+      "sizes": "1024x1536",
+      "type": "image/png"
+    },
+    {
+      "src": "favicon-light.png",
+      "sizes": "1024x1536",
+      "type": "image/png"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff"
+}

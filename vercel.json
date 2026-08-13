@@ -1,0 +1,20 @@
+{
+  "buildCommand": "sh scripts/vercel-build.sh",
+  "outputDirectory": "apps/dashboard/dist",
+  "installCommand": "npm install",
+  "rewrites": [
+    { "source": "/auth/(.*)", "destination": "/app.html" },
+    { "source": "/admin/(.*)", "destination": "/app.html" },
+    { "source": "/workspace/(.*)", "destination": "/app.html" },
+    { "source": "/landing", "destination": "/index.html" },
+    { "source": "/landing/(.*)", "destination": "/index.html" },
+    { "source": "/app", "destination": "/app/index.html" },
+    { "source": "/app/(.*)", "destination": "/app/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "no-store" }]
+    }
+  ]
+}

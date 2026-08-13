@@ -1,0 +1,247 @@
+/*
+ * Documentacion Nexxus - nexxus/app/src/Landing/AuthPage.css
+ * Capa: landing.
+ * Proposito: Pantalla o recurso visual del flujo publico de autenticacion/landing. Centraliza la presentacion inicial antes de entrar a la app privada.
+ * Nota: Estos estilos controlan presentacion; cambiar nombres de clases exige actualizar los componentes que los consumen.
+ */
+
+/* Documentacion de estilos: las reglas siguientes definen clases consumidas por componentes React; mantener nombres estables evita romper el render web. */
+/* .nx-auth-page: define reglas visuales para los elementos que usan este selector en la interfaz. */
+.nx-auth-page {
+  background: #07070a;
+  color: var(--nx-text);
+  font-family: var(--nx-font);
+  min-height: 100dvh;
+  overflow-x: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.nx-auth-page > .nx-nav-layer {
+  display: none;
+}
+
+/* .nx-auth-page *::after: define reglas visuales para los elementos que usan este selector en la interfaz. */
+.nx-auth-page *,
+.nx-auth-page *::before,
+.nx-auth-page *::after {
+  box-sizing: border-box;
+}
+
+/* .nx-auth-page::before: define reglas visuales para los elementos que usan este selector en la interfaz. */
+.nx-auth-page::before {
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 72px 72px;
+  content: "";
+  inset: 0;
+  mask-image: linear-gradient(to bottom, black, transparent 72%);
+  opacity: 0.22;
+  pointer-events: none;
+  position: fixed;
+  z-index: 1;
+}
+
+/* .nx-auth-page-light: define reglas visuales para los elementos que usan este selector en la interfaz. */
+.nx-auth-page-light {
+  border-radius: 999px;
+  filter: blur(28px);
+  opacity: 0.52;
+  pointer-events: none;
+  position: fixed;
+  z-index: 2;
+}
+
+/* .nx-auth-page-light-a: define reglas visuales para los elementos que usan este selector en la interfaz. */
+.nx-auth-page-light-a {
+  background: rgba(124, 58, 237, 0.42);
+  height: 280px;
+  left: -80px;
+  top: 18%;
+  width: 280px;
+}
+
+/* .nx-auth-page-light-b: define reglas visuales para los elementos que usan este selector en la interfaz. */
+.nx-auth-page-light-b {
+  background: rgba(168, 85, 247, 0.28);
+  bottom: 10%;
+  height: 360px;
+  right: -130px;
+  width: 360px;
+}
+
+/* .nx-auth-page-nav: define reglas visuales para los elementos que usan este selector en la interfaz. */
+.nx-auth-page .nx-auth-page-nav {
+  left: 28px;
+  top: 24px;
+  transform: none;
+  width: 48px;
+}
+
+.nx-auth-page-nav .glass-surface__content {
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+}
+
+.nx-auth-page-back svg {
+  display: block;
+}
+
+/* .nx-auth-page-stage: define reglas visuales para los elementos que usan este selector en la interfaz. */
+.nx-auth-page-stage {
+  align-items: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-content: center;
+  margin: 0;
+  max-width: none;
+  min-height: 100dvh;
+  padding: 0;
+  position: relative;
+  z-index: 3;
+}
+
+/* .nx-auth-page-copy: define reglas visuales para los elementos que usan este selector en la interfaz. */
+.nx-auth-page-copy {
+  display: none;
+}
+
+/* .nx-auth-page-copy h1: define reglas visuales para los elementos que usan este selector en la interfaz. */
+.nx-auth-page-copy h1 {
+  color: #f7f5ff;
+  font-family: var(--nx-font);
+  font-size: clamp(2.7rem, 5.4vw, 5.8rem);
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 0.94;
+  margin: 20px 0 24px;
+  hyphens: none;
+  max-width: 420px;
+  overflow-wrap: normal;
+  text-wrap: balance;
+  word-break: normal;
+}
+
+/* .nx-auth-page-copy p: define reglas visuales para los elementos que usan este selector en la interfaz. */
+.nx-auth-page-copy p {
+  color: var(--nx-muted);
+  font-size: clamp(1rem, 1.35vw, 1.2rem);
+  line-height: 1.75;
+  max-width: 680px;
+}
+
+/* .nx-auth-page .nx-auth-shell: define reglas visuales para los elementos que usan este selector en la interfaz. */
+.nx-auth-page .nx-auth-shell {
+  box-shadow: none;
+  justify-self: stretch;
+  margin: 0;
+  min-height: 100dvh;
+  width: 100%;
+}
+
+.nx-auth-page .nx-auth-shell.nx-auth-shell-wide {
+  width: 100% !important;
+}
+
+.nx-auth-page-stage:has(.nx-auth-shell-wide) {
+  grid-template-columns: minmax(0, 1fr) !important;
+  max-width: none !important;
+}
+
+/* .nx-auth-page button: define reglas visuales para los elementos que usan este selector en la interfaz. */
+.nx-auth-page .nx-auth-aside h3,
+.nx-auth-page .nx-auth-field input,
+.nx-auth-page .nx-auth-field select,
+.nx-auth-page button {
+  font-family: inherit;
+}
+
+@media (max-width: 1180px) {
+  /* .nx-auth-page-stage: define reglas visuales para los elementos que usan este selector en la interfaz. */
+  .nx-auth-page-stage {
+    grid-template-columns: 1fr !important;
+    justify-items: center;
+    padding-top: 0;
+  }
+
+  .nx-auth-page-stage:has(.nx-auth-shell-wide) {
+    grid-template-columns: 1fr !important;
+    max-width: 960px !important;
+  }
+
+  /* .nx-auth-page-copy: define reglas visuales para los elementos que usan este selector en la interfaz. */
+  .nx-auth-page-copy {
+    justify-self: stretch;
+    max-width: 820px;
+  }
+}
+
+@media (max-width: 640px) {
+  /* .nx-auth-page-nav: define reglas visuales para los elementos que usan este selector en la interfaz. */
+  .nx-auth-page-nav {
+    left: 14px;
+    top: 14px;
+    width: 44px;
+  }
+
+  .nx-auth-page-nav .glass-surface__content {
+    gap: 10px !important;
+    min-width: 0;
+  }
+
+  /* .nx-auth-page-stage: define reglas visuales para los elementos que usan este selector en la interfaz. */
+  .nx-auth-page-stage {
+    gap: 0;
+    min-height: auto;
+    padding: 0;
+  }
+
+  /* .nx-auth-page-copy: define reglas visuales para los elementos que usan este selector en la interfaz. */
+  .nx-auth-page-copy {
+    justify-self: stretch;
+    max-width: 100%;
+  }
+
+  /* .nx-auth-page-copy h1: define reglas visuales para los elementos que usan este selector en la interfaz. */
+  .nx-auth-page-copy h1 {
+    font-size: clamp(2.15rem, 11vw, 3rem);
+    letter-spacing: -0.038em;
+    line-height: 0.98;
+    margin: 14px 0 14px;
+    max-width: 100%;
+  }
+
+  /* .nx-auth-page-copy p: define reglas visuales para los elementos que usan este selector en la interfaz. */
+  .nx-auth-page-copy p {
+    font-size: 0.96rem;
+    line-height: 1.55;
+    margin: 0;
+  }
+
+  /* .nx-auth-page .nx-kicker: define reglas visuales para los elementos que usan este selector en la interfaz. */
+  .nx-auth-page .nx-kicker {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+  }
+
+  /* .nx-auth-page .nx-auth-shell: define reglas visuales para los elementos que usan este selector en la interfaz. */
+  .nx-auth-page .nx-auth-shell {
+    justify-self: stretch;
+    width: 100%;
+  }
+
+}
+
+@media (max-width: 380px) {
+  /* .nx-auth-page-copy h1: define reglas visuales para los elementos que usan este selector en la interfaz. */
+  .nx-auth-page-copy h1 {
+    font-size: clamp(1.95rem, 9.6vw, 2.45rem);
+  }
+
+  /* .nx-auth-page-copy p: define reglas visuales para los elementos que usan este selector en la interfaz. */
+  .nx-auth-page-copy p {
+    font-size: 0.92rem;
+  }
+}

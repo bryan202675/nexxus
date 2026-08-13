@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <link id="favicon-light" href="/favicon-light.png" rel="icon" type="image/png" media="(prefers-color-scheme: light)" />
+    <link id="favicon-dark" href="/favicon-dark.png" rel="icon" type="image/png" media="(prefers-color-scheme: dark)" />
+    <link rel="shortcut icon" href="/favicon-dark.png" />
+    <link rel="apple-touch-icon" href="/favicon-dark.png" />
+    <script>
+      (function() {
+        function setFavicon() {
+          var isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var href = isDark ? '/favicon-dark.png' : '/favicon-light.png';
+          var links = document.querySelectorAll("link[rel*='icon']");
+          links.forEach(function(l) { if (!l.media) l.href = href; });
+        }
+        setFavicon();
+        if (window.matchMedia) {
+          window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', setFavicon);
+        }
+      })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="Nexxus - Impulsa tu empresa con IA" />
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Nexxus - Impulsa tu empresa con IA" />
+    <meta property="og:description" content="Crea tu empresa y dirige tu negocio de la manera más fácil posible" />
+    <meta property="og:image" content="/heroNexxus.png" />
+    <!-- X / Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Nexxus - Impulsa tu empresa con IA" />
+    <meta name="twitter:description" content="Crea tu empresa y dirige tu negocio de la manera más fácil posible" />
+    <meta name="twitter:image" content="/heroNexxus.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <title>Nexxus - Impulsa tu empresa con IA</title>
+  </head>
+  <body class="font-dm bg-lightPrimary">
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <script type="module" src="/src/index.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Turborepo cache
+.turbo/
+
+# macOS
+.DS_Store
+
+# Secrets
+.mcp.json
+
+# Builds & Caches
+dist/
+build/
+.next/
+.expo/
+
+

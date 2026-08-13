@@ -1,0 +1,106 @@
+GUIA PARA AGREGAR NUEVOS APARTADOS Y PREPARAR UNA EVALUACION DE CODIGO
+
+Proposito
+Este documento explica como agregar nuevas pantallas, componentes, casos de uso o funciones de backend en Nexxus sin romper la arquitectura existente. Tambien sirve como checklist para una evaluacion de codigo.
+
+1. Antes de agregar algo
+- Identifica la capa correcta:
+  presentacion: pantallas, componentes, navegacion, contextos y hooks.
+  aplicacion: casos de uso y servicios que orquestan acciones de negocio.
+  dominio: entidades, errores y contratos de repositorio.
+  infraestructura: Firebase, almacenamiento, integraciones y adaptadores.
+  backend: Cloud Functions y validaciones que deben ejecutarse en servidor.
+- Revisa si ya existe un componente, hook, repositorio o caso de uso parecido.
+- Evita duplicar logica de Firebase dentro de pantallas si ya existe un repositorio o contexto que la expone.
+
+2. Como agregar un nuevo apartado visual
+- Crea la pantalla en app/src/presentation/screens si es una vista del usuario.
+- Crea la pantalla en app/src/presentation/screens/admin si pertenece al panel administrativo.
+- Reutiliza componentes de app/src/presentation/components cuando el patron visual ya existe.
+- Registra la ruta en UserNavigator.tsx o AdminNavigator.tsx segun corresponda.
+- Si necesita datos globales del usuario, usa ContextoUsuario.tsx antes de crear nuevas consultas aisladas.
+- Si la pantalla necesita textos traducibles, agrega las claves en shared/i18n/locales/es.json y en.json.
+- Documenta el archivo con un encabezado que explique proposito, dependencias y consideraciones de mantenimiento.
+
+3. Como agregar logica de negocio
+- Define o actualiza la entidad en app/src/domain/entities.
+- Si hay persistencia, define primero el contrato en app/src/domain/repositories.
+- Implementa Firebase en app/src/infrastructure/firebase.
+- Crea un caso de uso en app/src/application/use-cases para que la UI no dependa directamente de Firebase.
+- Exporta la nueva pieza desde el index.ts correspondiente cuando el modulo use barriles de exportacion.
+- Agrega comentarios JSDoc sobre funciones publicas, interfaces y constantes importantes.
+
+4. Como agregar una Cloud Function
+- Agrega la funcion en backend/index.js.
+- Valida autenticacion con request.auth cuando la accion dependa de un usuario.
+- Lee el usuario llamador desde usuarios/{uid} y valida empresa_id o empresaId.
+- Usa HttpsError con codigos claros: unauthenticated, permission-denied, invalid-argument, failed-precondition, already-exists o internal.
+- Escribe logs/audit_logs cuando la accion cambie datos administrativos sensibles.
+- No confies en campos enviados por la UI si pueden derivarse del usuario autenticado.
+
+5. Comentarios esperados en el codigo
+- Encabezado por archivo: que hace, a que capa pertenece y que se debe cuidar al modificarlo.
+- Componentes React: que renderizan, que datos consumen y que interacciones controlan.
+- Hooks/contextos: que estado exponen, de donde viene la informacion y cuando se actualiza.
+- Casos de uso: accion de negocio que representan y repositorios que coordinan.
+- Repositorios Firebase: colecciones que leen/escriben, filtros usados y formato que devuelven.
+- Entidades y DTOs: significado de campos importantes y compatibilidad con nombres historicos si existe.
+- Backend: permisos requeridos, colecciones afectadas y respuesta esperada.
+
+6. Checklist para evaluacion de codigo
+- Arquitectura: la nueva pieza esta en la capa correcta y no mezcla UI con persistencia innecesariamente.
+- Funcionalidad: conserva rutas, listeners, escrituras Firebase y flujos existentes.
+- Datos reales: no introduce mocks permanentes en pantallas productivas.
+- Tipado: evita any cuando se puede usar una entidad, DTO o tipo local claro.
+- Seguridad: valida auth, empresa y rol antes de escribir datos administrativos.
+- UX: respeta el sistema visual existente y no satura pantallas con metricas sin valor.
+- Estados: contempla carga, vacio, error y exito cuando la vista depende de datos remotos.
+- Accesibilidad basica: textos legibles, areas tactiles suficientes y botones con proposito claro.
+- Rendimiento: evita consultas duplicadas, filtros caros en render y listas sin key estable.
+- Mantenibilidad: nombres descriptivos, comentarios utiles y funciones pequenas cuando la logica crece.
+- Internacionalizacion: textos visibles salen de i18n cuando la pantalla ya usa traducciones.
+- Verificacion: ejecuta npx tsc --noEmit para app y npm run build:web cuando el cambio afecta web/admin.
+
+7. Formato sugerido para comentar un archivo nuevo
+/**
+ * Documentacion Nexxus - ruta/del/archivo.tsx
+ * Capa: presentacion | aplicacion | dominio | infraestructura | backend.
+ * Proposito: explicar en una frase que responsabilidad tiene este archivo.
+ * Dependencias clave: mencionar contextos, repositorios, Firebase o navegacion si aplican.
+ * Consideracion de mantenimiento: indicar que no se debe romper al extenderlo.
+ */
+
+8. Formato sugerido para comentar una funcion o componente
+/**
+ * NombreComponente: describe que renderiza, que datos consume y que accion permite.
+ */
+
+8.1. Formato sugerido para comentarios de evaluacion linea por linea
+- Usa este nivel cuando el profesor, evaluador o equipo necesita entender el flujo interno de una funcion.
+- Comenta la intencion de cada hook, filtro, calculo, condicion y render importante.
+- Evita repetir literalmente el codigo. En vez de escribir "filtra tareas", explica para que se filtran y que impacto tiene en pantalla.
+- Mantén los comentarios cerca de la linea que explican para que el lector pueda seguir el flujo sin buscar en otro archivo.
+
+Ejemplo:
+// Obtiene la funcion `t` de i18next para mostrar textos traducidos sin dejarlos fijos en el codigo.
+const { t } = useTranslation();
+
+// Separa las tareas urgentes que todavia no estan completadas para mostrarlas como prioridades criticas.
+const urgentes = tareas.filter(t => t.prioridad === 'Urgente' && t.estado !== 'completada');
+
+// Toma la energia del ultimo registro semanal; si no hay metricas disponibles usa 0 para evitar errores de render.
+const rendimiento = metrics?.datosSemana?.[metrics.datosSemana.length - 1]?.energia || 0;
+
+9. Senales de alerta en una revision
+- Una pantalla escribe directamente en muchas colecciones sin caso de uso ni funcion backend.
+- Una funcion backend no revisa request.auth antes de modificar datos.
+- Un cambio visual elimina botones, rutas o listeners existentes.
+- Un nuevo apartado usa datos inventados en lugar de contexto, repositorio o Firestore.
+- Un archivo crece demasiado y mezcla filtros, render, estilos, permisos y escritura remota sin separar responsabilidades.
+
+10. Flujo recomendado para entregar un cambio
+- Leer archivos relacionados antes de editar.
+- Hacer el cambio minimo que cumple el objetivo.
+- Mantener comentarios actualizados junto al codigo modificado.
+- Ejecutar verificacion TypeScript o build segun el area afectada.
+- Revisar git diff para asegurar que no se tocaron archivos generados o dependencias sin necesidad.

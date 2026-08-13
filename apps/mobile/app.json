@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "nexxus",
+    "slug": "nexxus",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/logozz.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/logozz.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/logozz.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/logozz.png"
+    },
+    "plugins": [
+      "expo-localization",
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/logozz.png",
+          "color": "#7C3AED"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "dbe743ab-dc02-4e26-9b3b-d227a2f4e99e"
+      }
+    },
+    "owner": "bryan202675"
+  }
+}

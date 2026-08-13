@@ -1,0 +1,191 @@
+import { forwardRef, memo, ReactNode, useEffect, useId, useImperativeHandle, useRef, useState } from 'react';
+import './GlassSurface.css';
+
+// ============================================================================
+// Tipos
+// ============================================================================
+type GlassSurfaceProps = {
+  as?: 'div' | 'nav';
+  backgroundOpacity?: number;
+  blur?: number;
+  borderRadius?: number;
+  borderWidth?: number;
+  brightness?: number;
+  children?: ReactNode;
+  className?: string;
+  displace?: number;
+  height?: number | string;
+  mixBlendMode?: string;
+  opacity?: number;
+  saturation?: number;
+  style?: React.CSSProperties;
+  width?: number | string;
+  distortionScale?: number;
+  redOffset?: number;
+  greenOffset?: number;
+  blueOffset?: number;
+  xChannel?: 'R' | 'G' | 'B';
+  yChannel?: 'R' | 'G' | 'B';
+};
+
+// ============================================================================
+// Componente GlassSurface
+// ============================================================================
+const GlassSurface = memo(forwardRef<HTMLElement, GlassSurfaceProps>(({
+  as = 'div',
+  backgroundOpacity = 0,
+  blur = 11,
+  borderRadius = 20,
+  borderWidth = 0.07,
+  brightness = 50,
+  children,
+  className = '',
+  displace = 0,
+  distortionScale = -180,
+  height,
+  mixBlendMode = 'difference',
+  opacity = 0.93,
+  saturation = 1,
+  style = {},
+  width,
+  redOffset = 0,
+  greenOffset = 10,
+  blueOffset = 20,
+  xChannel = 'R',
+  yChannel = 'G',
+}, ref) => {
+  // --- IDs unicos (para que multiples instancias no colisionen en el DOM) ---
+  const uniqueId = useId().replace(/:/g, '-');
+  const filterId = `glass-filter-${uniqueId}`;
+  const redGradId = `red-grad-${uniqueId}`;
+  const blueGradId = `blue-grad-${uniqueId}`;
+
+  // --- Estado y refs ---
+  const [svgSupported, setSvgSupported] = useState(false);
+  const containerRef = useRef<HTMLElement>(null);
+  const feImageRef = useRef<SVGFEImageElement>(null);
+  const redChannelRef = useRef<SVGFEDisplacementMapElement>(null);
+  const greenChannelRef = useRef<SVGFEDisplacementMapElement>(null);
+  const blueChannelRef = useRef<SVGFEDisplacementMapElement>(null);
+  const gaussianBlurRef = useRef<SVGFEGaussianBlurElement>(null);
+  const resizeFrameRef = useRef(0);
+
+  useImperativeHandle(ref, () => containerRef.current as HTMLElement);
+
+  // --- Generacion del mapa de desplazamiento (displacement map) ---
+  const generateDisplacementMap = () => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    const actualWidth = rect?.width || 400;
+    const actualHeight = rect?.height || 80;
+    const edgeSize = Math.min(actualWidth, actualHeight) * (borderWidth * 0.5);
+    const svgContent = `
+      <svg viewBox="0 0 ${actualWidth} ${actualHeight}" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="${redGradId}" x1="100%" y1="0%" x2="0%" y2="0%">
+            <stop offset="0%" stop-color="#0000"/>
+            <stop offset="100%" stop-color="red"/>
+          </linearGradient>
+          <linearGradient id="${blueGradId}" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#0000"/>
+            <stop offset="100%" stop-color="blue"/>
+          </linearGradient>
+        </defs>
+        <rect x="0" y="0" width="${actualWidth}" height="${actualHeight}" fill="black"></rect>
+        <rect x="0" y="0" width="${actualWidth}" height="${actualHeight}" rx="${borderRadius}" fill="url(#${redGradId})" />
+        <rect x="0" y="0" width="${actualWidth}" height="${actualHeight}" rx="${borderRadius}" fill="url(#${blueGradId})" style="mix-blend-mode: ${mixBlendMode}" />
+        <rect x="${edgeSize}" y="${edgeSize}" width="${actualWidth - edgeSize * 2}" height="${actualHeight - edgeSize * 2}" rx="${borderRadius}" fill="hsl(0 0% ${brightness}% / ${opacity})" style="filter:blur(${blur}px)" />
+      </svg>
+    `;
+    return `data:image/svg+xml,${encodeURIComponent(svgContent)}`;
+  };
+
+  const updateDisplacementMap = () => {
+    feImageRef.current?.setAttribute('href', generateDisplacementMap());
+  };
+
+  // --- Sincronizacion del filtro SVG con las props ---
+  useEffect(() => {
+    updateDisplacementMap();
+    [
+      { ref: redChannelRef, offset: redOffset },
+      { ref: greenChannelRef, offset: greenOffset },
+      { ref: blueChannelRef, offset: blueOffset },
+    ].forEach(({ ref, offset }) => {
+      ref.current?.setAttribute('scale', (distortionScale + offset).toString());
+      ref.current?.setAttribute('xChannelSelector', xChannel);
+      ref.current?.setAttribute('yChannelSelector', yChannel);
+    });
+    gaussianBlurRef.current?.setAttribute('stdDeviation', displace.toString());
+  }, [width, height, borderRadius, borderWidth, brightness, opacity, blur, displace, distortionScale, redOffset, greenOffset, blueOffset, xChannel, yChannel, mixBlendMode]);
+
+  // --- Observador de resize (regenera el mapa cuando cambia el tamano) ---
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const resizeObserver = new ResizeObserver(() => {
+      if (resizeFrameRef.current) cancelAnimationFrame(resizeFrameRef.current);
+      resizeFrameRef.current = requestAnimationFrame(updateDisplacementMap);
+    });
+    resizeObserver.observe(containerRef.current);
+    return () => {
+      resizeObserver.disconnect();
+      if (resizeFrameRef.current) cancelAnimationFrame(resizeFrameRef.current);
+    };
+  }, []);
+
+  // --- Fallback CSS (filtro SVG deshabilitado por rendimiento) ---
+  useEffect(() => {
+    // Disable heavy SVG filters by default to use GPU-accelerated CSS backdrop-filter fallback.
+    // This dramatically improves scroll performance on all browsers.
+    setSvgSupported(false);
+  }, []);
+
+  // --- Estilos del contenedor ---
+  const containerStyle = {
+    ...style,
+    ...(width === undefined ? {} : { width: typeof width === 'number' ? `${width}px` : width }),
+    ...(height === undefined ? {} : { height: typeof height === 'number' ? `${height}px` : height }),
+    borderRadius: `${borderRadius}px`,
+    '--glass-frost': backgroundOpacity,
+    '--glass-saturation': saturation,
+    '--filter-id': `url(#${filterId})`,
+  } as React.CSSProperties;
+
+  const Component = as;
+
+  // --- Render ---
+  return (
+    <Component
+      ref={containerRef as never}
+      className={`glass-surface ${svgSupported ? 'glass-surface--svg' : 'glass-surface--fallback'} ${className}`}
+      style={containerStyle}
+    >
+      <svg className="glass-surface__filter" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id={filterId} colorInterpolationFilters="sRGB" x="0%" y="0%" width="100%" height="100%">
+            <feImage ref={feImageRef} x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" result="map" />
+
+            {/* Canal rojo */}
+            <feDisplacementMap ref={redChannelRef} in="SourceGraphic" in2="map" result="dispRed" />
+            <feColorMatrix in="dispRed" type="matrix" values="1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0" result="red" />
+
+            {/* Canal verde */}
+            <feDisplacementMap ref={greenChannelRef} in="SourceGraphic" in2="map" result="dispGreen" />
+            <feColorMatrix in="dispGreen" type="matrix" values="0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 1 0" result="green" />
+
+            {/* Canal azul */}
+            <feDisplacementMap ref={blueChannelRef} in="SourceGraphic" in2="map" result="dispBlue" />
+            <feColorMatrix in="dispBlue" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 1 0" result="blue" />
+
+            {/* Composicion final de los tres canales */}
+            <feBlend in="red" in2="green" mode="screen" result="rg" />
+            <feBlend in="rg" in2="blue" mode="screen" result="output" />
+            <feGaussianBlur ref={gaussianBlurRef} in="output" stdDeviation="0.7" />
+          </filter>
+        </defs>
+      </svg>
+      <div className="glass-surface__content">{children}</div>
+    </Component>
+  );
+}));
+
+export default GlassSurface;
