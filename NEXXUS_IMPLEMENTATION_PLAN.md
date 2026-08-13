@@ -477,6 +477,14 @@ En los 3 archivos de pantalla (`DashboardAdmin`, `GestionPlantilla`, `Estructura
   - [x] Verificado: `turbo run typecheck test lint` limpio (0 errores) en los 3 paquetes tras un `npm install` completo (el `node_modules` raíz había quedado incompleto, sin `eslint`/`vitest` instalados — se detectó y arregló en el camino).
   - [x] Migración `0016_planes_select_publico.sql` aplicada.
 
+### Fase 16 (post-plan) — Habilitar Realtime a nivel de proyecto
+- **Reportado por el usuario:** "en los dashboards desplegados no se actualizan solos, si agrego un empleado tengo que recargar la página."
+- **Causa raíz encontrada:** la publicación `supabase_realtime` de Postgres tenía **0 tablas**. Tanto `apps/mobile` (`infrastructure/supabase/realtime.ts`, `subscribeQuery`) como `apps/dashboard` (`services/adminRepository.ts`, `subscribeTable`) ya llamaban correctamente a `.channel().on('postgres_changes', ...)` desde el principio — el código de suscripción siempre estuvo bien escrito, pero sin la tabla en la publicación, Postgres nunca emite el evento de cambio y el listener se queda esperando en silencio. Las pantallas solo se veían "actualizadas" por el fetch inicial al montar.
+- **Fix:** `0017_habilitar_realtime_tablas_usadas.sql` — agrega las 32 tablas que el código ya usaba en canales de Realtime (`usuarios`, `tareas`, `checkins`, `documentos`, `solicitudes_ausencia`, `solicitudes_internas`, `planes`, etc. — lista completa en la migración) a la publicación `supabase_realtime`.
+- **Verificado end-to-end, no solo a nivel de configuración:** script Node con `@supabase/supabase-js` suscrito con la anon key a una tabla real (`planes`), luego un `UPDATE` real vía SQL — el evento `UPDATE` llegó al cliente. (Primer intento con `audit_logs` no llegó, pero por un motivo correcto y distinto: esa tabla exige rol jefe+ vía RLS y la prueba usaba anon sin sesión — confirma que RLS sigue filtrando correctamente sobre Realtime, no que el fix esté incompleto.)
+- **No requiere redeploy de Vercel** — es un cambio de configuración de Postgres/Supabase, ya activo en producción desde que se aplicó.
+- **Estado:** ✅ Corregido y verificado en producción.
+
 ---
 
 ## 4. Preguntas que necesito que respondas antes de tocar código
