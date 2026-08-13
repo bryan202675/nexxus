@@ -66,7 +66,11 @@ export type EmpresaDetalle = EmpresaResumen & {
   usuariosTotal: number;
 };
 
+<<<<<<< HEAD
 export type RoleName = 'super_admin' | 'admin_empresa' | 'admin' | 'jefe' | 'empleado';
+=======
+export type RoleName = 'super_admin' | 'admin_empresa' | 'jefe' | 'empleado';
+>>>>>>> origin/main
 
 export type UsuarioGlobal = {
   id: string;

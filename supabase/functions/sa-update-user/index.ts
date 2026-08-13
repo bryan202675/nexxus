@@ -39,11 +39,16 @@ Deno.serve(withHandler(async (req, admin) => {
   let cambioEmpresa = false;
   let nuevaEmpresaId = before.empresa_id as string | null;
   if (rolInput && rolInput !== before.rol) {
+<<<<<<< HEAD
     if (userId === caller.id) throw new HttpError(403, "No puedes cambiar tu propio rol.");
     if (rolInput === "super_admin" && !isSuperAdmin(caller)) throw new HttpError(403, "No autorizado.");
     patch.rol = rolInput;
     patch.role_updated_at = new Date().toISOString();
     patch.role_updated_by = caller.id;
+=======
+    if (rolInput === "super_admin" && !isSuperAdmin(caller)) throw new HttpError(403, "No autorizado.");
+    patch.rol = rolInput;
+>>>>>>> origin/main
     cambioRol = true;
   }
   if (empresaIdInput && empresaIdInput !== before.empresa_id) {
@@ -67,6 +72,7 @@ Deno.serve(withHandler(async (req, admin) => {
   // politicas RLS de Postgres leen rol/empresa_id de public.usuarios en cada
   // consulta -- el cambio aplica de inmediato sin tocar la sesion del usuario.
 
+<<<<<<< HEAD
   if (cambioRol) {
     await admin.from("sensitive_change_history").insert({
       empresa_id: nuevaEmpresaId,
@@ -85,6 +91,14 @@ Deno.serve(withHandler(async (req, admin) => {
     detalles: cambioRol
       ? `${safeString(before.nombre, 120) || userId}: ${before.rol} -> ${rolInput}`
       : safeString(before.nombre, 160) || userId,
+=======
+  await writeAuditLog(admin, {
+    empresaId: nuevaEmpresaId || (before.empresa_id as string | null),
+    actorId: caller.id,
+    accion: "Actualización de usuario (super admin)",
+    modulo: "Super Admin",
+    detalles: safeString(before.nombre, 160) || userId,
+>>>>>>> origin/main
     targetId: userId,
   });
 
