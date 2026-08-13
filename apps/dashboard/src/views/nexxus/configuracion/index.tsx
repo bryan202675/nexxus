@@ -27,11 +27,7 @@ export default function Configuracion() {
   const [guardandoPassword, setGuardandoPassword] = useState(false);
 
   const [plataformaConfig, setPlataformaConfig] = useState(null);
-<<<<<<< HEAD
-//habia una ves un pato que queria cruzarce la calle, vino un camion y se lo paso llevando, el pato todo ensangrentado termino siendo aplastado 
-=======
 
->>>>>>> origin/main
   useEffect(() => {
     let active = true;
     supabase

@@ -20,10 +20,7 @@ export const etiquetaRol = (rol) => {
   switch (rol) {
     case "super_admin": return "Super Admin";
     case "admin_empresa": return "Propietario";
-<<<<<<< HEAD
     case "admin": return "Admin";
-=======
->>>>>>> origin/main
     case "jefe": return "Jefe";
     case "empleado": return "Empleado";
     default: return rol || "Sin rol";
@@ -48,10 +45,7 @@ export const etiquetaEstadoUsuario = (usuario) => {
 export const ROLE_OPTIONS = [
   { value: "super_admin", label: "Super Admin" },
   { value: "admin_empresa", label: "Propietario" },
-<<<<<<< HEAD
   { value: "admin", label: "Admin" },
-=======
->>>>>>> origin/main
   { value: "jefe", label: "Jefe" },
   { value: "empleado", label: "Empleado" },
 ];

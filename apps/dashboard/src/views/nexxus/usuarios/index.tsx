@@ -26,10 +26,7 @@ import {
   createUser,
 } from "services/superAdminRepository";
 import { etiquetaRol, etiquetaEstadoUsuario, formatoFecha, ROLE_OPTIONS } from "services/saFormat";
-<<<<<<< HEAD
 import { useAuth } from "context/AuthContext";
-=======
->>>>>>> origin/main
 
 const LIMITE = 25;
 
@@ -64,10 +61,7 @@ const ActionButton = ({ children, className = "", busy, ...rest }) => (
 );
 
 export default function Usuarios() {
-<<<<<<< HEAD
   const { user: usuarioActual } = useAuth();
-=======
->>>>>>> origin/main
   const [stats, setStats] = useState(null);
   const [statsError, setStatsError] = useState("");
 
@@ -106,10 +100,7 @@ export default function Usuarios() {
       cargo: selectedUser.cargo || "",
       departamento: selectedUser.departamento || "",
       sede: selectedUser.sede || "",
-<<<<<<< HEAD
       rol: selectedUser.rol || "empleado",
-=======
->>>>>>> origin/main
     });
     setActionMsg("");
   }, [selectedUser]);
@@ -196,7 +187,6 @@ export default function Usuarios() {
 
   const handleGuardarUsuario = async () => {
     if (!selectedUser || !editForm) return;
-<<<<<<< HEAD
     const { rol, ...patch } = editForm;
     const esUnoMismo = selectedUser.id === usuarioActual?.id;
     if (esUnoMismo && rol !== selectedUser.rol) {
@@ -211,12 +201,6 @@ export default function Usuarios() {
     try {
       await updateUser(selectedUser.id, patch, rol || null);
       setSelectedUser((prev) => (prev ? { ...prev, rol } : prev));
-=======
-    setBusyAction("guardar");
-    setActionMsg("");
-    try {
-      await updateUser(selectedUser.id, editForm);
->>>>>>> origin/main
       setActionMsg("Cambios guardados.");
     } catch (err) {
       setActionMsg(err.message || "No se pudieron guardar los cambios.");
@@ -606,7 +590,6 @@ export default function Usuarios() {
                 value={editForm.sede}
                 onChange={(e) => setEditForm((f) => ({ ...f, sede: e.target.value }))}
               />
-<<<<<<< HEAD
               <div>
                 <label className={selectLabelClasses} htmlFor="editar-rol">
                   Rol
@@ -634,8 +617,6 @@ export default function Usuarios() {
                   </p>
                 ) : null}
               </div>
-=======
->>>>>>> origin/main
             </div>
           ) : null}
 
