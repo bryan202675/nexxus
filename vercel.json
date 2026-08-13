@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm --workspace dashboard run build && cp apps/dashboard/dist/index.html apps/dashboard/dist/app.html && cp apps/Landing/index.html apps/dashboard/dist/index.html && EXPO_PUBLIC_BASE_URL=/app npm --workspace mobile run build && cp -r apps/mobile/dist apps/dashboard/dist/app",
+  "buildCommand": "sh scripts/vercel-build.sh",
   "outputDirectory": "apps/dashboard/dist",
   "installCommand": "npm install",
   "rewrites": [
