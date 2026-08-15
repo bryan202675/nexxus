@@ -26,6 +26,7 @@ import {
   createUser,
 } from "services/superAdminRepository";
 import { etiquetaRol, etiquetaEstadoUsuario, formatoFecha, ROLE_OPTIONS } from "services/saFormat";
+import { useAuth } from "context/AuthContext";
 
 const LIMITE = 25;
 
@@ -60,6 +61,7 @@ const ActionButton = ({ children, className = "", busy, ...rest }) => (
 );
 
 export default function Usuarios() {
+  const { user: usuarioActual } = useAuth();
   const [stats, setStats] = useState(null);
   const [statsError, setStatsError] = useState("");
 
@@ -98,6 +100,7 @@ export default function Usuarios() {
       cargo: selectedUser.cargo || "",
       departamento: selectedUser.departamento || "",
       sede: selectedUser.sede || "",
+      rol: selectedUser.rol || "empleado",
     });
     setActionMsg("");
   }, [selectedUser]);
@@ -184,10 +187,20 @@ export default function Usuarios() {
 
   const handleGuardarUsuario = async () => {
     if (!selectedUser || !editForm) return;
+    const { rol, ...patch } = editForm;
+    const esUnoMismo = selectedUser.id === usuarioActual?.id;
+    if (esUnoMismo && rol !== selectedUser.rol) {
+      setActionMsg("No puedes cambiar tu propio rol. Pídele a otro superadmin que lo haga.");
+      return;
+    }
+    if (rol !== selectedUser.rol && !window.confirm(`¿Cambiar el rol de "${selectedUser.nombre}" a "${etiquetaRol(rol)}"?`)) {
+      return;
+    }
     setBusyAction("guardar");
     setActionMsg("");
     try {
-      await updateUser(selectedUser.id, editForm);
+      await updateUser(selectedUser.id, patch, rol || null);
+      setSelectedUser((prev) => (prev ? { ...prev, rol } : prev));
       setActionMsg("Cambios guardados.");
     } catch (err) {
       setActionMsg(err.message || "No se pudieron guardar los cambios.");
@@ -577,6 +590,33 @@ export default function Usuarios() {
                 value={editForm.sede}
                 onChange={(e) => setEditForm((f) => ({ ...f, sede: e.target.value }))}
               />
+              <div>
+                <label className={selectLabelClasses} htmlFor="editar-rol">
+                  Rol
+                </label>
+                <select
+                  id="editar-rol"
+                  className={`${selectClasses} disabled:cursor-not-allowed disabled:opacity-50`}
+                  value={editForm.rol}
+                  disabled={selectedUser.id === usuarioActual?.id}
+                  onChange={(e) => setEditForm((f) => ({ ...f, rol: e.target.value }))}
+                >
+                  {ROLE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                {selectedUser.id === usuarioActual?.id ? (
+                  <p className="mt-1 text-xs font-medium text-gray-500 dark:text-white/50">
+                    No puedes cambiar tu propio rol.
+                  </p>
+                ) : editForm.rol === "jefe" || editForm.rol === "empleado" ? (
+                  <p className="mt-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+                    Los roles Jefe y Empleado no tienen acceso a este panel (usan la app móvil).
+                  </p>
+                ) : null}
+              </div>
             </div>
           ) : null}
 

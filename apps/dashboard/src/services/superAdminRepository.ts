@@ -15,6 +15,7 @@ const numberValue = (value) => (typeof value === "number" && Number.isFinite(val
 export const ROLE_ALIAS_GROUPS = {
   super_admin: ["super_admin"],
   admin_empresa: ["admin_empresa"],
+  admin: ["admin"],
   jefe: ["jefe", "jefe_sector"],
   empleado: ["empleado", "psicologo"],
 };

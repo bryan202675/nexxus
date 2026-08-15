@@ -35,7 +35,7 @@ const FILTROS_ESTADO: { value: EstadoFiltro; label: string }[] = [
 const emptyStats: PlatformStats = {
   empresasTotal: 0, empresasActivas: 0, empresasSuspendidas: 0, empresasExpiradas: 0, empresasBaneadas: 0,
   usuariosTotal: 0, usuariosActivos: 0,
-  porRol: { super_admin: 0, admin_empresa: 0, jefe: 0, empleado: 0 },
+  porRol: { super_admin: 0, admin_empresa: 0, admin: 0, jefe: 0, empleado: 0 },
   porPlan: {}, empresasNuevas30d: 0, usuariosNuevos30d: 0, ingresosTotales: 0, ingresos30d: 0,
 };
 
