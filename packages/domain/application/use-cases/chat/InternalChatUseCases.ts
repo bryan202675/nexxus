@@ -62,4 +62,16 @@ export class InternalChatUseCases {
   markMessagesAsRead(conversacionId: string, userId: string): Promise<void> {
     return this.repository.markMessagesAsRead(conversacionId, userId);
   }
+
+  subscribeUnreadCounts(
+    empresaId: string,
+    userId: string,
+    callback: (counts: Record<string, number>) => void,
+    onError?: (error: Error) => void
+  ): () => void {
+    if (this.repository.subscribeUnreadCounts) {
+      return this.repository.subscribeUnreadCounts(empresaId, userId, callback, onError);
+    }
+    return () => {};
+  }
 }

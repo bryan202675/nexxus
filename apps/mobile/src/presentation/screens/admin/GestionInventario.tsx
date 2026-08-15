@@ -1,12 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { MaterialIcons } from '@expo/vector-icons';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { InventoryAsset, InventoryIncident } from 'domain/entities/Inventory';
 import { User } from 'domain/entities/User';
 import { useCases } from '@/infrastructure/container';
 import { useAuth } from '@/presentation/hooks/useAuth';
 import { ADMIN, type AdminPalette, useAdminAppearance, sombraAdmin } from './adminTheme';
 import { obtenerEmpresaIdAdmin } from './adminUtils';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
+
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
 
 type LoadState = 'loading' | 'ready' | 'empty' | 'error';
 

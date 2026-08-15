@@ -82,8 +82,6 @@ export function NavbarHeader({ routeName, sidebarOpen, setSidebarOpen }: { route
   const isSuperAdmin = isSuperAdminRole(user?.rol);
   // Inicializa entrada; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const entrada = useRef(new Animated.Value(0)).current;
-  // Inicializa pulso; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const pulso = useRef(new Animated.Value(0)).current;
 
   // Escuchar evento global para abrir el panel de perfil desde otras pantallas (ej. ConfiguracionAdmin)
   useEffect(() => {
@@ -136,22 +134,11 @@ export function NavbarHeader({ routeName, sidebarOpen, setSidebarOpen }: { route
     // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     Animated.timing(entrada, {
       toValue: 1,
-      duration: 620,
+      duration: 220,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
-    // Declara animacion; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const animacion = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulso, { toValue: 1, duration: 1500, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        Animated.timing(pulso, { toValue: 0, duration: 1500, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-      ])
-    );
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-    animacion.start();
-    // Devuelve el valor final calculado para esta funcion o caso de uso.
-    return () => animacion.stop();
-  }, [entrada, pulso]);
+  }, [entrada]);
 
   // Declara avatar; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const avatar = (user?.nombre || 'Admin').substring(0, 1).toUpperCase();
@@ -289,9 +276,7 @@ export function NavbarHeader({ routeName, sidebarOpen, setSidebarOpen }: { route
                 <MaterialIcons name="menu" size={20} color={theme.text} />
               </BotonAnimado>
             )}
-            {!isMobileOrTablet && (
-              <Animated.View style={[estilos.statusDot, { transform: [{ scale: pulso.interpolate({ inputRange: [0, 1], outputRange: [1, 1.45] }) }] }]} />
-            )}
+            {!isMobileOrTablet && <View style={estilos.statusDot} />}
             {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
             <View>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}

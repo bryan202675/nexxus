@@ -1,201 +1,340 @@
-/**
- * Documentacion Nexxus - apps/mobile/src/presentation/screens/MisLogros.tsx
- * Capa: presentacion.
- * Proposito: Pantalla de la experiencia del empleado. Lee contexto de usuario, muestra informacion operativa y conserva las acciones de navegacion existentes.
- * Dependencias clave: imports superiores y contratos tipados del propio modulo.
- * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras de datos al extender este archivo.
- */
-
-// Importa React desde React; habilita componentes, hooks y tipos base para esta pieza.
-import React from 'react';
-// Importa bloques nativos de React Native para layout, texto, listas, scroll y estilos.
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   SafeAreaView,
   StatusBar,
   FlatList,
   ScrollView,
 } from 'react-native';
-// Importa iconos reutilizables para acciones, logros y estados visuales.
 import { MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
-// Importa LinearGradient para dibujar superficies con transicion de color.
-import { LinearGradient } from 'expo-linear-gradient';
-// Importa FondoAurora; reutiliza el fondo visual premium de pantallas internas.
-import FondoAurora from '@/presentation/components/FondoAurora';
-// Importa traducciones para no dejar textos visibles fijos en el codigo.
+import { BlurView } from 'expo-blur';
+import Animated, { Easing, FadeInDown, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { EmptyState, Skeleton, SkeletonLista } from '@/presentation/components/ui';
+import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
 import { useTranslation } from 'react-i18next';
-// Importa tokens visuales compartidos para mantener consistencia de color, espacio, radios, sombras y tipografia.
-import { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/constants/diseno';
-// Importa el contexto global que entrega perfil y metricas reales del usuario.
+import { COLORES, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/constants/diseno';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
+import { useCases } from '@/infrastructure/container';
+import { calcularPuntos, calcularProgresoLogros, siguienteLogro } from 'domain/services/gamificationEngine';
+import { AchievementProgress, EarnedAchievement } from 'domain/entities/Achievement';
+import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
+import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 
-/**
- * Props define las dependencias de navegacion que recibe la pantalla.
- */
+type ColoresTema = ReturnType<typeof useTemaMobile>['colores'];
+
 interface Props { navigation: any; }
 
-/**
- * MisLogros muestra puntos, racha, insignias obtenidas y el siguiente logro del usuario.
- */
-export default function MisLogros({ navigation }: Props) {
-  // Obtiene traducciones y el idioma activo para formatear fechas segun locale.
-  const { t, i18n } = useTranslation();
-  // Lee perfil y metricas desde el contexto global para usar datos reales cuando existan.
-  const { perfil, metrics } = useContextoUsuario();
+function BarraProgresoLogro({ porcentaje, colores }: { porcentaje: number; colores: ColoresTema }) {
+  const progreso = useSharedValue(0);
 
-  // Define las insignias a mostrar; usa las del perfil o un fallback demo si el usuario aun no tiene datos.
-  const insignias = perfil?.insignias || [
-    { id: '1', nombre: 'Madrugador', icono: 'wb-sunny', fecha_obtenida: '2026-05-01', categoria: 'productividad' },
-    { id: '2', nombre: 'Zen Master', icono: 'self-improvement', fecha_obtenida: '2026-05-05', categoria: 'bienestar' },
-  ];
+  React.useEffect(() => {
+    progreso.value = withTiming(porcentaje / 100, { duration: 600 });
+  }, [porcentaje, progreso]);
 
-  // Renderiza cada insignia dentro de la grilla de logros.
-  const renderInsignia = ({ item }: { item: any }) => (
-    // Bloque repetido; representa una insignia individual dentro de la lista.
-    <View style={estilos.tarjetaInsignia}>
-      {/* Gradiente circular que funciona como fondo visual del icono de la insignia. */}
-      <LinearGradient colors={['#f8fafc', '#f1f5f9']} style={estilos.circuloInsignia}>
-        {/* Icono que representa la categoria o significado del logro. */}
-        <MaterialIcons name={item.icono} size={32} color={COLORES.primario} />
-      </LinearGradient>
-      {/* Nombre visible de la insignia obtenida. */}
-      <Text style={estilos.nombreInsignia}>{item.nombre}</Text>
-      {/* Fecha formateada segun el idioma activo del usuario. */}
-      <Text style={estilos.fechaInsignia}>{new Date(item.fecha_obtenida).toLocaleDateString(i18n.language === 'es' ? 'es-SV' : 'en-US')}</Text>
+  const estiloAnimado = useAnimatedStyle(() => ({ width: `${progreso.value * 100}%` }));
+
+  return (
+    <View style={[estilosProgreso.barraFondo, { backgroundColor: colores.vidrioSutil }]}>
+      <Animated.View style={[estilosProgreso.barraRelleno, { backgroundColor: '#3B82F6' }, estiloAnimado]} />
     </View>
   );
+}
 
-  // Devuelve el JSX que React Native renderiza para la pantalla de logros.
-  return (
-    // Contenedor seguro de pantalla para respetar bordes/notch del dispositivo.
-    <SafeAreaView style={estilos.contenedor}>
-      {/* Configura el color de la barra superior del sistema. */}
-      <StatusBar barStyle="light-content" />
-      {/* Fondo visual decorativo de la pantalla. */}
-      <FondoAurora />
-      {/* Cabecera con boton de regreso y titulo centrado. */}
-      <View style={estilos.cabecera}>
-        {/* Boton tactil que vuelve a la pantalla anterior. */}
-        <TouchableOpacity onPress={() => navigation.goBack()} style={estilos.botonRegresar}>
-          {/* Icono de flecha que comunica navegacion hacia atras. */}
-          <MaterialIcons name="arrow-back" size={24} color={COLORES.texto} />
-        </TouchableOpacity>
-        {/* Titulo principal de la pantalla. */}
-        <Text style={estilos.tituloPantalla}>{t('misLogros.title')}</Text>
-        {/* Espaciador para equilibrar visualmente el titulo frente al boton de regreso. */}
-        <View style={{ width: 40 }} />
+export default function MisLogros({ navigation }: Props) {
+  const { t, i18n } = useTranslation();
+  const { perfil, tareas, metrics } = useContextoUsuario();
+  const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
+  const estilos = crearEstilos(colores, esOscuro);
+
+  const [cursosCompletados, setCursosCompletados] = useState(0);
+  const [obtenidos, setObtenidos] = useState<EarnedAchievement[]>([]);
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    let activo = true;
+    const cargar = async () => {
+      if (!perfil?.id || !perfil?.empresaId) {
+        setCargando(false);
+        return;
+      }
+      setCargando(true);
+      try {
+        const [progresoCursos, yaObtenidos] = await Promise.all([
+          useCases.training.getProgressForUser(perfil.empresaId, perfil.id).catch(() => []),
+          useCases.achievements.getEarned.execute(perfil.id).catch(() => []),
+        ]);
+        if (!activo) return;
+        const totalCursos = (progresoCursos || []).filter((p) => p.completado).length;
+        setCursosCompletados(totalCursos);
+        setObtenidos(yaObtenidos || []);
+
+        try {
+          const nuevos = await useCases.achievements.sync.execute();
+          if (!activo) return;
+          if (nuevos && nuevos.length > 0) {
+            const actualizados = await useCases.achievements.getEarned.execute(perfil.id);
+            if (activo) setObtenidos(actualizados);
+          }
+        } catch {
+          // Si el RPC remoto de sincronización no está disponible, los logros locales continúan operativos
+        }
+      } catch (e) {
+        console.warn('[MisLogros] Aviso al cargar gamificación:', e);
+      } finally {
+        if (activo) setCargando(false);
+      }
+    };
+    cargar();
+    return () => { activo = false; };
+  }, [perfil?.id, perfil?.empresaId, tareas, metrics?.racha]);
+
+  const entrada = useMemo(() => ({
+    tareasCompletadas: tareas.filter((tarea) => tarea.estado === 'completada').length,
+    rachaCheckIn: metrics?.racha || 0,
+    cursosCompletados,
+  }), [tareas, metrics?.racha, cursosCompletados]);
+
+  const puntos = calcularPuntos(entrada);
+  const progresos: AchievementProgress[] = calcularProgresoLogros(entrada, obtenidos);
+  const insigniasObtenidas = progresos.filter((p) => p.obtenido);
+  const proximoLogro = siguienteLogro(progresos);
+
+  const renderInsignia = ({ item, index }: { item: AchievementProgress; index: number }) => (
+    <Animated.View
+      entering={FadeInDown.duration(260).delay(index * 35).easing(Easing.out(Easing.quad))}
+      style={estilos.tarjetaInsignia}
+    >
+      <View style={estilos.circuloInsignia}>
+        <MaterialIcons name={item.icono as any} size={30} color={esOscuro ? '#93C5FD' : '#2563EB'} />
       </View>
+      <Text style={estilos.nombreInsignia} numberOfLines={2}>{item.nombre}</Text>
+      {item.fechaObtenida && (
+        <Text style={estilos.fechaInsignia}>
+          {new Date(item.fechaObtenida).toLocaleDateString(i18n.language === 'es' ? 'es-SV' : 'en-US')}
+        </Text>
+      )}
+    </Animated.View>
+  );
 
-      {/* Area desplazable que permite ver todos los logros en pantallas pequenas. */}
-      <ScrollView contentContainerStyle={estilos.scroll} showsVerticalScrollIndicator={false}>
-        {/* Panel resumen con puntos y racha. */}
-        <View style={estilos.panelPuntos}>
-          {/* Etiqueta descriptiva del contador de puntos. */}
-          <Text style={estilos.labelPuntos}>{t('misLogros.accumulated_points')}</Text>
-          {/* Valor numerico de puntos; usa fallback si el perfil aun no trae puntos. */}
-          <Text style={estilos.valorPuntos}>{perfil?.puntos_recompensa || 1250}</Text>
-          {/* Fila compacta que muestra racha activa. */}
-          <View style={estilos.rachaContenedor}>
-            {/* Icono de fuego para representar continuidad/racha. */}
-            <FontAwesome5 name="fire" size={16} color="#f97316" />
-            {/* Texto de racha basado en metricas reales. */}
-            <Text style={estilos.textoRacha}>{t('misLogros.streak_days', { count: metrics?.racha || 0 })}</Text>
-          </View>
+  return (
+    <SafeAreaView style={estilos.contenedor}>
+      <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
+      <View style={estilos.fondoAbsoluto}><FondoMobilePremium /></View>
+      <NavbarEnterprise titulo={t('misLogros.title', { defaultValue: 'Mis Logros' })} subtitulo="Gamificación y reconocimientos" mostrarAtras />
+
+      {cargando ? (
+        <View style={estilos.scroll}>
+          <Skeleton height={140} radius={RADIOS.xxl} style={{ marginBottom: 16 }} />
+          <SkeletonLista filas={3} alturaFila={100} />
         </View>
-
-        {/* Titulo de la seccion de insignias obtenidas. */}
-        <Text style={estilos.seccionTitulo}>{t('misLogros.obtained_badges')}</Text>
-        {/* Lista optimizada que dibuja las insignias en tres columnas. */}
-        <FlatList
-          data={insignias}
-          keyExtractor={i => i.id}
-          renderItem={renderInsignia}
-          numColumns={3}
-          scrollEnabled={false}
-          columnWrapperStyle={estilos.filaInsignias}
-          ListEmptyComponent={<Text style={estilos.vacio}>{t('misLogros.no_badges_msg')}</Text>}
-        />
-
-        {/* Tarjeta con el siguiente logro y progreso visual. */}
-        <View style={estilos.proximoLogro}>
-          {/* Etiqueta de la tarjeta de proximo objetivo. */}
-          <Text style={estilos.tituloProx}>{t('misLogros.next_achievement')}</Text>
-          {/* Fila que agrupa icono, nombre, descripcion y barra de progreso. */}
-          <View style={estilos.infoProx}>
-            {/* Icono decorativo del logro pendiente. */}
-            <MaterialIcons name="stars" size={40} color={COLORES.borde} />
-            {/* Contenedor flexible con la informacion del logro. */}
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              {/* Nombre del siguiente logro. */}
-              <Text style={estilos.nombreProx}>{t('misLogros.tech_specialist')}</Text>
-              {/* Descripcion de lo que falta para obtener el logro. */}
-              <Text style={estilos.descProx}>{t('misLogros.tech_specialist_desc')}</Text>
-              {/* Fondo de la barra de progreso. */}
-              <View style={estilos.barraFondo}>
-                {/* Relleno visual que representa avance actual. */}
-                <View style={[estilos.barraRelleno, { width: '60%' }]} />
+      ) : (
+        <ScrollView contentContainerStyle={estilos.scroll} showsVerticalScrollIndicator={false}>
+          {/* Panel resumen con puntos y racha */}
+          <Animated.View
+            entering={FadeInDown.duration(260).easing(Easing.out(Easing.quad))}
+            style={estilos.panelPuntosWrap}
+          >
+            <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.panelPuntos}>
+              <Text style={estilos.labelPuntos}>{t('misLogros.accumulated_points', { defaultValue: 'Puntos Acumulados' })}</Text>
+              <Text style={estilos.valorPuntos}>{puntos}</Text>
+              <View style={estilos.rachaContenedor}>
+                <FontAwesome5 name="fire" size={15} color="#F97316" />
+                <Text style={estilos.textoRacha}>{t('misLogros.streak_days', { defaultValue: `${metrics?.racha || 0} días de racha`, count: metrics?.racha || 0 })}</Text>
               </View>
-            </View>
+            </BlurView>
+          </Animated.View>
+
+          {/* Sección de insignias obtenidas */}
+          <View style={estilos.seccionInsignias}>
+            <Text style={estilos.seccionTitulo}>{t('misLogros.obtained_badges', { defaultValue: 'Insignias Obtenidas' })}</Text>
+            {insigniasObtenidas.length === 0 ? (
+              <EmptyState icono="award" titulo={t('misLogros.no_badges_msg', { defaultValue: 'Aún no has desbloqueado insignias. Completa tareas para ganarlas.' })} />
+            ) : (
+              <FlatList
+                data={insigniasObtenidas}
+                keyExtractor={(i) => i.id}
+                renderItem={renderInsignia}
+                numColumns={3}
+                scrollEnabled={false}
+                columnWrapperStyle={estilos.filaInsignias}
+              />
+            )}
           </View>
-        </View>
-      </ScrollView>
+
+          {/* Siguiente logro */}
+          {proximoLogro && (
+            <Animated.View
+              entering={FadeInDown.duration(260).delay(80).easing(Easing.out(Easing.quad))}
+              style={estilos.proximoLogroWrap}
+            >
+              <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.proximoLogro}>
+                <Text style={estilos.tituloProx}>{t('misLogros.next_achievement', { defaultValue: 'Próximo Objetivo' })}</Text>
+                <View style={estilos.infoProx}>
+                  <View style={estilos.iconoProxWrap}>
+                    <MaterialIcons name={proximoLogro.icono as any} size={28} color={esOscuro ? '#93C5FD' : '#2563EB'} />
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={estilos.nombreProx}>{proximoLogro.nombre}</Text>
+                    <Text style={estilos.descProx}>{proximoLogro.descripcion} ({proximoLogro.progreso}/{proximoLogro.umbral})</Text>
+                    <BarraProgresoLogro porcentaje={Math.round((proximoLogro.progreso / proximoLogro.umbral) * 100)} colores={colores} />
+                  </View>
+                </View>
+              </BlurView>
+            </Animated.View>
+          )}
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
 
-/**
- * estilos centraliza el CSS embebido de React Native para esta pantalla.
- */
-const estilos = StyleSheet.create({
-  // contenedor: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
-  contenedor: { flex: 1, backgroundColor: COLORES.fondo },
-  // cabecera: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
-  cabecera: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: ESPACIADO.lg },
-  // botonRegresar: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
-  botonRegresar: { width: 40, height: 40, borderRadius: 20, backgroundColor: COLORES.superficieVidrio, alignItems: 'center', justifyContent: 'center', ...SOMBRAS.suave },
-  // tituloPantalla: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
-  tituloPantalla: { ...TIPOGRAFIA.tituloSeccion, color: COLORES.texto },
-  // scroll: estilo del area desplazable; controla el espacio interno de la pantalla.
-  scroll: { padding: ESPACIADO.lg },
-  // panelPuntos: estilo de tarjeta; agrupa puntos y racha en una superficie destacada.
-  panelPuntos: { alignItems: 'center', backgroundColor: COLORES.superficieVidrio, borderRadius: RADIOS.xxl, padding: ESPACIADO.xl, marginBottom: ESPACIADO.xl, ...SOMBRAS.suave, borderWidth: 1, borderColor: COLORES.borde },
-  // labelPuntos: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-  labelPuntos: { fontSize: 12, fontWeight: '800', color: COLORES.textoSuave, textTransform: 'uppercase' },
-  // valorPuntos: estilo del valor principal de puntos para darle jerarquia visual.
-  valorPuntos: { fontSize: 48, fontWeight: '900', color: COLORES.primario, marginVertical: 4 },
-  // rachaContenedor: estilo de lista o item; mantiene icono y texto de racha alineados.
-  rachaContenedor: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#fff7ed', paddingHorizontal: 12, paddingVertical: 6, borderRadius: RADIOS.completo },
-  // textoRacha: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-  textoRacha: { fontSize: 13, fontWeight: '700', color: '#ea580c' },
-  // seccionTitulo: estilo de titulo; separa y nombra la seccion de insignias.
-  seccionTitulo: { ...TIPOGRAFIA.leyenda, color: COLORES.texto, marginBottom: ESPACIADO.md, fontWeight: '800' },
-  // filaInsignias: estilo de grilla; organiza insignias en filas con separacion controlada.
-  filaInsignias: { justifyContent: 'flex-start', gap: ESPACIADO.sm },
-  // tarjetaInsignia: estilo de tarjeta; define ancho, alineacion y separacion de cada insignia.
-  tarjetaInsignia: { width: (ESPACIADO.lg * 2 + 300) / 3, alignItems: 'center', marginBottom: ESPACIADO.lg },
-  // circuloInsignia: estilo del circulo visual que contiene el icono del logro.
-  circuloInsignia: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: COLORES.borde, marginBottom: 8 },
-  // nombreInsignia: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-  nombreInsignia: { fontSize: 12, fontWeight: '700', color: COLORES.texto, textAlign: 'center' },
-  // fechaInsignia: estilo de texto secundario para mostrar la fecha de obtencion.
-  fechaInsignia: { fontSize: 10, color: COLORES.textoSuave, marginTop: 2 },
-  // proximoLogro: estilo de tarjeta; agrupa el siguiente objetivo y su avance.
-  proximoLogro: { backgroundColor: COLORES.superficieVidrio, borderRadius: RADIOS.xl, padding: ESPACIADO.lg, marginTop: ESPACIADO.md, borderWidth: 1, borderColor: COLORES.borde, ...SOMBRAS.suave },
-  // tituloProx: estilo de titulo compacto para la tarjeta de siguiente logro.
-  tituloProx: { fontSize: 11, fontWeight: '900', color: COLORES.textoSuave, textTransform: 'uppercase', marginBottom: 12 },
-  // infoProx: estilo de layout horizontal para icono y detalle del logro.
-  infoProx: { flexDirection: 'row', alignItems: 'center' },
-  // nombreProx: estilo del nombre del siguiente logro.
-  nombreProx: { fontSize: 15, fontWeight: '800', color: COLORES.texto },
-  // descProx: estilo de descripcion secundaria del siguiente logro.
-  descProx: { fontSize: 12, color: COLORES.textoSecundario, marginTop: 2, marginBottom: 10 },
-  // barraFondo: estilo de fondo de progreso; define altura, color y radio.
-  barraFondo: { height: 6, backgroundColor: COLORES.fondo, borderRadius: 3 },
-  // barraRelleno: estilo de relleno de progreso; muestra avance sobre el fondo.
-  barraRelleno: { height: '100%', backgroundColor: COLORES.secundario, borderRadius: 3 },
-  // vacio: estilo de estado vacio; presenta mensajes cuando no hay datos disponibles.
-  vacio: { textAlign: 'center', color: COLORES.textoSuave, marginTop: 20 },
+const estilosProgreso = StyleSheet.create({
+  barraFondo: { height: 6, borderRadius: 3, overflow: 'hidden' },
+  barraRelleno: { height: '100%', borderRadius: 3 },
 });
+
+function crearEstilos(c: ColoresTema, esOscuro: boolean) {
+  const glass = esOscuro ? 'rgba(24, 24, 38, 0.88)' : 'rgba(255, 255, 255, 0.94)';
+
+  return StyleSheet.create({
+    contenedor: { flex: 1, backgroundColor: c.fondo },
+    fondoAbsoluto: { ...StyleSheet.absoluteFillObject },
+    scroll: { padding: 16, paddingBottom: 110, gap: 16 },
+
+    panelPuntosWrap: {
+      borderRadius: 24,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: c.borde,
+      ...SOMBRAS.flotante,
+    },
+    panelPuntos: {
+      alignItems: 'center',
+      padding: 22,
+      backgroundColor: glass,
+    },
+    labelPuntos: {
+      fontSize: 11.5,
+      fontWeight: '800',
+      color: c.textoSuave,
+      textTransform: 'uppercase',
+      letterSpacing: 1,
+    },
+    valorPuntos: {
+      fontSize: 46,
+      fontWeight: '900',
+      color: c.texto,
+      marginVertical: 4,
+      letterSpacing: -1,
+    },
+    rachaContenedor: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: 'rgba(249, 115, 22, 0.12)',
+      borderWidth: 1,
+      borderColor: 'rgba(249, 115, 22, 0.25)',
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: RADIOS.completo,
+      marginTop: 6,
+    },
+    textoRacha: {
+      fontSize: 12.5,
+      fontWeight: '800',
+      color: '#EA580C',
+    },
+
+    seccionInsignias: {
+      marginTop: 6,
+    },
+    seccionTitulo: {
+      fontSize: 16,
+      color: c.texto,
+      marginBottom: 12,
+      fontWeight: '900',
+      letterSpacing: -0.3,
+    },
+    filaInsignias: {
+      justifyContent: 'flex-start',
+      gap: 12,
+    },
+    tarjetaInsignia: {
+      width: '30.8%',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    circuloInsignia: {
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: c.borde,
+      backgroundColor: glass,
+      marginBottom: 8,
+      ...SOMBRAS.flotante,
+    },
+    nombreInsignia: {
+      fontSize: 11.5,
+      fontWeight: '700',
+      color: c.texto,
+      textAlign: 'center',
+      lineHeight: 15,
+    },
+    fechaInsignia: {
+      fontSize: 10,
+      color: c.textoSuave,
+      marginTop: 2,
+    },
+
+    proximoLogroWrap: {
+      borderRadius: 22,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: c.borde,
+      ...SOMBRAS.flotante,
+    },
+    proximoLogro: {
+      padding: 16,
+      backgroundColor: glass,
+    },
+    tituloProx: {
+      fontSize: 11,
+      fontWeight: '900',
+      color: c.textoSuave,
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+      marginBottom: 12,
+    },
+    infoProx: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    iconoProxWrap: {
+      width: 50,
+      height: 50,
+      borderRadius: 25,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: esOscuro ? 'rgba(59,130,246,0.15)' : 'rgba(37,99,235,0.10)',
+      borderWidth: 1,
+      borderColor: esOscuro ? 'rgba(96,165,250,0.25)' : 'rgba(37,99,235,0.20)',
+    },
+    nombreProx: {
+      fontSize: 14.5,
+      fontWeight: '800',
+      color: c.texto,
+    },
+    descProx: {
+      fontSize: 12,
+      color: c.textoSuave,
+      marginTop: 2,
+      marginBottom: 10,
+      lineHeight: 16,
+    },
+  });
+}

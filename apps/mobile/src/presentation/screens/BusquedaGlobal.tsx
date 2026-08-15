@@ -226,7 +226,7 @@ export default function BusquedaGlobal({ navigation }: Props) {
     // Contenedor seguro de la pantalla; respeta areas del dispositivo como notch, barra superior y bordes.
     <SafeAreaView style={estilos.contenedor}>
       {/* Configura la barra de estado del sistema para que combine con el fondo de esta pantalla. */}
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} />
       {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
       <View style={estilos.fondoAbsoluto}>
         {/* Elemento de fondo visual; construye la atmosfera grafica de la pantalla sin cambiar los datos. */}
@@ -248,14 +248,14 @@ export default function BusquedaGlobal({ navigation }: Props) {
             <TextInput
               style={estilos.input}
               placeholder={t('busquedaGlobal.placeholder')}
-              placeholderTextColor={COLORES.textoSuave}
+              placeholderTextColor={colores.textoSuave}
               value={termino}
               onChangeText={setTermino}
               autoFocus
             />
             {termino.length > 0 && (
               // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-              <TouchableOpacity onPress={() => setTermino('')}>
+              <TouchableOpacity onPress={() => setTermino('')} accessibilityLabel="Limpiar búsqueda" style={estilos.botonLimpiar}>
                 {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
                 <MaterialIcons name="cancel" size={20} color={colores.textoSuave} />
               </TouchableOpacity>
@@ -315,13 +315,13 @@ export default function BusquedaGlobal({ navigation }: Props) {
 /**
  * Mapa de estilos crearEstilosBusqueda. Centraliza reglas visuales para que el JSX se mantenga legible y consistente.
  */
-function crearEstilosBusqueda(c: any, esOscuro: boolean) {
+type ColoresTema = ReturnType<typeof useTemaMobile>['colores'];
+
+function crearEstilosBusqueda(c: ColoresTema, esOscuro: boolean) {
   // Declara glass; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const glass = esOscuro ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.78)';
+  const glass = c.superficie;
   // Declara inputBg; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const inputBg = esOscuro ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.65)';
-  // Declara inputBorder; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const inputBorder = esOscuro ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.08)';
+  const inputBg = c.superficieElevada;
   // Devuelve el valor final calculado para esta funcion o caso de uso.
   return StyleSheet.create({
     // contenedor: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
@@ -336,6 +336,7 @@ function crearEstilosBusqueda(c: any, esOscuro: boolean) {
     cajaBusqueda: { flex: 1, flexDirection: 'row', alignItems: 'center', borderRadius: RADIOS.lg, paddingHorizontal: ESPACIADO.md, height: 50, borderWidth: 1, borderColor: c.borde, backgroundColor: inputBg, overflow: 'hidden' },
     // input: estilo de campo de formulario; controla contenedor, texto y distribucion de la entrada.
     input: { flex: 1, marginLeft: 10, fontSize: 16, color: c.texto },
+    botonLimpiar: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
     // categorias: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     categorias: { marginBottom: ESPACIADO.md },
     // scrollCategorias: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
@@ -402,4 +403,3 @@ function crearEstilosBusqueda(c: any, esOscuro: boolean) {
     sugerenciaTexto: { fontSize: 12, fontWeight: '700', color: c.textoSecundario },
   });
 }
-

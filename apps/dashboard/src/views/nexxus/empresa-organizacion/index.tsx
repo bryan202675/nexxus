@@ -629,7 +629,7 @@ export default function EstructuraOrganizativa() {
                 id: item.id,
                 nombreLabel: item.nombre || "—",
                 direccionLabel: item.direccion || "—",
-                empleadosLabel: String((empleados || []).filter((u) => u.sede === item.nombre).length),
+                empleadosLabel: String((empleados || []).filter((u) => u.sede_id === item.id).length),
               })}
               emptyMessage="Aún no hay sedes registradas."
             />
@@ -649,7 +649,7 @@ export default function EstructuraOrganizativa() {
                 id: item.id,
                 nombreLabel: item.titulo || item.nombre || "—",
                 departamentoLabel: deptoNombrePorId[item.departamento_id] || "—",
-                empleadosLabel: String((empleados || []).filter((u) => u.cargo === (item.titulo || item.nombre)).length),
+                empleadosLabel: String((empleados || []).filter((u) => u.cargo_id === item.id).length),
               })}
               emptyMessage="Aún no hay cargos registrados."
             />

@@ -1,6 +1,8 @@
 import { supabase } from './supabaseClient';
-import { IDocumentoRepository, Documento, DocumentStorageStats } from 'domain/entities/Documento';
+import { IDocumentoRepository, Documento, DocumentStorageStats, DocumentVersion } from 'domain/entities/Documento';
 import { subscribeQuery } from './realtime';
+
+const QUERY_LIMIT = 500;
 
 function mapRow(row: Record<string, any>): Documento {
   return {
@@ -18,18 +20,20 @@ function mapRow(row: Record<string, any>): Documento {
     fechaSubida: row.created_at,
     leido: row.leido,
     categoria: row.categoria ?? undefined,
+    version: row.datos?.version ?? 1,
+    historialVersiones: row.datos?.historialVersiones ?? [],
   };
 }
 
 export class SupabaseDocumentoRepository implements IDocumentoRepository {
   async getByUser(userId: string): Promise<Documento[]> {
-    const { data, error } = await supabase.from('documentos').select('*').eq('usuario_id', userId);
+    const { data, error } = await supabase.from('documentos').select('*').eq('usuario_id', userId).order('created_at', { ascending: false }).limit(QUERY_LIMIT);
     if (error) throw error;
     return (data || []).map(mapRow);
   }
 
   async getByCompany(empresaId: string): Promise<Documento[]> {
-    const { data, error } = await supabase.from('documentos').select('*').eq('empresa_id', empresaId);
+    const { data, error } = await supabase.from('documentos').select('*').eq('empresa_id', empresaId).order('created_at', { ascending: false }).limit(QUERY_LIMIT);
     if (error) throw error;
     return (data || []).map(mapRow);
   }
@@ -38,7 +42,7 @@ export class SupabaseDocumentoRepository implements IDocumentoRepository {
     return subscribeQuery('documentos', `empresa_id=eq.${empresaId}`, () => this.getByCompany(empresaId), callback);
   }
 
-  async create(documento: Omit<Documento, 'id'>): Promise<string> {
+  async create(documento: Omit<Documento, 'id' | 'version' | 'historialVersiones'>): Promise<string> {
     const { data, error } = await supabase.from('documentos').insert({
       usuario_id: documento.userId,
       empresa_id: documento.empresaId,
@@ -48,10 +52,42 @@ export class SupabaseDocumentoRepository implements IDocumentoRepository {
       mime_type: documento.mime ?? null,
       tamano_bytes: documento.size ?? null,
       leido: documento.leido,
-      datos: { url: documento.url, publicId: documento.publicId, hash: documento.hash, createdBy: documento.createdBy },
+      datos: { url: documento.url, publicId: documento.publicId, hash: documento.hash, createdBy: documento.createdBy, version: 1, historialVersiones: [] },
     }).select('id').single();
     if (error) throw error;
     return data.id;
+  }
+
+  async addVersion(documentoId: string, nuevaVersion: Omit<DocumentVersion, 'version'>): Promise<void> {
+    const { data: row, error: fetchError } = await supabase.from('documentos').select('*').eq('id', documentoId).single();
+    if (fetchError) throw fetchError;
+    const actual = mapRow(row);
+
+    const entradaHistorial: DocumentVersion = {
+      version: actual.version,
+      url: actual.url,
+      publicId: actual.publicId,
+      hash: actual.hash,
+      size: actual.size,
+      mime: actual.mime,
+      subidoPor: actual.createdBy,
+      fecha: actual.fechaSubida,
+    };
+
+    const { error } = await supabase.from('documentos').update({
+      mime_type: nuevaVersion.mime ?? null,
+      tamano_bytes: nuevaVersion.size ?? null,
+      leido: false,
+      datos: {
+        url: nuevaVersion.url,
+        publicId: nuevaVersion.publicId,
+        hash: nuevaVersion.hash,
+        createdBy: nuevaVersion.subidoPor,
+        version: actual.version + 1,
+        historialVersiones: [entradaHistorial, ...actual.historialVersiones],
+      },
+    }).eq('id', documentoId);
+    if (error) throw error;
   }
 
   async delete(documentoId: string): Promise<void> {

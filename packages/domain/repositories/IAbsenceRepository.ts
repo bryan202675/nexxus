@@ -17,4 +17,7 @@ export interface IAbsenceRepository {
   getAbsencesByCompany(empresaId: string): Promise<Absence[]>;
   createAbsence(absence: Omit<Absence, 'id' | 'fecha_solicitud' | 'estado'>): Promise<void>;
   updateAbsenceState(absenceId: string, estado: Absence['estado']): Promise<void>;
+  updateAbsence?(absenceId: string, data: Partial<Absence>): Promise<void>;
+  deleteAbsence?(absenceId: string): Promise<void>;
+  subscribeByUser?(userId: string, callback: (absences: Absence[]) => void): () => void;
 }

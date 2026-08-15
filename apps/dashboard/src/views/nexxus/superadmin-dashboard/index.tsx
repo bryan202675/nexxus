@@ -19,7 +19,6 @@ import { getPlatformStats, subscribePlatform } from "services/superAdminReposito
 import { formatoMoneda, formatoFecha, etiquetaEstadoEmpresa } from "services/saFormat";
 
 const MESES_CORTOS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
-const AUDIT_STATUS_MAP = { Success: "Approved", Warning: "Error", Error: "Disable" };
 
 const SuperAdminDashboard = () => {
   const [stats, setStats] = useState<any>(null);
@@ -89,7 +88,6 @@ const SuperAdminDashboard = () => {
         modulo: entry.modulo,
         empresa: entry.empresaNombre || nombreEmpresaPorId.get(entry.empresaId) || "—",
         fecha: formatoFecha(entry.timestamp),
-        status: AUDIT_STATUS_MAP[entry.estado] || "Approved",
       }));
   }, [snapshot.auditoria, nombreEmpresaPorId]);
 

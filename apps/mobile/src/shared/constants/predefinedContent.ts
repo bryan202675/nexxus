@@ -272,6 +272,8 @@ export const PREDEFINED_DOCUMENTS: Documento[] = [
     url: '',
     fechaSubida: '2026-01-01T00:00:00.000Z',
     leido: true,
+    version: 1,
+    historialVersiones: [],
     tamano: '1.8 MB',
     categoria: 'Salud y Seguridad',
     contenido_completo: `# MANUAL OFICIAL DE PRIMEROS AUXILIOS Y SOPORTE VITAL BÁSICO
@@ -326,6 +328,8 @@ Si la persona no puede hablar, toser ni respirar debido a una obstrucción:
     url: '',
     fechaSubida: '2026-01-01T00:00:00.000Z',
     leido: true,
+    version: 1,
+    historialVersiones: [],
     tamano: '1.4 MB',
     categoria: 'Salud Mental',
     contenido_completo: `# GUÍA DE APOYO PSICOLÓGICO Y BIENESTAR EMOCIONAL EN EL TRABAJO
@@ -371,6 +375,8 @@ Mire a su alrededor y nombre mentalmente:
     url: '',
     fechaSubida: '2026-01-01T00:00:00.000Z',
     leido: true,
+    version: 1,
+    historialVersiones: [],
     tamano: '2.1 MB',
     categoria: 'Normativa e Inclusión',
     contenido_completo: `# MANUAL DE RECURSOS HUMANOS, CÓDIGO DE CONDUCTA Y DERECHOS LABORALES
@@ -402,6 +408,8 @@ Si detecta algún incumplimiento ético o norma laboral, utilice el **Canal de �
     url: '',
     fechaSubida: '2026-01-01T00:00:00.000Z',
     leido: true,
+    version: 1,
+    historialVersiones: [],
     tamano: '2.5 MB',
     categoria: 'Prevención y Evacuación',
     contenido_completo: `# PROTOCOLO OFICIAL DE RESPUESTA ANTE EMERGENCIAS Y EVACUACIÓN

@@ -27,6 +27,13 @@ import AuditoriaAdmin from "views/nexxus/empresa-auditoria";
 import ConfiguracionAdmin from "views/nexxus/empresa-configuracion";
 import MensajeriaInternaAdmin from "views/nexxus/empresa-mensajeria";
 import ChatIAAdmin from "views/nexxus/empresa-ia";
+import { RoleDashboard, WorkspaceModule } from "views/nexxus/rol-workspace";
+import WorkspaceGroup from "views/nexxus/rol-workspace/WorkspaceGroup";
+import WorkspaceCheckIn from "views/nexxus/rol-workspace/WorkspaceCheckIn";
+import WorkspaceProfile from "views/nexxus/rol-workspace/WorkspaceProfile";
+import { WorkspaceAi, WorkspaceInternalChat } from "views/nexxus/rol-workspace/WorkspaceChat";
+import WorkspaceSettings from "views/nexxus/rol-workspace/WorkspaceSettings";
+import WorkspaceHistory from "views/nexxus/rol-workspace/WorkspaceHistory";
 import PlanGate from "components/nexxus/PlanGate";
 
 import {
@@ -48,6 +55,19 @@ import {
   MdOutlineInventory2,
   MdOutlineDescription,
   MdOutlineForum,
+  MdOutlineAssignmentTurnedIn,
+  MdOutlineGroups,
+  MdOutlineEmojiEvents,
+  MdOutlineTrackChanges,
+  MdOutlineNotificationsActive,
+  MdOutlinePsychology,
+  MdOutlinePendingActions,
+  MdOutlineLocalLibrary,
+  MdOutlineInbox,
+  MdOutlineEventAvailable,
+  MdOutlineChat,
+  MdOutlinePerson,
+  MdOutlineFeedback,
 } from "react-icons/md";
 import { BsStars } from "react-icons/bs";
 
@@ -213,6 +233,140 @@ export const adminEmpresaRoutes = [
   },
 ];
 
+// Los apartados sueltos de antes se agrupan por tema (tabs) para que la barra lateral no
+// tenga 20+ entradas individuales: cada grupo reusa los mismos WorkspaceModule/paneles de
+// siempre, solo cambia cómo se navega entre ellos.
+const employeeRoutes = [
+  { name: "Resumen", layout: "/admin", path: "empleado-resumen", icon: <MdOutlineDashboard className="h-6 w-6" />, component: <RoleDashboard /> },
+  {
+    name: "Mi día",
+    layout: "/admin",
+    path: "empleado-mi-dia",
+    icon: <MdOutlineAccessTime className="h-6 w-6" />,
+    component: (
+      <WorkspaceGroup
+        title="Mi día"
+        description="Registra tu jornada y tu estado diario."
+        tabs={[
+          { key: "asistencia", label: "Asistencia", content: <WorkspaceModule moduleKey="asistencia" /> },
+          { key: "checkins", label: "Check-in y bienestar", content: <WorkspaceCheckIn /> },
+        ]}
+      />
+    ),
+  },
+  { name: "Tareas", layout: "/admin", path: "empleado-tareas", icon: <MdOutlineAssignmentTurnedIn className="h-6 w-6" />, component: <WorkspaceModule moduleKey="tareas" /> },
+  {
+    name: "Solicitudes",
+    layout: "/admin",
+    path: "empleado-solicitudes",
+    icon: <MdOutlineFactCheck className="h-6 w-6" />,
+    component: (
+      <WorkspaceGroup
+        title="Solicitudes"
+        description="Ausencias y solicitudes internas en un solo lugar."
+        tabs={[
+          { key: "ausencias", label: "Ausencias", content: <WorkspaceModule moduleKey="solicitudes" /> },
+          { key: "internas", label: "Solicitudes internas", content: <WorkspaceModule moduleKey="internas" /> },
+        ]}
+      />
+    ),
+  },
+  {
+    name: "Documentos y calendario",
+    layout: "/admin",
+    path: "empleado-documentos",
+    icon: <MdOutlineDescription className="h-6 w-6" />,
+    component: (
+      <WorkspaceGroup
+        title="Documentos y calendario"
+        tabs={[
+          { key: "documentos", label: "Documentos", content: <WorkspaceModule moduleKey="documentos" /> },
+          { key: "calendario", label: "Calendario", content: <WorkspaceModule moduleKey="calendario" /> },
+        ]}
+      />
+    ),
+  },
+  {
+    name: "Comunicación",
+    layout: "/admin",
+    path: "empleado-comunicacion",
+    icon: <MdOutlineCampaign className="h-6 w-6" />,
+    component: (
+      <WorkspaceGroup
+        title="Comunicación"
+        description="Bandeja, notificaciones y anuncios de la empresa."
+        tabs={[
+          { key: "bandeja", label: "Bandeja", content: <WorkspaceModule moduleKey="bandeja" /> },
+          { key: "notificaciones", label: "Notificaciones", content: <WorkspaceModule moduleKey="notificaciones" /> },
+          { key: "anuncios", label: "Anuncios", content: <WorkspaceModule moduleKey="anuncios" /> },
+        ]}
+      />
+    ),
+  },
+  {
+    name: "Recursos",
+    layout: "/admin",
+    path: "empleado-recursos",
+    icon: <MdOutlineInventory2 className="h-6 w-6" />,
+    component: (
+      <WorkspaceGroup
+        title="Recursos"
+        description="Activos asignados, salario, sesiones y aprendizaje."
+        tabs={[
+          { key: "activos", label: "Mis activos", content: <WorkspaceModule moduleKey="activos" /> },
+          { key: "salario", label: "Mi salario", content: <WorkspaceModule moduleKey="salario" /> },
+          { key: "citas", label: "Reserva de sesión", content: <WorkspaceModule moduleKey="citas" /> },
+          { key: "aprendizaje", label: "Aprendizaje", content: <WorkspaceModule moduleKey="aprendizaje" /> },
+        ]}
+      />
+    ),
+  },
+  {
+    name: "Centro de apoyo",
+    layout: "/admin",
+    path: "empleado-apoyo",
+    icon: <MdOutlineSupportAgent className="h-6 w-6" />,
+    component: (
+      <WorkspaceGroup
+        title="Centro de apoyo"
+        tabs={[
+          { key: "tickets", label: "Tickets", content: <WorkspaceModule moduleKey="tickets" /> },
+          { key: "feedback", label: "Feedback", content: <WorkspaceModule moduleKey="feedback" /> },
+        ]}
+      />
+    ),
+  },
+  { name: "Chat interno", layout: "/admin", path: "empleado-chat", icon: <MdOutlineForum className="h-6 w-6" />, component: <WorkspaceInternalChat /> },
+  { name: "Nexxus IA", layout: "/admin", path: "empleado-ia", icon: <BsStars className="h-6 w-6" />, component: <WorkspaceAi /> },
+  {
+    name: "Mi perfil",
+    layout: "/admin",
+    path: "empleado-perfil",
+    icon: <MdOutlinePerson className="h-6 w-6" />,
+    component: (
+      <WorkspaceGroup
+        title="Mi perfil"
+        description="Tu información laboral, objetivos, historial y logros."
+        tabs={[
+          { key: "perfil", label: "Perfil laboral", content: <WorkspaceProfile /> },
+          { key: "objetivos", label: "Objetivos", content: <WorkspaceModule moduleKey="objetivos" /> },
+          { key: "historial", label: "Historial", content: <WorkspaceHistory /> },
+          { key: "logros", label: "Logros", content: <WorkspaceModule moduleKey="logros" /> },
+        ]}
+      />
+    ),
+  },
+  { name: "Configuración", layout: "/admin", path: "empleado-configuracion", icon: <MdOutlineSettings className="h-6 w-6" />, component: <WorkspaceSettings /> },
+];
+
+const leaderRoutes = [
+  { name: "Resumen", layout: "/admin", path: "jefe-resumen", icon: <MdOutlineDashboard className="h-6 w-6" />, component: <RoleDashboard leader /> },
+  { name: "Equipo", layout: "/admin", path: "jefe-equipo", icon: <MdOutlineGroups className="h-6 w-6" />, component: <WorkspaceModule moduleKey="equipo" scope="team" /> },
+  { name: "Aprobaciones", layout: "/admin", path: "jefe-aprobaciones", icon: <MdOutlineFactCheck className="h-6 w-6" />, component: <WorkspaceModule moduleKey="solicitudes" scope="team" /> },
+  { name: "Tareas del equipo", layout: "/admin", path: "jefe-tareas-equipo", icon: <MdOutlineAssignmentTurnedIn className="h-6 w-6" />, component: <WorkspaceModule moduleKey="tareas" scope="team" /> },
+  ...employeeRoutes.filter((route) => route.path !== "empleado-resumen").map((route) => ({ ...route, path: route.path.replace("empleado-", "jefe-") })),
+];
+
 const authRoutes = [
   {
     name: "Iniciar sesión",
@@ -246,8 +400,11 @@ const allRoutes = [...saRoutes, ...adminEmpresaRoutes, ...authRoutes];
 // AdminLayout llama esto con el rol de la sesion activa para saber que sidebar/rutas mostrar.
 // Antes de saber el rol (loading) o para cualquier otro caso no reconocido, no se expone nada.
 export function getRoutesForRole(rol) {
-  if (rol === "super_admin") return saRoutes;
-  if (rol === "admin" || rol === "admin_empresa") return adminEmpresaRoutes;
+  const normalized = rol === "jefe_sector" ? "jefe" : rol === "psicologo" ? "empleado" : rol;
+  if (normalized === "super_admin") return saRoutes;
+  if (normalized === "admin" || normalized === "admin_empresa") return adminEmpresaRoutes;
+  if (normalized === "jefe") return leaderRoutes;
+  if (normalized === "empleado") return employeeRoutes;
   return [];
 }
 

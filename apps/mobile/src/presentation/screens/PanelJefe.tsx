@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Animated, { Easing, FadeInDown, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { MaterialIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { LeaderDashboard, LeaderTeamMember } from 'domain/entities/Leader';
 import { RequestReportItem } from 'domain/entities/RequestReport';
 // Centro Inteligente: ordena aprobaciones y equipo por urgencia por tiempo en vez de mostrarlos
@@ -11,6 +11,9 @@ import { LeaderEvaluationForm, LeaderEvaluationPayload } from '@/presentation/co
 import { useCases } from '@/infrastructure/container';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import { normalizeRole } from '@/shared/auth/roles';
+import BotonAnimado from '@/presentation/components/BotonAnimado';
+import EmptyState from '@/presentation/components/ui/EmptyState';
+import { SkeletonLista } from '@/presentation/components/ui/Skeleton';
 
 const EMPTY_DASHBOARD: LeaderDashboard = {
   equipo: [],
@@ -41,6 +44,17 @@ export default function PanelJefe() {
 
   const empresaId = obtenerEmpresaId(perfil);
   const esJefe = normalizeRole(perfil?.rol) === 'jefe';
+
+  const opacidad = useSharedValue(0);
+  const traslacionY = useSharedValue(8);
+  useEffect(() => {
+    opacidad.value = withTiming(1, { duration: 220, easing: Easing.out(Easing.cubic) });
+    traslacionY.value = withTiming(0, { duration: 220, easing: Easing.out(Easing.cubic) });
+  }, [opacidad, traslacionY]);
+  const estiloEntrada = useAnimatedStyle(() => ({
+    opacity: opacidad.value,
+    transform: [{ translateY: traslacionY.value }],
+  }));
 
   useEffect(() => {
     if (!perfil || !empresaId || !esJefe) {
@@ -152,7 +166,7 @@ export default function PanelJefe() {
 
   return (
     <View style={styles.root}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <Animated.ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} style={estiloEntrada}>
         <View style={styles.header}>
           <Text style={styles.eyebrow}>Panel de jefe</Text>
           <Text style={styles.title}>Equipo y aprobaciones</Text>
@@ -161,9 +175,7 @@ export default function PanelJefe() {
 
         {cargando ? (
           <View style={styles.loadingCard}>
-            <ActivityIndicator size="small" color="#8B5CF6" />
-            <View style={styles.skeletonLine} />
-            <View style={[styles.skeletonLine, styles.skeletonShort]} />
+            <SkeletonLista filas={3} alturaFila={48} />
           </View>
         ) : (
           <>
@@ -184,26 +196,28 @@ export default function PanelJefe() {
 
             <Section title="Aprobaciones pendientes" icon="rule">
               {aprobacionesOrdenadas.length === 0 ? (
-                <EmptyState icon="verified" title="Sin aprobaciones pendientes" text="Cuando tu equipo envie solicitudes, apareceran aqui para resolverlas." />
+                <EmptyState icono="check-circle" titulo="Sin aprobaciones pendientes" detalle="Cuando tu equipo envíe solicitudes, aparecerán aquí para resolverlas." />
               ) : (
-                aprobacionesOrdenadas.map((item) => (
-                  <ApprovalCard
-                    key={`${item.sourceCollection}-${item.id}`}
-                    item={item}
-                    disabled={resolviendoId === item.id}
-                    onApprove={() => resolver(item, 'aprobada')}
-                    onReject={() => resolver(item, 'rechazada')}
-                  />
+                aprobacionesOrdenadas.map((item, indice) => (
+                  <Animated.View key={`${item.sourceCollection}-${item.id}`} entering={FadeInDown.duration(320).delay(indice * 40)}>
+                    <ApprovalCard
+                      item={item}
+                      disabled={resolviendoId === item.id}
+                      onApprove={() => resolver(item, 'aprobada')}
+                      onReject={() => resolver(item, 'rechazada')}
+                    />
+                  </Animated.View>
                 ))
               )}
             </Section>
 
             <Section title="Pulso del equipo" icon="monitor-heart">
               {equipoOrdenado.length === 0 ? (
-                <EmptyState icon="person-search" title="Sin equipo asignado" text="Asigna empleados a este jefe desde Gestion de Plantilla para activar este panel." />
+                <EmptyState icono="users" titulo="Sin equipo asignado" detalle="Asigna empleados a este jefe desde Gestión de Plantilla para activar este panel." />
               ) : (
-                equipoOrdenado.map((member) => (
-                  <View key={member.id} style={styles.memberCard}>
+                equipoOrdenado.map((member, indice) => (
+                  <Animated.View key={member.id} entering={FadeInDown.duration(300).delay(indice * 35)}>
+                  <BotonAnimado style={styles.memberCard} scaleTo={0.98}>
                     <View style={styles.avatar}>
                       <Text style={styles.avatarText}>{member.nombre.slice(0, 1).toUpperCase()}</Text>
                     </View>
@@ -223,7 +237,8 @@ export default function PanelJefe() {
                       <Text style={styles.memberStatValue}>{member.ultimaEvaluacion?.puntajeTotal ?? 0}%</Text>
                       <Text style={styles.memberStatLabel}>eval.</Text>
                     </View>
-                  </View>
+                  </BotonAnimado>
+                  </Animated.View>
                 ))
               )}
             </Section>
@@ -234,9 +249,9 @@ export default function PanelJefe() {
 
             <Section title="Trabajo activo" icon="timeline">
               <View style={styles.workSummary}>
-                <LinearGradient colors={['rgba(124,58,237,0.32)', 'rgba(59,130,246,0.18)']} style={styles.workBadge}>
-                  <MaterialIcons name="pending-actions" size={22} color="#FFFFFF" />
-                </LinearGradient>
+              <View style={styles.workBadge}>
+                <MaterialIcons name="pending-actions" size={22} color="#FFFFFF" />
+              </View>
                 <View style={styles.workCopy}>
                   <Text style={styles.workTitle}>{tareasEnProgreso} tareas en progreso</Text>
                   <Text style={styles.workText}>{dashboard.metricas.tareasPendientes} pendientes totales en el equipo.</Text>
@@ -245,7 +260,7 @@ export default function PanelJefe() {
             </Section>
           </>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
     </View>
   );
 }
@@ -295,16 +310,6 @@ function ApprovalCard({ item, disabled, onApprove, onReject }: { item: RequestRe
           <Text style={styles.approveText}>Aprobar</Text>
         </TouchableOpacity>
       </View>
-    </View>
-  );
-}
-
-function EmptyState({ icon, title, text }: { icon: keyof typeof MaterialIcons.glyphMap; title: string; text: string }) {
-  return (
-    <View style={styles.emptyState}>
-      <MaterialIcons name={icon} size={28} color="#94A3B8" />
-      <Text style={styles.emptyTitle}>{title}</Text>
-      <Text style={styles.emptyText}>{text}</Text>
     </View>
   );
 }
@@ -524,6 +529,7 @@ const styles = StyleSheet.create({
     borderRadius: 23,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#7C3AED',
   },
   workCopy: {
     flex: 1,
@@ -548,14 +554,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 14,
   },
-  skeletonLine: {
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  skeletonShort: {
-    width: '68%',
-  },
   errorCard: {
     padding: 13,
     borderRadius: 14,
@@ -571,29 +569,6 @@ const styles = StyleSheet.create({
     color: '#FECACA',
     fontSize: 13,
     fontWeight: '700',
-  },
-  emptyState: {
-    minHeight: 142,
-    padding: 18,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  emptyTitle: {
-    color: '#E2E8F0',
-    fontSize: 15,
-    fontWeight: '900',
-    textAlign: 'center',
-  },
-  emptyText: {
-    color: '#94A3B8',
-    fontSize: 12,
-    lineHeight: 18,
-    textAlign: 'center',
   },
   centerState: {
     flex: 1,

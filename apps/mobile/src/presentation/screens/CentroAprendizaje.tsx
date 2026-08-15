@@ -10,7 +10,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Modal,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -24,10 +23,16 @@ import {
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 // Importa { BlurView } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import { BlurView } from 'expo-blur';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 // Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import { LinearGradient } from 'expo-linear-gradient';
+// Importa Animated y FadeInDown desde Reanimated; habilita animaciones de entrada fluidas.
+import Animated, { FadeInDown } from 'react-native-reanimated';
+// Importa ModalShell y EmptyState; componentes compartidos para modales con swipe y estados vacios.
+import { ModalShell, EmptyState } from '@/presentation/components/ui';
 // Importa { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA }; reutiliza tokens visuales y constantes comunes del sistema de diseno.
-import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA } from '@/shared/constants/diseno';
+import { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/constants/diseno';
 // Importa { useContextoUsuario }; accede a contexto compartido de usuario, tema o estado global.
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
@@ -38,6 +43,7 @@ import { useCases } from '@/infrastructure/container';
 import { Course, TrainingProgress } from 'domain/entities/Course';
 // Importa FondoMobilePremium; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
+import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
 // Importa { useTemaMobile }; accede a contexto compartido de usuario, tema o estado global.
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 
@@ -161,6 +167,39 @@ export default function CentroAprendizaje({ navigation }: Props) {
   const avanceCursoActivo = avances.find((avance) => avance.cursoId === cursoActivo?.id);
   const modulosCompletadosCursoActivo = new Set(avanceCursoActivo?.modulosCompletados || []);
 
+  const descargarCertificado = async () => {
+    if (!avanceCursoActivo?.certificadoCodigo || !cursoActivo || !perfil) return;
+    const fecha = new Date(avanceCursoActivo.certificadoEmitidoAt || Date.now()).toLocaleDateString('es-SV', { day: 'numeric', month: 'long', year: 'numeric' });
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8" />
+      <style>
+        body { font-family: Helvetica, Arial, sans-serif; text-align: center; padding: 70px 50px; border: 14px solid #6320A6; }
+        .eyebrow { font-size: 13px; letter-spacing: 4px; color: #6320A6; text-transform: uppercase; font-weight: 700; }
+        h1 { font-size: 30px; margin: 22px 0 6px; color: #111827; }
+        .parrafo { font-size: 15px; color: #4B5563; margin: 4px 0; }
+        .nombre { font-size: 28px; font-weight: 800; margin: 22px 0; color: #111827; }
+        .codigo { margin-top: 50px; font-size: 12px; color: #9CA3AF; letter-spacing: 2px; }
+      </style>
+      </head><body>
+        <div class="eyebrow">Nexxus &middot; Certificado de Finalización</div>
+        <h1>${cursoActivo.titulo}</h1>
+        <p class="parrafo">Se certifica que</p>
+        <div class="nombre">${perfil.nombre || 'Empleado'}</div>
+        <p class="parrafo">completó satisfactoriamente este curso el ${fecha}.</p>
+        <div class="codigo">Código de verificación: ${avanceCursoActivo.certificadoCodigo}</div>
+      </body></html>`;
+
+    try {
+      if (Platform.OS === 'web') {
+        await Print.printAsync({ html });
+      } else {
+        const { uri } = await Print.printToFileAsync({ html });
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `Certificado - ${cursoActivo.titulo}` });
+      }
+    } catch {
+      // El usuario cancelo el dialogo de impresion/compartir; no es un error a reportar.
+    }
+  };
+
   const completarModulo = async (cursoId: string, moduloIndex: number) => {
     const key = `${cursoId}-${moduloIndex}`;
     setCompletandoModulo(key);
@@ -228,7 +267,7 @@ export default function CentroAprendizaje({ navigation }: Props) {
   };
 
   // Declara renderCurso; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const renderCurso = (item: Course) => {
+  const renderCurso = (item: Course, index: number) => {
     // Declara progreso; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const progreso = progresoPorCurso.get(item.id) || 0;
     // Declara activo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -239,8 +278,8 @@ export default function CentroAprendizaje({ navigation }: Props) {
     // Devuelve el JSX que React Native renderiza en pantalla.
     return (
       // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
+      <Animated.View key={item.id} entering={FadeInDown.duration(350).delay(index * 40)}>
       <TouchableOpacity
-        key={item.id}
         style={[estilos.tarjetaCurso, activo && estilos.tarjetaCursoActiva]}
         activeOpacity={0.84}
         onPress={() => setCursoActivoId(item.id)}
@@ -273,6 +312,7 @@ export default function CentroAprendizaje({ navigation }: Props) {
           </View>
         </BlurView>
       </TouchableOpacity>
+      </Animated.View>
     );
   };
 
@@ -281,7 +321,7 @@ export default function CentroAprendizaje({ navigation }: Props) {
     // Contenedor seguro de la pantalla; respeta areas del dispositivo como notch, barra superior y bordes.
     <SafeAreaView style={estilos.contenedor}>
       {/* Configura la barra de estado del sistema para que combine con el fondo de esta pantalla. */}
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
       {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
       <View style={estilos.fondoAbsoluto}>
         {/* Elemento de fondo visual; construye la atmosfera grafica de la pantalla sin cambiar los datos. */}
@@ -289,28 +329,7 @@ export default function CentroAprendizaje({ navigation }: Props) {
       </View>
 
       {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-      <View style={estilos.header}>
-        {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
-        <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.headerVidrio}>
-          {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-          <TouchableOpacity onPress={() => navigation.goBack()} style={estilos.botonRegresar} activeOpacity={0.8}>
-            {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-            <Feather name="arrow-left" size={19} color={colores.texto} />
-          </TouchableOpacity>
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-          <View style={estilos.headerCentro}>
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.tituloPantalla}>{t('centroAprendizaje.title')}</Text>
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.subtituloPantalla}>{t('centroAprendizaje.subtitle')}</Text>
-          </View>
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-          <View style={estilos.iconoHeader}>
-            {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-            <Feather name="book-open" size={18} color={colores.textoSuave} />
-          </View>
-        </BlurView>
-      </View>
+      <NavbarEnterprise titulo={t('centroAprendizaje.title')} subtitulo={t('centroAprendizaje.subtitle')} mostrarAtras />
 
       {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
       <ScrollView contentContainerStyle={estilos.scroll} showsVerticalScrollIndicator={false}>
@@ -322,7 +341,7 @@ export default function CentroAprendizaje({ navigation }: Props) {
         ) : null}
 
         {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-        <View style={estilos.resumenGrid}>
+        <Animated.View entering={FadeInDown.duration(400).delay(0)} style={estilos.resumenGrid}>
           {resumen.map((item) => (
             // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
             <View key={item.label} style={estilos.tarjetaResumen}>
@@ -334,11 +353,11 @@ export default function CentroAprendizaje({ navigation }: Props) {
               <Text style={estilos.labelResumen}>{item.label}</Text>
             </View>
           ))}
-        </View>
+        </Animated.View>
 
         {cursoActivo && (
           // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
-          <View style={estilos.tarjetaHero}>
+          <Animated.View entering={FadeInDown.duration(400).delay(60)} style={estilos.tarjetaHero}>
             {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
             <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.heroContenido}>
               {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
@@ -379,13 +398,14 @@ export default function CentroAprendizaje({ navigation }: Props) {
                 <Text style={estilos.heroProgreso}>{progresoPorCurso.get(cursoActivo.id) || 0}%</Text>
               </View>
               {avanceCursoActivo?.certificadoEmitido ? (
-                <View style={estilos.certificadoBox}>
+                <TouchableOpacity style={estilos.certificadoBox} onPress={descargarCertificado} activeOpacity={0.85}>
                   <Feather name="award" size={18} color="#22C55E" />
                   <View style={estilos.certificadoTexto}>
                     <Text style={estilos.certificadoTitulo}>{t('centroAprendizaje.certificate_ready')}</Text>
                     <Text style={estilos.certificadoCodigo}>{avanceCursoActivo.certificadoCodigo}</Text>
                   </View>
-                </View>
+                  <Feather name="download" size={16} color="#22C55E" />
+                </TouchableOpacity>
               ) : null}
 
               <TouchableOpacity
@@ -416,11 +436,11 @@ export default function CentroAprendizaje({ navigation }: Props) {
                 </Text>
               </TouchableOpacity>
             </BlurView>
-          </View>
+          </Animated.View>
         )}
 
         {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-        <View style={estilos.seccion}>
+        <Animated.View entering={FadeInDown.duration(400).delay(120)} style={estilos.seccion}>
           {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={estilos.encabezadoSeccion}>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -472,27 +492,16 @@ export default function CentroAprendizaje({ navigation }: Props) {
           ) : cursosFiltrados.length > 0 ? (
             // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
             <View style={estilos.listaCursos}>
-              {cursosFiltrados.map(renderCurso)}
+              {cursosFiltrados.map((curso, index) => renderCurso(curso, index))}
             </View>
           ) : (
-            // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
-            <View style={estilos.estadoVacio}>
-              {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
-              <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.estadoVacioContenido}>
-                {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                <Feather name="book" size={26} color={colores.textoSuave} />
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.textoVacio}>{t('centroAprendizaje.no_courses')}</Text>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.textoVacioDetalle}>{t('centroAprendizaje.no_courses_detail')}</Text>
-              </BlurView>
-            </View>
+            <EmptyState icono="book" titulo={t('centroAprendizaje.no_courses')} detalle={t('centroAprendizaje.no_courses_detail')} />
           )}
-        </View>
+        </Animated.View>
 
         {cursoActivo && (
           // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
-          <View style={estilos.seccion}>
+          <Animated.View entering={FadeInDown.duration(400).delay(180)} style={estilos.seccion}>
             {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
             <View style={estilos.encabezadoSeccion}>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -553,7 +562,7 @@ export default function CentroAprendizaje({ navigation }: Props) {
                 )}
               </BlurView>
             </View>
-          </View>
+          </Animated.View>
         )}
 
         {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
@@ -561,16 +570,20 @@ export default function CentroAprendizaje({ navigation }: Props) {
       </ScrollView>
 
       {/* Modal interactivo de lectura de módulos y evaluación corta */}
-      {cursoActivo && moduloLecturaIndex !== null && cursoActivo.modulos?.[moduloLecturaIndex] ? (() => {
+      <ModalShell
+        visible={Boolean(cursoActivo && moduloLecturaIndex !== null && cursoActivo.modulos?.[moduloLecturaIndex])}
+        onClose={() => setModuloLecturaIndex(null)}
+        maxHeight="90%"
+        style={{ padding: 20 }}
+      >
+      {(() => {
+        if (!(cursoActivo && moduloLecturaIndex !== null && cursoActivo.modulos?.[moduloLecturaIndex])) return null;
         const moduloActivo = cursoActivo.modulos[moduloLecturaIndex];
         const moduloCompletado = modulosCompletadosCursoActivo.has(moduloLecturaIndex);
         const evalData = moduloActivo.evaluacion_corta;
 
         return (
-          <Modal visible={true} animationType="slide" transparent>
-            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.78)', justifyContent: 'flex-end' }}>
-              <View style={{ height: '90%', backgroundColor: colores.fondoProfundo || '#111827', borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' }}>
-                <BlurView intensity={intensidadBlur} tint={blurTint} style={{ flex: 1, padding: 20 }}>
+          <>
                   {/* Header */}
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: colores.borde }}>
                     <View style={{ flex: 1, paddingRight: 12 }}>
@@ -706,12 +719,10 @@ export default function CentroAprendizaje({ navigation }: Props) {
                       </Text>
                     </TouchableOpacity>
                   </View>
-                </BlurView>
-              </View>
-            </View>
-          </Modal>
+          </>
         );
-      })() : null}
+      })()}
+      </ModalShell>
     </SafeAreaView>
   );
 }
@@ -720,12 +731,10 @@ export default function CentroAprendizaje({ navigation }: Props) {
  * Mapa de estilos crearEstilosAprendizaje. Centraliza reglas visuales para que el JSX se mantenga legible y consistente.
  */
 function crearEstilosAprendizaje(c: any, esOscuro: boolean) {
-  // Declara glass; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const glass = esOscuro ? 'rgba(255,255,255,0.025)' : 'rgba(255,255,255,0.78)';
-  // Declara glassMini; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const glassMini = esOscuro ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.6)';
-  // Declara glassMicro; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const glassMicro = esOscuro ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.5)';
+  // Tokens centralizados de "vidrio" (TemaMobileContext): vidrio para tarjetas estandar, vidrioSutil para chips/micro-iconos.
+  const glass = c.vidrio;
+  const glassMini = c.vidrioSutil;
+  const glassMicro = c.vidrioSutil;
   // Devuelve el valor final calculado para esta funcion o caso de uso.
   return StyleSheet.create({
     // contenedor: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
@@ -794,74 +803,42 @@ function crearEstilosAprendizaje(c: any, esOscuro: boolean) {
     seccionMeta: { ...TIPOGRAFIA.micro, color: c.textoSuave, fontSize: 10 },
     // filtros: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     filtros: { gap: ESPACIADO.xs, paddingBottom: ESPACIADO.md },
-    // chipFiltro: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    chipFiltro: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 13, paddingVertical: 9, borderRadius: RADIOS.completo, backgroundColor: glass, borderWidth: 1, borderColor: c.borde },
-    // chipFiltroActivo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    chipFiltroActivo: { backgroundColor: 'rgba(124,58,237,0.18)', borderColor: 'rgba(139,92,246,0.38)' },
-    // textoFiltro: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    textoFiltro: { ...TIPOGRAFIA.micro, color: c.textoSuave, fontSize: 10 },
-    // textoFiltroActivo: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    textoFiltroActivo: { color: c.texto },
-    // listaCursos: estilo de lista o item; mantiene espaciado y lectura consistente en elementos repetidos.
+    chipFiltro: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: RADIOS.completo, backgroundColor: glass, borderWidth: 1, borderColor: c.borde },
+    chipFiltroActivo: { backgroundColor: esOscuro ? 'rgba(59,130,246,0.18)' : 'rgba(37,99,235,0.12)', borderColor: esOscuro ? 'rgba(96,165,250,0.5)' : 'rgba(37,99,235,0.4)' },
+    textoFiltro: { ...TIPOGRAFIA.micro, color: c.textoSuave, fontSize: 11, fontWeight: '600' },
+    textoFiltroActivo: { color: esOscuro ? '#93C5FD' : '#2563EB', fontWeight: '800' },
     listaCursos: { gap: ESPACIADO.md },
-    // tarjetaCurso: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
-    tarjetaCurso: { borderRadius: RADIOS.xl, overflow: 'hidden', borderWidth: 1, borderColor: c.borde, backgroundColor: glass },
-    // tarjetaCursoActiva: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
-    tarjetaCursoActiva: { borderColor: 'rgba(139,92,246,0.42)' },
-    // tarjetaCursoContenido: estilo del area de contenido; controla padding, distribucion y separacion interna.
+    tarjetaCurso: { borderRadius: RADIOS.xl, overflow: 'hidden', borderWidth: 1, borderColor: c.borde, backgroundColor: glass, ...SOMBRAS.flotante },
+    tarjetaCursoActiva: { borderColor: esOscuro ? 'rgba(96,165,250,0.6)' : 'rgba(37,99,235,0.5)' },
     tarjetaCursoContenido: { padding: ESPACIADO.lg },
-    // headerTarjeta: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
     headerTarjeta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: ESPACIADO.sm },
-    // badgeCategoria: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     badgeCategoria: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: RADIOS.completo, borderWidth: 1 },
-    // textoBadge: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    textoBadge: { ...TIPOGRAFIA.micro, fontSize: 9 },
-    // puntos: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    puntos: { ...TIPOGRAFIA.micro, color: c.textoSuave, fontSize: 10 },
-    // tituloCurso: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
-    tituloCurso: { ...TIPOGRAFIA.tituloTarjeta, color: c.texto, fontSize: 17 },
-    // descCurso: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    descCurso: { ...TIPOGRAFIA.cuerpoPequeno, color: c.textoSecundario, marginTop: 5 },
-    // footerCurso: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
+    textoBadge: { ...TIPOGRAFIA.micro, fontSize: 10, fontWeight: '800' },
+    puntos: { ...TIPOGRAFIA.micro, color: c.textoSuave, fontSize: 11, fontWeight: '700' },
+    tituloCurso: { ...TIPOGRAFIA.tituloTarjeta, color: c.texto, fontSize: 16, fontWeight: '800' },
+    descCurso: { ...TIPOGRAFIA.cuerpoPequeno, color: c.textoSecundario, marginTop: 5, lineHeight: 18 },
     footerCurso: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: ESPACIADO.md },
-    // barraProgresoFondo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    barraProgresoFondo: { flex: 1, height: 6, backgroundColor: esOscuro ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)', borderRadius: 4, overflow: 'hidden' },
-    // barraProgresoRelleno: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
+    barraProgresoFondo: { flex: 1, height: 6, backgroundColor: esOscuro ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)', borderRadius: 4, overflow: 'hidden' },
     barraProgresoRelleno: { height: '100%', borderRadius: 4 },
-    // textoProgreso: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    textoProgreso: { ...TIPOGRAFIA.micro, color: c.texto, fontSize: 10 },
-    // estadoVacio: estilo de estado vacio; presenta mensajes cuando no hay datos disponibles.
+    textoProgreso: { ...TIPOGRAFIA.micro, color: c.texto, fontSize: 11, fontWeight: '800' },
     estadoVacio: { borderRadius: RADIOS.xl, overflow: 'hidden', borderWidth: 1, borderColor: c.borde, backgroundColor: glass },
-    // estadoVacioContenido: estilo del area de contenido; controla padding, distribucion y separacion interna.
     estadoVacioContenido: { minHeight: 140, alignItems: 'center', justifyContent: 'center', padding: ESPACIADO.xl },
-    // textoVacio: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
     textoVacio: { ...TIPOGRAFIA.leyenda, color: c.texto, marginTop: ESPACIADO.md, textAlign: 'center' },
-    // textoVacioDetalle: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    textoVacioDetalle: { ...TIPOGRAFIA.cuerpoPequeno, color: c.textoSuave, textAlign: 'center', marginTop: ESPACIADO.xs },
-    // modulosCard: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
-    modulosCard: { borderRadius: RADIOS.xl, overflow: 'hidden', borderWidth: 1, borderColor: c.borde, backgroundColor: glass },
-    // modulosContenido: estilo del area de contenido; controla padding, distribucion y separacion interna.
+    modulosCard: { borderRadius: RADIOS.xl, overflow: 'hidden', borderWidth: 1, borderColor: c.borde, backgroundColor: glass, ...SOMBRAS.flotante },
     modulosContenido: { padding: ESPACIADO.md, gap: ESPACIADO.sm },
-    // moduloFila: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     moduloFila: { flexDirection: 'row', alignItems: 'center', gap: ESPACIADO.sm, paddingVertical: ESPACIADO.xs },
     moduloFilaCompletado: { opacity: 0.92 },
-    // numeroModulo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    numeroModulo: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(124,58,237,0.13)', borderWidth: 1, borderColor: 'rgba(139,92,246,0.25)' },
+    numeroModulo: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: esOscuro ? 'rgba(59,130,246,0.15)' : 'rgba(37,99,235,0.10)', borderWidth: 1, borderColor: esOscuro ? 'rgba(96,165,250,0.3)' : 'rgba(37,99,235,0.2)' },
     numeroModuloCompleto: { backgroundColor: '#22C55E', borderColor: 'rgba(34,197,94,0.48)' },
-    // textoNumeroModulo: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    textoNumeroModulo: { ...TIPOGRAFIA.micro, color: c.texto, fontSize: 10 },
-    // infoModulo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
+    textoNumeroModulo: { ...TIPOGRAFIA.micro, color: c.texto, fontSize: 11, fontWeight: '800' },
     infoModulo: { flex: 1 },
-    // tituloModulo: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
-    tituloModulo: { ...TIPOGRAFIA.leyenda, color: c.texto },
-    // tipoModulo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    tipoModulo: { ...TIPOGRAFIA.cuerpoPequeno, color: c.textoSuave, marginTop: 2 },
-    botonModulo: { minHeight: 34, minWidth: 96, borderRadius: RADIOS.completo, backgroundColor: COLORES.primario, alignItems: 'center', justifyContent: 'center', paddingHorizontal: ESPACIADO.md },
+    tituloModulo: { ...TIPOGRAFIA.leyenda, color: c.texto, fontWeight: '700' },
+    tipoModulo: { ...TIPOGRAFIA.cuerpoPequeno, color: c.textoSuave, marginTop: 2, fontSize: 12 },
+    botonModulo: { minHeight: 36, minWidth: 96, borderRadius: RADIOS.completo, backgroundColor: COLORES.primario, alignItems: 'center', justifyContent: 'center', paddingHorizontal: ESPACIADO.md },
     botonModuloCompleto: { backgroundColor: esOscuro ? 'rgba(34,197,94,0.18)' : 'rgba(34,197,94,0.12)', borderWidth: 1, borderColor: 'rgba(34,197,94,0.28)' },
-    botonModuloTexto: { ...TIPOGRAFIA.micro, color: '#FFFFFF', fontSize: 10 },
-    botonModuloTextoCompleto: { color: '#22C55E' },
+    botonModuloTexto: { ...TIPOGRAFIA.micro, color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
+    botonModuloTextoCompleto: { color: '#22C55E', fontWeight: '800' },
     // textoVacioInline: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
     textoVacioInline: { ...TIPOGRAFIA.cuerpoPequeno, color: c.textoSuave, textAlign: 'center', paddingVertical: ESPACIADO.md },
   });
 }
-

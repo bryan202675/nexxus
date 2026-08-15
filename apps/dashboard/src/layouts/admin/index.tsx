@@ -9,9 +9,9 @@ import { useAuth } from "context/AuthContext";
 export default function Admin(props) {
   const { ...rest } = props;
   const location = useLocation();
-  const { esSuperAdmin } = useAuth();
-  const routes = getRoutesForRole(esSuperAdmin ? "super_admin" : "admin_empresa");
-  const defaultPath = esSuperAdmin ? "/admin/nexxus-superadmin" : "/admin/empresa-resumen";
+  const { rol } = useAuth();
+  const routes = getRoutesForRole(rol);
+  const defaultPath = routes[0] ? `${routes[0].layout}/${routes[0].path}` : "/auth/sa-login";
 
   const [open, setOpen] = React.useState(true);
   const [currentRoute, setCurrentRoute] = React.useState(routes[0]?.name || "");

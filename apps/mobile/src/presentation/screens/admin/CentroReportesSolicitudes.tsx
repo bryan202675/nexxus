@@ -8,7 +8,8 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { Platform, ScrollView, StyleSheet, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { useCases } from '@/infrastructure/container';
@@ -16,6 +17,9 @@ import { ExportFile, ExportFormat } from 'domain/entities/ExportFile';
 import { NewReportInput, RequestReportItem, RequestReportPriority } from 'domain/entities/RequestReport';
 import { useAuth } from '@/presentation/hooks/useAuth';
 import { ADMIN, type AdminPalette, useAdminAppearance } from './adminTheme';
+
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
 
 type LoadState = 'loading' | 'ready' | 'empty' | 'error';
 type ToastState = { type: 'success' | 'error'; message: string } | null;

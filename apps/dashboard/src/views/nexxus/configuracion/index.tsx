@@ -8,6 +8,21 @@ import NexxusCard from "views/nexxus/components/NexxusCard";
 import InputField from "components/fields/InputField";
 import Avatar from "components/nexxus/Avatar";
 
+// plataforma_config solo tiene columnas clave/valor/updated_at (sin id).
+function formatoClave(clave) {
+  const texto = String(clave || "").replace(/_/g, " ").trim();
+  return texto ? texto.charAt(0).toUpperCase() + texto.slice(1) : "Sin clave";
+}
+
+function esObjetoSimple(valor) {
+  return (
+    valor &&
+    typeof valor === "object" &&
+    !Array.isArray(valor) &&
+    Object.values(valor).every((v) => v === null || ["string", "number", "boolean"].includes(typeof v))
+  );
+}
+
 export default function Configuracion() {
   const { user, perfil, signOut } = useAuth();
   const { dark, toggleDark } = useTheme();
@@ -202,15 +217,24 @@ export default function Configuracion() {
               <h4 className="mb-4 text-lg font-bold text-navy-700 dark:text-white">Configuración de Nexxus</h4>
               <div className="flex flex-col gap-3">
                 {plataformaConfig.map((doc) => (
-                  <div key={doc.id} className="rounded-xl border border-gray-200 p-3 dark:!border-charcoal-border">
-                    <p className="mb-1 text-xs font-bold uppercase text-gray-500 dark:text-white/50">{doc.id}</p>
-                    <pre className="whitespace-pre-wrap break-words text-xs text-navy-700 dark:text-white/80">
-                      {JSON.stringify(
-                        Object.fromEntries(Object.entries(doc).filter(([key]) => key !== "id")),
-                        null,
-                        2
-                      )}
-                    </pre>
+                  <div key={doc.clave} className="rounded-xl border border-gray-200 p-3 dark:!border-charcoal-border">
+                    <p className="mb-2 text-xs font-bold uppercase text-gray-500 dark:text-white/50">{formatoClave(doc.clave)}</p>
+                    {esObjetoSimple(doc.valor) ? (
+                      <div className="flex flex-col gap-1">
+                        {Object.entries(doc.valor).map(([key, value]) => (
+                          <p key={key} className="text-xs text-navy-700 dark:text-white/80">
+                            <span className="text-gray-500 dark:text-white/50">{formatoClave(key)}:</span> {String(value)}
+                          </p>
+                        ))}
+                      </div>
+                    ) : (
+                      <details>
+                        <summary className="cursor-pointer text-xs font-bold text-gray-500 dark:text-white/50">Ver valor guardado</summary>
+                        <pre className="mt-2 max-h-48 overflow-auto rounded-xl bg-black/5 p-3 text-xs text-gray-600 dark:bg-black/20 dark:text-white/60">
+                          {JSON.stringify(doc.valor, null, 2)}
+                        </pre>
+                      </details>
+                    )}
                   </div>
                 ))}
               </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text as NativeText, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '@/presentation/hooks/useAuth';
 import { useCases } from '@/infrastructure/container';
@@ -7,8 +7,10 @@ import { AutomationActionTarget, AutomationRule, AutomationTriggerType } from 'd
 import { obtenerEmpresaIdAdmin } from './adminUtils';
 import { ADMIN, useAdminAppearance } from './adminTheme';
 import { useAdminToast } from './adminToast';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
 
-const Text = NativeText;
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
 
 const TRIGGER_LABELS: Record<AutomationTriggerType, string> = {
   tarea_vencida: 'Tarea vencida',

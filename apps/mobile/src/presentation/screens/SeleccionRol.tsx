@@ -7,19 +7,19 @@
  */
 
 // Importa React, { useState, useRef, useEffect } desde React; habilita componentes, hooks y tipos base para esta pieza.
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Animated,
   StatusBar,
   SafeAreaView,
 } from 'react-native';
 // Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
@@ -33,7 +33,9 @@ import MarcaNexxus from '@/presentation/components/MarcaNexxus';
 // Importa { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA }; reutiliza tokens visuales y constantes comunes del sistema de diseno.
 import { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/constants/diseno';
 // Importa AuraOrb; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
-import AuraOrb from '@/presentation/components/AuraOrb';
+import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
+
+type ColoresTema = ReturnType<typeof useTemaMobile>['colores'];
 
 /**
  * Describe la forma tipada RolSeleccionado; ayuda a que estados, props o respuestas mantengan una estructura predecible.
@@ -55,19 +57,8 @@ export default function SeleccionRol({ navigation }: Props) {
   const { t } = useTranslation();
   // Inicializa [rolActivo, setRolActivo]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [rolActivo, setRolActivo] = useState<RolSeleccionado>('admin');
-  // Inicializa animacionOpacidad; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const animacionOpacidad = useRef(new Animated.Value(0)).current;
-  // Inicializa animacionTraslado; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const animacionTraslado = useRef(new Animated.Value(20)).current;
-
-  // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-  useEffect(() => {
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-    Animated.parallel([
-      Animated.timing(animacionOpacidad, { toValue: 1, duration: 700, useNativeDriver: true }),
-      Animated.timing(animacionTraslado, { toValue: 0, duration: 700, useNativeDriver: true }),
-    ]).start();
-  }, []);
+  const { colores, esOscuro } = useTemaMobile();
+  const estilos = crearEstilos(colores);
 
   // Declara roles; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const roles = [
@@ -76,14 +67,14 @@ export default function SeleccionRol({ navigation }: Props) {
       titulo: t('seleccionRol.role_employee_title'),
       descripcion: t('seleccionRol.role_employee_desc'),
       icono: 'person' as const,
-      acento: COLORES.primario,
+      acento: colores.primario,
     },
     {
       id: 'jefe' as RolSeleccionado,
       titulo: t('seleccionRol.role_manager_title'),
       descripcion: t('seleccionRol.role_manager_desc'),
       icono: 'groups' as const,
-      acento: COLORES.secundario,
+      acento: colores.secundario,
     },
     {
       id: 'admin' as RolSeleccionado,
@@ -114,27 +105,22 @@ export default function SeleccionRol({ navigation }: Props) {
     // Contenedor seguro de la pantalla; respeta areas del dispositivo como notch, barra superior y bordes.
     <SafeAreaView style={estilos.contenedorPrincipal}>
       {/* Configura la barra de estado del sistema para que combine con el fondo de esta pantalla. */}
-      <StatusBar barStyle="light-content" backgroundColor={COLORES.fondo} />
+      <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
       {/* Elemento de fondo visual; construye la atmosfera grafica de la pantalla sin cambiar los datos. */}
       <FondoAurora />
 
       {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
       <ScrollView contentContainerStyle={estilos.contenedorContenido} showsVerticalScrollIndicator={false}>
         {/* Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-        <Animated.View
-          style={{
-            opacity: animacionOpacidad,
-            transform: [{ translateY: animacionTraslado }],
-            width: '100%',
-          }}
-        >
+        <Animated.View entering={FadeInDown.duration(220)} style={{ width: '100%' }}>
           {/* MarcaNexxus renderiza una pieza visual reutilizable dentro de esta pantalla. */}
           <MarcaNexxus tamano={28} />
 
           {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={estilos.cuerpoTexto}>
-            {/* AuraOrb renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-            <AuraOrb size={112} style={estilos.orbeRol} />
+            <View style={estilos.iconoPrincipal}>
+              <MaterialIcons name="account-tree" size={40} color={colores.primario} />
+            </View>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={estilos.titulo}>{t('seleccionRol.title')}</Text>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -155,11 +141,10 @@ export default function SeleccionRol({ navigation }: Props) {
                   activeOpacity={0.86}
                   style={[estilos.tarjetaRol, activo && { borderColor: rol.acento }]}
                 >
-                  {activo && <LinearGradient colors={['rgba(124,77,255,0.18)', 'rgba(79,140,255,0.1)']} style={StyleSheet.absoluteFill} />}
                   {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-                  <View style={[estilos.iconoRolContenedor, { backgroundColor: activo ? rol.acento : COLORES.superficieSuave }]}>
+                  <View style={[estilos.iconoRolContenedor, { backgroundColor: activo ? rol.acento : colores.vidrioSutil }]}>
                     {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                    <MaterialIcons name={rol.icono} size={26} color={activo ? COLORES.textoInverso : COLORES.textoSecundario} />
+                    <MaterialIcons name={rol.icono} size={26} color={activo ? '#FFFFFF' : colores.textoSecundario} />
                   </View>
                   {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
                   <View style={estilos.textoRol}>
@@ -170,7 +155,7 @@ export default function SeleccionRol({ navigation }: Props) {
                   </View>
                   {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
                   <View style={[estilos.indicadorSeleccion, activo && { backgroundColor: rol.acento, borderColor: rol.acento }]}>
-                    {activo && <MaterialIcons name="check" size={14} color={COLORES.textoInverso} />}
+                    {activo && <MaterialIcons name="check" size={14} color="#FFFFFF" />}
                   </View>
                 </TouchableOpacity>
               );
@@ -196,13 +181,14 @@ export default function SeleccionRol({ navigation }: Props) {
 /**
  * Mapa de estilos estilos. Centraliza reglas visuales para que el JSX se mantenga legible y consistente.
  */
-const estilos = StyleSheet.create({
+function crearEstilos(c: ColoresTema) {
+  return StyleSheet.create({
   // contenedorPrincipal: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
   contenedorPrincipal: {
     // flex define cuanto espacio ocupa el elemento dentro del layout flexible.
     flex: 1,
     // backgroundColor define el fondo del bloque.
-    backgroundColor: COLORES.fondo,
+    backgroundColor: c.fondo,
   },
   // contenedorContenido: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
   contenedorContenido: {
@@ -224,17 +210,13 @@ const estilos = StyleSheet.create({
     // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
   },
-  // orbeRol: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  orbeRol: {
-    // marginBottom separa este bloque del siguiente elemento.
-    marginBottom: ESPACIADO.md,
-  },
+  iconoPrincipal: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', marginBottom: ESPACIADO.md, backgroundColor: c.vidrioSutil, borderWidth: 1, borderColor: c.borde },
   // titulo: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
   titulo: {
     // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
     ...TIPOGRAFIA.tituloPantalla,
     // color define el color del texto o icono.
-    color: COLORES.texto,
+    color: c.texto,
     // textAlign alinea el texto dentro de su contenedor.
     textAlign: 'center',
   },
@@ -243,7 +225,7 @@ const estilos = StyleSheet.create({
     // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
     ...TIPOGRAFIA.cuerpoGrande,
     // color define el color del texto o icono.
-    color: COLORES.textoSecundario,
+    color: c.textoSecundario,
     // textAlign alinea el texto dentro de su contenedor.
     textAlign: 'center',
   },
@@ -265,13 +247,13 @@ const estilos = StyleSheet.create({
     // padding agrega espacio interno alrededor del contenido.
     padding: ESPACIADO.lg,
     // backgroundColor define el fondo del bloque.
-    backgroundColor: COLORES.superficieVidrio,
+    backgroundColor: c.superficie,
     // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: RADIOS.xl,
     // borderWidth define el grosor del borde visible.
     borderWidth: 1,
     // borderColor define el color del borde.
-    borderColor: COLORES.borde,
+    borderColor: c.borde,
     // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
     ...SOMBRAS.tarjeta,
   },
@@ -302,14 +284,14 @@ const estilos = StyleSheet.create({
     // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
     ...TIPOGRAFIA.tituloTarjeta,
     // color define el color del texto o icono.
-    color: COLORES.texto,
+    color: c.texto,
   },
   // descripcionRol: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   descripcionRol: {
     // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
     ...TIPOGRAFIA.cuerpo,
     // color define el color del texto o icono.
-    color: COLORES.textoSecundario,
+    color: c.textoSecundario,
   },
   // indicadorSeleccion: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   indicadorSeleccion: {
@@ -322,7 +304,7 @@ const estilos = StyleSheet.create({
     // borderWidth define el grosor del borde visible.
     borderWidth: 1,
     // borderColor define el color del borde.
-    borderColor: COLORES.bordeFuerte,
+    borderColor: c.bordeFuerte,
     // alignItems alinea los hijos en el eje transversal del contenedor.
     alignItems: 'center',
     // justifyContent distribuye los hijos en el eje principal del contenedor.
@@ -359,4 +341,5 @@ const estilos = StyleSheet.create({
     // color define el color del texto o icono.
     color: COLORES.textoInverso,
   },
-});
+  });
+}

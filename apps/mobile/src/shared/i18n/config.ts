@@ -176,6 +176,10 @@ const EN_TRANSLATION_OVERRIDES: TranslationTree = {
     footer_security: 'Security',
     footer_privacy: 'Privacy',
   },
+  centroTareas: {
+    no_date: 'No date',
+    months_short: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+  },
   solicitudesInternas: {
     types: {
       vacaciones: 'VACATION',
@@ -217,6 +221,8 @@ const EN_TRANSLATION_OVERRIDES: TranslationTree = {
   app: {
     home: 'Home',
     tasks: 'Tasks',
+    team: 'Team',
+    chat: 'Chat',
     ai: 'AI',
     resources: 'Resources',
     settings_title: 'Your Settings',

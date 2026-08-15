@@ -9,7 +9,6 @@
 // Importa React, { useEffect, useMemo, useRef, useState } desde React; habilita componentes, hooks y tipos base para esta pieza.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Animated,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -22,6 +21,18 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import Animated, {
+  Easing,
+  FadeInLeft,
+  FadeInRight,
+  FadeInUp,
+  Layout,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 // Importa { Feather, MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 // Importa { BlurView } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
@@ -104,7 +115,7 @@ export default function ChatIA({ navigation }: Props) {
   // Declara { colores, blurTint, intensidadBlur, esOscuro }; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
   // Inicializa animacionEscritura; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const animacionEscritura = useRef(new Animated.Value(0)).current;
+  const animacionEscritura = useSharedValue(0);
   // Inicializa [textoEntrada, setTextoEntrada]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [textoEntrada, setTextoEntrada] = useState('');
   // Inicializa [escribiendo, setEscribiendo]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -190,21 +201,20 @@ export default function ChatIA({ navigation }: Props) {
   useEffect(() => {
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (escribiendo) {
-      // Declara loop; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const loop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(animacionEscritura, { toValue: 1, duration: 520, useNativeDriver: true }),
-          Animated.timing(animacionEscritura, { toValue: 0.35, duration: 520, useNativeDriver: true }),
-        ])
+      animacionEscritura.value = withRepeat(
+        withSequence(
+          withTiming(1, { duration: 520 }),
+          withTiming(0.35, { duration: 520 }),
+        ),
+        -1,
+        true,
       );
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      loop.start();
-      // Devuelve el valor final calculado para esta funcion o caso de uso.
-      return () => loop.stop();
+      return;
     }
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-    animacionEscritura.setValue(0);
+    animacionEscritura.value = 0;
   }, [escribiendo, animacionEscritura]);
+
+  const estiloPuntoEscritura = useAnimatedStyle(() => ({ opacity: animacionEscritura.value }));
 
   // Inicializa contexto; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const contexto = useMemo(() => {
@@ -403,179 +413,199 @@ export default function ChatIA({ navigation }: Props) {
       </View>
 
       {/* Header uniforme con el resto de pantallas de la app */}
-      <NavbarEnterprise
-        titulo={t('chatIA.title')}
-        subtitulo={t('chatIA.subtitle')}
-        mostrarAtras
-        ocultarAccionesDerechas={true}
-        accionDerecha={
-          <BotonAnimado onPress={limpiarHistorial} scaleTo={0.94}>
-            <View style={[estilos.iconoHeader, { backgroundColor: colores.vidrio, borderColor: colores.borde }]}>
-              <MaterialIcons name="cleaning-services" size={19} color={colores.texto} />
-            </View>
-          </BotonAnimado>
-        }
-      />
+      <NavbarEnterprise titulo={t('chatIA.title', { defaultValue: 'Asistente IA' })} />
 
       {/* Contenedor que ajusta el layout cuando aparece el teclado. */}
       <KeyboardAvoidingView style={estilos.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={0}>
-        {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
+        {/* Area desplazable con espaciado generoso */}
         <ScrollView
           ref={referenciaScroll}
           contentContainerStyle={estilos.scrollChat}
           showsVerticalScrollIndicator={false}
           onContentSizeChange={() => referenciaScroll.current?.scrollToEnd({ animated: true })}
         >
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+          {/* Card Hero Compacto del Asistente */}
           <View style={estilos.panelIA}>
-            {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
             <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.panelContenido}>
-              {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
               <View style={estilos.panelTop}>
-                {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
                 <View style={estilos.avatarIA}>
-                  {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                  <MaterialIcons name="auto-awesome" size={24} color={colores.texto} />
+                  <MaterialIcons name="auto-awesome" size={22} color={esOscuro ? '#FFFFFF' : '#0F172A'} />
+                  <View style={estilos.avatarBadgeOnline} />
                 </View>
-                {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
                 <View style={estilos.panelTextos}>
-                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={estilos.nombreIA}>{t('chatIA.ia_name')}</Text>
-                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={estilos.descripcionIA}>{t('chatIA.ia_desc')}</Text>
+                  <View style={estilos.panelTituloRow}>
+                    <Text style={estilos.nombreIA}>{t('chatIA.ia_name', { defaultValue: 'Nexxus IA' })}</Text>
+                    <View style={estilos.badgeEstadoIA}>
+                      <Text style={estilos.badgeEstadoIATexto}>EN LÍNEA</Text>
+                    </View>
+                  </View>
+                  <Text style={estilos.descripcionIA} numberOfLines={2}>
+                    {t('chatIA.ia_desc', { defaultValue: 'Asistente inteligente contextualizado con tus tareas, métricas y solicitudes.' })}
+                  </Text>
                 </View>
+
+                {mensajes.length > 1 && (
+                  <TouchableOpacity
+                    onPress={limpiarHistorial}
+                    style={estilos.btnLimpiar}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <MaterialIcons name="restart-alt" size={20} color={colores.textoSuave} />
+                  </TouchableOpacity>
+                )}
               </View>
             </BlurView>
           </View>
 
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+          {/* Divisor de tiempo */}
           <View style={estilos.divisorTiempo}>
-            {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
             <View style={estilos.lineaDivisor} />
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.textoDivisor}>{t('chatIA.today')}, {mensajes[0]?.hora || ''}</Text>
-            {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+            <View style={estilos.badgeDivisor}>
+              <Text style={estilos.textoDivisor}>{t('chatIA.today', { defaultValue: 'Hoy' })}, {mensajes[0]?.hora || formatearHora()}</Text>
+            </View>
             <View style={estilos.lineaDivisor} />
           </View>
 
+          {/* Lista de Mensajes con Animaciones Suaves Sin Rebote */}
           {mensajes.map((mensaje) => {
             const parsed = mensaje.rol === 'ia' ? parsearMensajeIA(mensaje.texto) : { texto: mensaje.texto, redirect: null };
+            const esUsuario = mensaje.rol === 'usuario';
+
             return (
-              // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
-              <View key={mensaje.id} style={[estilos.filaBurbuja, mensaje.rol === 'usuario' && estilos.filaBurbujaUsuario]}>
-                {mensaje.rol === 'ia' ? (
-                  // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
-                  <View style={estilos.burbujaIA}>
-                    {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
-                    <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.burbujaContenido}>
-                      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                      <Text style={estilos.textoBurbujaIA}>{parsed.texto}</Text>
-                      {parsed.redirect && (
-                        <BotonAnimado
-                          onPress={() => navigation.navigate(parsed.redirect.ruta)}
-                          scaleTo={0.96}
-                          style={estilos.botonRedirect}
-                        >
-                          <MaterialIcons name="double-arrow" size={14} color={esOscuro ? '#000000' : '#FFFFFF'} />
-                          <Text style={estilos.textoRedirect}>{parsed.redirect.etiqueta}</Text>
-                        </BotonAnimado>
-                      )}
-                      {mensaje.accionesSensibles?.map((accion) => {
-                        const resultado = mensaje.accionesResueltas?.[accion.id];
-                        return (
-                          <View key={accion.id} style={estilos.tarjetaAccionSensible}>
-                            <View style={estilos.tarjetaAccionHeader}>
-                              <MaterialIcons name="shield" size={15} color={COLORES.alerta} />
-                              <Text style={estilos.tarjetaAccionTitulo} numberOfLines={2}>{accion.titulo}</Text>
-                            </View>
-                            {resultado ? (
-                              <Text style={[estilos.tarjetaAccionResultado, resultado === 'error' && estilos.tarjetaAccionResultadoError]}>
-                                {resultado === 'aprobada' ? 'Aprobada ✓' : resultado === 'rechazada' ? 'Rechazada' : 'No se pudo completar. Intenta desde Solicitudes.'}
-                              </Text>
-                            ) : (
-                              <View style={estilos.tarjetaAccionBotones}>
-                                <BotonAnimado
-                                  style={[estilos.tarjetaAccionBoton, estilos.tarjetaAccionBotonRechazar]}
-                                  onPress={() => confirmarAccionSensible(mensaje.id, accion, 'rechazada')}
-                                  scaleTo={0.96}
-                                >
-                                  <Text style={estilos.tarjetaAccionBotonTextoRechazar}>Rechazar</Text>
-                                </BotonAnimado>
-                                <BotonAnimado
-                                  style={[estilos.tarjetaAccionBoton, estilos.tarjetaAccionBotonAprobar]}
-                                  onPress={() => confirmarAccionSensible(mensaje.id, accion, 'aprobada')}
-                                  scaleTo={0.96}
-                                >
-                                  <Text style={estilos.tarjetaAccionBotonTextoAprobar}>Aprobar</Text>
-                                </BotonAnimado>
-                              </View>
-                            )}
-                          </View>
-                        );
-                      })}
-                      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                      <Text style={estilos.horaIA}>{mensaje.hora}</Text>
-                    </BlurView>
-                  </View>
-                ) : (
-                  // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
-                  <View style={estilos.burbujaUsuario}>
-                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                    <Text style={estilos.textoBurbujaUsuario}>{parsed.texto}</Text>
-                    {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                    <Text style={estilos.horaUsuario}>{mensaje.hora}</Text>
+              <Animated.View
+                key={mensaje.id}
+                entering={esUsuario ? FadeInRight.duration(260).easing(Easing.out(Easing.quad)) : FadeInLeft.duration(260).easing(Easing.out(Easing.quad))}
+                layout={Layout.duration(200)}
+                style={[estilos.filaBurbuja, esUsuario ? estilos.filaBurbujaUsuario : estilos.filaBurbujaIA]}
+              >
+                {/* Avatar pequeño para la IA */}
+                {!esUsuario && (
+                  <View style={estilos.miniAvatarIA}>
+                    <MaterialIcons name="auto-awesome" size={14} color={esOscuro ? '#C4B5FD' : '#7C3AED'} />
                   </View>
                 )}
-              </View>
+
+                <View style={[estilos.burbujaWrap, esUsuario && estilos.burbujaWrapUsuario]}>
+                  {!esUsuario ? (
+                    <View style={estilos.burbujaIA}>
+                      <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.burbujaContenido}>
+                        <Text style={estilos.textoBurbujaIA}>{parsed.texto}</Text>
+
+                        {parsed.redirect && (
+                          <BotonAnimado
+                            onPress={() => navigation.navigate(parsed.redirect.ruta)}
+                            scaleTo={0.96}
+                            style={estilos.botonRedirect}
+                          >
+                            <MaterialIcons name="arrow-forward" size={15} color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
+                            <Text style={estilos.textoRedirect}>{parsed.redirect.etiqueta}</Text>
+                          </BotonAnimado>
+                        )}
+
+                        {mensaje.accionesSensibles?.map((accion) => {
+                          const resultado = mensaje.accionesResueltas?.[accion.id];
+                          return (
+                            <View key={accion.id} style={estilos.tarjetaAccionSensible}>
+                              <View style={estilos.tarjetaAccionHeader}>
+                                <MaterialIcons name="verified-user" size={16} color={esOscuro ? '#A78BFA' : '#7C3AED'} />
+                                <Text style={estilos.tarjetaAccionTitulo} numberOfLines={2}>{accion.titulo}</Text>
+                              </View>
+                              {resultado ? (
+                                <View style={estilos.tarjetaAccionResultadoWrap}>
+                                  <Text style={[estilos.tarjetaAccionResultado, resultado === 'error' && estilos.tarjetaAccionResultadoError]}>
+                                    {resultado === 'aprobada' ? 'Acción Aprobada ✓' : resultado === 'rechazada' ? 'Solicitud Rechazada' : 'Error al procesar'}
+                                  </Text>
+                                </View>
+                              ) : (
+                                <View style={estilos.tarjetaAccionBotones}>
+                                  <BotonAnimado
+                                    style={[estilos.tarjetaAccionBoton, estilos.tarjetaAccionBotonRechazar]}
+                                    onPress={() => confirmarAccionSensible(mensaje.id, accion, 'rechazada')}
+                                    scaleTo={0.96}
+                                  >
+                                    <Text style={estilos.tarjetaAccionBotonTextoRechazar}>Rechazar</Text>
+                                  </BotonAnimado>
+                                  <BotonAnimado
+                                    style={[estilos.tarjetaAccionBoton, estilos.tarjetaAccionBotonAprobar]}
+                                    onPress={() => confirmarAccionSensible(mensaje.id, accion, 'aprobada')}
+                                    scaleTo={0.96}
+                                  >
+                                    <Text style={estilos.tarjetaAccionBotonTextoAprobar}>Aprobar</Text>
+                                  </BotonAnimado>
+                                </View>
+                              )}
+                            </View>
+                          );
+                        })}
+
+                        <View style={estilos.metaFilaIA}>
+                          <Text style={estilos.horaIA}>{mensaje.hora}</Text>
+                        </View>
+                      </BlurView>
+                    </View>
+                  ) : (
+                    <View style={estilos.burbujaUsuario}>
+                      <Text style={estilos.textoBurbujaUsuario}>{parsed.texto}</Text>
+                      <View style={estilos.metaFilaUsuario}>
+                        <Text style={estilos.horaUsuario}>{mensaje.hora}</Text>
+                        <MaterialIcons name="done-all" size={13} color={esOscuro ? 'rgba(11,12,30,0.5)' : 'rgba(255,255,255,0.75)'} />
+                      </View>
+                    </View>
+                  )}
+                </View>
+              </Animated.View>
             );
           })}
 
+          {/* Indicador de escritura animado */}
           {escribiendo && (
-            // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
-            <View style={estilos.filaBurbuja}>
-              {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+            <Animated.View
+              entering={FadeInLeft.duration(240).easing(Easing.out(Easing.quad))}
+              layout={Layout.duration(200)}
+              style={[estilos.filaBurbuja, estilos.filaBurbujaIA]}
+            >
+              <View style={estilos.miniAvatarIA}>
+                <MaterialIcons name="auto-awesome" size={14} color={esOscuro ? '#C4B5FD' : '#7C3AED'} />
+              </View>
               <View style={estilos.burbujaIA}>
-                {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
-                <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.burbujaContenido}>
-                  {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+                <BlurView intensity={intensidadBlur} tint={blurTint} style={[estilos.burbujaContenido, { paddingVertical: 14, paddingHorizontal: 18 }]}>
                   <View style={estilos.indicadorEscribiendo}>
+                    <Text style={estilos.indicadorTexto}>Nexxus IA escribiendo</Text>
                     {[0, 1, 2].map((indice) => (
-                      // Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla.
-                      <Animated.View key={indice} style={[estilos.puntoEscritura, { opacity: animacionEscritura }]} />
+                      <Animated.View key={indice} style={[estilos.puntoEscritura, estiloPuntoEscritura]} />
                     ))}
                   </View>
                 </BlurView>
               </View>
-            </View>
+            </Animated.View>
           )}
         </ScrollView>
 
-        {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-        <View style={[estilos.contenedorEntrada, { paddingBottom: tecladoVisible ? ESPACIADO.xs : (Platform.OS === 'ios' ? 90 : 100) }]}>
-          {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
+        {/* Barra Inferior de Entrada y Sugerencias */}
+        <View style={[estilos.contenedorEntrada, { paddingBottom: tecladoVisible ? ESPACIADO.xs : (Platform.OS === 'ios' ? 92 : 100) }]}>
+          {/* Chips de sugerencias rápidas estilizados con iconos morados */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={estilos.sugerencias}>
             {SUGERENCIAS_RAPIDAS.map((sugerencia) => (
               <BotonAnimado
                 key={sugerencia.comando}
                 onPress={() => enviarMensaje(t(sugerencia.etiquetaKey))}
-                scaleTo={0.96}
+                scaleTo={0.94}
               >
                 <View style={estilos.chipSugerencia}>
-                  <MaterialIcons name={sugerencia.icono} size={14} color={colores.texto} />
+                  <MaterialIcons name={sugerencia.icono} size={14} color={esOscuro ? '#C4B5FD' : '#7C3AED'} />
                   <Text style={estilos.textoChip}>{t(sugerencia.etiquetaKey)}</Text>
                 </View>
               </BotonAnimado>
             ))}
           </ScrollView>
 
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+          {/* Caja de Entrada de Texto Flotante */}
           <View style={estilos.barraMensaje}>
-            {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
             <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.barraMensajeContenido}>
-              {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
               <TextInput
                 style={estilos.entrada}
-                placeholder={t('chatIA.input_placeholder')}
+                placeholder={t('chatIA.input_placeholder', { defaultValue: 'Consulta a Nexxus IA...' })}
                 placeholderTextColor={colores.textoSuave}
                 value={textoEntrada}
                 onChangeText={setTextoEntrada}
@@ -587,10 +617,10 @@ export default function ChatIA({ navigation }: Props) {
               <BotonAnimado
                 disabled={!textoEntrada.trim()}
                 onPress={() => enviarMensaje(textoEntrada)}
-                scaleTo={0.94}
+                scaleTo={0.92}
               >
                 <View style={[estilos.botonEnviar, !textoEntrada.trim() && estilos.botonEnviarDeshabilitado]}>
-                  <MaterialIcons name="north-east" size={18} color={esOscuro ? '#000000' : '#FFFFFF'} />
+                  <MaterialIcons name="arrow-upward" size={20} color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
                 </View>
               </BotonAnimado>
             </BlurView>
@@ -606,68 +636,372 @@ export default function ChatIA({ navigation }: Props) {
  */
 function crearEstilosChat(c: any, esOscuro: boolean) {
   const glass = esOscuro ? 'rgba(24, 24, 38, 0.88)' : 'rgba(255, 255, 255, 0.94)';
-  const glassMini = esOscuro ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)';
+  const glassMini = esOscuro ? 'rgba(255, 255, 255, 0.09)' : 'rgba(15, 23, 42, 0.05)';
 
   return StyleSheet.create({
     contenedor: { flex: 1, backgroundColor: c.fondo },
     flex: { flex: 1 },
     fondoAbsoluto: { ...StyleSheet.absoluteFillObject, zIndex: -1, overflow: 'hidden' },
-    header: { marginHorizontal: ESPACIADO.md, marginTop: Platform.OS === 'ios' ? ESPACIADO.xs : ESPACIADO.sm, borderRadius: 28, overflow: 'hidden' },
-    headerVidrio: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 12, paddingVertical: 11, backgroundColor: glass, overflow: 'hidden', borderWidth: 1, borderColor: c.borde, borderRadius: 28 },
-    botonRegresar: { width: 38, height: 38, borderRadius: 19, backgroundColor: glassMini, borderWidth: 1, borderColor: c.borde, alignItems: 'center', justifyContent: 'center' },
-    headerCentro: { flex: 1, minWidth: 0 },
-    tituloPantalla: { fontSize: 17, fontWeight: '900', letterSpacing: 0, color: c.texto },
-    subtituloPantalla: { fontSize: 11, fontWeight: '700', color: c.textoSuave, marginTop: 2 },
-    iconoHeader: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: glassMini, borderWidth: 1, borderColor: c.borde },
-    scrollChat: { paddingHorizontal: ESPACIADO.lg, paddingTop: ESPACIADO.sm, paddingBottom: ESPACIADO.md },
-    panelIA: { borderRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: c.borde, backgroundColor: glass, marginBottom: ESPACIADO.lg, ...SOMBRAS.flotante },
-    panelContenido: { padding: ESPACIADO.lg },
-    orbeChatWrap: { alignItems: 'center', marginTop: ESPACIADO.sm, marginBottom: ESPACIADO.lg },
-    panelTop: { flexDirection: 'row', alignItems: 'center', gap: ESPACIADO.md },
-    avatarIA: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: glassMini, borderWidth: 1, borderColor: c.borde },
-    panelTextos: { flex: 1 },
-    nombreIA: { fontSize: 17, fontWeight: '900', color: c.texto },
-    descripcionIA: { fontSize: 12, color: c.textoSuave, marginTop: 2, lineHeight: 17 },
-    contextoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: ESPACIADO.sm },
-    contextoCard: { width: '48.5%', minHeight: 82, borderRadius: RADIOS.lg, padding: ESPACIADO.md, backgroundColor: glass, borderWidth: 1, borderColor: c.borde, justifyContent: 'space-between' },
-    contextoValor: { ...TIPOGRAFIA.tituloTarjeta, color: c.texto, fontSize: 22 },
-    contextoLabel: { ...TIPOGRAFIA.micro, color: c.textoSuave, fontSize: 9 },
-    divisorTiempo: { flexDirection: 'row', alignItems: 'center', gap: ESPACIADO.sm, marginBottom: ESPACIADO.md },
-    lineaDivisor: { flex: 1, height: 1, backgroundColor: c.borde },
-    textoDivisor: { ...TIPOGRAFIA.micro, color: c.textoSuave, fontSize: 10, fontWeight: '700' },
-    filaBurbuja: { marginBottom: ESPACIADO.md, maxWidth: '86%' },
-    filaBurbujaUsuario: { alignSelf: 'flex-end' },
-    burbujaIA: { borderRadius: 24, borderBottomLeftRadius: 6, overflow: 'hidden', borderWidth: 1, borderColor: c.borde, backgroundColor: glass, ...SOMBRAS.flotante },
-    burbujaContenido: { padding: 16 },
-    textoBurbujaIA: { fontSize: 14, color: c.texto, lineHeight: 22 },
-    botonRedirect: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 16, backgroundColor: esOscuro ? '#FFFFFF' : '#000000', alignSelf: 'flex-start' },
-    textoRedirect: { fontSize: 13, color: esOscuro ? '#000000' : '#FFFFFF', fontWeight: '800' },
-    tarjetaAccionSensible: { marginTop: 12, padding: 14, borderRadius: 18, backgroundColor: esOscuro ? 'rgba(245,158,11,0.12)' : 'rgba(245,158,11,0.08)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.3)', gap: 10 },
-    tarjetaAccionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    tarjetaAccionTitulo: { fontSize: 13, color: c.texto, fontWeight: '800', flex: 1 },
-    tarjetaAccionBotones: { flexDirection: 'row', gap: 10 },
-    tarjetaAccionBoton: { flex: 1, height: 38, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
-    tarjetaAccionBotonRechazar: { backgroundColor: 'rgba(239,68,68,0.1)', borderColor: 'rgba(239,68,68,0.3)' },
-    tarjetaAccionBotonAprobar: { backgroundColor: esOscuro ? '#FFFFFF' : '#000000', borderColor: 'transparent' },
-    tarjetaAccionBotonTextoRechazar: { fontSize: 12, color: '#EF4444', fontWeight: '800' },
-    tarjetaAccionBotonTextoAprobar: { fontSize: 12, color: esOscuro ? '#000000' : '#FFFFFF', fontWeight: '800' },
-    tarjetaAccionResultado: { fontSize: 12, color: COLORES.exito, fontWeight: '800' },
-    tarjetaAccionResultadoError: { color: COLORES.error },
-    horaIA: { fontSize: 10, color: c.textoSuave, marginTop: 8, fontWeight: '600' },
-    burbujaUsuario: { padding: 16, borderRadius: 24, borderBottomRightRadius: 6, backgroundColor: esOscuro ? '#FFFFFF' : '#000000', ...SOMBRAS.flotante },
-    textoBurbujaUsuario: { fontSize: 14, color: esOscuro ? '#000000' : '#FFFFFF', lineHeight: 22, fontWeight: '600' },
-    horaUsuario: { fontSize: 10, color: esOscuro ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.7)', marginTop: 6, textAlign: 'right', fontWeight: '600' },
-    indicadorEscribiendo: { flexDirection: 'row', gap: 6, alignItems: 'center', paddingVertical: 4 },
-    puntoEscritura: { width: 8, height: 8, borderRadius: 4, backgroundColor: c.texto },
-    contenedorEntrada: { paddingBottom: Platform.OS === 'ios' ? 90 : 100, paddingTop: ESPACIADO.xs },
-    sugerencias: { paddingHorizontal: ESPACIADO.lg, gap: 8, paddingBottom: 10 },
-    chipSugerencia: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, height: 38, borderRadius: 20, backgroundColor: glass, borderWidth: 1, borderColor: c.borde, ...SOMBRAS.flotante },
-    textoChip: { fontSize: 12, fontWeight: '800', color: c.texto },
-    barraMensaje: { marginHorizontal: ESPACIADO.lg, borderRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: c.borde, backgroundColor: glass, ...SOMBRAS.flotante },
-    barraMensajeContenido: { minHeight: 58, flexDirection: 'row', alignItems: 'flex-end', gap: ESPACIADO.sm, paddingLeft: 16, paddingRight: 6, paddingVertical: 6 },
-    entrada: { flex: 1, fontSize: 14, lineHeight: 20, color: c.texto, maxHeight: 100, paddingVertical: 8 },
-    botonEnviar: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: esOscuro ? '#FFFFFF' : '#000000' },
-    botonEnviarDeshabilitado: { opacity: 0.4 },
-    iconoPlano: { width: 38, height: 38, borderRadius: RADIOS.md, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+
+    scrollChat: {
+      paddingHorizontal: 16,
+      paddingTop: 8,
+      paddingBottom: 20,
+      gap: 14,
+    },
+
+    panelIA: {
+      borderRadius: 22,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: c.borde,
+      backgroundColor: glass,
+      marginBottom: 6,
+      ...SOMBRAS.flotante,
+    },
+    panelContenido: {
+      padding: 16,
+    },
+    panelTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    avatarIA: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: glassMini,
+      borderWidth: 1,
+      borderColor: c.borde,
+      position: 'relative',
+    },
+    avatarBadgeOnline: {
+      position: 'absolute',
+      bottom: 0,
+      right: 0,
+      width: 11,
+      height: 11,
+      borderRadius: 5.5,
+      backgroundColor: '#8B5CF6',
+      borderWidth: 2,
+      borderColor: esOscuro ? '#0B0C1E' : '#FFFFFF',
+    },
+    panelTextos: {
+      flex: 1,
+      minWidth: 0,
+    },
+    panelTituloRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 2,
+    },
+    nombreIA: {
+      fontSize: 15,
+      fontWeight: '900',
+      color: c.texto,
+    },
+    badgeEstadoIA: {
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 8,
+      backgroundColor: esOscuro ? 'rgba(139,92,246,0.18)' : 'rgba(124,58,237,0.12)',
+      borderWidth: 1,
+      borderColor: esOscuro ? 'rgba(139,92,246,0.4)' : 'rgba(124,58,237,0.25)',
+    },
+    badgeEstadoIATexto: {
+      fontSize: 9,
+      fontWeight: '900',
+      color: esOscuro ? '#C4B5FD' : '#7C3AED',
+      letterSpacing: 0.5,
+    },
+    descripcionIA: {
+      fontSize: 12,
+      color: c.textoSuave,
+      lineHeight: 16,
+    },
+    btnLimpiar: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: glassMini,
+    },
+
+    divisorTiempo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginVertical: 4,
+    },
+    lineaDivisor: {
+      flex: 1,
+      height: 1,
+      backgroundColor: c.borde,
+    },
+    badgeDivisor: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 12,
+      backgroundColor: glassMini,
+      borderWidth: 1,
+      borderColor: c.borde,
+    },
+    textoDivisor: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: c.textoSuave,
+    },
+
+    filaBurbuja: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+      maxWidth: '90%',
+    },
+    filaBurbujaIA: {
+      alignSelf: 'flex-start',
+    },
+    filaBurbujaUsuario: {
+      alignSelf: 'flex-end',
+      justifyContent: 'flex-end',
+    },
+    miniAvatarIA: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: esOscuro ? 'rgba(139,92,246,0.18)' : 'rgba(124,58,237,0.12)',
+      borderWidth: 1,
+      borderColor: esOscuro ? 'rgba(139,92,246,0.35)' : 'rgba(124,58,237,0.25)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 2,
+    },
+    burbujaWrap: {
+      flexShrink: 1,
+    },
+    burbujaWrapUsuario: {
+      alignItems: 'flex-end',
+    },
+    burbujaIA: {
+      borderRadius: 22,
+      borderTopLeftRadius: 6,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: c.borde,
+      backgroundColor: glass,
+      ...SOMBRAS.flotante,
+    },
+    burbujaContenido: {
+      padding: 16,
+    },
+    textoBurbujaIA: {
+      fontSize: 14,
+      color: c.texto,
+      lineHeight: 22,
+      fontWeight: '500',
+    },
+    metaFilaIA: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 8,
+    },
+    horaIA: {
+      fontSize: 11,
+      color: c.textoSuave,
+      fontWeight: '600',
+    },
+
+    botonRedirect: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 12,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: 14,
+      backgroundColor: esOscuro ? '#FFFFFF' : '#0F172A',
+      alignSelf: 'flex-start',
+    },
+    textoRedirect: {
+      fontSize: 13,
+      color: esOscuro ? '#0B0C1E' : '#FFFFFF',
+      fontWeight: '800',
+    },
+
+    tarjetaAccionSensible: {
+      marginTop: 12,
+      padding: 14,
+      borderRadius: 16,
+      backgroundColor: esOscuro ? 'rgba(139,92,246,0.08)' : 'rgba(124,58,237,0.05)',
+      borderWidth: 1,
+      borderColor: esOscuro ? 'rgba(139,92,246,0.28)' : 'rgba(124,58,237,0.2)',
+      gap: 10,
+    },
+    tarjetaAccionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    tarjetaAccionTitulo: {
+      fontSize: 13,
+      color: c.texto,
+      fontWeight: '800',
+      flex: 1,
+    },
+    tarjetaAccionBotones: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    tarjetaAccionBoton: {
+      flex: 1,
+      height: 38,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+    },
+    tarjetaAccionBotonRechazar: {
+      backgroundColor: 'rgba(239,68,68,0.1)',
+      borderColor: 'rgba(239,68,68,0.25)',
+    },
+    tarjetaAccionBotonAprobar: {
+      backgroundColor: esOscuro ? '#FFFFFF' : '#0F172A',
+      borderColor: 'transparent',
+    },
+    tarjetaAccionBotonTextoRechazar: {
+      fontSize: 12.5,
+      color: '#EF4444',
+      fontWeight: '800',
+    },
+    tarjetaAccionBotonTextoAprobar: {
+      fontSize: 12.5,
+      color: esOscuro ? '#0B0C1E' : '#FFFFFF',
+      fontWeight: '800',
+    },
+    tarjetaAccionResultadoWrap: {
+      paddingVertical: 4,
+    },
+    tarjetaAccionResultado: {
+      fontSize: 12.5,
+      color: esOscuro ? '#C4B5FD' : '#7C3AED',
+      fontWeight: '800',
+    },
+    tarjetaAccionResultadoError: {
+      color: '#EF4444',
+    },
+
+    burbujaUsuario: {
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      borderRadius: 22,
+      borderTopRightRadius: 6,
+      backgroundColor: esOscuro ? '#FFFFFF' : '#0F172A',
+      ...SOMBRAS.flotante,
+      maxWidth: '100%',
+    },
+    textoBurbujaUsuario: {
+      fontSize: 14,
+      color: esOscuro ? '#0B0C1E' : '#FFFFFF',
+      lineHeight: 21,
+      fontWeight: '600',
+    },
+    metaFilaUsuario: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      gap: 4,
+      marginTop: 4,
+    },
+    horaUsuario: {
+      fontSize: 10.5,
+      color: esOscuro ? 'rgba(11,12,30,0.6)' : 'rgba(255,255,255,0.75)',
+      fontWeight: '700',
+    },
+
+    indicadorEscribiendo: {
+      flexDirection: 'row',
+      gap: 6,
+      alignItems: 'center',
+    },
+    indicadorTexto: {
+      fontSize: 12,
+      color: c.textoSuave,
+      fontWeight: '600',
+      marginRight: 4,
+    },
+    puntoEscritura: {
+      width: 7,
+      height: 7,
+      borderRadius: 3.5,
+      backgroundColor: esOscuro ? '#A78BFA' : '#7C3AED',
+    },
+
+    contenedorEntrada: {
+      paddingTop: 8,
+    },
+    sugerencias: {
+      paddingHorizontal: 16,
+      gap: 8,
+      paddingBottom: 10,
+    },
+    chipSugerencia: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 16,
+      backgroundColor: glass,
+      borderWidth: 1,
+      borderColor: c.borde,
+      ...SOMBRAS.flotante,
+    },
+    textoChip: {
+      fontSize: 12.5,
+      fontWeight: '700',
+      color: c.texto,
+    },
+
+    barraMensaje: {
+      marginHorizontal: 16,
+      borderRadius: 24,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: c.borde,
+      backgroundColor: glass,
+      ...SOMBRAS.flotante,
+    },
+    barraMensajeContenido: {
+      minHeight: 56,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingLeft: 16,
+      paddingRight: 6,
+      paddingVertical: 6,
+    },
+    entrada: {
+      flex: 1,
+      fontSize: 14,
+      color: c.texto,
+      maxHeight: 100,
+      paddingVertical: 6,
+    },
+    botonEnviar: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: esOscuro ? '#FFFFFF' : '#0F172A',
+    },
+    botonEnviarDeshabilitado: {
+      opacity: 0.35,
+    },
   });
 }

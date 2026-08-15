@@ -37,4 +37,10 @@ export interface IInternalChatRepository {
   updateConversation(conversationId: string, data: Partial<Conversation>): Promise<void>;
   deleteConversation(conversationId: string, empresaId: string, userId?: string): Promise<void>;
   markMessagesAsRead(conversacionId: string, userId: string): Promise<void>;
+  subscribeUnreadCounts?(
+    empresaId: string,
+    userId: string,
+    callback: (counts: Record<string, number>) => void,
+    onError?: (error: Error) => void
+  ): () => void;
 }

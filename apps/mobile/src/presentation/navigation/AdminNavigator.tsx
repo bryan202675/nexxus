@@ -30,8 +30,6 @@ import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/b
 import { useNavigation } from '@react-navigation/native';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
-// Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
-import { LinearGradient } from 'expo-linear-gradient';
 // Importa { BlurView } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import { BlurView } from 'expo-blur';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
@@ -41,8 +39,6 @@ import { supabase } from '@/infrastructure/supabase/supabaseClient';
 import { cloudinaryOptimizedUrl } from '@/infrastructure/storage/cloudinaryStorage';
 // Importa { useAuth }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import { useAuth } from '../hooks/useAuth';
-// Importa Iridescence; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
-import Iridescence from '../components/Iridescence';
 // Importa AdminModalBackdrop; reutiliza el velo difuminado de modales en notificaciones.
 import { AdminModalBackdrop } from '../screens/admin/AdminModalBackdrop';
 
@@ -64,6 +60,7 @@ import AuditoriaLogs from '../screens/admin/AuditoriaLogs';
 // Importa CalendarioEmpresarial; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
 import CalendarioEmpresarial from '../screens/admin/CalendarioEmpresarial';
 import CentroReportesSolicitudes from '../screens/admin/CentroReportesSolicitudes';
+import GestionTickets from '../screens/admin/GestionTickets';
 import GestionAsistencia from '../screens/admin/GestionAsistencia';
 import GestionInventario from '../screens/admin/GestionInventario';
 import ChatIA from '../screens/ChatIA';
@@ -117,7 +114,6 @@ import {
 } from './adminNavigatorHelpers';
 import {
   ADMIN_LIGHT_CONTRAST_CSS,
-  CampoParticulas,
 } from './adminNavigatorPrimitives';
 import { Sidebar } from './Sidebar';
 import { NavbarHeader } from './NavbarHeader';
@@ -207,12 +203,7 @@ export default function AdminNavigator() {
         <AdminTranslationProvider protectedTerms={protectedTranslationTerms}>
         {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
         <View {...(Platform.OS === 'web' ? { className: 'nx-admin-root' } as any : {})} style={[estilos.contenedorPrincipal, { height: altoViewport, minHeight: altoViewport, maxHeight: altoViewport }]}>
-          {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-          <LinearGradient colors={[theme.bg, theme.bgDeep, theme.bg]} style={StyleSheet.absoluteFill} />
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-          <View pointerEvents="none" style={estilos.gridOverlay} />
-          {/* CampoParticulas renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <CampoParticulas theme={theme} />
+          <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: theme.bg }]} />
           {esPanelSuperAdmin(user?.rol) ? (
             <SuperAdminLayout currentRoute={currentRoute}>
               <Tab.Navigator
@@ -259,6 +250,7 @@ export default function AdminNavigator() {
                 <Tab.Screen name="DashboardGeneral" component={DashboardAdmin} />
                 {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
                 <Tab.Screen name="CentroReportesSolicitudes" component={CentroReportesSolicitudes} />
+                <Tab.Screen name="GestionTickets" component={GestionTickets} />
                 {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}
                 <Tab.Screen name="GestionAsistencia" component={GestionAsistencia} />
                 {/* Componente de navegacion; define como se muestran rutas o pestañas dentro de la app. */}

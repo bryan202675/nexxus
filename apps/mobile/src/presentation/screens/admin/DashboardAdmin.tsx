@@ -309,41 +309,41 @@ export default function DashboardAdmin() {
   };
 
   // Prepara actualizarSolicitudAusencia; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
-  const actualizarSolicitudAusencia = async (solicitud: AusenciaAdmin, estado: 'aprobada' | 'rechazada') => {
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
+  const actualizarSolicitudAusencia = async (solicitud: AusenciaAdmin, estado: 'aprobada' | 'rechazada', observacion?: string) => {
     if (!solicitud.id) return;
-    // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
     try {
-      // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
+      const { data: current } = await supabase.from('solicitudes_ausencia').select('datos').eq('id', solicitud.id).maybeSingle();
+      const notaFinal = observacion?.trim() || (estado === 'aprobada' ? 'Ausencia aprobada por administración' : 'Ausencia rechazada por administración');
+      const datosActualizados = {
+        ...(current?.datos || {}),
+        comentario_resolucion: notaFinal,
+        observaciones: notaFinal,
+      };
       const { error: updateError } = await supabase.from('solicitudes_ausencia').update({
         estado,
         resuelto_por: user?.id || null,
         resolved_at: new Date().toISOString(),
+        datos: datosActualizados,
       }).eq('id', solicitud.id);
       if (updateError) throw updateError;
-      // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
       await registrarAuditoria(
         estado === 'aprobada' ? 'Aprobación de Ausencia' : 'Rechazo de Ausencia',
         'Centro de Aprobaciones',
         `${solicitud.usuario_nombre || 'Empleado'} · ${solicitud.asunto || solicitud.tipo || 'Solicitud'}`,
         estado === 'aprobada' ? 'Success' : 'Warning'
       );
-      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (solicitud.usuario_id) {
-        // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
         await supabase.from('notificaciones').insert({
           empresa_id: empresaId,
           usuario_id: solicitud.usuario_id,
           titulo: estado === 'aprobada' ? 'Ausencia aprobada' : 'Ausencia rechazada',
-          cuerpo: `${solicitud.asunto || solicitud.tipo || 'Tu solicitud'} fue ${estado}.`,
+          cuerpo: `${solicitud.asunto || solicitud.tipo || 'Tu solicitud'} fue ${estado}. ${notaFinal ? `\nObservación: ${notaFinal}` : ''}`,
           tipo: 'aprobacion',
           leida: false,
         });
       }
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       toast.success({ title: 'Solicitud actualizada', description: `La ausencia fue ${estado} correctamente.` });
     } catch (error: any) {
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       toast.error({ title: 'No se pudo actualizar', description: error?.message || 'Intenta nuevamente.' });
     }
   };

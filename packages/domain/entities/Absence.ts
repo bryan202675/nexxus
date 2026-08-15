@@ -7,6 +7,13 @@
  */
 
 
+export interface AdjuntoItem {
+  id: string;
+  uri: string;
+  nombre: string;
+  tipo: 'imagen' | 'documento';
+}
+
 export interface Absence {
   id: string;
   usuario_id: string;
@@ -19,8 +26,13 @@ export interface Absence {
   motivo: string;
   descripcion_detallada?: string;
   archivo_adjunto?: string;
+  archivos_adjuntos?: AdjuntoItem[];
   prioridad: 'baja' | 'media' | 'alta' | 'urgente';
   contacto_emergencia?: string;
-  estado: 'pendiente' | 'aprobada' | 'rechazada';
+  estado: 'pendiente' | 'aprobada' | 'rechazada' | 'cancelada';
   fecha_solicitud: string;
+  observaciones?: string;
+  comentario_resolucion?: string;
+  resuelto_por?: string;
+  resolved_at?: string;
 }

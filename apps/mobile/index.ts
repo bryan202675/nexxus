@@ -6,6 +6,8 @@
  * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras de datos al extender este archivo.
  */
 
+// Debe ser el primer import del entry point (requisito de react-native-gesture-handler).
+import 'react-native-gesture-handler';
 // Importa { registerRootComponent } desde expo; agrega una dependencia externa necesaria para este modulo.
 import { registerRootComponent } from 'expo';
 import { Platform } from 'react-native';

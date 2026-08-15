@@ -49,6 +49,9 @@ export async function getCaller(req: Request, admin: SupabaseClient): Promise<Ca
     .maybeSingle();
   if (error) throw new HttpError(500, error.message);
   if (!usuario) throw new HttpError(403, "No se encontró el usuario.");
+  if (usuario.baneado || usuario.eliminado) {
+    throw new HttpError(403, "Tu cuenta no tiene acceso a esta operación.");
+  }
   return usuario as Caller;
 }
 

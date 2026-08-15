@@ -4,27 +4,28 @@
     "slug": "nexxus",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/logozz.png",
+    "icon": "./assets/logoNexxus2 (1) (1).png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/logozz.png",
+      "image": "./assets/logoNexxus2 (1) (1).png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bryan202675.nexxus"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logozz.png",
+        "foregroundImage": "./assets/logoNexxus2 (1) (1).png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/logozz.png"
+      "favicon": "./assets/logoNexxus2 (1) (1).png"
     },
     "plugins": [
       "expo-localization",
@@ -32,7 +33,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/logozz.png",
+          "icon": "./assets/logoNexxus2 (1) (1).png",
           "color": "#7C3AED"
         }
       ]

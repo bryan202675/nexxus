@@ -1,4 +1,4 @@
-export type UploadKind = 'companyLogo' | 'profilePhoto' | 'document' | 'chatAttachment';
+export type UploadKind = 'companyLogo' | 'profilePhoto' | 'document' | 'chatAttachment' | 'taskAttachment';
 
 export const CLOUDINARY_CLOUD_NAME = 'drsygtiob';
 export const CLOUDINARY_UPLOAD_PRESET = 'nexxus-app';
@@ -43,6 +43,15 @@ export const UPLOAD_LIMITS: Record<UploadKind, {
     maxHeight: 1600,
     folder: (empresaId) => `nexxus/chat/${empresaId}`,
     publicId: 'chat',
+    allowedExtensions: ['jpg', 'jpeg', 'png', 'webp', 'pdf'],
+    allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
+  },
+  taskAttachment: {
+    maxBytes: 8 * 1024 * 1024,
+    maxWidth: 1600,
+    maxHeight: 1600,
+    folder: (empresaId) => `nexxus/tareas/${empresaId}`,
+    publicId: 'tarea',
     allowedExtensions: ['jpg', 'jpeg', 'png', 'webp', 'pdf'],
     allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
   },

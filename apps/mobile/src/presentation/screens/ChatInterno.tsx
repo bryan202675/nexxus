@@ -203,6 +203,76 @@ const AnimatedVistoBadge = ({ leido }: { leido: boolean }) => {
     </Animated.View>
   );
 };
+const formatearHoraMensaje = (fechaIso?: string): string => {
+  if (!fechaIso) return '';
+  try {
+    const fecha = new Date(fechaIso);
+    if (isNaN(fecha.getTime())) return '';
+    const ahora = new Date();
+    const esHoy = fecha.toDateString() === ahora.toDateString();
+
+    const ayer = new Date();
+    ayer.setDate(ayer.getDate() - 1);
+    const esAyer = fecha.toDateString() === ayer.toDateString();
+
+    if (esHoy) {
+      return fecha.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+    }
+    if (esAyer) {
+      return 'Ayer';
+    }
+    if (fecha.getFullYear() === ahora.getFullYear()) {
+      const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+      return `${fecha.getDate()} ${meses[fecha.getMonth()]}`;
+    }
+    return `${fecha.getDate()}/${fecha.getMonth() + 1}/${fecha.getFullYear() % 100}`;
+  } catch {
+    return '';
+  }
+};
+
+const formatearPreviewUltimoMensaje = (
+  conv: Conversation,
+  perfilId: string,
+  usersList: ChatUser[]
+): { emisor: string; texto: string } => {
+  if (!conv.ultimoMensaje) {
+    return { emisor: '', texto: 'Sin mensajes aún' };
+  }
+
+  // 1. ¿Lo envió el usuario actual?
+  if (conv.ultimoMensajeRemitenteId && conv.ultimoMensajeRemitenteId === perfilId) {
+    return { emisor: 'Tú: ', texto: conv.ultimoMensaje };
+  }
+
+  // 2. Si hay nombre guardado directamente
+  if (conv.ultimoMensajeRemitenteNombre) {
+    const primerNombre = conv.ultimoMensajeRemitenteNombre.trim().split(' ')[0];
+    return { emisor: `${primerNombre}: `, texto: conv.ultimoMensaje };
+  }
+
+  // 3. Buscar por ID en lista de usuarios
+  if (conv.ultimoMensajeRemitenteId) {
+    const user = usersList.find((u) => u.id === conv.ultimoMensajeRemitenteId);
+    if (user && user.nombre) {
+      const primerNombre = user.nombre.trim().split(' ')[0];
+      return { emisor: `${primerNombre}: `, texto: conv.ultimoMensaje };
+    }
+  }
+
+  // 4. Si es conversación directa con otra persona
+  if (conv.tipo === 'directa') {
+    const otroId = conv.participanteIds?.find((id) => id !== perfilId);
+    const otroUsuario = usersList.find((u) => u.id === otroId);
+    const otroNombre = otroUsuario?.nombre || conv.participantes?.find((p) => p.id !== perfilId)?.nombre;
+    if (otroNombre) {
+      const primerNombre = otroNombre.trim().split(' ')[0];
+      return { emisor: `${primerNombre}: `, texto: conv.ultimoMensaje };
+    }
+  }
+
+  return { emisor: '', texto: conv.ultimoMensaje };
+};
 
 export default function ChatInterno() {
   const { perfil } = useContextoUsuario();
@@ -212,6 +282,8 @@ export default function ChatInterno() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [users, setUsers] = useState<ChatUser[]>([]);
   const [selectedConversationId, setSelectedConversationId] = useState<string>('');
+  const [conteoNoLeidos, setConteoNoLeidos] = useState<Record<string, number>>({});
+  const [filtroTipo, setFiltroTipo] = useState<'todos' | 'no_leidos' | 'directos' | 'grupos'>('todos');
   const [tecladoVisible, setTecladoVisible] = useState(false);
   const [alturaTeclado, setAlturaTeclado] = useState(0);
 
@@ -740,6 +812,11 @@ export default function ChatInterno() {
     );
   }, [availableUsers, searchQuery]);
 
+  const totalNoLeidos = useMemo(
+    () => Object.values(conteoNoLeidos).reduce((acc, curr) => acc + curr, 0),
+    [conteoNoLeidos]
+  );
+
   const userConversations = useMemo(() => {
     if (!perfil?.id) return [];
     return conversations.filter((c) =>
@@ -749,13 +826,18 @@ export default function ChatInterno() {
 
   const filteredConversations = useMemo(() => {
     const term = searchQuery.trim().toLowerCase();
-    if (!term) return userConversations;
     return userConversations.filter((c) => {
+      const unreadCount = conteoNoLeidos[c.id] || 0;
+      if (filtroTipo === 'no_leidos' && unreadCount === 0) return false;
+      if (filtroTipo === 'directos' && c.tipo !== 'directa') return false;
+      if (filtroTipo === 'grupos' && c.tipo !== 'equipo') return false;
+
+      if (!term) return true;
       const title = getTituloConversacion(c, perfil?.id || '', users).toLowerCase();
       const lastMsg = (c.ultimoMensaje || '').toLowerCase();
       return title.includes(term) || lastMsg.includes(term);
     });
-  }, [userConversations, searchQuery, perfil?.id, users]);
+  }, [userConversations, searchQuery, perfil?.id, users, filtroTipo, conteoNoLeidos]);
 
   const selectedUsers = useMemo(
     () =>
@@ -764,6 +846,22 @@ export default function ChatInterno() {
         .filter((user): user is ChatUser => Boolean(user)),
     [availableUsers, selectedUserIds]
   );
+
+  // Subscribe to unread messages count across all conversations
+  useEffect(() => {
+    if (!perfil?.id || !empresaId) {
+      setConteoNoLeidos({});
+      return;
+    }
+    const unsubUnread = useCases.chat.internal.subscribeUnreadCounts(
+      empresaId,
+      perfil.id,
+      setConteoNoLeidos
+    );
+    return () => {
+      unsubUnread();
+    };
+  }, [empresaId, perfil?.id]);
 
   // Subscribe to conversations & company users
   useEffect(() => {
@@ -1933,7 +2031,7 @@ export default function ChatInterno() {
       </View>
 
       {/* Navbar Superior consistente con el resto de pantallas */}
-      <NavbarEnterprise titulo="Mensajes" />
+      <NavbarEnterprise titulo="Chat" />
 
       {error ? (
         <TouchableOpacity onPress={() => setError('')} style={styles.errorCard} activeOpacity={0.8}>
@@ -1961,17 +2059,82 @@ export default function ChatInterno() {
           ) : null}
         </View>
 
-        <TouchableOpacity
+        <BotonAnimado
           onPress={() => {
             setSelectedUserIds([]);
             setGroupName('');
             setShowNewChatModal(true);
           }}
-          style={[styles.newChatBtn, { backgroundColor: esOscuro ? '#FFFFFF' : '#000000', borderColor: esOscuro ? '#FFFFFF' : '#000000' }]}
-          activeOpacity={0.85}
+          scaleTo={0.92}
+          style={[
+            styles.newChatBtn,
+            { backgroundColor: esOscuro ? '#FFFFFF' : '#0F172A', borderColor: esOscuro ? '#FFFFFF' : '#0F172A' },
+          ]}
         >
-          <MaterialIcons name="add-comment" size={20} color={esOscuro ? '#000000' : '#FFFFFF'} />
-        </TouchableOpacity>
+          <MaterialIcons name="add-comment" size={20} color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
+        </BotonAnimado>
+      </View>
+
+      {/* Chips de filtrado rápido estilo cápsula con espaciado amplio */}
+      <View style={styles.chipsFiltroRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsFiltroScroll}>
+          {[
+            { id: 'todos' as const, label: `Todos (${userConversations.length})`, icono: 'forum' as const },
+            { id: 'no_leidos' as const, label: `No leídos (${totalNoLeidos})`, icono: 'mark-chat-unread' as const, badge: totalNoLeidos > 0 },
+            { id: 'directos' as const, label: 'Directos', icono: 'person' as const },
+            { id: 'grupos' as const, label: 'Grupos', icono: 'group' as const },
+          ].map((chip) => {
+            const activo = filtroTipo === chip.id;
+            return (
+              <BotonAnimado
+                key={chip.id}
+                onPress={() => setFiltroTipo(chip.id)}
+                scaleTo={0.94}
+                style={[
+                  styles.chipFiltroBtn,
+                  {
+                    backgroundColor: activo
+                      ? (esOscuro ? '#FFFFFF' : '#0F172A')
+                      : (esOscuro ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.05)'),
+                    borderColor: activo
+                      ? (esOscuro ? '#FFFFFF' : '#0F172A')
+                      : (chip.badge && !activo ? 'rgba(59,130,246,0.45)' : colores.borde),
+                  },
+                ]}
+              >
+                <MaterialIcons
+                  name={chip.icono}
+                  size={15}
+                  color={
+                    activo
+                      ? (esOscuro ? '#0B0C1E' : '#FFFFFF')
+                      : chip.badge
+                      ? '#3B82F6'
+                      : colores.textoSuave
+                  }
+                />
+                <Text
+                  style={[
+                    styles.chipFiltroTexto,
+                    {
+                      color: activo
+                        ? (esOscuro ? '#0B0C1E' : '#FFFFFF')
+                        : chip.badge
+                        ? (esOscuro ? '#93C5FD' : '#2563EB')
+                        : colores.textoSuave,
+                    },
+                    activo && { fontWeight: '900' },
+                  ]}
+                >
+                  {chip.label}
+                </Text>
+                {chip.badge && !activo && (
+                  <View style={styles.chipPuntoAzul} />
+                )}
+              </BotonAnimado>
+            );
+          })}
+        </ScrollView>
       </View>
 
       {/* Modal para iniciar nuevo chat / grupo */}
@@ -2052,51 +2215,54 @@ export default function ChatInterno() {
                 <TextInput
                   value={groupName}
                   onChangeText={setGroupName}
-                  placeholder="Nombre del grupo (opcional)"
+                  placeholder="Nombre del grupo de trabajo..."
                   placeholderTextColor={colores.textoSuave}
-                  style={[styles.groupInput, { color: colores.texto, borderColor: colores.borde, marginVertical: 6, borderRadius: 16 }]}
+                  style={[styles.groupInput, { backgroundColor: cardBg, borderColor: colores.borde, color: colores.texto }]}
                 />
               ) : null}
 
-              {/* Lista de integrantes */}
-              <ScrollView style={{ maxHeight: 260, marginVertical: 6 }} nestedScrollEnabled showsVerticalScrollIndicator>
+              <Text style={[styles.sectionTitle, { color: colores.textoSuave, marginTop: 4 }]}>
+                Integrantes disponibles ({filteredUsers.length})
+              </Text>
+
+              <ScrollView style={styles.userListScroll} showsVerticalScrollIndicator={false}>
                 {filteredUsers.length === 0 ? (
-                  <Text style={[styles.noResultsText, { color: colores.textoSuave, textAlign: 'center', marginVertical: 16 }]}>
-                    No se encontraron empleados.
+                  <Text style={[styles.noResultsText, { color: colores.textoSuave }]}>
+                    No hay colaboradores disponibles.
                   </Text>
                 ) : (
                   filteredUsers.map((user) => {
                     const selected = selectedUserIds.includes(user.id);
-                    const photo = user.foto_perfil || user.fotoPerfil || user.photoURL || user.avatarUrl || user.foto;
                     return (
                       <TouchableOpacity
                         key={user.id}
                         onPress={() => toggleSelectedUser(user.id)}
-                        style={[styles.userOption, selected && { backgroundColor: esOscuro ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }]}
-                        activeOpacity={0.8}
+                        style={[
+                          styles.userOption,
+                          selected && styles.userOptionSelected,
+                          { backgroundColor: selected ? (esOscuro ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)') : 'transparent' },
+                        ]}
                       >
-                        <View style={styles.userAvatar}>
-                          {photo ? (
-                            <Image source={{ uri: photo }} style={{ width: 36, height: 36, borderRadius: 18 }} />
+                        <View style={[styles.userAvatar, { backgroundColor: esOscuro ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }]}>
+                          {user.foto_perfil ? (
+                            <Image source={{ uri: user.foto_perfil }} style={styles.convAvatarImage} resizeMode="cover" />
                           ) : (
-                            <Text style={styles.avatarLetter}>{(user.nombre || 'U').charAt(0).toUpperCase()}</Text>
+                            <Text style={[styles.avatarLetter, { color: colores.texto }]}>
+                              {(user.nombre || 'U').charAt(0).toUpperCase()}
+                            </Text>
                           )}
                         </View>
                         <View style={styles.userInfo}>
-                          <Text style={[styles.userName, { color: colores.texto, fontWeight: '800' }]} numberOfLines={1}>
-                            {user.nombre}
-                          </Text>
-                          <Text style={[styles.userRole, { color: colores.textoSuave }]} numberOfLines={1}>
-                            {user.correo || user.rol || 'Colaborador'}
+                          <Text style={[styles.userName, { color: colores.texto }]}>{user.nombre}</Text>
+                          <Text style={[styles.userRole, { color: colores.textoSuave }]}>
+                            {user.rol || 'Colaborador'}
                           </Text>
                         </View>
                         <View
                           style={[
                             styles.checkbox,
-                            selected && {
-                              backgroundColor: esOscuro ? '#FFFFFF' : '#000000',
-                              borderColor: esOscuro ? '#FFFFFF' : '#000000',
-                            },
+                            selected && styles.checkboxSelected,
+                            { borderColor: selected ? (esOscuro ? '#FFFFFF' : '#000000') : colores.borde },
                           ]}
                         >
                           {selected ? <MaterialIcons name="check" size={14} color={esOscuro ? '#000000' : '#FFFFFF'} /> : null}
@@ -2158,7 +2324,11 @@ export default function ChatInterno() {
             <MaterialIcons name="forum" size={44} color={colores.textoSuave} />
             <Text style={[styles.emptyTitle, { color: colores.texto }]}>No hay conversaciones</Text>
             <Text style={[styles.emptySub, { color: colores.textoSuave }]}>
-              {searchQuery ? 'No se encontraron resultados para la búsqueda.' : 'Toca el botón "+" para iniciar un nuevo chat con tu equipo.'}
+              {searchQuery
+                ? 'No se encontraron resultados para la búsqueda.'
+                : filtroTipo === 'no_leidos'
+                ? '¡Estás al día! No tienes mensajes sin leer.'
+                : 'Toca el botón "+" para iniciar un nuevo chat con tu equipo.'}
             </Text>
           </View>
         ) : (
@@ -2168,17 +2338,28 @@ export default function ChatInterno() {
             const photoUrl = getFotoConversacion(conv, perfil.id, users);
             const isMuted = mutedConvIds.includes(conv.id);
             const isBlocked = blockedConvIds.includes(conv.id);
+            const unreadCount = conteoNoLeidos[conv.id] || 0;
+            const hasUnread = unreadCount > 0;
+            const timeStr = formatearHoraMensaje(conv.ultimoMensajeAt);
+            const preview = formatearPreviewUltimoMensaje(conv, perfil?.id || '', users);
 
             return (
-              <TouchableOpacity
+              <BotonAnimado
                 key={conv.id}
                 onPress={() => setSelectedConversationId(conv.id)}
+                scaleTo={0.98}
                 style={[
                   styles.convItem,
-                  { backgroundColor: cardBg, borderColor: colores.borde },
+                  {
+                    backgroundColor: hasUnread
+                      ? (esOscuro ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.04)')
+                      : cardBg,
+                    borderColor: hasUnread
+                      ? (esOscuro ? 'rgba(255, 255, 255, 0.35)' : 'rgba(15, 23, 42, 0.22)')
+                      : colores.borde,
+                  },
                   isBlocked && { opacity: 0.65 },
                 ]}
-                activeOpacity={0.78}
               >
                 <View style={[styles.convAvatar, isGroup && styles.convAvatarGroup]}>
                   {photoUrl ? (
@@ -2186,44 +2367,102 @@ export default function ChatInterno() {
                   ) : (
                     <Text style={styles.avatarLetter}>{(title || 'C').charAt(0).toUpperCase()}</Text>
                   )}
+                  {hasUnread && <View style={styles.avatarOnlineDot} />}
                 </View>
 
                 <View style={styles.convCopy}>
                   <View style={styles.convTopRow}>
-                    <Text style={[styles.convTitle, { color: colores.texto }]} numberOfLines={1}>
+                    <Text
+                      style={[
+                        styles.convTitle,
+                        { color: colores.texto },
+                        hasUnread && { fontWeight: '900' },
+                      ]}
+                      numberOfLines={1}
+                    >
                       {title}
                     </Text>
                     {isMuted ? (
-                      <MaterialIcons name="notifications-off" size={15} color={colores.textoSuave} style={{ marginLeft: 4 }} />
+                      <MaterialIcons name="notifications-off" size={14} color={colores.textoSuave} style={{ marginLeft: 4 }} />
                     ) : null}
                     {isBlocked ? (
-                      <MaterialIcons name="block" size={15} color="#EF4444" style={{ marginLeft: 4 }} />
+                      <MaterialIcons name="block" size={14} color="#EF4444" style={{ marginLeft: 4 }} />
                     ) : null}
                   </View>
-                  <Text style={[styles.convPreview, { color: isBlocked ? '#EF4444' : colores.textoSuave }]} numberOfLines={1}>
-                    {isBlocked ? 'Chat bloqueado' : (conv.ultimoMensaje || 'Sin mensajes aún')}
+                  <Text
+                    style={[
+                      styles.convPreview,
+                      { color: isBlocked ? '#EF4444' : hasUnread ? colores.texto : colores.textoSuave },
+                      hasUnread && { fontWeight: '700' },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {isBlocked ? (
+                      'Chat bloqueado'
+                    ) : (
+                      <>
+                        {preview.emisor ? (
+                          <Text
+                            style={{
+                              color: preview.emisor === 'Tú: '
+                                ? (hasUnread ? (esOscuro ? '#FFFFFF' : '#0F172A') : colores.textoSuave)
+                                : (esOscuro ? '#60A5FA' : '#2563EB'),
+                              fontWeight: '800',
+                            }}
+                          >
+                            {preview.emisor}
+                          </Text>
+                        ) : null}
+                        <Text style={{ fontWeight: hasUnread ? '700' : '400' }}>
+                          {preview.texto}
+                        </Text>
+                      </>
+                    )}
                   </Text>
                 </View>
 
-                <TouchableOpacity
-                  onPress={(e) => {
-                    (e as any)?.stopPropagation?.();
-                    setActionMenuConv(conv);
-                  }}
-                  style={styles.convMenuBtn}
-                  activeOpacity={0.7}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <MaterialIcons name="more-vert" size={20} color={colores.textoSuave} />
-                </TouchableOpacity>
-              </TouchableOpacity>
+                <View style={styles.convMetaCol}>
+                  {timeStr ? (
+                    <Text
+                      style={[
+                        styles.convTimeText,
+                        { color: hasUnread ? (esOscuro ? '#FFFFFF' : '#0F172A') : colores.textoSuave },
+                        hasUnread && { fontWeight: '900' },
+                      ]}
+                    >
+                      {timeStr}
+                    </Text>
+                  ) : (
+                    <View style={{ height: 16 }} />
+                  )}
+
+                  <View style={styles.convMetaBottomRow}>
+                    {hasUnread ? (
+                      <View style={styles.unreadBadgeWhatsApp}>
+                        <Text style={styles.unreadBadgeWhatsAppText}>
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </Text>
+                      </View>
+                    ) : null}
+
+                    <TouchableOpacity
+                      onPress={(e) => {
+                        (e as any)?.stopPropagation?.();
+                        setActionMenuConv(conv);
+                      }}
+                      style={styles.convMenuBtn}
+                      activeOpacity={0.7}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <MaterialIcons name="more-vert" size={19} color={colores.textoSuave} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </BotonAnimado>
             );
           })
         )}
       </ScrollView>
-
-      {/* Modal de opciones de conversación (Silenciar, Bloquear, Borrar, etc) */}
-      {renderActionMenuModal()}
 
       {/* Modales de opciones, renombrar y añadir integrantes */}
       {renderActionMenuModal()}
@@ -2289,7 +2528,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(124,58,237,0.85)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2337,14 +2576,14 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#0F172A',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(216,180,254,0.38)',
+    borderColor: 'rgba(255,255,255,0.18)',
   },
   newChatBtnActive: {
-    backgroundColor: '#6D28D9',
+    backgroundColor: '#000000',
   },
   newChatCard: {
     marginHorizontal: 16,
@@ -2365,7 +2604,7 @@ const styles = StyleSheet.create({
   userChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(124,58,237,0.75)',
+    backgroundColor: 'rgba(255,255,255,0.14)',
     borderRadius: 14,
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -2401,18 +2640,18 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   userOptionSelected: {
-    backgroundColor: 'rgba(124,58,237,0.18)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
   },
   userAvatar: {
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: 'rgba(124,58,237,0.3)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarLetter: {
-    color: '#D8B4FE',
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '900',
   },
@@ -2438,14 +2677,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkboxSelected: {
-    backgroundColor: '#7C3AED',
-    borderColor: '#A78BFA',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FFFFFF',
   },
   createBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#0F172A',
     height: 40,
     borderRadius: 14,
     gap: 8,
@@ -2481,41 +2720,116 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
   },
+  chipsFiltroRow: {
+    marginTop: 4,
+    marginBottom: 14,
+  },
+  chipsFiltroScroll: {
+    paddingHorizontal: 16,
+    gap: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  chipFiltroBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  chipFiltroTexto: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  chipPuntoAzul: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#3B82F6',
+    marginLeft: 2,
+  },
   convItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
-    borderRadius: 20,
+    padding: 16,
+    borderRadius: 22,
     borderWidth: 1,
-    gap: 12,
+    gap: 14,
   },
   convAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(124,58,237,0.85)',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.14)',
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
   },
   convAvatarGroup: {
-    backgroundColor: 'rgba(59,130,246,0.85)',
+    backgroundColor: 'rgba(59,130,246,0.18)',
+  },
+  avatarOnlineDot: {
+    position: 'absolute',
+    bottom: -1,
+    right: -1,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#3B82F6',
+    borderWidth: 2.5,
+    borderColor: '#0B0C1E',
   },
   convCopy: {
     flex: 1,
     minWidth: 0,
+    justifyContent: 'center',
   },
   convTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 4,
   },
   convTitle: {
-    fontSize: 15,
-    fontWeight: '900',
+    fontSize: 15.5,
+    fontWeight: '800',
   },
   convPreview: {
-    fontSize: 13,
+    fontSize: 13.5,
+    marginTop: 2,
+    lineHeight: 18,
+  },
+  convMetaCol: {
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    minHeight: 46,
+  },
+  convTimeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  convMetaBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     marginTop: 4,
+  },
+  unreadBadgeWhatsApp: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#3B82F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  unreadBadgeWhatsAppText: {
+    color: '#FFFFFF',
+    fontSize: 11.5,
+    fontWeight: '900',
+    lineHeight: 14,
   },
   errorCard: {
     marginHorizontal: 16,
@@ -2638,7 +2952,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 10,
-    backgroundColor: 'rgba(124,58,237,0.18)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
   },
   addMoreText: {
     fontSize: 11,
@@ -2721,7 +3035,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#0F172A',
     alignItems: 'center',
     justifyContent: 'center',
   },

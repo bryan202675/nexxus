@@ -23,6 +23,9 @@ export interface IAuthRepository {
   /** Cierra la sesión activa. */
   logout(): Promise<void>;
 
+  /** Cierra todas las demás sesiones/dispositivos, conservando la sesión actual. */
+  logoutOtherSessions(): Promise<void>;
+
   /** Devuelve el usuario actualmente autenticado, o null. */
   getCurrentUser(): Promise<User | null>;
 

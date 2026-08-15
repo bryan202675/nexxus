@@ -11,10 +11,10 @@ import GlobalSearch from "./GlobalSearch";
 const Navbar = (props) => {
   const { onOpenSidenav, brandText } = props;
   const { dark, toggleDark } = useTheme();
-  const { user, perfil, signOut, esSuperAdmin } = useAuth();
+  const { user, perfil, signOut, esSuperAdmin, rol } = useAuth();
 
   const nombre = perfil?.nombre || user?.displayName || user?.email || "Usuario";
-  const etiquetaRol = esSuperAdmin ? "Super Admin" : "Admin";
+  const etiquetaRol = esSuperAdmin ? "Super Admin" : ["jefe", "jefe_sector"].includes(rol) ? "Jefe" : ["empleado", "psicologo"].includes(rol) ? "Empleado" : "Admin";
   const rutaConfiguracion = esSuperAdmin ? "/admin/nexxus-configuracion" : "/admin/empresa-configuracion";
   const foto = perfil?.foto_perfil || user?.photoURL || "";
 
@@ -82,12 +82,12 @@ const Navbar = (props) => {
                 </div>
                 <div className="h-px w-full bg-gray-200 dark:bg-white/20" />
                 <div className="flex flex-col p-4">
-                  <Link
+                  {["jefe", "jefe_sector", "empleado", "psicologo"].includes(rol) ? null : <Link
                     to={rutaConfiguracion}
                     className="text-sm text-gray-800 dark:text-white hover:dark:text-white"
                   >
                     Configuración
-                  </Link>
+                  </Link>}
                   <button
                     onClick={cerrarSesion}
                     className="mt-3 text-left text-sm font-medium text-red-500 transition duration-150 ease-out hover:ease-in"

@@ -6,10 +6,11 @@ export const columnsEmpresasRecientes = [
   { Header: "REGISTRADA", accessor: "fecha" },
 ];
 
+// audit_logs no tiene columna de estado/severidad, asi que no se incluye una columna de
+// estado fabricada aqui (ver superAdminRepository.mapAudit).
 export const columnsActividadReciente = [
   { Header: "ACCIÓN", accessor: "accion" },
   { Header: "MÓDULO", accessor: "modulo" },
   { Header: "EMPRESA", accessor: "empresa" },
   { Header: "FECHA", accessor: "fecha" },
-  { Header: "ESTADO", accessor: "status" },
 ];

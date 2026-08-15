@@ -117,7 +117,7 @@ export default function GestionAsistencia() {
 
     const porEmpleado = new Map();
     asistencias.forEach((a) => {
-      const key = a.userId;
+      const key = a.usuario_id;
       if (!key) return;
       if (!porEmpleado.has(key)) porEmpleado.set(key, []);
       porEmpleado.get(key).push(a);
@@ -126,8 +126,8 @@ export default function GestionAsistencia() {
     const filas = [];
     porEmpleado.forEach((eventos, userId) => {
       const ordenados = [...eventos].sort((a, b) => {
-        const da = toDate(a.timestamp);
-        const db_ = toDate(b.timestamp);
+        const da = toDate(a.entrada || a.salida || a.created_at);
+        const db_ = toDate(b.entrada || b.salida || b.created_at);
         return (da ? da.getTime() : 0) - (db_ ? db_.getTime() : 0);
       });
 
@@ -135,32 +135,32 @@ export default function GestionAsistencia() {
       const salidasDelDia = ordenados.filter((e) => e.tipo === "salida");
       const salida = salidasDelDia.length ? salidasDelDia[salidasDelDia.length - 1] : null;
 
-      const entradaDate = entrada ? toDate(entrada.timestamp) : null;
-      const salidaDate = salida ? toDate(salida.timestamp) : null;
+      const entradaDate = entrada ? toDate(entrada.entrada) : null;
+      const salidaDate = salida ? toDate(salida.salida) : null;
 
       let horasTrabajadas = 0;
-      if (typeof salida?.horasTrabajadas === "number") {
-        horasTrabajadas = salida.horasTrabajadas;
+      if (typeof salida?.horas_trabajadas === "number") {
+        horasTrabajadas = salida.horas_trabajadas;
       } else if (entradaDate && salidaDate) {
         horasTrabajadas = Math.max(0, (salidaDate.getTime() - entradaDate.getTime()) / 3600000);
       }
 
       let tarde = Boolean(entrada?.tarde);
-      let minutosTarde = entrada?.minutosTarde;
+      let minutosTarde = entrada?.minutos_tarde;
       if (!("tarde" in (entrada || {})) && entradaDate) {
         minutosTarde = Math.max(0, minutosDesdeMedianoche(entradaDate) - startMinutes - tolerancia);
         tarde = minutosTarde > 0;
       }
 
-      let salidaAnticipada = Boolean(salida?.salidaAnticipada);
-      let minutosSalidaAnticipada = salida?.minutosSalidaAnticipada;
-      if (!("salidaAnticipada" in (salida || {})) && salidaDate) {
+      let salidaAnticipada = Boolean(salida?.salida_anticipada);
+      let minutosSalidaAnticipada = salida?.minutos_salida_anticipada;
+      if (!("salida_anticipada" in (salida || {})) && salidaDate) {
         minutosSalidaAnticipada = Math.max(0, endMinutes - minutosDesdeMedianoche(salidaDate));
         salidaAnticipada = minutosSalidaAnticipada > 0;
       }
 
       const horasExtraRegistradas = ordenados.reduce(
-        (sum, e) => sum + (typeof e.horas_extra_calculadas === "number" ? e.horas_extra_calculadas : 0),
+        (sum, e) => sum + (typeof e.horas_extra === "number" ? e.horas_extra : 0),
         0
       );
       const horasExtra = horasExtraRegistradas > 0 ? horasExtraRegistradas : Math.max(0, horasTrabajadas - horasEsperadas);

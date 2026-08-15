@@ -159,3 +159,66 @@ export const SOMBRAS = {
     elevation: 15,
   }
 };
+
+/** Tokens semánticos para superficies privadas. Los valores conservan la paleta actual. */
+export const BORDES = {
+  subtle: 'rgba(255,255,255,0.08)',
+  default: 'rgba(255,255,255,0.12)',
+  strong: 'rgba(255,255,255,0.20)',
+  focus: 'rgba(124,58,237,0.56)',
+} as const;
+
+export const MOVIMIENTO = {
+  pressScale: 0.985,
+  pressDuration: 160,
+  stateDuration: 220,
+  surfaceDuration: 220,
+  spring: { damping: 26, stiffness: 140, mass: 1 },
+} as const;
+
+export const TEMAS_MOVILES = {
+  oscuro: {
+    fondo: '#070712',
+    fondoProfundo: '#02030A',
+    superficie: 'rgba(18,18,38,0.78)',
+    superficieElevada: 'rgba(20,20,42,0.92)',
+    texto: '#F8FAFF',
+    textoSecundario: 'rgba(232,238,255,0.72)',
+    textoSuave: 'rgba(232,238,255,0.52)',
+    vidrioSutil: 'rgba(255,255,255,0.035)',
+    vidrio: 'rgba(255,255,255,0.075)',
+    vidrioFuerte: 'rgba(255,255,255,0.13)',
+    vidrioProfundo: 'rgba(10,10,24,0.72)',
+    borde: BORDES.default,
+    bordeSutil: BORDES.subtle,
+    bordeFuerte: BORDES.strong,
+    bordeFocus: BORDES.focus,
+    sombra: '#0F0A2A',
+    primario: '#7C3AED',
+    primarioClaro: '#A78BFA',
+    secundario: '#38BDF8',
+    gradienteFondo: ['#070712', '#0B0B19', '#02030A'] as const,
+  },
+  claro: {
+    fondo: '#EEF2FF',
+    fondoProfundo: '#F8FAFF',
+    superficie: 'rgba(255,255,255,0.78)',
+    superficieElevada: 'rgba(255,255,255,0.92)',
+    texto: '#111827',
+    textoSecundario: 'rgba(15,23,42,0.68)',
+    textoSuave: 'rgba(15,23,42,0.50)',
+    vidrioSutil: 'rgba(255,255,255,0.42)',
+    vidrio: 'rgba(255,255,255,0.62)',
+    vidrioFuerte: 'rgba(255,255,255,0.82)',
+    vidrioProfundo: 'rgba(255,255,255,0.92)',
+    borde: 'rgba(92,70,180,0.16)',
+    bordeSutil: 'rgba(92,70,180,0.10)',
+    bordeFuerte: 'rgba(92,70,180,0.26)',
+    bordeFocus: 'rgba(109,40,217,0.48)',
+    sombra: '#7C65D1',
+    primario: '#6D28D9',
+    primarioClaro: '#8B5CF6',
+    secundario: '#2563EB',
+    gradienteFondo: ['#F8FAFF', '#EEF2FF', '#E7ECFF'] as const,
+  },
+} as const;

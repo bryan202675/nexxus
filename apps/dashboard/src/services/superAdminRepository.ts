@@ -57,17 +57,29 @@ const mapPago = (row) => ({
   createdAt: row.created_at || null,
 });
 
-const mapAudit = (row) => ({
+// audit_logs no tiene columna de estado/severidad, asi que ya no se fabrica un "Success"
+// fijo aqui -- los llamadores deben dejar de renderizar un badge de estado con este campo.
+const mapAudit = (row, usuariosPorId = new Map()) => ({
   id: row.id,
   empresaId: row.empresa_id || null,
   empresaNombre: "",
   accion: textValue(row.accion, "Evento"),
   modulo: textValue(row.modulo, "Sistema"),
-  estado: "Success",
-  actorNombre: "",
+  actorNombre: usuariosPorId.get(row.actor_id)?.nombre || "",
   detalles: textValue(row.detalles),
   timestamp: row.created_at || null,
 });
+
+// Resuelve nombres de actores para un lote de audit_logs, cruzando actor_id contra
+// usuarios (id, nombre) a traves de TODAS las empresas (scope super-admin).
+async function fetchUsuariosPorId(actorIds) {
+  const ids = Array.from(new Set((actorIds || []).filter(Boolean)));
+  if (!ids.length) return new Map();
+  const { data } = await supabase.from("usuarios").select("id, nombre").in("id", ids);
+  const map = new Map();
+  (data || []).forEach((u) => map.set(u.id, { nombre: textValue(u.nombre) }));
+  return map;
+}
 
 const mapUsuario = (row, empresaNombre = "") => ({
   id: row.id,
@@ -150,7 +162,8 @@ export function subscribePlatform(callback, onError) {
     }, () => {}, onError),
     realtimeQuery("audit_logs", null, async () => {
       const r = await supabase.from("audit_logs").select("*").order("created_at", { ascending: false }).limit(20);
-      state.auditoria = (r.data || []).map(mapAudit);
+      const usuariosPorId = await fetchUsuariosPorId((r.data || []).map((row) => row.actor_id));
+      state.auditoria = (r.data || []).map((row) => mapAudit(row, usuariosPorId));
       publish();
       return r;
     }, () => {}, onError),
@@ -326,7 +339,8 @@ export function subscribeAuditGlobal(limite, callback, onError) {
   return realtimeQuery("audit_logs", null, async () => {
     const { data, error } = await supabase.from("audit_logs").select("*").order("created_at", { ascending: false }).limit(limite);
     if (error) throw error;
-    callback({ items: (data || []).map(mapAudit), cursor: null, hayMas: false });
+    const usuariosPorId = await fetchUsuariosPorId((data || []).map((row) => row.actor_id));
+    callback({ items: (data || []).map((row) => mapAudit(row, usuariosPorId)), cursor: null, hayMas: false });
     return { data };
   }, () => {}, onError);
 }

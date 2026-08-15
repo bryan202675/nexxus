@@ -6,6 +6,18 @@
  * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras de datos al extender este archivo.
  */
 
+export interface DocumentVersion {
+  version: number;
+  url: string;
+  publicId?: string;
+  hash?: string;
+  size?: number;
+  mime?: string;
+  subidoPor?: string;
+  subidoPorNombre?: string;
+  fecha: string;
+}
+
 export interface Documento {
   id: string;
   userId: string;
@@ -23,6 +35,8 @@ export interface Documento {
   tamano?: string;
   categoria?: string;
   contenido_completo?: string;
+  version: number;
+  historialVersiones: DocumentVersion[];
 }
 
 export type DocumentStorageStats = {
@@ -38,7 +52,8 @@ export interface IDocumentoRepository {
   getByUser(userId: string): Promise<Documento[]>;
   getByCompany(empresaId: string): Promise<Documento[]>;
   subscribeByCompany?(empresaId: string, callback: (documentos: Documento[]) => void, onError?: () => void): () => void;
-  create(documento: Omit<Documento, 'id'>): Promise<string>;
+  create(documento: Omit<Documento, 'id' | 'version' | 'historialVersiones'>): Promise<string>;
+  addVersion(documentoId: string, nuevaVersion: Omit<DocumentVersion, 'version'>): Promise<void>;
   delete(documentoId: string): Promise<void>;
   deleteWithAsset?(documento: Pick<Documento, 'id' | 'publicId'>): Promise<void>;
   markAsRead(documentoId: string): Promise<void>;

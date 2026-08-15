@@ -28,6 +28,8 @@ export type UsuarioPlantilla = {
   jefeNombre?: string;
   salarioBase?: number;
   correo_personal?: string;
+  fecha_ingreso?: string;
+  horario_laboral?: string;
   empresaId?: string;
   activo?: boolean;
   estado_activo?: boolean;
@@ -208,6 +210,8 @@ export type FormularioEmpleado = {
   telefono: string;
   salarioBase: string;
   correoPersonal: string;
+  fechaIngreso: string;
+  horarioLaboral: string;
 };
 
 /**
@@ -238,6 +242,8 @@ export const formularioInicial: FormularioEmpleado = {
   telefono: '',
   salarioBase: '',
   correoPersonal: '',
+  fechaIngreso: '',
+  horarioLaboral: '',
 };
 
 /**

@@ -5,12 +5,12 @@ import { getRoutesForRole } from "routes";
 import { useAuth } from "context/AuthContext";
 
 const Sidebar = ({ open, onClose }) => {
-  const { esSuperAdmin, empresaNombre } = useAuth();
-  const routes = getRoutesForRole(esSuperAdmin ? "super_admin" : "admin_empresa");
+  const { esSuperAdmin, empresaNombre, rol } = useAuth();
+  const routes = getRoutesForRole(rol);
 
   const tituloHeader = esSuperAdmin
     ? "Nexxus SA"
-    : (empresaNombre || "Nexxus Admin");
+    : (empresaNombre || (rol === "jefe" ? "Nexxus Jefe" : "Nexxus Workspace"));
 
   return (
     <div

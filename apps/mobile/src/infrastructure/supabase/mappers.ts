@@ -1,11 +1,15 @@
 // Mapeos fila de Postgres (snake_case) <-> entidad de dominio (camelCase
-// mixto, heredado de como creció el esquema de Firestore). El esquema nuevo
-// de Supabase es más angosto que el de Firestore: campos de "perfil extendido"
-// nunca usados server-side (kpis, habilidades, insignias, progreso_capacitacion,
-// puntos_recompensa, historial_laboral, certificaciones, horario_laboral,
-// dias_vacaciones_disponibles, documentos_url, dui/nit/nup/isss_numero) no
-// tienen columna todavía -- quedan undefined hasta que se confirme qué
-// pantallas los necesitan de verdad.
+// mixto, heredado de como creció el esquema de Firestore).
+//
+// Perfil laboral extendido (Fase A, modulo empleado): kpis/habilidades/historial_laboral/
+// certificaciones/horario_laboral/fecha_ingreso ya tienen columna real (migracion
+// perfil_laboral_extendido) y se mapean abajo. dias_vacaciones_disponibles sigue sin columna a
+// proposito -- se calcula en ContextoUsuario.tsx via packages/domain/services/vacationEngine.ts
+// (un numero guardado se desincroniza solo, uno calculado no).
+//
+// Todavia sin columna (Fase B/C u otra ronda futura, no confundir con "olvidado"):
+// insignias, progreso_capacitacion, puntos_recompensa (gamificacion, Fase B -- ver plan),
+// documentos_url, dui/nit/nup/isss_numero (identificacion legal, fuera del alcance actual).
 import { User } from 'domain/entities/User';
 
 export function mapUserRow(row: Record<string, any>): User {
@@ -43,6 +47,12 @@ export function mapUserRow(row: Record<string, any>): User {
     usuarioInterno: row.usuario_interno ?? undefined,
     passwordInternoHash: row.password_interno_hash ?? undefined,
     passwordHashAlgorithm: row.password_hash_algorithm ?? undefined,
+    fecha_ingreso: row.fecha_ingreso ?? undefined,
+    horario_laboral: row.horario_laboral ?? undefined,
+    kpis: Array.isArray(row.kpis) && row.kpis.length > 0 ? row.kpis : undefined,
+    habilidades: Array.isArray(row.habilidades) && row.habilidades.length > 0 ? row.habilidades : undefined,
+    historial_laboral: Array.isArray(row.historial_laboral) && row.historial_laboral.length > 0 ? row.historial_laboral : undefined,
+    certificaciones: Array.isArray(row.certificaciones) && row.certificaciones.length > 0 ? row.certificaciones : undefined,
   };
 }
 
@@ -62,6 +72,9 @@ export function userPatchToRow(patch: Record<string, any>): Record<string, any> 
     bonos_recurrentes: 'bonos_recurrentes', comisiones_recurrentes: 'comisiones_recurrentes',
     descuentos_recurrentes: 'descuentos_recurrentes', codigoEmpresa: 'codigo_empresa',
     usuarioInterno: 'usuario_interno',
+    fecha_ingreso: 'fecha_ingreso', horario_laboral: 'horario_laboral',
+    kpis: 'kpis', habilidades: 'habilidades', historial_laboral: 'historial_laboral',
+    certificaciones: 'certificaciones',
   };
   const row: Record<string, any> = {};
   for (const [key, value] of Object.entries(patch)) {

@@ -13,15 +13,34 @@ import { SupabaseDepartmentRepository } from './supabase/SupabaseDepartmentRepos
 import { SupabaseAuditLogRepository } from './supabase/SupabaseAuditLogRepository';
 import { SupabaseAnnouncementRepository } from './supabase/SupabaseAnnouncementRepository';
 import { SupabaseCourseRepository } from './supabase/SupabaseCourseRepository';
+import { SupabaseTaskCommentRepository } from './supabase/SupabaseTaskCommentRepository';
+import { SupabaseTaskSubtaskRepository } from './supabase/SupabaseTaskSubtaskRepository';
+import { SupabaseTaskAttachmentRepository } from './supabase/SupabaseTaskAttachmentRepository';
+import { SupabaseTicketRepository } from './supabase/SupabaseTicketRepository';
+import { SupabaseTicketMessageRepository } from './supabase/SupabaseTicketMessageRepository';
+import { SupabaseSessionDeviceRepository } from './supabase/SupabaseSessionDeviceRepository';
 
 // Casos de Uso
 import { GetTasks } from 'domain/application/use-cases/tasks/GetTasks';
 import { CreateTask } from 'domain/application/use-cases/tasks/CreateTask';
 import { UpdateTask } from 'domain/application/use-cases/tasks/UpdateTask';
 import { SubscribeTasks } from 'domain/application/use-cases/tasks/SubscribeTasks';
+import { DeleteTask } from 'domain/application/use-cases/tasks/DeleteTask';
+import { GetTasksByIds } from 'domain/application/use-cases/tasks/GetTasksByIds';
+import { GetTasksByCompany } from 'domain/application/use-cases/tasks/GetTasksByCompany';
+import { GetTaskComments, SubscribeTaskComments, CreateTaskComment, UpdateTaskComment, DeleteTaskComment } from 'domain/application/use-cases/task-comments/TaskCommentUseCases';
+import { GetTaskSubtasks, SubscribeTaskSubtasks, CreateTaskSubtask, ToggleTaskSubtask, DeleteTaskSubtask } from 'domain/application/use-cases/task-subtasks/TaskSubtaskUseCases';
+import { GetTaskAttachments, SubscribeTaskAttachments, CreateTaskAttachment, DeleteTaskAttachment } from 'domain/application/use-cases/task-attachments/TaskAttachmentUseCases';
+import { GetTicketsForUser, SubscribeTicketsForUser, GetTicketsForCompany, SubscribeTicketsForCompany, CreateTicket, UpdateTicketEstado } from 'domain/application/use-cases/tickets/TicketUseCases';
+import { GetTicketMessages, SubscribeTicketMessages, CreateTicketMessage } from 'domain/application/use-cases/ticket-messages/TicketMessageUseCases';
+import { GetSessionDevices, SubscribeSessionDevices, RegisterSessionDevice, RemoveSessionDevice, RemoveOtherSessionDevices } from 'domain/application/use-cases/session-devices/SessionDeviceUseCases';
 
 import { GetAbsences } from 'domain/application/use-cases/absences/GetAbsences';
 import { CreateAbsence } from 'domain/application/use-cases/absences/CreateAbsence';
+import { SubscribeAbsences } from 'domain/application/use-cases/absences/SubscribeAbsences';
+import { UpdateAbsenceState } from 'domain/application/use-cases/absences/UpdateAbsenceState';
+import { UpdateAbsence } from 'domain/application/use-cases/absences/UpdateAbsence';
+import { DeleteAbsence } from 'domain/application/use-cases/absences/DeleteAbsence';
 
 import { GetPayments } from 'domain/application/use-cases/payments/GetPayments';
 import { SubscribePayments } from 'domain/application/use-cases/payments/SubscribePayments';
@@ -33,7 +52,7 @@ import { GetNotifications } from 'domain/application/use-cases/notifications/Get
 import { MarkNotificationRead } from 'domain/application/use-cases/notifications/MarkNotificationRead';
 import { SubscribeNotifications } from 'domain/application/use-cases/notifications/SubscribeNotifications';
 
-import { GetDocumentos, MarkDocumentRead, GetCompanyDocuments, CreateDocument, DeleteDocument, SubscribeCompanyDocuments, DeleteDocumentWithAsset, GetDocumentStorageStats } from 'domain/application/use-cases/documents/DocumentUseCases';
+import { GetDocumentos, MarkDocumentRead, GetCompanyDocuments, CreateDocument, DeleteDocument, SubscribeCompanyDocuments, DeleteDocumentWithAsset, GetDocumentStorageStats, AddDocumentVersion } from 'domain/application/use-cases/documents/DocumentUseCases';
 import { GetFocusSessions, SaveFocusSession } from 'domain/application/use-cases/wellness/FocusSessionUseCases';
 import { GetFeedbacks, SubmitFeedback } from 'domain/application/use-cases/feedback/FeedbackUseCases';
 
@@ -48,6 +67,8 @@ import { SupabaseInboxRepository } from './supabase/SupabaseInboxRepository';
 import { SupabasePushTokenRepository } from './supabase/SupabasePushTokenRepository';
 import { SupabasePushSenderRepository } from './supabase/SupabasePushSenderRepository';
 import { SupabasePlanRepository } from './supabase/SupabasePlanRepository';
+import { SupabaseAchievementRepository } from './supabase/SupabaseAchievementRepository';
+import { SupabaseObjectiveRepository } from './supabase/SupabaseObjectiveRepository';
 import { SupabaseAutomationRuleRepository } from './supabase/SupabaseAutomationRuleRepository';
 import { SupabaseGraphRelationRepository } from './supabase/SupabaseGraphRelationRepository';
 import { SupabaseInternalRequestRepository, SupabaseChatContextualRepository } from './supabase/SupabaseFase2Repositories';
@@ -65,6 +86,7 @@ import { SupabaseCompanyCalendarRepository } from './supabase/SupabaseCompanyCal
 import { LoginUser } from 'domain/application/use-cases/auth/LoginUser';
 import { LoginEmpresarial } from 'domain/application/use-cases/auth/LoginEmpresarial';
 import { LogoutUser } from 'domain/application/use-cases/auth/LogoutUser';
+import { LogoutOtherSessions } from 'domain/application/use-cases/auth/LogoutOtherSessions';
 import { GetCurrentUser } from 'domain/application/use-cases/auth/GetCurrentUser';
 import { RecordCheckIn } from 'domain/application/use-cases/wellness/RecordCheckIn';
 import { GetWellnessMetrics } from 'domain/application/use-cases/wellness/GetWellnessMetrics';
@@ -75,6 +97,8 @@ import { RecordAttendance, GetAttendanceHistory, GetCurrentShift, GetCompanyAtte
 import { GetInbox, ResolveInboxItem, SubscribeToInbox, AddInboxItem } from 'domain/application/use-cases/inbox/InboxUseCases';
 import { RegisterPushToken, UnregisterPushToken, GetPushTokens, SendPushNotification } from 'domain/application/use-cases/push/PushTokenUseCases';
 import { GetPlans } from 'domain/application/use-cases/plans/PlanUseCases';
+import { GetEarnedAchievements, SyncAchievements } from 'domain/application/use-cases/achievements/AchievementUseCases';
+import { GetObjectivesForUser, SubscribeObjectives, CreateObjective, UpdateKeyResultValue, UpdateObjectiveEstado, DeleteObjective } from 'domain/application/use-cases/objectives/ObjectiveUseCases';
 import { GetAutomationRules, CreateAutomationRule, SetAutomationRuleActive, DeleteAutomationRule, RunAutomationRulesNow } from 'domain/application/use-cases/automations/AutomationRuleUseCases';
 import { AddGraphRelation, GetEntityRelations } from 'domain/application/use-cases/graph/GraphRelationUseCases';
 import { CreateInternalRequest, GetInternalRequests, SendContextualMessage, SubscribeToChatContext } from 'domain/application/use-cases/fase2/Fase2UseCases';
@@ -115,6 +139,8 @@ const attendanceRepository = new SupabaseAttendanceRepository();
 const inboxRepository = new SupabaseInboxRepository();
 const pushTokenRepository = new SupabasePushTokenRepository();
 const planRepository = new SupabasePlanRepository();
+const achievementRepository = new SupabaseAchievementRepository();
+const objectiveRepository = new SupabaseObjectiveRepository();
 const pushSenderRepository = new SupabasePushSenderRepository();
 const automationRuleRepository = new SupabaseAutomationRuleRepository();
 const graphRelationRepository = new SupabaseGraphRelationRepository();
@@ -131,6 +157,12 @@ const sensitiveProfileRepository = new SupabaseSensitiveProfileRepository();
 const companySettingsRepository = new SupabaseCompanySettingsRepository();
 const companyCalendarRepository = new SupabaseCompanyCalendarRepository();
 const courseRepository = new SupabaseCourseRepository();
+const taskCommentRepository = new SupabaseTaskCommentRepository();
+const taskSubtaskRepository = new SupabaseTaskSubtaskRepository();
+const taskAttachmentRepository = new SupabaseTaskAttachmentRepository();
+const ticketRepository = new SupabaseTicketRepository();
+const ticketMessageRepository = new SupabaseTicketMessageRepository();
+const sessionDeviceRepository = new SupabaseSessionDeviceRepository();
 
 // ── Casos de Uso ─────────────────────────────────────────────
 export const useCases = {
@@ -138,6 +170,7 @@ export const useCases = {
     login: new LoginUser(authRepository),
     loginEmpresarial: new LoginEmpresarial(authRepository),
     logout: new LogoutUser(authRepository),
+    logoutOtherSessions: new LogoutOtherSessions(authRepository),
     getCurrentUser: new GetCurrentUser(authRepository),
   },
   wellness: {
@@ -151,10 +184,37 @@ export const useCases = {
     createTask: new CreateTask(taskRepository),
     updateTask: new UpdateTask(taskRepository),
     subscribe: new SubscribeTasks(taskRepository),
+    remove: new DeleteTask(taskRepository),
+    getByIds: new GetTasksByIds(taskRepository),
+    getByCompany: new GetTasksByCompany(taskRepository),
+    comments: {
+      get: new GetTaskComments(taskCommentRepository),
+      subscribe: new SubscribeTaskComments(taskCommentRepository),
+      create: new CreateTaskComment(taskCommentRepository),
+      update: new UpdateTaskComment(taskCommentRepository),
+      remove: new DeleteTaskComment(taskCommentRepository),
+    },
+    subtasks: {
+      get: new GetTaskSubtasks(taskSubtaskRepository),
+      subscribe: new SubscribeTaskSubtasks(taskSubtaskRepository),
+      create: new CreateTaskSubtask(taskSubtaskRepository),
+      toggle: new ToggleTaskSubtask(taskSubtaskRepository),
+      remove: new DeleteTaskSubtask(taskSubtaskRepository),
+    },
+    attachments: {
+      get: new GetTaskAttachments(taskAttachmentRepository),
+      subscribe: new SubscribeTaskAttachments(taskAttachmentRepository),
+      create: new CreateTaskAttachment(taskAttachmentRepository),
+      remove: new DeleteTaskAttachment(taskAttachmentRepository),
+    },
   },
   absences: {
     getAbsences: new GetAbsences(absenceRepository),
     createAbsence: new CreateAbsence(absenceRepository),
+    subscribe: new SubscribeAbsences(absenceRepository),
+    updateState: new UpdateAbsenceState(absenceRepository),
+    updateAbsence: new UpdateAbsence(absenceRepository),
+    deleteAbsence: new DeleteAbsence(absenceRepository),
   },
   payments: {
     getPayments: new GetPayments(paymentRepository),
@@ -193,6 +253,7 @@ export const useCases = {
     delete: new DeleteDocument(documentoRepository),
     deleteWithAsset: new DeleteDocumentWithAsset(documentoRepository),
     getStorageStats: new GetDocumentStorageStats(documentoRepository),
+    addVersion: new AddDocumentVersion(documentoRepository),
   },
   feedback: {
     getFeedbacks: new GetFeedbacks(feedbackRepository),
@@ -219,6 +280,38 @@ export const useCases = {
   },
   plans: {
     getAll: new GetPlans(planRepository),
+  },
+  achievements: {
+    getEarned: new GetEarnedAchievements(achievementRepository),
+    sync: new SyncAchievements(achievementRepository),
+  },
+  objectives: {
+    getByUser: new GetObjectivesForUser(objectiveRepository),
+    subscribe: new SubscribeObjectives(objectiveRepository),
+    create: new CreateObjective(objectiveRepository),
+    updateKeyResult: new UpdateKeyResultValue(objectiveRepository),
+    updateEstado: new UpdateObjectiveEstado(objectiveRepository),
+    remove: new DeleteObjective(objectiveRepository),
+  },
+  tickets: {
+    getByUser: new GetTicketsForUser(ticketRepository),
+    subscribeByUser: new SubscribeTicketsForUser(ticketRepository),
+    getByCompany: new GetTicketsForCompany(ticketRepository),
+    subscribeByCompany: new SubscribeTicketsForCompany(ticketRepository),
+    create: new CreateTicket(ticketRepository),
+    updateEstado: new UpdateTicketEstado(ticketRepository),
+    messages: {
+      get: new GetTicketMessages(ticketMessageRepository),
+      subscribe: new SubscribeTicketMessages(ticketMessageRepository),
+      create: new CreateTicketMessage(ticketMessageRepository),
+    },
+  },
+  sessionDevices: {
+    getByUser: new GetSessionDevices(sessionDeviceRepository),
+    subscribe: new SubscribeSessionDevices(sessionDeviceRepository),
+    register: new RegisterSessionDevice(sessionDeviceRepository),
+    remove: new RemoveSessionDevice(sessionDeviceRepository),
+    removeOthers: new RemoveOtherSessionDevices(sessionDeviceRepository),
   },
   automations: {
     getByCompany: new GetAutomationRules(automationRuleRepository),

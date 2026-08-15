@@ -6,16 +6,7 @@
  * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras de datos al extender este archivo.
  */
 
-export type AttendanceMethod = 'manual' | 'pin' | 'qr' | 'movil' | 'ubicacion';
-export type AttendanceLocationStatus = 'granted' | 'denied' | 'unavailable';
-
-export interface AttendanceGeoPoint {
-  lat: number;
-  lng: number;
-  accuracy?: number;
-  capturedAt?: string;
-  validado_en_zona?: boolean;
-}
+export type AttendanceMethod = 'manual' | 'pin' | 'qr' | 'movil';
 
 export interface Attendance {
   id: string;
@@ -25,9 +16,6 @@ export interface Attendance {
   timestamp: string;
   fechaJornada?: string;
   metodoRegistro?: AttendanceMethod;
-  ubicacionEstado?: AttendanceLocationStatus;
-  gps?: AttendanceGeoPoint;
-  ubicacionGeo?: AttendanceGeoPoint;
   horasTrabajadas?: number;
   horas_extra_calculadas?: number;
   tarde?: boolean;

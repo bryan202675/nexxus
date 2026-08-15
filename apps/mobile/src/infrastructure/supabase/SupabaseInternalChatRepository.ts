@@ -16,6 +16,8 @@ function mapConversationRow(row: Record<string, any>): Conversation {
     participantes: row.datos?.participantes ?? [],
     ultimoMensaje: row.ultimo_mensaje ?? undefined,
     ultimoMensajeAt: row.ultimo_mensaje_at ?? undefined,
+    ultimoMensajeRemitenteId: row.ultimo_mensaje_remitente_id ?? row.datos?.ultimoMensajeRemitenteId ?? undefined,
+    ultimoMensajeRemitenteNombre: row.ultimo_mensaje_remitente_nombre ?? row.datos?.ultimoMensajeRemitenteNombre ?? undefined,
     creadoPor: row.creado_por ?? '',
     fechaCreacion: row.created_at,
   };
@@ -40,7 +42,36 @@ export class SupabaseInternalChatRepository implements IInternalChatRepository {
     return subscribeQuery('conversaciones', `empresa_id=eq.${empresaId}`, async () => {
       const { data, error } = await supabase.from('conversaciones').select('*').eq('empresa_id', empresaId).contains('participante_ids', [userId]).order('ultimo_mensaje_at', { ascending: false }).limit(limitCount);
       if (error) throw error;
-      return (data || []).map(mapConversationRow);
+      const convs = (data || []).map(mapConversationRow);
+
+      if (convs.length > 0) {
+        const convIds = convs.map((c) => c.id);
+        const { data: latestMsgs } = await supabase
+          .from('mensajes')
+          .select('conversacion_id, remitente_id, contenido, created_at, datos')
+          .in('conversacion_id', convIds)
+          .order('created_at', { ascending: false });
+
+        if (latestMsgs && latestMsgs.length > 0) {
+          const mapLatest: Record<string, any> = {};
+          for (const m of latestMsgs) {
+            if (!mapLatest[m.conversacion_id]) {
+              mapLatest[m.conversacion_id] = m;
+            }
+          }
+          for (const c of convs) {
+            const last = mapLatest[c.id];
+            if (last) {
+              c.ultimoMensaje = last.contenido || c.ultimoMensaje;
+              c.ultimoMensajeAt = last.created_at || c.ultimoMensajeAt;
+              c.ultimoMensajeRemitenteId = last.remitente_id;
+              c.ultimoMensajeRemitenteNombre = last.datos?.remitenteNombre;
+            }
+          }
+        }
+      }
+
+      return convs;
     }, callback, onError);
   }
 
@@ -148,5 +179,33 @@ export class SupabaseInternalChatRepository implements IInternalChatRepository {
         await supabase.from('mensajes').update({ leido_por: [...(mensaje.leido_por || []), userId] }).eq('id', mensaje.id);
       }
     }
+  }
+
+  subscribeUnreadCounts(
+    empresaId: string,
+    userId: string,
+    callback: (counts: Record<string, number>) => void,
+    onError?: (error: Error) => void
+  ): () => void {
+    return subscribeQuery(
+      'mensajes',
+      `empresa_id=eq.${empresaId}`,
+      async () => {
+        const { data, error } = await supabase
+          .from('mensajes')
+          .select('id, conversacion_id, remitente_id, leido_por')
+          .eq('empresa_id', empresaId);
+        if (error) throw error;
+        const counts: Record<string, number> = {};
+        for (const m of data || []) {
+          if (m.remitente_id !== userId && !(m.leido_por || []).includes(userId)) {
+            counts[m.conversacion_id] = (counts[m.conversacion_id] || 0) + 1;
+          }
+        }
+        return counts;
+      },
+      callback,
+      onError
+    );
   }
 }

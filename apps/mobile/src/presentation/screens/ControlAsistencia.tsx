@@ -1,354 +1,643 @@
-/**
- * Documentacion Nexxus - apps/mobile/src/presentation/screens/ControlAsistencia.tsx
- * Capa: presentacion.
- * Proposito: Pantalla de la experiencia del empleado. Lee contexto de usuario, muestra informacion operativa y conserva las acciones de navegacion existentes.
- * Dependencias clave: imports superiores y contratos tipados del propio modulo.
- * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras de datos al extender este archivo.
- */
-
-// Importa React, { useState, useEffect, useRef } desde React; habilita componentes, hooks y tipos base para esta pieza.
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   SafeAreaView,
   StatusBar,
-  Animated,
   Alert,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
-// Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
+import Animated, {
+  Easing,
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
-// Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
-import { MaterialIcons } from '@expo/vector-icons';
-// Importa { BlurView } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
+import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-// Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
-import { LinearGradient } from 'expo-linear-gradient';
-// Importa AsyncStorage desde @react-native-async-storage/async-storage; agrega una dependencia externa necesaria para este modulo.
 import AsyncStorage from '@react-native-async-storage/async-storage';
-// Importa FondoMobilePremium; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
-// Importa NavbarEnterprise; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
 import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
-// Importa { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA }; reutiliza tokens visuales y constantes comunes del sistema de diseno.
 import { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/constants/diseno';
-// Importa { useContextoUsuario }; accede a contexto compartido de usuario, tema o estado global.
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
-// Importa { useTemaMobile }; accede a contexto compartido de usuario, tema o estado global.
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
-import type { AttendanceGeoPoint, AttendanceLocationStatus, AttendanceMethod } from 'domain/entities/Attendance';
+import BotonAnimado from '@/presentation/components/BotonAnimado';
 
-/**
- * Define el contrato de datos Props; documenta campos esperados y evita pasar objetos ambiguos entre capas.
- */
 interface Props {
   navigation: any;
 }
 
-interface AttendanceCaptureMetadata {
-  gps?: AttendanceGeoPoint;
-  metodoRegistro: AttendanceMethod;
-  ubicacionEstado: AttendanceLocationStatus;
-}
-
-const capturarUbicacionAsistencia = (): Promise<AttendanceCaptureMetadata> => {
-  const geolocation = globalThis.navigator?.geolocation;
-  if (!geolocation) {
-    return Promise.resolve({ metodoRegistro: 'manual', ubicacionEstado: 'unavailable' });
-  }
-
-  return new Promise((resolve) => {
-    geolocation.getCurrentPosition(
-      (position) => {
-        const capturedAt = new Date().toISOString();
-        resolve({
-          metodoRegistro: 'ubicacion',
-          ubicacionEstado: 'granted',
-          gps: {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-            accuracy: position.coords.accuracy,
-            capturedAt,
-            validado_en_zona: false,
-          },
-        });
-      },
-      (error) => {
-        resolve({
-          metodoRegistro: 'manual',
-          ubicacionEstado: error.code === 1 ? 'denied' : 'unavailable',
-        });
-      },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
-    );
-  });
-};
-
-/**
- * Componente ControlAsistencia. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
- */
 export default function ControlAsistencia({ navigation }: Props) {
-  // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { t } = useTranslation();
-  // Inicializa { perfil, registrarEventoAsistencia }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const { perfil, registrarEventoAsistencia } = useContextoUsuario();
-  // Declara { colores, blurTint, intensidadBlur, esOscuro }; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
+  const { perfil, registrarEventoAsistencia, metrics } = useContextoUsuario();
   const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
-  // Inicializa [estaActivo, setEstaActivo]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
+  const estilos = crearEstilos(colores, esOscuro);
+
   const [estaActivo, setEstaActivo] = useState(false);
-  // Inicializa [segundos, setSegundos]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
+  const [enPausa, setEnPausa] = useState(false);
   const [segundos, setSegundos] = useState(0);
-  // Inicializa [registrando, setRegistrando]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
+  const [horaEntrada, setHoraEntrada] = useState<string | null>(null);
   const [registrando, setRegistrando] = useState(false);
-  const [ubicacionEstado, setUbicacionEstado] = useState<AttendanceLocationStatus>('unavailable');
 
-  // Inicializa timerRef; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  // Inicializa scaleAnim; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const escalaReloj = useSharedValue(1);
 
-  // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
+  // Restaurar estado del timer al cargar
   useEffect(() => {
-    // Calcula restaurarTimer; normaliza fechas para comparaciones, filtros o etiquetas visibles.
     const restaurarTimer = async () => {
-      // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
       try {
-        // Declara guardado; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
         const guardado = await AsyncStorage.getItem('@asistencia_inicio');
-        // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
+        const pausaGuardada = await AsyncStorage.getItem('@asistencia_en_pausa');
+        const entradaGuardada = await AsyncStorage.getItem('@asistencia_hora_entrada');
+
+        if (entradaGuardada) setHoraEntrada(entradaGuardada);
+
         if (guardado) {
-          // Calcula inicio; normaliza fechas para comparaciones, filtros o etiquetas visibles.
           const inicio = new Date(guardado).getTime();
-          // Calcula ahora; normaliza fechas para comparaciones, filtros o etiquetas visibles.
           const ahora = Date.now();
-          // Declara diff; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
           const diff = Math.floor((ahora - inicio) / 1000);
-          // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
           setEstaActivo(true);
-          // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
+          setEnPausa(pausaGuardada === 'true');
           if (diff > 0) setSegundos(diff);
         } else {
-          // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
           setEstaActivo(false);
-          // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
+          setEnPausa(false);
           setSegundos(0);
+          setHoraEntrada(null);
         }
       } catch (e) {
-        // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
         console.error('Error restaurando timer:', e);
       }
     };
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
     restaurarTimer();
   }, [perfil?.estado_activo]);
 
-  // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
+  // Manejo del contador de segundos
   useEffect(() => {
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-    if (estaActivo) {
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
+    if (estaActivo && !enPausa) {
       timerRef.current = setInterval(() => {
-        // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
         setSegundos((s) => s + 1);
       }, 1000);
-      
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(scaleAnim, { toValue: 1.05, duration: 1500, useNativeDriver: true }),
-          Animated.timing(scaleAnim, { toValue: 1, duration: 1500, useNativeDriver: true }),
-        ])
-      ).start();
+
+      escalaReloj.value = withRepeat(
+        withSequence(
+          withTiming(1.02, { duration: 1600, easing: Easing.inOut(Easing.sin) }),
+          withTiming(1, { duration: 1600, easing: Easing.inOut(Easing.sin) }),
+        ),
+        -1,
+        true,
+      );
     } else {
-      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (timerRef.current) clearInterval(timerRef.current);
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      scaleAnim.stopAnimation();
+      escalaReloj.value = withTiming(1, { duration: 200 });
     }
 
-    // Devuelve el valor final calculado para esta funcion o caso de uso.
     return () => {
-      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [estaActivo]);
+  }, [estaActivo, enPausa, escalaReloj]);
 
-  // Calcula manejarAccionPrincipal; normaliza fechas para comparaciones, filtros o etiquetas visibles.
-  const manejarAccionPrincipal = async () => {
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
+  const estiloReloj = useAnimatedStyle(() => ({
+    transform: [{ scale: escalaReloj.value }],
+  }));
+
+  const formatearTiempo = (s: number) => {
+    const hrs = Math.floor(s / 3600);
+    const mins = Math.floor((s % 3600) / 60);
+    const secs = s % 60;
+    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatearFechaHoy = () => {
+    const hoy = new Date();
+    return hoy.toLocaleDateString('es-ES', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+  };
+
+  const manejarIniciarEntrada = async () => {
     setRegistrando(true);
-    // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
     try {
-      const metadata = await capturarUbicacionAsistencia();
-      setUbicacionEstado(metadata.ubicacionEstado);
-      // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
-      if (!estaActivo) {
-        // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-        await registrarEventoAsistencia('entrada', metadata);
-        // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-        await AsyncStorage.setItem('@asistencia_inicio', new Date().toISOString());
-        // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-        setEstaActivo(true);
-        // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-        setSegundos(0);
-      } else {
-        // Declara tiempoTrabajado; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-        const tiempoTrabajado = formatearTiempo(segundos);
-        // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-        await registrarEventoAsistencia('salida', metadata);
-        // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-        await AsyncStorage.removeItem('@asistencia_inicio');
-        // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-        setEstaActivo(false);
-        // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
-        setSegundos(0);
-        // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-        Alert.alert(
-          "Jornada Finalizada",
-          `Se registró su tiempo de trabajo con éxito.\n\nTiempo total: ${tiempoTrabajado}`
-        );
-      }
+      await registrarEventoAsistencia('entrada');
+      const ahoraIso = new Date().toISOString();
+      const ahoraHora = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+      await AsyncStorage.setItem('@asistencia_inicio', ahoraIso);
+      await AsyncStorage.setItem('@asistencia_hora_entrada', ahoraHora);
+      await AsyncStorage.removeItem('@asistencia_en_pausa');
+
+      setHoraEntrada(ahoraHora);
+      setEstaActivo(true);
+      setEnPausa(false);
+      setSegundos(0);
     } catch (e: any) {
-      // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
-      console.error("Error al registrar asistencia:", e);
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      Alert.alert(t('common.error'), `${t('controlAsistencia.alert_error_event')}\n\nDetalle: ${e.message || e}`);
+      Alert.alert(t('common.error', { defaultValue: 'Error' }), `${t('controlAsistencia.alert_error_event', { defaultValue: 'No se pudo registrar la entrada.' })}\n\nDetalle: ${e.message || e}`);
     } finally {
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setRegistrando(false);
     }
   };
 
-  // Declara formatearTiempo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const formatearTiempo = (s: number) => {
-    // Declara hrs; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const hrs = Math.floor(s / 3600);
-    // Declara mins; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const mins = Math.floor((s % 3600) / 60);
-    // Declara secs; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const secs = s % 60;
-    // Devuelve el valor final calculado para esta funcion o caso de uso.
-    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  const alternarPausa = async () => {
+    setRegistrando(true);
+    try {
+      if (!enPausa) {
+        await registrarEventoAsistencia('inicio_pausa');
+        await AsyncStorage.setItem('@asistencia_en_pausa', 'true');
+        setEnPausa(true);
+      } else {
+        await registrarEventoAsistencia('fin_pausa');
+        await AsyncStorage.removeItem('@asistencia_en_pausa');
+        setEnPausa(false);
+      }
+    } catch (e: any) {
+      Alert.alert(t('common.error', { defaultValue: 'Error' }), `No se pudo registrar el cambio de pausa.\n\nDetalle: ${e.message || e}`);
+    } finally {
+      setRegistrando(false);
+    }
   };
 
-  // Declara estilos; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const estilos = crearEstilos(colores, esOscuro);
-  const textoUbicacion = ubicacionEstado === 'granted'
-    ? 'Ubicación registrada'
-    : ubicacionEstado === 'denied'
-      ? 'Registro manual: ubicación denegada'
-      : 'Registro manual: ubicación no disponible';
+  const confirmarFinalizarSalida = () => {
+    Alert.alert(
+      t('controlAsistencia.confirm_end_title'),
+      t('controlAsistencia.confirm_end_msg'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('controlAsistencia.confirm_end_finish'), style: 'destructive', onPress: manejarFinalizarSalida },
+      ]
+    );
+  };
 
-  // Devuelve el JSX que React Native renderiza en pantalla.
+  const manejarFinalizarSalida = async () => {
+    setRegistrando(true);
+    try {
+      const tiempoTrabajado = formatearTiempo(segundos);
+      await registrarEventoAsistencia('salida');
+      await AsyncStorage.removeItem('@asistencia_inicio');
+      await AsyncStorage.removeItem('@asistencia_hora_entrada');
+      await AsyncStorage.removeItem('@asistencia_en_pausa');
+
+      setEstaActivo(false);
+      setEnPausa(false);
+      setSegundos(0);
+      setHoraEntrada(null);
+
+      Alert.alert(
+        t('controlAsistencia.success_end_title'),
+        t('controlAsistencia.success_end_msg', { tiempo: tiempoTrabajado })
+      );
+    } catch (e: any) {
+      Alert.alert(t('common.error', { defaultValue: 'Error' }), `${t('controlAsistencia.alert_error_event', { defaultValue: 'No se pudo registrar la salida.' })}\n\nDetalle: ${e.message || e}`);
+    } finally {
+      setRegistrando(false);
+    }
+  };
+
   return (
-    // Contenedor seguro de la pantalla; respeta areas del dispositivo como notch, barra superior y bordes.
     <SafeAreaView style={estilos.contenedor}>
-      {/* Configura la barra de estado del sistema para que combine con el fondo de esta pantalla. */}
       <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
-      {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-      <View style={estilos.fondoAbsoluto}>
-        {/* Elemento de fondo visual; construye la atmosfera grafica de la pantalla sin cambiar los datos. */}
+      <View pointerEvents="none" style={estilos.fondoAbsoluto}>
         <FondoMobilePremium />
       </View>
-      
-      {/* NavbarEnterprise renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <NavbarEnterprise titulo={t('controlAsistencia.title')} mostrarAtras />
 
-      {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
+      <NavbarEnterprise
+        titulo={t('controlAsistencia.title', { defaultValue: 'Control de Asistencia' })}
+        subtitulo="Registro de jornada y marcajes"
+        mostrarAtras
+      />
+
       <ScrollView contentContainerStyle={estilos.scroll} showsVerticalScrollIndicator={false}>
-        {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-        <View style={estilos.cuerpo}>
-          {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={estilos.subtitulo}>{t('controlAsistencia.subtitle')}</Text>
-
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-          <View style={estilos.panelReloj}>
-            {/* Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-            <Animated.View style={[estilos.circuloReloj, estaActivo && estilos.circuloActivo, { transform: [{ scale: scaleAnim }] }]}>
-              {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
-              <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.circuloRelojContent}>
-                {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
-                <Text style={estilos.tiempo} numberOfLines={1} adjustsFontSizeToFit>{formatearTiempo(segundos)}</Text>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.estadoTexto}>{estaActivo ? t('controlAsistencia.status_active') : t('controlAsistencia.status_off')}</Text>
-              </BlurView>
-            </Animated.View>
-          </View>
-
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-          <View style={estilos.acciones}>
-            <View style={estilos.estadoUbicacion}>
-              <MaterialIcons name={ubicacionEstado === 'granted' ? 'my-location' : 'location-off'} size={16} color={ubicacionEstado === 'granted' ? COLORES.exito : colores.textoSecundario} />
-              <Text style={estilos.estadoUbicacionTexto}>{textoUbicacion}</Text>
+        {/* HERO: PANEL CRONÓMETRO DE JORNADA */}
+        <Animated.View
+          entering={FadeInDown.duration(260).easing(Easing.out(Easing.quad))}
+          style={estilos.panelHero}
+        >
+          <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.heroContenido}>
+            {/* Badge de Estado Pulsante */}
+            <View style={estilos.badgeEstadoContenedor}>
+              <View style={[
+                estilos.puntoEstado,
+                { backgroundColor: estaActivo ? (enPausa ? '#F59E0B' : '#10B981') : colores.textoSuave }
+              ]} />
+              <Text style={[
+                estilos.textoEstadoBadge,
+                { color: estaActivo ? (enPausa ? '#F59E0B' : '#10B981') : colores.textoSuave }
+              ]}>
+                {estaActivo
+                  ? enPausa
+                    ? 'EN PAUSA (DESCANSO)'
+                    : 'JORNADA EN CURSO'
+                  : 'FUERA DE TURNO'}
+              </Text>
             </View>
-            {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-            <TouchableOpacity 
-              style={[estilos.botonPrincipal, registrando && estilos.botonDeshabilitado]} 
-              onPress={manejarAccionPrincipal}
-              disabled={registrando}
-            >
-              {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
-              <LinearGradient 
-                colors={estaActivo ? [COLORES.error, '#be123c'] : [COLORES.primario, COLORES.primarioFuerte]} 
-                style={estilos.gradienteBoton}
-              >
-                {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                <MaterialIcons name={estaActivo ? "exit-to-app" : "play-arrow"} size={28} color="#fff" />
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.textoBotonPrincipal}>{estaActivo ? t('controlAsistencia.btn_end') : t('controlAsistencia.btn_start')}</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+
+            {/* Display Numérico del Cronómetro */}
+            <Animated.View style={[estilos.relojDisplayWrap, estiloReloj]}>
+              <Text style={estilos.tiempoDisplay} numberOfLines={1} adjustsFontSizeToFit>
+                {formatearTiempo(segundos)}
+              </Text>
+            </Animated.View>
+
+            {/* Subtítulos de Fecha & Entrada */}
+            <Text style={estilos.fechaTextoCapital}>{formatearFechaHoy()}</Text>
+
+            {horaEntrada && (
+              <View style={estilos.filaEntradaRegistrada}>
+                <Feather name="log-in" size={13} color={esOscuro ? '#93C5FD' : '#2563EB'} />
+                <Text style={estilos.textoEntradaRegistrada}>Inicio registrado: {horaEntrada}</Text>
+              </View>
+            )}
+
+            {/* Botones de Marcaje */}
+            <View style={estilos.accionesMarcaje}>
+              {!estaActivo ? (
+                <BotonAnimado
+                  style={estilos.botonEntrada}
+                  onPress={manejarIniciarEntrada}
+                  disabled={registrando}
+                  scaleTo={0.97}
+                >
+                  <View style={estilos.contenidoBotonPrimario}>
+                    {registrando ? (
+                      <ActivityIndicator size="small" color="#ffffff" />
+                    ) : (
+                      <Feather name="play" size={18} color="#ffffff" />
+                    )}
+                    <Text style={estilos.textoBotonPrimario}>
+                      {registrando ? 'Registrando Entrada...' : 'Iniciar Jornada'}
+                    </Text>
+                  </View>
+                </BotonAnimado>
+              ) : (
+                <View style={estilos.filaBotonesActivos}>
+                  <BotonAnimado
+                    style={[estilos.botonPausa, enPausa && estilos.botonPausaActiva]}
+                    onPress={alternarPausa}
+                    disabled={registrando}
+                    scaleTo={0.96}
+                  >
+                    <View style={estilos.contenidoBotonPausa}>
+                      <Feather name={enPausa ? "play" : "pause"} size={16} color={enPausa ? "#10B981" : "#F59E0B"} />
+                      <Text style={[estilos.textoBotonPausa, enPausa && { color: "#10B981" }]}>
+                        {enPausa ? 'Reanudar' : 'Pausar'}
+                      </Text>
+                    </View>
+                  </BotonAnimado>
+
+                  <BotonAnimado
+                    style={estilos.botonSalida}
+                    onPress={confirmarFinalizarSalida}
+                    disabled={registrando}
+                    scaleTo={0.96}
+                  >
+                    <View style={estilos.contenidoBotonSalida}>
+                      {registrando ? (
+                        <ActivityIndicator size="small" color="#ffffff" />
+                      ) : (
+                        <Feather name="square" size={16} color="#ffffff" />
+                      )}
+                      <Text style={estilos.textoBotonSalida}>Finalizar Turno</Text>
+                    </View>
+                  </BotonAnimado>
+                </View>
+              )}
+            </View>
+          </BlurView>
+        </Animated.View>
+
+        {/* MÉTRICAS BENTO DE ASISTENCIA */}
+        <Text style={estilos.seccionLabel}>RESUMEN DE ASISTENCIA</Text>
+        <Animated.View
+          entering={FadeInDown.duration(260).delay(40).easing(Easing.out(Easing.quad))}
+          style={estilos.resumenGrid}
+        >
+          <View style={estilos.resumenCard}>
+            <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.resumenContent}>
+              <View style={[estilos.resumenIconBadge, { backgroundColor: esOscuro ? 'rgba(59,130,246,0.14)' : 'rgba(37,99,235,0.08)' }]}>
+                <Feather name="clock" size={15} color={esOscuro ? '#93C5FD' : '#2563EB'} />
+              </View>
+              <Text style={estilos.resumenValor}>8h 00m</Text>
+              <Text style={estilos.resumenLabel}>Meta Jornada</Text>
+            </BlurView>
           </View>
-        </View>
+
+          <View style={estilos.resumenCard}>
+            <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.resumenContent}>
+              <View style={[estilos.resumenIconBadge, { backgroundColor: 'rgba(16,185,129,0.12)' }]}>
+                <Feather name="check-circle" size={15} color="#10B981" />
+              </View>
+              <Text style={[estilos.resumenValor, { color: '#10B981' }]}>A tiempo</Text>
+              <Text style={estilos.resumenLabel}>Puntualidad</Text>
+            </BlurView>
+          </View>
+
+          <View style={estilos.resumenCard}>
+            <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.resumenContent}>
+              <View style={[estilos.resumenIconBadge, { backgroundColor: 'rgba(245,158,11,0.12)' }]}>
+                <Feather name="zap" size={15} color="#F59E0B" />
+              </View>
+              <Text style={[estilos.resumenValor, { color: '#F59E0B' }]}>{metrics?.racha || 1} días</Text>
+              <Text style={estilos.resumenLabel}>Racha Activa</Text>
+            </BlurView>
+          </View>
+        </Animated.View>
+
+        {/* DETALLE Y NORMAS DE ASISTENCIA */}
+        <Text style={estilos.seccionLabel}>POLÍTICA DE MARCACIÓN</Text>
+        <Animated.View
+          entering={FadeInDown.duration(260).delay(80).easing(Easing.out(Easing.quad))}
+          style={estilos.tarjetaNormas}
+        >
+          <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.normasContent}>
+            <View style={estilos.filaNorma}>
+              <View style={estilos.iconoNormaBadge}>
+                <Feather name="map-pin" size={15} color={esOscuro ? '#93C5FD' : '#2563EB'} />
+              </View>
+              <View style={estilos.textosNorma}>
+                <Text style={estilos.tituloNorma}>Geolocalización y Cifrado</Text>
+                <Text style={estilos.descNorma}>Cada evento se firma criptográficamente contra el servidor de tu empresa.</Text>
+              </View>
+            </View>
+
+            <View style={estilos.divisorNorma} />
+
+            <View style={estilos.filaNorma}>
+              <View style={estilos.iconoNormaBadge}>
+                <Feather name="shield" size={15} color="#10B981" />
+              </View>
+              <View style={estilos.textosNorma}>
+                <Text style={estilos.tituloNorma}>Tolerancia de Entrada</Text>
+                <Text style={estilos.descNorma}>Dispones de 15 minutos de gracia a partir de tu horario oficial asignado.</Text>
+              </View>
+            </View>
+          </BlurView>
+        </Animated.View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-/**
- * Mapa de estilos crearEstilos. Centraliza reglas visuales para que el JSX se mantenga legible y consistente.
- */
 function crearEstilos(c: any, esOscuro: boolean) {
-  // Declara glass; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const glass = esOscuro ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.72)';
-  // Devuelve el valor final calculado para esta funcion o caso de uso.
+  const glass = esOscuro ? 'rgba(24, 24, 38, 0.88)' : 'rgba(255, 255, 255, 0.94)';
+  const glassMini = c.vidrioSutil;
+
   return StyleSheet.create({
-    // contenedor: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
     contenedor: { flex: 1, backgroundColor: c.fondo },
-    // scroll: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    scroll: { flexGrow: 1 },
-    // fondoAbsoluto: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     fondoAbsoluto: { ...StyleSheet.absoluteFillObject, zIndex: -1, overflow: 'hidden' },
-    // cuerpo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    cuerpo: { flex: 1, padding: ESPACIADO.xl, alignItems: 'center', justifyContent: 'center', paddingTop: 60 },
-    // subtitulo: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
-    subtitulo: { ...TIPOGRAFIA.cuerpoGrande, color: c.textoSecundario, textAlign: 'center', marginBottom: 40 },
-    // panelReloj: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    panelReloj: { marginBottom: 50 },
-    // circuloReloj: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    circuloReloj: { width: 260, height: 260, borderRadius: 130, backgroundColor: glass, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: c.borde, overflow: 'hidden' },
-    // circuloRelojContent: estilo del area de contenido; controla padding, distribucion y separacion interna.
-    circuloRelojContent: { flex: 1, width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
-    // circuloActivo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    circuloActivo: { borderColor: c.primarioClaro },
-    // tiempo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    tiempo: { fontSize: 54, fontWeight: '900', color: esOscuro ? '#fff' : '#111827', letterSpacing: 1, textAlign: 'center', width: '80%' },
-    // estadoTexto: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    estadoTexto: { fontSize: 12, fontWeight: '800', color: c.primarioClaro, marginTop: 10, textTransform: 'uppercase' },
-    // acciones: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    acciones: { width: '100%', gap: ESPACIADO.md, paddingHorizontal: ESPACIADO.lg },
-    estadoUbicacion: { minHeight: 36, borderRadius: RADIOS.lg, borderWidth: 1, borderColor: c.borde, backgroundColor: glass, paddingHorizontal: ESPACIADO.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-    estadoUbicacionTexto: { ...TIPOGRAFIA.cuerpoPequeno, color: c.textoSecundario, fontWeight: '800', textAlign: 'center' },
-    // botonPrincipal: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
-    botonPrincipal: { width: '100%', borderRadius: RADIOS.xl, overflow: 'hidden', ...SOMBRAS.flotante },
-    // gradienteBoton: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
-    gradienteBoton: { flexDirection: 'row', paddingVertical: ESPACIADO.xl, alignItems: 'center', justifyContent: 'center', gap: 12 },
-    // textoBotonPrincipal: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    textoBotonPrincipal: { color: '#fff', fontWeight: '800', fontSize: 18 },
-    // botonDeshabilitado: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
-    botonDeshabilitado: { opacity: 0.6 },
+
+    scroll: {
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: 110,
+    },
+
+    panelHero: {
+      borderRadius: 24,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: esOscuro ? 'rgba(96,165,250,0.3)' : 'rgba(37,99,235,0.2)',
+      backgroundColor: glass,
+      marginBottom: 20,
+      ...SOMBRAS.flotante,
+    },
+    heroContenido: {
+      padding: 20,
+      alignItems: 'center',
+    },
+
+    badgeEstadoContenedor: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+      paddingHorizontal: 12,
+      paddingVertical: 5,
+      borderRadius: 999,
+      backgroundColor: glassMini,
+      borderWidth: 1,
+      borderColor: c.borde,
+      marginBottom: 16,
+    },
+    puntoEstado: {
+      width: 7,
+      height: 7,
+      borderRadius: 3.5,
+    },
+    textoEstadoBadge: {
+      fontSize: 10.5,
+      fontWeight: '800',
+      letterSpacing: 0.5,
+    },
+
+    relojDisplayWrap: {
+      marginVertical: 4,
+      paddingHorizontal: 8,
+    },
+    tiempoDisplay: {
+      fontSize: 48,
+      fontWeight: '900',
+      color: c.texto,
+      letterSpacing: -1,
+      textAlign: 'center',
+      fontVariant: ['tabular-nums'],
+    },
+
+    fechaTextoCapital: {
+      fontSize: 13,
+      color: c.textoSecundario,
+      textTransform: 'capitalize',
+      marginTop: 4,
+      fontWeight: '600',
+    },
+
+    filaEntradaRegistrada: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginTop: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 8,
+      backgroundColor: esOscuro ? 'rgba(59,130,246,0.12)' : 'rgba(37,99,235,0.06)',
+    },
+    textoEntradaRegistrada: {
+      fontSize: 11.5,
+      color: esOscuro ? '#93C5FD' : '#2563EB',
+      fontWeight: '700',
+    },
+
+    accionesMarcaje: {
+      width: '100%',
+      marginTop: 22,
+    },
+    botonEntrada: {
+      borderRadius: 18,
+      height: 52,
+      backgroundColor: esOscuro ? '#2563EB' : '#1D4ED8',
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...SOMBRAS.flotante,
+    },
+    contenidoBotonPrimario: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    textoBotonPrimario: {
+      color: '#ffffff',
+      fontWeight: '800',
+      fontSize: 16,
+      letterSpacing: 0.2,
+    },
+
+    filaBotonesActivos: {
+      flexDirection: 'row',
+      gap: 10,
+    },
+    botonPausa: {
+      flex: 1,
+      borderRadius: 16,
+      height: 48,
+      backgroundColor: 'rgba(245,158,11,0.12)',
+      borderWidth: 1,
+      borderColor: 'rgba(245,158,11,0.3)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    botonPausaActiva: {
+      backgroundColor: 'rgba(16,185,129,0.12)',
+      borderColor: 'rgba(16,185,129,0.3)',
+    },
+    contenidoBotonPausa: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    textoBotonPausa: {
+      color: '#F59E0B',
+      fontWeight: '800',
+      fontSize: 13.5,
+    },
+    botonSalida: {
+      flex: 1.3,
+      borderRadius: 16,
+      height: 48,
+      backgroundColor: '#EF4444',
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...SOMBRAS.flotante,
+    },
+    contenidoBotonSalida: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    textoBotonSalida: {
+      color: '#ffffff',
+      fontWeight: '800',
+      fontSize: 14,
+    },
+
+    seccionLabel: {
+      fontSize: 11,
+      fontWeight: '800',
+      color: c.textoSuave,
+      letterSpacing: 0.6,
+      textTransform: 'uppercase',
+      marginBottom: 10,
+      paddingHorizontal: 2,
+    },
+
+    resumenGrid: {
+      flexDirection: 'row',
+      gap: 10,
+      marginBottom: 20,
+    },
+    resumenCard: {
+      flex: 1,
+      minHeight: 96,
+      borderRadius: 20,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: c.borde,
+      backgroundColor: glass,
+      ...SOMBRAS.flotante,
+    },
+    resumenContent: {
+      flex: 1,
+      padding: 12,
+      justifyContent: 'space-between',
+    },
+    resumenIconBadge: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: c.borde,
+    },
+    resumenValor: {
+      fontSize: 16,
+      fontWeight: '900',
+      color: c.texto,
+      letterSpacing: -0.2,
+      marginTop: 4,
+    },
+    resumenLabel: {
+      fontSize: 10.5,
+      fontWeight: '700',
+      color: c.textoSuave,
+    },
+
+    tarjetaNormas: {
+      borderRadius: 20,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: c.borde,
+      backgroundColor: glass,
+      ...SOMBRAS.flotante,
+    },
+    normasContent: {
+      padding: 16,
+      gap: 12,
+    },
+    filaNorma: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    iconoNormaBadge: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: glassMini,
+      borderWidth: 1,
+      borderColor: c.borde,
+    },
+    textosNorma: { flex: 1 },
+    tituloNorma: {
+      fontSize: 13.5,
+      fontWeight: '800',
+      color: c.texto,
+    },
+    descNorma: {
+      fontSize: 11.5,
+      color: c.textoSecundario,
+      lineHeight: 16,
+      marginTop: 2,
+    },
+    divisorNorma: {
+      height: 1,
+      backgroundColor: c.borde,
+    },
   });
 }

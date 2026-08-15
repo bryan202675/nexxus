@@ -34,6 +34,20 @@ import { formatoFecha } from "services/saFormat";
 const DIAS_CORTOS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
 const hoyISO = () => new Date().toISOString().slice(0, 10);
 
+// El nivel de estres de un check-in solo vive en el jsonb `datos` (no hay columna dedicada).
+// Misma idea que normalizeCheckIn() en rol-workspace/WorkspaceCheckIn.tsx, simplificada a un numero 1-5.
+function estresDeCheckIn(c) {
+  const raw = c.datos?.estres ?? c.datos?.nivelEstres ?? c.datos?.nivel_estres;
+  const numeric = Number(raw);
+  if (Number.isFinite(numeric) && numeric > 0) return numeric;
+  const texto = String(raw || "").toLowerCase();
+  if (texto.includes("crit")) return 5;
+  if (texto.includes("alto")) return 4;
+  if (texto.includes("moderado")) return 3;
+  if (texto.includes("bajo")) return 1;
+  return null;
+}
+
 const columnsRecientes = [
   { Header: "ACCIÓN", accessor: "accion" },
   { Header: "MÓDULO", accessor: "modulo" },
@@ -93,29 +107,34 @@ export default function DashboardAdmin() {
     const costoMensual = payments.reduce((sum, p) => sum + (p.salario_bruto || p.salario_neto || 0), 0);
 
     const hoy = hoyISO();
-    const checkInsHoy = checkIns.filter((c) => (c.fecha || "").slice(0, 10) === hoy).length;
+    const checkInsHoy = checkIns.filter((c) => (c.created_at || "").slice(0, 10) === hoy).length;
     const participacion = activos.length > 0 ? Math.round((checkInsHoy / activos.length) * 100) : 0;
 
     const entradasHoy = asistenciasHoy.filter((a) => a.tipo === "entrada").length;
     const salidasHoy = asistenciasHoy.filter((a) => a.tipo === "salida").length;
     const retrasos = asistenciasHoy.filter((a) => a.tarde).length;
-    const horasExtra = asistenciasHoy.reduce((sum, a) => sum + (a.horas_extra_calculadas || 0), 0);
+    const horasExtra = asistenciasHoy.reduce((sum, a) => sum + (a.horas_extra || 0), 0);
 
-    const checkInsHoyLista = checkIns.filter((c) => (c.fecha || "").slice(0, 10) === hoy);
-    const estresPromedio = checkInsHoyLista.length
-      ? checkInsHoyLista.reduce((sum, c) => sum + (c.estres || 0), 0) / checkInsHoyLista.length
+    const checkInsHoyLista = checkIns.filter((c) => (c.created_at || "").slice(0, 10) === hoy);
+    const estresValores = checkInsHoyLista.map(estresDeCheckIn).filter((v) => v !== null);
+    const estresPromedio = estresValores.length
+      ? estresValores.reduce((sum, v) => sum + v, 0) / estresValores.length
       : 0;
     const bienestar = Math.max(0, Math.min(100, Math.round(((5 - estresPromedio) / 5) * 100)));
     const riesgo = 100 - bienestar;
 
-    const alertas = auditoria.filter((a) => a.estado === "Error" || a.estado === "Warning").length;
+    // audit_logs no tiene columna de severidad/estado, asi que "Alertas de auditoria" se
+    // repurpone como el total de eventos de auditoria registrados hoy.
+    const alertas = auditoria.filter((a) => (a.created_at || "").slice(0, 10) === hoy).length;
     const ausenciasPendientes = ausencias.filter((a) => a.estado === "pendiente").length;
     const internasPendientes = internas.filter((s) => s.estado === "pendiente" || s.estado === "pendiente_aprobacion").length;
     const aprobacionesPendientes = ausenciasPendientes + internasPendientes;
 
     const documentosPendientes = documentos.filter((d) => !d.leido).length;
     const notificacionesNoLeidas = notificaciones.filter((n) => !n.leido && !n.leida).length;
-    const incidenciasAbiertas = feedbacks.filter((f) => (f.tipo === "problema" || f.tipo === "dificultad") && !f.resuelto).length;
+    const incidenciasAbiertas = feedbacks.filter(
+      (f) => (f.categoria === "problema" || f.categoria === "dificultad") && f.datos?.estado !== "resuelto"
+    ).length;
     const inboxCritico = inbox.filter((i) => i.prioridad === "urgente" || i.critico === true).length;
 
     return {
@@ -160,7 +179,7 @@ export default function DashboardAdmin() {
 
   const empleadosSinCheckIn = useMemo(() => {
     const hoy = hoyISO();
-    const conCheckIn = new Set(checkIns.filter((c) => (c.fecha || "").slice(0, 10) === hoy).map((c) => c.userId || c.usuarioId));
+    const conCheckIn = new Set(checkIns.filter((c) => (c.created_at || "").slice(0, 10) === hoy).map((c) => c.usuario_id));
     return (empleados || [])
       .filter((u) => u.activo !== false && !conCheckIn.has(u.id))
       .slice(0, 5);
@@ -171,10 +190,10 @@ export default function DashboardAdmin() {
       auditoria.slice(0, 8).map((a) => ({
         accion: a.accion,
         modulo: a.modulo,
-        usuario: a.usuarioNombre || "—",
-        fecha: formatoFecha(a.timestamp),
+        usuario: empleadosPorId.get(a.actor_id)?.nombre || "—",
+        fecha: formatoFecha(a.created_at),
       })),
-    [auditoria]
+    [auditoria, empleadosPorId]
   );
 
   const widgets = [
@@ -182,7 +201,7 @@ export default function DashboardAdmin() {
     { icon: MdOutlineTrendingUp, title: "Productividad", subtitle: `${metricas.productividad}%` },
     { icon: MdOutlinePriorityHigh, title: "Prioridades", subtitle: `${metricas.riesgo}%` },
     { icon: MdOutlineHowToReg, title: "Check-ins hoy", subtitle: `${metricas.checkInsHoy} (${metricas.participacion}%)` },
-    { icon: MdOutlineWarningAmber, title: "Alertas de auditoría", subtitle: String(metricas.alertas) },
+    { icon: MdOutlineWarningAmber, title: "Eventos de auditoría hoy", subtitle: String(metricas.alertas) },
     { icon: MdOutlineNotificationsActive, title: "Aprobaciones pendientes", subtitle: String(metricas.aprobacionesPendientes) },
   ];
 

@@ -42,6 +42,10 @@ export class SupabaseAuthRepository implements IAuthRepository {
     await supabase.auth.signOut();
   }
 
+  async logoutOtherSessions(): Promise<void> {
+    await supabase.auth.signOut({ scope: 'others' });
+  }
+
   async getCurrentUser(): Promise<User | null> {
     const { data } = await supabase.auth.getSession();
     const uid = data.session?.user?.id;

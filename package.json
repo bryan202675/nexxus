@@ -15,9 +15,13 @@
     "build:hosting": "bash scripts/build-hosting.sh"
   },
   "dependencies": {
-    "colorjs.io": "^0.7.1"
+    "colorjs.io": "^0.7.1",
+    "react-native-worklets": "0.5.1"
   },
   "devDependencies": {
     "turbo": "^2.3.0"
+  },
+  "overrides": {
+    "react-native-worklets": "0.5.1"
   }
 }

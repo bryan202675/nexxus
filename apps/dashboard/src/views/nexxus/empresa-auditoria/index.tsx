@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { MdSearch } from "react-icons/md";
 import {
   MdOutlineFactCheck,
-  MdOutlineCheckCircle,
-  MdOutlineWarningAmber,
-  MdOutlineErrorOutline,
+  MdOutlineToday,
+  MdOutlineCategory,
+  MdOutlinePeopleAlt,
 } from "react-icons/md";
 
 import NexxusCard from "views/nexxus/components/NexxusCard";
@@ -13,26 +13,19 @@ import RecordsTable from "views/nexxus/components/RecordsTable";
 
 import { useAuth } from "context/AuthContext";
 import { useEmpresaPlan, tieneFeature } from "services/planEnforcement";
-import { subscribeAuditLogs } from "services/adminRepository";
+import { subscribeAuditLogs, subscribeEmpleados } from "services/adminRepository";
 import { formatoFechaHora } from "services/saFormat";
 
-// Mismo mapeo que AUDIT_STATUS_MAP en views/nexxus/auditoria/index.jsx (Super Admin): RecordsTable
-// solo reconoce estos tres literales ("Approved" | "Disable" | "Error") para su columna "status".
-const AUDIT_STATUS_MAP = { Success: "Approved", Warning: "Error", Error: "Disable" };
-
-const ESTADO_OPTIONS = [
-  { value: "", label: "Todos" },
-  { value: "Success", label: "Success" },
-  { value: "Warning", label: "Warning" },
-  { value: "Error", label: "Error" },
-];
+// audit_logs no tiene columna de estado/severidad (solo id, empresa_id, actor_id, accion,
+// modulo, detalles, target_id, created_at), asi que no hay badge de Success/Warning/Error
+// honesto que mostrar. En su lugar se muestran acción y módulo (datos reales) y se filtra por módulo.
+const hoyISO = () => new Date().toISOString().slice(0, 10);
 
 const COLUMNAS_AUDITORIA = [
   { Header: "Acción", accessor: "accion" },
   { Header: "Módulo", accessor: "modulo" },
   { Header: "Usuario", accessor: "usuario" },
   { Header: "Fecha", accessor: "fecha" },
-  { Header: "Estado", accessor: "status" },
 ];
 
 function csvEscape(value) {
@@ -47,9 +40,10 @@ export default function AuditoriaAdmin() {
   const tieneExportar = tieneFeature(planFeatures, "exports");
 
   const [registros, setRegistros] = useState(null);
+  const [usuarios, setUsuarios] = useState(null);
   const [error, setError] = useState("");
   const [busqueda, setBusqueda] = useState("");
-  const [estado, setEstado] = useState("");
+  const [modulo, setModulo] = useState("");
 
   useEffect(() => {
     if (!empresaId) return undefined;
@@ -61,26 +55,48 @@ export default function AuditoriaAdmin() {
     return () => unsubscribe();
   }, [empresaId]);
 
+  useEffect(() => {
+    if (!empresaId) return undefined;
+    const unsubscribe = subscribeEmpleados(
+      empresaId,
+      (docs) => setUsuarios(docs.map((d) => ({ id: d.id, ...d.data() }))),
+      (err) => setError(err.message || "No se pudo conectar con Firestore.")
+    );
+    return () => unsubscribe();
+  }, [empresaId]);
+
+  const usuariosPorId = useMemo(() => {
+    const map = new Map();
+    (usuarios || []).forEach((u) => map.set(u.id, u));
+    return map;
+  }, [usuarios]);
+
+  const modulosDisponibles = useMemo<string[]>(() => {
+    const set = new Set<string>((registros || []).map((r) => String(r.modulo || "")).filter(Boolean));
+    return Array.from(set).sort();
+  }, [registros]);
+
   const registrosFiltrados = useMemo(() => {
     const lista = registros || [];
     const texto = busqueda.trim().toLowerCase();
     return lista
-      .filter((registro) => (estado ? registro.estado === estado : true))
+      .filter((registro) => (modulo ? registro.modulo === modulo : true))
       .filter((registro) => {
         if (!texto) return true;
-        const campos = [registro.accion, registro.modulo, registro.usuarioNombre, registro.detalles];
+        const nombreActor = usuariosPorId.get(registro.actor_id)?.nombre || "";
+        const campos = [registro.accion, registro.modulo, nombreActor, registro.detalles];
         return campos.some((campo) => (campo || "").toLowerCase().includes(texto));
       });
-  }, [registros, busqueda, estado]);
+  }, [registros, busqueda, modulo, usuariosPorId]);
 
   const kpis = useMemo(() => {
     const lista = registros || [];
+    const hoy = hoyISO();
     const total = lista.length;
-    const exitos = lista.filter((r) => r.estado === "Success").length;
-    const advertencias = lista.filter((r) => r.estado === "Warning").length;
-    const errores = lista.filter((r) => r.estado === "Error").length;
-    const porcentajeExito = total > 0 ? Math.round((exitos / total) * 100) : 0;
-    return { total, porcentajeExito, advertencias, errores };
+    const hoyCount = lista.filter((r) => (r.created_at || "").slice(0, 10) === hoy).length;
+    const modulosCount = new Set(lista.map((r) => r.modulo).filter(Boolean)).size;
+    const usuariosCount = new Set(lista.map((r) => r.actor_id).filter(Boolean)).size;
+    return { total, hoyCount, modulosCount, usuariosCount };
   }, [registros]);
 
   const filasTabla = useMemo(
@@ -88,21 +104,19 @@ export default function AuditoriaAdmin() {
       registrosFiltrados.map((registro) => ({
         accion: registro.accion || "—",
         modulo: registro.modulo || "—",
-        usuario: registro.usuarioNombre || "—",
-        fecha: formatoFechaHora(registro.timestamp),
-        status: AUDIT_STATUS_MAP[registro.estado] || "Approved",
+        usuario: usuariosPorId.get(registro.actor_id)?.nombre || "—",
+        fecha: formatoFechaHora(registro.created_at),
       })),
-    [registrosFiltrados]
+    [registrosFiltrados, usuariosPorId]
   );
 
   const handleExportar = () => {
-    const encabezados = ["Acción", "Módulo", "Usuario", "Fecha", "Estado", "Detalles"];
+    const encabezados = ["Acción", "Módulo", "Usuario", "Fecha", "Detalles"];
     const filas = registrosFiltrados.map((r) => [
       r.accion || "",
       r.modulo || "",
-      r.usuarioNombre || "",
-      formatoFechaHora(r.timestamp),
-      r.estado || "",
+      usuariosPorId.get(r.actor_id)?.nombre || "",
+      formatoFechaHora(r.created_at),
       r.detalles || "",
     ]);
     const csvContent = [encabezados, ...filas].map((fila) => fila.map(csvEscape).join(",")).join("\n");
@@ -120,9 +134,9 @@ export default function AuditoriaAdmin() {
 
   const widgets = [
     { icon: MdOutlineFactCheck, title: "Total eventos", subtitle: String(kpis.total) },
-    { icon: MdOutlineCheckCircle, title: "Éxito", subtitle: `${kpis.porcentajeExito}%` },
-    { icon: MdOutlineWarningAmber, title: "Advertencias", subtitle: String(kpis.advertencias) },
-    { icon: MdOutlineErrorOutline, title: "Errores", subtitle: String(kpis.errores) },
+    { icon: MdOutlineToday, title: "Eventos hoy", subtitle: String(kpis.hoyCount) },
+    { icon: MdOutlineCategory, title: "Módulos activos", subtitle: String(kpis.modulosCount) },
+    { icon: MdOutlinePeopleAlt, title: "Usuarios activos", subtitle: String(kpis.usuariosCount) },
   ];
 
   if (!empresaId) {
@@ -166,13 +180,14 @@ export default function AuditoriaAdmin() {
                 />
               </div>
               <select
-                value={estado}
-                onChange={(event) => setEstado(event.target.value)}
+                value={modulo}
+                onChange={(event) => setModulo(event.target.value)}
                 className="h-11 w-full rounded-xl border border-gray-200 bg-white/0 px-3 text-sm text-navy-700 outline-none dark:!border-charcoal-border dark:bg-charcoal dark:text-white md:w-56"
               >
-                {ESTADO_OPTIONS.map((opcion) => (
-                  <option key={opcion.value} value={opcion.value} className="dark:bg-charcoal">
-                    {opcion.label}
+                <option value="" className="dark:bg-charcoal">Todos los módulos</option>
+                {modulosDisponibles.map((m) => (
+                  <option key={m} value={m} className="dark:bg-charcoal">
+                    {m}
                   </option>
                 ))}
               </select>

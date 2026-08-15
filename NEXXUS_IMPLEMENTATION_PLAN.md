@@ -32,7 +32,7 @@ Contexto: este repo ya pasó por una migración completa de Firebase → Supabas
 | `nexxus/app` (Expo) | Expo `~54.0.33`, React `19.1.0`, React Native `0.81.5`, react-native-web `^0.21.0`, TypeScript `~5.9.2` |
 | `web-dashboard` | React `19.0.0` + `react-scripts` (CRA 5) — **100% JavaScript, 0 archivos `.ts`/`.tsx`** (72 archivos `.js`/`.jsx`) |
 | Backend | Supabase (Postgres + RLS + Auth + Edge Functions + Realtime), 49 tablas, 23 Edge Functions, 11 migraciones |
-| IA | Google Gemini (`gemini-2.5-flash` por defecto), integrada en `ask-nexxus-ai`, con tracking de costo/uso (`ai_usage`, `ai_usage_daily`) |
+| IA | Google Gemini (`gemini-3.6-flash` por defecto), integrada en `ask-nexxus-ai`, con tracking de costo/uso (`ai_usage`, `ai_usage_daily`) |
 | Pagos | **Simulado.** `confirm-plan-purchase` inserta una fila en `payments` sin pasar por ningún gateway real; solo funciona hoy porque hay un flag `NEXXUS_ALLOW_UNVERIFIED_PAID_CHECKOUT` que evita bloquear compras con monto > 0 |
 | Monorepo | `npm` workspaces parcial (`nexxus/package.json` solo integra `app`), `web-dashboard` es un paquete hermano suelto orquestado por `concurrently` desde el `package.json` raíz. **No hay Turborepo ni ninguna herramienta de build cacheado.** |
 | Hosting | Vercel (`vercel.json`), build único que sirve `nexxus/app` en `/` y `web-dashboard` en `/workspace` |

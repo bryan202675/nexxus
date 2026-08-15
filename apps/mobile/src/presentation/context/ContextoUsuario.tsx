@@ -7,7 +7,7 @@
  */
 
 // Importa React, { createContext, useContext, ReactNode, useEffect, useState, useCallback } desde React; habilita componentes, hooks y tipos base para esta pieza.
-import React, { createContext, useContext, ReactNode, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, ReactNode, useEffect, useState, useCallback, useMemo } from 'react';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
 // Importa { useAuth }; reutiliza hooks propios que encapsulan estado, auth o consultas.
@@ -22,6 +22,7 @@ import { CreateCheckInDTO, WellnessMetricsDTO } from 'domain/application/dtos/Ch
 import { LoginDTO } from 'domain/application/dtos/AuthDTO';
 // Importa { useCases }; contenedor de DI ya resuelto sobre Supabase.
 import { useCases } from '@/infrastructure/container';
+import { obtenerDeviceId, obtenerNombreDispositivo, obtenerSistemaOperativo, obtenerVersionApp } from '@/infrastructure/storage/deviceIdentity';
 // Importa { Task }; usa tipos de dominio para que los datos mantengan estructura consistente.
 import { Task } from 'domain/entities/Task';
 // Importa { Absence }; usa tipos de dominio para que los datos mantengan estructura consistente.
@@ -40,7 +41,7 @@ import { FocusSession } from 'domain/entities/FocusSession';
 import { Feedback } from 'domain/entities/Feedback';
 // Importa { InternalRequest, NuevaSolicitudInterna }; usa tipos de dominio para que los datos mantengan estructura consistente.
 import { InternalRequest, NuevaSolicitudInterna } from 'domain/entities/InternalRequest';
-import type { AttendanceGeoPoint, AttendanceLocationStatus, AttendanceMethod } from 'domain/entities/Attendance';
+import { calcularDiasVacacionesDisponibles } from 'domain/services/vacationEngine';
 // Importa { ContextualMessage }; depende de contratos de repositorio sin acoplarse a una implementacion concreta.
 import { ContextualMessage } from 'domain/repositories/IFase2Repositories';
 // Importa { subirFotoPerfil }; reutiliza codigo local de Nexxus para evitar duplicar logica o estilos.
@@ -51,12 +52,6 @@ import { usePushNotifications } from '@/presentation/hooks/usePushNotifications'
 /**
  * Define el contrato de datos EstadoContextoUsuario; documenta campos esperados y evita pasar objetos ambiguos entre capas.
  */
-interface AttendanceEventMetadata {
-  gps?: AttendanceGeoPoint;
-  metodoRegistro?: AttendanceMethod;
-  ubicacionEstado?: AttendanceLocationStatus;
-}
-
 interface EstadoContextoUsuario {
   perfil: User | null;
   uidUsuario: string | null;
@@ -91,6 +86,8 @@ interface EstadoContextoUsuario {
   cambiarEstadoTarea: (id: string, estado: Task['estado']) => Promise<void>;
   actualizarTarea: (id: string, data: Partial<Task>) => Promise<void>;
   crearSolicitudAusencia: (dto: any) => Promise<void>;
+  actualizarSolicitudAusencia?: (id: string, data: Partial<Absence>) => Promise<void>;
+  cancelarSolicitudAusencia?: (id: string) => Promise<void>;
   crearSolicitudInterna: (dto: NuevaSolicitudInterna) => Promise<void>;
   registrarCita: (dto: any) => Promise<void>;
   leerNotificacion: (id: string) => Promise<void>;
@@ -100,7 +97,7 @@ interface EstadoContextoUsuario {
   marcarDocumentoLeido: (id: string) => Promise<void>;
   enviarFeedback: (dto: Omit<Feedback, 'id' | 'estado' | 'fecha'>) => Promise<void>;
   resolverItemInbox: (id: string) => Promise<void>;
-  registrarEventoAsistencia: (tipo: 'entrada' | 'salida' | 'inicio_pausa' | 'fin_pausa', metadata?: AttendanceEventMetadata) => Promise<void>;
+  registrarEventoAsistencia: (tipo: 'entrada' | 'salida' | 'inicio_pausa' | 'fin_pausa') => Promise<void>;
   enviarMensajeChat: (data: Omit<ContextualMessage, 'id' | 'timestamp'>) => Promise<void>;
   generarResumenJornada: () => Promise<string>;
   actualizarFotoPerfil: (blob: any) => Promise<void>;
@@ -177,11 +174,11 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
       const unsubNotifications = useCases.notifications.subscribe.execute(user.id, empresaId, (items) => {
         setNotificaciones(items);
       });
-      // Pagos: antes se leia una sola vez en fetchSaaSData y nunca se enteraba de cambios
-      // hechos desde el dashboard (nomina marcada como pagada), por eso solo se veia
-      // reflejado reiniciando la app. Listener en vivo igual que tareas/notificaciones.
       const unsubPayments = useCases.payments.subscribe.execute(user.id, empresaId, (items) => {
         setPagos(items);
+      });
+      const unsubAbsences = useCases.absences.subscribe.execute(user.id, (items) => {
+        setSolicitudes(items);
       });
       // Devuelve el valor final calculado para esta funcion o caso de uso.
       return () => {
@@ -191,8 +188,30 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
         unsubTasks();
         unsubNotifications();
         unsubPayments();
+        unsubAbsences();
       };
     }
+  }, [isAuthenticated, user]);
+
+  // Fase H: registra este dispositivo en sesiones_dispositivo al iniciar sesion, para que
+  // ConfiguracionApp.tsx pueda mostrar una lista real de sesiones activas (no simulada).
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+    let cancelado = false;
+    obtenerDeviceId().then((deviceId) => {
+      if (cancelado) return;
+      useCases.sessionDevices.register.execute({
+        userId: user.id,
+        empresaId: obtenerEmpresaId(user),
+        deviceId,
+        deviceName: obtenerNombreDispositivo(),
+        deviceOs: obtenerSistemaOperativo(),
+        appVersion: obtenerVersionApp(),
+      }).catch(() => {});
+    }).catch(() => {});
+    return () => {
+      cancelado = true;
+    };
   }, [isAuthenticated, user]);
 
   // Inicializa fetchSaaSData; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -339,6 +358,34 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
     await fetchSaaSData();
   };
 
+  const actualizarSolicitudAusencia = async (id: string, data: Partial<Absence>) => {
+    if (!user) return;
+    setSolicitudes((prev) => prev.map((s) => (s.id === id ? { ...s, ...data } : s)));
+    try {
+      if ((useCases.absences as any).updateAbsence) {
+        await (useCases.absences as any).updateAbsence.execute(id, data);
+      }
+    } catch (e) {
+      console.error('Error actualizando ausencia:', e);
+    }
+    await fetchSaaSData();
+  };
+
+  const cancelarSolicitudAusencia = async (id: string) => {
+    if (!user) return;
+    setSolicitudes((prev) => prev.filter((s) => s.id !== id));
+    try {
+      if ((useCases.absences as any).deleteAbsence) {
+        await (useCases.absences as any).deleteAbsence.execute(id);
+      } else if ((useCases.absences as any).updateState) {
+        await (useCases.absences as any).updateState.execute(id, 'rechazada');
+      }
+    } catch (e) {
+      console.error('Error cancelando ausencia:', e);
+    }
+    await fetchSaaSData();
+  };
+
   // Declara crearSolicitudInterna; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const crearSolicitudInterna = async (dto: NuevaSolicitudInterna) => {
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
@@ -423,7 +470,7 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
   };
 
   // Declara registrarEventoAsistencia; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const registrarEventoAsistencia = async (tipo: 'entrada' | 'salida' | 'inicio_pausa' | 'fin_pausa', metadata?: AttendanceEventMetadata) => {
+  const registrarEventoAsistencia = async (tipo: 'entrada' | 'salida' | 'inicio_pausa' | 'fin_pausa') => {
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!user) return;
     try {
@@ -431,10 +478,7 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
         userId: user.id,
         empresaId: obtenerEmpresaId(user),
         tipo,
-        gps: metadata?.gps,
-        ubicacionGeo: metadata?.gps,
-        ubicacionEstado: metadata?.ubicacionEstado || (metadata?.gps ? 'granted' : 'unavailable'),
-        metodoRegistro: metadata?.metodoRegistro || (metadata?.gps ? 'ubicacion' : 'manual'),
+        metodoRegistro: 'manual',
         estado_aprobacion: 'pendiente',
       });
     } catch (err) {
@@ -505,9 +549,20 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
   // Calcula alertasNoLeidas; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
   const alertasNoLeidas = notificaciones.filter(n => !n.leida).length;
 
+  // dias_vacaciones_disponibles no se guarda como columna -- se calcula aqui (Codigo de Trabajo de
+  // El Salvador, Art. 177) a partir de fecha_ingreso + las solicitudes ya cargadas en memoria, sin
+  // pedir datos extra. Se recalcula solo si fecha_ingreso o las solicitudes cambian.
+  const perfilConVacaciones = useMemo(() => {
+    if (!user) return user;
+    return {
+      ...user,
+      dias_vacaciones_disponibles: calcularDiasVacacionesDisponibles(user.fecha_ingreso, solicitudes),
+    };
+  }, [user, solicitudes]);
+
   // Declara valor; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const valor: EstadoContextoUsuario = {
-    perfil: user,
+    perfil: perfilConVacaciones,
     uidUsuario: user?.id || null,
     autenticado: isAuthenticated,
     cargando: authLoading,
@@ -534,6 +589,8 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
     cambiarEstadoTarea,
     actualizarTarea,
     crearSolicitudAusencia,
+    actualizarSolicitudAusencia,
+    cancelarSolicitudAusencia,
     crearSolicitudInterna,
     registrarCita,
     leerNotificacion,

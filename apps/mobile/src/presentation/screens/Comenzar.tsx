@@ -61,7 +61,7 @@ export default function Comenzar() {
         
         <View style={estilos.cabecera}>
           <Image
-            source={require('../../../assets/logozz.png')}
+            source={require('../../../assets/logoNexxus2 (1) (1).png')}
             style={estilos.logoImagen}
             resizeMode="contain"
           />

@@ -33,6 +33,7 @@ export type AdminScreenBanner = {
 export const COMPANY_MENU_ITEMS: AdminMenuItem[] = [
   { name: 'DashboardGeneral', label: 'Centro operativo', icon: 'dashboard-customize' },
   { name: 'CentroReportesSolicitudes', label: 'Solicitudes', icon: 'assignment' },
+  { name: 'GestionTickets', label: 'Tickets', icon: 'confirmation-number' },
   { name: 'GestionAsistencia', label: 'Asistencia', icon: 'schedule' },
   { name: 'CalendarioEmpresarial', label: 'Calendario', icon: 'event-note' },
   { name: 'GestionPlantilla', label: 'Plantilla', icon: 'people-outline' },
@@ -62,6 +63,7 @@ export const SUPERADMIN_MENU_ITEMS: AdminMenuItem[] = [
 export const COMPANY_SEARCH_ITEMS: AdminSearchItem[] = [
   { route: 'DashboardGeneral', title: 'Centro operativo', detail: 'productividad, aprobaciones, alertas, check-ins, actividad' },
   { route: 'CentroReportesSolicitudes', title: 'Reportes y solicitudes', detail: 'ausencias, permisos, aprobaciones, reportes disciplinarios, desempeño' },
+  { route: 'GestionTickets', title: 'Tickets de soporte', detail: 'problemas técnicos, incidentes, hilo de conversación, triage' },
   { route: 'GestionAsistencia', title: 'Asistencia y horarios', detail: 'entradas, salidas, tardanzas, horas trabajadas, salidas anticipadas' },
   { route: 'CalendarioEmpresarial', title: 'Calendario empresarial', detail: 'eventos, reuniones, feriados, agenda' },
   { route: 'GestionPlantilla', title: 'Plantilla', detail: 'empleados, sedes, roles, departamentos, tareas' },
@@ -100,6 +102,12 @@ export const COMPANY_SCREEN_BANNERS: Record<string, AdminScreenBanner> = {
     eyebrow: 'RRHH operativo',
     description: 'Bandeja unificada de ausencias, solicitudes internas, reportes y aprobaciones con trazabilidad.',
     icon: 'assignment',
+  },
+  GestionTickets: {
+    title: 'Tickets de soporte',
+    eyebrow: 'Soporte técnico',
+    description: 'Triage y respuesta a problemas técnicos e incidentes reportados por empleados, con hilo de conversación.',
+    icon: 'confirmation-number',
   },
   GestionAsistencia: {
     title: 'Asistencia y horarios',

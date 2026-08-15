@@ -10,6 +10,7 @@
 import React, { useState } from 'react';
 // Importa { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, ScrollView } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, ScrollView } from 'react-native';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
 // Importa FondoAurora; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
@@ -20,6 +21,10 @@ import { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/consta
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
+import BotonAnimado from '@/presentation/components/BotonAnimado';
+import EmptyState from '@/presentation/components/ui/EmptyState';
+import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
+import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 
 /**
  * Define el contrato de datos Props; documenta campos esperados y evita pasar objetos ambiguos entre capas.
@@ -59,6 +64,8 @@ export default function CalendarioLaboral({ navigation }: Props) {
   const { t, i18n } = useTranslation();
   // Inicializa { tareas, solicitudes, citas }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { tareas, solicitudes, citas } = useContextoUsuario();
+  const { colores, esOscuro } = useTemaMobile();
+  const estilos = crearEstilos(colores);
   // Calcula hoy; normaliza fechas para comparaciones, filtros o etiquetas visibles.
   const hoy = new Date();
   // Inicializa [mes, setMes]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -103,44 +110,32 @@ export default function CalendarioLaboral({ navigation }: Props) {
     // Contenedor seguro de la pantalla; respeta areas del dispositivo como notch, barra superior y bordes.
     <SafeAreaView style={estilos.contenedor}>
       {/* Configura la barra de estado del sistema para que combine con el fondo de esta pantalla. */}
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} />
       {/* Elemento de fondo visual; construye la atmosfera grafica de la pantalla sin cambiar los datos. */}
       <FondoAurora />
-      {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-      <View style={estilos.cabecera}>
-        {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-        <TouchableOpacity onPress={() => navigation.goBack()} style={estilos.botonRegresar}>
-          {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-          <MaterialIcons name="arrow-back" size={24} color={COLORES.texto} />
-        </TouchableOpacity>
-        {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-        <Text style={estilos.tituloPantalla}>{t('calendarioLaboral.title')}</Text>
-        {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-        <View style={{ width: 40 }} />
-      </View>
+      <NavbarEnterprise titulo={t('calendarioLaboral.title')} mostrarAtras />
 
       {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
       <ScrollView contentContainerStyle={estilos.scroll}>
         {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-        <View style={estilos.calendario}>
+        <Animated.View entering={FadeInDown.duration(400)} style={estilos.calendario}>
           {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={estilos.cabeceraCal}>
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={estilos.mesLabel}>{new Date(anio, mes).toLocaleDateString(i18n.language === 'es' ? 'es-MX' : 'en-US', { month: 'long', year: 'numeric' }).toUpperCase()}</Text>
             {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
             <View style={estilos.navMes}>
-              {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-              <TouchableOpacity onPress={() => cambiarMes(-1)} style={estilos.btnNav}><MaterialIcons name="chevron-left" size={24} color={COLORES.primario} /></TouchableOpacity>
-              {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-              <TouchableOpacity onPress={() => cambiarMes(1)} style={estilos.btnNav}><MaterialIcons name="chevron-right" size={24} color={COLORES.primario} /></TouchableOpacity>
+              {/* BotonAnimado: press-scale nativo en la navegacion de mes. */}
+              <BotonAnimado onPress={() => cambiarMes(-1)} style={estilos.btnNav}><MaterialIcons name="chevron-left" size={24} color={colores.primario} /></BotonAnimado>
+              <BotonAnimado onPress={() => cambiarMes(1)} style={estilos.btnNav}><MaterialIcons name="chevron-right" size={24} color={colores.primario} /></BotonAnimado>
             </View>
           </View>
-          
+
           {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={estilos.gridDiasNombre}>
             {DIAS_SEMANA_KEYS.map(d => <Text key={d} style={estilos.nombreDia}>{t(`calendarioLaboral.days.${d}`)}</Text>)}
           </View>
-          
+
           {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={estilos.gridDias}>
             {dias.map((d, i) => (
@@ -156,15 +151,15 @@ export default function CalendarioLaboral({ navigation }: Props) {
               </TouchableOpacity>
             ))}
           </View>
-        </View>
+        </Animated.View>
 
         {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
         <Text style={estilos.subtitulo}>{t('calendarioLaboral.agenda_for', { day: diaSel, month: new Date(anio, mes).toLocaleDateString(i18n.language === 'es' ? 'es-MX' : 'en-US', { month: 'long' }) })}</Text>
-        
+
         {eventosDelDia.length > 0 ? (
           eventosDelDia.map((ev: any, idx) => (
             // Bloque repetido; representa un item de una lista y usa key para que React lo identifique.
-            <View key={idx} style={estilos.tarjetaEvento}>
+            <Animated.View key={`${diaSel}-${idx}`} entering={FadeInUp.duration(300).delay(idx * 45)} style={estilos.tarjetaEvento}>
               {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
               <View style={[estilos.indicador, { backgroundColor: ev.tipoEvento === 'tarea' ? COLORES.primario : ev.tipoEvento === 'ausencia' ? COLORES.alerta : COLORES.exito }]} />
               {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
@@ -174,11 +169,10 @@ export default function CalendarioLaboral({ navigation }: Props) {
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={estilos.descEvento}>{t(`calendarioLaboral.event_types.${ev.tipoEvento}`)}</Text>
               </View>
-            </View>
+            </Animated.View>
           ))
         ) : (
-          // Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario.
-          <Text style={estilos.vacio}>{t('calendarioLaboral.no_events')}</Text>
+          <EmptyState icono="calendar" titulo={t('calendarioLaboral.no_events')} />
         )}
       </ScrollView>
     </SafeAreaView>
@@ -188,51 +182,47 @@ export default function CalendarioLaboral({ navigation }: Props) {
 /**
  * Mapa de estilos estilos. Centraliza reglas visuales para que el JSX se mantenga legible y consistente.
  */
-const estilos = StyleSheet.create({
+type ColoresTema = ReturnType<typeof useTemaMobile>['colores'];
+
+function crearEstilos(c: ColoresTema) {
+  return StyleSheet.create({
   // contenedor: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
-  contenedor: { flex: 1, backgroundColor: COLORES.fondo },
-  // cabecera: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
-  cabecera: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: ESPACIADO.lg },
-  // botonRegresar: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
-  botonRegresar: { width: 40, height: 40, borderRadius: 20, backgroundColor: COLORES.superficieVidrio, alignItems: 'center', justifyContent: 'center', ...SOMBRAS.suave },
-  // tituloPantalla: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
-  tituloPantalla: { ...TIPOGRAFIA.tituloSeccion, color: COLORES.texto },
+  contenedor: { flex: 1, backgroundColor: c.fondo },
   // scroll: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   scroll: { padding: ESPACIADO.xl },
   // calendario: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  calendario: { backgroundColor: COLORES.superficieVidrio, borderRadius: RADIOS.xl, padding: ESPACIADO.lg, ...SOMBRAS.suave, marginBottom: ESPACIADO.xl },
+  calendario: { backgroundColor: c.superficie, borderRadius: RADIOS.xl, padding: ESPACIADO.lg, borderWidth: 1, borderColor: c.bordeSutil, ...SOMBRAS.suave, marginBottom: ESPACIADO.xl },
   // cabeceraCal: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
   cabeceraCal: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: ESPACIADO.lg },
   // mesLabel: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-  mesLabel: { fontSize: 16, fontWeight: '800', color: COLORES.primario },
+  mesLabel: { fontSize: 16, fontWeight: '800', color: c.primario },
   // navMes: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   navMes: { flexDirection: 'row', gap: ESPACIADO.sm },
   // btnNav: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  btnNav: { width: 32, height: 32, borderRadius: 16, backgroundColor: COLORES.fondo, alignItems: 'center', justifyContent: 'center' },
+  btnNav: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.vidrioSutil, borderWidth: 1, borderColor: c.bordeSutil, alignItems: 'center', justifyContent: 'center' },
   // gridDiasNombre: estilo de grilla; organiza elementos en filas o columnas con separacion controlada.
   gridDiasNombre: { flexDirection: 'row', marginBottom: ESPACIADO.sm },
   // nombreDia: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  nombreDia: { flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '700', color: COLORES.textoSuave },
+  nombreDia: { flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '700', color: c.textoSuave },
   // gridDias: estilo de grilla; organiza elementos en filas o columnas con separacion controlada.
   gridDias: { flexDirection: 'row', flexWrap: 'wrap' },
   // celdaDia: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   celdaDia: { width: '14.28%', height: 40, alignItems: 'center', justifyContent: 'center', marginVertical: 2 },
   // celdaActiva: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  celdaActiva: { backgroundColor: COLORES.primario, borderRadius: 20 },
+  celdaActiva: { backgroundColor: c.primario, borderRadius: 20 },
   // textoDia: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-  textoDia: { fontSize: 14, color: COLORES.texto, fontWeight: '600' },
+  textoDia: { fontSize: 14, color: c.texto, fontWeight: '600' },
   // subtitulo: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
-  subtitulo: { ...TIPOGRAFIA.tituloSeccion, fontSize: 18, marginBottom: ESPACIADO.md },
+  subtitulo: { ...TIPOGRAFIA.tituloSeccion, fontSize: 18, color: c.texto, marginBottom: ESPACIADO.md },
   // tarjetaEvento: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
-  tarjetaEvento: { flexDirection: 'row', backgroundColor: COLORES.superficieVidrio, borderRadius: RADIOS.lg, padding: ESPACIADO.md, marginBottom: ESPACIADO.sm, ...SOMBRAS.suave },
+  tarjetaEvento: { flexDirection: 'row', backgroundColor: c.superficie, borderRadius: RADIOS.lg, borderWidth: 1, borderColor: c.bordeSutil, padding: ESPACIADO.md, marginBottom: ESPACIADO.sm, ...SOMBRAS.suave },
   // indicador: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   indicador: { width: 4, borderRadius: 2, marginRight: ESPACIADO.md },
   // infoEvento: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   infoEvento: { flex: 1 },
   // tituloEvento: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
-  tituloEvento: { fontSize: 15, fontWeight: '700', color: COLORES.texto },
+  tituloEvento: { fontSize: 15, fontWeight: '700', color: c.texto },
   // descEvento: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  descEvento: { fontSize: 11, color: COLORES.textoSuave, marginTop: 4, fontWeight: '600' },
-  // vacio: estilo de estado vacio; presenta mensajes cuando no hay datos disponibles.
-  vacio: { ...TIPOGRAFIA.cuerpo, color: COLORES.textoSuave, fontStyle: 'italic', marginTop: ESPACIADO.md },
-});
+  descEvento: { fontSize: 11, color: c.textoSuave, marginTop: 4, fontWeight: '600' },
+  });
+}

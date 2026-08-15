@@ -315,7 +315,7 @@ export default function ChatIAAdmin({ navigation }: Props) {
   };
 
   const name = perfil?.nombre ? perfil.nombre.split(' ')[0] : '';
-  const greeting = name ? `¿Cómo te puedo ayudar hoy, ${name}?` : '¿Cómo te puedo ayudar hoy?';
+  const greeting = name ? t('chatIAAdmin.greeting_named', { name }) : t('chatIAAdmin.greeting');
 
   return (
     <SafeAreaView style={estilos.contenedor}>
@@ -430,7 +430,7 @@ export default function ChatIAAdmin({ navigation }: Props) {
                                     </View>
                                     {resultado ? (
                                       <Text style={[estilos.tarjetaAccionResultado, resultado === 'error' && estilos.tarjetaAccionResultadoError]}>
-                                        {resultado === 'aprobada' ? 'Aprobada ✓' : resultado === 'rechazada' ? 'Rechazada' : 'No se pudo completar. Intenta desde Solicitudes.'}
+                                        {resultado === 'aprobada' ? t('chatIAAdmin.action_approved') : resultado === 'rechazada' ? t('chatIAAdmin.action_rejected') : t('chatIAAdmin.action_failed')}
                                       </Text>
                                     ) : (
                                       <View style={estilos.tarjetaAccionBotones}>
@@ -439,14 +439,14 @@ export default function ChatIAAdmin({ navigation }: Props) {
                                           onPress={() => confirmarAccionSensible(mensaje.id, accion, 'rechazada')}
                                           activeOpacity={0.85}
                                         >
-                                          <Text style={estilos.tarjetaAccionBotonTextoRechazar}>Rechazar</Text>
+                                          <Text style={estilos.tarjetaAccionBotonTextoRechazar}>{t('common.reject')}</Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity
                                           style={[estilos.tarjetaAccionBoton, estilos.tarjetaAccionBotonAprobar]}
                                           onPress={() => confirmarAccionSensible(mensaje.id, accion, 'aprobada')}
                                           activeOpacity={0.85}
                                         >
-                                          <Text style={estilos.tarjetaAccionBotonTextoAprobar}>Aprobar</Text>
+                                          <Text style={estilos.tarjetaAccionBotonTextoAprobar}>{t('common.approve')}</Text>
                                         </TouchableOpacity>
                                       </View>
                                     )}
@@ -494,7 +494,7 @@ export default function ChatIAAdmin({ navigation }: Props) {
                 {mensajes.length > 0 && (
                   <TouchableOpacity onPress={limpiarHistorial} style={[estilos.chipSugerencia, { borderColor: 'rgba(239, 68, 68, 0.3)', backgroundColor: theme.isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)' }]} activeOpacity={0.8}>
                     <Feather name="trash-2" size={13} color="#EF4444" />
-                    <Text style={[estilos.textoChip, { color: '#EF4444' }]}>Limpiar chat</Text>
+                    <Text style={[estilos.textoChip, { color: '#EF4444' }]}>{t('chatIAAdmin.clear_chat')}</Text>
                   </TouchableOpacity>
                 )}
                 {SUGERENCIAS_RAPIDAS.map((sug) => (

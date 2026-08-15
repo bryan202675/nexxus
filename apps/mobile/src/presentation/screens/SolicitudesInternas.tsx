@@ -1,13 +1,4 @@
-/**
- * Documentacion Nexxus - apps/mobile/src/presentation/screens/SolicitudesInternas.tsx
- * Capa: presentacion.
- * Proposito: Pantalla de la experiencia del empleado. Lee contexto de usuario, muestra informacion operativa y conserva las acciones de navegacion existentes.
- * Dependencias clave: imports superiores y contratos tipados del propio modulo.
- * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras de datos al extender este archivo.
- */
-
-// Importa React, { useState, useRef, useEffect } desde React; habilita componentes, hooks y tipos base para esta pieza.
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -15,390 +6,1023 @@ import {
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
-  Animated,
-  Modal,
   TextInput,
   Alert,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
+  FlatList,
 } from 'react-native';
-// Importa { Feather }; aporta iconos reutilizables para comunicar acciones y estados visuales.
-import { Feather } from '@expo/vector-icons';
-// Importa { BlurView } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
+import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
+import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-// Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
-import { LinearGradient } from 'expo-linear-gradient';
-
-// Importa { COLORES, ESPACIADO, RADIOS }; reutiliza tokens visuales y constantes comunes del sistema de diseno.
-import { COLORES, ESPACIADO, RADIOS } from '@/shared/constants/diseno';
-// Importa { useContextoUsuario }; accede a contexto compartido de usuario, tema o estado global.
+import { COLORES, ESPACIADO, RADIOS, SOMBRAS } from '@/shared/constants/diseno';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
-// Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
-// Importa { InternalRequest }; usa tipos de dominio para que los datos mantengan estructura consistente.
 import { InternalRequest } from 'domain/entities/InternalRequest';
-// Importa FondoMobilePremium; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
-// Importa { useTemaMobile }; accede a contexto compartido de usuario, tema o estado global.
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
+import { uploadManagedFile } from '@/infrastructure/storage/cloudinaryUpload';
+import ModalShell from '@/presentation/components/ui/ModalShell';
+import EmptyState from '@/presentation/components/ui/EmptyState';
+import BotonAnimado from '@/presentation/components/BotonAnimado';
+import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
 
-/**
- * Define el contrato de datos Props; documenta campos esperados y evita pasar objetos ambiguos entre capas.
- */
+const TODOS_LOS_TIPOS: InternalRequest['tipo'][] = [
+  'vacaciones',
+  'permiso',
+  'adelanto_salarial',
+  'soporte_tecnico',
+  'compra_material',
+  'cambio_horario',
+  'incidente',
+  'llegada_tarde',
+  'horas_extra',
+  'trabajo_remoto',
+  'incapacidad',
+  'permiso_especial',
+];
+
+const TIPOS_RANGO_FECHA = new Set<InternalRequest['tipo']>(['vacaciones', 'permiso', 'trabajo_remoto', 'incapacidad', 'permiso_especial']);
+const TIPOS_FECHA_UNICA = new Set<InternalRequest['tipo']>(['cambio_horario', 'llegada_tarde', 'horas_extra']);
+const TIPOS_MONTO = new Set<InternalRequest['tipo']>(['adelanto_salarial', 'compra_material']);
+const TIPOS_HORAS = new Set<InternalRequest['tipo']>(['horas_extra']);
+const TIPOS_ADJUNTO = new Set<InternalRequest['tipo']>(['incapacidad']);
+
 interface Props { navigation: any; }
 
-/**
- * Componente SolicitudesInternas. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
- */
 export default function SolicitudesInternas({ navigation }: Props) {
-  // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { t } = useTranslation();
-  // Inicializa { solicitudesInternas, crearSolicitudInterna }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const { solicitudesInternas, crearSolicitudInterna } = useContextoUsuario();
-  // Declara { colores, blurTint, intensidadBlur, esOscuro }; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
+  const { solicitudesInternas, crearSolicitudInterna, perfil } = useContextoUsuario();
   const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
-  // Declara estilos; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const estilos = crearEstilosSolicInt(colores, esOscuro);
-  // Inicializa [modalVisible, setModalVisible]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const [modalVisible, setModalVisible] = useState(false);
-  // Inicializa [enviando, setEnviando]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const [enviando, setEnviando] = useState(false);
 
-  // Inicializa fadeAnim; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [modalVisible, setModalVisible] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [filtroEstado, setFiltroEstado] = useState<string>('todas');
 
   // Form State
   const [tipo, setTipo] = useState<InternalRequest['tipo']>('permiso');
-  // Inicializa [titulo, setTitulo]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [titulo, setTitulo] = useState('');
-  // Inicializa [descripcion, setDescripcion]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [descripcion, setDescripcion] = useState('');
-  // Inicializa [prioridad, setPrioridad]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [prioridad, setPrioridad] = useState<InternalRequest['prioridad']>('media');
+  const [fechaInicio, setFechaInicio] = useState('');
+  const [fechaFin, setFechaFin] = useState('');
+  const [monto, setMonto] = useState('');
+  const [horasCantidad, setHorasCantidad] = useState('');
+  const [archivoAdjunto, setArchivoAdjunto] = useState('');
+  const [subiendoAdjunto, setSubiendoAdjunto] = useState(false);
 
-  // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-  useEffect(() => {
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-    Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
-  }, []);
+  const totalSolicitudes = solicitudesInternas.length;
+  const pendientes = solicitudesInternas.filter((s) => s.estado === 'pendiente').length;
+  const aprobadas = solicitudesInternas.filter((s) => s.estado === 'aprobado').length;
+  const rechazadas = solicitudesInternas.filter((s) => s.estado === 'rechazado').length;
 
-  // Declara manejarEnvio; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
+  const solicitudesFiltradas = solicitudesInternas.filter((s) => {
+    if (filtroEstado === 'todas') return true;
+    return s.estado === filtroEstado;
+  });
+
   const manejarEnvio = async () => {
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!titulo || !descripcion) {
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      Alert.alert(t('solicitudesInternas.incomplete_alert'), t('solicitudesInternas.incomplete_msg'));
-      // Devuelve el valor final calculado para esta funcion o caso de uso.
+      Alert.alert(t('solicitudesInternas.incomplete_alert', { defaultValue: 'Campos incompletos' }), t('solicitudesInternas.incomplete_msg', { defaultValue: 'Por favor completa el título y la descripción.' }));
       return;
     }
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setEnviando(true);
-    // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
     try {
-      // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-      await crearSolicitudInterna({ tipo, titulo, descripcion, prioridad } as any);
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
+      const payload: any = { tipo, titulo, descripcion, prioridad };
+      if (TIPOS_RANGO_FECHA.has(tipo)) {
+        if (fechaInicio) payload.fecha_inicio = fechaInicio;
+        if (fechaFin) payload.fecha_fin = fechaFin;
+      }
+      if (TIPOS_FECHA_UNICA.has(tipo) && fechaInicio) {
+        payload.fecha_inicio = fechaInicio;
+      }
+      if (TIPOS_MONTO.has(tipo) && monto) {
+        payload.monto = Number(monto);
+      }
+      if (TIPOS_HORAS.has(tipo) && horasCantidad) {
+        payload.horas_cantidad = Number(horasCantidad);
+      }
+      if (TIPOS_ADJUNTO.has(tipo) && archivoAdjunto) {
+        payload.archivo_adjunto = archivoAdjunto;
+      }
+      await crearSolicitudInterna(payload);
       setModalVisible(false);
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       resetForm();
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      Alert.alert(t('solicitudesInternas.success_alert'), t('solicitudesInternas.success_msg'));
-    } catch (e) {
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-      Alert.alert(t('solicitudesInternas.error_alert'), t('solicitudesInternas.error_msg'));
+      Alert.alert(t('solicitudesInternas.success_alert', { defaultValue: 'Solicitud enviada' }), t('solicitudesInternas.success_msg', { defaultValue: 'Tu solicitud fue registrada con éxito.' }));
+    } catch {
+      Alert.alert(t('solicitudesInternas.error_alert', { defaultValue: 'Error' }), t('solicitudesInternas.error_msg', { defaultValue: 'No se pudo enviar la solicitud. Intenta de nuevo.' }));
     } finally {
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setEnviando(false);
     }
   };
 
-  // Declara resetForm; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const resetForm = () => {
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setTitulo('');
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setDescripcion('');
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setTipo('permiso');
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setPrioridad('media');
+    setFechaInicio('');
+    setFechaFin('');
+    setMonto('');
+    setHorasCantidad('');
+    setArchivoAdjunto('');
   };
 
-  // Declara obtenerColorEstado; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const obtenerColorEstado = (e: string) => {
-    // Selecciona comportamiento segun el valor recibido y evita condicionales repetidos.
-    switch (e) {
-      case 'aprobado': return '#10B981'; // verde
-      case 'rechazado': return '#EF4444'; // rojo
-      case 'pendiente': return '#F59E0B'; // ambar
-      default: return COLORES.textoSuave;
+  const subirCertificado = async () => {
+    if (!perfil?.empresaId) return;
+    try {
+      if (Platform.OS === 'web') {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'application/pdf';
+        input.onchange = async () => {
+          const file = input.files?.[0];
+          if (!file) return;
+          setSubiendoAdjunto(true);
+          try {
+            const uploaded = await uploadManagedFile(file, {
+              kind: 'document',
+              ownerId: perfil.empresaId!,
+              empresaId: perfil.empresaId!,
+            });
+            setArchivoAdjunto(uploaded.url);
+          } catch (e: any) {
+            Alert.alert('No se pudo subir el archivo', e?.message || 'Intenta de nuevo.');
+          } finally {
+            setSubiendoAdjunto(false);
+          }
+        };
+        input.click();
+        return;
+      }
+      Alert.alert('Subida no disponible', 'Adjunta el certificado desde la versión web por ahora.');
+    } catch (e: any) {
+      setSubiendoAdjunto(false);
+      Alert.alert('No se pudo subir el archivo', e?.message || 'Intenta de nuevo.');
     }
   };
 
-  // Calcula renderItem; normaliza fechas para comparaciones, filtros o etiquetas visibles.
-  const renderItem = ({ item }: { item: InternalRequest }) => {
-    // Declara colorSt; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
+  const obtenerColorEstado = (e: string) => {
+    switch (e) {
+      case 'aprobado': return '#10B981';
+      case 'rechazado': return '#EF4444';
+      case 'pendiente': return '#F59E0B';
+      default: return colores.textoSuave;
+    }
+  };
+
+  const obtenerIconoTipo = (tVal: string) => {
+    switch (tVal) {
+      case 'vacaciones': return 'sun';
+      case 'adelanto_salarial': return 'dollar-sign';
+      case 'soporte_tecnico': return 'tool';
+      case 'cambio_horario': return 'clock';
+      case 'trabajo_remoto': return 'home';
+      case 'incapacidad': return 'activity';
+      default: return 'file-text';
+    }
+  };
+
+  const renderItem = ({ item, index }: { item: InternalRequest; index: number }) => {
     const colorSt = obtenerColorEstado(item.estado);
-    // Devuelve el JSX que React Native renderiza en pantalla.
     return (
-      // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
-      <View style={estilos.bentoCard}>
-        {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
-        <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.bentoContent}>
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+      <Animated.View
+        entering={FadeInDown.duration(260).delay(Math.min(index, 8) * 35).easing(Easing.out(Easing.quad))}
+        style={estilos.tarjetaWrap}
+      >
+        <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.tarjetaContent}>
           <View style={estilos.headerTarjeta}>
-            {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
             <View style={estilos.filaTipo}>
-              {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-              <Feather name="file-text" size={14} color={colores.textoSuave} />
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.tipoSolicitud}>{t(`solicitudesInternas.types.${item.tipo}`)}</Text>
+              <View style={[estilos.iconoTipoBadge, { backgroundColor: esOscuro ? 'rgba(59,130,246,0.14)' : 'rgba(37,99,235,0.08)' }]}>
+                <Feather name={obtenerIconoTipo(item.tipo) as any} size={14} color={esOscuro ? '#93C5FD' : '#2563EB'} />
+              </View>
+              <Text style={estilos.tipoSolicitud}>{t(`solicitudesInternas.types.${item.tipo}`, { defaultValue: item.tipo.toUpperCase() })}</Text>
             </View>
-            {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-            <View style={[estilos.badgeEstado, { backgroundColor: colorSt + '20', borderColor: colorSt + '40' }]}>
-              {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={[estilos.textoBadge, { color: colorSt }]}>{t(`solicitudesInternas.states.${item.estado}`)}</Text>
+            <View style={[estilos.badgeEstado, { backgroundColor: colorSt + '18', borderColor: colorSt + '35' }]}>
+              <Text style={[estilos.textoBadge, { color: colorSt }]}>{t(`solicitudesInternas.states.${item.estado}`, { defaultValue: item.estado.toUpperCase() })}</Text>
             </View>
           </View>
-          {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
+
           <Text style={estilos.tituloSolicitud} numberOfLines={1}>{item.titulo}</Text>
-          {/* Texto limitado; muestra informacion evitando que cadenas largas rompan el diseno. */}
           <Text style={estilos.descSolicitud} numberOfLines={2}>{item.descripcion}</Text>
 
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={estilos.divisorHorizontal} />
 
-          {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
           <View style={estilos.footerTarjeta}>
-            {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-            <Feather name="calendar" size={12} color={colores.textoSuave} />
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.fechaTexto}>{new Date(item.timestamp).toLocaleDateString()}</Text>
+            <View style={estilos.metaItem}>
+              <Feather name="calendar" size={12} color={colores.textoSuave} />
+              <Text style={estilos.fechaTexto}>{new Date(item.timestamp).toLocaleDateString()}</Text>
+            </View>
+            {item.prioridad && (
+              <View style={estilos.metaItem}>
+                <Feather name="flag" size={11} color={item.prioridad === 'alta' ? '#EF4444' : colores.textoSuave} />
+                <Text style={[estilos.prioridadTexto, item.prioridad === 'alta' && { color: '#EF4444' }]}>
+                  {item.prioridad.toUpperCase()}
+                </Text>
+              </View>
+            )}
           </View>
         </BlurView>
-      </View>
+      </Animated.View>
     );
   };
 
-  // Devuelve el JSX que React Native renderiza en pantalla.
   return (
-    // Contenedor seguro de la pantalla; respeta areas del dispositivo como notch, barra superior y bordes.
     <SafeAreaView style={estilos.contenedor}>
-      {/* Configura la barra de estado del sistema para que combine con el fondo de esta pantalla. */}
-      <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} />
-      {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-      <View style={estilos.fondoAbsoluto}>
-        {/* Elemento de fondo visual; construye la atmosfera grafica de la pantalla sin cambiar los datos. */}
-        <FondoMobilePremium />
-      </View>
+      <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
+      <View pointerEvents="none" style={estilos.fondoAbsoluto}><FondoMobilePremium /></View>
 
-      {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-      <View style={estilos.headerCompacto}>
-        {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-        <View style={estilos.headerTop}>
-          {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-          <TouchableOpacity onPress={() => navigation.goBack()} style={estilos.botonCircular}>
-            {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-            <Feather name="arrow-left" size={20} color={colores.texto} />
-          </TouchableOpacity>
-          {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-          <TouchableOpacity onPress={() => setModalVisible(true)} style={estilos.botonCircularAccion}>
-            {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-            <Feather name="plus" size={20} color={esOscuro ? COLORES.fondo : '#ffffff'} />
-          </TouchableOpacity>
-        </View>
-        {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-        <Text style={estilos.tituloPantalla}>{t('solicitudesInternas.title')}</Text>
-      </View>
+      <NavbarEnterprise
+        titulo={t('solicitudesInternas.title', { defaultValue: 'Solicitudes Internas' })}
+        subtitulo="Peticiones, compras y permisos"
+        mostrarAtras
+      />
 
-      {/* Animated.FlatList renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Animated.FlatList
-        data={solicitudesInternas}
+      <FlatList
+        data={solicitudesFiltradas}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={estilos.lista}
-        style={{ opacity: fadeAnim }}
-        ListEmptyComponent={
-          <View style={estilos.vacio}>
-            {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-            <Feather name="inbox" size={48} color={colores.textoSuave} />
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.textoVacio}>{t('solicitudesInternas.no_requests')}</Text>
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <View>
+            {/* Banner Bento de Métricas */}
+            <View style={estilos.resumenGrid}>
+              <View style={estilos.resumenCard}>
+                <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.resumenContent}>
+                  <Text style={estilos.resumenLabel}>Total</Text>
+                  <Text style={estilos.resumenValor}>{totalSolicitudes}</Text>
+                </BlurView>
+              </View>
+              <View style={estilos.resumenCard}>
+                <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.resumenContent}>
+                  <Text style={[estilos.resumenLabel, { color: '#F59E0B' }]}>Pendientes</Text>
+                  <Text style={[estilos.resumenValor, { color: '#F59E0B' }]}>{pendientes}</Text>
+                </BlurView>
+              </View>
+              <View style={estilos.resumenCard}>
+                <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.resumenContent}>
+                  <Text style={[estilos.resumenLabel, { color: '#10B981' }]}>Aprobadas</Text>
+                  <Text style={[estilos.resumenValor, { color: '#10B981' }]}>{aprobadas}</Text>
+                </BlurView>
+              </View>
+            </View>
+
+            {/* Botón de Acción Principal: Nueva Solicitud */}
+            <BotonAnimado
+              style={estilos.botonNuevaSolicitud}
+              onPress={() => setModalVisible(true)}
+              scaleTo={0.98}
+            >
+              <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.nuevaSolicitudContent}>
+                <View style={estilos.iconoMasBadge}>
+                  <Feather name="plus" size={18} color="#ffffff" />
+                </View>
+                <View style={estilos.textosNuevaSolicitud}>
+                  <Text style={estilos.tituloNuevaSolicitud}>Crear Nueva Solicitud</Text>
+                  <Text style={estilos.subtituloNuevaSolicitud}>Permisos, compras, adelantos y más</Text>
+                </View>
+                <Feather name="chevron-right" size={18} color={colores.textoSuave} />
+              </BlurView>
+            </BotonAnimado>
+
+            {/* Cabecera de Lista y Filtros */}
+            <View style={estilos.cabeceraLista}>
+              <Text style={estilos.tituloSeccion}>Historial de Peticiones</Text>
+              <Text style={estilos.conteoVisible}>{solicitudesFiltradas.length} visibles</Text>
+            </View>
+
+            {/* Chips de Filtro */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={estilos.filtrosScroll}>
+              {[
+                { id: 'todas', label: 'Todas' },
+                { id: 'pendiente', label: 'Pendientes' },
+                { id: 'aprobado', label: 'Aprobadas' },
+                { id: 'rechazado', label: 'Rechazadas' },
+              ].map((f) => (
+                <TouchableOpacity
+                  key={f.id}
+                  onPress={() => setFiltroEstado(f.id)}
+                  style={[estilos.chipFiltro, filtroEstado === f.id && estilos.chipFiltroActivo]}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[estilos.textoChipFiltro, filtroEstado === f.id && estilos.textoChipFiltroActivo]}>{f.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
+        }
+        ListEmptyComponent={
+          <EmptyState icono="inbox" titulo={t('solicitudesInternas.no_requests', { defaultValue: 'Sin solicitudes' })} detalle="No hay registros en esta categoría." />
         }
       />
 
-      {/* Ventana modal; separa una accion o detalle sin abandonar la pantalla actual. */}
-      <Modal visible={modalVisible} animationType="slide" transparent>
-        {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-        <View style={estilos.modalOverlay}>
-          {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
-          <BlurView intensity={60} tint={blurTint} style={StyleSheet.absoluteFill} />
-          {/* Contenedor que ajusta el layout cuando aparece el teclado. */}
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={estilos.modalView}>
-            {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-            <View style={estilos.modalContenido}>
-              {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-              <View style={estilos.modalHeader}>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.modalTitulo}>{t('solicitudesInternas.new_request')}</Text>
-                {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-                <TouchableOpacity onPress={() => setModalVisible(false)} style={estilos.botonCerrarModal}>
-                  {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-                  <Feather name="x" size={20} color={colores.texto} />
-                </TouchableOpacity>
-              </View>
+      {/* Modal / BottomSheet de Nueva Solicitud */}
+      <ModalShell visible={modalVisible} onClose={() => setModalVisible(false)} style={estilos.modalContenido}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={estilos.flexModal}>
+          <View style={estilos.modalHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={estilos.modalTitulo}>{t('solicitudesInternas.new_request', { defaultValue: 'Nueva Solicitud' })}</Text>
+              <Text style={estilos.modalSubtitulo}>Trámite interno y solicitudes operativas</Text>
+            </View>
+            <TouchableOpacity onPress={() => setModalVisible(false)} style={estilos.botonCerrarModal} activeOpacity={0.8}>
+              <Feather name="x" size={18} color={colores.texto} />
+            </TouchableOpacity>
+          </View>
 
-              {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: ESPACIADO.xxl }}>
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.label}>{t('solicitudesInternas.category_label')}</Text>
-                {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-                <View style={estilos.gridTipos}>
-                  {['vacaciones', 'permiso', 'adelanto_salarial', 'soporte_tecnico', 'compra_material'].map(itemTipo => (
-                    // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={estilos.modalScroll}>
+            {/* SECCIÓN 1: TIPO DE SOLICITUD */}
+            <View style={estilos.seccionFormulario}>
+              <View style={estilos.filaSeccionHeader}>
+                <Feather name="grid" size={13} color={esOscuro ? '#93C5FD' : '#2563EB'} />
+                <Text style={estilos.labelSeccion}>TIPO DE TRÁMITE</Text>
+              </View>
+              <View style={estilos.gridTipos}>
+                {TODOS_LOS_TIPOS.map((itemTipo) => {
+                  const activo = tipo === itemTipo;
+                  return (
                     <TouchableOpacity
                       key={itemTipo}
-                      style={[estilos.chip, tipo === itemTipo && estilos.chipActivo]}
+                      style={[estilos.chipTipo, activo && estilos.chipTipoActivo]}
                       onPress={() => setTipo(itemTipo as any)}
+                      activeOpacity={0.8}
                     >
-                      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                      <Text style={[estilos.textoChip, tipo === itemTipo && estilos.textoChipActivo]}>
-                        {t(`solicitudesInternas.types.${itemTipo}`)}
+                      <Feather
+                        name={obtenerIconoTipo(itemTipo) as any}
+                        size={12}
+                        color={activo ? '#ffffff' : esOscuro ? '#93C5FD' : '#2563EB'}
+                      />
+                      <Text style={[estilos.textoChipTipo, activo && estilos.textoChipTipoActivo]}>
+                        {t(`solicitudesInternas.types.${itemTipo}`, { defaultValue: itemTipo.replace('_', ' ') })}
                       </Text>
                     </TouchableOpacity>
-                  ))}
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* SECCIÓN 2: PRIORIDAD */}
+            <View style={estilos.seccionFormulario}>
+              <View style={estilos.filaSeccionHeader}>
+                <Feather name="flag" size={13} color={esOscuro ? '#93C5FD' : '#2563EB'} />
+                <Text style={estilos.labelSeccion}>NIVEL DE PRIORIDAD</Text>
+              </View>
+              <View style={estilos.filaPrioridades}>
+                {(['baja', 'media', 'alta'] as const).map((p) => {
+                  const activo = prioridad === p;
+                  const colorP = p === 'alta' ? '#EF4444' : p === 'media' ? '#F59E0B' : '#10B981';
+                  return (
+                    <TouchableOpacity
+                      key={p}
+                      onPress={() => setPrioridad(p)}
+                      style={[
+                        estilos.botonPrioridad,
+                        activo && { backgroundColor: colorP + '20', borderColor: colorP },
+                      ]}
+                      activeOpacity={0.8}
+                    >
+                      <Feather name="flag" size={12} color={activo ? colorP : colores.textoSuave} />
+                      <Text style={[estilos.textoPrioridad, activo && { color: colorP, fontWeight: '800' }]}>
+                        {p.toUpperCase()}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* SECCIÓN 3: DETALLES CONDICIONALES */}
+            {(TIPOS_RANGO_FECHA.has(tipo) || TIPOS_FECHA_UNICA.has(tipo) || TIPOS_HORAS.has(tipo) || TIPOS_MONTO.has(tipo) || TIPOS_ADJUNTO.has(tipo)) && (
+              <View style={estilos.seccionFormulario}>
+                <View style={estilos.filaSeccionHeader}>
+                  <Feather name="sliders" size={13} color={esOscuro ? '#93C5FD' : '#2563EB'} />
+                  <Text style={estilos.labelSeccion}>PARÁMETROS DEL TRÁMITE</Text>
                 </View>
 
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.label}>{t('solicitudesInternas.subject_label')}</Text>
-                {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
-                <TextInput
-                  style={estilos.input}
-                  value={titulo}
-                  onChangeText={setTitulo}
-                  placeholder={t('solicitudesInternas.subject_placeholder')}
-                  placeholderTextColor={colores.textoSuave}
-                />
+                {TIPOS_RANGO_FECHA.has(tipo) && (
+                  <View style={estilos.filaDosColumnas}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={estilos.labelInput}>Fecha Inicio</Text>
+                      <View style={estilos.inputConIcono}>
+                        <Feather name="calendar" size={14} color={colores.textoSuave} />
+                        <TextInput
+                          style={estilos.inputEnvoltorio}
+                          value={fechaInicio}
+                          onChangeText={setFechaInicio}
+                          placeholder="AAAA-MM-DD"
+                          placeholderTextColor={colores.textoSuave}
+                        />
+                      </View>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={estilos.labelInput}>Fecha Fin</Text>
+                      <View style={estilos.inputConIcono}>
+                        <Feather name="calendar" size={14} color={colores.textoSuave} />
+                        <TextInput
+                          style={estilos.inputEnvoltorio}
+                          value={fechaFin}
+                          onChangeText={setFechaFin}
+                          placeholder="AAAA-MM-DD"
+                          placeholderTextColor={colores.textoSuave}
+                        />
+                      </View>
+                    </View>
+                  </View>
+                )}
 
-                {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                <Text style={estilos.label}>{t('solicitudesInternas.desc_label')}</Text>
-                {/* Campo de entrada; captura texto del usuario y lo conecta con el estado del formulario. */}
-                <TextInput
-                  style={[estilos.input, estilos.textArea]}
-                  value={descripcion}
-                  onChangeText={setDescripcion}
-                  multiline
-                  placeholder={t('solicitudesInternas.desc_placeholder')}
-                  placeholderTextColor={colores.textoSuave}
-                  textAlignVertical="top"
-                />
+                {TIPOS_FECHA_UNICA.has(tipo) && (
+                  <View>
+                    <Text style={estilos.labelInput}>Fecha Correspondiente</Text>
+                    <View style={estilos.inputConIcono}>
+                      <Feather name="calendar" size={14} color={colores.textoSuave} />
+                      <TextInput
+                        style={estilos.inputEnvoltorio}
+                        value={fechaInicio}
+                        onChangeText={setFechaInicio}
+                        placeholder="AAAA-MM-DD"
+                        placeholderTextColor={colores.textoSuave}
+                      />
+                    </View>
+                  </View>
+                )}
 
-                {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-                <TouchableOpacity style={estilos.botonEnviar} onPress={manejarEnvio} disabled={enviando}>
-                  {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-                  <Text style={estilos.textoBotonEnviar}>{enviando ? t('solicitudesInternas.sending') : t('solicitudesInternas.send_request')}</Text>
-                </TouchableOpacity>
-              </ScrollView>
+                {TIPOS_HORAS.has(tipo) && (
+                  <View>
+                    <Text style={estilos.labelInput}>Cantidad de Horas</Text>
+                    <View style={estilos.inputConIcono}>
+                      <Feather name="clock" size={14} color={colores.textoSuave} />
+                      <TextInput
+                        style={estilos.inputEnvoltorio}
+                        value={horasCantidad}
+                        onChangeText={setHorasCantidad}
+                        keyboardType="numeric"
+                        placeholder="0"
+                        placeholderTextColor={colores.textoSuave}
+                      />
+                    </View>
+                    <View style={estilos.filaChipsRapidos}>
+                      {['1', '2', '4', '8'].map((h) => (
+                        <TouchableOpacity
+                          key={h}
+                          onPress={() => setHorasCantidad(h)}
+                          style={[estilos.chipRapido, horasCantidad === h && estilos.chipRapidoActivo]}
+                        >
+                          <Text style={[estilos.textoChipRapido, horasCantidad === h && estilos.textoChipRapidoActivo]}>+{h}h</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {TIPOS_MONTO.has(tipo) && (
+                  <View>
+                    <Text style={estilos.labelInput}>Monto Estimado ($ USD)</Text>
+                    <View style={estilos.inputConIcono}>
+                      <Feather name="dollar-sign" size={14} color={colores.textoSuave} />
+                      <TextInput
+                        style={estilos.inputEnvoltorio}
+                        value={monto}
+                        onChangeText={setMonto}
+                        keyboardType="numeric"
+                        placeholder="0.00"
+                        placeholderTextColor={colores.textoSuave}
+                      />
+                    </View>
+                    <View style={estilos.filaChipsRapidos}>
+                      {['25', '50', '100', '200'].map((mVal) => (
+                        <TouchableOpacity
+                          key={mVal}
+                          onPress={() => setMonto(mVal)}
+                          style={[estilos.chipRapido, monto === mVal && estilos.chipRapidoActivo]}
+                        >
+                          <Text style={[estilos.textoChipRapido, monto === mVal && estilos.textoChipRapidoActivo]}>${mVal}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {TIPOS_ADJUNTO.has(tipo) && (
+                  <View>
+                    <Text style={estilos.labelInput}>Certificado o Comprobante</Text>
+                    <TouchableOpacity style={estilos.botonAdjunto} onPress={subirCertificado} disabled={subiendoAdjunto} activeOpacity={0.8}>
+                      {subiendoAdjunto ? (
+                        <ActivityIndicator size="small" color={esOscuro ? '#93C5FD' : '#2563EB'} />
+                      ) : (
+                        <Feather name={archivoAdjunto ? "check-circle" : "paperclip"} size={16} color={archivoAdjunto ? "#10B981" : esOscuro ? '#93C5FD' : '#2563EB'} />
+                      )}
+                      <Text style={[estilos.textoBotonAdjunto, !!archivoAdjunto && { color: '#10B981' }]}>
+                        {subiendoAdjunto
+                          ? 'Subiendo archivo...'
+                          : archivoAdjunto
+                            ? 'Documento Adjunto ✓'
+                            : 'Adjuntar certificado médico (PDF)'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* SECCIÓN 4: ASUNTO Y DETALLES */}
+            <View style={estilos.seccionFormulario}>
+              <View style={estilos.filaSeccionHeader}>
+                <Feather name="file-text" size={13} color={esOscuro ? '#93C5FD' : '#2563EB'} />
+                <Text style={estilos.labelSeccion}>INFORMACIÓN PRINCIPAL</Text>
+              </View>
+
+              <Text style={estilos.labelInput}>Asunto / Título del Trámite</Text>
+              <TextInput
+                style={estilos.input}
+                value={titulo}
+                onChangeText={setTitulo}
+                placeholder="Ej. Solicitud de vacaciones de verano"
+                placeholderTextColor={colores.textoSuave}
+              />
+
+              <Text style={[estilos.labelInput, { marginTop: 12 }]}>Detalles y Justificación</Text>
+              <TextInput
+                style={[estilos.input, estilos.textArea]}
+                value={descripcion}
+                onChangeText={setDescripcion}
+                multiline
+                placeholder="Explica el motivo del trámite y cualquier consideración relevante..."
+                placeholderTextColor={colores.textoSuave}
+                textAlignVertical="top"
+              />
             </View>
-          </KeyboardAvoidingView>
-        </View>
-      </Modal>
+
+            {/* BOTÓN DE ENVIAR */}
+            <BotonAnimado
+              style={estilos.botonEnviar}
+              onPress={manejarEnvio}
+              disabled={enviando}
+              scaleTo={0.97}
+            >
+              <View style={estilos.contenidoBotonEnviar}>
+                {enviando ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Feather name="send" size={16} color="#ffffff" />
+                )}
+                <Text style={estilos.textoBotonEnviar}>
+                  {enviando ? 'Registrando Solicitud...' : 'Enviar Solicitud'}
+                </Text>
+              </View>
+            </BotonAnimado>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </ModalShell>
     </SafeAreaView>
   );
 }
 
-/**
- * Mapa de estilos crearEstilosSolicInt. Centraliza reglas visuales para que el JSX se mantenga legible y consistente.
- */
 function crearEstilosSolicInt(c: any, esOscuro: boolean) {
-  // Declara glass; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const glass = esOscuro ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.78)';
-  // Declara inputBg; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const inputBg = esOscuro ? 'rgba(255,255,255,0.01)' : 'rgba(255,255,255,0.6)';
-  // Declara inputBorder; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const inputBorder = esOscuro ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.1)';
-  // Declara modalBg; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const modalBg = esOscuro ? 'rgba(25,25,35,0.97)' : 'rgba(240,240,255,0.97)';
-  // Devuelve el valor final calculado para esta funcion o caso de uso.
+  const glass = esOscuro ? 'rgba(24, 24, 38, 0.88)' : 'rgba(255, 255, 255, 0.94)';
+  const glassMini = c.vidrioSutil;
+  const inputBg = esOscuro ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)';
+  const inputBorder = esOscuro ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.08)';
+  const modalBg = esOscuro ? 'rgba(18, 18, 28, 0.98)' : 'rgba(248, 250, 252, 0.98)';
+  const cardBg = esOscuro ? 'rgba(26, 26, 40, 0.90)' : 'rgba(255, 255, 255, 0.95)';
+
   return StyleSheet.create({
-    // contenedor: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
     contenedor: { flex: 1, backgroundColor: c.fondo },
-    // fondoAbsoluto: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     fondoAbsoluto: { ...StyleSheet.absoluteFillObject, zIndex: -1, overflow: 'hidden' },
-    // headerCompacto: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
-    headerCompacto: { paddingHorizontal: ESPACIADO.lg, paddingTop: ESPACIADO.md, paddingBottom: ESPACIADO.sm },
-    // headerTop: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
-    headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: ESPACIADO.md },
-    // botonCircular: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
-    botonCircular: { width: 36, height: 36, borderRadius: 18, backgroundColor: glass, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: c.borde },
-    // botonCircularAccion: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
-    botonCircularAccion: { width: 36, height: 36, borderRadius: 18, backgroundColor: c.texto, alignItems: 'center', justifyContent: 'center' },
-    // tituloPantalla: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
-    tituloPantalla: { fontSize: 28, fontWeight: '700', color: c.texto, letterSpacing: -0.5 },
-    // lista: estilo de lista o item; mantiene espaciado y lectura consistente en elementos repetidos.
-    lista: { paddingHorizontal: ESPACIADO.lg, paddingBottom: 100, gap: ESPACIADO.md },
-    // bentoCard: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
-    bentoCard: { borderRadius: RADIOS.xl, overflow: 'hidden', borderWidth: 1, borderColor: c.borde, backgroundColor: glass },
-    // bentoContent: estilo del area de contenido; controla padding, distribucion y separacion interna.
-    bentoContent: { padding: ESPACIADO.lg },
-    // headerTarjeta: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
-    headerTarjeta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: ESPACIADO.sm },
-    // filaTipo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    filaTipo: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    // tipoSolicitud: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    tipoSolicitud: { fontSize: 10, fontWeight: '700', color: c.textoSuave, letterSpacing: 0.5 },
-    // badgeEstado: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    badgeEstado: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, borderWidth: 1 },
-    // textoBadge: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    textoBadge: { fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
-    // tituloSolicitud: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
-    tituloSolicitud: { fontSize: 16, fontWeight: '700', color: c.texto, marginBottom: 4 },
-    // descSolicitud: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    descSolicitud: { fontSize: 14, color: c.textoSecundario, lineHeight: 20 },
-    // divisorHorizontal: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    divisorHorizontal: { height: 1, backgroundColor: c.borde, marginVertical: ESPACIADO.sm },
-    // footerTarjeta: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
-    footerTarjeta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    // fechaTexto: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    fechaTexto: { fontSize: 11, color: c.textoSuave, fontWeight: '500' },
-    // vacio: estilo de estado vacio; presenta mensajes cuando no hay datos disponibles.
-    vacio: { alignItems: 'center', justifyContent: 'center', marginTop: 150 },
-    // textoVacio: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    textoVacio: { fontSize: 14, color: c.textoSuave, marginTop: ESPACIADO.md },
-    // modalOverlay: estilo de modal; define presentacion de contenido flotante sobre la pantalla actual.
-    modalOverlay: { flex: 1, justifyContent: 'flex-end' },
-    // modalView: estilo de modal; define presentacion de contenido flotante sobre la pantalla actual.
-    modalView: { flex: 1, justifyContent: 'flex-end' },
-    // modalContenido: estilo del area de contenido; controla padding, distribucion y separacion interna.
-    modalContenido: { backgroundColor: modalBg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: ESPACIADO.xl, height: '85%', borderWidth: 1, borderColor: c.borde },
-    // modalHeader: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: ESPACIADO.xl },
-    // modalTitulo: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
-    modalTitulo: { fontSize: 20, fontWeight: '700', color: c.texto },
-    // botonCerrarModal: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
-    botonCerrarModal: { width: 36, height: 36, borderRadius: 18, backgroundColor: glass, alignItems: 'center', justifyContent: 'center' },
-    // label: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    label: { fontSize: 11, fontWeight: '700', color: c.textoSecundario, textTransform: 'uppercase', letterSpacing: 1, marginBottom: ESPACIADO.sm, marginTop: ESPACIADO.lg },
-    // gridTipos: estilo de grilla; organiza elementos en filas o columnas con separacion controlada.
-    gridTipos: { flexDirection: 'row', flexWrap: 'wrap', gap: ESPACIADO.sm },
-    // chip: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: inputBg, borderWidth: 1, borderColor: inputBorder },
-    // chipActivo: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    chipActivo: { backgroundColor: c.texto, borderColor: c.texto },
-    // textoChip: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    textoChip: { fontSize: 12, fontWeight: '600', color: c.textoSuave },
-    // textoChipActivo: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    textoChipActivo: { color: esOscuro ? c.fondo : '#fff' },
-    // input: estilo de campo de formulario; controla contenedor, texto y distribucion de la entrada.
-    input: { backgroundColor: inputBg, borderRadius: 12, padding: ESPACIADO.md, borderWidth: 1, borderColor: inputBorder, color: c.texto, fontSize: 15 },
-    // textArea: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    textArea: { height: 120, paddingTop: ESPACIADO.md },
-    // botonEnviar: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
-    botonEnviar: { marginTop: 32, borderRadius: RADIOS.completo, height: 56, backgroundColor: COLORES.primario, alignItems: 'center', justifyContent: 'center' },
-    // textoBotonEnviar: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    textoBotonEnviar: { color: '#fff', fontWeight: '700', fontSize: 16 },
+
+    lista: {
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: 110,
+    },
+
+    resumenGrid: {
+      flexDirection: 'row',
+      gap: 10,
+      marginBottom: 14,
+    },
+    resumenCard: {
+      flex: 1,
+      minHeight: 76,
+      borderRadius: 18,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: c.borde,
+      backgroundColor: glass,
+      ...SOMBRAS.flotante,
+    },
+    resumenContent: {
+      flex: 1,
+      padding: 12,
+      justifyContent: 'space-between',
+    },
+    resumenLabel: {
+      fontSize: 10.5,
+      fontWeight: '700',
+      color: c.textoSuave,
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+    },
+    resumenValor: {
+      fontSize: 22,
+      fontWeight: '900',
+      color: c.texto,
+      letterSpacing: -0.3,
+    },
+
+    botonNuevaSolicitud: {
+      borderRadius: 20,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: esOscuro ? 'rgba(96,165,250,0.3)' : 'rgba(37,99,235,0.2)',
+      backgroundColor: glass,
+      marginBottom: 20,
+      ...SOMBRAS.flotante,
+    },
+    nuevaSolicitudContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 14,
+      gap: 12,
+    },
+    iconoMasBadge: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: esOscuro ? '#2563EB' : '#1D4ED8',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    textosNuevaSolicitud: { flex: 1 },
+    tituloNuevaSolicitud: {
+      fontSize: 14.5,
+      fontWeight: '800',
+      color: c.texto,
+    },
+    subtituloNuevaSolicitud: {
+      fontSize: 11.5,
+      color: c.textoSecundario,
+      marginTop: 2,
+    },
+
+    cabeceraLista: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 10,
+      paddingHorizontal: 2,
+    },
+    tituloSeccion: {
+      fontSize: 15.5,
+      fontWeight: '900',
+      color: c.texto,
+      letterSpacing: -0.2,
+    },
+    conteoVisible: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: c.textoSuave,
+    },
+
+    filtrosScroll: {
+      gap: 8,
+      marginBottom: 16,
+    },
+    chipFiltro: {
+      paddingHorizontal: 15,
+      paddingVertical: 7,
+      borderRadius: 999,
+      backgroundColor: glass,
+      borderWidth: 1,
+      borderColor: c.borde,
+    },
+    chipFiltroActivo: {
+      backgroundColor: esOscuro ? 'rgba(59,130,246,0.20)' : 'rgba(37,99,235,0.12)',
+      borderColor: esOscuro ? 'rgba(96,165,250,0.5)' : 'rgba(37,99,235,0.4)',
+    },
+    textoChipFiltro: {
+      fontSize: 11.5,
+      fontWeight: '700',
+      color: c.textoSuave,
+    },
+    textoChipFiltroActivo: {
+      color: esOscuro ? '#93C5FD' : '#2563EB',
+      fontWeight: '900',
+    },
+
+    tarjetaWrap: {
+      marginBottom: 10,
+    },
+    tarjetaContent: {
+      borderRadius: 20,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: c.borde,
+      backgroundColor: glass,
+      padding: 14,
+      ...SOMBRAS.flotante,
+    },
+    headerTarjeta: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    filaTipo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    iconoTipoBadge: {
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: c.borde,
+    },
+    tipoSolicitud: {
+      fontSize: 11,
+      fontWeight: '800',
+      color: c.textoSuave,
+      letterSpacing: 0.4,
+      textTransform: 'uppercase',
+    },
+    badgeEstado: {
+      paddingHorizontal: 9,
+      paddingVertical: 3,
+      borderRadius: 999,
+      borderWidth: 1,
+    },
+    textoBadge: {
+      fontSize: 9.5,
+      fontWeight: '800',
+      letterSpacing: 0.4,
+    },
+    tituloSolicitud: {
+      fontSize: 14.5,
+      fontWeight: '800',
+      color: c.texto,
+      letterSpacing: -0.2,
+      marginBottom: 3,
+    },
+    descSolicitud: {
+      fontSize: 12.5,
+      color: c.textoSecundario,
+      lineHeight: 17,
+    },
+    divisorHorizontal: {
+      height: 1,
+      backgroundColor: c.borde,
+      marginVertical: 10,
+    },
+    footerTarjeta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    metaItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+    },
+    fechaTexto: {
+      fontSize: 11,
+      color: c.textoSuave,
+      fontWeight: '600',
+    },
+    prioridadTexto: {
+      fontSize: 10,
+      color: c.textoSuave,
+      fontWeight: '800',
+    },
+
+    flexModal: { flex: 1 },
+    modalContenido: {
+      backgroundColor: modalBg,
+      height: '92%',
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 14,
+      paddingBottom: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: c.borde,
+    },
+    modalTitulo: {
+      fontSize: 18.5,
+      fontWeight: '900',
+      color: c.texto,
+      letterSpacing: -0.3,
+    },
+    modalSubtitulo: {
+      fontSize: 12,
+      color: c.textoSuave,
+      marginTop: 2,
+    },
+    botonCerrarModal: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: glassMini,
+      borderWidth: 1,
+      borderColor: c.borde,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    modalScroll: {
+      paddingBottom: 40,
+    },
+
+    seccionFormulario: {
+      backgroundColor: cardBg,
+      borderRadius: 18,
+      padding: 14,
+      borderWidth: 1,
+      borderColor: inputBorder,
+      marginBottom: 14,
+    },
+    filaSeccionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginBottom: 12,
+    },
+    labelSeccion: {
+      fontSize: 11,
+      fontWeight: '800',
+      color: c.textoSuave,
+      letterSpacing: 0.6,
+    },
+    labelInput: {
+      fontSize: 11.5,
+      fontWeight: '700',
+      color: c.textoSecundario,
+      marginBottom: 6,
+    },
+
+    gridTipos: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 7,
+    },
+    chipTipo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 14,
+      backgroundColor: inputBg,
+      borderWidth: 1,
+      borderColor: inputBorder,
+    },
+    chipTipoActivo: {
+      backgroundColor: esOscuro ? '#2563EB' : '#1D4ED8',
+      borderColor: esOscuro ? '#3B82F6' : '#2563EB',
+    },
+    textoChipTipo: {
+      fontSize: 11.5,
+      fontWeight: '700',
+      color: c.textoSecundario,
+    },
+    textoChipTipoActivo: {
+      color: '#ffffff',
+      fontWeight: '800',
+    },
+
+    filaPrioridades: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    botonPrioridad: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 10,
+      borderRadius: 14,
+      backgroundColor: inputBg,
+      borderWidth: 1,
+      borderColor: inputBorder,
+    },
+    textoPrioridad: {
+      fontSize: 11.5,
+      fontWeight: '700',
+      color: c.textoSuave,
+    },
+
+    filaDosColumnas: {
+      flexDirection: 'row',
+      gap: 10,
+    },
+    inputConIcono: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: inputBg,
+      borderRadius: 14,
+      paddingHorizontal: 12,
+      borderWidth: 1,
+      borderColor: inputBorder,
+    },
+    inputEnvoltorio: {
+      flex: 1,
+      paddingVertical: 10,
+      color: c.texto,
+      fontSize: 13.5,
+      fontWeight: '600',
+    },
+
+    filaChipsRapidos: {
+      flexDirection: 'row',
+      gap: 8,
+      marginTop: 8,
+    },
+    chipRapido: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 10,
+      backgroundColor: inputBg,
+      borderWidth: 1,
+      borderColor: inputBorder,
+    },
+    chipRapidoActivo: {
+      backgroundColor: esOscuro ? 'rgba(59,130,246,0.2)' : 'rgba(37,99,235,0.12)',
+      borderColor: esOscuro ? '#3B82F6' : '#2563EB',
+    },
+    textoChipRapido: {
+      fontSize: 11.5,
+      fontWeight: '700',
+      color: c.textoSuave,
+    },
+    textoChipRapidoActivo: {
+      color: esOscuro ? '#93C5FD' : '#2563EB',
+      fontWeight: '800',
+    },
+
+    botonAdjunto: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      backgroundColor: inputBg,
+      borderRadius: 14,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: inputBorder,
+    },
+    textoBotonAdjunto: {
+      fontSize: 12.5,
+      fontWeight: '700',
+      color: c.texto,
+    },
+
+    input: {
+      backgroundColor: inputBg,
+      borderRadius: 14,
+      paddingHorizontal: 14,
+      paddingVertical: 11,
+      borderWidth: 1,
+      borderColor: inputBorder,
+      color: c.texto,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    textArea: {
+      height: 85,
+      paddingTop: 10,
+    },
+
+    botonEnviar: {
+      marginTop: 8,
+      borderRadius: 18,
+      height: 52,
+      backgroundColor: esOscuro ? '#2563EB' : '#1D4ED8',
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...SOMBRAS.flotante,
+    },
+    contenidoBotonEnviar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    textoBotonEnviar: {
+      color: '#ffffff',
+      fontWeight: '800',
+      fontSize: 15,
+      letterSpacing: 0.2,
+    },
   });
 }
 

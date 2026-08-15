@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nexxus - Iniciar Sesión</title>
+    
+    <!-- Google Fonts: DM Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Tailwind Config for Nexxus Dark -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"DM Sans"', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            400: '#a855f7',
+                            500: '#8b5cf6', 
+                            600: '#7c3aed',
+                        }
+                    },
+                    animation: {
+                        'fade-in-up': 'fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                    },
+                    keyframes: {
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #000000;
+            color: #ffffff;
+            -webkit-font-smoothing: antialiased;
+            overflow: hidden;
+            overscroll-behavior-y: none;
+        }
+
+        /* Glassmorphism for containers and buttons */
+        .glass-panel {
+            background: rgba(20, 15, 30, 0.65);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .glass-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: white;
+            transition: all 0.3s ease;
+        }
+        
+        .glass-input:focus {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(168, 85, 247, 0.5);
+            box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.2);
+            outline: none;
+        }
+
+        .glass-btn {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .active-press:active {
+            transform: scale(0.96);
+            transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .glass-btn:active {
+            transform: scale(0.92);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .hide-initially { opacity: 0; }
+        .stagger-1 { animation-delay: 100ms; }
+        .stagger-2 { animation-delay: 200ms; }
+        .stagger-3 { animation-delay: 300ms; }
+        .stagger-4 { animation-delay: 400ms; }
+        .stagger-5 { animation-delay: 500ms; }
+        
+        /* Auto-fill fix for dark inputs */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover, 
+        input:-webkit-autofill:focus, 
+        input:-webkit-autofill:active{
+            -webkit-box-shadow: 0 0 0 30px rgba(20, 15, 30, 0.9) inset !important;
+            -webkit-text-fill-color: white !important;
+            transition: background-color 5000s ease-in-out 0s;
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen w-full sm:w-[414px] sm:mx-auto sm:border-x sm:border-gray-800 sm:shadow-2xl relative font-sans">
+
+    <!-- Background Image -->
+    <img src="img/fondoNexxus.jpg" alt="Fondo Nexxus" class="absolute inset-0 w-full h-full object-cover z-0" />
+
+    <!-- Dark gradient overlay to ensure readability -->
+    <div class="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/90 z-10 pointer-events-none"></div>
+
+    <!-- Header Logo -->
+    <header class="px-8 py-8 relative z-20 hide-initially animate-fade-in-up stagger-1">
+        <button class="w-10 h-10 -ml-2 mb-6 rounded-full glass-btn flex items-center justify-center text-white">
+            <i data-lucide="arrow-left" class="w-5 h-5"></i>
+        </button>
+        <div class="flex items-center gap-1.5">
+            <span class="text-2xl font-bold tracking-tight text-white">Nexxus<span class="text-brand-400">.</span></span>
+        </div>
+    </header>
+
+    <!-- Main Login Form Area -->
+    <main class="flex-1 flex flex-col justify-end px-6 pb-10 relative z-20">
+        
+        <div class="mb-6 px-2">
+            <h1 class="text-3xl font-bold text-white tracking-tight mb-2 hide-initially animate-fade-in-up stagger-2">
+                Bienvenido
+            </h1>
+            <p class="text-sm text-gray-300 font-medium hide-initially animate-fade-in-up stagger-3">
+                Inicia sesión en tu espacio de trabajo.
+            </p>
+        </div>
+
+        <!-- Glass Panel Form -->
+        <div class="glass-panel rounded-[32px] p-6 hide-initially animate-fade-in-up stagger-4 w-full">
+            
+            <form class="space-y-4">
+                
+                <!-- Company Code Input -->
+                <div class="space-y-1.5">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider ml-1">Código de Empresa</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i data-lucide="building-2" class="w-4 h-4 text-gray-400"></i>
+                        </div>
+                        <input type="text" placeholder="Ej: NEX-1234" class="w-full glass-input rounded-2xl py-3 pl-11 pr-4 text-sm font-medium placeholder-gray-500" required>
+                    </div>
+                </div>
+
+                <!-- Username Input -->
+                <div class="space-y-1.5">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider ml-1">Usuario</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i data-lucide="user" class="w-4 h-4 text-gray-400"></i>
+                        </div>
+                        <input type="text" placeholder="tu.usuario" class="w-full glass-input rounded-2xl py-3 pl-11 pr-4 text-sm font-medium placeholder-gray-500" required>
+                    </div>
+                </div>
+
+                <!-- Password Input -->
+                <div class="space-y-1.5">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider ml-1">Contraseña</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i data-lucide="lock" class="w-4 h-4 text-gray-400"></i>
+                        </div>
+                        <input type="password" placeholder="••••••••" class="w-full glass-input rounded-2xl py-3 pl-11 pr-12 text-sm font-medium placeholder-gray-500" required>
+                        <button type="button" class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-white transition-colors">
+                            <i data-lucide="eye" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between pt-1 mb-2">
+                    <label class="flex items-center gap-2 cursor-pointer group">
+                        <div class="w-4 h-4 rounded border border-white/20 bg-white/5 flex items-center justify-center group-hover:border-brand-400 transition-colors">
+                            <!-- Checked state icon (hidden by default in HTML, handled by logic) -->
+                            <i data-lucide="check" class="w-2.5 h-2.5 text-brand-400 opacity-0"></i>
+                        </div>
+                        <span class="text-[11px] text-gray-300 font-medium">Recordarme</span>
+                    </label>
+                    <a href="#" class="text-[11px] text-brand-400 font-bold hover:text-brand-300 transition-colors">¿Olvidaste tu clave?</a>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="pt-2 hide-initially animate-fade-in-up stagger-5">
+                    <!-- Main Login Button -->
+                    <button type="button" class="w-full py-3.5 bg-white text-black rounded-full text-sm font-bold active-press shadow-[0_0_20px_rgba(255,255,255,0.15)] flex justify-center items-center gap-2">
+                        Ingresar <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                
+            </form>
+
+        </div>
+        
+        <!-- Support Option -->
+        <div class="mt-8 text-center hide-initially animate-fade-in-up stagger-5 flex justify-center">
+            <button class="py-2.5 px-6 rounded-full glass-btn flex items-center justify-center text-white gap-2 text-xs font-semibold active-press">
+                <i data-lucide="life-buoy" class="w-4 h-4 text-gray-300"></i>
+                Contactar Soporte
+            </button>
+        </div>
+
+    </main>
+
+    <!-- Scripts -->
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Simple script for the custom checkbox interaction
+        const checkboxLabel = document.querySelector('label.group');
+        const checkIcon = checkboxLabel.querySelector('i');
+        let isChecked = false;
+
+        checkboxLabel.addEventListener('click', (e) => {
+            e.preventDefault();
+            isChecked = !isChecked;
+            if (isChecked) {
+                checkIcon.classList.remove('opacity-0');
+            } else {
+                checkIcon.classList.add('opacity-0');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -16,6 +16,7 @@ export interface ITaskRepository {
   getTasksByUser(userId: string): Promise<Task[]>;
   subscribeTasksByUser(userId: string, callback: (tasks: Task[]) => void): () => void;
   getTasksByCompany(empresaId: string): Promise<Task[]>;
+  getTasksByIds(taskIds: string[]): Promise<Task[]>;
   createTask(task: Omit<Task, 'id' | 'fecha_creacion'>): Promise<void>;
   updateTask(taskId: string, data: Partial<Task>): Promise<void>;
   updateTaskState(taskId: string, estado: Task['estado']): Promise<void>;

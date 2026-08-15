@@ -21,13 +21,13 @@ function mapRequestRow(row: Record<string, any>): InternalRequest {
 
 export class SupabaseInternalRequestRepository implements IInternalRequestRepository {
   async create(userId: string, data: NuevaSolicitudInterna): Promise<InternalRequest> {
-    const { empresaId, tipo, titulo, descripcion, monto, fecha_inicio, fecha_fin, archivo_adjunto } = data;
+    const { empresaId, tipo, titulo, descripcion, monto, fecha_inicio, fecha_fin, archivo_adjunto, horas_cantidad, prioridad } = data;
     const { data: row, error } = await supabase.from('solicitudes_internas').insert({
       usuario_id: userId,
       empresa_id: empresaId,
       tipo,
       detalle: descripcion,
-      datos: { titulo, monto, fecha_inicio, fecha_fin, archivo_adjunto },
+      datos: { titulo, monto, fecha_inicio, fecha_fin, archivo_adjunto, horas_cantidad, prioridad },
     }).select('*').single();
     if (error) throw error;
     return mapRequestRow(row);

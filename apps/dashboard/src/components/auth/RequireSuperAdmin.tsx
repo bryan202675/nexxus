@@ -5,7 +5,7 @@ import { useAuth } from "context/AuthContext";
 // que entra a su propio set de rutas (ver routes.js: getRoutesForRole). El aislamiento real
 // entre lo que cada rol puede LEER/ESCRIBIR sigue siendo Firestore rules, no este gate.
 export default function RequireSuperAdmin({ children }) {
-  const { loading, user, esSuperAdmin, esAdminEmpresa } = useAuth();
+  const { loading, user, esSuperAdmin, esAdminEmpresa, esWorkspaceUser } = useAuth();
 
   if (loading) {
     return (
@@ -15,7 +15,7 @@ export default function RequireSuperAdmin({ children }) {
     );
   }
 
-  if (!user || !(esSuperAdmin || esAdminEmpresa)) {
+  if (!user || !(esSuperAdmin || esAdminEmpresa || esWorkspaceUser)) {
     return <Navigate to="/auth/sa-login" replace />;
   }
 

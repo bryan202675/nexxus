@@ -10,13 +10,26 @@ export interface InternalRequest {
   id: string;
   userId: string;
   empresaId: string;
-  tipo: 'vacaciones' | 'permiso' | 'adelanto_salarial' | 'soporte_tecnico' | 'compra_material' | 'cambio_horario' | 'incidente';
+  tipo:
+    | 'vacaciones'
+    | 'permiso'
+    | 'adelanto_salarial'
+    | 'soporte_tecnico'
+    | 'compra_material'
+    | 'cambio_horario'
+    | 'incidente'
+    | 'llegada_tarde'
+    | 'horas_extra'
+    | 'trabajo_remoto'
+    | 'incapacidad'
+    | 'permiso_especial';
   titulo: string;
   descripcion: string;
   monto?: number; // Para adelantos o compras
   fecha_inicio?: string;
   fecha_fin?: string;
   archivo_adjunto?: string;
+  horas_cantidad?: number; // Para horas extra
   estado: 'pendiente' | 'revisado' | 'aprobado' | 'rechazado' | 'resuelto';
   prioridad: 'baja' | 'media' | 'alta' | 'urgente';
   flujo_aprobacion: {

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text as NativeText, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Platform, ScrollView, StyleSheet, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
 import { useAuth } from '@/presentation/hooks/useAuth';
 import { useCases } from '@/infrastructure/container';
 import { uploadManagedFile } from '@/infrastructure/storage/cloudinaryUpload';
@@ -10,8 +11,9 @@ import { User } from 'domain/entities/User';
 import { obtenerEmpresaIdAdmin } from './adminUtils';
 import { ADMIN, useAdminAppearance } from './adminTheme';
 import { useAdminToast } from './adminToast';
+import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 
-const Text = NativeText;
+const Text = AdminTranslatedText;
 
 export default function GestionDocumentos() {
   const { user } = useAuth();
@@ -26,6 +28,7 @@ export default function GestionDocumentos() {
   const [stats, setStats] = useState<DocumentStorageStats>({ totalBytes: 0, uploadCount: 0, topUsers: [] });
   const [subiendo, setSubiendo] = useState(false);
   const [progreso, setProgreso] = useState(0);
+  const [subiendoVersionId, setSubiendoVersionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!empresaId) return;
@@ -46,86 +49,177 @@ export default function GestionDocumentos() {
     cargarStats().catch(() => {});
   }, [empresaId, documentos.length]);
 
-  const seleccionarDocumentoWeb = async () => {
-    if (Platform.OS !== 'web') {
-      toast.warning({ title: 'Subida no disponible', description: 'La carga de documentos está habilitada en Expo Web.' });
-      return;
+  // Sube un documento nuevo ya materializado como Blob/File -- comparte la lógica de registro
+  // (create + Nexxus Brain + Bandeja Unificada + push) entre el flujo web (File nativo del
+  // <input>) y el flujo nativo (Blob obtenido via fetch() del uri que entrega DocumentPicker).
+  const procesarDocumentoNuevo = async (file: Blob, nombreArchivo: string) => {
+    const destino = usuarios[0];
+    if (!destino || !user) return;
+    const tituloLimpio = nombreArchivo.replace(/\.pdf$/i, '');
+    setSubiendo(true);
+    setProgreso(0);
+    try {
+      await validateUploadFile(file, 'document');
+      const uploaded = await uploadManagedFile(file, {
+        kind: 'document',
+        ownerId: empresaId,
+        empresaId,
+        documentUserId: destino.id,
+        documentTitle: nombreArchivo,
+        onProgress: (event) => setProgreso(event.percent),
+      });
+      const documentoId = await useCases.documents.create.execute({
+        userId: destino.id,
+        empresaId,
+        titulo: tituloLimpio,
+        tipo: 'rrhh',
+        url: uploaded.url,
+        publicId: uploaded.publicId,
+        hash: uploaded.hash,
+        size: uploaded.size,
+        mime: uploaded.mime,
+        createdBy: user.id,
+        fechaSubida: new Date().toISOString(),
+        leido: false,
+      });
+      // Nexxus Brain (Fase 14): registra que este empleado tiene acceso a este documento.
+      useCases.graph.addRelation.execute({
+        empresaId,
+        origenTipo: 'usuario',
+        origenId: destino.id,
+        relacionTipo: 'tiene_acceso_a',
+        destinoTipo: 'documento',
+        destinoId: documentoId,
+        metadata: {},
+        creadoPor: user.id,
+      }).catch((e) => console.error('Error registrando relación en Nexxus Brain:', e));
+      // Bandeja Unificada (Fase 9): avisa al destinatario que tiene un documento nuevo. No bloquea
+      // la subida si falla -- el documento ya quedó registrado.
+      useCases.inbox.add.execute({
+        userId: destino.id,
+        empresaId,
+        origenRefId: uploaded.publicId || '',
+        tipo: 'documento',
+        prioridad: 'normal',
+        estado: 'pendiente',
+        titulo: tituloLimpio,
+        mensaje: `${user.nombre || 'Administración'} te compartió un documento nuevo.`,
+      }).catch((e) => console.error('Error publicando en Bandeja Unificada:', e));
+      // Fase 10: push real, en paralelo. Sin token registrado, la Edge Function no envía nada.
+      useCases.push.send.execute(
+        destino.id,
+        tituloLimpio,
+        `${user.nombre || 'Administración'} te compartió un documento nuevo.`
+      ).catch((e) => console.error('Error enviando push:', e));
+      toast.success({ title: uploaded.reused ? 'Documento reutilizado' : 'Documento subido', description: 'El archivo quedó registrado sin duplicar espacio innecesario.' });
+      cargarStats().catch(() => {});
+    } catch (error: any) {
+      toast.error({ title: 'No se pudo subir', description: error?.message || 'Revisa el archivo e intenta nuevamente.' });
+    } finally {
+      setSubiendo(false);
     }
+  };
+
+  const seleccionarDocumento = async () => {
     const destino = usuarios[0];
     if (!destino) {
       toast.warning({ title: 'Sin usuarios', description: 'Necesitas al menos un usuario de la empresa.' });
       return;
     }
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'application/pdf,.pdf';
-    input.onchange = async () => {
-      const file = input.files?.[0];
-      if (!file || !user) return;
-      setSubiendo(true);
-      setProgreso(0);
+
+    if (Platform.OS === 'web') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/pdf,.pdf';
+      input.onchange = async () => {
+        const file = input.files?.[0];
+        if (!file) return;
+        await procesarDocumentoNuevo(file, file.name);
+      };
+      input.click();
+      return;
+    }
+
+    // Nativo (iOS/Android): expo-document-picker entrega un uri local, que convertimos a Blob
+    // con fetch() para poder reutilizar la misma ruta de subida/validación que en web.
+    try {
+      const res = await DocumentPicker.getDocumentAsync({ type: 'application/pdf', copyToCacheDirectory: true });
+      if (res.canceled || !res.assets?.[0]) return;
+      const asset = res.assets[0];
+      const blob = await (await fetch(asset.uri)).blob();
+      await procesarDocumentoNuevo(blob, asset.name || 'documento.pdf');
+    } catch (error: any) {
+      toast.error({ title: 'No se pudo seleccionar el archivo', description: error?.message || 'Intenta nuevamente.' });
+    }
+  };
+
+  const procesarNuevaVersion = async (documento: Documento, file: Blob, nombreArchivo: string) => {
+    if (!user) return;
+    setSubiendoVersionId(documento.id);
+    try {
+      await validateUploadFile(file, 'document');
+      // No pasamos previousPublicId: cada version conserva su propio archivo en Cloudinary para
+      // poder reabrirse desde el historial, en vez de destruir la version anterior al reemplazar.
+      const uploaded = await uploadManagedFile(file, {
+        kind: 'document',
+        ownerId: empresaId,
+        empresaId,
+        documentUserId: documento.userId,
+        documentTitle: nombreArchivo,
+      });
+      await useCases.documents.addVersion.execute(documento.id, {
+        url: uploaded.url,
+        publicId: uploaded.publicId,
+        hash: uploaded.hash,
+        size: uploaded.size,
+        mime: uploaded.mime,
+        subidoPor: user.id,
+        subidoPorNombre: user.nombre,
+        fecha: new Date().toISOString(),
+      });
+      useCases.inbox.add.execute({
+        userId: documento.userId,
+        empresaId,
+        origenRefId: uploaded.publicId || '',
+        tipo: 'documento',
+        prioridad: 'normal',
+        estado: 'pendiente',
+        titulo: documento.titulo,
+        mensaje: `${user.nombre || 'Administración'} subió una nueva versión de "${documento.titulo}".`,
+      }).catch((e) => console.error('Error publicando en Bandeja Unificada:', e));
+      toast.success({ title: 'Nueva versión cargada', description: 'El documento quedó marcado como no leído para que el empleado la revise.' });
+    } catch (error: any) {
+      toast.error({ title: 'No se pudo subir la versión', description: error?.message || 'Revisa el archivo e intenta nuevamente.' });
+    } finally {
+      setSubiendoVersionId(null);
+    }
+  };
+
+  const subirNuevaVersion = (documento: Documento) => {
+    if (Platform.OS === 'web') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/pdf,.pdf';
+      input.onchange = async () => {
+        const file = input.files?.[0];
+        if (!file) return;
+        await procesarNuevaVersion(documento, file, file.name);
+      };
+      input.click();
+      return;
+    }
+
+    (async () => {
       try {
-        await validateUploadFile(file, 'document');
-        const uploaded = await uploadManagedFile(file, {
-          kind: 'document',
-          ownerId: empresaId,
-          empresaId,
-          documentUserId: destino.id,
-          documentTitle: file.name,
-          onProgress: (event) => setProgreso(event.percent),
-        });
-        const documentoId = await useCases.documents.create.execute({
-          userId: destino.id,
-          empresaId,
-          titulo: file.name.replace(/\.pdf$/i, ''),
-          tipo: 'rrhh',
-          url: uploaded.url,
-          publicId: uploaded.publicId,
-          hash: uploaded.hash,
-          size: uploaded.size,
-          mime: uploaded.mime,
-          createdBy: user.id,
-          fechaSubida: new Date().toISOString(),
-          leido: false,
-        });
-        // Nexxus Brain (Fase 14): registra que este empleado tiene acceso a este documento.
-        useCases.graph.addRelation.execute({
-          empresaId,
-          origenTipo: 'usuario',
-          origenId: destino.id,
-          relacionTipo: 'tiene_acceso_a',
-          destinoTipo: 'documento',
-          destinoId: documentoId,
-          metadata: {},
-          creadoPor: user.id,
-        }).catch((e) => console.error('Error registrando relación en Nexxus Brain:', e));
-        // Bandeja Unificada (Fase 9): avisa al destinatario que tiene un documento nuevo. No bloquea
-        // la subida si falla -- el documento ya quedó registrado.
-        useCases.inbox.add.execute({
-          userId: destino.id,
-          empresaId,
-          origenRefId: uploaded.publicId || '',
-          tipo: 'documento',
-          prioridad: 'normal',
-          estado: 'pendiente',
-          titulo: file.name.replace(/\.pdf$/i, ''),
-          mensaje: `${user.nombre || 'Administración'} te compartió un documento nuevo.`,
-        }).catch((e) => console.error('Error publicando en Bandeja Unificada:', e));
-        // Fase 10: push real, en paralelo. Sin token registrado, la Edge Function no envía nada.
-        useCases.push.send.execute(
-          destino.id,
-          file.name.replace(/\.pdf$/i, ''),
-          `${user.nombre || 'Administración'} te compartió un documento nuevo.`
-        ).catch((e) => console.error('Error enviando push:', e));
-        toast.success({ title: uploaded.reused ? 'Documento reutilizado' : 'Documento subido', description: 'El archivo quedó registrado sin duplicar espacio innecesario.' });
-        cargarStats().catch(() => {});
+        const res = await DocumentPicker.getDocumentAsync({ type: 'application/pdf', copyToCacheDirectory: true });
+        if (res.canceled || !res.assets?.[0]) return;
+        const asset = res.assets[0];
+        const blob = await (await fetch(asset.uri)).blob();
+        await procesarNuevaVersion(documento, blob, asset.name || documento.titulo);
       } catch (error: any) {
-        toast.error({ title: 'No se pudo subir', description: error?.message || 'Revisa el archivo e intenta nuevamente.' });
-      } finally {
-        setSubiendo(false);
+        toast.error({ title: 'No se pudo seleccionar el archivo', description: error?.message || 'Intenta nuevamente.' });
       }
-    };
-    input.click();
+    })();
   };
 
   const eliminarDocumento = async (documento: Documento) => {
@@ -155,7 +249,7 @@ export default function GestionDocumentos() {
           <Text style={styles.title}>Documentos y almacenamiento</Text>
           <Text style={styles.subtitle}>Control documental, uso de almacenamiento y archivos PDF de la empresa.</Text>
         </View>
-        <TouchableOpacity style={styles.primaryButton} onPress={seleccionarDocumentoWeb} disabled={subiendo}>
+        <TouchableOpacity style={styles.primaryButton} onPress={seleccionarDocumento} disabled={subiendo}>
           {subiendo ? <ActivityIndicator color="#fff" /> : <MaterialIcons {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} name="upload-file" size={18} color="#FFFFFF" style={styles.primaryButtonIcon} />}
           <Text style={styles.primaryButtonText}>{subiendo ? `${progreso}%` : 'Subir PDF'}</Text>
         </TouchableOpacity>
@@ -201,9 +295,20 @@ export default function GestionDocumentos() {
               <MaterialIcons name="picture-as-pdf" size={20} color={ADMIN.error} />
             </View>
             <View style={styles.rowBody}>
-              <Text style={styles.rowTitle}>{documento.titulo}</Text>
-              <Text style={styles.muted}>{formatBytes(documento.size || 0)} · {documento.mime || 'application/pdf'}</Text>
+              <View style={styles.rowTitleFila}>
+                <Text style={styles.rowTitle}>{documento.titulo}</Text>
+                <View style={styles.versionBadge}>
+                  <Text style={styles.versionBadgeTexto}>v{documento.version}</Text>
+                </View>
+              </View>
+              <Text style={styles.muted}>
+                {formatBytes(documento.size || 0)} · {documento.mime || 'application/pdf'}
+                {documento.historialVersiones.length > 0 ? ` · ${documento.historialVersiones.length} version(es) anterior(es)` : ''}
+              </Text>
             </View>
+            <TouchableOpacity style={styles.iconButton} onPress={() => subirNuevaVersion(documento)} disabled={subiendoVersionId === documento.id}>
+              {subiendoVersionId === documento.id ? <ActivityIndicator size="small" color={theme.text} /> : <MaterialIcons name="upload-file" size={18} color={theme.text} />}
+            </TouchableOpacity>
             <TouchableOpacity style={styles.iconButton} onPress={() => {
               if (Platform.OS === 'web' && typeof window !== 'undefined') window.open(documento.url, '_blank');
             }}>
@@ -259,7 +364,10 @@ const crearEstilos = (isDark: boolean, width: number) => {
   row: { minHeight: 72, flexDirection: isPhone ? 'column' : 'row', alignItems: isPhone ? 'stretch' : 'center', gap: 12, borderTopWidth: 1, borderTopColor: ADMIN.bordeSuave, paddingVertical: 12 },
   fileIcon: { width: 46, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(239,68,68,0.12)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.20)' },
   rowBody: { flex: 1, minWidth: 0 },
+  rowTitleFila: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   rowTitle: { color: ADMIN.texto, fontSize: 14, fontWeight: '900' },
+  versionBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, backgroundColor: 'rgba(99,32,166,0.12)', borderWidth: 1, borderColor: 'rgba(99,32,166,0.25)' },
+  versionBadgeTexto: { color: '#6320A6', fontSize: 10, fontWeight: '900' },
   iconButton: { width: isPhone ? '100%' : 38, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: ADMIN.fondoCampo, borderWidth: 1, borderColor: ADMIN.borde },
   iconButtonDanger: { width: isPhone ? '100%' : 38, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(239,68,68,0.10)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.25)' },
   emptyBox: { minHeight: 130, borderRadius: 14, borderWidth: 1, borderColor: ADMIN.borde, backgroundColor: ADMIN.fondoCampo, alignItems: 'center', justifyContent: 'center', gap: 10 },

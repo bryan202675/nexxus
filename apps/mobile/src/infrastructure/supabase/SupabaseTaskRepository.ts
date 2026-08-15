@@ -3,7 +3,7 @@ import { ITaskRepository } from 'domain/repositories/ITaskRepository';
 import { Task } from 'domain/entities/Task';
 import { subscribeQuery } from './realtime';
 
-const CORE_COLUMNS = new Set(['titulo', 'descripcion', 'prioridad', 'estado', 'progreso', 'asignado_a', 'empresa_id', 'creado_por', 'fecha_limite', 'created_at', 'updated_at']);
+const QUERY_LIMIT = 500;
 
 function mapRow(row: Record<string, any>): Task {
   return {
@@ -39,7 +39,7 @@ function splitTask(task: Record<string, any>) {
 
 export class SupabaseTaskRepository implements ITaskRepository {
   async getTasksByUser(userId: string): Promise<Task[]> {
-    const { data, error } = await supabase.from('tareas').select('*').eq('asignado_a', userId);
+    const { data, error } = await supabase.from('tareas').select('*').eq('asignado_a', userId).order('created_at', { ascending: false }).limit(QUERY_LIMIT);
     if (error) throw error;
     return (data || []).map(mapRow);
   }
@@ -54,7 +54,14 @@ export class SupabaseTaskRepository implements ITaskRepository {
   }
 
   async getTasksByCompany(empresaId: string): Promise<Task[]> {
-    const { data, error } = await supabase.from('tareas').select('*').eq('empresa_id', empresaId);
+    const { data, error } = await supabase.from('tareas').select('*').eq('empresa_id', empresaId).order('created_at', { ascending: false }).limit(QUERY_LIMIT);
+    if (error) throw error;
+    return (data || []).map(mapRow);
+  }
+
+  async getTasksByIds(taskIds: string[]): Promise<Task[]> {
+    if (taskIds.length === 0) return [];
+    const { data, error } = await supabase.from('tareas').select('*').in('id', taskIds.slice(0, QUERY_LIMIT));
     if (error) throw error;
     return (data || []).map(mapRow);
   }

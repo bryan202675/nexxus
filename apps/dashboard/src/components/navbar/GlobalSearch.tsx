@@ -27,7 +27,7 @@ const BADGE_STYLES = {
 
 export default function GlobalSearch() {
   const navigate = useNavigate();
-  const { esSuperAdmin, empresaId } = useAuth();
+  const { esSuperAdmin, empresaId, rol, esWorkspaceUser } = useAuth();
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [results, setResults] = useState([]);
@@ -76,7 +76,7 @@ export default function GlobalSearch() {
       const searchResults = [];
 
       // 1. Dashboard Sections / Routes
-      const routes = getRoutesForRole(esSuperAdmin ? "super_admin" : "admin_empresa");
+      const routes = getRoutesForRole(rol);
       const matchedRoutes = routes.filter((r) =>
         r.name?.toLowerCase().includes(trimmed)
       );
@@ -92,24 +92,24 @@ export default function GlobalSearch() {
       });
 
       // 2. Database entity searches for Company Admin
-      if (empresaId) {
+      if (empresaId && !esWorkspaceUser) {
         try {
           // Empleados / Usuarios
           const { data: usuarios } = await supabase
             .from("usuarios")
-            .select("id, nombre, email, rol")
+            .select("id, nombre, correo, rol")
             .eq("empresa_id", empresaId)
-            .or(`nombre.ilike.%${trimmed}%,email.ilike.%${trimmed}%,rol.ilike.%${trimmed}%`)
+            .or(`nombre.ilike.%${trimmed}%,correo.ilike.%${trimmed}%,rol.ilike.%${trimmed}%`)
             .limit(5);
 
           (usuarios || []).forEach((u) => {
             searchResults.push({
               id: `user-${u.id}`,
-              title: u.nombre || u.email,
-              subtitle: `${u.email || ""} • ${u.rol || "Empleado"}`,
+              title: u.nombre || u.correo,
+              subtitle: `${u.correo || ""} • ${u.rol || "Empleado"}`,
               type: "Empleado",
               icon: <MdOutlinePerson className="h-5 w-5 text-blue-500 dark:text-blue-400" />,
-              action: () => navigate(`/admin/empresa-plantilla?search=${encodeURIComponent(u.nombre || u.email)}`),
+              action: () => navigate(`/admin/empresa-plantilla?search=${encodeURIComponent(u.nombre || u.correo)}`),
             });
           });
 
@@ -173,15 +173,15 @@ export default function GlobalSearch() {
           // Documentos
           const { data: documentos } = await supabase
             .from("documentos")
-            .select("id, titulo, nombre, categoria")
+            .select("id, titulo, categoria")
             .eq("empresa_id", empresaId)
-            .or(`titulo.ilike.%${trimmed}%,nombre.ilike.%${trimmed}%,categoria.ilike.%${trimmed}%`)
+            .or(`titulo.ilike.%${trimmed}%,categoria.ilike.%${trimmed}%`)
             .limit(5);
 
           (documentos || []).forEach((doc) => {
             searchResults.push({
               id: `doc-${doc.id}`,
-              title: doc.titulo || doc.nombre || "Documento",
+              title: doc.titulo || "Documento",
               subtitle: doc.categoria || "Archivo de empresa",
               type: "Documento",
               icon: <MdOutlineDescription className="h-5 w-5 text-rose-500 dark:text-rose-400" />,
@@ -192,16 +192,17 @@ export default function GlobalSearch() {
           // Inventario / Activos
           const { data: inventario } = await supabase
             .from("inventario_activos")
-            .select("id, nombre, codigo, categoria")
+            .select("id, nombre, categoria, datos")
             .eq("empresa_id", empresaId)
-            .or(`nombre.ilike.%${trimmed}%,codigo.ilike.%${trimmed}%,categoria.ilike.%${trimmed}%`)
+            .or(`nombre.ilike.%${trimmed}%,categoria.ilike.%${trimmed}%`)
             .limit(5);
 
           (inventario || []).forEach((inv) => {
+            const codigo = inv.datos?.codigo;
             searchResults.push({
               id: `inv-${inv.id}`,
               title: inv.nombre,
-              subtitle: `${inv.codigo ? `[${inv.codigo}] ` : ""}${inv.categoria || "Activo de inventario"}`,
+              subtitle: `${codigo ? `[${codigo}] ` : ""}${inv.categoria || "Activo de inventario"}`,
               type: "Inventario",
               icon: <MdOutlineInventory2 className="h-5 w-5 text-indigo-500 dark:text-indigo-400" />,
               action: () => navigate("/admin/empresa-inventario"),
@@ -223,7 +224,7 @@ export default function GlobalSearch() {
       isCancelled = true;
       clearTimeout(timer);
     };
-  }, [query, empresaId, esSuperAdmin, navigate]);
+  }, [query, empresaId, esSuperAdmin, rol, esWorkspaceUser, navigate]);
 
   const handleSelect = (item) => {
     setIsOpen(false);

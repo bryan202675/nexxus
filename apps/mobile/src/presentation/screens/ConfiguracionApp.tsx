@@ -1,13 +1,4 @@
-/**
- * Documentacion Nexxus - apps/mobile/src/presentation/screens/ConfiguracionApp.tsx
- * Capa: presentacion.
- * Proposito: Pantalla de la experiencia del empleado. Lee contexto de usuario, muestra informacion operativa y conserva las acciones de navegacion existentes.
- * Dependencias clave: imports superiores y contratos tipados del propio modulo.
- * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras de datos al extender este archivo.
- */
-
-// Importa React desde React; habilita componentes, hooks y tipos base para esta pieza.
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -16,283 +7,441 @@ import {
   SafeAreaView,
   StatusBar,
   ScrollView,
-  Switch,
   Alert,
+  Switch,
 } from 'react-native';
-// Importa { Feather, MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
-import { Feather, MaterialIcons } from '@expo/vector-icons';
-// Importa { BlurView } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
+import { Feather } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-// Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
+import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
+import { Skeleton } from '@/presentation/components/ui';
 import { useTranslation } from 'react-i18next';
-// Importa { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA }; reutiliza tokens visuales y constantes comunes del sistema de diseno.
-import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA } from '@/shared/constants/diseno';
-// Importa { useContextoUsuario }; accede a contexto compartido de usuario, tema o estado global.
+import { COLORES, ESPACIADO, RADIOS, SOMBRAS } from '@/shared/constants/diseno';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
-// Importa { useTemaMobile }; accede a contexto compartido de usuario, tema o estado global.
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
-// Importa NavbarEnterprise; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
 import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
-// Importa FondoMobilePremium; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
-// Importa { changeLanguage }; inicializa o consume configuracion de internacionalizacion.
 import { changeLanguage } from '@/shared/i18n/config';
+import { useCases } from '@/infrastructure/container';
+import { SessionDevice } from 'domain/entities/SessionDevice';
+import { obtenerDeviceId } from '@/infrastructure/storage/deviceIdentity';
+import BotonAnimado from '@/presentation/components/BotonAnimado';
 
-/**
- * Componente ConfiguracionApp. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
- */
 export default function ConfiguracionApp({ navigation }: { navigation: any }) {
-  // Inicializa { t, i18n }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { t, i18n } = useTranslation();
-  // Inicializa { cerrarSesion }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const { cerrarSesion } = useContextoUsuario();
-  // Declara { esOscuro, cambiarModo, colores, blurTint, intensidadBlur }; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
+  const { cerrarSesion, perfil } = useContextoUsuario();
   const { esOscuro, cambiarModo, colores, blurTint, intensidadBlur } = useTemaMobile();
-  // Declara estilos; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const estilos = crearEstilosConfig(colores, esOscuro);
 
+  const [dispositivos, setDispositivos] = useState<SessionDevice[]>([]);
+  const [deviceIdActual, setDeviceIdActual] = useState<string>('');
+  const [cerrandoOtras, setCerrandoOtras] = useState(false);
 
-  // Declara cambiarIdioma; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const cambiarIdioma = (lang: string) => {
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-    changeLanguage(lang);
-  };
+  useEffect(() => {
+    obtenerDeviceId().then(setDeviceIdActual);
+  }, []);
 
-  // Declara manejarCerrarSesion; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const manejarCerrarSesion = () => {
-    // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
+  useEffect(() => {
+    if (!perfil?.id) return;
+    const unsub = useCases.sessionDevices.subscribe.execute(perfil.id, setDispositivos);
+    return () => unsub();
+  }, [perfil?.id]);
+
+  const manejarCerrarOtrasSesiones = () => {
     Alert.alert(
-      t('perfilLaboral.logout_title'),
-      t('perfilLaboral.logout_desc'),
+      'Cerrar otras sesiones',
+      'Se cerrará la sesión en todos tus demás dispositivos. Esta sesión seguirá activa.',
       [
-        { text: t('common.cancel'), style: 'cancel' },
-        { 
-          text: t('perfilLaboral.logout_title'), 
+        { text: t('common.cancel', { defaultValue: 'Cancelar' }), style: 'cancel' },
+        {
+          text: 'Cerrar otras sesiones',
           style: 'destructive',
           onPress: async () => {
-            // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-            await cerrarSesion();
-          }
-        }
+            setCerrandoOtras(true);
+            try {
+              await useCases.auth.logoutOtherSessions.execute();
+              if (perfil?.id && deviceIdActual) {
+                await useCases.sessionDevices.removeOthers.execute(perfil.id, deviceIdActual);
+              }
+            } catch {
+              Alert.alert('Error', 'No se pudieron cerrar las otras sesiones. Intenta de nuevo.');
+            } finally {
+              setCerrandoOtras(false);
+            }
+          },
+        },
       ]
     );
   };
 
-  // Declara SeccionConfig; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const SeccionConfig = ({ titulo, children }: { titulo: string; children: React.ReactNode }) => (
-    // Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion.
-    <View style={estilos.seccion}>
-      {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-      <Text style={estilos.tituloSeccion}>{titulo}</Text>
-      {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-      <View style={estilos.tarjetaGrupo}>
-        {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
-        <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.grupoContenido}>
-          {children}
-        </BlurView>
-      </View>
-    </View>
-  );
+  const formatearUltimoAcceso = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleString('es-SV', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return iso;
+    }
+  };
 
-  // Declara ItemConfig; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const ItemConfig = ({ 
-    icono, 
-    label, 
-    valor, 
-    onPress, 
-    esSwitch, 
-    switchValue, 
-    onSwitchChange,
-    esUltimo 
-  }: { 
-    icono: any; 
-    label: string; 
-    valor?: string; 
-    onPress?: () => void; 
-    esSwitch?: boolean;
-    switchValue?: boolean;
-    onSwitchChange?: (val: boolean) => void;
-    esUltimo?: boolean;
-  }) => (
-    // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-    <TouchableOpacity 
-      style={[estilos.itemConfig, esUltimo && { borderBottomWidth: 0 }]} 
-      onPress={onPress}
-      disabled={esSwitch}
-    >
-      {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-      <View style={estilos.itemIzq}>
-        {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-        <View style={estilos.iconoContenedor}>
-          {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-          <Feather name={icono} size={18} color={colores.texto} />
-        </View>
-        {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-        <Text style={estilos.itemLabel}>{label}</Text>
-      </View>
-      {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-      <View style={estilos.itemDer}>
-        {esSwitch ? (
-          // Switch renderiza una pieza visual reutilizable dentro de esta pantalla.
-          <Switch 
-            value={switchValue} 
-            onValueChange={onSwitchChange}
-            trackColor={{ false: '#334155', true: COLORES.primario }}
-            thumbColor="#f8fafc"
-          />
-        ) : (
-          <>
-            {valor && <Text style={estilos.itemValor}>{valor}</Text>}
-            {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-            <Feather name="chevron-right" size={16} color={colores.textoSuave} />
-          </>
-        )}
-      </View>
-    </TouchableOpacity>
-  );
+  const cambiarIdioma = (lang: string) => {
+    changeLanguage(lang);
+  };
 
-  // Devuelve el JSX que React Native renderiza en pantalla.
+  const manejarCerrarSesion = () => {
+    Alert.alert(
+      t('perfilLaboral.logout_title', { defaultValue: 'Cerrar sesión' }),
+      t('perfilLaboral.logout_desc', { defaultValue: '¿Estás seguro de que deseas salir de tu cuenta?' }),
+      [
+        { text: t('common.cancel', { defaultValue: 'Cancelar' }), style: 'cancel' },
+        {
+          text: t('perfilLaboral.logout_title', { defaultValue: 'Cerrar sesión' }),
+          style: 'destructive',
+          onPress: async () => {
+            await cerrarSesion();
+          },
+        },
+      ]
+    );
+  };
+
   return (
-    // Contenedor seguro de la pantalla; respeta areas del dispositivo como notch, barra superior y bordes.
     <SafeAreaView style={estilos.contenedor}>
-      {/* Configura la barra de estado del sistema para que combine con el fondo de esta pantalla. */}
-      <StatusBar barStyle="light-content" />
-      {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+      <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
       <View style={estilos.fondoAbsoluto}>
-        {/* Elemento de fondo visual; construye la atmosfera grafica de la pantalla sin cambiar los datos. */}
         <FondoMobilePremium />
       </View>
 
-      {/* NavbarEnterprise renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <NavbarEnterprise titulo={t('common.settings')} />
+      <NavbarEnterprise titulo={t('common.settings', { defaultValue: 'Configuración' })} subtitulo="Preferencias y seguridad" />
 
-      {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
       <ScrollView contentContainerStyle={estilos.scroll} showsVerticalScrollIndicator={false}>
-        {/* SeccionConfig renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-        <SeccionConfig titulo={t('app.settings_title')}>
-          {/* ItemConfig renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <ItemConfig 
-            icono="globe" 
-            label={t('common.language')} 
-            valor={i18n.language === 'es' ? 'Español' : 'English'}
-            onPress={() => {
-              // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-              Alert.alert(
-                t('common.language'),
-                t('common.language'),
-                [
-                  { text: 'Español', onPress: () => cambiarIdioma('es') },
-                  { text: 'English', onPress: () => cambiarIdioma('en') },
-                  { text: t('common.cancel'), style: 'cancel' }
-                ]
-              );
-            }}
-          />
-          {/* ItemConfig renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <ItemConfig 
-            icono="moon" 
-            label={t('common.theme')} 
-            esSwitch 
-            switchValue={esOscuro}
-            onSwitchChange={(valor) => cambiarModo(valor ? 'oscuro' : 'claro')}
-            esUltimo
-          />
-        </SeccionConfig>
+        {/* Preferencias de la App */}
+        <Animated.View entering={FadeInDown.duration(260).delay(0).easing(Easing.out(Easing.quad))} style={estilos.seccion}>
+          <Text style={estilos.tituloSeccion}>{t('app.settings_title', { defaultValue: 'PREFERENCIAS' })}</Text>
+          <View style={estilos.tarjetaGrupo}>
+            <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.grupoContenido}>
+              {/* Idioma */}
+              <TouchableOpacity
+                style={estilos.itemConfig}
+                onPress={() => {
+                  Alert.alert(
+                    t('common.language', { defaultValue: 'Idioma' }),
+                    'Selecciona tu idioma preferido',
+                    [
+                      { text: 'Español', onPress: () => cambiarIdioma('es') },
+                      { text: 'English', onPress: () => cambiarIdioma('en') },
+                      { text: t('common.cancel', { defaultValue: 'Cancelar' }), style: 'cancel' },
+                    ]
+                  );
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={estilos.itemIzq}>
+                  <View style={estilos.iconoContenedor}>
+                    <Feather name="globe" size={17} color={esOscuro ? '#93C5FD' : '#2563EB'} />
+                  </View>
+                  <Text style={estilos.itemLabel}>{t('common.language', { defaultValue: 'Idioma' })}</Text>
+                </View>
+                <View style={estilos.itemDer}>
+                  <Text style={estilos.itemValor}>{i18n.language === 'es' ? 'Español' : 'English'}</Text>
+                  <Feather name="chevron-right" size={16} color={colores.textoSuave} />
+                </View>
+              </TouchableOpacity>
 
-        {/* SeccionConfig renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-        <SeccionConfig titulo={t('perfilLaboral.contact_relation')}>
-          {/* ItemConfig renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <ItemConfig icono="bell" label={t('notificaciones.title')} onPress={() => navigation.navigate('Notificaciones')} />
-          {/* ItemConfig renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <ItemConfig icono="user" label={t('perfilLaboral.my_profile')} onPress={() => navigation.navigate('PerfilLaboral')} esUltimo />
-        </SeccionConfig>
+              {/* Modo Oscuro */}
+              <View style={[estilos.itemConfig, { borderBottomWidth: 0 }]}>
+                <View style={estilos.itemIzq}>
+                  <View style={estilos.iconoContenedor}>
+                    <Feather name="moon" size={17} color={esOscuro ? '#FBBF24' : '#64748B'} />
+                  </View>
+                  <Text style={estilos.itemLabel}>{t('common.theme', { defaultValue: 'Modo Oscuro' })}</Text>
+                </View>
+                <Switch
+                  value={esOscuro}
+                  onValueChange={(val) => cambiarModo(val ? 'oscuro' : 'claro')}
+                  trackColor={{ false: 'rgba(150,150,150,0.3)', true: esOscuro ? '#3B82F6' : '#2563EB' }}
+                  thumbColor="#fff"
+                />
+              </View>
+            </BlurView>
+          </View>
+        </Animated.View>
 
-        {/* SeccionConfig renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-        <SeccionConfig titulo={t('common.advanced_options')}>
-          {/* ItemConfig renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <ItemConfig icono="shield" label={t('app.privacy')} />
-          {/* ItemConfig renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <ItemConfig icono="headphones" label={t('app.support_help')} onPress={() => navigation.navigate('CentroApoyo')} esUltimo />
-        </SeccionConfig>
+        {/* Cuenta y Perfil */}
+        <Animated.View entering={FadeInDown.duration(260).delay(60).easing(Easing.out(Easing.quad))} style={estilos.seccion}>
+          <Text style={estilos.tituloSeccion}>CUENTA Y ACTIVIDAD</Text>
+          <View style={estilos.tarjetaGrupo}>
+            <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.grupoContenido}>
+              <TouchableOpacity style={estilos.itemConfig} onPress={() => navigation.navigate('Notificaciones')} activeOpacity={0.7}>
+                <View style={estilos.itemIzq}>
+                  <View style={estilos.iconoContenedor}>
+                    <Feather name="bell" size={17} color={esOscuro ? '#93C5FD' : '#2563EB'} />
+                  </View>
+                  <Text style={estilos.itemLabel}>{t('notificaciones.title', { defaultValue: 'Notificaciones' })}</Text>
+                </View>
+                <Feather name="chevron-right" size={16} color={colores.textoSuave} />
+              </TouchableOpacity>
 
-        {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-        <TouchableOpacity style={estilos.botonLogout} onPress={manejarCerrarSesion}>
-          {/* Capa con desenfoque; crea efecto de superficie premium sin ocultar el fondo. */}
-          <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.logoutContent}>
-            {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-            <Feather name="log-out" size={20} color={COLORES.error} />
-            {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-            <Text style={estilos.textoLogout}>{t('perfilLaboral.logout_title')}</Text>
-          </BlurView>
-        </TouchableOpacity>
+              <TouchableOpacity style={[estilos.itemConfig, { borderBottomWidth: 0 }]} onPress={() => navigation.navigate('PerfilLaboral')} activeOpacity={0.7}>
+                <View style={estilos.itemIzq}>
+                  <View style={estilos.iconoContenedor}>
+                    <Feather name="user" size={17} color={esOscuro ? '#93C5FD' : '#2563EB'} />
+                  </View>
+                  <Text style={estilos.itemLabel}>{t('perfilLaboral.my_profile', { defaultValue: 'Mi Perfil Laboral' })}</Text>
+                </View>
+                <Feather name="chevron-right" size={16} color={colores.textoSuave} />
+              </TouchableOpacity>
+            </BlurView>
+          </View>
+        </Animated.View>
 
-        {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
+        {/* Seguridad & Ayuda */}
+        <Animated.View entering={FadeInDown.duration(260).delay(120).easing(Easing.out(Easing.quad))} style={estilos.seccion}>
+          <Text style={estilos.tituloSeccion}>{t('common.advanced_options', { defaultValue: 'SEGURIDAD Y SOPORTE' })}</Text>
+          <View style={estilos.tarjetaGrupo}>
+            <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.grupoContenido}>
+              <TouchableOpacity style={estilos.itemConfig} onPress={() => navigation.navigate('PoliticaPrivacidad')} activeOpacity={0.7}>
+                <View style={estilos.itemIzq}>
+                  <View style={estilos.iconoContenedor}>
+                    <Feather name="shield" size={17} color="#10B981" />
+                  </View>
+                  <Text style={estilos.itemLabel}>{t('app.privacy', { defaultValue: 'Privacidad y Seguridad' })}</Text>
+                </View>
+                <Feather name="chevron-right" size={16} color={colores.textoSuave} />
+              </TouchableOpacity>
+
+              <TouchableOpacity style={[estilos.itemConfig, { borderBottomWidth: 0 }]} onPress={() => navigation.navigate('CentroApoyo')} activeOpacity={0.7}>
+                <View style={estilos.itemIzq}>
+                  <View style={estilos.iconoContenedor}>
+                    <Feather name="headphones" size={17} color="#06B6D4" />
+                  </View>
+                  <Text style={estilos.itemLabel}>{t('app.support_help', { defaultValue: 'Centro de Soporte' })}</Text>
+                </View>
+                <Feather name="chevron-right" size={16} color={colores.textoSuave} />
+              </TouchableOpacity>
+            </BlurView>
+          </View>
+        </Animated.View>
+
+        {/* Sesiones Activas */}
+        <Animated.View entering={FadeInDown.duration(260).delay(180).easing(Easing.out(Easing.quad))} style={estilos.seccion}>
+          <Text style={estilos.tituloSeccion}>SESIONES ACTIVAS</Text>
+          <View style={estilos.tarjetaGrupo}>
+            <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.grupoContenido}>
+              {dispositivos.length === 0 ? (
+                <View style={{ padding: 16, gap: 8 }}>
+                  <Skeleton height={38} radius={12} />
+                  <Skeleton height={38} radius={12} />
+                </View>
+              ) : (
+                dispositivos.map((dispositivo, indice) => {
+                  const esEsteDispositivo = dispositivo.deviceId === deviceIdActual;
+                  return (
+                    <View
+                      key={dispositivo.id}
+                      style={[estilos.itemConfig, indice === dispositivos.length - 1 && !dispositivos.some((_, i) => i > 0) && { borderBottomWidth: 0 }]}
+                    >
+                      <View style={estilos.itemIzq}>
+                        <View style={estilos.iconoContenedor}>
+                          <Feather name={dispositivo.deviceOs.toLowerCase().includes('web') ? 'monitor' : 'smartphone'} size={17} color={colores.texto} />
+                        </View>
+                        <View>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Text style={estilos.itemLabel}>{dispositivo.deviceName}</Text>
+                            {esEsteDispositivo && (
+                              <View style={estilos.badgeEsteDispositivo}>
+                                <Text style={estilos.textoEsteDispositivo}>ESTE DISPOSITIVO</Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={estilos.subtextoDispositivo}>
+                            {dispositivo.deviceOs} · Últ. acceso {formatearUltimoAcceso(dispositivo.lastSeenAt)}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+              {dispositivos.length > 1 && (
+                <TouchableOpacity
+                  style={estilos.botonCerrarOtras}
+                  onPress={manejarCerrarOtrasSesiones}
+                  disabled={cerrandoOtras}
+                >
+                  <Text style={estilos.textoCerrarOtras}>
+                    {cerrandoOtras ? 'Cerrando...' : 'Cerrar todas las demás sesiones'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </BlurView>
+          </View>
+        </Animated.View>
+
+        {/* Botón Cerrar Sesión */}
+        <Animated.View entering={FadeInDown.duration(260).delay(240).easing(Easing.out(Easing.quad))}>
+          <BotonAnimado style={estilos.botonLogout} onPress={manejarCerrarSesion} scaleTo={0.98}>
+            <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.logoutContent}>
+              <Feather name="log-out" size={18} color="#EF4444" />
+              <Text style={estilos.textoLogout}>{t('perfilLaboral.logout_title', { defaultValue: 'Cerrar Sesión' })}</Text>
+            </BlurView>
+          </BotonAnimado>
+        </Animated.View>
+
+        {/* Footer */}
         <View style={estilos.footer}>
-          {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={estilos.textoVersion}>Nexxus v1.1.0</Text>
-          {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-          <Text style={estilos.textoCopyright}>© 2026 Nexxus Enterprise</Text>
+          <Text style={estilos.textoVersion}>Nexxus Enterprise v1.1.0</Text>
+          <Text style={estilos.textoCopyright}>© 2026 Nexxus. Todos los derechos reservados.</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-/**
- * Mapa de estilos crearEstilosConfig. Centraliza reglas visuales para que el JSX se mantenga legible y consistente.
- */
 function crearEstilosConfig(c: any, esOscuro: boolean) {
-  // Declara glass; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const glass = esOscuro ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.78)';
-  // Declara glassMicro; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const glassMicro = esOscuro ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.5)';
-  // Declara separador; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const separador = esOscuro ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
-  // Devuelve el valor final calculado para esta funcion o caso de uso.
+  const glass = esOscuro ? 'rgba(24, 24, 38, 0.88)' : 'rgba(255, 255, 255, 0.94)';
+  const glassMicro = c.vidrioSutil;
+  const separador = esOscuro ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+
   return StyleSheet.create({
-    // contenedor: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
     contenedor: { flex: 1, backgroundColor: c.fondo },
-    // fondoAbsoluto: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     fondoAbsoluto: { ...StyleSheet.absoluteFillObject, zIndex: -1 },
-    // header: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: ESPACIADO.lg, paddingVertical: ESPACIADO.md },
-    // botonCircular: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
-    botonCircular: { width: 40, height: 40, borderRadius: 20, backgroundColor: glassMicro, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: c.borde },
-    // tituloPantalla: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
-    tituloPantalla: { fontSize: 20, fontWeight: '800', color: c.texto, letterSpacing: -0.5 },
-    // scroll: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    scroll: { paddingHorizontal: ESPACIADO.lg, paddingTop: ESPACIADO.md, paddingBottom: 100 },
-    // seccion: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    seccion: { marginBottom: ESPACIADO.xl },
-    // tituloSeccion: estilo de titulo; define jerarquia tipografica, color y alineacion del texto principal.
-    tituloSeccion: { fontSize: 13, fontWeight: '700', color: c.textoSuave, textTransform: 'uppercase', letterSpacing: 1, marginBottom: ESPACIADO.sm, marginLeft: 4 },
-    // tarjetaGrupo: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
-    tarjetaGrupo: { borderRadius: RADIOS.xl, overflow: 'hidden', borderWidth: 1, borderColor: c.borde, backgroundColor: glass },
-    // grupoContenido: estilo del area de contenido; controla padding, distribucion y separacion interna.
-    grupoContenido: { paddingVertical: 4 },
-    // itemConfig: estilo de lista o item; mantiene espaciado y lectura consistente en elementos repetidos.
-    itemConfig: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: separador },
-    // itemIzq: estilo de lista o item; mantiene espaciado y lectura consistente en elementos repetidos.
-    itemIzq: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    // iconoContenedor: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
-    iconoContenedor: { width: 34, height: 34, borderRadius: 10, backgroundColor: glassMicro, alignItems: 'center', justifyContent: 'center' },
-    // itemLabel: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    itemLabel: { fontSize: 15, fontWeight: '600', color: c.texto },
-    // itemDer: estilo de lista o item; mantiene espaciado y lectura consistente en elementos repetidos.
-    itemDer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    // itemValor: estilo de lista o item; mantiene espaciado y lectura consistente en elementos repetidos.
-    itemValor: { fontSize: 14, color: c.textoSuave },
-    // botonLogout: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.
-    botonLogout: { borderRadius: RADIOS.xl, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)', marginTop: ESPACIADO.md, backgroundColor: glass },
-    // logoutContent: estilo del area de contenido; controla padding, distribucion y separacion interna.
-    logoutContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 16 },
-    // textoLogout: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    textoLogout: { fontSize: 16, fontWeight: '700', color: COLORES.error },
-    // footer: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    footer: { alignItems: 'center', marginTop: ESPACIADO.xxl, gap: 4 },
-    // textoVersion: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    textoVersion: { fontSize: 13, fontWeight: '700', color: c.textoSuave },
-    // textoCopyright: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
-    textoCopyright: { fontSize: 11, color: c.textoSuave, opacity: 0.6 },
+
+    scroll: {
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: 110,
+    },
+    seccion: {
+      marginBottom: 20,
+    },
+    tituloSeccion: {
+      fontSize: 11.5,
+      fontWeight: '800',
+      color: c.textoSuave,
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+      marginBottom: 8,
+      marginLeft: 4,
+    },
+    tarjetaGrupo: {
+      borderRadius: 22,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: c.borde,
+      backgroundColor: glass,
+      ...SOMBRAS.flotante,
+    },
+    grupoContenido: {
+      paddingVertical: 2,
+    },
+    itemConfig: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: separador,
+    },
+    itemIzq: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      flex: 1,
+    },
+    iconoContenedor: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: glassMicro,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: c.borde,
+    },
+    itemLabel: {
+      fontSize: 14.5,
+      fontWeight: '700',
+      color: c.texto,
+      letterSpacing: -0.2,
+    },
+    itemDer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    itemValor: {
+      fontSize: 13.5,
+      color: c.textoSuave,
+      fontWeight: '600',
+    },
+    badgeEsteDispositivo: {
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: 999,
+      backgroundColor: 'rgba(34,197,94,0.14)',
+      borderWidth: 1,
+      borderColor: 'rgba(34,197,94,0.28)',
+    },
+    textoEsteDispositivo: {
+      fontSize: 9,
+      fontWeight: '800',
+      color: '#10B981',
+      letterSpacing: 0.3,
+    },
+    subtextoDispositivo: {
+      fontSize: 11,
+      color: c.textoSuave,
+      marginTop: 2,
+    },
+    botonCerrarOtras: {
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      alignItems: 'center',
+      borderTopWidth: 1,
+      borderTopColor: separador,
+    },
+    textoCerrarOtras: {
+      fontSize: 13,
+      fontWeight: '800',
+      color: '#EF4444',
+    },
+
+    botonLogout: {
+      borderRadius: 20,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: 'rgba(239,68,68,0.25)',
+      backgroundColor: glass,
+      marginTop: 4,
+      ...SOMBRAS.flotante,
+    },
+    logoutContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+      paddingVertical: 15,
+      backgroundColor: 'rgba(239,68,68,0.04)',
+    },
+    textoLogout: {
+      fontSize: 15,
+      fontWeight: '800',
+      color: '#EF4444',
+    },
+
+    footer: {
+      alignItems: 'center',
+      marginTop: 28,
+      gap: 4,
+    },
+    textoVersion: {
+      fontSize: 12.5,
+      fontWeight: '800',
+      color: c.textoSuave,
+    },
+    textoCopyright: {
+      fontSize: 11,
+      color: c.textoSuave,
+      opacity: 0.7,
+    },
   });
 }

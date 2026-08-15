@@ -14,7 +14,7 @@ const traducirError = (message) => {
 
 export default function SaLogin() {
   const navigate = useNavigate();
-  const { user, loading: authLoading, rol, esSuperAdmin, esAdminEmpresa } = useAuth();
+  const { user, loading: authLoading, rol, esSuperAdmin, esAdminEmpresa, esWorkspaceUser } = useAuth();
   const [correo, setCorreo] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -30,14 +30,18 @@ export default function SaLogin() {
       navigate("/admin/empresa-resumen", { replace: true });
       return;
     }
+    if (esWorkspaceUser) {
+      navigate(["jefe", "jefe_sector"].includes(rol) ? "/admin/jefe-resumen" : "/admin/empleado-resumen", { replace: true });
+      return;
+    }
     if (!rol) {
       // Si el usuario inicio sesion con Google pero no ha completado el registro de empresa
       navigate("/auth/registro", { replace: true });
       return;
     }
     supabase.auth.signOut();
-    setError("Esta cuenta no tiene permisos de Super Admin ni de Admin de empresa.");
-  }, [user, rol, esSuperAdmin, esAdminEmpresa, navigate]);
+    setError("Esta cuenta no tiene permisos para acceder al workspace.");
+  }, [user, rol, esSuperAdmin, esAdminEmpresa, esWorkspaceUser, navigate]);
 
   useEffect(() => {
     if (!authLoading && user) {

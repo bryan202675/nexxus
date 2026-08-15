@@ -172,6 +172,10 @@ export default function GestionPlantilla() {
   const placeholderPhone = useApiTranslate('Ej. +123456789');
   const labelPersonalEmail = useApiTranslate('Correo personal (opcional)');
   const placeholderPersonalEmail = useApiTranslate('Para enviarle bienvenida y recuperación de contraseña');
+  const labelFechaIngreso = useApiTranslate('Fecha de ingreso');
+  const placeholderFechaIngreso = useApiTranslate('AAAA-MM-DD (vacío = hoy)');
+  const labelHorarioLaboral = useApiTranslate('Horario laboral');
+  const placeholderHorarioLaboral = useApiTranslate('Ej. Lunes a Viernes, 8:00 AM - 5:00 PM');
   const labelSalary = useApiTranslate('Salario Base');
   const labelRoleSelector = useApiTranslate('Rol Operativo');
   const placeholderRoleSelector = useApiTranslate('Selecciona un rol');
@@ -367,11 +371,11 @@ export default function GestionPlantilla() {
     // Declara empresaId; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const empresaId = obtenerEmpresaIdAdmin(user);
     // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
-    console.log('[GestionPlantilla] useEffect Iniciado. User:', user?.correo, 'EmpresaId:', empresaId);
+    if (__DEV__) console.log('[GestionPlantilla] useEffect Iniciado. User:', user?.correo, 'EmpresaId:', empresaId);
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!empresaId) {
       // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
-      console.warn('[GestionPlantilla] No se detectó EmpresaId. Limpiando catálogos.');
+      if (__DEV__) console.warn('[GestionPlantilla] No se detectó EmpresaId. Limpiando catálogos.');
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setUsuarios([]);
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
@@ -476,7 +480,7 @@ export default function GestionPlantilla() {
 
         if (isUnique) {
           await supabase.from('empresas').update({ codigo: uniqueCode }).eq('id', empresaId);
-          console.log(`[GestionPlantilla] Código de empresa único generado de forma retroactiva: ${uniqueCode}`);
+          if (__DEV__) console.log(`[GestionPlantilla] Código de empresa único generado de forma retroactiva: ${uniqueCode}`);
           try {
             const { error: syncError } = await supabase.from('usuarios').update({ codigo_empresa: uniqueCode }).eq('empresa_id', empresaId);
             if (syncError) throw syncError;
@@ -1068,8 +1072,6 @@ export default function GestionPlantilla() {
 
   // Declara abrirCrear; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const abrirCrear = () => {
-    // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
-    console.log('[GestionPlantilla] Abriendo modal de creación...');
     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setModoFormulario('crear');
     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
@@ -1108,6 +1110,8 @@ export default function GestionPlantilla() {
       telefono: empleado.telefono || '',
       salarioBase: empleado.salarioBase ? String(Math.round(Number(empleado.salarioBase))) : '',
       correoPersonal: empleado.correo_personal || '',
+      fechaIngreso: empleado.fecha_ingreso || '',
+      horarioLaboral: empleado.horario_laboral || '',
     });
     // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setSelectorActivo(null);
@@ -1132,7 +1136,7 @@ export default function GestionPlantilla() {
   // Calcula construirPayloadEmpleado; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
   const construirPayloadEmpleado = () => {
     // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
-    console.log('[GestionPlantilla] Construyendo payload para:', formulario.nombre);
+    if (__DEV__) console.log('[GestionPlantilla] Construyendo payload para:', formulario.nombre);
     // Declara jefe; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const jefe = usuarios.find((usuario) => usuario.id === formulario.jefeId);
     // Declara cargo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -1146,7 +1150,7 @@ export default function GestionPlantilla() {
     // Declara salarioBase; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const salarioBase = Number(normalizarSalarioUSD(formulario.salarioBase || '0'));
     // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
-    console.log('[GestionPlantilla] Referencias encontradas:', { cargo: cargo?.nombre, depto: departamento?.nombre, sede: sede?.nombre });
+    if (__DEV__) console.log('[GestionPlantilla] Referencias encontradas:', { cargo: cargo?.nombre, depto: departamento?.nombre, sede: sede?.nombre });
     // Calcula modulosRol; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const modulosRol = rolPersonalizado?.permisos
       ? Object.entries(rolPersonalizado.permisos).filter(([, activo]) => activo).map(([modulo]) => modulo)
@@ -1365,8 +1369,6 @@ export default function GestionPlantilla() {
 
   // Prepara guardarEmpleado; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
   const guardarEmpleado = async () => {
-    // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
-    console.log('[GestionPlantilla] Iniciando guardarEmpleado...');
     // Declara empresaId; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const empresaId = obtenerEmpresaIdAdmin(user);
     // Declara nombre; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
@@ -1388,8 +1390,6 @@ export default function GestionPlantilla() {
 
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!nombre) {
-      // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
-      console.warn('[GestionPlantilla] Validación fallida: Nombre vacío');
       // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       toast.warning({ title: toastRequiredDataTitle, description: toastNameRequiredDesc });
       // Devuelve el valor final calculado para esta funcion o caso de uso.
@@ -1399,7 +1399,7 @@ export default function GestionPlantilla() {
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (guardando) {
       // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
-      console.warn('[GestionPlantilla] Ya se está guardando, ignorando click.');
+      if (__DEV__) console.warn('[GestionPlantilla] Ya se está guardando, ignorando click.');
       // Devuelve el valor final calculado para esta funcion o caso de uso.
       return;
     }
@@ -1415,8 +1415,6 @@ export default function GestionPlantilla() {
       }
       // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (!usuarioInterno) {
-        // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
-        console.warn('[GestionPlantilla] Validación fallida: Usuario vacío');
         // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
         toast.warning({ title: toastRequiredDataTitle, description: toastUserRequiredDesc });
         // Devuelve el valor final calculado para esta funcion o caso de uso.
@@ -1424,8 +1422,6 @@ export default function GestionPlantilla() {
       }
       // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (formulario.contrasena.trim().length < 6) {
-        // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
-        console.warn('[GestionPlantilla] Validación fallida: Contraseña corta');
         // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
         toast.warning({ title: toastPassRequiredTitle, description: toastPassRequiredDesc });
         // Devuelve el valor final calculado para esta funcion o caso de uso.
@@ -1478,6 +1474,8 @@ export default function GestionPlantilla() {
             telefono: payload.telefono,
             salario_base: payload.salarioBase,
             estado_activo: true,
+            fecha_ingreso: formulario.fechaIngreso.trim() || new Date().toISOString().slice(0, 10),
+            horario_laboral: formulario.horarioLaboral.trim() || null,
           }).eq('id', uid);
         } catch {}
         // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
@@ -1515,6 +1513,8 @@ export default function GestionPlantilla() {
               telefono: payload.telefono,
               salario_base: payload.salarioBase,
               correo_personal: formulario.correoPersonal.trim() || null,
+              fecha_ingreso: formulario.fechaIngreso.trim() || null,
+              horario_laboral: formulario.horarioLaboral.trim() || null,
             }).eq('id', empleadoSeleccionado.id))
           );
           if (updateError) throw updateError;
@@ -2396,6 +2396,10 @@ export default function GestionPlantilla() {
               <FormField label={labelPhone} value={formulario.telefono} onChangeText={(valor) => actualizarFormulario('telefono', valor)} placeholder={placeholderPhone} />
               {/* FormField renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <FormField label={labelPersonalEmail} value={formulario.correoPersonal} onChangeText={(valor) => actualizarFormulario('correoPersonal', valor)} placeholder={placeholderPersonalEmail} />
+              {/* FormField renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+              <FormField label={labelFechaIngreso} value={formulario.fechaIngreso} onChangeText={(valor) => actualizarFormulario('fechaIngreso', valor)} placeholder={placeholderFechaIngreso} />
+              {/* FormField renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+              <FormField label={labelHorarioLaboral} value={formulario.horarioLaboral} onChangeText={(valor) => actualizarFormulario('horarioLaboral', valor)} placeholder={placeholderHorarioLaboral} />
               {/* FormField renderiza una pieza visual reutilizable dentro de esta pantalla. */}
               <FormField label={labelSalary} value={formulario.salarioBase ? `$${formulario.salarioBase}` : ''} onChangeText={(valor) => actualizarFormulario('salarioBase', normalizarSalarioUSD(valor))} placeholder="$0" />
             </View>

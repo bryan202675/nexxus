@@ -7,7 +7,7 @@
  */
 
 // Importa { IDocumentoRepository }; usa tipos de dominio para que los datos mantengan estructura consistente.
-import { DocumentStorageStats, Documento, IDocumentoRepository } from '../../../entities/Documento';
+import { DocumentStorageStats, Documento, DocumentVersion, IDocumentoRepository } from '../../../entities/Documento';
 
 /**
  * Implementa GetDocumentos; agrupa comportamiento con estado interno o dependencias de infraestructura.
@@ -52,6 +52,13 @@ export class CreateDocument {
   constructor(private repo: IDocumentoRepository) {}
   execute(documento: Parameters<IDocumentoRepository['create']>[0]) {
     return this.repo.create(documento);
+  }
+}
+
+export class AddDocumentVersion {
+  constructor(private repo: IDocumentoRepository) {}
+  execute(documentoId: string, nuevaVersion: Omit<DocumentVersion, 'version'>) {
+    return this.repo.addVersion(documentoId, nuevaVersion);
   }
 }
 

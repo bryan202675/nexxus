@@ -15,14 +15,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 // Importa { useTemaMobile }; accede a contexto compartido de usuario, tema o estado global.
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 // Importa Plasma; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
-import Plasma from '@/presentation/components/Plasma';
 
 /**
  * Componente FondoMobilePremium. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 export default function FondoMobilePremium() {
   // Declara { gradienteFondo, esOscuro }; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const { gradienteFondo, esOscuro } = useTemaMobile();
+  const { gradienteFondo } = useTemaMobile();
 
   // Devuelve el JSX que React Native renderiza en pantalla.
   return (
@@ -30,18 +29,6 @@ export default function FondoMobilePremium() {
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       {/* Gradiente visual; aporta profundidad y jerarquia al bloque donde se renderiza. */}
       <LinearGradient colors={gradienteFondo} style={StyleSheet.absoluteFill} />
-      {/* Elemento de fondo visual; construye la atmosfera grafica de la pantalla sin cambiar los datos. */}
-      <Plasma
-        color={esOscuro ? '#A855F7' : '#7C3AED'}
-        speed={1}
-        direction="forward"
-        scale={1.25}
-        opacity={1}
-        mouseInteractive={false}
-        fps={60}
-        resolutionScale={0.82}
-        style={StyleSheet.absoluteFill}
-      />
     </View>
   );
 }

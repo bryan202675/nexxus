@@ -91,6 +91,8 @@ export function AuthProvider({ children }) {
           ? state.perfil?.empresas[0]?.nombre
           : state.perfil?.empresas?.nombre) || state.perfil?.empresa_nombre;
       document.title = nombreEmpresa ? `${nombreEmpresa} | Admin` : "Nexxus Admin";
+    } else if (state.rol === "jefe" || state.rol === "empleado") {
+      document.title = "Nexxus Workspace";
     } else if (!state.loading && !state.user) {
       document.title = "Nexxus Workspace";
     }
@@ -119,6 +121,7 @@ export function AuthProvider({ children }) {
     ...state,
     esSuperAdmin: state.rol === "super_admin",
     esAdminEmpresa: state.rol === "admin" || state.rol === "admin_empresa",
+    esWorkspaceUser: ["jefe", "jefe_sector", "empleado", "psicologo"].includes(state.rol),
     empresaId: state.perfil?.empresa_id || "",
     empresaNombre,
     signOut: () => supabase.auth.signOut(),

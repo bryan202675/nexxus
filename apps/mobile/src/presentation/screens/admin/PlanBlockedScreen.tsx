@@ -6,10 +6,13 @@
  * Consideracion de mantenimiento: preservar firmas publicas al extender este archivo.
  */
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { ADMIN } from './adminTheme';
 import { NexxusPlan, PLAN_CATALOG, PLAN_ORDER, PlanFeatureKey } from '@/shared/billing/plans';
+import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
+
+const Text = AdminTranslatedText;
 
 const FEATURE_LABELS: Partial<Record<PlanFeatureKey, string>> = {
   reports: 'Reportes',

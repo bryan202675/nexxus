@@ -898,6 +898,8 @@
   "app": {
     "home": "Inicio",
     "tasks": "Tareas",
+    "team": "Equipo",
+    "chat": "Chat",
     "ai": "IA",
     "resources": "Recursos",
     "settings_title": "Tus Ajustes",
@@ -1013,7 +1015,24 @@
     "important_signals": "Señales Importantes",
     "inbox": "Bandeja",
     "unread": "No leídas",
-    "focus_min": "Min. Enfoque"
+    "focus_min": "Min. Enfoque",
+    "explore_all": "Explorar todo",
+    "tiles": {
+      "checkin": "Check-In Diario",
+      "salary": "Mi Salario",
+      "history": "Historial",
+      "ai_assistant": "Asistente IA"
+    },
+    "operativo": {
+      "requests_title": "Solicitudes y Permisos",
+      "requests_desc": "{{count}} en trámite · Gestión de ausencias",
+      "salary_title": "Mi Salario y Nómina",
+      "salary_desc": "Recibos oficiales, neto y desglose legal",
+      "documents_title": "Mis Documentos",
+      "documents_desc": "{{count}} pendientes de revisión · Biblioteca",
+      "history_title": "Historial de Actividad",
+      "history_desc": "Bitácora cronológica de toda tu actividad"
+    }
   },
   "dashboardUsuario": {
     "logout": "Cerrar sesión",
@@ -1066,6 +1085,8 @@
     "allowed_locations": "SEDES PERMITIDAS",
     "registered_skills": "HABILIDADES REGISTRADAS",
     "no_skills": "Sin habilidades registradas",
+    "certifications": "CERTIFICACIONES",
+    "no_certifications": "Sin certificaciones registradas",
     "labor_timeline": "Línea de Tiempo Laboral",
     "no_labor_history": "Sin historial laboral registrado.",
     "logout_title": "Cerrar Sesión",
@@ -1350,6 +1371,23 @@
       "seguridad": "Seguridad"
     }
   },
+  "misActivos": {
+    "title": "Mis Activos",
+    "subtitle": "Herramientas y equipos asignados",
+    "load_error": "No se pudieron cargar tus activos asignados.",
+    "empty_title": "Sin conexión al inventario",
+    "empty_msg": "Aún no tienes activos asignados.",
+    "location_label": "Ubicación: {{ubicacion}}",
+    "report_incident": "Reportar incidencia",
+    "incident_title": "Incidencia en {{nombre}}",
+    "describe_placeholder": "Describe qué ocurrió detalladamente...",
+    "cancel": "Cancelar",
+    "sending": "Enviando...",
+    "send_report": "Enviar Reporte",
+    "incident_min_length_error": "Describe la incidencia con al menos 8 caracteres.",
+    "incident_sent_success": "Incidencia enviada a administración.",
+    "incident_send_error": "No se pudo enviar la incidencia. Intenta nuevamente."
+  },
   "recursos": {
     "title": "Recursos",
     "hero_title": "Tu Biblioteca Digital",
@@ -1448,13 +1486,31 @@
       "permiso": "PERMISO",
       "adelanto_salarial": "ADELANTO SALARIAL",
       "soporte_tecnico": "SOPORTE TÉCNICO",
-      "compra_material": "COMPRA MATERIAL"
+      "compra_material": "COMPRA MATERIAL",
+      "cambio_horario": "CAMBIO DE HORARIO",
+      "incidente": "INCIDENTE",
+      "llegada_tarde": "LLEGADA TARDE",
+      "horas_extra": "HORAS EXTRA",
+      "trabajo_remoto": "TRABAJO REMOTO",
+      "incapacidad": "INCAPACIDAD",
+      "permiso_especial": "PERMISO ESPECIAL"
     },
     "states": {
       "aprobado": "APROBADO",
       "rechazado": "RECHAZADO",
-      "pendiente": "PENDIENTE"
-    }
+      "pendiente": "PENDIENTE",
+      "revisado": "EN REVISIÓN",
+      "resuelto": "RESUELTO"
+    },
+    "date_start_label": "Fecha de inicio",
+    "date_end_label": "Fecha de fin",
+    "date_single_label": "Fecha",
+    "amount_label": "Monto (USD)",
+    "hours_label": "Cantidad de horas",
+    "attachment_label": "Adjunto (certificado)",
+    "attachment_upload": "Subir archivo",
+    "attachment_uploading": "Subiendo...",
+    "attachment_uploaded": "Archivo adjunto"
   },
   "microFeedback": {
     "title": "Feedback Rápido",
@@ -1478,6 +1534,14 @@
       "dificultad": "DIFICULTAD",
       "satisfaccion": "SATISFACCIÓN"
     }
+  },
+  "chatIAAdmin": {
+    "greeting": "¿Cómo te puedo ayudar hoy?",
+    "greeting_named": "¿Cómo te puedo ayudar hoy, {{name}}?",
+    "clear_chat": "Limpiar chat",
+    "action_approved": "Aprobada ✓",
+    "action_rejected": "Rechazada",
+    "action_failed": "No se pudo completar. Intenta desde Solicitudes."
   },
   "chatIA": {
     "title": "Asistente Nexxus",
@@ -1574,7 +1638,16 @@
     "filter_today": "Hoy",
     "filter_urgent": "Urgentes",
     "filter_overdue": "Vencidas",
-    "empty_msg": "Bandeja limpia. No hay tareas aquí."
+    "empty_msg": "Bandeja limpia. No hay tareas aquí.",
+    "column_pendiente": "Pendiente",
+    "column_en_progreso": "En proceso",
+    "column_completada": "Completada",
+    "delete_confirm_title": "Eliminar tarea",
+    "delete_confirm_msg": "Esta acción no se puede deshacer.",
+    "delete_confirm_cancel": "Cancelar",
+    "delete_confirm_ok": "Eliminar",
+    "no_date": "Sin fecha",
+    "months_short": ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
   },
   "planificadorJornada": {
     "title": "Productividad Diaria",
@@ -1679,7 +1752,12 @@
     "info_location": "Ubicación validada automáticamente",
     "info_sync": "Sincronización offline habilitada",
     "alert_error_event": "No se pudo registrar el evento.",
-    "alert_error_pause": "No se pudo registrar la pausa."
+    "alert_error_pause": "No se pudo registrar la pausa.",
+    "confirm_end_title": "Finalizar Jornada",
+    "confirm_end_msg": "¿Estás seguro de registrar tu salida del turno actual?",
+    "confirm_end_finish": "Finalizar",
+    "success_end_title": "Jornada Finalizada",
+    "success_end_msg": "Se registró tu salida con éxito.\n\nTiempo acumulado: {{tiempo}}"
   },
   "historialCompleto": {
     "title": "Historial",

@@ -204,6 +204,8 @@ const FALLBACK_PHONE_CONFIG: PhoneFormatConfig = {
 const WORKSPACE_ORIGIN = process.env.EXPO_PUBLIC_WORKSPACE_ORIGIN || '';
 const WORKSPACE_DASHBOARD_PATH = `${WORKSPACE_ORIGIN}/admin/nexxus-configuracion`;
 const WORKSPACE_ADMIN_EMPRESA_PATH = `${WORKSPACE_ORIGIN}/admin/empresa-resumen`;
+const WORKSPACE_JEFE_PATH = `${WORKSPACE_ORIGIN}/admin/jefe-resumen`;
+const WORKSPACE_EMPLEADO_PATH = `${WORKSPACE_ORIGIN}/admin/empleado-resumen`;
 
 function formatPhoneNumber(rawDigits: string, prefix: string): string {
   const config = PHONE_CONFIGS[prefix] || FALLBACK_PHONE_CONFIG;
@@ -797,9 +799,8 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
   };
 
   // Prepara continuarSegunUsuario; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
-  // super_admin y admin_empresa entran directo al nuevo dashboard (Horizon, servido en /workspace
-  // del mismo origen), cada uno a su propio panel; el resto de roles vuelve a la landing, igual
-  // que antes. La comprobación de rol se hace contra Firestore, nunca contra el correo escrito.
+  // Cada rol entra al workspace web correspondiente. La comprobación se hace contra la fila
+  // real de usuarios, nunca contra el correo escrito ni contra el rol seleccionado en pantalla.
   const continuarSegunUsuario = async (uid: string) => {
     try {
       const { data: snap } = await supabase.from('usuarios').select('rol').eq('id', uid).maybeSingle();
@@ -810,6 +811,14 @@ export default function LandingAuth({ modoInicial = 'registro' }: { modoInicial?
       }
       if (rol === 'admin' || rol === 'admin_empresa') {
         window.location.assign(WORKSPACE_ADMIN_EMPRESA_PATH);
+        return;
+      }
+      if (rol === 'jefe' || rol === 'jefe_sector') {
+        window.location.assign(WORKSPACE_JEFE_PATH);
+        return;
+      }
+      if (rol === 'empleado' || rol === 'psicologo') {
+        window.location.assign(WORKSPACE_EMPLEADO_PATH);
         return;
       }
     } catch {

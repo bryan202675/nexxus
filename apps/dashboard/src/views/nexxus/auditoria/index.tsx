@@ -8,24 +8,14 @@ import { formatoFechaHora } from "services/saFormat";
 
 const LIMITE = 25;
 
-// Mismo mapeo que AUDIT_STATUS_MAP en superadmin-dashboard/index.jsx: RecordsTable solo
-// reconoce estos tres literales para su columna "status".
-const AUDIT_STATUS_MAP = { Success: "Approved", Warning: "Error", Error: "Disable" };
-
-const ESTADO_OPTIONS = [
-  { value: "", label: "Todos" },
-  { value: "Success", label: "Success" },
-  { value: "Warning", label: "Warning" },
-  { value: "Error", label: "Error" },
-];
-
+// audit_logs no tiene columna de estado/severidad, asi que ya no se muestra un badge
+// de Success/Warning/Error fabricado ni se filtra por ese estado inexistente.
 const COLUMNAS_AUDITORIA = [
   { Header: "Acción", accessor: "accion" },
   { Header: "Módulo", accessor: "modulo" },
   { Header: "Empresa", accessor: "empresaNombre" },
   { Header: "Usuario", accessor: "actorNombre" },
   { Header: "Fecha", accessor: "fecha" },
-  { Header: "Estado", accessor: "status" },
 ];
 
 export default function Auditoria() {
@@ -36,7 +26,6 @@ export default function Auditoria() {
   const [cargandoMas, setCargandoMas] = useState(false);
   const [error, setError] = useState("");
   const [busqueda, setBusqueda] = useState("");
-  const [estado, setEstado] = useState("");
   const [companies, setCompanies] = useState([]);
 
   useEffect(() => {
@@ -99,7 +88,6 @@ export default function Auditoria() {
   const filaVisibles = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
     return registros
-      .filter((registro) => (estado ? registro.estado === estado : true))
       .filter((registro) => {
         if (!texto) return true;
         const campos = [
@@ -117,9 +105,8 @@ export default function Auditoria() {
         empresaNombre: registro.empresaNombre || nombreEmpresaPorId.get(registro.empresaId) || "—",
         actorNombre: registro.actorNombre || "—",
         fecha: formatoFechaHora(registro.timestamp),
-        status: AUDIT_STATUS_MAP[registro.estado] || "Approved",
       }));
-  }, [registros, busqueda, estado, nombreEmpresaPorId]);
+  }, [registros, busqueda, nombreEmpresaPorId]);
 
   return (
     <div>
@@ -141,17 +128,6 @@ export default function Auditoria() {
               className="h-11 w-full rounded-xl border border-gray-200 bg-white/0 pl-10 pr-3 text-sm text-navy-700 outline-none dark:!border-charcoal-border dark:text-white dark:placeholder:text-white/40"
             />
           </div>
-          <select
-            value={estado}
-            onChange={(event) => setEstado(event.target.value)}
-            className="h-11 w-full rounded-xl border border-gray-200 bg-white/0 px-3 text-sm text-navy-700 outline-none dark:!border-charcoal-border dark:bg-charcoal dark:text-white md:w-56"
-          >
-            {ESTADO_OPTIONS.map((opcion) => (
-              <option key={opcion.value} value={opcion.value} className="dark:bg-charcoal">
-                {opcion.label}
-              </option>
-            ))}
-          </select>
         </div>
       </NexxusCard>
 

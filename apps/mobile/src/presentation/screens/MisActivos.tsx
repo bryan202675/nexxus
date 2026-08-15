@@ -1,13 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { Feather, MaterialIcons } from '@expo/vector-icons';
+import { SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
+import { EmptyState, SkeletonLista } from '@/presentation/components/ui';
 import { InventoryAsset } from 'domain/entities/Inventory';
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import { useCases } from '@/infrastructure/container';
-import { COLORES } from '@/shared/constants/diseno';
+import { COLORES, RADIOS, SOMBRAS } from '@/shared/constants/diseno';
+import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
+import BotonAnimado from '@/presentation/components/BotonAnimado';
 
 type Props = { navigation: { goBack: () => void } };
 type LoadState = 'loading' | 'ready' | 'empty' | 'error';
@@ -19,6 +24,7 @@ const empresaIdOf = (perfil: unknown) => {
 };
 
 export default function MisActivos({ navigation }: Props) {
+  const { t } = useTranslation();
   const { perfil } = useContextoUsuario();
   const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
   const styles = useMemo(() => crearEstilos(colores, esOscuro), [colores, esOscuro]);
@@ -45,7 +51,7 @@ export default function MisActivos({ navigation }: Props) {
         setState(items.length > 0 ? 'ready' : 'empty');
       },
       () => {
-        setMessage('No se pudieron cargar tus activos asignados.');
+        setMessage(t('misActivos.load_error'));
         setState('error');
       }
     );
@@ -53,7 +59,7 @@ export default function MisActivos({ navigation }: Props) {
 
   const reportar = async () => {
     if (!selected || !perfil || descripcion.trim().length < 8) {
-      setMessage('Describe la incidencia con al menos 8 caracteres.');
+      setMessage(t('misActivos.incident_min_length_error'));
       return;
     }
     setSending(true);
@@ -69,9 +75,9 @@ export default function MisActivos({ navigation }: Props) {
       });
       setDescripcion('');
       setSelected(null);
-      setMessage('Incidencia enviada a administración.');
+      setMessage(t('misActivos.incident_sent_success'));
     } catch {
-      setMessage('No se pudo enviar la incidencia. Intenta nuevamente.');
+      setMessage(t('misActivos.incident_send_error'));
     } finally {
       setSending(false);
     }
@@ -79,109 +85,193 @@ export default function MisActivos({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
       <View style={styles.background}><FondoMobilePremium /></View>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={navigation.goBack} style={styles.backButton} activeOpacity={0.82}>
-          <Feather name="arrow-left" size={19} color={colores.texto} />
-        </TouchableOpacity>
-        <View style={styles.headerText}>
-          <Text style={styles.title}>Mis activos</Text>
-          <Text style={styles.subtitle}>Equipo, documentos físicos y herramientas asignadas</Text>
-        </View>
-        <MaterialIcons name="inventory-2" size={22} color={colores.textoSuave} />
-      </View>
+      <NavbarEnterprise titulo={t('misActivos.title')} subtitulo={t('misActivos.subtitle')} mostrarAtras />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {message ? <Text style={styles.notice}>{message}</Text> : null}
-        {state === 'loading' && [0, 1, 2].map((item) => <View key={item} style={styles.skeleton} />)}
-        {state === 'error' && <EmptyState icon="cloud-off" text="Sin conexión al inventario" />}
-        {state === 'empty' && <EmptyState icon="inventory" text="Aún no tienes activos asignados." />}
-        {state === 'ready' && assets.map((asset) => (
-          <BlurView key={asset.id} intensity={intensidadBlur} tint={blurTint} style={styles.card}>
-            <View style={styles.cardTop}>
-              <View style={styles.assetIcon}><MaterialIcons name="devices-other" size={20} color={COLORES.primarioClaro} /></View>
-              <View style={styles.cardText}>
-                <Text style={styles.assetName}>{asset.nombre}</Text>
-                <Text style={styles.assetMeta}>{asset.categoria} · {asset.codigo}</Text>
+        {message ? (
+          <View style={styles.noticeBox}>
+            <MaterialIcons name="info" size={18} color={esOscuro ? '#93C5FD' : '#2563EB'} />
+            <Text style={styles.notice}>{message}</Text>
+          </View>
+        ) : null}
+
+        {state === 'loading' && <SkeletonLista filas={3} alturaFila={124} gap={14} />}
+        {state === 'error' && <EmptyState icono="cloud-off" titulo={t('misActivos.empty_title')} />}
+        {state === 'empty' && <EmptyState icono="inbox" titulo={t('misActivos.empty_msg')} />}
+        {state === 'ready' && assets.map((asset, index) => (
+          <Animated.View
+            key={asset.id}
+            entering={FadeInDown.duration(260).delay(index * 40).easing(Easing.out(Easing.quad))}
+          >
+            <BlurView intensity={intensidadBlur} tint={blurTint} style={styles.card}>
+              <View style={styles.cardTop}>
+                <View style={styles.assetIcon}>
+                  <MaterialIcons name="devices-other" size={22} color={esOscuro ? '#93C5FD' : '#2563EB'} />
+                </View>
+                <View style={styles.cardText}>
+                  <Text style={styles.assetName}>{asset.nombre}</Text>
+                  <Text style={styles.assetMeta}>{asset.categoria} · {asset.codigo}</Text>
+                </View>
+                <View style={styles.badgeEstado}>
+                  <Text style={styles.status}>{asset.estado}</Text>
+                </View>
               </View>
-              <Text style={styles.status}>{asset.estado}</Text>
-            </View>
-            {!!asset.ubicacion && <Text style={styles.detail}>Ubicación: {asset.ubicacion}</Text>}
-            <TouchableOpacity onPress={() => setSelected(asset)} style={styles.secondaryButton} activeOpacity={0.84}>
-              <MaterialIcons name="report-problem" size={17} color={COLORES.alerta} />
-              <Text style={styles.secondaryText}>Reportar incidencia</Text>
-            </TouchableOpacity>
-          </BlurView>
+              {!!asset.ubicacion && (
+                <View style={styles.ubicacionRow}>
+                  <MaterialIcons name="place" size={14} color={colores.textoSuave} />
+                  <Text style={styles.detail}>{t('misActivos.location_label', { ubicacion: asset.ubicacion })}</Text>
+                </View>
+              )}
+              <BotonAnimado onPress={() => setSelected(asset)} style={styles.secondaryButton} scaleTo={0.97}>
+                <MaterialIcons name="report-problem" size={17} color="#F59E0B" />
+                <Text style={styles.secondaryText}>{t('misActivos.report_incident')}</Text>
+              </BotonAnimado>
+            </BlurView>
+          </Animated.View>
         ))}
+
         {selected && (
-          <BlurView intensity={intensidadBlur} tint={blurTint} style={styles.form}>
-            <Text style={styles.formTitle}>Incidencia en {selected.nombre}</Text>
-            <TextInput
-              value={descripcion}
-              onChangeText={setDescripcion}
-              placeholder="Describe qué ocurrió"
-              placeholderTextColor={colores.textoSuave}
-              multiline
-              style={styles.input}
-            />
-            <View style={styles.formActions}>
-              <TouchableOpacity onPress={() => setSelected(null)} style={styles.cancelButton} activeOpacity={0.84}>
-                <Text style={styles.cancelText}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={reportar} disabled={sending} style={styles.primaryButton} activeOpacity={0.84}>
-                <Text style={styles.primaryText}>{sending ? 'Enviando...' : 'Enviar'}</Text>
-              </TouchableOpacity>
-            </View>
-          </BlurView>
+          <Animated.View entering={FadeInDown.duration(260).easing(Easing.out(Easing.quad))}>
+            <BlurView intensity={intensidadBlur} tint={blurTint} style={styles.form}>
+              <Text style={styles.formTitle}>{t('misActivos.incident_title', { nombre: selected.nombre })}</Text>
+              <TextInput
+                value={descripcion}
+                onChangeText={setDescripcion}
+                placeholder={t('misActivos.describe_placeholder')}
+                placeholderTextColor={colores.textoSuave}
+                multiline
+                style={styles.input}
+              />
+              <View style={styles.formActions}>
+                <BotonAnimado onPress={() => setSelected(null)} style={styles.cancelButton} scaleTo={0.96}>
+                  <Text style={styles.cancelText}>{t('misActivos.cancel')}</Text>
+                </BotonAnimado>
+                <BotonAnimado onPress={reportar} disabled={sending} style={styles.primaryButton} scaleTo={0.96}>
+                  <Text style={styles.primaryText}>{sending ? t('misActivos.sending') : t('misActivos.send_report')}</Text>
+                </BotonAnimado>
+              </View>
+            </BlurView>
+          </Animated.View>
         )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function EmptyState({ icon, text }: { icon: React.ComponentProps<typeof MaterialIcons>['name']; text: string }) {
-  return (
-    <View style={emptyStyles.wrap}>
-      <MaterialIcons name={icon} size={36} color="rgba(255,255,255,0.55)" />
-      <Text style={emptyStyles.text}>{text}</Text>
-    </View>
-  );
-}
+type ColoresTema = ReturnType<typeof useTemaMobile>['colores'];
 
-const emptyStyles = StyleSheet.create({
-  wrap: { alignItems: 'center', gap: 10, paddingVertical: 42 },
-  text: { color: 'rgba(255,255,255,0.72)', fontSize: 14, fontWeight: '700' },
-});
+function crearEstilos(colores: ColoresTema, esOscuro: boolean) {
+  const glass = esOscuro ? 'rgba(24, 24, 38, 0.88)' : 'rgba(255, 255, 255, 0.94)';
 
-function crearEstilos(colores: { texto: string; textoSuave: string; borde: string; sombra: string }, esOscuro: boolean) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: esOscuro ? '#080811' : '#F7F3FF' },
+    container: { flex: 1, backgroundColor: colores.fondo },
     background: { ...StyleSheet.absoluteFillObject },
-    header: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 10 },
-    backButton: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: colores.borde },
-    headerText: { flex: 1 },
-    title: { color: colores.texto, fontSize: 24, fontWeight: '900' },
-    subtitle: { color: colores.textoSuave, fontSize: 12, fontWeight: '700', marginTop: 3 },
-    scroll: { padding: 20, paddingBottom: 110, gap: 14 },
-    notice: { color: colores.texto, backgroundColor: 'rgba(124,58,237,0.20)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderRadius: 14, padding: 12, fontWeight: '800' },
-    skeleton: { height: 124, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: colores.borde },
-    card: { overflow: 'hidden', borderRadius: 22, padding: 16, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: colores.borde, shadowColor: colores.sombra },
+    scroll: { padding: 16, paddingBottom: 110, gap: 14 },
+    noticeBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      backgroundColor: esOscuro ? 'rgba(59,130,246,0.15)' : 'rgba(37,99,235,0.10)',
+      borderColor: esOscuro ? 'rgba(96,165,250,0.3)' : 'rgba(37,99,235,0.25)',
+      borderWidth: 1,
+      borderRadius: 16,
+      padding: 14,
+    },
+    notice: { color: colores.texto, fontWeight: '700', fontSize: 13, flex: 1 },
+    card: {
+      overflow: 'hidden',
+      borderRadius: 22,
+      padding: 16,
+      backgroundColor: glass,
+      borderWidth: 1,
+      borderColor: colores.borde,
+      ...SOMBRAS.flotante,
+    },
     cardTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    assetIcon: { width: 42, height: 42, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(124,58,237,0.18)' },
+    assetIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: esOscuro ? 'rgba(59,130,246,0.15)' : 'rgba(37,99,235,0.10)',
+      borderWidth: 1,
+      borderColor: esOscuro ? 'rgba(96,165,250,0.25)' : 'rgba(37,99,235,0.20)',
+    },
     cardText: { flex: 1 },
     assetName: { color: colores.texto, fontSize: 16, fontWeight: '900' },
     assetMeta: { color: colores.textoSuave, fontSize: 12, fontWeight: '700', marginTop: 2 },
-    status: { color: COLORES.exito, fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
-    detail: { color: colores.textoSuave, marginTop: 12, fontSize: 12, fontWeight: '700' },
-    secondaryButton: { marginTop: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 44, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(245,158,11,0.30)', backgroundColor: 'rgba(245,158,11,0.10)' },
-    secondaryText: { color: colores.texto, fontWeight: '900', fontSize: 13 },
-    form: { overflow: 'hidden', borderRadius: 22, padding: 16, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: colores.borde },
-    formTitle: { color: colores.texto, fontSize: 16, fontWeight: '900', marginBottom: 10 },
-    input: { minHeight: 100, color: colores.texto, borderRadius: 16, borderWidth: 1, borderColor: colores.borde, backgroundColor: 'rgba(255,255,255,0.05)', padding: 12, textAlignVertical: 'top' },
+    badgeEstado: {
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 8,
+      backgroundColor: 'rgba(16,185,129,0.12)',
+      borderWidth: 1,
+      borderColor: 'rgba(16,185,129,0.25)',
+    },
+    status: { color: '#10B981', fontSize: 10.5, fontWeight: '900', textTransform: 'uppercase' },
+    ubicacionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      marginTop: 10,
+    },
+    detail: { color: colores.textoSuave, fontSize: 12, fontWeight: '600' },
+    secondaryButton: {
+      marginTop: 14,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      minHeight: 42,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: 'rgba(245,158,11,0.30)',
+      backgroundColor: 'rgba(245,158,11,0.10)',
+    },
+    secondaryText: { color: colores.texto, fontWeight: '800', fontSize: 13 },
+    form: {
+      overflow: 'hidden',
+      borderRadius: 22,
+      padding: 16,
+      backgroundColor: glass,
+      borderWidth: 1,
+      borderColor: colores.borde,
+      ...SOMBRAS.flotante,
+    },
+    formTitle: { color: colores.texto, fontSize: 16, fontWeight: '900', marginBottom: 12 },
+    input: {
+      minHeight: 100,
+      color: colores.texto,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colores.borde,
+      backgroundColor: colores.vidrioSutil,
+      padding: 14,
+      textAlignVertical: 'top',
+      fontSize: 14,
+    },
     formActions: { flexDirection: 'row', gap: 10, marginTop: 12 },
-    cancelButton: { flex: 1, minHeight: 44, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colores.borde },
-    cancelText: { color: colores.textoSuave, fontWeight: '900' },
-    primaryButton: { flex: 1, minHeight: 44, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORES.primario },
+    cancelButton: {
+      flex: 1,
+      minHeight: 44,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colores.borde,
+      backgroundColor: colores.vidrioSutil,
+    },
+    cancelText: { color: colores.textoSuave, fontWeight: '800' },
+    primaryButton: {
+      flex: 1,
+      minHeight: 44,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: esOscuro ? '#3B82F6' : '#2563EB',
+    },
     primaryText: { color: '#FFFFFF', fontWeight: '900' },
   });
 }

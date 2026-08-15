@@ -8,7 +8,7 @@ La IA de Nexxus lee la API key desde variables de entorno del backend Firebase F
 
 ```bash
 GEMINI_API_KEY="tu_api_key_de_gemini"
-GEMINI_MODEL="gemini-2.5-flash"
+GEMINI_MODEL="gemini-3.6-flash"
 ```
 
 Código que la usa:
@@ -22,7 +22,7 @@ Para entorno local, exporta las variables antes de levantar Functions:
 
 ```bash
 export GEMINI_API_KEY="tu_api_key_de_gemini"
-export GEMINI_MODEL="gemini-2.5-flash"
+export GEMINI_MODEL="gemini-3.6-flash"
 ```
 
 Para producción, configúralas en el entorno seguro de Firebase/Google Cloud para Cloud Functions antes de desplegar. No uses archivos versionados para esto.

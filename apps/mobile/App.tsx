@@ -18,6 +18,8 @@ import { applyPlanCatalog } from './src/shared/billing/plans';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 // Importa { SafeAreaProvider } desde react-native-safe-area-context; agrega una dependencia externa necesaria para este modulo.
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+// Importa { GestureHandlerRootView }; habilita gestos nativos (swipe, drag, pinch) en toda la app.
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
 // Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
@@ -34,6 +36,7 @@ import { COLORES, ESPACIADO, RADIOS, SOMBRAS } from './src/shared/constants/dise
 import { normalizeRole } from './src/shared/auth/roles';
 // Importa { LimitadorErrores }; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
 import { LimitadorErrores } from './src/presentation/components/LimitadorErrores';
+import { ToastProvider } from './src/presentation/components/ui/ToastProvider';
 // Importa estilos o efectos secundarios; inicializa o consume configuracion de internacionalizacion.
 import './src/shared/i18n/config';
 
@@ -117,8 +120,6 @@ import CheckInDiario from './src/presentation/screens/CheckInDiario';
 import ControlAsistencia from './src/presentation/screens/ControlAsistencia';
 // Importa CentroTareas; conecta esta ruta o flujo con otra pantalla del modulo de presentacion.
 import CentroTareas from './src/presentation/screens/CentroTareas';
-// Importa MisTareas; conecta esta ruta o flujo con otra pantalla del modulo de presentacion.
-import MisTareas from './src/presentation/screens/MisTareas';
 // Importa SolicitudesAusencia; conecta esta ruta o flujo con otra pantalla del modulo de presentacion.
 import SolicitudesAusencia from './src/presentation/screens/SolicitudesAusencia';
 // Importa CentroDocumentos; conecta esta ruta o flujo con otra pantalla del modulo de presentacion.
@@ -127,6 +128,7 @@ import CentroDocumentos from './src/presentation/screens/CentroDocumentos';
 import CentroAprendizaje from './src/presentation/screens/CentroAprendizaje';
 // Importa MisLogros; conecta esta ruta o flujo con otra pantalla del modulo de presentacion.
 import MisLogros from './src/presentation/screens/MisLogros';
+import MisObjetivos from './src/presentation/screens/MisObjetivos';
 // Importa BusquedaGlobal; conecta esta ruta o flujo con otra pantalla del modulo de presentacion.
 import BusquedaGlobal from './src/presentation/screens/BusquedaGlobal';
 // Importa BandejaUnificada; conecta esta ruta o flujo con otra pantalla del modulo de presentacion.
@@ -139,10 +141,9 @@ import Notificaciones from './src/presentation/screens/Notificaciones';
 import Recursos from './src/presentation/screens/Recursos';
 // Importa SolicitudesInternas; conecta esta ruta o flujo con otra pantalla del modulo de presentacion.
 import SolicitudesInternas from './src/presentation/screens/SolicitudesInternas';
-// Importa ReservaSesion; conecta esta ruta o flujo con otra pantalla del modulo de presentacion.
-import ReservaSesion from './src/presentation/screens/ReservaSesion';
 // Importa ConfiguracionApp; conecta esta ruta o flujo con otra pantalla del modulo de presentacion.
 import ConfiguracionApp from './src/presentation/screens/ConfiguracionApp';
+import PoliticaPrivacidad from './src/presentation/screens/PoliticaPrivacidad';
 // Importa CentroApoyo; conecta esta ruta o flujo con otra pantalla del modulo de presentacion.
 import CentroApoyo from './src/presentation/screens/CentroApoyo';
 import MisActivos from './src/presentation/screens/MisActivos';
@@ -260,24 +261,24 @@ function EnrutadorPrincipal() {
         <Pila.Screen name="CheckInDiario" component={CheckInDiario} />
         <Pila.Screen name="ControlAsistencia" component={ControlAsistencia} />
         <Pila.Screen name="CentroTareas" component={CentroTareas} />
-        <Pila.Screen name="MisTareas" component={MisTareas} />
         <Pila.Screen name="SolicitudesAusencia" component={SolicitudesAusencia} />
         <Pila.Screen name="CentroDocumentos" component={CentroDocumentos} />
         <Pila.Screen name="CentroAprendizaje" component={CentroAprendizaje} />
         <Pila.Screen name="MisLogros" component={MisLogros} />
+        <Pila.Screen name="MisObjetivos" component={MisObjetivos} />
         <Pila.Screen name="BusquedaGlobal" component={BusquedaGlobal} />
         <Pila.Screen name="BandejaUnificada" component={BandejaUnificada} />
         <Pila.Screen name="ChatIA" component={ChatIA} />
         <Pila.Screen name="Notificaciones" component={Notificaciones} />
         <Pila.Screen name="Recursos" component={Recursos} />
         <Pila.Screen name="SolicitudesInternas" component={SolicitudesInternas} />
-        <Pila.Screen name="ReservaSesion" component={ReservaSesion} />
         <Pila.Screen name="CentroApoyo" component={CentroApoyo} />
         <Pila.Screen name="MisActivos" component={MisActivos} />
         <Pila.Screen name="MiSalario" component={MiSalario} />
         <Pila.Screen name="CalendarioLaboral" component={CalendarioLaboral} />
         <Pila.Screen name="PerfilLaboral" component={PerfilLaboral} />
         <Pila.Screen name="ConfiguracionApp" component={ConfiguracionApp} />
+        <Pila.Screen name="PoliticaPrivacidad" component={PoliticaPrivacidad} />
         <Pila.Screen name="HistorialCompleto" component={HistorialCompleto} />
         <Pila.Screen name="SaberMas" component={SaberMas} />
       </Pila.Navigator>
@@ -406,23 +407,27 @@ export default function App() {
   // Devuelve el JSX que React Native renderiza en pantalla.
   return (
     // Proveedor de contexto; entrega estado o servicios compartidos a sus componentes hijos.
-    <SafeAreaProvider style={{ flex: 1, backgroundColor: '#000' }}>
-      {/* ProveedorTemaMobile renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <ProveedorTemaMobile>
-        {/* ProveedorUsuario renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-        <ProveedorUsuario>
-          {/* Configura la barra de estado del sistema para que combine con el fondo de esta pantalla. */}
-          <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-          {/* NavigationContainer renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-          <NavigationContainer linking={linkingConfig}>
-            {/* LimitadorErrores renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-            <LimitadorErrores>
-              {/* EnrutadorPrincipal renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <EnrutadorPrincipal />
-            </LimitadorErrores>
-          </NavigationContainer>
-        </ProveedorUsuario>
-      </ProveedorTemaMobile>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider style={{ flex: 1, backgroundColor: '#000' }}>
+        {/* ProveedorTemaMobile renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+        <ProveedorTemaMobile>
+          {/* ProveedorUsuario renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+          <ProveedorUsuario>
+            <ToastProvider>
+              {/* Configura la barra de estado del sistema para que combine con el fondo de esta pantalla. */}
+              <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+              {/* NavigationContainer renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+              <NavigationContainer linking={linkingConfig}>
+                {/* LimitadorErrores renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+                <LimitadorErrores>
+                  {/* EnrutadorPrincipal renderiza una pieza visual reutilizable dentro de esta pantalla. */}
+                  <EnrutadorPrincipal />
+                </LimitadorErrores>
+              </NavigationContainer>
+            </ToastProvider>
+          </ProveedorUsuario>
+        </ProveedorTemaMobile>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

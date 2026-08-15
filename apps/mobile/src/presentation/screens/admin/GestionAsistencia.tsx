@@ -8,7 +8,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { Platform, ScrollView, StyleSheet, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { AttendanceDailySummary } from 'domain/entities/Attendance';
@@ -17,6 +17,9 @@ import { DEFAULT_ATTENDANCE_SCHEDULE } from 'domain/services/attendancePolicy';
 import { useCases } from '@/infrastructure/container';
 import { useAuth } from '@/presentation/hooks/useAuth';
 import { ADMIN, type AdminPalette, useAdminAppearance } from './adminTheme';
+import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
+
+const Text = AdminTranslatedText;
 
 type LoadState = 'loading' | 'ready' | 'empty' | 'error';
 

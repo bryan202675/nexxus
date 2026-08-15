@@ -120,10 +120,10 @@ export async function validateUploadFile(file: Blob | File | string, kind: Uploa
     throw new Error('Ese formato no está permitido por seguridad.');
   }
   if (extension && !limits.allowedExtensions.includes(extension)) {
-    throw new Error(kind === 'document' ? 'Solo se permiten documentos PDF.' : kind === 'chatAttachment' ? 'Solo se permiten imágenes JPG, PNG, WEBP o PDF.' : 'Solo se permiten imágenes JPG, PNG o WEBP.');
+    throw new Error(kind === 'document' ? 'Solo se permiten documentos PDF.' : (kind === 'chatAttachment' || kind === 'taskAttachment') ? 'Solo se permiten imágenes JPG, PNG, WEBP o PDF.' : 'Solo se permiten imágenes JPG, PNG o WEBP.');
   }
   if (!limits.allowedMimeTypes.includes(mime)) {
-    throw new Error(kind === 'document' ? 'El documento debe ser un PDF válido.' : kind === 'chatAttachment' ? 'El adjunto debe ser una imagen válida o un PDF.' : 'La imagen debe ser JPG, PNG o WEBP válida.');
+    throw new Error(kind === 'document' ? 'El documento debe ser un PDF válido.' : (kind === 'chatAttachment' || kind === 'taskAttachment') ? 'El adjunto debe ser una imagen válida o un PDF.' : 'La imagen debe ser JPG, PNG o WEBP válida.');
   }
 
   const dimensions = mime.startsWith('image/') ? await getImageDimensions(blobFile) : null;

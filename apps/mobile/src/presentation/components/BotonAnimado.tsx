@@ -4,68 +4,59 @@
  * Proposito: Componente reutilizable de interfaz. Encapsula una pieza visual o interactiva para mantener consistencia entre pantallas.
  * Dependencias clave: imports superiores y contratos tipados del propio modulo.
  * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras de datos al extender este archivo.
+ *
+ * Migrado a Reanimated (Fase R0): la animacion de press-scale corre en el hilo nativo en vez
+ * del hilo de JS, sin cambiar la API publica que consumen las ~12 pantallas que ya lo usan.
  */
 
-// Importa React, { useRef } desde React; habilita componentes, hooks y tipos base para esta pieza.
-import React, { useRef } from 'react';
-// Importa { Animated, TouchableWithoutFeedback, StyleSheet, StyleProp, ViewStyle, GestureResponderEvent } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { Animated, TouchableWithoutFeedback, StyleSheet, StyleProp, ViewStyle, GestureResponderEvent } from 'react-native';
-// Importa { ANIMACIONES }; reutiliza tokens visuales y constantes comunes del sistema de diseno.
-import { ANIMACIONES } from '@/shared/constants/diseno';
+import React from 'react';
+import { GestureResponderEvent, Pressable, StyleProp, ViewStyle } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { MOVIMIENTO } from '@/shared/constants/diseno';
 
-/**
- * Define el contrato de datos BotonAnimadoProps; documenta campos esperados y evita pasar objetos ambiguos entre capas.
- */
 interface BotonAnimadoProps {
   children: React.ReactNode;
   onPress?: (event: GestureResponderEvent) => void;
+  onLongPress?: (event: GestureResponderEvent) => void;
   style?: StyleProp<ViewStyle>;
   scaleTo?: number;
   disabled?: boolean;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 }
 
-/**
- * Componente BotonAnimado. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
- */
-export default function BotonAnimado({ children, onPress, style, scaleTo = 0.95, disabled = false }: BotonAnimadoProps) {
-  // Inicializa scale; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const scale = useRef(new Animated.Value(1)).current;
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-  // Declara onPressIn; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const onPressIn = () => {
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
+export default function BotonAnimado({ children, onPress, onLongPress, style, scaleTo = MOVIMIENTO.pressScale, disabled = false, accessibilityLabel, accessibilityHint }: BotonAnimadoProps) {
+  const escala = useSharedValue(1);
+
+  const manejarPressIn = () => {
     if (disabled) return;
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-    Animated.spring(scale, {
-      toValue: scaleTo,
-      ...(ANIMACIONES.spring?.stiff || { tension: 100, friction: 10, useNativeDriver: true }),
-    }).start();
+    escala.value = withTiming(scaleTo, { duration: MOVIMIENTO.pressDuration });
   };
 
-  // Declara onPressOut; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const onPressOut = () => {
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
+  const manejarPressOut = () => {
     if (disabled) return;
-    // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
-    Animated.spring(scale, {
-      toValue: 1,
-      ...(ANIMACIONES.spring?.bouncy || { tension: 60, friction: 5, useNativeDriver: true }),
-    }).start();
+    escala.value = withTiming(1, { duration: MOVIMIENTO.pressDuration });
   };
 
-  // Devuelve el JSX que React Native renderiza en pantalla.
+  const estiloAnimado = useAnimatedStyle(() => ({
+    transform: [{ scale: escala.value }],
+  }));
+
   return (
-    // TouchableWithoutFeedback renderiza una pieza visual reutilizable dentro de esta pantalla.
-    <TouchableWithoutFeedback
-      onPressIn={onPressIn}
-      onPressOut={onPressOut}
+    <AnimatedPressable
+      onPressIn={manejarPressIn}
+      onPressOut={manejarPressOut}
       onPress={onPress}
+      onLongPress={onLongPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
+      style={[style, estiloAnimado]}
     >
-      {/* Animated.View renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-      <Animated.View style={[style, { transform: [{ scale }] }]}>
-        {children}
-      </Animated.View>
-    </TouchableWithoutFeedback>
+      {children}
+    </AnimatedPressable>
   );
 }

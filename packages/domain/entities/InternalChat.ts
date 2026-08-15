@@ -20,6 +20,8 @@ export interface Conversation {
   participantes: ChatParticipant[];
   ultimoMensaje?: string;
   ultimoMensajeAt?: string;
+  ultimoMensajeRemitenteId?: string;
+  ultimoMensajeRemitenteNombre?: string;
   creadoPor: string;
   fechaCreacion: string;
   imagenUrl?: string;

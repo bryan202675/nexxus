@@ -23,7 +23,9 @@ function mapProgressRow(row: Record<string, any>): TrainingProgress {
     modulosCompletados: row.progreso_modulos ?? [],
     porcentaje: row.progreso ?? 0,
     completado: row.completado,
-    certificadoEmitido: row.completado,
+    certificadoEmitido: Boolean(row.certificado_codigo),
+    certificadoCodigo: row.certificado_codigo ?? undefined,
+    certificadoEmitidoAt: row.certificado_emitido_at ?? undefined,
     updatedAt: row.updated_at,
   };
 }

@@ -4,6 +4,8 @@ import { User } from 'domain/entities/User';
 import { mapUserRow, userPatchToRow } from './mappers';
 import { subscribeQuery } from './realtime';
 
+const QUERY_LIMIT = 500;
+
 export class SupabaseUserRepository implements IUserRepository {
   async getById(id: string): Promise<User | null> {
     const { data, error } = await supabase.from('usuarios').select('*').eq('id', id).maybeSingle();
@@ -19,7 +21,7 @@ export class SupabaseUserRepository implements IUserRepository {
 
   async getAll(empresaId = ''): Promise<User[]> {
     if (!empresaId) return [];
-    const { data, error } = await supabase.from('usuarios').select('*').eq('empresa_id', empresaId);
+    const { data, error } = await supabase.from('usuarios').select('*').eq('empresa_id', empresaId).limit(QUERY_LIMIT);
     if (error) throw error;
     return (data || []).map(mapUserRow);
   }
@@ -37,7 +39,7 @@ export class SupabaseUserRepository implements IUserRepository {
       'usuarios',
       `empresa_id=eq.${empresaId}`,
       async () => {
-        const { data, error } = await supabase.from('usuarios').select('*').eq('empresa_id', empresaId);
+        const { data, error } = await supabase.from('usuarios').select('*').eq('empresa_id', empresaId).limit(QUERY_LIMIT);
         if (error) throw error;
         return (data || []).map(mapUserRow);
       },

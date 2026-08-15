@@ -8,7 +8,7 @@ Gemini se configura solo en el backend:
 
 ```bash
 GEMINI_API_KEY="valor_en_entorno_seguro"
-GEMINI_MODEL="gemini-2.5-flash"
+GEMINI_MODEL="gemini-3.6-flash"
 ```
 
 El super admin se crea o actualiza con:

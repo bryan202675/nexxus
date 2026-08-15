@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Image, Modal, Platform, ScrollView, StyleSheet, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import Svg, { Circle, Path, Rect, G, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { ChatAttachment, ChatMessage, ChatUser, Conversation } from 'domain/entities/InternalChat';
@@ -10,6 +10,10 @@ import { useAuth } from '@/presentation/hooks/useAuth';
 import { isSuperAdminRole } from '@/shared/auth/roles';
 import { ADMIN, useAdminAppearance, sombraAdmin } from './adminTheme';
 import { obtenerEmpresaIdAdmin } from './adminUtils';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
+
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
 
 type ChatUserConFoto = ChatUser & { fotoPerfil?: string; foto?: string };
 
