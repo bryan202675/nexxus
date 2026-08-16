@@ -105,7 +105,10 @@ Deno.serve(withHandler(async (req, admin) => {
       },
     }),
   });
-  if (!response.ok) throw new HttpError(502, 'No pudimos procesar el audio.');
+  if (!response.ok) {
+    console.error('Gemini voice-turn error', response.status, await response.text().catch(() => ''));
+    throw new HttpError(502, 'No pudimos procesar el audio.');
+  }
   const json = await response.json();
   const raw = extractText(json);
   let parsed: { transcripcion: string; respuesta: string } | null = null;
@@ -113,7 +116,10 @@ Deno.serve(withHandler(async (req, admin) => {
     const candidate = JSON.parse(raw.replace(/^```json\s*|\s*```$/g, ''));
     if (typeof candidate.transcripcion === 'string' && typeof candidate.respuesta === 'string') parsed = candidate;
   } catch { /* parsed queda null, se maneja abajo */ }
-  if (!parsed) throw new HttpError(502, 'La IA devolvió una respuesta de voz inválida.');
+  if (!parsed) {
+    console.error('Gemini voice-turn respuesta inválida', JSON.stringify(json).slice(0, 2000));
+    throw new HttpError(502, 'La IA devolvió una respuesta de voz inválida.');
+  }
 
   const usage = json?.usage_metadata || json?.usageMetadata || {};
   await admin.from('ai_usage').insert({
