@@ -1,4 +1,12 @@
-import { buildAiContext, fetchGeminiConRotacion, getCaller, HttpError, withHandler } from '../_shared/nexxus.ts';
+import {
+  applyActionTags,
+  buildAiContext,
+  extractSensitiveActions,
+  fetchGeminiConRotacion,
+  getCaller,
+  HttpError,
+  withHandler,
+} from '../_shared/nexxus.ts';
 
 const model = Deno.env.get('GEMINI_MODEL') || 'gemini-3.6-flash';
 const groqApiKey = Deno.env.get('GROQ_API_KEY') || '';
@@ -73,6 +81,18 @@ function buildVoiceSystemPrompt(nombre: string, rol: string, context: unknown): 
     `5. El contexto incluye "fechaActual": úsala para saber qué significa "hoy" al hablar de tareas ` +
     `(compara con el campo fecha_limite de cada tarea). Cada tarea trae "creado_por_nombre" con el nombre de ` +
     `quien la asignó, y el contexto incluye "notificaciones" recientes del usuario. ` +
+    `6. Si el usuario te pide avisarle a su jefe o RRHH cómo se siente, o expresa malestar, estrés o ` +
+    `agotamiento, incluye en tu respuesta hablada la etiqueta [NOTIFICATION:bienestar|titulo breve|mensaje] y ` +
+    `dile de forma natural que ya avisaste — nunca leas la etiqueta en voz alta, es invisible para el usuario. ` +
+    `7. Si te pide solicitar una ausencia (vacaciones, permiso, incapacidad, etc.), primero confirma verbalmente ` +
+    `el tipo y las fechas, y solo cuando las tengas claras incluye ` +
+    `[REQUEST_AUSENCIA:tipo|fecha_inicio|fecha_fin|motivo] (tipo uno de: vacaciones, permiso, enfermedad, ` +
+    `incapacidad, personal; fechas en formato YYYY-MM-DD, usando fechaActual como referencia para fechas relativas ` +
+    `como "mañana" o "el viernes"). ` +
+    `8. Si te pide crear una solicitud interna (adelanto, compra, equipo, capacitación, permiso), incluye ` +
+    `[REQUEST_INTERNA:tipo|detalle] (tipo uno de: adelanto, permiso, capacitacion, compra, equipo). ` +
+    `9. No puedes aprobar ni rechazar solicitudes por voz todavía: si te lo piden, explica con naturalidad que ` +
+    `esa acción se debe confirmar desde la app. ` +
     `Contexto real del usuario y su empresa en JSON: ${JSON.stringify(context).slice(0, 4000)}`
   );
 }
@@ -135,6 +155,12 @@ Deno.serve(withHandler(async (req, admin) => {
     console.error('Gemini voice-turn respuesta inválida', JSON.stringify(json).slice(0, 2000));
     throw new HttpError(502, 'La IA devolvió una respuesta de voz inválida.');
   }
+
+  // Voz no soporta aprobar/rechazar todavía: se descarta cualquier [APPROVE:] que el modelo
+  // haya emitido igual (el prompt le pide no hacerlo, esto es el respaldo del servidor) para
+  // que nunca se lea la etiqueta en voz alta. El resto de etiquetas sí se ejecutan de verdad.
+  const { clean: respuestaSinAprobaciones } = extractSensitiveActions(parsed.respuesta);
+  parsed.respuesta = await applyActionTags(admin, caller, respuestaSinAprobaciones);
 
   const usage = json?.usage_metadata || json?.usageMetadata || {};
   await admin.from('ai_usage').insert({

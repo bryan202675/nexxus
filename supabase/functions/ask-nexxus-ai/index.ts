@@ -7,7 +7,9 @@
 // parseo de tags [NOTIFICATION:..]/[TASK:..]/[EVENT:..] y el registro de
 // ai_usage con costo estimado.
 import {
+  applyActionTags,
   buildAiContext,
+  extractSensitiveActions,
   fetchGeminiConRotacion,
   getCaller,
   isCanonicalRole,
@@ -15,9 +17,8 @@ import {
   withHandler,
   writeAuditLog,
   HttpError,
-  Caller,
+  SensitiveAiAction,
 } from "../_shared/nexxus.ts";
-import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash";
 const GEMINI_PRICING: Record<string, { input: number; output: number }> = {
@@ -67,8 +68,12 @@ async function callGemini(
     `Si corresponde, puedes emitir como texto literal las etiquetas [NOTIFICATION:tipo|titulo|mensaje] ` +
     `(tipo debe ser uno de: bienestar, tarea, aprobacion, general — usa siempre "bienestar" cuando el empleado ` +
     `exprese malestar, estrés, agotamiento o sobrecarga, o pida explícitamente avisarle a su jefe/RRHH sobre ` +
-    `cómo se siente), [TASK:prioridad|titulo|descripcion|asignado_a] o ` +
-    `[EVENT:tipo|titulo|inicio|fin|descripcion] para que el sistema cree ese registro.` +
+    `cómo se siente), [TASK:prioridad|titulo|descripcion|asignado_a], ` +
+    `[EVENT:tipo|titulo|inicio|fin|descripcion], ` +
+    `[REQUEST_AUSENCIA:tipo|fecha_inicio|fecha_fin|motivo] (tipo uno de: vacaciones, permiso, enfermedad, ` +
+    `incapacidad, personal; fechas en formato YYYY-MM-DD) cuando el usuario pida solicitar una ausencia, o ` +
+    `[REQUEST_INTERNA:tipo|detalle] (tipo uno de: adelanto, permiso, capacitacion, compra, equipo) cuando pida ` +
+    `crear una solicitud interna, para que el sistema cree ese registro.` +
     instruccionAprobacion;
   const historial = history
     .slice(-6)
@@ -128,19 +133,6 @@ async function callGemini(
   };
 }
 
-interface SensitiveAiAction {
-  id: string;
-  tipo: "aprobar_solicitud";
-  sourceCollection: "solicitudes_ausencia" | "solicitudes_internas";
-  itemId: string;
-  titulo: string;
-}
-
-const APPROVE_COLLECTIONS = new Set([
-  "solicitudes_ausencia",
-  "solicitudes_internas",
-]);
-
 function toPlainText(text: string): string {
   return text
     .replace(/^\s{0,3}#{1,6}\s+/gm, "")
@@ -152,104 +144,6 @@ function toPlainText(text: string): string {
     .replace(/^\s*[-*+]\s+/gm, "• ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
-}
-
-/**
- * Extrae [APPROVE:coleccion|id|titulo] SIN ejecutar nada -- a diferencia de
- * NOTIFICATION/TASK/EVENT, aprobar una solicitud es una accion sensible que requiere
- * confirmacion humana explicita en el cliente (ver Fase 8 del plan). Este parser solo
- * recorta el tag del texto y devuelve la lista para que el cliente muestre una tarjeta
- * de confirmacion; la mutacion real ocurre despues, cuando el usuario confirma, y en
- * ese punto el cliente vuelve a consultar el registro real (nunca confia en este payload).
- */
-function extractSensitiveActions(text: string): {
-  clean: string;
-  acciones: SensitiveAiAction[];
-} {
-  let clean = text;
-  const acciones: SensitiveAiAction[] = [];
-  let match: RegExpMatchArray | null;
-  while ((match = clean.match(/\[APPROVE:([^|]+)\|([^|]+)\|([^\]]+)\]/))) {
-    const coleccion = match[1].trim();
-    const itemId = match[2].trim();
-    if (APPROVE_COLLECTIONS.has(coleccion) && itemId) {
-      acciones.push({
-        id: `approve-${coleccion}-${itemId}`,
-        tipo: "aprobar_solicitud",
-        sourceCollection: coleccion as SensitiveAiAction["sourceCollection"],
-        itemId,
-        titulo: safeString(match[3], 120),
-      });
-    }
-    clean = clean.replace(match[0], "").trim();
-  }
-  return { clean, acciones };
-}
-
-const TIPOS_NOTIFICACION = new Set(["bienestar", "tarea", "aprobacion", "general"]);
-
-async function applyActionTags(
-  admin: SupabaseClient,
-  caller: Caller,
-  text: string
-): Promise<string> {
-  let clean = text;
-  let match: RegExpMatchArray | null;
-  while ((match = clean.match(/\[NOTIFICATION:(\w+)\|([^|]+)\|([^\]]+)\]/))) {
-    const tipoRaw = match[1].toLowerCase().trim();
-    const tipo = TIPOS_NOTIFICACION.has(tipoRaw) ? tipoRaw : "general";
-    // El chat de IA es la via mas comun para que un empleado exprese malestar en
-    // texto libre ("me siento mal", "estoy agotado") -- se marca prioridad alta
-    // para que el timbre/badge del admin lo resalte igual que la alerta automatica
-    // que genera el trigger de checkins.
-    const prioridad = tipo === "bienestar" ? "alta" : "media";
-    await admin
-      .from("notificaciones")
-      .insert({
-        usuario_id: caller.id,
-        empresa_id: caller.empresa_id,
-        titulo: safeString(match[2], 100),
-        cuerpo: safeString(match[3], 300),
-        tipo,
-        prioridad,
-      })
-      .select();
-    clean = clean.replace(match[0], "").trim();
-  }
-  while (
-    (match = clean.match(/\[TASK:([^|]+)\|([^|]+)\|([^|]+)\|([^\]]+)\]/))
-  ) {
-    const asignadoRaw = match[4].trim();
-    await admin.from("tareas").insert({
-      empresa_id: caller.empresa_id,
-      titulo: safeString(match[2], 150),
-      descripcion: safeString(match[3], 500),
-      prioridad: match[1],
-      asignado_a:
-        asignadoRaw.toLowerCase() === "yo" || !asignadoRaw
-          ? caller.id
-          : asignadoRaw,
-      creado_por: caller.id,
-      estado: "pendiente",
-    });
-    clean = clean.replace(match[0], "").trim();
-  }
-  while (
-    (match = clean.match(
-      /\[EVENT:([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^\]]+)\]/
-    ))
-  ) {
-    await admin.from("calendario_empresarial").insert({
-      empresa_id: caller.empresa_id,
-      titulo: safeString(match[2], 120),
-      fecha_inicio: match[3],
-      fecha_fin: match[4],
-      descripcion: safeString(match[5], 400),
-      tipo: match[1].toLowerCase().trim(),
-    });
-    clean = clean.replace(match[0], "").trim();
-  }
-  return clean;
 }
 
 Deno.serve(

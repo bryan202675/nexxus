@@ -173,6 +173,148 @@ export async function buildAiContext(
   };
 }
 
+export interface SensitiveAiAction {
+  id: string;
+  tipo: "aprobar_solicitud";
+  sourceCollection: "solicitudes_ausencia" | "solicitudes_internas";
+  itemId: string;
+  titulo: string;
+}
+
+const APPROVE_COLLECTIONS = new Set(["solicitudes_ausencia", "solicitudes_internas"]);
+
+/**
+ * Extrae [APPROVE:coleccion|id|titulo] SIN ejecutar nada -- a diferencia de
+ * NOTIFICATION/TASK/EVENT/REQUEST_*, aprobar una solicitud es una accion sensible que
+ * requiere confirmacion humana explicita en el cliente. Este parser solo recorta el tag del
+ * texto y devuelve la lista para que el cliente muestre una tarjeta de confirmacion; la
+ * mutacion real ocurre despues, cuando el usuario confirma, y en ese punto el cliente vuelve
+ * a consultar el registro real (nunca confia en este payload). Solo el chat de texto expone
+ * esto al usuario hoy -- voice-turn ni siquiera le enseña este tag al modelo.
+ */
+export function extractSensitiveActions(text: string): { clean: string; acciones: SensitiveAiAction[] } {
+  let clean = text;
+  const acciones: SensitiveAiAction[] = [];
+  let match: RegExpMatchArray | null;
+  while ((match = clean.match(/\[APPROVE:([^|]+)\|([^|]+)\|([^\]]+)\]/))) {
+    const coleccion = match[1].trim();
+    const itemId = match[2].trim();
+    if (APPROVE_COLLECTIONS.has(coleccion) && itemId) {
+      acciones.push({
+        id: `approve-${coleccion}-${itemId}`,
+        tipo: "aprobar_solicitud",
+        sourceCollection: coleccion as SensitiveAiAction["sourceCollection"],
+        itemId,
+        titulo: safeString(match[3], 120),
+      });
+    }
+    clean = clean.replace(match[0], "").trim();
+  }
+  return { clean, acciones };
+}
+
+const TIPOS_NOTIFICACION = new Set(["bienestar", "tarea", "aprobacion", "general"]);
+const TIPOS_AUSENCIA = new Set(["vacaciones", "permiso", "enfermedad", "incapacidad", "personal"]);
+const TIPOS_INTERNA = new Set(["adelanto", "permiso", "capacitacion", "compra", "equipo"]);
+const FECHA_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Ejecuta las etiquetas de accion que el modelo puede emitir como texto literal dentro de su
+ * respuesta (compartido por chat de texto y voz, para que ambos canales tengan las mismas
+ * capacidades reales sobre la base de datos):
+ *   [NOTIFICATION:tipo|titulo|mensaje]              -- incluye "bienestar" (avisar a RRHH/jefe)
+ *   [TASK:prioridad|titulo|descripcion|asignado_a]
+ *   [EVENT:tipo|titulo|inicio|fin|descripcion]
+ *   [REQUEST_AUSENCIA:tipo|fecha_inicio|fecha_fin|motivo]  -- fechas en YYYY-MM-DD
+ *   [REQUEST_INTERNA:tipo|detalle]
+ * Ninguna de estas es "sensible": crean un registro pendiente que igual pasa por el flujo de
+ * aprobacion normal de la empresa, no ejecutan nada irreversible por si solas.
+ */
+export async function applyActionTags(admin: SupabaseClient, caller: Caller, text: string): Promise<string> {
+  let clean = text;
+  let match: RegExpMatchArray | null;
+
+  while ((match = clean.match(/\[NOTIFICATION:(\w+)\|([^|]+)\|([^\]]+)\]/))) {
+    const tipoRaw = match[1].toLowerCase().trim();
+    const tipo = TIPOS_NOTIFICACION.has(tipoRaw) ? tipoRaw : "general";
+    // El chat/voz de IA es la via mas comun para que un empleado exprese malestar en texto
+    // libre ("me siento mal", "estoy agotado") -- se marca prioridad alta para que el
+    // timbre/badge del admin lo resalte igual que la alerta automatica del trigger de checkins.
+    const prioridad = tipo === "bienestar" ? "alta" : "media";
+    await admin.from("notificaciones").insert({
+      usuario_id: caller.id,
+      empresa_id: caller.empresa_id,
+      titulo: safeString(match[2], 100),
+      cuerpo: safeString(match[3], 300),
+      tipo,
+      prioridad,
+    });
+    clean = clean.replace(match[0], "").trim();
+  }
+
+  while ((match = clean.match(/\[TASK:([^|]+)\|([^|]+)\|([^|]+)\|([^\]]+)\]/))) {
+    const asignadoRaw = match[4].trim();
+    await admin.from("tareas").insert({
+      empresa_id: caller.empresa_id,
+      titulo: safeString(match[2], 150),
+      descripcion: safeString(match[3], 500),
+      prioridad: match[1],
+      asignado_a: asignadoRaw.toLowerCase() === "yo" || !asignadoRaw ? caller.id : asignadoRaw,
+      creado_por: caller.id,
+      estado: "pendiente",
+    });
+    clean = clean.replace(match[0], "").trim();
+  }
+
+  while ((match = clean.match(/\[EVENT:([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^\]]+)\]/))) {
+    await admin.from("calendario_empresarial").insert({
+      empresa_id: caller.empresa_id,
+      titulo: safeString(match[2], 120),
+      fecha_inicio: match[3],
+      fecha_fin: match[4],
+      descripcion: safeString(match[5], 400),
+      tipo: match[1].toLowerCase().trim(),
+    });
+    clean = clean.replace(match[0], "").trim();
+  }
+
+  while ((match = clean.match(/\[REQUEST_AUSENCIA:([^|]+)\|([^|]+)\|([^|]+)\|([^\]]+)\]/))) {
+    const tipoRaw = match[1].toLowerCase().trim();
+    const fechaInicio = match[2].trim();
+    const fechaFin = match[3].trim();
+    if (TIPOS_AUSENCIA.has(tipoRaw) && FECHA_PATTERN.test(fechaInicio) && FECHA_PATTERN.test(fechaFin)) {
+      await admin.from("solicitudes_ausencia").insert({
+        empresa_id: caller.empresa_id,
+        usuario_id: caller.id,
+        tipo: tipoRaw,
+        fecha_inicio: fechaInicio,
+        fecha_fin: fechaFin,
+        motivo: safeString(match[4], 300),
+      });
+    } else {
+      console.error("REQUEST_AUSENCIA con tipo o fechas inválidas, se ignora", match[0]);
+    }
+    clean = clean.replace(match[0], "").trim();
+  }
+
+  while ((match = clean.match(/\[REQUEST_INTERNA:([^|]+)\|([^\]]+)\]/))) {
+    const tipoRaw = match[1].toLowerCase().trim();
+    if (TIPOS_INTERNA.has(tipoRaw)) {
+      await admin.from("solicitudes_internas").insert({
+        empresa_id: caller.empresa_id,
+        usuario_id: caller.id,
+        tipo: tipoRaw,
+        detalle: safeString(match[2], 400),
+      });
+    } else {
+      console.error("REQUEST_INTERNA con tipo inválido, se ignora", match[0]);
+    }
+    clean = clean.replace(match[0], "").trim();
+  }
+
+  return clean;
+}
+
 export async function writeAuditLog(admin: SupabaseClient, entry: {
   empresaId: string | null;
   actorId: string | null;
