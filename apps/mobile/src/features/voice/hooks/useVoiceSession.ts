@@ -23,6 +23,19 @@ function logVoz(...args: unknown[]) {
   if (__DEV__) console.log('[VOICE]', ...args);
 }
 
+// La sesión de audio nativa (expo-audio) a veces queda colgada tras varios hot-reloads en
+// desarrollo -- una promesa de solicitarPermiso/inicializarAudio que nunca resuelve deja la
+// llamada pegada en "conectando" para siempre. Con timeout, al menos falla con un error visible.
+const TIMEOUT_INICIALIZACION_MS = 8000;
+function conTimeout<T>(promesa: Promise<T>, etiqueta: string): Promise<T> {
+  return Promise.race([
+    promesa,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Tiempo de espera agotado: ${etiqueta}`)), TIMEOUT_INICIALIZACION_MS),
+    ),
+  ]);
+}
+
 export function useVoiceSession() {
   const audio = useNexxusVoiceAudio();
   const { perfil } = useContextoUsuario();
@@ -90,30 +103,49 @@ export function useVoiceSession() {
     setTranscripcion([]);
     cambiarEstado('connecting');
 
-    const granted = audio.estadoPermiso === 'granted' || await audio.solicitarPermiso();
-    if (!granted) {
-      logVoz('permiso de micrófono denegado');
-      activoRef.current = false;
-      setError({
-        code: 'microphone_permission_denied',
-        message: 'Nexxus necesita acceso al micrófono para escucharte.',
-      });
-      cambiarEstado('error');
-      return;
-    }
+    try {
+      logVoz('solicitando permiso de micrófono');
+      const granted = audio.estadoPermiso === 'granted'
+        || await conTimeout(audio.solicitarPermiso(), 'solicitarPermiso');
+      logVoz('permiso resuelto:', granted);
+      if (!granted) {
+        logVoz('permiso de micrófono denegado');
+        activoRef.current = false;
+        setError({
+          code: 'microphone_permission_denied',
+          message: 'Nexxus necesita acceso al micrófono para escucharte.',
+        });
+        cambiarEstado('error');
+        return;
+      }
 
-    if (!await audio.inicializarAudio()) {
-      logVoz('fallo al inicializar audio');
+      logVoz('inicializando audio');
+      const inicializado = await conTimeout(audio.inicializarAudio(), 'inicializarAudio');
+      logVoz('audio inicializado:', inicializado);
+      if (!inicializado) {
+        logVoz('fallo al inicializar audio');
+        activoRef.current = false;
+        setError({
+          code: 'audio_init_failed',
+          message: 'No pudimos iniciar el micrófono. Intenta de nuevo.',
+        });
+        cambiarEstado('error');
+        return;
+      }
+
+      await iniciarEscucha();
+    } catch (cause) {
+      // Cubre el caso de que la sesión de audio nativa quede colgada (típico tras varios
+      // hot-reloads en desarrollo): sin esto, la llamada se quedaba en "conectando" para
+      // siempre sin ningún error visible ni log adicional.
+      logVoz('iniciarLlamada: excepción o timeout', cause);
       activoRef.current = false;
       setError({
         code: 'audio_init_failed',
-        message: 'No pudimos iniciar el micrófono. Intenta de nuevo.',
+        message: 'No pudimos iniciar el audio. Cierra la app por completo y vuelve a abrirla.',
       });
       cambiarEstado('error');
-      return;
     }
-
-    await iniciarEscucha();
   }, [audio, cambiarEstado, iniciarEscucha]);
 
   const procesarTurno = useCallback(async () => {
