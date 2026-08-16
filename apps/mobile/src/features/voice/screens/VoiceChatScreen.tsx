@@ -64,6 +64,7 @@ export default function VoiceChatScreen({ navigation }: Props) {
 
     const suscripcion = AppState.addEventListener('change', (siguiente) => {
       if (siguiente === 'background') {
+        if (__DEV__) console.log('[VOICE] AppState -> background, finalizando llamada');
         finalizarLlamada();
       }
     });
@@ -71,7 +72,10 @@ export default function VoiceChatScreen({ navigation }: Props) {
   }, [estado, finalizarLlamada]);
 
   useEffect(() => {
-    if (!perfil) finalizarLlamada();
+    if (!perfil) {
+      if (__DEV__) console.log('[VOICE] perfil es falsy, finalizando llamada', perfil);
+      finalizarLlamada();
+    }
   }, [perfil, finalizarLlamada]);
 
   const salir = () => {

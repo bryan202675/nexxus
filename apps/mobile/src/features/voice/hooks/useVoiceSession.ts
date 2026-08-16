@@ -300,6 +300,7 @@ export function useVoiceSession() {
   }, [audio]);
 
   const finalizarLlamada = useCallback(() => {
+    if (__DEV__) console.trace('[VOICE] llamada finalizada, ver quién la llamó');
     logVoz('llamada finalizada');
     activoRef.current = false;
     procesandoRef.current = false;

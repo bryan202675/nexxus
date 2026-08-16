@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { File } from 'expo-file-system';
 import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder } from 'expo-audio';
 import * as Speech from 'expo-speech';
@@ -177,18 +177,38 @@ export function useNexxusVoiceAudio(): UseNexxusVoiceAudioResult {
     Speech.stop();
   }, [recorder, neuralTts]);
 
-  return {
-    estadoPermiso,
-    solicitarPermiso,
-    errorInicializacion,
-    inicializarAudio,
-    grabando,
-    iniciarGrabacion,
-    detenerGrabacion,
-    detenerYLeer,
-    nivelEntrada,
-    hablar,
-    interrumpirHabla,
-    liberar,
-  };
+  // Sin memoizar, este objeto es literal nuevo en cada render -- useVoiceSession lo referencia
+  // completo en las dependencias de iniciarLlamada/finalizarLlamada, así que sin esto esas
+  // funciones (y los efectos de VoiceChatScreen que dependen de ellas) se recrean y re-disparan
+  // en cada actualización de estado durante la llamada, no solo cuando algo real cambia.
+  return useMemo(
+    () => ({
+      estadoPermiso,
+      solicitarPermiso,
+      errorInicializacion,
+      inicializarAudio,
+      grabando,
+      iniciarGrabacion,
+      detenerGrabacion,
+      detenerYLeer,
+      nivelEntrada,
+      hablar,
+      interrumpirHabla,
+      liberar,
+    }),
+    [
+      estadoPermiso,
+      solicitarPermiso,
+      errorInicializacion,
+      inicializarAudio,
+      grabando,
+      iniciarGrabacion,
+      detenerGrabacion,
+      detenerYLeer,
+      nivelEntrada,
+      hablar,
+      interrumpirHabla,
+      liberar,
+    ],
+  );
 }
