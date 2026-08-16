@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { AppState, InteractionManager, SafeAreaView, StatusBar, StyleSheet, View } from 'react-native';
+import { AppState, SafeAreaView, StatusBar, StyleSheet, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
@@ -45,12 +45,17 @@ export default function VoiceChatScreen({ navigation }: Props) {
     // Pedir permiso de micrófono (diálogo nativo) apenas se monta la pantalla puede chocar con
     // la animación de navegación (push) que todavía está corriendo -- en iOS eso puede bloquear
     // el hilo nativo por completo, dejando la llamada pegada en "conectando" sin ningún error ni
-    // log adicional (ni siquiera timeouts de JS llegan a dispararse). Se espera a que termine la
-    // transición antes de tocar cualquier API nativa.
-    const tarea = InteractionManager.runAfterInteractions(() => {
+    // log adicional (ni siquiera timeouts de JS llegan a dispararse). Se espera un poco antes de
+    // tocar cualquier API nativa. Un setTimeout fijo en vez de InteractionManager.runAfterInteractions
+    // a propósito: ese último espera a que se cierren TODOS los "interaction handles" registrados,
+    // y si React Navigation deja uno abierto (pasa con transiciones basadas en Reanimated, como
+    // las de esta app), runAfterInteractions nunca dispara -- mismo síntoma, otra trampa distinta.
+    if (__DEV__) console.log('[VOICE] VoiceChatScreen montado, esperando 400ms antes de iniciar');
+    const temporizador = setTimeout(() => {
+      if (__DEV__) console.log('[VOICE] temporizador cumplido, llamando iniciarLlamada()');
       iniciarLlamada();
-    });
-    return () => tarea.cancel();
+    }, 400);
+    return () => clearTimeout(temporizador);
   }, [iniciarLlamada]);
 
   useEffect(() => {

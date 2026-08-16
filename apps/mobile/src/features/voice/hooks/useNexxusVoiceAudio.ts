@@ -3,6 +3,7 @@ import { File } from 'expo-file-system';
 import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder } from 'expo-audio';
 import * as Speech from 'expo-speech';
 import { VoiceSessionError } from '../types/voice.types';
+import { useNeuralTTS } from './useNeuralTTS';
 
 export type EstadoPermisoMicrofono = 'granted' | 'denied' | 'undetermined';
 export interface VoiceAudioClip {
@@ -32,6 +33,7 @@ interface UseNexxusVoiceAudioResult {
 
 export function useNexxusVoiceAudio(): UseNexxusVoiceAudioResult {
   const recorder = useAudioRecorder(OPCIONES_GRABACION);
+  const neuralTts = useNeuralTTS();
   const [grabando, setGrabando] = useState(false);
   const [nivelEntrada, setNivelEntrada] = useState(0);
   const [estadoPermiso, setEstadoPermiso] = useState<EstadoPermisoMicrofono>('undetermined');
@@ -55,12 +57,15 @@ export function useNexxusVoiceAudio(): UseNexxusVoiceAudioResult {
   }, [recorder]);
 
   const solicitarPermiso = useCallback(async () => {
+    if (__DEV__) console.log('[VOICE] llamando requestRecordingPermissionsAsync()');
     try {
       const permission = await requestRecordingPermissionsAsync();
+      if (__DEV__) console.log('[VOICE] requestRecordingPermissionsAsync() resolvió', permission);
       const granted = permission.granted;
       setEstadoPermiso(granted ? 'granted' : 'denied');
       return granted;
-    } catch {
+    } catch (cause) {
+      if (__DEV__) console.log('[VOICE] requestRecordingPermissionsAsync() lanzó error', cause);
       setEstadoPermiso('denied');
       return false;
     }
@@ -71,6 +76,7 @@ export function useNexxusVoiceAudio(): UseNexxusVoiceAudioResult {
   // `shouldRouteThroughEarpiece` de expo-audio solo existe en Android. La forma real de
   // que suene por el altavoz en iOS es desactivar el modo de grabación mientras se habla.
   const activarModoEscucha = useCallback(async () => {
+    if (__DEV__) console.log('[VOICE] llamando setAudioModeAsync() (modo escucha)');
     await setAudioModeAsync({
       allowsRecording: true,
       playsInSilentMode: true,
@@ -78,6 +84,7 @@ export function useNexxusVoiceAudio(): UseNexxusVoiceAudioResult {
       shouldPlayInBackground: false,
       shouldRouteThroughEarpiece: false,
     });
+    if (__DEV__) console.log('[VOICE] setAudioModeAsync() (modo escucha) resolvió');
   }, []);
 
   const activarModoAltavoz = useCallback(async () => {
@@ -142,6 +149,10 @@ export function useNexxusVoiceAudio(): UseNexxusVoiceAudioResult {
     } catch {
       // Si falla el cambio de modo, igual intentamos hablar con la ruta de audio actual.
     }
+    if (neuralTts.available) {
+      await neuralTts.speak(texto, alTerminar);
+      return;
+    }
     Speech.speak(texto, {
       language: 'es-SV',
       rate: 0.96,
@@ -149,11 +160,12 @@ export function useNexxusVoiceAudio(): UseNexxusVoiceAudioResult {
       onStopped: alTerminar,
       onError: () => alTerminar?.(),
     });
-  }, [activarModoAltavoz]);
+  }, [activarModoAltavoz, neuralTts]);
 
   const interrumpirHabla = useCallback(() => {
+    neuralTts.stop();
     Speech.stop();
-  }, []);
+  }, [neuralTts]);
 
   const liberar = useCallback(() => {
     try {
@@ -161,8 +173,9 @@ export function useNexxusVoiceAudio(): UseNexxusVoiceAudioResult {
     } catch {
       // El objeto nativo puede ya estar liberado durante el desmontaje; no hay nada que hacer.
     }
+    neuralTts.stop();
     Speech.stop();
-  }, [recorder]);
+  }, [recorder, neuralTts]);
 
   return {
     estadoPermiso,
