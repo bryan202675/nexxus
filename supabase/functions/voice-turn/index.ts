@@ -4,6 +4,7 @@ import {
   extractSensitiveActions,
   fetchGeminiConRotacion,
   getCaller,
+  isAdminEmpresa,
   isCanonicalRole,
   HttpError,
   withHandler,
@@ -67,7 +68,13 @@ async function transcribeWithGroq(audio: { data: string; mimeType: string }): Pr
   return typeof result?.text === 'string' ? result.text.trim() : null;
 }
 
-function buildVoiceSystemPrompt(nombre: string, rol: string, context: unknown, puedeAprobar: boolean): string {
+function buildVoiceSystemPrompt(
+  nombre: string,
+  rol: string,
+  context: unknown,
+  puedeAprobar: boolean,
+  puedeAprobarNomina: boolean,
+): string {
   const instruccionAprobacion = puedeAprobar
     ? `10. Si te piden aprobar o rechazar una solicitud de ausencia o interna que veas en el contexto, NO la ` +
       `apruebes tú mismo: incluye [APPROVE:coleccion|id|titulo] (coleccion es "solicitudes_ausencia" o ` +
@@ -75,6 +82,12 @@ function buildVoiceSystemPrompt(nombre: string, rol: string, context: unknown, p
       `le vas a mostrar una tarjeta para confirmar — nunca digas que ya quedó aprobada. `
     : `10. No puedes aprobar ni rechazar solicitudes por voz: si te lo piden, explica con naturalidad que esa ` +
       `acción se debe confirmar desde la app. `;
+  const instruccionAprobacionNomina = puedeAprobarNomina
+    ? `12. Si te piden aprobar, revisar o marcar como pagada una nómina de "nominas", NO la apruebes tú mismo: ` +
+      `incluye [APPROVE_NOMINA:id|estado|titulo] (id real de la nómina, estado "revisado" o "pagado" según lo ` +
+      `que pida, titulo breve con el nombre real cruzando "empleados") y dile que le vas a mostrar una tarjeta ` +
+      `para confirmar — nunca digas que ya quedó aprobada. `
+    : '';
   return (
     `Eres Nexxus Brain, el asistente inteligente integrado dentro de Nexxus (plataforma empresarial de RRHH, ` +
     `nómina y gestión operativa). Tu objetivo es ayudar al usuario a hacer su trabajo rápido y de forma natural. ` +
@@ -114,7 +127,16 @@ function buildVoiceSystemPrompt(nombre: string, rol: string, context: unknown, p
     `equipo. "tareas"/"asistencias"/"reportes"/"ausencias"/"solicitudesInternas" son de TODA la empresa, no ` +
     `solo suyos. Úsalos con confianza y en detalle. Solo di que no tienes el dato si de verdad no aparece en ` +
     `el JSON. ` +
-    `Contexto real del usuario y su empresa en JSON: ${JSON.stringify(context).slice(0, 20000)}`
+    instruccionAprobacionNomina +
+    `13. Si te pide crear o asignar una tarea a alguien, confirma verbalmente el título y a quién es (si no es ` +
+    `para él mismo), y luego incluye [TASK:prioridad|titulo|descripcion|asignado_a] (prioridad uno de: Baja, ` +
+    `Media, Alta, Urgente; asignado_a debe ser "yo" para el propio usuario o el id real de la persona ` +
+    `buscándola en "empleados" por nombre — si no la encuentras ahí, dilo en vez de inventar un id). ` +
+    `14. Si te pide agendar una reunión, evento o algo en el calendario, confirma verbalmente el título y la ` +
+    `fecha/hora, y luego incluye [EVENT:tipo|titulo|inicio|fin|descripcion] (tipo uno de: reunion, ` +
+    `capacitacion, feriado, evento; inicio/fin en formato ISO 8601, usando fechaActual como referencia para ` +
+    `fechas y horas relativas como "mañana a las 3"). ` +
+    `Contexto real del usuario y su empresa en JSON: ${JSON.stringify(context).slice(0, 22000)}`
   );
 }
 
@@ -130,7 +152,8 @@ Deno.serve(withHandler(async (req, admin) => {
   const mimeType = typeof audio.mimeType === 'string' && audio.mimeType ? audio.mimeType : 'audio/m4a';
   const context = await buildAiContext(admin, caller);
   const puedeAprobar = isCanonicalRole(caller.rol);
-  const systemPrompt = buildVoiceSystemPrompt(caller.nombre, caller.rol, context, puedeAprobar);
+  const puedeAprobarNomina = isAdminEmpresa(caller);
+  const systemPrompt = buildVoiceSystemPrompt(caller.nombre, caller.rol, context, puedeAprobar, puedeAprobarNomina);
 
   type InteractionInput =
     | { type: 'text'; text: string }
@@ -183,7 +206,10 @@ Deno.serve(withHandler(async (req, admin) => {
   // que el chat de texto); si no puede, se descarta (respaldo de servidor, el prompt ya se lo pide).
   const { clean: respuestaSinAprobaciones, acciones } = extractSensitiveActions(parsed.respuesta);
   parsed.respuesta = await applyActionTags(admin, caller, respuestaSinAprobaciones);
-  const accionesSensibles = puedeAprobar ? acciones : [];
+  // Nómina exige el gate más estricto (isAdminEmpresa) aunque el rol sea canónico (jefe queda fuera).
+  const accionesSensibles = acciones.filter((accion) =>
+    accion.tipo === 'aprobar_nomina' ? puedeAprobarNomina : puedeAprobar
+  );
   // Si el modelo devolvió la respuesta hablada compuesta solo por etiquetas (sin nada de
   // texto natural alrededor), applyActionTags las recorta todas y queda vacía -- Speech.speak('')
   // en el cliente no siempre dispara onDone, dejando la llamada congelada sin sonido ni avance.

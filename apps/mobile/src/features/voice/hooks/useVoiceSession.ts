@@ -5,6 +5,7 @@ import { VoiceSessionError, VoiceSessionState, VoiceTranscriptEntry } from '../t
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import { useCases } from '@/infrastructure/container';
 import { SensitiveAiAction } from 'domain/entities/AiAssistant';
+import { PayrollStatus } from 'domain/entities/Payroll';
 
 // Nivel mínimo para considerar que el usuario "empezó a hablar" (entrada al estado de voz).
 const UMBRAL_VOZ = 0.18;
@@ -220,6 +221,17 @@ export function useVoiceSession() {
   const resolverAccionPendiente = useCallback(async (accion: SensitiveAiAction, resultado: 'aprobada' | 'rechazada') => {
     if (!perfil) return;
     try {
+      if (accion.tipo === 'aprobar_nomina') {
+        // Rechazar una nómina no tiene estado propio (solo pendiente/revisado/pagado): no
+        // hacer nada la deja como estaba.
+        if (resultado === 'aprobada' && accion.estadoDestino) {
+          await useCases.admin.payroll.updateStatus(accion.itemId, accion.estadoDestino as PayrollStatus, {
+            id: perfil.id,
+            nombre: perfil.nombre,
+          });
+        }
+        return;
+      }
       const item = await useCases.admin.requestReports.getById(accion.sourceCollection, accion.itemId);
       if (!item || item.estado !== 'pendiente') throw new Error('Esta solicitud ya no está pendiente o no existe.');
       await useCases.leader.resolveApproval(item, resultado, { id: perfil.id, nombre: perfil.nombre, rol: perfil.rol });

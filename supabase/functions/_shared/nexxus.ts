@@ -222,23 +222,27 @@ export async function buildAiContext(
 
 export interface SensitiveAiAction {
   id: string;
-  tipo: "aprobar_solicitud";
-  sourceCollection: "solicitudes_ausencia" | "solicitudes_internas";
+  tipo: "aprobar_solicitud" | "aprobar_nomina";
+  sourceCollection: "solicitudes_ausencia" | "solicitudes_internas" | "nominas";
   itemId: string;
   titulo: string;
+  // Solo para tipo "aprobar_nomina": a qué estado mover la nómina ('revisado' | 'pagado').
+  estadoDestino?: string;
 }
 
 const APPROVE_COLLECTIONS = new Set(["solicitudes_ausencia", "solicitudes_internas"]);
+const ESTADOS_NOMINA_APROBABLES = new Set(["revisado", "pagado"]);
 
 /**
- * Extrae [APPROVE:coleccion|id|titulo] SIN ejecutar nada -- a diferencia de
- * NOTIFICATION/TASK/EVENT/REQUEST_*, aprobar una solicitud es una accion sensible que
- * requiere confirmacion humana explicita en el cliente. Este parser solo recorta el tag del
- * texto y devuelve la lista para que el cliente muestre una tarjeta de confirmacion; la
- * mutacion real ocurre despues, cuando el usuario confirma, y en ese punto el cliente vuelve
- * a consultar el registro real (nunca confia en este payload). Chat de texto y voz exponen esto
- * por igual a roles canonicos (jefe/admin/super_admin); voice-turn descarta el resultado para
- * el resto de roles.
+ * Extrae [APPROVE:coleccion|id|titulo] y [APPROVE_NOMINA:id|estado|titulo] SIN ejecutar nada --
+ * a diferencia de NOTIFICATION/TASK/EVENT/REQUEST_*, aprobar una solicitud o una nómina es una
+ * accion sensible que requiere confirmacion humana explicita en el cliente. Este parser solo
+ * recorta el tag del texto y devuelve la lista para que el cliente muestre una tarjeta de
+ * confirmacion; la mutacion real ocurre despues, cuando el usuario confirma (para nómina, vía
+ * useCases.admin.payroll.updateStatus -- el mismo camino que ya usa el dashboard). El caller
+ * (ask-nexxus-ai/voice-turn) filtra esta lista según el rol antes de devolverla: solicitudes
+ * requieren rol canónico (jefe/admin/super_admin), nómina requiere admin/admin_empresa/
+ * super_admin (coincide con la política RLS real de la tabla nominas -- jefe no puede).
  */
 export function extractSensitiveActions(text: string): { clean: string; acciones: SensitiveAiAction[] } {
   let clean = text;
@@ -253,6 +257,21 @@ export function extractSensitiveActions(text: string): { clean: string; acciones
         tipo: "aprobar_solicitud",
         sourceCollection: coleccion as SensitiveAiAction["sourceCollection"],
         itemId,
+        titulo: safeString(match[3], 120),
+      });
+    }
+    clean = clean.replace(match[0], "").trim();
+  }
+  while ((match = clean.match(/\[APPROVE_NOMINA:([^|]+)\|([^|]+)\|([^\]]+)\]/))) {
+    const itemId = match[1].trim();
+    const estadoDestino = match[2].trim().toLowerCase();
+    if (itemId && ESTADOS_NOMINA_APROBABLES.has(estadoDestino)) {
+      acciones.push({
+        id: `approve-nomina-${itemId}`,
+        tipo: "aprobar_nomina",
+        sourceCollection: "nominas",
+        itemId,
+        estadoDestino,
         titulo: safeString(match[3], 120),
       });
     }
@@ -305,7 +324,10 @@ export async function applyActionTags(admin: SupabaseClient, caller: Caller, tex
 
   while ((match = clean.match(/\[TASK:([^|]+)\|([^|]+)\|([^|]+)\|([^\]]+)\]/))) {
     const asignadoRaw = match[4].trim();
-    await admin.from("tareas").insert({
+    // El prompt le pide al modelo usar el id real de "empleados" cuando asigna a otra persona;
+    // si de todos modos llega un valor que no es un uuid válido, el insert falla por FK y se
+    // registra aquí en vez de fallar en silencio dejando al usuario creyendo que sí se asignó.
+    const { error } = await admin.from("tareas").insert({
       empresa_id: caller.empresa_id,
       titulo: safeString(match[2], 150),
       descripcion: safeString(match[3], 500),
@@ -314,6 +336,7 @@ export async function applyActionTags(admin: SupabaseClient, caller: Caller, tex
       creado_por: caller.id,
       estado: "pendiente",
     });
+    if (error) console.error("TASK falló (asignado_a inválido?)", asignadoRaw, error);
     clean = clean.replace(match[0], "").trim();
   }
 

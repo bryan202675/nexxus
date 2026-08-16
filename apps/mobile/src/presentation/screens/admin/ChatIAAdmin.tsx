@@ -26,6 +26,7 @@ import RenderMarkdownIA from '@/presentation/components/RenderMarkdownIA';
 // Importa { SensitiveAiAction }; acciones sensibles sugeridas por la IA (Fase 8) que requieren
 // confirmacion humana explicita antes de ejecutarse -- ver ask-nexxus-ai (Edge Function).
 import { SensitiveAiAction } from 'domain/entities/AiAssistant';
+import { PayrollStatus } from 'domain/entities/Payroll';
 
 interface Props {
   navigation: any;
@@ -254,6 +255,20 @@ export default function ChatIAAdmin({ navigation }: Props) {
   async function confirmarAccionSensible(mensajeId: string, accion: SensitiveAiAction, estado: 'aprobada' | 'rechazada') {
     if (!perfil) return;
     try {
+      if (accion.tipo === 'aprobar_nomina') {
+        // Rechazar una nómina no tiene estado propio (solo pendiente/revisado/pagado): no
+        // hacer nada la deja como estaba, la tarjeta solo refleja que se descartó.
+        if (estado === 'aprobada') {
+          await useCases.admin.payroll.updateStatus(accion.itemId, accion.estadoDestino as PayrollStatus, {
+            id: perfil.id,
+            nombre: perfil.nombre,
+          });
+        }
+        guardarMensajes((anterior) => anterior.map((m) => m.id === mensajeId
+          ? { ...m, accionesResueltas: { ...m.accionesResueltas, [accion.id]: estado } }
+          : m));
+        return;
+      }
       const item = await useCases.admin.requestReports.getById(accion.sourceCollection, accion.itemId);
       if (!item || item.estado !== 'pendiente') {
         throw new Error('Esta solicitud ya no está pendiente o no existe.');

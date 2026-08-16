@@ -12,6 +12,7 @@ import {
   extractSensitiveActions,
   fetchGeminiConRotacion,
   getCaller,
+  isAdminEmpresa,
   isCanonicalRole,
   safeString,
   withHandler,
@@ -46,7 +47,8 @@ async function callGemini(
   prompt: string,
   context: unknown,
   history: { rol: string; texto: string }[],
-  puedeAprobar: boolean
+  puedeAprobar: boolean,
+  puedeAprobarNomina: boolean
 ) {
   const instruccionAprobacion = puedeAprobar
     ? ` Si el usuario pide aprobar o rechazar una solicitud de ausencia o interna que veas en el contexto (colección ` +
@@ -54,6 +56,13 @@ async function callGemini(
       `"solicitudes_ausencia" o "solicitudes_internas", id es el id real del registro en el contexto, titulo es un ` +
       `resumen breve) para que el sistema le muestre al usuario una tarjeta de confirmación explícita antes de ` +
       `aprobarla — nunca la des por aprobada en tu respuesta de texto.`
+    : "";
+  const instruccionAprobacionNomina = puedeAprobarNomina
+    ? ` Si el usuario pide aprobar, revisar o marcar como pagada una nómina que veas en "nominas", NO la ` +
+      `apruebes tú mismo: emite [APPROVE_NOMINA:id|estado|titulo] (id es el id real de la nómina en el contexto, ` +
+      `estado es "revisado" o "pagado" según lo que pida, titulo un resumen breve como "Nómina de Juan Pérez — ` +
+      `enero 2026" usando "empleados" para el nombre real) para que el sistema le muestre una tarjeta de ` +
+      `confirmación explícita — nunca la des por aprobada en tu respuesta de texto.`
     : "";
   const systemPrompt =
     `Eres el asistente inteligente de Nexxus (plataforma empresarial de RRHH, nómina y gestión operativa). ` +
@@ -85,8 +94,12 @@ async function callGemini(
     `Si corresponde, puedes emitir como texto literal las etiquetas [NOTIFICATION:tipo|titulo|mensaje] ` +
     `(tipo debe ser uno de: bienestar, tarea, aprobacion, general — usa siempre "bienestar" cuando el empleado ` +
     `exprese malestar, estrés, agotamiento o sobrecarga, o pida explícitamente avisarle a su jefe/RRHH sobre ` +
-    `cómo se siente), [TASK:prioridad|titulo|descripcion|asignado_a], ` +
-    `[EVENT:tipo|titulo|inicio|fin|descripcion], ` +
+    `cómo se siente), [TASK:prioridad|titulo|descripcion|asignado_a] (asignado_a debe ser "yo" para el propio ` +
+    `usuario, o el id real —no el nombre— de la persona buscándola en "empleados" por nombre; si no encuentras ` +
+    `a esa persona en "empleados", dilo en vez de inventar un id), ` +
+    `[EVENT:tipo|titulo|inicio|fin|descripcion] (tipo uno de: reunion, capacitacion, feriado, evento; inicio/fin ` +
+    `en formato ISO 8601, usando fechaActual como referencia para fechas y horas relativas) cuando el usuario ` +
+    `pida agendar una reunión, evento o algo en el calendario, ` +
     `[REQUEST_AUSENCIA:tipo|fecha_inicio|fecha_fin|motivo] (tipo uno de: vacaciones, permiso, enfermedad, ` +
     `incapacidad, personal; fechas en formato YYYY-MM-DD) cuando el usuario pida solicitar una ausencia, ` +
     `[REQUEST_INTERNA:tipo|detalle] (tipo uno de: adelanto, permiso, capacitacion, compra, equipo) cuando pida ` +
@@ -94,7 +107,8 @@ async function callGemini(
     `contexto) cuando el usuario diga que terminó una tarea que puedas identificar con claridad — si hay ` +
     `varias coincidencias posibles, pregunta cuál antes de marcarla, y [CLOCK_IN] / [CLOCK_OUT] cuando pida ` +
     `marcar su entrada o salida.` +
-    instruccionAprobacion;
+    instruccionAprobacion +
+    instruccionAprobacionNomina;
   const historial = history
     .slice(-6)
     .map(
@@ -177,7 +191,10 @@ Deno.serve(
     const context = await buildAiContext(admin, caller);
     const startedAt = Date.now();
     const puedeAprobar = isCanonicalRole(caller.rol);
-    const gemini = await callGemini(prompt, context, history, puedeAprobar);
+    // Nómina exige admin/admin_empresa/super_admin -- coincide con la política RLS real de la
+    // tabla nominas (jefe pasa isCanonicalRole pero no puede actualizar nominas en la base).
+    const puedeAprobarNomina = isAdminEmpresa(caller);
+    const gemini = await callGemini(prompt, context, history, puedeAprobar, puedeAprobarNomina);
     const latencyMs = Date.now() - startedAt;
 
     // Las acciones sensibles se extraen ANTES de aplicar los tags automaticos, para que nunca
@@ -217,10 +234,12 @@ Deno.serve(
             gemini.outputTokens || 0
           )
         : 0,
-      // Doble candado: aunque el modelo alucine un tag [APPROVE:] para un rol sin permiso, nunca se
-      // devuelve al cliente si puedeAprobar es falso (el prompt ya le pide no hacerlo, esto es el
-      // respaldo del lado del servidor).
-      accionesSensibles: puedeAprobar ? accionesSensibles : [],
+      // Doble candado: aunque el modelo alucine un tag para un rol sin permiso, nunca se devuelve
+      // al cliente (el prompt ya le pide no hacerlo, esto es el respaldo del lado del servidor).
+      // Nómina exige el gate más estricto (isAdminEmpresa) aunque el rol sea canónico.
+      accionesSensibles: accionesSensibles.filter((accion) =>
+        accion.tipo === "aprobar_nomina" ? puedeAprobarNomina : puedeAprobar
+      ),
     };
   })
 );
