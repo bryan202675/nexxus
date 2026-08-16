@@ -7,8 +7,9 @@
 // parseo de tags [NOTIFICATION:..]/[TASK:..]/[EVENT:..] y el registro de
 // ai_usage con costo estimado.
 import {
+  buildAiContext,
   getCaller,
-  isSuperAdmin,
+  isCanonicalRole,
   safeString,
   withHandler,
   writeAuditLog,
@@ -40,92 +41,6 @@ function computeCostUsd(
   );
 }
 
-const CANONICAL_ROLE = (rol: string) =>
-  ["admin", "admin_empresa", "jefe", "jefe_sector", "super_admin"].includes(
-    rol
-  );
-
-async function buildContext(
-  admin: SupabaseClient,
-  caller: Caller
-): Promise<Record<string, unknown>> {
-  if (isSuperAdmin(caller) && !caller.empresa_id) {
-    const [{ data: empresas }, { data: usuarios }, { data: pagos }] =
-      await Promise.all([
-        admin.from("empresas").select("*").limit(50),
-        admin.from("usuarios").select("*").limit(120),
-        admin.from("payments").select("*").limit(80),
-      ]);
-    return { alcance: "plataforma", empresas, usuarios, pagos };
-  }
-  if (!caller.empresa_id)
-    throw new HttpError(412, "Tu usuario no tiene empresa asociada.");
-  if (CANONICAL_ROLE(caller.rol)) {
-    const [tareas, asistencias, reportes, ausencias, nominas] =
-      await Promise.all([
-        admin
-          .from("tareas")
-          .select("*")
-          .eq("empresa_id", caller.empresa_id)
-          .limit(80),
-        admin
-          .from("asistencias")
-          .select("*")
-          .eq("empresa_id", caller.empresa_id)
-          .limit(80),
-        admin
-          .from("reportes")
-          .select("*")
-          .eq("empresa_id", caller.empresa_id)
-          .limit(60),
-        admin
-          .from("solicitudes_ausencia")
-          .select("*")
-          .eq("empresa_id", caller.empresa_id)
-          .limit(60),
-        admin
-          .from("nominas")
-          .select("*")
-          .eq("empresa_id", caller.empresa_id)
-          .limit(60),
-      ]);
-    return {
-      alcance: "empresa",
-      tareas: tareas.data,
-      asistencias: asistencias.data,
-      reportes: reportes.data,
-      ausencias: ausencias.data,
-      nominas: nominas.data,
-    };
-  }
-  const [tareas, ausencias, nominas] = await Promise.all([
-    admin
-      .from("tareas")
-      .select("*")
-      .eq("empresa_id", caller.empresa_id)
-      .eq("asignado_a", caller.id)
-      .limit(20),
-    admin
-      .from("solicitudes_ausencia")
-      .select("*")
-      .eq("empresa_id", caller.empresa_id)
-      .eq("usuario_id", caller.id)
-      .limit(12),
-    admin
-      .from("nominas")
-      .select("*")
-      .eq("empresa_id", caller.empresa_id)
-      .eq("usuario_id", caller.id)
-      .limit(12),
-  ]);
-  return {
-    alcance: "personal",
-    tareas: tareas.data,
-    ausencias: ausencias.data,
-    nominas: nominas.data,
-  };
-}
-
 async function callGemini(
   prompt: string,
   context: unknown,
@@ -141,11 +56,20 @@ async function callGemini(
       `aprobarla — nunca la des por aprobada en tu respuesta de texto.`
     : "";
   const systemPrompt =
-    `Eres el asistente de Nexxus (RRHH/nómina). Responde siempre en texto plano: no uses Markdown, encabezados con #, asteriscos para énfasis, separadores --- ni enlaces Markdown. Para listas, usa guiones simples. Contexto en JSON: ${JSON.stringify(
-      context
-    ).slice(0, 8000)}\n` +
-    `Si corresponde, puedes emitir como texto literal las etiquetas [NOTIFICATION:tipo|titulo|mensaje], ` +
-    `[TASK:prioridad|titulo|descripcion|asignado_a] o [EVENT:tipo|titulo|inicio|fin|descripcion] para que el sistema cree ese registro.` +
+    `Eres el asistente inteligente de Nexxus (plataforma empresarial de RRHH, nómina y gestión operativa). ` +
+    `Redacta siempre en español profesional, conciso, amable y natural. ` +
+    `Reglas de redacción obligatorias: ` +
+    `1. No utilices líneas de separación con guiones como '---' ni '___'. ` +
+    `2. No utilices almohadillas de títulos como '#', '##' o '###'. Escribe los títulos y encabezados de forma limpia o en negrita. ` +
+    `3. Para destacar conceptos o estados importantes, usa negritas limpias (**término**). ` +
+    `4. Para listas o puntos clave, usa viñetas con asterisco simple (* elemento) o numeradas (1. elemento). ` +
+    `5. Ve directo al grano sin rodeos innecesarios ni formalismos excesivos. ` +
+    `Contexto de la empresa y empleado en JSON: ${JSON.stringify(context).slice(0, 8000)}\n` +
+    `Si corresponde, puedes emitir como texto literal las etiquetas [NOTIFICATION:tipo|titulo|mensaje] ` +
+    `(tipo debe ser uno de: bienestar, tarea, aprobacion, general — usa siempre "bienestar" cuando el empleado ` +
+    `exprese malestar, estrés, agotamiento o sobrecarga, o pida explícitamente avisarle a su jefe/RRHH sobre ` +
+    `cómo se siente), [TASK:prioridad|titulo|descripcion|asignado_a] o ` +
+    `[EVENT:tipo|titulo|inicio|fin|descripcion] para que el sistema cree ese registro.` +
     instruccionAprobacion;
   const historial = history
     .slice(-6)
@@ -264,6 +188,8 @@ function extractSensitiveActions(text: string): {
   return { clean, acciones };
 }
 
+const TIPOS_NOTIFICACION = new Set(["bienestar", "tarea", "aprobacion", "general"]);
+
 async function applyActionTags(
   admin: SupabaseClient,
   caller: Caller,
@@ -272,6 +198,13 @@ async function applyActionTags(
   let clean = text;
   let match: RegExpMatchArray | null;
   while ((match = clean.match(/\[NOTIFICATION:(\w+)\|([^|]+)\|([^\]]+)\]/))) {
+    const tipoRaw = match[1].toLowerCase().trim();
+    const tipo = TIPOS_NOTIFICACION.has(tipoRaw) ? tipoRaw : "general";
+    // El chat de IA es la via mas comun para que un empleado exprese malestar en
+    // texto libre ("me siento mal", "estoy agotado") -- se marca prioridad alta
+    // para que el timbre/badge del admin lo resalte igual que la alerta automatica
+    // que genera el trigger de checkins.
+    const prioridad = tipo === "bienestar" ? "alta" : "media";
     await admin
       .from("notificaciones")
       .insert({
@@ -279,6 +212,8 @@ async function applyActionTags(
         empresa_id: caller.empresa_id,
         titulo: safeString(match[2], 100),
         cuerpo: safeString(match[3], 300),
+        tipo,
+        prioridad,
       })
       .select();
     clean = clean.replace(match[0], "").trim();
@@ -327,9 +262,9 @@ Deno.serve(
     if (!prompt) throw new HttpError(400, "Escribe una pregunta para la IA.");
     const history = Array.isArray(body?.history) ? body.history : [];
 
-    const context = await buildContext(admin, caller);
+    const context = await buildAiContext(admin, caller);
     const startedAt = Date.now();
-    const puedeAprobar = CANONICAL_ROLE(caller.rol);
+    const puedeAprobar = isCanonicalRole(caller.rol);
     const gemini = await callGemini(prompt, context, history, puedeAprobar);
     const latencyMs = Date.now() - startedAt;
 

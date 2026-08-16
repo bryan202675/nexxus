@@ -68,6 +68,55 @@ export function sameCompany(caller: Caller, empresaId: string | null | undefined
   return isSuperAdmin(caller) || (!!empresaId && empresaId === caller.empresa_id);
 }
 
+export const isCanonicalRole = (rol: string) =>
+  ["admin", "admin_empresa", "jefe", "jefe_sector", "super_admin"].includes(rol);
+
+// Contexto de datos para el asistente de IA (chat de texto y voz): tareas, asistencias,
+// solicitudes, etc. escopados por rol/empresa del caller. Compartido para que ambos canales
+// respondan sobre la misma informacion real, nunca inventada.
+export async function buildAiContext(
+  admin: SupabaseClient,
+  caller: Caller,
+): Promise<Record<string, unknown>> {
+  if (isSuperAdmin(caller) && !caller.empresa_id) {
+    const [{ data: empresas }, { data: usuarios }, { data: pagos }] = await Promise.all([
+      admin.from("empresas").select("*").limit(50),
+      admin.from("usuarios").select("*").limit(120),
+      admin.from("payments").select("*").limit(80),
+    ]);
+    return { alcance: "plataforma", empresas, usuarios, pagos };
+  }
+  if (!caller.empresa_id) throw new HttpError(412, "Tu usuario no tiene empresa asociada.");
+  if (isCanonicalRole(caller.rol)) {
+    const [tareas, asistencias, reportes, ausencias, nominas] = await Promise.all([
+      admin.from("tareas").select("*").eq("empresa_id", caller.empresa_id).limit(80),
+      admin.from("asistencias").select("*").eq("empresa_id", caller.empresa_id).limit(80),
+      admin.from("reportes").select("*").eq("empresa_id", caller.empresa_id).limit(60),
+      admin.from("solicitudes_ausencia").select("*").eq("empresa_id", caller.empresa_id).limit(60),
+      admin.from("nominas").select("*").eq("empresa_id", caller.empresa_id).limit(60),
+    ]);
+    return {
+      alcance: "empresa",
+      tareas: tareas.data,
+      asistencias: asistencias.data,
+      reportes: reportes.data,
+      ausencias: ausencias.data,
+      nominas: nominas.data,
+    };
+  }
+  const [tareas, ausencias, nominas] = await Promise.all([
+    admin.from("tareas").select("*").eq("empresa_id", caller.empresa_id).eq("asignado_a", caller.id).limit(20),
+    admin.from("solicitudes_ausencia").select("*").eq("empresa_id", caller.empresa_id).eq("usuario_id", caller.id).limit(12),
+    admin.from("nominas").select("*").eq("empresa_id", caller.empresa_id).eq("usuario_id", caller.id).limit(12),
+  ]);
+  return {
+    alcance: "personal",
+    tareas: tareas.data,
+    ausencias: ausencias.data,
+    nominas: nominas.data,
+  };
+}
+
 export async function writeAuditLog(admin: SupabaseClient, entry: {
   empresaId: string | null;
   actorId: string | null;
