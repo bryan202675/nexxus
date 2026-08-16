@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { AppState, SafeAreaView, StatusBar, StyleSheet, View } from 'react-native';
+import { AppState, InteractionManager, SafeAreaView, StatusBar, StyleSheet, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
@@ -42,7 +42,15 @@ export default function VoiceChatScreen({ navigation }: Props) {
   useEffect(() => {
     if (yaInicioRef.current) return;
     yaInicioRef.current = true;
-    iniciarLlamada();
+    // Pedir permiso de micrófono (diálogo nativo) apenas se monta la pantalla puede chocar con
+    // la animación de navegación (push) que todavía está corriendo -- en iOS eso puede bloquear
+    // el hilo nativo por completo, dejando la llamada pegada en "conectando" sin ningún error ni
+    // log adicional (ni siquiera timeouts de JS llegan a dispararse). Se espera a que termine la
+    // transición antes de tocar cualquier API nativa.
+    const tarea = InteractionManager.runAfterInteractions(() => {
+      iniciarLlamada();
+    });
+    return () => tarea.cancel();
   }, [iniciarLlamada]);
 
   useEffect(() => {
