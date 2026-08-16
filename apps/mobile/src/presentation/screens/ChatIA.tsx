@@ -16,8 +16,6 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
-  Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -42,15 +40,22 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA, SOMBRAS } from '@/shared/constants/diseno';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import { useCases } from '@/infrastructure/container';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
+import RenderMarkdownIA from '@/presentation/components/RenderMarkdownIA';
+import { useToast } from '@/presentation/components/ui/ToastProvider';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 // Importa { SensitiveAiAction }; acciones sensibles sugeridas por la IA (Fase 8) que requieren
 // confirmacion humana explicita antes de ejecutarse -- ver ask-nexxus-ai (Edge Function).
 import { SensitiveAiAction } from 'domain/entities/AiAssistant';
+
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
 
 /**
  * Define el contrato de datos Props; documenta campos esperados y evita pasar objetos ambiguos entre capas.
@@ -114,6 +119,15 @@ export default function ChatIA({ navigation }: Props) {
 
   // Declara { colores, blurTint, intensidadBlur, esOscuro }; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
+  const toast = useToast();
+
+  const abrirNexxusVoice = () => {
+    if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) {
+      toast.info('Nexxus Voice requiere la app de desarrollo de Nexxus, no está disponible en Expo Go.');
+      return;
+    }
+    navigation.navigate('VoiceChatScreen');
+  };
   // Inicializa animacionEscritura; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const animacionEscritura = useSharedValue(0);
   // Inicializa [textoEntrada, setTextoEntrada]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -301,7 +315,6 @@ export default function ChatIA({ navigation }: Props) {
     return t('chatIA.responses.default');
   }
 
-  // manejarComandoIA usa el asistente server-side y conserva un respaldo local cuando Functions no responde.
   async function manejarComandoIA(texto: string): Promise<{ texto: string; accionesSensibles?: SensitiveAiAction[] }> {
     try {
       const historyPayload = mensajes
@@ -311,9 +324,8 @@ export default function ChatIA({ navigation }: Props) {
       const respuesta = await useCases.ai.ask.execute(texto, historyPayload);
       return { texto: respuesta.respuesta, accionesSensibles: respuesta.accionesSensibles };
     } catch (error: any) {
-      console.error("[ChatIA] Error calling askNexxusAI:", error);
       if (error?.code === 'functions/failed-precondition' || error?.code === 'failed-precondition') {
-        return { texto: error?.message || 'Este módulo no está disponible para el plan actual de tu empresa.' };
+        return { texto: error?.message || t('chatIA.plan_unavailable', { defaultValue: 'Este módulo no está disponible para el plan actual de tu empresa.' }) };
       }
       return { texto: await manejarComandoLocal(texto) };
     }
@@ -413,7 +425,20 @@ export default function ChatIA({ navigation }: Props) {
       </View>
 
       {/* Header uniforme con el resto de pantallas de la app */}
-      <NavbarEnterprise titulo={t('chatIA.title', { defaultValue: 'Asistente IA' })} />
+      <NavbarEnterprise
+        titulo={t('chatIA.title', { defaultValue: 'Asistente IA' })}
+        ocultarAccionesDerechas
+        accionDerecha={
+          <BotonAnimado
+            onPress={abrirNexxusVoice}
+            scaleTo={0.92}
+            accessibilityLabel={t('chatIA.voiceCall_accessibility', { defaultValue: 'Iniciar llamada de voz con Nexxus' })}
+            style={estilos.botonVoz}
+          >
+            <Feather name="phone" size={18} color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
+          </BotonAnimado>
+        }
+      />
 
       {/* Contenedor que ajusta el layout cuando aparece el teclado. */}
       <KeyboardAvoidingView style={estilos.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={0}>
@@ -436,7 +461,7 @@ export default function ChatIA({ navigation }: Props) {
                   <View style={estilos.panelTituloRow}>
                     <Text style={estilos.nombreIA}>{t('chatIA.ia_name', { defaultValue: 'Nexxus IA' })}</Text>
                     <View style={estilos.badgeEstadoIA}>
-                      <Text style={estilos.badgeEstadoIATexto}>EN LÍNEA</Text>
+                      <Text style={estilos.badgeEstadoIATexto}>{t('chatIA.online_badge', { defaultValue: 'EN LÍNEA' })}</Text>
                     </View>
                   </View>
                   <Text style={estilos.descripcionIA} numberOfLines={2}>
@@ -490,7 +515,7 @@ export default function ChatIA({ navigation }: Props) {
                   {!esUsuario ? (
                     <View style={estilos.burbujaIA}>
                       <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.burbujaContenido}>
-                        <Text style={estilos.textoBurbujaIA}>{parsed.texto}</Text>
+                        <RenderMarkdownIA texto={parsed.texto} estiloBase={estilos.textoBurbujaIA} />
 
                         {parsed.redirect && (
                           <BotonAnimado
@@ -514,7 +539,11 @@ export default function ChatIA({ navigation }: Props) {
                               {resultado ? (
                                 <View style={estilos.tarjetaAccionResultadoWrap}>
                                   <Text style={[estilos.tarjetaAccionResultado, resultado === 'error' && estilos.tarjetaAccionResultadoError]}>
-                                    {resultado === 'aprobada' ? 'Acción Aprobada ✓' : resultado === 'rechazada' ? 'Solicitud Rechazada' : 'Error al procesar'}
+                                    {resultado === 'aprobada'
+                                      ? t('chatIA.action_approved', { defaultValue: 'Acción Aprobada ✓' })
+                                      : resultado === 'rechazada'
+                                      ? t('chatIA.action_rejected', { defaultValue: 'Solicitud Rechazada' })
+                                      : t('chatIA.action_error', { defaultValue: 'Error al procesar' })}
                                   </Text>
                                 </View>
                               ) : (
@@ -524,14 +553,14 @@ export default function ChatIA({ navigation }: Props) {
                                     onPress={() => confirmarAccionSensible(mensaje.id, accion, 'rechazada')}
                                     scaleTo={0.96}
                                   >
-                                    <Text style={estilos.tarjetaAccionBotonTextoRechazar}>Rechazar</Text>
+                                    <Text style={estilos.tarjetaAccionBotonTextoRechazar}>{t('chatIA.reject_button', { defaultValue: 'Rechazar' })}</Text>
                                   </BotonAnimado>
                                   <BotonAnimado
                                     style={[estilos.tarjetaAccionBoton, estilos.tarjetaAccionBotonAprobar]}
                                     onPress={() => confirmarAccionSensible(mensaje.id, accion, 'aprobada')}
                                     scaleTo={0.96}
                                   >
-                                    <Text style={estilos.tarjetaAccionBotonTextoAprobar}>Aprobar</Text>
+                                    <Text style={estilos.tarjetaAccionBotonTextoAprobar}>{t('chatIA.approve_button', { defaultValue: 'Aprobar' })}</Text>
                                   </BotonAnimado>
                                 </View>
                               )}
@@ -571,7 +600,7 @@ export default function ChatIA({ navigation }: Props) {
               <View style={estilos.burbujaIA}>
                 <BlurView intensity={intensidadBlur} tint={blurTint} style={[estilos.burbujaContenido, { paddingVertical: 14, paddingHorizontal: 18 }]}>
                   <View style={estilos.indicadorEscribiendo}>
-                    <Text style={estilos.indicadorTexto}>Nexxus IA escribiendo</Text>
+                    <Text style={estilos.indicadorTexto}>{t('chatIA.typing', { defaultValue: 'Nexxus IA escribiendo' })}</Text>
                     {[0, 1, 2].map((indice) => (
                       <Animated.View key={indice} style={[estilos.puntoEscritura, estiloPuntoEscritura]} />
                     ))}
@@ -642,6 +671,15 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
     contenedor: { flex: 1, backgroundColor: c.fondo },
     flex: { flex: 1 },
     fondoAbsoluto: { ...StyleSheet.absoluteFillObject, zIndex: -1, overflow: 'hidden' },
+
+    botonVoz: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: esOscuro ? '#FFFFFF' : '#0F172A',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
 
     scrollChat: {
       paddingHorizontal: 16,

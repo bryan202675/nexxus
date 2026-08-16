@@ -29,8 +29,7 @@ import { useFonts, DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold, DMSa
 // Contextos y Config
 // Importa { ProveedorUsuario, useContextoUsuario }; accede a contexto compartido de usuario, tema o estado global.
 import { ProveedorUsuario, useContextoUsuario } from './src/presentation/context/ContextoUsuario';
-// Importa { ProveedorTemaMobile }; accede a contexto compartido de usuario, tema o estado global.
-import { ProveedorTemaMobile } from './src/presentation/context/TemaMobileContext';
+import { ProveedorTemaMobile, useTemaMobile } from './src/presentation/context/TemaMobileContext';
 // Importa { COLORES, ESPACIADO, RADIOS, SOMBRAS }; reutiliza tokens visuales y constantes comunes del sistema de diseno.
 import { COLORES, ESPACIADO, RADIOS, SOMBRAS } from './src/shared/constants/diseno';
 import { normalizeRole } from './src/shared/auth/roles';
@@ -150,6 +149,7 @@ import MisActivos from './src/presentation/screens/MisActivos';
 import MiSalario from './src/presentation/screens/MiSalario';
 // Importa CalendarioLaboral; conecta esta ruta o flujo con otra pantalla del modulo de presentacion.
 import CalendarioLaboral from './src/presentation/screens/CalendarioLaboral';
+import SoporteGeneral from './src/presentation/screens/SoporteGeneral';
 
 // Sincronización de rutas: MiPerfil fue consolidado en PerfilLaboral
 // Admin
@@ -195,6 +195,7 @@ function esRutaLandingWeb() {
 function EnrutadorPrincipal() {
   // Inicializa { autenticado, cargando, perfil }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { autenticado, cargando, perfil } = useContextoUsuario();
+  const { colores } = useTemaMobile();
   // Declara navigation; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const navigation = useNavigation<any>();
   // Inicializa haRedireccionado; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -242,8 +243,15 @@ function EnrutadorPrincipal() {
   }, [autenticado, cargando, perfil, navigation]);
 
   return (
-    <View style={{ flex: 1 }}>
-      <Pila.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+    <View style={{ flex: 1, backgroundColor: colores.fondo }}>
+      <Pila.Navigator
+        screenOptions={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          animationDuration: 240,
+          contentStyle: { backgroundColor: colores.fondo },
+        }}
+      >
         <Pila.Screen name="Bienvenida" component={PantallaBienvenida} />
         <Pila.Screen name="Comenzar" component={Comenzar} />
         <Pila.Screen name="SeleccionRol" component={SeleccionRol} />
@@ -269,6 +277,11 @@ function EnrutadorPrincipal() {
         <Pila.Screen name="BusquedaGlobal" component={BusquedaGlobal} />
         <Pila.Screen name="BandejaUnificada" component={BandejaUnificada} />
         <Pila.Screen name="ChatIA" component={ChatIA} />
+        <Pila.Screen
+          name="VoiceChatScreen"
+          getComponent={() => require('./src/features/voice/screens/VoiceChatScreen').default}
+          options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+        />
         <Pila.Screen name="Notificaciones" component={Notificaciones} />
         <Pila.Screen name="Recursos" component={Recursos} />
         <Pila.Screen name="SolicitudesInternas" component={SolicitudesInternas} />
@@ -281,6 +294,7 @@ function EnrutadorPrincipal() {
         <Pila.Screen name="PoliticaPrivacidad" component={PoliticaPrivacidad} />
         <Pila.Screen name="HistorialCompleto" component={HistorialCompleto} />
         <Pila.Screen name="SaberMas" component={SaberMas} />
+        <Pila.Screen name="SoporteGeneral" component={SoporteGeneral} />
       </Pila.Navigator>
 
       {cargando && (
