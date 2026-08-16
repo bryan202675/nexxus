@@ -10,6 +10,12 @@ export interface VoiceAudioClip {
   mimeType: string;
 }
 
+// Referencia estable: pasar un objeto nuevo en cada render a useAudioRecorder hace que
+// expo-audio recree el grabador nativo constantemente (se re-renderiza cada 150ms por
+// el polling de nivel de audio), lo que termina liberando el objeto nativo mientras el
+// resto del hook todavía lo referencia -> NativeSharedObjectNotFoundException.
+const OPCIONES_GRABACION = { ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true };
+
 interface UseNexxusVoiceAudioResult {
   estadoPermiso: EstadoPermisoMicrofono;
   solicitarPermiso: () => Promise<boolean>;
@@ -26,7 +32,7 @@ interface UseNexxusVoiceAudioResult {
 }
 
 export function useNexxusVoiceAudio(): UseNexxusVoiceAudioResult {
-  const recorder = useAudioRecorder({ ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true });
+  const recorder = useAudioRecorder(OPCIONES_GRABACION);
   const recorderState = useAudioRecorderState(recorder, 150);
   const [estadoPermiso, setEstadoPermiso] = useState<EstadoPermisoMicrofono>('undetermined');
   const [errorInicializacion, setErrorInicializacion] = useState<VoiceSessionError | null>(null);
