@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 import Animated, { FadeIn, Layout } from 'react-native-reanimated';
 import { ESPACIADO, TIPOGRAFIA } from '@/shared/constants/diseno';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
@@ -9,23 +9,23 @@ interface Props {
   entradas: VoiceTranscriptEntry[];
 }
 
-const MAX_LINEAS_VISIBLES = 3;
+const MAX_ENTRADAS_VISIBLES = 3;
+const ALTO_MAXIMO = 180;
 
 export default function VoiceTranscript({ entradas }: Props) {
   const { colores } = useTemaMobile();
 
   if (entradas.length === 0) return null;
 
-  const visibles = entradas.slice(-MAX_LINEAS_VISIBLES);
+  const visibles = entradas.slice(-MAX_ENTRADAS_VISIBLES);
 
   return (
-    <View style={estilos.contenedor}>
+    <ScrollView style={estilos.scroll} contentContainerStyle={estilos.contenedor}>
       {visibles.map((entrada) => (
         <Animated.Text
           key={entrada.id}
           entering={FadeIn.duration(200)}
           layout={Layout.duration(200)}
-          numberOfLines={2}
           style={[
             TIPOGRAFIA.cuerpoPequeno,
             estilos.linea,
@@ -38,15 +38,17 @@ export default function VoiceTranscript({ entradas }: Props) {
           {entrada.texto}
         </Animated.Text>
       ))}
-    </View>
+    </ScrollView>
   );
 }
 
 const estilos = StyleSheet.create({
+  scroll: {
+    maxHeight: ALTO_MAXIMO,
+  },
   contenedor: {
-    gap: ESPACIADO.xxs,
+    gap: ESPACIADO.xs,
     paddingHorizontal: ESPACIADO.xl,
-    minHeight: 72,
   },
   linea: {
     textAlign: 'center',

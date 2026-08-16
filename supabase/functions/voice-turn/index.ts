@@ -110,6 +110,10 @@ Deno.serve(withHandler(async (req, admin) => {
       model,
       store: false,
       input,
+      // "minimal" evita que el modelo gaste tiempo/tokens "pensando" antes de responder --
+      // para una respuesta de voz corta y conversacional no hace falta razonamiento profundo,
+      // y esto reduce la latencia notablemente (medido: ~200 thought tokens de más por turno).
+      generation_config: { thinking_level: 'minimal' },
       response_format: {
         type: 'text',
         mime_type: 'application/json',

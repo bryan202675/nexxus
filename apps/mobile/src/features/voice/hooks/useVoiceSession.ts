@@ -4,7 +4,7 @@ import { enviarTurnoDeVoz } from '../services/voiceTurn.service';
 import { VoiceSessionError, VoiceSessionState, VoiceTranscriptEntry } from '../types/voice.types';
 
 const UMBRAL_VOZ = 0.18;
-const SILENCIO_PARA_ENVIAR_MS = 1200;
+const SILENCIO_PARA_ENVIAR_MS = 700;
 // Salvavidas: si por lo que sea el nivel de audio nunca cruza el umbral (mic silencioso,
 // calibración distinta según el dispositivo, etc.), no queremos quedarnos escuchando para
 // siempre -- se cierra el turno igual después de este tiempo.
