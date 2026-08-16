@@ -149,9 +149,13 @@ export function useNexxusVoiceAudio(): UseNexxusVoiceAudioResult {
     } catch {
       // Si falla el cambio de modo, igual intentamos hablar con la ruta de audio actual.
     }
+    // La voz neuronal es una mejora opcional, no una dependencia dura -- si falla (endpoint
+    // caído, sesión expirada, red, etc.) se cae a la voz del sistema en vez de quedar en
+    // silencio total (mismo patrón que Groq STT: mejor calidad si está, nunca bloqueante).
     if (neuralTts.available) {
-      await neuralTts.speak(texto, alTerminar);
-      return;
+      const exito = await neuralTts.speak(texto, alTerminar);
+      if (exito) return;
+      if (__DEV__) console.log('[VOICE] voz neuronal no disponible, usando voz del sistema');
     }
     Speech.speak(texto, {
       language: 'es-SV',

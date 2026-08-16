@@ -8,7 +8,9 @@ interface UseNeuralTTSResult {
   isPlaying: boolean;
   error: string | null;
   available: boolean;
-  speak: (text: string, onDone?: () => void) => Promise<void>;
+  // Devuelve true si logró reproducir, false si falló (para que el caller pueda usar un
+  // respaldo, p.ej. la voz del sistema) -- antes tragaba el error y quedaba en silencio total.
+  speak: (text: string, onDone?: () => void) => Promise<boolean>;
   stop: () => void;
 }
 
@@ -41,11 +43,10 @@ export function useNeuralTTS(): UseNeuralTTSResult {
     clearPlayer(true);
   }, [clearPlayer]);
 
-  const speak = useCallback(async (text: string, onDone?: () => void) => {
+  const speak = useCallback(async (text: string, onDone?: () => void): Promise<boolean> => {
     if (!API_ENDPOINT) {
       setError('La voz neuronal no está configurada en esta compilación.');
-      onDone?.();
-      return;
+      return false;
     }
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
@@ -61,14 +62,17 @@ export function useNeuralTTS(): UseNeuralTTSResult {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({ text, voice: 'es-MX-DaliaNeural' }),
       });
-      if (!response.ok) throw new Error('No pudimos generar la voz de Nexxus.');
-      if (requestId !== requestIdRef.current) return;
+      if (!response.ok) {
+        const detalle = await response.text().catch(() => '');
+        throw new Error(`voz neuronal respondió ${response.status}: ${detalle.slice(0, 200)}`);
+      }
+      if (requestId !== requestIdRef.current) return true;
 
       const file = new File(Paths.cache, `nexxus-voice-${Date.now()}.mp3`);
       file.write(new Uint8Array(await response.arrayBuffer()));
       if (requestId !== requestIdRef.current) {
         if (file.exists) file.delete();
-        return;
+        return true;
       }
       await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true, interruptionMode: 'duckOthers' });
       const player = createAudioPlayer(file.uri);
@@ -83,11 +87,15 @@ export function useNeuralTTS(): UseNeuralTTSResult {
       setIsLoading(false);
       setIsPlaying(true);
       player.play();
-    } catch {
-      if (requestId !== requestIdRef.current) return;
+      return true;
+    } catch (cause) {
+      if (__DEV__) console.log('[VOICE] neuralTts.speak() falló, se usará la voz del sistema como respaldo', cause);
+      if (requestId !== requestIdRef.current) return false;
       clearPlayer(false);
       setError('No pudimos reproducir la voz de Nexxus.');
-      onDone?.();
+      // No se llama a onDone aquí: el caller (hablar()) hace el respaldo con la voz del
+      // sistema y es ESE flujo el que finalmente llama a onDone al terminar de hablar.
+      return false;
     }
   }, [clearPlayer]);
 
