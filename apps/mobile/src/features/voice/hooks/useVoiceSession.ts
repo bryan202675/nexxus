@@ -5,6 +5,14 @@ import { VoiceSessionError, VoiceSessionState, VoiceTranscriptEntry } from '../t
 
 const UMBRAL_VOZ = 0.18;
 const SILENCIO_PARA_ENVIAR_MS = 1200;
+// Salvavidas: si por lo que sea el nivel de audio nunca cruza el umbral (mic silencioso,
+// calibración distinta según el dispositivo, etc.), no queremos quedarnos escuchando para
+// siempre -- se cierra el turno igual después de este tiempo.
+const MAX_ESCUCHA_MS = 12000;
+
+function logVoz(...args: unknown[]) {
+  if (__DEV__) console.log('[VOICE]', ...args);
+}
 
 export function useVoiceSession() {
   const audio = useNexxusVoiceAudio();
@@ -18,10 +26,13 @@ export function useVoiceSession() {
   const procesandoRef = useRef(false);
   const silencioDesdeRef = useRef<number | null>(null);
   const vozDetectadaRef = useRef(false);
+  const escuchandoDesdeRef = useRef<number | null>(null);
+  const ultimoLogNivelRef = useRef(0);
 
   const cambiarEstado = useCallback((siguiente: VoiceSessionState) => {
     estadoRef.current = siguiente;
     setEstado(siguiente);
+    logVoz('estado ->', siguiente);
   }, []);
 
   const iniciarEscucha = useCallback(async () => {
@@ -30,7 +41,8 @@ export function useVoiceSession() {
     vozDetectadaRef.current = false;
     try {
       await audio.iniciarGrabacion();
-    } catch {
+    } catch (cause) {
+      logVoz('error al iniciar micrófono', cause);
       if (!activoRef.current) return;
       setError({ code: 'audio_init_failed', message: 'No pudimos iniciar el micrófono. Intenta de nuevo.' });
       cambiarEstado('error');
@@ -40,10 +52,13 @@ export function useVoiceSession() {
       await audio.detenerGrabacion();
       return;
     }
+    escuchandoDesdeRef.current = Date.now();
+    logVoz('micrófono iniciado, escuchando');
     cambiarEstado('listening');
   }, [audio.detenerGrabacion, audio.iniciarGrabacion, cambiarEstado]);
 
   const iniciarLlamada = useCallback(async () => {
+    logVoz('iniciando llamada');
     activoRef.current = true;
     procesandoRef.current = false;
     muteadoRef.current = false;
@@ -53,6 +68,7 @@ export function useVoiceSession() {
 
     const granted = audio.estadoPermiso === 'granted' || await audio.solicitarPermiso();
     if (!granted) {
+      logVoz('permiso de micrófono denegado');
       activoRef.current = false;
       setError({
         code: 'microphone_permission_denied',
@@ -63,6 +79,7 @@ export function useVoiceSession() {
     }
 
     if (!await audio.inicializarAudio()) {
+      logVoz('fallo al inicializar audio');
       activoRef.current = false;
       setError({
         code: 'audio_init_failed',
@@ -78,17 +95,21 @@ export function useVoiceSession() {
   const procesarTurno = useCallback(async () => {
     if (!activoRef.current || procesandoRef.current) return;
     procesandoRef.current = true;
+    escuchandoDesdeRef.current = null;
     cambiarEstado('thinking');
+    logVoz('turno cerrado, transcribiendo y consultando a Nexxus');
 
     try {
       const clip = await audio.detenerYLeer();
-      if (!clip || !vozDetectadaRef.current) {
+      if (!clip) {
+        logVoz('sin audio grabado, volviendo a escuchar');
         procesandoRef.current = false;
         await iniciarEscucha();
         return;
       }
 
       const turno = await enviarTurnoDeVoz(clip);
+      logVoz('respuesta recibida', turno.transcripcion ? `"${turno.transcripcion}"` : '(sin transcripción)');
       if (!activoRef.current) return;
 
       const ahora = Date.now();
@@ -98,11 +119,13 @@ export function useVoiceSession() {
         { id: `${ahora}-n`, rol: 'nexxus', texto: turno.respuesta, final: true },
       ]);
       cambiarEstado('speaking');
-      audio.hablar(turno.respuesta, () => {
+      void audio.hablar(turno.respuesta, () => {
+        logVoz('Nexxus terminó de hablar');
         procesandoRef.current = false;
         if (activoRef.current) void iniciarEscucha();
       });
     } catch (cause) {
+      logVoz('error procesando el turno', cause);
       procesandoRef.current = false;
       if (!activoRef.current) return;
       setError({
@@ -117,7 +140,19 @@ export function useVoiceSession() {
     if (estado !== 'listening' || muteado || !audio.grabando) return;
 
     const ahora = Date.now();
+    if (ahora - ultimoLogNivelRef.current > 2000) {
+      ultimoLogNivelRef.current = ahora;
+      logVoz('nivel actual', audio.nivelEntrada.toFixed(3), '(umbral', UMBRAL_VOZ, ')');
+    }
+    if (escuchandoDesdeRef.current && ahora - escuchandoDesdeRef.current >= MAX_ESCUCHA_MS) {
+      logVoz('tiempo máximo de escucha alcanzado, cerrando turno de todas formas');
+      silencioDesdeRef.current = null;
+      void procesarTurno();
+      return;
+    }
+
     if (audio.nivelEntrada > UMBRAL_VOZ) {
+      if (!vozDetectadaRef.current) logVoz('voz detectada, nivel', audio.nivelEntrada.toFixed(2));
       vozDetectadaRef.current = true;
       silencioDesdeRef.current = null;
       return;
@@ -151,9 +186,11 @@ export function useVoiceSession() {
   }, [audio]);
 
   const finalizarLlamada = useCallback(() => {
+    logVoz('llamada finalizada');
     activoRef.current = false;
     procesandoRef.current = false;
     silencioDesdeRef.current = null;
+    escuchandoDesdeRef.current = null;
     audio.liberar();
     cambiarEstado('ended');
   }, [audio.liberar, cambiarEstado]);
