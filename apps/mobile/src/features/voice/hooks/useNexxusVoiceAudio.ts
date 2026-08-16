@@ -66,15 +66,33 @@ export function useNexxusVoiceAudio(): UseNexxusVoiceAudioResult {
     }
   }, []);
 
+  // En iOS, `allowsRecording: true` pone la sesión de audio en categoría .playAndRecord,
+  // que por defecto saca el sonido por el auricular de llamadas (no el altavoz) --
+  // `shouldRouteThroughEarpiece` de expo-audio solo existe en Android. La forma real de
+  // que suene por el altavoz en iOS es desactivar el modo de grabación mientras se habla.
+  const activarModoEscucha = useCallback(async () => {
+    await setAudioModeAsync({
+      allowsRecording: true,
+      playsInSilentMode: true,
+      interruptionMode: 'doNotMix',
+      shouldPlayInBackground: false,
+      shouldRouteThroughEarpiece: false,
+    });
+  }, []);
+
+  const activarModoAltavoz = useCallback(async () => {
+    await setAudioModeAsync({
+      allowsRecording: false,
+      playsInSilentMode: true,
+      interruptionMode: 'duckOthers',
+      shouldPlayInBackground: false,
+      shouldRouteThroughEarpiece: false,
+    });
+  }, []);
+
   const inicializarAudio = useCallback(async () => {
     try {
-      await setAudioModeAsync({
-        allowsRecording: true,
-        playsInSilentMode: true,
-        interruptionMode: 'doNotMix',
-        shouldPlayInBackground: false,
-        shouldRouteThroughEarpiece: false,
-      });
+      await activarModoEscucha();
       setErrorInicializacion(null);
       return true;
     } catch (cause) {
@@ -84,17 +102,18 @@ export function useNexxusVoiceAudio(): UseNexxusVoiceAudioResult {
       });
       return false;
     }
-  }, []);
+  }, [activarModoEscucha]);
 
   const iniciarGrabacion = useCallback(async () => {
     try {
+      await activarModoEscucha();
       if (recorder.isRecording) return;
       await recorder.prepareToRecordAsync();
       recorder.record();
     } catch (cause) {
       throw new Error(cause instanceof Error ? cause.message : 'No se pudo iniciar el micrófono.');
     }
-  }, [recorder]);
+  }, [recorder, activarModoEscucha]);
 
   const detenerGrabacion = useCallback(async () => {
     try {
@@ -117,7 +136,12 @@ export function useNexxusVoiceAudio(): UseNexxusVoiceAudioResult {
     }
   }, [detenerGrabacion, recorder]);
 
-  const hablar = useCallback((texto: string, alTerminar?: () => void) => {
+  const hablar = useCallback(async (texto: string, alTerminar?: () => void) => {
+    try {
+      await activarModoAltavoz();
+    } catch {
+      // Si falla el cambio de modo, igual intentamos hablar con la ruta de audio actual.
+    }
     Speech.speak(texto, {
       language: 'es-SV',
       rate: 0.96,
@@ -125,7 +149,7 @@ export function useNexxusVoiceAudio(): UseNexxusVoiceAudioResult {
       onStopped: alTerminar,
       onError: () => alTerminar?.(),
     });
-  }, []);
+  }, [activarModoAltavoz]);
 
   const interrumpirHabla = useCallback(() => {
     Speech.stop();
