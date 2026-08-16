@@ -3,12 +3,17 @@ import { useNexxusVoiceAudio } from './useNexxusVoiceAudio';
 import { enviarTurnoDeVoz } from '../services/voiceTurn.service';
 import { VoiceSessionError, VoiceSessionState, VoiceTranscriptEntry } from '../types/voice.types';
 
+// Nivel mínimo para considerar que el usuario "empezó a hablar" (entrada al estado de voz).
 const UMBRAL_VOZ = 0.18;
+// El "silencio" para cerrar el turno se mide relativo al pico de volumen de ESTA
+// intervención, no contra un número fijo: el ruido ambiente/sensibilidad del mic varía
+// mucho entre dispositivos, y un umbral absoluto (p.ej. 0.18) casi nunca se cruza hacia
+// abajo en algunos teléfonos -- terminaba esperando siempre el salvavidas completo.
+const FRACCION_SILENCIO = 0.4;
 const SILENCIO_PARA_ENVIAR_MS = 700;
-// Salvavidas: si por lo que sea el nivel de audio nunca cruza el umbral (mic silencioso,
-// calibración distinta según el dispositivo, etc.), no queremos quedarnos escuchando para
-// siempre -- se cierra el turno igual después de este tiempo.
-const MAX_ESCUCHA_MS = 12000;
+// Salvavidas: si por lo que sea nunca se detecta silencio relativo, no queremos quedarnos
+// escuchando para siempre -- se cierra el turno igual después de este tiempo.
+const MAX_ESCUCHA_MS = 6000;
 
 function logVoz(...args: unknown[]) {
   if (__DEV__) console.log('[VOICE]', ...args);
@@ -28,6 +33,7 @@ export function useVoiceSession() {
   const vozDetectadaRef = useRef(false);
   const escuchandoDesdeRef = useRef<number | null>(null);
   const ultimoLogNivelRef = useRef(0);
+  const picoNivelRef = useRef(0);
 
   const cambiarEstado = useCallback((siguiente: VoiceSessionState) => {
     estadoRef.current = siguiente;
@@ -39,6 +45,7 @@ export function useVoiceSession() {
     if (!activoRef.current || muteadoRef.current || procesandoRef.current) return;
     silencioDesdeRef.current = null;
     vozDetectadaRef.current = false;
+    picoNivelRef.current = 0;
     try {
       await audio.iniciarGrabacion();
     } catch (cause) {
@@ -154,10 +161,17 @@ export function useVoiceSession() {
     if (audio.nivelEntrada > UMBRAL_VOZ) {
       if (!vozDetectadaRef.current) logVoz('voz detectada, nivel', audio.nivelEntrada.toFixed(2));
       vozDetectadaRef.current = true;
+      picoNivelRef.current = Math.max(picoNivelRef.current, audio.nivelEntrada);
+    }
+    if (!vozDetectadaRef.current) return;
+
+    // "Silencio" = el nivel bajó a una fracción del pico de esta intervención, no un
+    // número absoluto -- así se adapta a qué tan fuerte habla cada quien en cada ambiente.
+    const umbralSilencioRelativo = picoNivelRef.current * FRACCION_SILENCIO;
+    if (audio.nivelEntrada > umbralSilencioRelativo) {
       silencioDesdeRef.current = null;
       return;
     }
-    if (!vozDetectadaRef.current) return;
     if (!silencioDesdeRef.current) silencioDesdeRef.current = ahora;
 
     if (ahora - silencioDesdeRef.current >= SILENCIO_PARA_ENVIAR_MS) {
