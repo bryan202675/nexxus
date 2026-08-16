@@ -104,12 +104,14 @@ function buildVoiceSystemPrompt(nombre: string, rol: string, context: unknown, p
     `marcarla). Si te pide marcar su entrada o salida, incluye [CLOCK_IN] o [CLOCK_OUT] según corresponda y ` +
     `confírmaselo de forma natural. ` +
     instruccionAprobacion +
-    `11. Si ${nombre} es jefe o admin, el campo "empleados" del contexto trae el listado completo de la ` +
-    `empresa (nombre, correo, rol, estado) y "empresa" los datos de la compañía; "tareas"/"asistencias"/` +
-    `"reportes"/"ausencias"/"solicitudesInternas"/"nominas" son de TODA la empresa, no solo suyos. Úsalos con ` +
-    `confianza y en detalle para resúmenes, conteos o preguntas sobre cualquier empleado (cruza ids contra ` +
-    `"empleados" para dar nombres reales). Solo di que no tienes el dato si de verdad no aparece en el JSON. ` +
-    `Contexto real del usuario y su empresa en JSON: ${JSON.stringify(context).slice(0, 6500)}`
+    `11. Si ${nombre} es jefe o admin, "totalEmpleados" es el número EXACTO real de personas en la empresa ` +
+    `(contado directo en la base de datos) — úsalo siempre que pregunten cuántos empleados hay, nunca cuentes ` +
+    `a mano el arreglo "empleados" porque puede venir recortado y da un número menor al real. "empleados" ` +
+    `trae el listado (nombre, correo, rol, estado) para buscar a alguien o dar nombres reales cruzando ids, ` +
+    `"empresa" los datos de la compañía; "tareas"/"asistencias"/"reportes"/"ausencias"/"solicitudesInternas"/` +
+    `"nominas" son de TODA la empresa, no solo suyos. Úsalos con confianza y en detalle. Solo di que no tienes ` +
+    `el dato si de verdad no aparece en el JSON. ` +
+    `Contexto real del usuario y su empresa en JSON: ${JSON.stringify(context).slice(0, 14000)}`
   );
 }
 

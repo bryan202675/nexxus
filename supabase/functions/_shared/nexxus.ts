@@ -123,7 +123,7 @@ export async function buildAiContext(
   }
   if (!caller.empresa_id) throw new HttpError(412, "Tu usuario no tiene empresa asociada.");
   if (isCanonicalRole(caller.rol)) {
-    const [tareas, asistencias, reportes, ausencias, internas, nominas, notificaciones, empleados, empresaInfo] =
+    const [tareas, asistencias, reportes, ausencias, internas, nominas, notificaciones, empleados, empleadosCount, empresaInfo] =
       await Promise.all([
         admin.from("tareas").select("*").eq("empresa_id", caller.empresa_id).limit(80),
         admin.from("asistencias").select("*").eq("empresa_id", caller.empresa_id).limit(80),
@@ -135,7 +135,11 @@ export async function buildAiContext(
           .order("created_at", { ascending: false }).limit(20),
         // Sin esto, un admin/jefe no podía preguntar nada sobre su equipo (nombres, cuántos
         // empleados hay, quién es quién) -- la IA decía "no tengo información" para casi todo.
-        admin.from("usuarios").select(COLUMNAS_USUARIO_SEGURAS).eq("empresa_id", caller.empresa_id).limit(150),
+        // limit(500) cubre a casi cualquier empresa cliente sin dejar el arreglo a medias.
+        admin.from("usuarios").select(COLUMNAS_USUARIO_SEGURAS).eq("empresa_id", caller.empresa_id).limit(500),
+        // Conteo exacto aparte del arreglo: si la empresa tuviera más de 500 empleados (o el
+        // recorte de caracteres del prompt cortara el JSON a medias), este número nunca miente.
+        admin.from("usuarios").select("*", { count: "exact", head: true }).eq("empresa_id", caller.empresa_id),
         admin.from("empresas").select("id, nombre, codigo, plan_id, created_at").eq("id", caller.empresa_id)
           .maybeSingle(),
       ]);
@@ -143,6 +147,7 @@ export async function buildAiContext(
       alcance: "empresa",
       fechaActual: new Date().toISOString(),
       empresa: empresaInfo.data,
+      totalEmpleados: empleadosCount.count ?? (empleados.data || []).length,
       empleados: empleados.data,
       tareas: tareas.data,
       asistencias: asistencias.data,

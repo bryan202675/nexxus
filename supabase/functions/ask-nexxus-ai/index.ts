@@ -67,14 +67,16 @@ async function callGemini(
     `6. El contexto en JSON de abajo es la ÚNICA fuente de verdad sobre la empresa y el usuario: contiene ` +
     `TODO lo que tienes disponible para responder. Antes de decir que no tienes información, revisa cada ` +
     `campo del JSON con cuidado — casi siempre el dato que te piden ya está ahí. Si el usuario es jefe o admin, ` +
-    `el campo "empleados" trae el listado completo de personas de la empresa (nombre, correo, rol, estado), ` +
-    `"empresa" trae los datos de la compañía, "tareas"/"asistencias"/"reportes"/"ausencias"/"solicitudesInternas"` +
-    `/"nominas" traen los de TODA la empresa (no solo los tuyos): úsalos con confianza y en detalle para ` +
-    `responder cualquier pregunta de resumen, conteo o listado de equipo (cuántos empleados hay, quién no ha ` +
-    `marcado entrada hoy, cuántas solicitudes hay pendientes, quién es fulano, etc). Cruza ids contra ` +
-    `"empleados" para dar nombres reales en vez de ids. Solo di que no tienes el dato si de verdad no aparece ` +
-    `en ningún campo del JSON. ` +
-    `Contexto de la empresa y empleado en JSON: ${JSON.stringify(context).slice(0, 16000)}\n` +
+    `el campo "totalEmpleados" es el número EXACTO y real de personas en la empresa (contado directo en la ` +
+    `base de datos) — úsalo siempre que te pregunten cuántos empleados hay, NUNCA cuentes elementos del ` +
+    `arreglo "empleados" a mano, porque ese arreglo puede venir recortado por límites de tamaño y contarlo ` +
+    `manualmente da un número menor al real. "empleados" trae el listado de personas de la empresa (nombre, ` +
+    `correo, rol, estado) para buscar a alguien específico o cruzar ids con nombres, "empresa" trae los datos ` +
+    `de la compañía, "tareas"/"asistencias"/"reportes"/"ausencias"/"solicitudesInternas"/"nominas" traen los ` +
+    `de TODA la empresa (no solo los tuyos): úsalos con confianza y en detalle para responder cualquier ` +
+    `pregunta de resumen, conteo o listado de equipo (quién no ha marcado entrada hoy, cuántas solicitudes hay ` +
+    `pendientes, quién es fulano, etc). Solo di que no tienes el dato si de verdad no aparece en el JSON. ` +
+    `Contexto de la empresa y empleado en JSON: ${JSON.stringify(context).slice(0, 40000)}\n` +
     `Si corresponde, puedes emitir como texto literal las etiquetas [NOTIFICATION:tipo|titulo|mensaje] ` +
     `(tipo debe ser uno de: bienestar, tarea, aprobacion, general — usa siempre "bienestar" cuando el empleado ` +
     `exprese malestar, estrés, agotamiento o sobrecarga, o pida explícitamente avisarle a su jefe/RRHH sobre ` +
