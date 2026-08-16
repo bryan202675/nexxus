@@ -1,6 +1,6 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { File } from 'expo-file-system';
-import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
+import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder } from 'expo-audio';
 import * as Speech from 'expo-speech';
 import { VoiceSessionError } from '../types/voice.types';
 
@@ -11,9 +11,8 @@ export interface VoiceAudioClip {
 }
 
 // Referencia estable: pasar un objeto nuevo en cada render a useAudioRecorder hace que
-// expo-audio recree el grabador nativo constantemente (se re-renderiza cada 150ms por
-// el polling de nivel de audio), lo que termina liberando el objeto nativo mientras el
-// resto del hook todavía lo referencia -> NativeSharedObjectNotFoundException.
+// expo-audio recree el grabador nativo constantemente, lo que puede liberar el objeto
+// nativo mientras el resto del hook todavía lo referencia.
 const OPCIONES_GRABACION = { ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true };
 
 interface UseNexxusVoiceAudioResult {
@@ -33,9 +32,28 @@ interface UseNexxusVoiceAudioResult {
 
 export function useNexxusVoiceAudio(): UseNexxusVoiceAudioResult {
   const recorder = useAudioRecorder(OPCIONES_GRABACION);
-  const recorderState = useAudioRecorderState(recorder, 150);
+  const [grabando, setGrabando] = useState(false);
+  const [nivelEntrada, setNivelEntrada] = useState(0);
   const [estadoPermiso, setEstadoPermiso] = useState<EstadoPermisoMicrofono>('undetermined');
   const [errorInicializacion, setErrorInicializacion] = useState<VoiceSessionError | null>(null);
+
+  // Polling propio (en vez de useAudioRecorderState) porque su intervalo interno llama
+  // recorder.getStatus() sin try/catch: si el objeto nativo ya se liberó (p.ej. justo
+  // después de recorder.stop()), ese tick lanza NativeSharedObjectNotFoundException fuera
+  // de cualquier try/catch de React y tumba la pantalla entera vía el error boundary.
+  useEffect(() => {
+    const intervalo = setInterval(() => {
+      try {
+        const estado = recorder.getStatus();
+        setGrabando(estado.isRecording);
+        setNivelEntrada(Math.max(0, Math.min(1, ((estado.metering ?? -60) + 60) / 60)));
+      } catch {
+        // El objeto nativo no está disponible en este tick (p.ej. se está liberando); se ignora.
+      }
+    }, 150);
+    return () => clearInterval(intervalo);
+  }, [recorder]);
+
   const solicitarPermiso = useCallback(async () => {
     try {
       const permission = await requestRecordingPermissionsAsync();
@@ -66,24 +84,39 @@ export function useNexxusVoiceAudio(): UseNexxusVoiceAudioResult {
       });
       return false;
     }
-  }, [recorder]);
+  }, []);
 
   const iniciarGrabacion = useCallback(async () => {
-    if (recorder.isRecording) return;
-    await recorder.prepareToRecordAsync();
-    recorder.record();
+    try {
+      if (recorder.isRecording) return;
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+    } catch (cause) {
+      throw new Error(cause instanceof Error ? cause.message : 'No se pudo iniciar el micrófono.');
+    }
   }, [recorder]);
+
   const detenerGrabacion = useCallback(async () => {
-    if (recorder.isRecording) await recorder.stop();
+    try {
+      if (recorder.isRecording) await recorder.stop();
+    } catch {
+      // Puede fallar si el objeto nativo ya se liberó; no hay nada que grabar en ese caso.
+    }
   }, [recorder]);
+
   const detenerYLeer = useCallback(async (): Promise<VoiceAudioClip | null> => {
     await detenerGrabacion();
-    if (!recorder.uri) return null;
-    return {
-      data: await new File(recorder.uri).base64(),
-      mimeType: 'audio/mp4',
-    };
+    try {
+      if (!recorder.uri) return null;
+      return {
+        data: await new File(recorder.uri).base64(),
+        mimeType: 'audio/mp4',
+      };
+    } catch {
+      return null;
+    }
   }, [detenerGrabacion, recorder]);
+
   const hablar = useCallback((texto: string, alTerminar?: () => void) => {
     Speech.speak(texto, {
       language: 'es-SV',
@@ -93,23 +126,30 @@ export function useNexxusVoiceAudio(): UseNexxusVoiceAudioResult {
       onError: () => alTerminar?.(),
     });
   }, []);
+
   const interrumpirHabla = useCallback(() => {
     Speech.stop();
   }, []);
+
   const liberar = useCallback(() => {
-    if (recorder.isRecording) void recorder.stop();
+    try {
+      if (recorder.isRecording) void recorder.stop();
+    } catch {
+      // El objeto nativo puede ya estar liberado durante el desmontaje; no hay nada que hacer.
+    }
     Speech.stop();
   }, [recorder]);
+
   return {
     estadoPermiso,
     solicitarPermiso,
     errorInicializacion,
     inicializarAudio,
-    grabando: recorderState.isRecording,
+    grabando,
     iniciarGrabacion,
     detenerGrabacion,
     detenerYLeer,
-    nivelEntrada: Math.max(0, Math.min(1, ((recorderState.metering ?? -60) + 60) / 60)),
+    nivelEntrada,
     hablar,
     interrumpirHabla,
     liberar,
