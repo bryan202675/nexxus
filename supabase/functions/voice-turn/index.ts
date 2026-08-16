@@ -31,6 +31,9 @@ function decodeBase64(value: string): Uint8Array {
   }
 }
 
+// Groq es una optimización opcional de velocidad, no una dependencia dura: si falla por
+// cualquier motivo (clave inválida, red, etc.) se cae de vuelta a que Gemini transcriba el
+// audio directamente (ver más abajo) en lugar de cortar toda la llamada de voz.
 async function transcribeWithGroq(audio: { data: string; mimeType: string }): Promise<string | null> {
   if (!groqApiKey) return null;
   const form = new FormData();
@@ -44,12 +47,13 @@ async function transcribeWithGroq(audio: { data: string; mimeType: string }): Pr
       headers: { Authorization: `Bearer ${groqApiKey}` },
       body: form,
     });
-  } catch {
-    throw new HttpError(502, 'No pudimos conectar con el servicio de transcripción.');
+  } catch (cause) {
+    console.error('Groq transcription network error, cayendo a Gemini', cause);
+    return null;
   }
   if (!response.ok) {
-    console.error('Groq transcription error', await response.text().catch(() => ''));
-    throw new HttpError(502, 'No pudimos transcribir tu mensaje de voz.');
+    console.error('Groq transcription error, cayendo a Gemini', await response.text().catch(() => ''));
+    return null;
   }
   const result = await response.json().catch(() => null) as { text?: unknown } | null;
   return typeof result?.text === 'string' ? result.text.trim() : null;
