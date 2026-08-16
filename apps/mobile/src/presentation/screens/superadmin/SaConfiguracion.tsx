@@ -7,7 +7,9 @@
 
 import React, { useState } from 'react';
 import { MaterialIcons } from '@expo/vector-icons';
-import { ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, TouchableOpacity, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
 import { useCases } from '@/infrastructure/container';
 import { useAuth } from '@/presentation/hooks/useAuth';
 import {
@@ -15,7 +17,11 @@ import {
   SaSectionCard, SaToggle,
 } from './components/SaWidgets';
 
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
+
 export default function SaConfiguracion() {
+  const { t } = useTranslation();
   const { theme, mode, toggleMode } = useSaTheme();
   const { user, logout } = useAuth();
   useSaEntrance();
@@ -29,17 +35,17 @@ export default function SaConfiguracion() {
     setError('');
     setMensaje('');
     if (nuevaPassword.length < 8) {
-      setError('La contraseña debe tener al menos 8 caracteres.');
+      setError(t('superadmin.saConfiguracion.error.longitudMinima'));
       return;
     }
     if (!user) return;
     setGuardando(true);
     try {
       await useCases.admin.superAdmin.resetPassword(user.id, 'internal', nuevaPassword);
-      setMensaje('Contraseña de acceso al panel actualizada.');
+      setMensaje(t('superadmin.saConfiguracion.mensajeActualizada'));
       setNuevaPassword('');
     } catch (err: any) {
-      setError(err?.message || 'No se pudo actualizar la contraseña.');
+      setError(err?.message || t('superadmin.saConfiguracion.error.actualizarFallo'));
     } finally {
       setGuardando(false);
     }
@@ -49,17 +55,17 @@ export default function SaConfiguracion() {
     <ScrollView showsVerticalScrollIndicator={false}>
       <View>
         <View>
-          <SaSectionCard theme={theme} title="Apariencia">
+          <SaSectionCard theme={theme} title={t('superadmin.saConfiguracion.secciones.apariencia')}>
             <View>
               <View>
                 <MaterialIcons name={mode === 'dark' ? 'dark-mode' : 'light-mode'} size={18} />
-                <Text>Modo oscuro</Text>
+                <Text>{t('superadmin.saConfiguracion.modoOscuro')}</Text>
               </View>
               <SaToggle theme={theme} value={mode === 'dark'} onChange={() => toggleMode?.()} />
             </View>
           </SaSectionCard>
 
-          <SaSectionCard theme={theme} title="Cuenta">
+          <SaSectionCard theme={theme} title={t('superadmin.saConfiguracion.secciones.cuenta')}>
             <View>
               <Text>Nombre: <Text>{user?.nombre || '—'}</Text></Text>
               <Text>Correo: <Text>{user?.correo || '—'}</Text></Text>
@@ -68,7 +74,7 @@ export default function SaConfiguracion() {
           </SaSectionCard>
         </View>
 
-        <SaSectionCard theme={theme} title="Contraseña de acceso al panel">
+        <SaSectionCard theme={theme} title={t('superadmin.saConfiguracion.secciones.contrasenaPanel')}>
           <Text>Esta es la contraseña con la que inicias sesión sin código de empresa. Rótala periódicamente.</Text>
           <TextInput
             value={nuevaPassword}
@@ -79,13 +85,13 @@ export default function SaConfiguracion() {
           {error ? <Text>{error}</Text> : null}
           {mensaje ? <Text>{mensaje}</Text> : null}
           <TouchableOpacity onPress={rotarPassword} disabled={guardando}>
-            <Text>{guardando ? 'Guardando…' : 'Actualizar contraseña'}</Text>
+            <Text>{guardando ? t('superadmin.saConfiguracion.guardando') : t('superadmin.saConfiguracion.actualizarContrasena')}</Text>
           </TouchableOpacity>
         </SaSectionCard>
 
         <TouchableOpacity onPress={() => logout()}>
           <MaterialIcons name="logout" size={20} />
-          <Text>Cerrar sesión</Text>
+          <Text>{t('superadmin.saConfiguracion.cerrarSesion')}</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

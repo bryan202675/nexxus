@@ -167,3 +167,23 @@ export type SupportSessionRow = {
   expiresAt: string | null;
   createdAt: string | null;
 };
+
+export type PublicSupportRequest = {
+  id: string;
+  ticketCodigo: string;
+  nombre: string;
+  correo: string;
+  telefono?: string;
+  empresa?: string;
+  categoria: 'acceso' | 'registro_empresa' | 'tecnico' | 'facturacion' | 'otro';
+  asunto: string;
+  mensaje: string;
+  prioridad: 'baja' | 'media' | 'alta' | 'urgente';
+  estado: 'pendiente' | 'en_revision' | 'contactado' | 'resuelto';
+  origen: 'app' | 'landing';
+  respuestaSoporte?: string;
+  atendidoPor?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+

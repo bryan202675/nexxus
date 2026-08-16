@@ -12,6 +12,7 @@ import {
   SuperAdminCompanyAction,
   SupportSessionResult,
   SupportSessionRow,
+  PublicSupportRequest,
   UserFilters,
   UsuarioGlobal,
 } from '../entities/SuperAdmin';
@@ -133,4 +134,26 @@ export interface ISuperAdminRepository {
     callback: (rows: SupportSessionRow[]) => void,
     onError: (error: Error) => void
   ): () => void;
+
+  submitPublicSupportRequest(dto: {
+    nombre: string;
+    correo: string;
+    telefono?: string;
+    empresa?: string;
+    categoria: string;
+    asunto: string;
+    mensaje: string;
+    prioridad: string;
+  }): Promise<{ ticketCodigo: string }>;
+
+  subscribePublicSupportRequests(
+    callback: (requests: PublicSupportRequest[]) => void,
+    onError: (error: Error) => void
+  ): () => void;
+
+  updatePublicSupportRequestStatus(
+    id: string,
+    estado: PublicSupportRequest['estado'],
+    respuestaSoporte?: string
+  ): Promise<void>;
 }

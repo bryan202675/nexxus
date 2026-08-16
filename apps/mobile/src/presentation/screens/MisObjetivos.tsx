@@ -1,13 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
   ScrollView,
-  TextInput,
   KeyboardAvoidingView,
   Platform,
   Alert,
@@ -16,6 +14,8 @@ import {
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
 import { ModalShell, EmptyState, Skeleton, SkeletonLista } from '@/presentation/components/ui';
 import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
@@ -26,6 +26,9 @@ import { useCases } from '@/infrastructure/container';
 import { Objective } from 'domain/entities/Objective';
 import { calcularProgresoKR, calcularProgresoObjetivo, cicloActual, listaCiclos } from 'domain/services/okrEngine';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
+
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
 
 interface Props { navigation: any; }
 
@@ -38,6 +41,7 @@ interface FilaKRBorrador {
 const filaKRVacia = (): FilaKRBorrador => ({ titulo: '', valorObjetivo: '', unidad: '' });
 
 export default function MisObjetivos({ navigation }: Props) {
+  const { t } = useTranslation();
   const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
   const { perfil } = useContextoUsuario();
   const estilos = crearEstilos(colores, esOscuro);
@@ -104,12 +108,12 @@ export default function MisObjetivos({ navigation }: Props) {
           titulo: kr.titulo.trim(),
           valorObjetivo: Number(kr.valorObjetivo),
           valorActual: 0,
-          unidad: kr.unidad.trim() || 'unidades',
+          unidad: kr.unidad.trim() || t('misObjetivos.unit_default'),
         })),
       });
       setModalVisible(false);
     } catch (e: any) {
-      Alert.alert('No se pudo crear', e?.message || 'Intenta de nuevo en unos segundos.');
+      Alert.alert(t('misObjetivos.create_error_title'), e?.message || t('misObjetivos.generic_retry'));
     } finally {
       setGuardando(false);
     }
@@ -118,24 +122,24 @@ export default function MisObjetivos({ navigation }: Props) {
   const guardarValorKR = async (keyResultId: string) => {
     const numero = Number(valorEdicion);
     if (Number.isNaN(numero) || numero < 0) {
-      Alert.alert('Valor inválido', 'Ingresa un número igual o mayor a 0.');
+      Alert.alert(t('misObjetivos.invalid_value_title'), t('misObjetivos.invalid_value_msg'));
       return;
     }
     try {
       await useCases.objectives.updateKeyResult.execute(keyResultId, numero);
       setEditandoKR(null);
     } catch (e: any) {
-      Alert.alert('No se pudo actualizar', e?.message || 'Intenta de nuevo en unos segundos.');
+      Alert.alert(t('misObjetivos.update_error_title'), e?.message || t('misObjetivos.generic_retry'));
     }
   };
 
   const confirmarEliminar = (objetivo: Objective) => {
     Alert.alert(
-      'Eliminar objetivo',
-      `¿Eliminar "${objetivo.titulo}"? Esta acción no se puede deshacer.`,
+      t('misObjetivos.delete_title'),
+      t('misObjetivos.delete_msg', { titulo: objetivo.titulo }),
       [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Eliminar', style: 'destructive', onPress: () => useCases.objectives.remove.execute(objetivo.id).catch(() => {}) },
+        { text: t('misObjetivos.cancel'), style: 'cancel' },
+        { text: t('misObjetivos.delete_confirm'), style: 'destructive', onPress: () => useCases.objectives.remove.execute(objetivo.id).catch(() => {}) },
       ],
     );
   };
@@ -147,7 +151,7 @@ export default function MisObjetivos({ navigation }: Props) {
         <FondoMobilePremium />
       </View>
 
-      <NavbarEnterprise titulo="Mis Objetivos" subtitulo="Metas y OKRs del trimestre" mostrarAtras />
+      <NavbarEnterprise titulo={t('misObjetivos.title')} subtitulo={t('misObjetivos.subtitle')} mostrarAtras />
 
       {/* Selector de ciclo trimestral */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={estilos.filtrosScroll}>
@@ -162,7 +166,7 @@ export default function MisObjetivos({ navigation }: Props) {
       ) : (
         <ScrollView contentContainerStyle={estilos.scroll} showsVerticalScrollIndicator={false}>
           {objetivosDelCiclo.length === 0 ? (
-            <EmptyState icono="flag" titulo={`Sin objetivos en ${cicloSeleccionado}`} detalle="Crea tu primer OKR tocando el botón +." />
+            <EmptyState icono="flag" titulo={t('misObjetivos.empty_title', { ciclo: cicloSeleccionado })} detalle={t('misObjetivos.empty_detail')} />
           ) : (
             objetivosDelCiclo.map((objetivo, index) => {
               const progreso = calcularProgresoObjetivo(objetivo.keyResults);
@@ -187,8 +191,8 @@ export default function MisObjetivos({ navigation }: Props) {
                       <View style={[estilos.barraRellenoGrande, { width: `${progreso}%`, backgroundColor: progreso >= 100 ? '#10B981' : esOscuro ? '#3B82F6' : '#2563EB' }]} />
                     </View>
                     <View style={estilos.progresoFila}>
-                      <Text style={estilos.textoProgresoGrande}>{progreso}% completado</Text>
-                      <Text style={estilos.textoKRCount}>{objetivo.keyResults.length} resultados clave</Text>
+                      <Text style={estilos.textoProgresoGrande}>{t('misObjetivos.progress_complete', { percent: progreso })}</Text>
+                      <Text style={estilos.textoKRCount}>{t('misObjetivos.kr_count', { count: objetivo.keyResults.length })}</Text>
                     </View>
 
                     {objetivo.keyResults.map((kr) => {
@@ -241,33 +245,33 @@ export default function MisObjetivos({ navigation }: Props) {
       <ModalShell visible={modalVisible} onClose={() => setModalVisible(false)} maxHeight="88%" style={estilos.modalContenido}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={estilos.flexModal}>
           <View style={estilos.modalHeader}>
-            <Text style={estilos.modalTitulo}>Nuevo Objetivo Trimestral</Text>
+            <Text style={estilos.modalTitulo}>{t('misObjetivos.modal_title')}</Text>
             <TouchableOpacity onPress={() => setModalVisible(false)} style={estilos.botonCerrarModal}>
               <Feather name="x" size={20} color={colores.texto} />
             </TouchableOpacity>
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: ESPACIADO.xxl }}>
-            <Text style={estilos.label}>Título del Objetivo</Text>
+            <Text style={estilos.label}>{t('misObjetivos.label_title')}</Text>
             <TextInput
               style={estilos.input}
-              placeholder="Ej. Incrementar la satisfacción de entrega en proyectos"
+              placeholder={t('misObjetivos.placeholder_title')}
               placeholderTextColor={colores.textoSuave}
               value={titulo}
               onChangeText={setTitulo}
             />
 
-            <Text style={estilos.label}>Descripción (Opcional)</Text>
+            <Text style={estilos.label}>{t('misObjetivos.label_description')}</Text>
             <TextInput
               style={[estilos.input, { height: 74, textAlignVertical: 'top' }]}
-              placeholder="¿Por qué es clave este objetivo para el equipo?"
+              placeholder={t('misObjetivos.placeholder_description')}
               placeholderTextColor={colores.textoSuave}
               value={descripcion}
               onChangeText={setDescripcion}
               multiline
             />
 
-            <Text style={estilos.label}>Ciclo</Text>
+            <Text style={estilos.label}>{t('misObjetivos.label_cycle')}</Text>
             <View style={estilos.gridTipos}>
               {ciclos.map((ciclo) => (
                 <TouchableOpacity
@@ -280,19 +284,19 @@ export default function MisObjetivos({ navigation }: Props) {
               ))}
             </View>
 
-            <Text style={estilos.label}>Resultados Clave (Medibles)</Text>
+            <Text style={estilos.label}>{t('misObjetivos.label_key_results')}</Text>
             {krs.map((kr, index) => (
               <View key={index} style={estilos.filaKRBorrador}>
                 <TextInput
                   style={[estilos.input, { flex: 2, marginBottom: 0 }]}
-                  placeholder="Ej. Tareas cerradas"
+                  placeholder={t('misObjetivos.placeholder_kr_title')}
                   placeholderTextColor={colores.textoSuave}
                   value={kr.titulo}
                   onChangeText={(v) => actualizarKR(index, 'titulo', v)}
                 />
                 <TextInput
                   style={[estilos.input, { flex: 1, marginBottom: 0 }]}
-                  placeholder="Meta"
+                  placeholder={t('misObjetivos.placeholder_kr_goal')}
                   placeholderTextColor={colores.textoSuave}
                   value={kr.valorObjetivo}
                   onChangeText={(v) => actualizarKR(index, 'valorObjetivo', v)}
@@ -300,7 +304,7 @@ export default function MisObjetivos({ navigation }: Props) {
                 />
                 <TextInput
                   style={[estilos.input, { flex: 1, marginBottom: 0 }]}
-                  placeholder="Unidad"
+                  placeholder={t('misObjetivos.placeholder_kr_unit')}
                   placeholderTextColor={colores.textoSuave}
                   value={kr.unidad}
                   onChangeText={(v) => actualizarKR(index, 'unidad', v)}
@@ -314,7 +318,7 @@ export default function MisObjetivos({ navigation }: Props) {
             ))}
             <TouchableOpacity onPress={agregarFilaKR} style={estilos.botonAgregarKR}>
               <Feather name="plus" size={15} color={esOscuro ? '#93C5FD' : '#2563EB'} />
-              <Text style={estilos.textoAgregarKR}>Agregar Resultado Clave</Text>
+              <Text style={estilos.textoAgregarKR}>{t('misObjetivos.add_kr')}</Text>
             </TouchableOpacity>
 
             <BotonAnimado
@@ -323,7 +327,7 @@ export default function MisObjetivos({ navigation }: Props) {
               disabled={!puedeGuardar}
               scaleTo={0.97}
             >
-              {guardando ? <ActivityIndicator color="#fff" /> : <Text style={estilos.textoBotonGuardar}>Guardar Objetivo</Text>}
+              {guardando ? <ActivityIndicator color="#fff" /> : <Text style={estilos.textoBotonGuardar}>{t('misObjetivos.save_objective')}</Text>}
             </BotonAnimado>
           </ScrollView>
         </KeyboardAvoidingView>

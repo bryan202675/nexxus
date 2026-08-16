@@ -10,7 +10,12 @@ import { supabase } from "supabaseClient/supabaseConfig";
 // esquema de Supabase (Fase 0) normaliza todo a una sola columna empresa_id,
 // asi que subscribeCheckIns ya no necesita fusionar dos listeners.
 
-const asDocSnap = (row: any) => ({ id: row.id, data: () => row });
+// exists() se conserva porque algunas vistas (ej. empresa-asistencia) todavia siguen el
+// contrato de Firestore (snap.exists() ? snap.data() : null) heredado de antes de la
+// Fase 0 -- sin este metodo, un docSnap "encontrado" (a diferencia del branch explicito
+// de "no encontrado" en subscribeConfiguracionEmpresa) revienta con "snap.exists is not
+// a function" en cuanto la fila sí existe.
+const asDocSnap = (row: any) => ({ id: row.id, data: () => row, exists: () => true });
 
 type SubscribeTableOptions = {
   orderColumn?: string;
@@ -80,12 +85,28 @@ export function subscribeSolicitudesInternas(empresaId, callback, onError) {
   return subscribeTable("solicitudes_internas", empresaId, { orderColumn: "created_at", ascending: false, limit: 200 })(callback, onError);
 }
 
+export function subscribeSolicitudesExtensionTarea(empresaId, callback, onError) {
+  return subscribeTable("solicitudes_extension_tarea", empresaId, { orderColumn: "created_at", ascending: false, limit: 200 })(callback, onError);
+}
+
 export function subscribeReportes(empresaId, callback, onError) {
   return subscribeTable("reportes", empresaId, { orderColumn: "created_at", ascending: false, limit: 200 })(callback, onError);
 }
 
 export function subscribeNotificaciones(empresaId, callback, onError) {
   return subscribeTable("notificaciones", empresaId, { limit: 500 })(callback, onError);
+}
+
+// Solo las alertas de bienestar (tipo='bienestar') -- fuente compartida del timbre de
+// la navbar y del badge del sidebar en TeamCareAlertsContext. RLS ya restringe estas
+// filas a es_jefe() o al propio empleado (ver migracion cuidado_equipo_bienestar).
+export function subscribeAlertasBienestar(empresaId, callback, onError, limite = 300) {
+  return subscribeTable("notificaciones", empresaId, {
+    orderColumn: "created_at",
+    ascending: false,
+    limit: limite,
+    extraFilter: (q) => q.eq("tipo", "bienestar"),
+  })(callback, onError);
 }
 
 export function subscribeAsistenciasHoy(empresaId, fechaJornada, callback, onError, limite = 1000) {

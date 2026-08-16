@@ -13,7 +13,6 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
-  Text,
   View,
   RefreshControl,
   ActivityIndicator,
@@ -22,6 +21,7 @@ import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 import { EmptyState } from '@/presentation/components/ui';
 import { RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/constants/diseno';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
@@ -30,6 +30,8 @@ import { translateWithApi } from '@/shared/i18n/translatorApi';
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
 import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
+
+const Text = AdminTranslatedText;
 
 interface Props {
   navigation: any;

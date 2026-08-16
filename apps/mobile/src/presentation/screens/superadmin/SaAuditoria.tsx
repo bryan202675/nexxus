@@ -6,7 +6,9 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { MaterialIcons } from '@expo/vector-icons';
-import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, ScrollView, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
 import { AuditResumen } from 'domain/entities/SuperAdmin';
 import { useCases } from '@/infrastructure/container';
 import { formatoFechaHora } from './saFormat';
@@ -14,6 +16,9 @@ import {
   useSaTheme, useSaEntrance,
   SaSectionCard, SaTableHeader, SaTableRow, SaCell, SaStatusIndicator, SaFilterPill, SaBadgeTone,
 } from './components/SaWidgets';
+
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
 
 type LoadState = 'loading' | 'ready' | 'empty' | 'error';
 type FiltroEstado = 'todos' | 'success' | 'warning' | 'error';
@@ -26,6 +31,7 @@ const estadoTone = (estado: string): SaBadgeTone => {
 };
 
 export default function SaAuditoria() {
+  const { t } = useTranslation();
   const { theme } = useSaTheme();
   const { width } = useWindowDimensions();
   const compact = width < 900;
@@ -47,7 +53,7 @@ export default function SaAuditoria() {
       setHayMas(result.hayMas);
       setState(result.items.length > 0 ? 'ready' : 'empty');
     }, (error) => {
-      setErrorMessage(error.message || 'No se pudo cargar la auditoría global.');
+      setErrorMessage(error.message || t('superadmin.saAuditoria.error.cargaAuditoria'));
       setState('error');
     });
     return () => unsubscribe();
@@ -71,7 +77,7 @@ export default function SaAuditoria() {
       setCursor(result.cursor);
       setHayMas(result.hayMas);
     } catch (error: any) {
-      setErrorMessage(error.message || 'No se pudieron cargar más eventos.');
+      setErrorMessage(error.message || t('superadmin.saAuditoria.error.cargaMasEventos'));
     } finally {
       setCargandoMas(false);
     }
@@ -96,7 +102,7 @@ export default function SaAuditoria() {
           />
         </View>
 
-        <SaSectionCard theme={theme} title="Registro de auditoría">
+        <SaSectionCard theme={theme} title={t('superadmin.saAuditoria.seccion.registroAuditoria')}>
           <View>
             {(['todos', 'success', 'warning', 'error'] as FiltroEstado[]).map((item) => (
               <SaFilterPill
@@ -104,13 +110,13 @@ export default function SaAuditoria() {
                 theme={theme}
                 active={filtroEstado === item}
                 onPress={() => setFiltroEstado(item)}
-                label={item === 'todos' ? 'Todos' : item === 'success' ? 'Éxito' : item === 'warning' ? 'Advertencia' : 'Error'}
+                label={item === 'todos' ? t('superadmin.saAuditoria.filtros.todos') : item === 'success' ? t('superadmin.saAuditoria.filtros.exito') : item === 'warning' ? t('superadmin.saAuditoria.filtros.advertencia') : t('superadmin.saAuditoria.filtros.error')}
               />
             ))}
           </View>
 
           {!compact && logsFiltrados.length > 0 ? (
-            <SaTableHeader theme={theme} columns={[{ label: 'EVENTO', flex: 2 }, { label: 'EMPRESA', flex: 1.2 }, { label: 'MÓDULO', flex: 1.2 }, { label: 'ESTADO' }, { label: 'FECHA' }]} />
+            <SaTableHeader theme={theme} columns={[{ label: t('superadmin.saAuditoria.tabla.evento'), flex: 2 }, { label: t('superadmin.saAuditoria.tabla.empresa'), flex: 1.2 }, { label: t('superadmin.saAuditoria.tabla.modulo'), flex: 1.2 }, { label: t('superadmin.saAuditoria.tabla.estado') }, { label: t('superadmin.saAuditoria.tabla.fecha') }]} />
           ) : null}
           {logsFiltrados.map((log, i) => (
             <SaTableRow key={log.id} theme={theme} last={i === logsFiltrados.length - 1}>
@@ -132,12 +138,12 @@ export default function SaAuditoria() {
           ))}
           {logsFiltrados.length === 0 ? (
             <Text>
-              {state === 'loading' ? 'Cargando eventos…' : 'Sin eventos auditados. Cuando ocurran acciones administrativas en cualquier empresa aparecerán aquí.'}
+              {state === 'loading' ? t('superadmin.saAuditoria.vacio.cargando') : t('superadmin.saAuditoria.vacio.sinEventos')}
             </Text>
           ) : null}
           {hayMas ? (
             <TouchableOpacity onPress={cargarMas} disabled={cargandoMas}>
-              {cargandoMas ? <ActivityIndicator /> : <Text>Cargar más</Text>}
+              {cargandoMas ? <ActivityIndicator /> : <Text>{t('superadmin.saAuditoria.cargarMas')}</Text>}
             </TouchableOpacity>
           ) : null}
         </SaSectionCard>

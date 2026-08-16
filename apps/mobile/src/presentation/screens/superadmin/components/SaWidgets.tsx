@@ -1,8 +1,11 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, TouchableOpacity, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import Svg, { Circle } from 'react-native-svg';
+import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 import { useAdminAppearance } from '../../admin/adminTheme';
+
+const Text = AdminTranslatedText;
 
 /** Hook único: expone el modo claro/oscuro global (sin paleta de colores). */
 export function useSaTheme() {

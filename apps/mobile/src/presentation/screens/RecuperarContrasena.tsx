@@ -11,10 +11,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
   Animated,
   Easing,
   KeyboardAvoidingView,
@@ -29,10 +27,15 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Feather, Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import { AdminToastProvider, useAdminToast } from '@/presentation/screens/admin/adminToast';
 import { supabase } from '@/infrastructure/supabase/supabaseClient';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
+
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
 
 // Importación estática pre-cargada para cambio de tema instantáneo en memoria nativa
 const FONDO_OSCURO = require('../../../assets/fondoNexxus.jpg');
@@ -49,6 +52,7 @@ function obtenerRedirectTo(): string {
 }
 
 function RecuperarContrasenaContent({ navigation, route }: { navigation: any; route: any }) {
+  const { t } = useTranslation();
   const { colores, blurTint, intensidadBlur, esOscuro, alternarModo } = useTemaMobile();
   const toast = useAdminToast();
 
@@ -88,7 +92,7 @@ function RecuperarContrasenaContent({ navigation, route }: { navigation: any; ro
 
   const enviarSolicitud = async () => {
     if (!codigoEmpresa.trim() || !usuario.trim()) {
-      toast.warning({ title: 'Faltan datos', description: 'Ingresa el código de empresa y tu usuario.' });
+      toast.warning({ title: t('recuperarContrasena.alert_missing_data_title'), description: t('recuperarContrasena.alert_missing_data_msg') });
       return;
     }
     setEnviando(true);
@@ -103,7 +107,7 @@ function RecuperarContrasenaContent({ navigation, route }: { navigation: any; ro
       if (error) throw new Error(error.message || 'No se pudo procesar la solicitud.');
       setEnviado(true);
     } catch (err: any) {
-      toast.error({ title: 'No se pudo enviar', description: err?.message || 'Intenta de nuevo en unos segundos.' });
+      toast.error({ title: t('recuperarContrasena.alert_error_title'), description: err?.message || t('recuperarContrasena.alert_error_default_msg') });
     } finally {
       setEnviando(false);
     }
@@ -174,12 +178,22 @@ function RecuperarContrasenaContent({ navigation, route }: { navigation: any; ro
                 </Text>
               </View>
 
-              {/* Botón cambiar tema glass */}
-              <BotonAnimado onPress={() => alternarModo()} scaleTo={0.92}>
-                <BlurView intensity={intensidadBlur + 25} tint={blurTint} style={estilos.botonGlassHeader}>
-                  <Feather name={esOscuro ? 'sun' : 'moon'} size={20} color={esOscuro ? '#FFFFFF' : '#0F172A'} />
-                </BlurView>
-              </BotonAnimado>
+              {/* Acciones derechas: Soporte y Cambio de tema */}
+              <View style={estilos.headerDerecha}>
+                {/* Botón Soporte General */}
+                <BotonAnimado onPress={() => navigation.navigate('SoporteGeneral')} scaleTo={0.92} accessibilityLabel="Ayuda y Soporte">
+                  <BlurView intensity={intensidadBlur + 25} tint={blurTint} style={estilos.botonGlassHeader}>
+                    <Feather name="help-circle" size={19} color={esOscuro ? '#FFFFFF' : '#0F172A'} />
+                  </BlurView>
+                </BotonAnimado>
+
+                {/* Botón cambiar tema glass */}
+                <BotonAnimado onPress={() => alternarModo()} scaleTo={0.92} accessibilityLabel="Cambiar tema">
+                  <BlurView intensity={intensidadBlur + 25} tint={blurTint} style={estilos.botonGlassHeader}>
+                    <Feather name={esOscuro ? 'sun' : 'moon'} size={19} color={esOscuro ? '#FFFFFF' : '#0F172A'} />
+                  </BlurView>
+                </BotonAnimado>
+              </View>
             </Animated.View>
 
             {/* Títulos principales */}
@@ -199,9 +213,9 @@ function RecuperarContrasenaContent({ navigation, route }: { navigation: any; ro
                 },
               ]}
             >
-              <Text style={estilos.titulo}>Recuperar contraseña</Text>
+              <Text style={estilos.titulo}>{t('recuperarContrasena.title')}</Text>
               <Text style={estilos.subtitulo}>
-                Ingresa el código de tu empresa y tu usuario para enviarte un enlace de restablecimiento.
+                {t('recuperarContrasena.subtitle')}
               </Text>
             </Animated.View>
 
@@ -226,21 +240,21 @@ function RecuperarContrasenaContent({ navigation, route }: { navigation: any; ro
                 {enviado ? (
                   <View style={estilos.exitoBox}>
                     <Ionicons name="checkmark-circle" size={42} color="#22C55E" />
-                    <Text style={estilos.exitoTitulo}>¡Solicitud enviada!</Text>
+                    <Text style={estilos.exitoTitulo}>{t('recuperarContrasena.success_title')}</Text>
                     <Text style={estilos.exitoTexto}>
-                      Si tu cuenta existe y tiene un correo de contacto, en unos minutos te llegará un enlace para restablecer tu contraseña. Revisa también tu carpeta de spam.
+                      {t('recuperarContrasena.success_msg')}
                     </Text>
                   </View>
                 ) : (
                   <>
                     {/* Campo Código de Empresa */}
                     <View style={estilos.inputGroup}>
-                      <Text style={estilos.label}>CÓDIGO DE EMPRESA</Text>
+                      <Text style={estilos.label}>{t('recuperarContrasena.field_company_code_label')}</Text>
                       <View style={estilos.inputWrapper}>
                         <Feather name="briefcase" size={18} color={esOscuro ? 'rgba(255,255,255,0.6)' : 'rgba(15,23,42,0.6)'} style={estilos.inputIcon} />
                         <TextInput
                           style={estilos.input}
-                          placeholder="EJ. NEXXUS"
+                          placeholder={t('recuperarContrasena.field_company_code_placeholder')}
                           placeholderTextColor={esOscuro ? 'rgba(255,255,255,0.4)' : 'rgba(15,23,42,0.4)'}
                           value={codigoEmpresa}
                           onChangeText={setCodigoEmpresa}
@@ -252,12 +266,12 @@ function RecuperarContrasenaContent({ navigation, route }: { navigation: any; ro
 
                     {/* Campo Usuario */}
                     <View style={estilos.inputGroup}>
-                      <Text style={estilos.label}>USUARIO</Text>
+                      <Text style={estilos.label}>{t('recuperarContrasena.field_user_label')}</Text>
                       <View style={estilos.inputWrapper}>
                         <Feather name="user" size={18} color={esOscuro ? 'rgba(255,255,255,0.6)' : 'rgba(15,23,42,0.6)'} style={estilos.inputIcon} />
                         <TextInput
                           style={estilos.input}
-                          placeholder="nombre.apellido"
+                          placeholder={t('recuperarContrasena.field_user_placeholder')}
                           placeholderTextColor={esOscuro ? 'rgba(255,255,255,0.4)' : 'rgba(15,23,42,0.4)'}
                           value={usuario}
                           onChangeText={setUsuario}
@@ -274,7 +288,7 @@ function RecuperarContrasenaContent({ navigation, route }: { navigation: any; ro
                           <ActivityIndicator color={esOscuro ? '#000000' : '#FFFFFF'} size="small" />
                         ) : (
                           <>
-                            <Text style={estilos.textoBotonSubmit}>Enviar enlace</Text>
+                            <Text style={estilos.textoBotonSubmit}>{t('recuperarContrasena.btn_send')}</Text>
                             <Feather
                               name="arrow-right"
                               size={20}
@@ -290,7 +304,7 @@ function RecuperarContrasenaContent({ navigation, route }: { navigation: any; ro
 
                 {/* Enlace para volver a iniciar sesión */}
                 <TouchableOpacity onPress={() => navigation.goBack()} style={estilos.backLinkBtn}>
-                  <Text style={estilos.textoEnlace}>Volver a iniciar sesión</Text>
+                  <Text style={estilos.textoEnlace}>{t('recuperarContrasena.btn_back_to_login')}</Text>
                 </TouchableOpacity>
 
               </BlurView>
@@ -342,6 +356,11 @@ function crearEstilos(c: any, esOscuro: boolean) {
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingVertical: 12,
+    },
+    headerDerecha: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
     },
     botonGlassHeader: {
       width: 44,

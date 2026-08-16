@@ -9,7 +9,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   SafeAreaView,
   StatusBar,
@@ -31,6 +30,9 @@ import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/shared/i18n/config';
+import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
+
+const Text = AdminTranslatedText;
 
 import { RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/constants/diseno';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
@@ -252,12 +254,12 @@ export default function CentroTareas({ navigation }: Props) {
                 {isCompleted ? (
                   <View style={estilos.checkCompletadoWrap}>
                     <Feather name="check-circle" size={18} color="#10B981" />
-                    <Text style={estilos.textoCompletado}>Completada</Text>
+                    <Text style={estilos.textoCompletado}>{t('centroTareas.card_completed', { defaultValue: 'Completada' })}</Text>
                   </View>
                 ) : (
                   <View style={estilos.checkPendienteWrap}>
                     <Feather name="circle" size={18} color={colores.textoSuave} />
-                    <Text style={estilos.textoPendiente}>Marcar lista</Text>
+                    <Text style={estilos.textoPendiente}>{t('centroTareas.card_mark_done', { defaultValue: 'Marcar lista' })}</Text>
                   </View>
                 )}
               </BotonAnimado>
@@ -282,10 +284,10 @@ export default function CentroTareas({ navigation }: Props) {
   };
 
   const filtros: { id: FiltroEstado; label: string; icono: 'layers' | 'sun' | 'alert-triangle' | 'clock' }[] = [
-    { id: 'todos', label: 'Todas', icono: 'layers' },
-    { id: 'hoy', label: 'Para Hoy', icono: 'sun' },
-    { id: 'urgentes', label: 'Urgentes', icono: 'alert-triangle' },
-    { id: 'vencidas', label: 'Vencidas', icono: 'clock' },
+    { id: 'todos', label: t('centroTareas.chip_filter_all', { defaultValue: 'Todas' }), icono: 'layers' },
+    { id: 'hoy', label: t('centroTareas.chip_filter_today', { defaultValue: 'Para Hoy' }), icono: 'sun' },
+    { id: 'urgentes', label: t('centroTareas.chip_filter_urgent', { defaultValue: 'Urgentes' }), icono: 'alert-triangle' },
+    { id: 'vencidas', label: t('centroTareas.chip_filter_overdue', { defaultValue: 'Vencidas' }), icono: 'clock' },
   ];
 
   return (
@@ -313,7 +315,7 @@ export default function CentroTareas({ navigation }: Props) {
                   <Feather name="target" size={18} color={colores.texto} />
                 </View>
                 <View style={estilos.heroBadge}>
-                  <Text style={estilos.heroBadgeText}>{progresoGeneral}% Avance General</Text>
+                  <Text style={estilos.heroBadgeText}>{t('centroTareas.hero_progress_badge', { percent: progresoGeneral, defaultValue: `${progresoGeneral}% Avance General` })}</Text>
                 </View>
               </View>
 
@@ -322,7 +324,7 @@ export default function CentroTareas({ navigation }: Props) {
               </View>
 
               <Text style={estilos.heroSubtexto}>
-                {completadas} de {tareas.length} tareas completadas con éxito en tu tablero.
+                {t('centroTareas.hero_progress_subtext', { completed: completadas, total: tareas.length, defaultValue: `${completadas} de ${tareas.length} tareas completadas con éxito en tu tablero.` })}
               </Text>
             </BlurView>
           </View>
@@ -338,8 +340,8 @@ export default function CentroTareas({ navigation }: Props) {
                   <Text style={estilos.metricaValor}>{pendientesCount}</Text>
                 </View>
                 <View>
-                  <Text style={estilos.metricaLabelPrincipal}>Por Iniciar</Text>
-                  <Text style={estilos.metricaLabelSecundario}>En columna pendiente</Text>
+                  <Text style={estilos.metricaLabelPrincipal}>{t('centroTareas.metric_to_start_label', { defaultValue: 'Por Iniciar' })}</Text>
+                  <Text style={estilos.metricaLabelSecundario}>{t('centroTareas.metric_to_start_sub', { defaultValue: 'En columna pendiente' })}</Text>
                 </View>
               </BlurView>
             </View>
@@ -353,8 +355,8 @@ export default function CentroTareas({ navigation }: Props) {
                   <Text style={estilos.metricaValor}>{enProgresoCount}</Text>
                 </View>
                 <View>
-                  <Text style={estilos.metricaLabelPrincipal}>En Progreso</Text>
-                  <Text style={estilos.metricaLabelSecundario}>En ejecución activa</Text>
+                  <Text style={estilos.metricaLabelPrincipal}>{t('centroTareas.metric_in_progress_label', { defaultValue: 'En Progreso' })}</Text>
+                  <Text style={estilos.metricaLabelSecundario}>{t('centroTareas.metric_in_progress_sub', { defaultValue: 'En ejecución activa' })}</Text>
                 </View>
               </BlurView>
             </View>
@@ -368,8 +370,8 @@ export default function CentroTareas({ navigation }: Props) {
                   <Text style={estilos.metricaValor}>{completadas}</Text>
                 </View>
                 <View>
-                  <Text style={estilos.metricaLabelPrincipal}>Completadas</Text>
-                  <Text style={estilos.metricaLabelSecundario}>Objetivos logrados</Text>
+                  <Text style={estilos.metricaLabelPrincipal}>{t('centroTareas.metric_completed_label', { defaultValue: 'Completadas' })}</Text>
+                  <Text style={estilos.metricaLabelSecundario}>{t('centroTareas.metric_completed_sub', { defaultValue: 'Objetivos logrados' })}</Text>
                 </View>
               </BlurView>
             </View>
@@ -385,8 +387,8 @@ export default function CentroTareas({ navigation }: Props) {
                   </Text>
                 </View>
                 <View>
-                  <Text style={estilos.metricaLabelPrincipal}>Vencidas</Text>
-                  <Text style={estilos.metricaLabelSecundario}>Plazo excedido</Text>
+                  <Text style={estilos.metricaLabelPrincipal}>{t('centroTareas.metric_overdue_label', { defaultValue: 'Vencidas' })}</Text>
+                  <Text style={estilos.metricaLabelSecundario}>{t('centroTareas.metric_overdue_sub', { defaultValue: 'Plazo excedido' })}</Text>
                 </View>
               </BlurView>
             </View>
@@ -419,8 +421,8 @@ export default function CentroTareas({ navigation }: Props) {
           {/* Tablero Kanban (3 columnas con scroll horizontal) */}
           <View style={estilos.seccionTablero}>
             <View style={estilos.cabeceraTablero}>
-              <Text style={estilos.tituloTablero}>Tablero Operativo</Text>
-              <Text style={estilos.subtituloTablero}>Desliza para ver columnas</Text>
+              <Text style={estilos.tituloTablero}>{t('centroTareas.board_title', { defaultValue: 'Tablero Operativo' })}</Text>
+              <Text style={estilos.subtituloTablero}>{t('centroTareas.board_subtitle', { defaultValue: 'Desliza para ver columnas' })}</Text>
             </View>
 
             <ScrollView

@@ -9,7 +9,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   SafeAreaView,
   StatusBar,
@@ -28,6 +27,9 @@ import Animated, {
 import { MaterialIcons, Feather } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
+
+const Text = AdminTranslatedText;
 
 import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
@@ -61,13 +63,13 @@ const iconoCategoria = (categoria: PrioritySignal['category']) => {
   return 'chevron-right' as const;
 };
 
-const obtenerSaludoSegunHora = (nombre: string) => {
+const obtenerSaludoSegunHora = (nombre: string, t: (key: string, options?: any) => string) => {
   const hora = new Date().getHours();
-  let saludoBase = 'Buenos días';
+  let saludoBase = t('miPulso.greeting_morning', { defaultValue: 'Buenos días' });
   if (hora >= 12 && hora < 19) {
-    saludoBase = 'Buenas tardes';
+    saludoBase = t('miPulso.greeting_afternoon', { defaultValue: 'Buenas tardes' });
   } else if (hora >= 19 || hora < 5) {
-    saludoBase = 'Buenas noches';
+    saludoBase = t('miPulso.greeting_evening', { defaultValue: 'Buenas noches' });
   }
   return `${saludoBase}, ${nombre}`;
 };
@@ -136,14 +138,14 @@ export default function MiPulso({ navigation }: { navigation: any }) {
   const documentosPendientes = documentos.filter((d) => !d.leido).length;
 
   const nombreUsuario = perfil?.nombre?.split(' ')[0] || t('miPulso.user_default', { defaultValue: 'Usuario' });
-  const saludoHorario = obtenerSaludoSegunHora(nombreUsuario);
+  const saludoHorario = obtenerSaludoSegunHora(nombreUsuario, t);
   const checkInCompleted = !buildCheckInPendingSignal(metrics?.recentCheckIns?.[0] ?? null);
 
   const insightIA = metrics?.insightIA
     ? t(metrics.insightIA.includes('.') ? metrics.insightIA : `miPulso.${metrics.insightIA}`, {
         name: nombreUsuario,
       })
-    : 'Todo listo para una jornada productiva. Revisa tus prioridades y mantén el enfoque.';
+    : t('miPulso.insight_default_text', { defaultValue: 'Todo listo para una jornada productiva. Revisa tus prioridades y mantén el enfoque.' });
 
   return (
     <SafeAreaView style={estilos.contenedor}>
@@ -165,11 +167,11 @@ export default function MiPulso({ navigation }: { navigation: any }) {
         {/* Encabezado Principal y Saludo Hero */}
         <View style={estilos.headerMensaje}>
           <Text style={estilos.saludo}>{saludoHorario}</Text>
-          <Text style={estilos.tituloAura}>Centro de Control</Text>
+          <Text style={estilos.tituloAura}>{t('miPulso.control_center', { defaultValue: 'Centro de Control' })}</Text>
           <Text style={estilos.subtituloSaludo}>
             {tareasPendientes.length === 0
-              ? 'Todas las tareas al día · Excelente rendimiento'
-              : `${tareasPendientes.length} tareas pendientes de atención`}
+              ? t('miPulso.all_tasks_updated', { defaultValue: 'Todas las tareas al día · Excelente rendimiento' })
+              : t('miPulso.pending_tasks_attention', { count: tareasPendientes.length, defaultValue: `${tareasPendientes.length} tareas pendientes de atención` })}
           </Text>
 
           {/* Barra de Búsqueda Flotante en Cápsula Glass */}
@@ -181,7 +183,7 @@ export default function MiPulso({ navigation }: { navigation: any }) {
             <BlurView intensity={Platform.OS === 'ios' ? intensidadBlur + 6 : 75} tint={blurTint} style={estilos.barraAuraBlur}>
               <View style={estilos.searchIconLeft}>
                 <Feather name="search" size={15} color={colores.textoSuave} />
-                <Text style={estilos.textoBarraAura}>Buscar tareas, solicitudes, documentos...</Text>
+                <Text style={estilos.textoBarraAura}>{t('miPulso.search_placeholder_hero', { defaultValue: 'Buscar tareas, solicitudes, documentos...' })}</Text>
               </View>
               <Feather name="arrow-up-right" size={16} color={colores.textoSuave} />
             </BlurView>
@@ -228,17 +230,21 @@ export default function MiPulso({ navigation }: { navigation: any }) {
                   </View>
                   <View style={[estilos.badgeBento, checkInCompleted && estilos.badgeBentoComplete]}>
                     <Text style={[estilos.badgeTexto, checkInCompleted && { color: '#10B981' }]}>
-                      {checkInCompleted ? 'PULSO REGISTRADO' : 'CHECK-IN PENDIENTE'}
+                      {checkInCompleted
+                        ? t('miPulso.badge_registered', { defaultValue: 'PULSO REGISTRADO' })
+                        : t('miPulso.badge_pending', { defaultValue: 'CHECK-IN PENDIENTE' })}
                     </Text>
                   </View>
                 </View>
                 <Text style={estilos.bentoTitulo}>
-                  {checkInCompleted ? 'Pulso Diario Actualizado' : 'Registro de Energía y Bienestar'}
+                  {checkInCompleted
+                    ? t('miPulso.checkin_card_title_done', { defaultValue: 'Pulso Diario Actualizado' })
+                    : t('miPulso.checkin_card_title_pending', { defaultValue: 'Registro de Energía y Bienestar' })}
                 </Text>
                 <Text style={estilos.bentoDesc}>
                   {checkInCompleted
-                    ? 'Tu estado laboral y pulso emocional están al día. Toca para revisar o actualizar.'
-                    : 'Toma 30 segundos para registrar tu nivel de energía, foco y estado de ánimo de hoy.'}
+                    ? t('miPulso.checkin_card_desc_done', { defaultValue: 'Tu estado laboral y pulso emocional están al día. Toca para revisar o actualizar.' })
+                    : t('miPulso.checkin_card_desc_pending', { defaultValue: 'Toma 30 segundos para registrar tu nivel de energía, foco y estado de ánimo de hoy.' })}
                 </Text>
               </BlurView>
             </BotonAnimado>
@@ -255,7 +261,7 @@ export default function MiPulso({ navigation }: { navigation: any }) {
                 <View style={estilos.bentoHeaderRow}>
                   <View style={estilos.insightHeaderWrap}>
                     <MaterialIcons name="auto-awesome" size={16} color={colores.texto} />
-                    <Text style={estilos.bentoTituloPequeno}>INSIGHT ASISTENTE</Text>
+                    <Text style={estilos.bentoTituloPequeno}>{t('miPulso.insight_label', { defaultValue: 'INSIGHT ASISTENTE' })}</Text>
                   </View>
                   <Feather name="arrow-up-right" size={14} color={colores.textoSuave} />
                 </View>
@@ -275,8 +281,8 @@ export default function MiPulso({ navigation }: { navigation: any }) {
                   <View style={estilos.clockIconWrap}>
                     <Feather name="clock" size={20} color={colores.texto} />
                   </View>
-                  <Text style={estilos.bentoCuadradoTexto}>Asistencia</Text>
-                  <Text style={estilos.bentoCuadradoSub}>Marcar turno</Text>
+                  <Text style={estilos.bentoCuadradoTexto}>{t('miPulso.attendance_label', { defaultValue: 'Asistencia' })}</Text>
+                  <Text style={estilos.bentoCuadradoSub}>{t('miPulso.attendance_sub', { defaultValue: 'Marcar turno' })}</Text>
                 </BlurView>
               </BotonAnimado>
             </View>
@@ -286,9 +292,9 @@ export default function MiPulso({ navigation }: { navigation: any }) {
         {/* Sección: Métricas Resumen Bento en Pares 2x2 Más Grandes */}
         <View style={estilos.seccionBloque}>
           <View style={estilos.cabeceraLista}>
-            <Text style={estilos.tituloSeccion}>Métricas de Hoy</Text>
+            <Text style={estilos.tituloSeccion}>{t('miPulso.metrics_today_title', { defaultValue: 'Métricas de Hoy' })}</Text>
             <BotonAnimado onPress={() => navigation.navigate('HistorialCompleto')} scaleTo={0.94}>
-              <Text style={estilos.linkVerTodo}>Ver historial</Text>
+              <Text style={estilos.linkVerTodo}>{t('miPulso.view_history_link', { defaultValue: 'Ver historial' })}</Text>
             </BotonAnimado>
           </View>
 
@@ -302,8 +308,8 @@ export default function MiPulso({ navigation }: { navigation: any }) {
                   <Text style={estilos.metricaValor}>{tareasCompletadas}</Text>
                 </View>
                 <View>
-                  <Text style={estilos.metricaLabelPrincipal}>Completadas</Text>
-                  <Text style={estilos.metricaLabelSecundario}>Tareas finalizadas hoy</Text>
+                  <Text style={estilos.metricaLabelPrincipal}>{t('miPulso.metric_completed_label', { defaultValue: 'Completadas' })}</Text>
+                  <Text style={estilos.metricaLabelSecundario}>{t('miPulso.metric_completed_sub', { defaultValue: 'Tareas finalizadas hoy' })}</Text>
                 </View>
               </BlurView>
             </View>
@@ -317,8 +323,8 @@ export default function MiPulso({ navigation }: { navigation: any }) {
                   <Text style={estilos.metricaValor}>{tareasPendientes.length}</Text>
                 </View>
                 <View>
-                  <Text style={estilos.metricaLabelPrincipal}>Pendientes</Text>
-                  <Text style={estilos.metricaLabelSecundario}>Requieren tu atención</Text>
+                  <Text style={estilos.metricaLabelPrincipal}>{t('miPulso.metric_pending_label', { defaultValue: 'Pendientes' })}</Text>
+                  <Text style={estilos.metricaLabelSecundario}>{t('miPulso.metric_pending_sub', { defaultValue: 'Requieren tu atención' })}</Text>
                 </View>
               </BlurView>
             </View>
@@ -332,8 +338,8 @@ export default function MiPulso({ navigation }: { navigation: any }) {
                   <Text style={estilos.metricaValor}>{solicitudesPendientes}</Text>
                 </View>
                 <View>
-                  <Text style={estilos.metricaLabelPrincipal}>Solicitudes</Text>
-                  <Text style={estilos.metricaLabelSecundario}>Trámites en curso</Text>
+                  <Text style={estilos.metricaLabelPrincipal}>{t('miPulso.metric_requests_label', { defaultValue: 'Solicitudes' })}</Text>
+                  <Text style={estilos.metricaLabelSecundario}>{t('miPulso.metric_requests_sub', { defaultValue: 'Trámites en curso' })}</Text>
                 </View>
               </BlurView>
             </View>
@@ -347,8 +353,8 @@ export default function MiPulso({ navigation }: { navigation: any }) {
                   <Text style={estilos.metricaValor}>{documentosPendientes}</Text>
                 </View>
                 <View>
-                  <Text style={estilos.metricaLabelPrincipal}>Docs Nuevos</Text>
-                  <Text style={estilos.metricaLabelSecundario}>Por revisar o firmar</Text>
+                  <Text style={estilos.metricaLabelPrincipal}>{t('miPulso.metric_docs_label', { defaultValue: 'Docs Nuevos' })}</Text>
+                  <Text style={estilos.metricaLabelSecundario}>{t('miPulso.metric_docs_sub', { defaultValue: 'Por revisar o firmar' })}</Text>
                 </View>
               </BlurView>
             </View>
@@ -358,16 +364,20 @@ export default function MiPulso({ navigation }: { navigation: any }) {
         {/* Sección: Feed Inteligente de Prioridades de Hoy */}
         <View style={estilos.seccionBloque}>
           <View style={estilos.cabeceraLista}>
-            <Text style={estilos.tituloSeccion}>Prioridades de Hoy</Text>
+            <Text style={estilos.tituloSeccion}>{t('miPulso.priorities_today_title', { defaultValue: 'Prioridades de Hoy' })}</Text>
             <BotonAnimado onPress={() => navigation.navigate('CentroTareas')} scaleTo={0.94}>
-              <Text style={estilos.linkVerTodo}>Centro de tareas</Text>
+              <Text style={estilos.linkVerTodo}>{t('miPulso.task_center_link', { defaultValue: 'Centro de tareas' })}</Text>
             </BotonAnimado>
           </View>
 
           <Animated.View entering={FadeInDown.duration(320).delay(180)} style={estilos.agendaContenedor}>
             <BlurView intensity={Platform.OS === 'ios' ? intensidadBlur + 6 : 75} tint={blurTint} style={estilos.agendaBlur}>
               {feedPrioridades.length === 0 ? (
-                <EmptyState icono="check-circle" titulo="Al día" detalle="No tienes prioridades pendientes para hoy." />
+                <EmptyState
+                  icono="check-circle"
+                  titulo={t('miPulso.empty_priorities_title', { defaultValue: 'Al día' })}
+                  detalle={t('miPulso.empty_priorities_detail', { defaultValue: 'No tienes prioridades pendientes para hoy.' })}
+                />
               ) : (
                 <View style={estilos.listaTareas}>
                   {feedPrioridades.map((senal, i) => (
@@ -411,7 +421,7 @@ export default function MiPulso({ navigation }: { navigation: any }) {
         {/* Sección: Centro de Operaciones y Módulos */}
         <View style={estilos.seccionBloque}>
           <View style={estilos.cabeceraLista}>
-            <Text style={estilos.tituloSeccion}>Accesos Operativos</Text>
+            <Text style={estilos.tituloSeccion}>{t('miPulso.operational_access_title', { defaultValue: 'Accesos Operativos' })}</Text>
             <BotonAnimado onPress={() => navigation.navigate('BusquedaGlobal')} scaleTo={0.94}>
               <Text style={estilos.linkVerTodo}>{t('miPulso.explore_all')}</Text>
             </BotonAnimado>

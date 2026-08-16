@@ -536,14 +536,23 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
     }
   };
 
-  // Calcula generarResumenJornada; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
   const generarResumenJornada = async () => {
-    // Devuelve el valor final calculado para esta funcion o caso de uso.
-    return t('miPulso.summary_jornada', { 
-      date: new Date().toLocaleDateString(i18n.language === 'es' ? 'es-MX' : 'en-US'), 
-      tasks: tareas.length, 
-      notifications: notificaciones.filter(n => !n.leida).length 
+    const fecha = new Date().toLocaleDateString(i18n.language === 'es' ? 'es-ES' : 'en-US', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
     });
+    const tareasPendientes = tareas.filter((t) => t.estado !== 'completada');
+    const tareasUrgentes = tareasPendientes.filter((t) => t.prioridad === 'Urgente');
+    const notifsNoLeidas = notificaciones.filter((n) => !n.leida).length;
+    const solicitudesPend = solicitudesInternas.filter((s) => s.estado === 'pendiente').length;
+
+    return `Aquí tienes el resumen de tu jornada laboral (${fecha}):\n\n` +
+      `* Tareas Activas: ${tareasPendientes.length} tareas pendientes${tareasUrgentes.length > 0 ? ` (${tareasUrgentes.length} urgentes)` : ''}.\n` +
+      `* Notificaciones: ${notifsNoLeidas > 0 ? `${notifsNoLeidas} avisos sin leer` : 'Bandeja al día sin avisos pendientes'}.\n` +
+      `* Trámites y Solicitudes: ${solicitudesPend > 0 ? `${solicitudesPend} solicitudes en revisión` : 'Sin solicitudes pendientes'}.\n` +
+      `* Registro de Asistencia: Racha de ${metrics?.racha || 1} días de actividad.\n\n` +
+      `¿Deseas que te ayude a priorizar tus actividades de hoy?`;
   };
 
   // Calcula alertasNoLeidas; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.

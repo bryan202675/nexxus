@@ -22,6 +22,7 @@ import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import { useCases } from '@/infrastructure/container';
 import { useAdminAppearance } from './adminTheme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import RenderMarkdownIA from '@/presentation/components/RenderMarkdownIA';
 // Importa { SensitiveAiAction }; acciones sensibles sugeridas por la IA (Fase 8) que requieren
 // confirmacion humana explicita antes de ejecutarse -- ver ask-nexxus-ai (Edge Function).
 import { SensitiveAiAction } from 'domain/entities/AiAssistant';
@@ -240,7 +241,6 @@ export default function ChatIAAdmin({ navigation }: Props) {
       const respuesta = await useCases.ai.ask.execute(texto, historyPayload);
       return { texto: respuesta.respuesta, accionesSensibles: respuesta.accionesSensibles };
     } catch (error: any) {
-      console.error("[ChatIAAdmin] Error calling askNexxusAI:", error);
       if (error?.code === 'functions/failed-precondition' || error?.code === 'failed-precondition') {
         return { texto: error?.message || 'Este módulo no está disponible para el plan actual de tu empresa.' };
       }
@@ -409,7 +409,7 @@ export default function ChatIAAdmin({ navigation }: Props) {
                           <View style={estilos.contenidoIA}>
                             <Text style={estilos.nombreIA}>NexxusIA</Text>
                             <View style={estilos.burbujaIA}>
-                              <Text style={estilos.textoBurbujaIA}>{parsed.texto}</Text>
+                              <RenderMarkdownIA texto={parsed.texto} estiloBase={estilos.textoBurbujaIA} />
                               {parsed.redirect && (
                                 <TouchableOpacity
                                   style={estilos.botonRedirect}
@@ -539,8 +539,13 @@ export default function ChatIAAdmin({ navigation }: Props) {
                       </Svg>
                     </TouchableOpacity>
                   ) : (
-                    <TouchableOpacity style={estilos.botonAccionInput} activeOpacity={0.7}>
-                      <MaterialIcons name="mic-none" size={20} color={theme.muted} />
+                    <TouchableOpacity 
+                      onPress={() => navigation.navigate('VoiceChatScreen')} 
+                      style={estilos.botonAccionInput} 
+                      activeOpacity={0.7}
+                      accessibilityLabel="Hablar con Nexxus IA por voz"
+                    >
+                      <MaterialIcons name="mic" size={20} color={theme.primary} />
                     </TouchableOpacity>
                   )}
                 </View>

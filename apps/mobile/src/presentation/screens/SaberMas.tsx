@@ -9,7 +9,7 @@
 // Importa React, { useState } desde React; habilita componentes, hooks y tipos base para esta pieza.
 import React, { useState } from 'react';
 // Importa { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, Platform } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ScrollView, Dimensions, Platform } from 'react-native';
 // Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import { LinearGradient } from 'expo-linear-gradient';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
@@ -18,8 +18,11 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 // Importa { COLORES, RADIOS, SOMBRAS, ESPACIADO }; reutiliza tokens visuales y constantes comunes del sistema de diseno.
 import { COLORES, RADIOS, SOMBRAS, ESPACIADO } from '@/shared/constants/diseno';
+
+const Text = AdminTranslatedText;
 
 // Calcula { width: ancho }; adapta el comportamiento o diseno segun plataforma/tamano disponible.
 const { width: ancho } = Dimensions.get('window');

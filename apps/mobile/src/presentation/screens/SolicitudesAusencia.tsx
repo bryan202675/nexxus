@@ -9,13 +9,11 @@
 import React, { useMemo, useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
   StatusBar,
-  TextInput,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -32,6 +30,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import * as ImagePicker from 'expo-image-picker';
@@ -45,6 +44,9 @@ import ModalShell from '@/presentation/components/ui/ModalShell';
 import EmptyState from '@/presentation/components/ui/EmptyState';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
 import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
+
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
 
 interface Props {
   navigation: any;
@@ -177,7 +179,7 @@ export default function SolicitudesAusencia({ navigation }: Props) {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permiso requerido', 'Se necesita acceso a la cámara para tomar una foto.');
+        Alert.alert(t('solicitudesAusencia.permission_required_title', { defaultValue: 'Permiso requerido' }), t('solicitudesAusencia.permission_camera_msg', { defaultValue: 'Se necesita acceso a la cámara para tomar una foto.' }));
         return;
       }
       const res = await ImagePicker.launchCameraAsync({
@@ -194,7 +196,7 @@ export default function SolicitudesAusencia({ navigation }: Props) {
         setAdjuntos((prev) => [...prev, item]);
       }
     } catch (e) {
-      Alert.alert('Error', 'No se pudo abrir la cámara.');
+      Alert.alert(t('solicitudesAusencia.alert_error', { defaultValue: 'Error' }), t('solicitudesAusencia.error_camera_msg', { defaultValue: 'No se pudo abrir la cámara.' }));
     }
   };
 
@@ -202,7 +204,7 @@ export default function SolicitudesAusencia({ navigation }: Props) {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permiso requerido', 'Se necesita acceso a la galería para seleccionar imágenes.');
+        Alert.alert(t('solicitudesAusencia.permission_required_title', { defaultValue: 'Permiso requerido' }), t('solicitudesAusencia.permission_gallery_msg', { defaultValue: 'Se necesita acceso a la galería para seleccionar imágenes.' }));
         return;
       }
       const res = await ImagePicker.launchImageLibraryAsync({
@@ -220,7 +222,7 @@ export default function SolicitudesAusencia({ navigation }: Props) {
         setAdjuntos((prev) => [...prev, ...nuevos]);
       }
     } catch (e) {
-      Alert.alert('Error', 'No se pudo abrir la galería.');
+      Alert.alert(t('solicitudesAusencia.alert_error', { defaultValue: 'Error' }), t('solicitudesAusencia.error_gallery_msg', { defaultValue: 'No se pudo abrir la galería.' }));
     }
   };
 
@@ -241,19 +243,19 @@ export default function SolicitudesAusencia({ navigation }: Props) {
         setAdjuntos((prev) => [...prev, ...nuevos]);
       }
     } catch (e) {
-      Alert.alert('Error', 'No se pudo seleccionar el documento.');
+      Alert.alert(t('solicitudesAusencia.alert_error', { defaultValue: 'Error' }), t('solicitudesAusencia.error_document_msg', { defaultValue: 'No se pudo seleccionar el documento.' }));
     }
   };
 
   const mostrarOpcionesAdjunto = () => {
     Alert.alert(
-      'Adjuntar comprobante o archivo',
-      'Selecciona el origen del archivo:',
+      t('solicitudesAusencia.attach_options_title', { defaultValue: 'Adjuntar comprobante o archivo' }),
+      t('solicitudesAusencia.attach_options_msg', { defaultValue: 'Selecciona el origen del archivo:' }),
       [
-        { text: 'Explorar Archivos', onPress: seleccionarDocumento },
-        { text: 'Tomar foto', onPress: tomarFoto },
-        { text: 'Elegir de la galería', onPress: seleccionarDeGaleria },
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('solicitudesAusencia.attach_option_browse', { defaultValue: 'Explorar Archivos' }), onPress: seleccionarDocumento },
+        { text: t('solicitudesAusencia.attach_option_photo', { defaultValue: 'Tomar foto' }), onPress: tomarFoto },
+        { text: t('solicitudesAusencia.attach_option_gallery', { defaultValue: 'Elegir de la galería' }), onPress: seleccionarDeGaleria },
+        { text: t('solicitudesAusencia.attach_option_cancel', { defaultValue: 'Cancelar' }), style: 'cancel' },
       ]
     );
   };
@@ -283,7 +285,7 @@ export default function SolicitudesAusencia({ navigation }: Props) {
 
   const manejarGuardarSolicitud = async () => {
     if (!asunto.trim() || !fechaInicio || !fechaFin) {
-      Alert.alert(t('solicitudesAusencia.alert_incomplete'), 'Por favor completa el asunto y las fechas de inicio y fin.');
+      Alert.alert(t('solicitudesAusencia.alert_incomplete'), t('solicitudesAusencia.alert_incomplete_msg'));
       return;
     }
 
@@ -303,7 +305,7 @@ export default function SolicitudesAusencia({ navigation }: Props) {
             archivo_adjunto: adjuntos.length > 0 ? adjuntos[0].uri : undefined,
           });
         }
-        Alert.alert('Solicitud Actualizada', 'Los cambios en tu solicitud se han guardado con éxito.');
+        Alert.alert(t('solicitudesAusencia.alert_update_success', { defaultValue: 'Solicitud Actualizada' }), t('solicitudesAusencia.alert_update_success_msg', { defaultValue: 'Los cambios en tu solicitud se han guardado con éxito.' }));
       } else {
         // Modo Creación
         await crearSolicitudAusencia({
@@ -331,12 +333,12 @@ export default function SolicitudesAusencia({ navigation }: Props) {
 
   const manejarCancelarSolicitud = (sol: Absence) => {
     Alert.alert(
-      'Cancelar Solicitud',
-      `¿Estás seguro de cancelar tu solicitud de ${sol.asunto || sol.tipo}? Esta acción no se puede deshacer.`,
+      t('solicitudesAusencia.cancel_confirm_title', { defaultValue: 'Cancelar Solicitud' }),
+      t('solicitudesAusencia.cancel_confirm_msg', { subject: sol.asunto || sol.tipo, defaultValue: `¿Estás seguro de cancelar tu solicitud de ${sol.asunto || sol.tipo}? Esta acción no se puede deshacer.` }),
       [
-        { text: 'No, mantener', style: 'cancel' },
+        { text: t('solicitudesAusencia.cancel_confirm_keep', { defaultValue: 'No, mantener' }), style: 'cancel' },
         {
-          text: 'Sí, cancelar solicitud',
+          text: t('solicitudesAusencia.cancel_confirm_confirm', { defaultValue: 'Sí, cancelar solicitud' }),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -345,9 +347,9 @@ export default function SolicitudesAusencia({ navigation }: Props) {
               }
               setDetalleModalVisible(false);
               setSolicitudSeleccionada(null);
-              Alert.alert('Solicitud Cancelada', 'La solicitud ha sido cancelada correctamente.');
+              Alert.alert(t('solicitudesAusencia.cancel_success_title', { defaultValue: 'Solicitud Cancelada' }), t('solicitudesAusencia.cancel_success_msg', { defaultValue: 'La solicitud ha sido cancelada correctamente.' }));
             } catch (e) {
-              Alert.alert('Error', 'No se pudo cancelar la solicitud.');
+              Alert.alert(t('solicitudesAusencia.alert_error', { defaultValue: 'Error' }), t('solicitudesAusencia.cancel_error_msg', { defaultValue: 'No se pudo cancelar la solicitud.' }));
             }
           },
         },
@@ -490,7 +492,7 @@ export default function SolicitudesAusencia({ navigation }: Props) {
 
       <NavbarEnterprise
         titulo={t('solicitudesAusencia.title')}
-        subtitulo="Gestión y permisos"
+        subtitulo={t('solicitudesAusencia.nav_subtitle', { defaultValue: 'Gestión y permisos' })}
         mostrarAtras
         ocultarAccionesDerechas
         accionDerecha={
@@ -498,7 +500,7 @@ export default function SolicitudesAusencia({ navigation }: Props) {
             onPress={abrirFormularioCrear}
             scaleTo={0.92}
             style={estilos.botonHeaderNueva}
-            accessibilityLabel="Nueva Solicitud"
+            accessibilityLabel={t('solicitudesAusencia.new_request_label', { defaultValue: 'Nueva Solicitud' })}
           >
             <Feather name="plus" size={19} color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
           </BotonAnimado>
@@ -510,21 +512,21 @@ export default function SolicitudesAusencia({ navigation }: Props) {
         <BlurView intensity={Platform.OS === 'ios' ? intensidadBlur + 10 : 80} tint={blurTint} style={estilos.resumenVidrio}>
           <View style={estilos.metricaColumna}>
             <Text style={estilos.metricaValor}>{solicitudes.length}</Text>
-            <Text style={estilos.metricaLabel}>Total</Text>
+            <Text style={estilos.metricaLabel}>{t('solicitudesAusencia.summary_total', { defaultValue: 'Total' })}</Text>
           </View>
           <View style={estilos.divisorVertical} />
           <View style={estilos.metricaColumna}>
             <Text style={[estilos.metricaValor, { color: '#F59E0B' }]}>
               {solicitudes.filter((s) => s.estado === 'pendiente').length}
             </Text>
-            <Text style={estilos.metricaLabel}>Pendientes</Text>
+            <Text style={estilos.metricaLabel}>{t('solicitudesAusencia.summary_pending', { defaultValue: 'Pendientes' })}</Text>
           </View>
           <View style={estilos.divisorVertical} />
           <View style={estilos.metricaColumna}>
             <Text style={[estilos.metricaValor, { color: '#10B981' }]}>
               {solicitudes.filter((s) => s.estado === 'aprobada').length}
             </Text>
-            <Text style={estilos.metricaLabel}>Aprobadas</Text>
+            <Text style={estilos.metricaLabel}>{t('solicitudesAusencia.summary_approved', { defaultValue: 'Aprobadas' })}</Text>
           </View>
         </BlurView>
       </View>
@@ -542,7 +544,7 @@ export default function SolicitudesAusencia({ navigation }: Props) {
             <EmptyState
               icono="calendar"
               titulo={t('solicitudesAusencia.empty_msg')}
-              detalle="No tienes solicitudes registradas actualmente."
+              detalle={t('solicitudesAusencia.empty_detail', { defaultValue: 'No tienes solicitudes registradas actualmente.' })}
             />
             <BotonAnimado
               onPress={abrirFormularioCrear}
@@ -550,7 +552,7 @@ export default function SolicitudesAusencia({ navigation }: Props) {
               style={estilos.botonEmptyCTA}
             >
               <Feather name="plus" size={17} color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
-              <Text style={estilos.textoEmptyCTA}>Crear Solicitud</Text>
+              <Text style={estilos.textoEmptyCTA}>{t('solicitudesAusencia.create_request_label', { defaultValue: 'Crear Solicitud' })}</Text>
             </BotonAnimado>
           </View>
         }
@@ -563,10 +565,10 @@ export default function SolicitudesAusencia({ navigation }: Props) {
             onPress={abrirFormularioCrear}
             scaleTo={0.95}
             style={estilos.fabBoton}
-            accessibilityLabel="Nueva Solicitud"
+            accessibilityLabel={t('solicitudesAusencia.new_request_label', { defaultValue: 'Nueva Solicitud' })}
           >
             <Feather name="plus" size={18} color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
-            <Text style={estilos.fabTexto}>Nueva Solicitud</Text>
+            <Text style={estilos.fabTexto}>{t('solicitudesAusencia.new_request_label', { defaultValue: 'Nueva Solicitud' })}</Text>
           </BotonAnimado>
         </View>
       )}
@@ -618,7 +620,9 @@ export default function SolicitudesAusencia({ navigation }: Props) {
                           { color: solicitudSeleccionada.estado === 'aprobada' ? '#10B981' : '#EF4444' },
                         ]}
                       >
-                        {solicitudSeleccionada.estado === 'aprobada' ? 'Solicitud Aprobada' : 'Solicitud Rechazada'}
+                        {solicitudSeleccionada.estado === 'aprobada'
+                          ? t('solicitudesAusencia.resolution_approved_title', { defaultValue: 'Solicitud Aprobada' })
+                          : t('solicitudesAusencia.resolution_rejected_title', { defaultValue: 'Solicitud Rechazada' })}
                       </Text>
                       {solicitudSeleccionada.resolved_at && (
                         <Text style={estilos.detalleResolucionFecha}>
@@ -628,20 +632,20 @@ export default function SolicitudesAusencia({ navigation }: Props) {
                     </View>
                   </View>
 
-                  <Text style={estilos.detalleLabel}>Mensaje / Observación de Administración</Text>
+                  <Text style={estilos.detalleLabel}>{t('solicitudesAusencia.resolution_message_label', { defaultValue: 'Mensaje / Observación de Administración' })}</Text>
                   <Text style={estilos.detalleMotivoTexto}>
                     {solicitudSeleccionada.comentario_resolucion ||
                       solicitudSeleccionada.observaciones ||
                       (solicitudSeleccionada.estado === 'aprobada'
-                        ? 'Tu solicitud ha sido aprobada exitosamente.'
-                        : 'Tu solicitud ha sido rechazada por administración.')}
+                        ? t('solicitudesAusencia.resolution_default_approved', { defaultValue: 'Tu solicitud ha sido aprobada exitosamente.' })
+                        : t('solicitudesAusencia.resolution_default_rejected', { defaultValue: 'Tu solicitud ha sido rechazada por administración.' }))}
                   </Text>
                 </View>
               )}
 
               {/* Estado */}
               <View style={estilos.detalleSeccionCard}>
-                <Text style={estilos.detalleLabel}>Estado actual</Text>
+                <Text style={estilos.detalleLabel}>{t('solicitudesAusencia.detail_status_label', { defaultValue: 'Estado actual' })}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
                   <View style={[estilos.badgeEstado, { backgroundColor: obtenerColorEstado(solicitudSeleccionada.estado) + '18', borderColor: obtenerColorEstado(solicitudSeleccionada.estado) + '40' }]}>
                     <Text style={[estilos.textoBadge, { color: obtenerColorEstado(solicitudSeleccionada.estado) }]}>
@@ -651,7 +655,7 @@ export default function SolicitudesAusencia({ navigation }: Props) {
                   <View style={estilos.prioridadPill}>
                     <View style={[estilos.puntoPrioridadMini, { backgroundColor: COLORES_PRIORIDAD[solicitudSeleccionada.prioridad || 'media'] }]} />
                     <Text style={estilos.textoPrioridadMini}>
-                      Prioridad {t(`solicitudesAusencia.priorities.${solicitudSeleccionada.prioridad || 'media'}`)}
+                      {t('solicitudesAusencia.detail_priority_label', { priority: t(`solicitudesAusencia.priorities.${solicitudSeleccionada.prioridad || 'media'}`), defaultValue: `Prioridad ${t(`solicitudesAusencia.priorities.${solicitudSeleccionada.prioridad || 'media'}`)}` })}
                     </Text>
                   </View>
                 </View>
@@ -659,15 +663,15 @@ export default function SolicitudesAusencia({ navigation }: Props) {
 
               {/* Rango de Fechas */}
               <View style={estilos.detalleSeccionCard}>
-                <Text style={estilos.detalleLabel}>Período de Ausencia</Text>
+                <Text style={estilos.detalleLabel}>{t('solicitudesAusencia.detail_period_label', { defaultValue: 'Período de Ausencia' })}</Text>
                 <View style={estilos.detalleFilaFechas}>
                   <View style={estilos.detalleFechaBox}>
-                    <Text style={estilos.detalleFechaBoxLabel}>Desde</Text>
+                    <Text style={estilos.detalleFechaBoxLabel}>{t('solicitudesAusencia.detail_from_label', { defaultValue: 'Desde' })}</Text>
                     <Text style={estilos.detalleFechaBoxValor}>{solicitudSeleccionada.fecha_inicio}</Text>
                   </View>
                   <Feather name="arrow-right" size={16} color={colores.textoSuave} />
                   <View style={estilos.detalleFechaBox}>
-                    <Text style={estilos.detalleFechaBoxLabel}>Hasta</Text>
+                    <Text style={estilos.detalleFechaBoxLabel}>{t('solicitudesAusencia.detail_to_label', { defaultValue: 'Hasta' })}</Text>
                     <Text style={estilos.detalleFechaBoxValor}>{solicitudSeleccionada.fecha_fin}</Text>
                   </View>
                 </View>
@@ -675,16 +679,16 @@ export default function SolicitudesAusencia({ navigation }: Props) {
 
               {/* Justificación */}
               <View style={estilos.detalleSeccionCard}>
-                <Text style={estilos.detalleLabel}>Justificación</Text>
+                <Text style={estilos.detalleLabel}>{t('solicitudesAusencia.detail_justification_label', { defaultValue: 'Justificación' })}</Text>
                 <Text style={estilos.detalleMotivoTexto}>
-                  {solicitudSeleccionada.motivo || 'Sin justificación adicional.'}
+                  {solicitudSeleccionada.motivo || t('solicitudesAusencia.detail_no_justification', { defaultValue: 'Sin justificación adicional.' })}
                 </Text>
               </View>
 
               {/* Archivos Adjuntos */}
               {((solicitudSeleccionada.archivos_adjuntos && solicitudSeleccionada.archivos_adjuntos.length > 0) || solicitudSeleccionada.archivo_adjunto) && (
                 <View style={estilos.detalleSeccionCard}>
-                  <Text style={estilos.detalleLabel}>Comprobantes / Archivos Adjuntos</Text>
+                  <Text style={estilos.detalleLabel}>{t('solicitudesAusencia.detail_attachments_label', { defaultValue: 'Comprobantes / Archivos Adjuntos' })}</Text>
                   <View style={{ gap: 8, marginTop: 8 }}>
                     {solicitudSeleccionada.archivos_adjuntos?.map((adj, i) => (
                       <View key={adj.id || `adj-${i}`} style={estilos.cardAdjuntoPreview}>
@@ -697,7 +701,7 @@ export default function SolicitudesAusencia({ navigation }: Props) {
                         )}
                         <View style={estilos.infoAdjunto}>
                           <Text style={estilos.nombreAdjunto} numberOfLines={1}>{adj.nombre}</Text>
-                          <Text style={estilos.subAdjunto}>{adj.tipo === 'imagen' ? 'Foto adjunta' : 'Documento adjunto'}</Text>
+                          <Text style={estilos.subAdjunto}>{adj.tipo === 'imagen' ? t('solicitudesAusencia.attachment_type_photo', { defaultValue: 'Foto adjunta' }) : t('solicitudesAusencia.attachment_type_document', { defaultValue: 'Documento adjunto' })}</Text>
                         </View>
                       </View>
                     ))}
@@ -707,8 +711,8 @@ export default function SolicitudesAusencia({ navigation }: Props) {
                           <Feather name="file-text" size={20} color={esOscuro ? '#FFFFFF' : '#0F172A'} />
                         </View>
                         <View style={estilos.infoAdjunto}>
-                          <Text style={estilos.nombreAdjunto} numberOfLines={1}>Archivo adjunto</Text>
-                          <Text style={estilos.subAdjunto}>Comprobante cargado</Text>
+                          <Text style={estilos.nombreAdjunto} numberOfLines={1}>{t('solicitudesAusencia.generic_attachment_name', { defaultValue: 'Archivo adjunto' })}</Text>
+                          <Text style={estilos.subAdjunto}>{t('solicitudesAusencia.attachment_generic_sub', { defaultValue: 'Comprobante cargado' })}</Text>
                         </View>
                       </View>
                     )}
@@ -725,7 +729,7 @@ export default function SolicitudesAusencia({ navigation }: Props) {
                     style={estilos.botonEditarDetalle}
                   >
                     <Feather name="edit-3" size={16} color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
-                    <Text style={estilos.textoBotonEditarDetalle}>Editar Solicitud</Text>
+                    <Text style={estilos.textoBotonEditarDetalle}>{t('solicitudesAusencia.edit_request_button', { defaultValue: 'Editar Solicitud' })}</Text>
                   </BotonAnimado>
 
                   <BotonAnimado
@@ -734,7 +738,7 @@ export default function SolicitudesAusencia({ navigation }: Props) {
                     style={estilos.botonCancelarDetalle}
                   >
                     <Feather name="trash-2" size={16} color="#EF4444" />
-                    <Text style={estilos.textoBotonCancelarDetalle}>Cancelar</Text>
+                    <Text style={estilos.textoBotonCancelarDetalle}>{t('solicitudesAusencia.cancel_button', { defaultValue: 'Cancelar' })}</Text>
                   </BotonAnimado>
                 </View>
               )}
@@ -749,10 +753,10 @@ export default function SolicitudesAusencia({ navigation }: Props) {
           <View style={estilos.modalHeader}>
             <View>
               <Text style={estilos.modalTitulo}>
-                {solicitudEditando ? 'Editar Solicitud' : t('solicitudesAusencia.modal_title')}
+                {solicitudEditando ? t('solicitudesAusencia.edit_request_button', { defaultValue: 'Editar Solicitud' }) : t('solicitudesAusencia.modal_title')}
               </Text>
               <Text style={estilos.modalSubtitulo}>
-                {solicitudEditando ? 'Modifica las fechas o detalles' : 'Registra tus fechas y motivo'}
+                {solicitudEditando ? t('solicitudesAusencia.modal_subtitle_edit', { defaultValue: 'Modifica las fechas o detalles' }) : t('solicitudesAusencia.modal_subtitle_create', { defaultValue: 'Registra tus fechas y motivo' })}
               </Text>
             </View>
             <BotonAnimado onPress={() => setModalFormVisible(false)} scaleTo={0.92} style={estilos.botonCerrarModal}>
@@ -796,11 +800,11 @@ export default function SolicitudesAusencia({ navigation }: Props) {
 
             {/* Selector de Rango de Fechas con Calendario Interactivo */}
             <View style={estilos.seccionFechasHeader}>
-              <Text style={estilos.labelSinMargin}>Fechas de Ausencia</Text>
+              <Text style={estilos.labelSinMargin}>{t('solicitudesAusencia.label_dates_section', { defaultValue: 'Fechas de Ausencia' })}</Text>
               {diasSeleccionadosCount > 0 && (
                 <View style={estilos.badgeDiasCount}>
                   <Text style={estilos.textoDiasCount}>
-                    {diasSeleccionadosCount} {diasSeleccionadosCount === 1 ? 'día' : 'días'}
+                    {t('solicitudesAusencia.days_count', { count: diasSeleccionadosCount, defaultValue: `${diasSeleccionadosCount} ${diasSeleccionadosCount === 1 ? 'día' : 'días'}` })}
                   </Text>
                 </View>
               )}
@@ -816,7 +820,7 @@ export default function SolicitudesAusencia({ navigation }: Props) {
                 <View style={estilos.fechaSlotValorWrap}>
                   <Feather name="calendar" size={14} color={colores.textoSuave} />
                   <Text style={[estilos.fechaSlotValor, !fechaInicio && { color: colores.textoSuave }]}>
-                    {fechaInicio || 'Seleccionar'}
+                    {fechaInicio || t('solicitudesAusencia.select_placeholder', { defaultValue: 'Seleccionar' })}
                   </Text>
                 </View>
               </View>
@@ -828,7 +832,7 @@ export default function SolicitudesAusencia({ navigation }: Props) {
                 <View style={estilos.fechaSlotValorWrap}>
                   <Feather name="calendar" size={14} color={colores.textoSuave} />
                   <Text style={[estilos.fechaSlotValor, !fechaFin && { color: colores.textoSuave }]}>
-                    {fechaFin || 'Seleccionar'}
+                    {fechaFin || t('solicitudesAusencia.select_placeholder', { defaultValue: 'Seleccionar' })}
                   </Text>
                 </View>
               </View>
@@ -906,7 +910,7 @@ export default function SolicitudesAusencia({ navigation }: Props) {
                     scaleTo={0.96}
                     style={estilos.calBotonConfirmar}
                   >
-                    <Text style={estilos.calBotonConfirmarTexto}>Aplicar fechas</Text>
+                    <Text style={estilos.calBotonConfirmarTexto}>{t('solicitudesAusencia.apply_dates_button', { defaultValue: 'Aplicar fechas' })}</Text>
                   </BotonAnimado>
                 </BlurView>
               </Animated.View>
@@ -916,12 +920,12 @@ export default function SolicitudesAusencia({ navigation }: Props) {
             <View style={estilos.seccionJustificacionHeader}>
               <Text style={estilos.labelSinMargin}>{t('solicitudesAusencia.label_justification')}</Text>
               <View style={estilos.badgeOpcional}>
-                <Text style={estilos.textoBadgeOpcional}>Opcional</Text>
+                <Text style={estilos.textoBadgeOpcional}>{t('solicitudesAusencia.optional_badge', { defaultValue: 'Opcional' })}</Text>
               </View>
             </View>
             <TextInput
               style={[estilos.input, estilos.textArea]}
-              placeholder="Explica el motivo (opcional)..."
+              placeholder={t('solicitudesAusencia.placeholder_justification', { defaultValue: 'Explica el motivo (opcional)...' })}
               placeholderTextColor={colores.textoSuave}
               multiline
               numberOfLines={4}
@@ -931,9 +935,9 @@ export default function SolicitudesAusencia({ navigation }: Props) {
 
             {/* Adjuntar Archivos Múltiples / Comprobantes */}
             <View style={estilos.seccionAdjuntoHeader}>
-              <Text style={estilos.labelSinMargin}>Comprobantes o Archivos</Text>
+              <Text style={estilos.labelSinMargin}>{t('solicitudesAusencia.label_attachments_section', { defaultValue: 'Comprobantes o Archivos' })}</Text>
               <View style={estilos.badgeOpcional}>
-                <Text style={estilos.textoBadgeOpcional}>Opcional</Text>
+                <Text style={estilos.textoBadgeOpcional}>{t('solicitudesAusencia.optional_badge', { defaultValue: 'Opcional' })}</Text>
               </View>
             </View>
 
@@ -953,7 +957,7 @@ export default function SolicitudesAusencia({ navigation }: Props) {
                         {adj.nombre}
                       </Text>
                       <Text style={estilos.subAdjunto}>
-                        {adj.tipo === 'imagen' ? 'Foto adjunta' : 'Documento adjunto'}
+                        {adj.tipo === 'imagen' ? t('solicitudesAusencia.attachment_type_photo', { defaultValue: 'Foto adjunta' }) : t('solicitudesAusencia.attachment_type_document', { defaultValue: 'Documento adjunto' })}
                       </Text>
                     </View>
                     <BotonAnimado
@@ -978,9 +982,9 @@ export default function SolicitudesAusencia({ navigation }: Props) {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={estilos.textoAdjuntarTitulo}>
-                  {adjuntos.length > 0 ? '+ Adjuntar otro archivo o foto' : 'Adjuntar documento o foto'}
+                  {adjuntos.length > 0 ? t('solicitudesAusencia.attach_button_add_another', { defaultValue: '+ Adjuntar otro archivo o foto' }) : t('solicitudesAusencia.attach_button_add', { defaultValue: 'Adjuntar documento o foto' })}
                 </Text>
-                <Text style={estilos.textoAdjuntarSub}>Archivos PDF, Word, fotos de galería o cámara</Text>
+                <Text style={estilos.textoAdjuntarSub}>{t('solicitudesAusencia.attach_button_sub', { defaultValue: 'Archivos PDF, Word, fotos de galería o cámara' })}</Text>
               </View>
               <Feather name="file-plus" size={18} color={colores.textoSuave} />
             </BotonAnimado>
@@ -1017,7 +1021,7 @@ export default function SolicitudesAusencia({ navigation }: Props) {
               ) : (
                 <>
                   <Text style={estilos.textoBotonEnviar}>
-                    {solicitudEditando ? 'Guardar Cambios' : t('solicitudesAusencia.btn_submit')}
+                    {solicitudEditando ? t('solicitudesAusencia.btn_submit_edit', { defaultValue: 'Guardar Cambios' }) : t('solicitudesAusencia.btn_submit')}
                   </Text>
                   <Feather name="check" size={17} color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
                 </>

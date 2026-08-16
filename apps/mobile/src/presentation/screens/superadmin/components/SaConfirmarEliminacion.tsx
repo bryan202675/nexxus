@@ -6,9 +6,14 @@
 
 import React, { useState } from 'react';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { TouchableOpacity, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
 import { AdminModal } from '../../admin/AdminModal';
 import { AdminModalFormGlass } from '../../admin/AdminModalFormGlass';
+
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
 
 type Props = {
   visible: boolean;
@@ -23,9 +28,11 @@ type Props = {
 };
 
 export function SaConfirmarEliminacion({
-  visible, titulo, mensaje, nombreEsperado, etiquetaCampo = 'Escribe el nombre para confirmar',
+  visible, titulo, mensaje, nombreEsperado, etiquetaCampo,
   procesando, onCancelar, onConfirmar,
 }: Props) {
+  const { t } = useTranslation();
+  const etiquetaCampoFinal = etiquetaCampo ?? t('superadmin.saLayout.confirmarEliminacion.etiquetaCampo');
   const [texto, setTexto] = useState('');
   const coincide = texto.trim().length > 0 && texto.trim() === nombreEsperado.trim();
 
@@ -40,7 +47,7 @@ export function SaConfirmarEliminacion({
             <Text>{titulo}</Text>
           </View>
           <Text>{mensaje}</Text>
-          <Text>{etiquetaCampo}: <Text>{nombreEsperado}</Text></Text>
+          <Text>{etiquetaCampoFinal}: <Text>{nombreEsperado}</Text></Text>
           <TextInput
             value={texto}
             onChangeText={setTexto}
@@ -50,13 +57,13 @@ export function SaConfirmarEliminacion({
           />
           <View>
             <TouchableOpacity onPress={onCancelar} disabled={procesando}>
-              <Text>Cancelar</Text>
+              <Text>{t('superadmin.saLayout.confirmarEliminacion.cancelar')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={onConfirmar}
               disabled={!coincide || procesando}
             >
-              <Text>{procesando ? 'Eliminando…' : 'Eliminar permanentemente'}</Text>
+              <Text>{procesando ? t('superadmin.saLayout.confirmarEliminacion.eliminando') : t('superadmin.saLayout.confirmarEliminacion.eliminarPermanentemente')}</Text>
             </TouchableOpacity>
           </View>
         </AdminModalFormGlass>

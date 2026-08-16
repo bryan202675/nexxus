@@ -3,29 +3,18 @@ import { useNavigate } from "react-router-dom";
 import NexxusCard from "views/nexxus/components/NexxusCard";
 import { useAuth } from "context/AuthContext";
 import { supabase } from "supabaseClient/supabaseConfig";
+import {
+  Energy,
+  Stress,
+  CheckInRow,
+  calculatePulse,
+  getPulseState,
+  getGuide,
+  calculateStreak,
+  normalizeCheckIn,
+} from "services/checkInAnalytics";
 
-type Energy = "bajo" | "medio" | "alto";
-type Stress = "bajo" | "moderado" | "alto" | "critico";
 type SaveState = { status: "idle" | "pending" | "success" | "error"; message: string };
-type CheckInRow = {
-  id: string;
-  created_at: string;
-  datos?: Record<string, unknown> | null;
-  energia?: unknown;
-  balanceEmocional?: unknown;
-  estres?: unknown;
-  nivelEstres?: unknown;
-  calidadSueno?: unknown;
-  cargaLaboral?: unknown;
-  indicadoresRapidos?: unknown;
-  estado_animo?: unknown;
-  nota?: unknown;
-  nivel_estres?: unknown;
-  calidad_sueno?: unknown;
-  carga_laboral?: unknown;
-  indicadores_rapidos?: unknown;
-};
-type NormalizedCheckIn = { energy: Energy; mood: number; stress: Stress; sleep: number; workload: number; tags: string[]; note: string };
 
 const steps = ["Energía", "Descanso", "Ánimo", "Estrés", "Carga", "Nota"];
 const tags = ["Productivo", "Enfocado", "Cansado", "Motivado", "Distraído", "Bajo presión", "Creativo", "Desafiado"];
@@ -47,91 +36,6 @@ const stressOptions: Array<{ value: Stress; label: string; description: string; 
   { value: "alto", label: "Alto", description: "Cerca del límite de capacidad.", color: "#F59E0B" },
   { value: "critico", label: "Crítico", description: "Sobrecarga inmediata detectada.", color: "#EF4444" },
 ];
-
-function calculatePulse(energy: Energy, sleep: number, mood: number, stress: Stress, workload: number) {
-  const energyScore = energy === "alto" ? 5 : energy === "medio" ? 3 : 1;
-  const stressScore = stress === "bajo" ? 5 : stress === "moderado" ? 3 : stress === "alto" ? 2 : 1;
-  return Math.round(((energyScore + sleep + mood + stressScore + (6 - workload)) / 25) * 100);
-}
-
-function getPulseState(pulse: number) {
-  return pulse >= 75 ? "Estado Óptimo" : pulse >= 50 ? "Requiere Atención" : "Necesita Soporte";
-}
-
-function getGuide(stress: Stress, workload: number) {
-  if (stress === "critico") return "Nivel crítico detectado. Considera tomar un respiro o hablar con un líder.";
-  if (workload >= 4) return "Carga elevada. Prioriza tareas esenciales y gestiona tu energía.";
-  return "Tu pulso se mantiene equilibrado. Sigue así.";
-}
-
-function calculateStreak(rows: Array<{ created_at: string }>) {
-  if (!rows.length) return 0;
-  let streak = 1;
-  for (let index = 0; index < rows.length - 1; index += 1) {
-    const current = new Date(rows[index].created_at);
-    const previous = new Date(rows[index + 1].created_at);
-    current.setHours(0, 0, 0, 0);
-    previous.setHours(0, 0, 0, 0);
-    const difference = (current.getTime() - previous.getTime()) / (1000 * 60 * 60 * 24);
-    if (difference === 1) streak += 1;
-    else break;
-  }
-  return streak;
-}
-
-function nestedOrColumn(row: CheckInRow, key: keyof Omit<CheckInRow, "datos">) {
-  const nested = row.datos?.[key];
-  return nested !== undefined && nested !== null && nested !== "" ? nested : row[key];
-}
-
-function normalizeEnergy(value: unknown): Energy {
-  const text = String(value || "").toLowerCase();
-  return text === "alto" || text === "high" ? "alto" : text === "bajo" || text === "low" ? "bajo" : "medio";
-}
-
-function normalizeMood(value: unknown): number {
-  const numeric = Number(value);
-  if (numeric >= 1 && numeric <= 5) return Math.round(numeric);
-  const text = String(value || "").toLowerCase();
-  if (text.includes("excelente")) return 5;
-  if (text === "bien" || text.includes("bueno")) return 4;
-  if (text.includes("neutral")) return 3;
-  if (text.includes("frustr") || text.includes("estres")) return 2;
-  return 1;
-}
-
-function normalizeStress(value: unknown, numericValue: unknown): Stress {
-  const text = String(value || "").toLowerCase();
-  if (text.includes("crit")) return "critico";
-  if (text.includes("alto") || text === "high") return "alto";
-  if (text.includes("bajo") || text === "low") return "bajo";
-  const numeric = Number(numericValue);
-  return numeric >= 5 ? "critico" : numeric >= 4 ? "alto" : numeric === 1 ? "bajo" : "moderado";
-}
-
-function normalizeNumber(value: unknown, fallback: number) {
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? Math.min(5, Math.max(1, Math.round(numeric))) : fallback;
-}
-
-function normalizeTags(value: unknown) {
-  return Array.isArray(value) ? value.map(String).filter(Boolean) : [];
-}
-
-function normalizeCheckIn(row: CheckInRow): NormalizedCheckIn {
-  const rawStress = nestedOrColumn(row, "nivelEstres") ?? nestedOrColumn(row, "nivel_estres");
-  const numericStress = nestedOrColumn(row, "estres");
-  const rawMood = nestedOrColumn(row, "balanceEmocional") ?? row.estado_animo;
-  return {
-    energy: normalizeEnergy(nestedOrColumn(row, "energia")),
-    mood: normalizeMood(rawMood),
-    stress: normalizeStress(rawStress, numericStress),
-    sleep: normalizeNumber(nestedOrColumn(row, "calidadSueno") ?? nestedOrColumn(row, "calidad_sueno"), 3),
-    workload: normalizeNumber(nestedOrColumn(row, "cargaLaboral") ?? nestedOrColumn(row, "carga_laboral"), 3),
-    tags: normalizeTags(nestedOrColumn(row, "indicadoresRapidos") ?? nestedOrColumn(row, "indicadores_rapidos")),
-    note: String(nestedOrColumn(row, "nota") ?? row.nota ?? ""),
-  };
-}
 
 export default function WorkspaceCheckIn() {
   const { user, empresaId, rol } = useAuth();

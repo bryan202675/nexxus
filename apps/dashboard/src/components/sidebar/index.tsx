@@ -3,10 +3,13 @@ import Links from "./components/Links";
 
 import { getRoutesForRole } from "routes";
 import { useAuth } from "context/AuthContext";
+import { useTeamCareAlerts } from "context/TeamCareAlertsContext";
 
 const Sidebar = ({ open, onClose }) => {
   const { esSuperAdmin, empresaNombre, rol } = useAuth();
   const routes = getRoutesForRole(rol);
+  const { unresolvedCount } = useTeamCareAlerts();
+  const badges = { "empresa-cuidado-equipo": unresolvedCount, "jefe-cuidado-equipo": unresolvedCount };
 
   const tituloHeader = esSuperAdmin
     ? "Nexxus SA"
@@ -37,7 +40,7 @@ const Sidebar = ({ open, onClose }) => {
       {/* Nav item */}
 
       <ul className="mb-auto pt-1">
-        <Links routes={routes} />
+        <Links routes={routes} badges={badges} />
       </ul>
     </div>
   );

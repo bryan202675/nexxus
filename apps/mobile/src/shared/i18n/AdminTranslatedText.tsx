@@ -369,3 +369,11 @@ export function AdminTranslatedTextInput({ placeholder, ...props }: TextInputPro
     />
   );
 }
+
+/**
+ * Alias neutros para usar el mismo mecanismo de traducción dinámica fuera de
+ * pantallas de admin (empleado, superadmin) sin la connotación "Admin" en el nombre.
+ */
+export const TranslatedText = AdminTranslatedText;
+export const TranslatedTextInput = AdminTranslatedTextInput;
+export const TranslationProvider = AdminTranslationProvider;

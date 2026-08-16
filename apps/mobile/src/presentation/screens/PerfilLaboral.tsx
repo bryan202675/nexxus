@@ -5,7 +5,6 @@ import {
   SafeAreaView,
   StatusBar,
   StyleSheet,
-  Text,
   View,
   TouchableOpacity,
   Alert,
@@ -24,6 +23,9 @@ import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
 import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
+import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
+
+const Text = AdminTranslatedText;
 
 interface Props {
   navigation: any;
@@ -246,7 +248,7 @@ export default function PerfilLaboral({ navigation }: Props) {
 
         {/* Datos Laborales */}
         <Animated.View entering={FadeInDown.duration(260).delay(40).easing(Easing.out(Easing.quad))} style={estilos.seccion}>
-          <Text style={estilos.tituloSeccion}>INFORMACIÓN LABORAL</Text>
+          <Text style={estilos.tituloSeccion}>{t('perfilLaboral.labor_info', { defaultValue: 'INFORMACIÓN LABORAL' })}</Text>
           <View style={estilos.gridResumen}>
             {datosLaborales.map(renderTarjetaDato)}
           </View>

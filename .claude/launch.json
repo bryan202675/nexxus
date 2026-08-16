@@ -15,7 +15,9 @@
     },
     {
       "name": "framer-static",
-      "url": "http://localhost:8099"
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--workspace", "landing", "run", "dev"],
+      "port": 8099
     },
     {
       "name": "framer-static-v2",

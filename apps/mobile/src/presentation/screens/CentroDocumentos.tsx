@@ -14,8 +14,6 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
-  Text,
-  TextInput,
   View,
   RefreshControl,
   ActivityIndicator,
@@ -25,6 +23,7 @@ import { BlurView } from 'expo-blur';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import Markdown from 'react-native-markdown-display';
 import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
 import { ModalShell, EmptyState } from '@/presentation/components/ui';
 import { RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/constants/diseno';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
@@ -33,6 +32,9 @@ import { Documento } from 'domain/entities/Documento';
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
 import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
+
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
 
 interface Props {
   navigation: any;
@@ -143,7 +145,7 @@ export default function CentroDocumentos({ navigation }: Props) {
             onPress={manejarRefrescar}
             scaleTo={0.92}
             disabled={refrescando || cargando}
-            accessibilityLabel="Actualizar documentos"
+            accessibilityLabel={t('centroDocumentos.refresh_accessibility')}
             style={estilos.iconButtonHeader}
           >
             {refrescando || cargando ? (
@@ -386,7 +388,7 @@ export default function CentroDocumentos({ navigation }: Props) {
                   {docLecturaActivo.titulo}
                 </Text>
                 <Text style={estilos.modalSubtitulo}>
-                  {docLecturaActivo.tamano || 'Documento Oficial'} · {formatearFecha(docLecturaActivo.fechaSubida, i18n.language)}
+                  {docLecturaActivo.tamano || t('centroDocumentos.official_document')} · {formatearFecha(docLecturaActivo.fechaSubida, i18n.language)}
                 </Text>
               </View>
 
@@ -424,14 +426,14 @@ export default function CentroDocumentos({ navigation }: Props) {
                     },
                   }}
                 >
-                  {docLecturaActivo.contenido_completo || 'Este documento contiene normativa e información oficial verificada por la empresa.'}
+                  {docLecturaActivo.contenido_completo || t('centroDocumentos.default_content')}
                 </Markdown>
               </View>
 
               {/* Historial de Versiones */}
               {docLecturaActivo.historialVersiones && docLecturaActivo.historialVersiones.length > 0 && (
                 <View style={estilos.seccionVersiones}>
-                  <Text style={estilos.seccionVersionesTitulo}>Historial de Versiones</Text>
+                  <Text style={estilos.seccionVersionesTitulo}>{t('centroDocumentos.version_history')}</Text>
                   {docLecturaActivo.historialVersiones.map((v) => (
                     <BotonAnimado
                       key={`${v.version}-${v.fecha}`}
@@ -441,7 +443,7 @@ export default function CentroDocumentos({ navigation }: Props) {
                     >
                       <Feather name="clock" size={14} color={colores.textoSuave} />
                       <View style={{ flex: 1 }}>
-                        <Text style={estilos.textoVersionTitulo}>Versión {v.version}</Text>
+                        <Text style={estilos.textoVersionTitulo}>{t('centroDocumentos.version_label', { version: v.version })}</Text>
                         <Text style={estilos.textoVersionFecha}>
                           {formatearFecha(v.fecha, i18n.language)}
                         </Text>
@@ -461,7 +463,7 @@ export default function CentroDocumentos({ navigation }: Props) {
                     style={estilos.botonUrlExterna}
                   >
                     <Feather name="external-link" size={16} color={colores.texto} />
-                    <Text style={estilos.textoBotonUrlExterna}>Abrir Enlace / PDF Externo</Text>
+                    <Text style={estilos.textoBotonUrlExterna}>{t('centroDocumentos.open_link')}</Text>
                   </BotonAnimado>
                 ) : null}
 
@@ -475,7 +477,7 @@ export default function CentroDocumentos({ navigation }: Props) {
                     style={estilos.botonMarcarLeido}
                   >
                     <Feather name="check" size={17} color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
-                    <Text style={estilos.textoBotonMarcarLeido}>Marcar como Leído y Entendido</Text>
+                    <Text style={estilos.textoBotonMarcarLeido}>{t('centroDocumentos.mark_read_full')}</Text>
                   </BotonAnimado>
                 ) : (
                   <BotonAnimado
@@ -483,7 +485,7 @@ export default function CentroDocumentos({ navigation }: Props) {
                     scaleTo={0.96}
                     style={estilos.botonCerrarLectura}
                   >
-                    <Text style={estilos.textoBotonCerrarLectura}>Cerrar</Text>
+                    <Text style={estilos.textoBotonCerrarLectura}>{t('centroDocumentos.close_modal')}</Text>
                   </BotonAnimado>
                 )}
               </View>

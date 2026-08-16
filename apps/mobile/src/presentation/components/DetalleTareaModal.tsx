@@ -29,6 +29,7 @@ import { TaskAttachment } from 'domain/entities/TaskAttachment';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import { useCases } from '@/infrastructure/container';
+import { supabase } from '@/infrastructure/supabase/supabaseClient';
 import { uploadManagedFile } from '@/infrastructure/storage/cloudinaryUpload';
 import { formatBytes } from '@/infrastructure/storage/uploadLimits';
 import { RADIOS, SOMBRAS } from '@/shared/constants/diseno';
@@ -536,16 +537,35 @@ export default function DetalleTareaModal({
         );
       }
 
-      // 2. Registrar formalmente la solicitud como comentario estructurado
+      // 2. Registrar una solicitud formal, visible y resoluble por administración.
+      const { error: solicitudError } = await supabase.from('solicitudes_extension_tarea').insert({
+        empresa_id: tarea.empresaId,
+        tarea_id: tarea.id,
+        solicitante_id: perfil.id,
+        solicitante_nombre: perfil.nombre || 'Usuario',
+        tarea_titulo: tarea.titulo,
+        fecha_limite_anterior: tarea.fecha_limite || null,
+        fecha_limite_solicitada: nuevaFechaCalculada,
+        dias_solicitados: diasExtensionSeleccionados,
+        urgencia: urgenciaExtension,
+        motivo: motivoExtension.trim(),
+      });
+      if (solicitudError) throw solicitudError;
+
+      // 3. Conservar el comentario como historial dentro de la tarea.
       const textoRegistro = `📋 SOLICITUD DE EXTENSIÓN DE PLAZO:\n• Nueva fecha propuesta: ${fechaLimpiaNueva} (+${diasExtensionSeleccionados} días)\n• Urgencia: ${urgenciaExtension}\n• Motivo: ${motivoExtension.trim()}\n• Estado: Pendiente de Aprobación por Administración`;
 
-      await useCases.tasks.comments.create.execute({
-        tareaId: tarea.id,
-        empresaId: tarea.empresaId,
-        autorId: perfil.id,
-        autorNombre: perfil.nombre || 'Usuario',
-        texto: textoRegistro,
-      });
+      try {
+        await useCases.tasks.comments.create.execute({
+          tareaId: tarea.id,
+          empresaId: tarea.empresaId,
+          autorId: perfil.id,
+          autorNombre: perfil.nombre || 'Usuario',
+          texto: textoRegistro,
+        });
+      } catch {
+        // El registro formal ya se creó; el comentario es únicamente historial complementario.
+      }
 
       setModalExtensionVisible(false);
       setMotivoExtension('');

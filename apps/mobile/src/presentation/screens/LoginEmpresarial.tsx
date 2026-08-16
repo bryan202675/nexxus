@@ -8,10 +8,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
   Animated,
   Easing,
   KeyboardAvoidingView,
@@ -27,10 +25,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import { AdminToastProvider, useAdminToast } from '@/presentation/screens/admin/adminToast';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
+
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
 
 // Importación estática pre-cargada para cambio de tema instantáneo en memoria nativa
 const FONDO_OSCURO = require('../../../assets/fondoNexxus.jpg');
@@ -38,31 +40,31 @@ const FONDO_CLARO = require('../../../assets/fondoNexxusClaro.jpg');
 const ISO_OSCURO = require('../../../assets/isoNexxus.png');
 const ISO_CLARO = require('../../../assets/isoNexxusBlack.png');
 
-function mapearErrorLogin(err: any): { titulo: string; descripcion: string } {
+function mapearErrorLogin(err: any, t: (key: string) => string): { titulo: string; descripcion: string } {
   const code = String(err?.code || '');
   const mensajeServidor = err?.userMessage || err?.message || '';
 
   if (code === 'auth/user-not-found') {
     return {
-      titulo: 'Cuenta no encontrada',
-      descripcion: 'Tu cuenta interna existe pero no tiene un usuario de acceso real. Contacta a tu administrador.',
+      titulo: t('loginEmpresarial.error_account_not_found_title'),
+      descripcion: t('loginEmpresarial.error_account_not_found_msg'),
     };
   }
   if (code === 'auth/password-desync') {
     return {
-      titulo: 'Contraseña desincronizada',
-      descripcion: 'Tu usuario y código son correctos, pero la contraseña no coincide con tu cuenta de acceso. Pide a tu administrador que te la restablezca desde Plantilla.',
+      titulo: t('loginEmpresarial.error_password_desync_title'),
+      descripcion: t('loginEmpresarial.error_password_desync_msg'),
     };
   }
   if (mensajeServidor) {
     return {
-      titulo: 'No se pudo iniciar sesión',
+      titulo: t('loginEmpresarial.error_login_failed_title'),
       descripcion: mensajeServidor,
     };
   }
   return {
-    titulo: 'No se pudo iniciar sesión',
-    descripcion: 'Intenta de nuevo en unos segundos.',
+    titulo: t('loginEmpresarial.error_login_failed_title'),
+    descripcion: t('loginEmpresarial.error_login_failed_default_msg'),
   };
 }
 
@@ -113,21 +115,21 @@ function LoginEmpresarialContent({ navigation }: { navigation: any }) {
 
   const handleLogin = async () => {
     if (!form.codigoEmpresa.trim()) {
-      const msg = 'Ingresa el código de tu empresa.';
+      const msg = t('loginEmpresarial.alert_missing_company_msg');
       setError(msg);
-      toast.warning({ title: 'Falta el código de empresa', description: msg });
+      toast.warning({ title: t('loginEmpresarial.alert_missing_company_title'), description: msg });
       return;
     }
     if (!form.usuario.trim()) {
-      const msg = 'Ingresa tu usuario.';
+      const msg = t('loginEmpresarial.alert_missing_user_msg');
       setError(msg);
-      toast.warning({ title: 'Falta el usuario', description: msg });
+      toast.warning({ title: t('loginEmpresarial.alert_missing_user_title'), description: msg });
       return;
     }
     if (!form.password) {
-      const msg = 'Ingresa tu contraseña.';
+      const msg = t('loginEmpresarial.alert_missing_password_msg');
       setError(msg);
-      toast.warning({ title: 'Falta la contraseña', description: msg });
+      toast.warning({ title: t('loginEmpresarial.alert_missing_password_title'), description: msg });
       return;
     }
 
@@ -137,7 +139,7 @@ function LoginEmpresarialContent({ navigation }: { navigation: any }) {
       if (!loginEmpresarial) throw new Error('Contexto de autenticación no disponible');
       await loginEmpresarial(form);
     } catch (e: any) {
-      const { titulo, descripcion } = mapearErrorLogin(e);
+      const { titulo, descripcion } = mapearErrorLogin(e, t);
       setError(descripcion);
       toast.error({ title: titulo, description: descripcion });
     } finally {
@@ -210,12 +212,22 @@ function LoginEmpresarialContent({ navigation }: { navigation: any }) {
                 </Text>
               </View>
 
-              {/* Botón cambiar tema glass */}
-              <BotonAnimado onPress={() => alternarModo()} scaleTo={0.92}>
-                <BlurView intensity={intensidadBlur + 25} tint={blurTint} style={estilos.botonGlassHeader}>
-                  <Feather name={esOscuro ? 'sun' : 'moon'} size={20} color={esOscuro ? '#FFFFFF' : '#0F172A'} />
-                </BlurView>
-              </BotonAnimado>
+              {/* Acciones derechas: Soporte y Cambio de tema */}
+              <View style={estilos.headerDerecha}>
+                {/* Botón Soporte General */}
+                <BotonAnimado onPress={() => navigation.navigate('SoporteGeneral')} scaleTo={0.92} accessibilityLabel="Ayuda y Soporte">
+                  <BlurView intensity={intensidadBlur + 25} tint={blurTint} style={estilos.botonGlassHeader}>
+                    <Feather name="help-circle" size={19} color={esOscuro ? '#FFFFFF' : '#0F172A'} />
+                  </BlurView>
+                </BotonAnimado>
+
+                {/* Botón cambiar tema glass */}
+                <BotonAnimado onPress={() => alternarModo()} scaleTo={0.92} accessibilityLabel="Cambiar tema">
+                  <BlurView intensity={intensidadBlur + 25} tint={blurTint} style={estilos.botonGlassHeader}>
+                    <Feather name={esOscuro ? 'sun' : 'moon'} size={19} color={esOscuro ? '#FFFFFF' : '#0F172A'} />
+                  </BlurView>
+                </BotonAnimado>
+              </View>
             </Animated.View>
 
             {/* Títulos principales */}
@@ -235,8 +247,8 @@ function LoginEmpresarialContent({ navigation }: { navigation: any }) {
                 },
               ]}
             >
-              <Text style={estilos.titulo}>Bienvenido</Text>
-              <Text style={estilos.subtitulo}>Inicia sesión en tu espacio de trabajo.</Text>
+              <Text style={estilos.titulo}>{t('loginEmpresarial.title')}</Text>
+              <Text style={estilos.subtitulo}>{t('loginEmpresarial.subtitle')}</Text>
             </Animated.View>
 
             {/* Panel de Formulario Glass Panel */}
@@ -359,11 +371,11 @@ function LoginEmpresarialContent({ navigation }: { navigation: any }) {
                   <TouchableOpacity
                     onPress={() => navigation.navigate('RecuperarContrasena', { codigoEmpresa: form.codigoEmpresa, usuario: form.usuario })}
                   >
-                    <Text style={estilos.textoEnlace}>¿Olvidaste tu contraseña?</Text>
+                    <Text style={estilos.textoEnlace}>{t('loginEmpresarial.forgot_password')}</Text>
                   </TouchableOpacity>
 
-                  <TouchableOpacity onPress={() => navigation.navigate('CentroApoyo')}>
-                    <Text style={estilos.textoEnlace}>Ayuda</Text>
+                  <TouchableOpacity onPress={() => navigation.navigate('SoporteGeneral')}>
+                    <Text style={estilos.textoEnlace}>{t('loginEmpresarial.help_link')}</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -416,6 +428,11 @@ function crearEstilos(c: any, esOscuro: boolean) {
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingVertical: 12,
+    },
+    headerDerecha: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
     },
     botonGlassHeader: {
       width: 44,

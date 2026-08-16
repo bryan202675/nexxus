@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import Animated, { Easing, FadeInDown, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LeaderDashboard, LeaderTeamMember } from 'domain/entities/Leader';
 import { RequestReportItem } from 'domain/entities/RequestReport';
@@ -14,6 +16,8 @@ import { normalizeRole } from '@/shared/auth/roles';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
 import EmptyState from '@/presentation/components/ui/EmptyState';
 import { SkeletonLista } from '@/presentation/components/ui/Skeleton';
+
+const Text = AdminTranslatedText;
 
 const EMPTY_DASHBOARD: LeaderDashboard = {
   equipo: [],
@@ -35,6 +39,7 @@ const obtenerEmpresaId = (perfil: { empresaId?: string; empresa?: string } | nul
 };
 
 export default function PanelJefe() {
+  const { t } = useTranslation();
   const { perfil } = useContextoUsuario();
   const [dashboard, setDashboard] = useState<LeaderDashboard>(EMPTY_DASHBOARD);
   const [cargando, setCargando] = useState(true);
@@ -81,7 +86,7 @@ export default function PanelJefe() {
         setCargando(false);
       },
       () => {
-        setError('No se pudo cargar el panel de equipo. Revisa la conexion e intenta de nuevo.');
+        setError(t('panelJefe.error_load'));
         setCargando(false);
       }
     );
@@ -120,7 +125,7 @@ export default function PanelJefe() {
         rol: perfil.rol,
       });
     } catch {
-      setError('No se pudo actualizar la solicitud. Intenta de nuevo.');
+      setError(t('panelJefe.error_update_request'));
     } finally {
       setResolviendoId('');
     }
@@ -138,7 +143,7 @@ export default function PanelJefe() {
         evaluadorNombre: perfil.nombre,
       });
     } catch {
-      setError('No se pudo guardar la evaluación. Intenta de nuevo.');
+      setError(t('panelJefe.error_save_evaluation'));
     } finally {
       setGuardandoEvaluacion(false);
     }
@@ -148,8 +153,8 @@ export default function PanelJefe() {
     return (
       <View style={styles.centerState}>
         <MaterialIcons name="lock" size={34} color="#94A3B8" />
-        <Text style={styles.stateTitle}>Acceso reservado</Text>
-        <Text style={styles.stateText}>Este panel esta disponible solo para jefes con equipo asignado.</Text>
+        <Text style={styles.stateTitle}>{t('panelJefe.access_restricted_title')}</Text>
+        <Text style={styles.stateText}>{t('panelJefe.access_restricted_detail')}</Text>
       </View>
     );
   }
@@ -158,8 +163,8 @@ export default function PanelJefe() {
     return (
       <View style={styles.centerState}>
         <MaterialIcons name="business" size={34} color="#94A3B8" />
-        <Text style={styles.stateTitle}>Empresa no asignada</Text>
-        <Text style={styles.stateText}>Tu usuario necesita una empresa activa para cargar el alcance del equipo.</Text>
+        <Text style={styles.stateTitle}>{t('panelJefe.no_company_title')}</Text>
+        <Text style={styles.stateText}>{t('panelJefe.no_company_detail')}</Text>
       </View>
     );
   }
@@ -168,9 +173,9 @@ export default function PanelJefe() {
     <View style={styles.root}>
       <Animated.ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} style={estiloEntrada}>
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>Panel de jefe</Text>
-          <Text style={styles.title}>Equipo y aprobaciones</Text>
-          <Text style={styles.subtitle}>Seguimiento operativo de personas, tareas y solicitudes pendientes bajo tu alcance.</Text>
+          <Text style={styles.eyebrow}>{t('panelJefe.eyebrow')}</Text>
+          <Text style={styles.title}>{t('panelJefe.title')}</Text>
+          <Text style={styles.subtitle}>{t('panelJefe.subtitle')}</Text>
         </View>
 
         {cargando ? (
@@ -187,16 +192,16 @@ export default function PanelJefe() {
             ) : null}
 
             <View style={styles.metricsGrid}>
-              <Metric label="Miembros" value={dashboard.metricas.miembros} icon="groups" />
-              <Metric label="Pendientes" value={dashboard.metricas.tareasPendientes} icon="assignment" />
-              <Metric label="Vencidas" value={dashboard.metricas.tareasVencidas} icon="warning" danger={dashboard.metricas.tareasVencidas > 0} />
-              <Metric label="Aprobaciones" value={dashboard.metricas.aprobacionesPendientes} icon="task-alt" />
-              <Metric label="Rendimiento" value={dashboard.metricas.rendimientoPromedio} suffix="%" icon="insights" />
+              <Metric label={t('panelJefe.metric_members')} value={dashboard.metricas.miembros} icon="groups" />
+              <Metric label={t('panelJefe.metric_pending')} value={dashboard.metricas.tareasPendientes} icon="assignment" />
+              <Metric label={t('panelJefe.metric_overdue')} value={dashboard.metricas.tareasVencidas} icon="warning" danger={dashboard.metricas.tareasVencidas > 0} />
+              <Metric label={t('panelJefe.metric_approvals')} value={dashboard.metricas.aprobacionesPendientes} icon="task-alt" />
+              <Metric label={t('panelJefe.metric_performance')} value={dashboard.metricas.rendimientoPromedio} suffix="%" icon="insights" />
             </View>
 
-            <Section title="Aprobaciones pendientes" icon="rule">
+            <Section title={t('panelJefe.section_approvals')} icon="rule">
               {aprobacionesOrdenadas.length === 0 ? (
-                <EmptyState icono="check-circle" titulo="Sin aprobaciones pendientes" detalle="Cuando tu equipo envíe solicitudes, aparecerán aquí para resolverlas." />
+                <EmptyState icono="check-circle" titulo={t('panelJefe.no_approvals_title')} detalle={t('panelJefe.no_approvals_detail')} />
               ) : (
                 aprobacionesOrdenadas.map((item, indice) => (
                   <Animated.View key={`${item.sourceCollection}-${item.id}`} entering={FadeInDown.duration(320).delay(indice * 40)}>
@@ -211,9 +216,9 @@ export default function PanelJefe() {
               )}
             </Section>
 
-            <Section title="Pulso del equipo" icon="monitor-heart">
+            <Section title={t('panelJefe.section_team_pulse')} icon="monitor-heart">
               {equipoOrdenado.length === 0 ? (
-                <EmptyState icono="users" titulo="Sin equipo asignado" detalle="Asigna empleados a este jefe desde Gestión de Plantilla para activar este panel." />
+                <EmptyState icono="users" titulo={t('panelJefe.no_team_title')} detalle={t('panelJefe.no_team_detail')} />
               ) : (
                 equipoOrdenado.map((member, indice) => (
                   <Animated.View key={member.id} entering={FadeInDown.duration(300).delay(indice * 35)}>
@@ -223,19 +228,19 @@ export default function PanelJefe() {
                     </View>
                     <View style={styles.memberInfo}>
                       <Text style={styles.memberName} numberOfLines={1}>{member.nombre}</Text>
-                      <Text style={styles.memberMeta} numberOfLines={1}>{member.cargo || member.departamento || 'Empleado'}</Text>
+                      <Text style={styles.memberMeta} numberOfLines={1}>{member.cargo || member.departamento || t('panelJefe.default_employee_label')}</Text>
                     </View>
                     <View style={styles.memberStats}>
                       <Text style={styles.memberStatValue}>{member.tareasPendientes}</Text>
-                      <Text style={styles.memberStatLabel}>tareas</Text>
+                      <Text style={styles.memberStatLabel}>{t('panelJefe.member_stat_tasks')}</Text>
                     </View>
                     <View style={styles.memberStats}>
                       <Text style={[styles.memberStatValue, member.tareasVencidas > 0 && styles.dangerText]}>{member.tareasVencidas}</Text>
-                      <Text style={styles.memberStatLabel}>vencidas</Text>
+                      <Text style={styles.memberStatLabel}>{t('panelJefe.member_stat_overdue')}</Text>
                     </View>
                     <View style={styles.memberStats}>
                       <Text style={styles.memberStatValue}>{member.ultimaEvaluacion?.puntajeTotal ?? 0}%</Text>
-                      <Text style={styles.memberStatLabel}>eval.</Text>
+                      <Text style={styles.memberStatLabel}>{t('panelJefe.member_stat_eval')}</Text>
                     </View>
                   </BotonAnimado>
                   </Animated.View>
@@ -243,18 +248,18 @@ export default function PanelJefe() {
               )}
             </Section>
 
-            <Section title="Evaluación mensual" icon="fact-check">
+            <Section title={t('panelJefe.section_evaluation')} icon="fact-check">
               <LeaderEvaluationForm team={dashboard.equipo} saving={guardandoEvaluacion} onSubmit={guardarEvaluacion} />
             </Section>
 
-            <Section title="Trabajo activo" icon="timeline">
+            <Section title={t('panelJefe.section_active_work')} icon="timeline">
               <View style={styles.workSummary}>
               <View style={styles.workBadge}>
                 <MaterialIcons name="pending-actions" size={22} color="#FFFFFF" />
               </View>
                 <View style={styles.workCopy}>
-                  <Text style={styles.workTitle}>{tareasEnProgreso} tareas en progreso</Text>
-                  <Text style={styles.workText}>{dashboard.metricas.tareasPendientes} pendientes totales en el equipo.</Text>
+                  <Text style={styles.workTitle}>{t('panelJefe.work_in_progress', { count: tareasEnProgreso })}</Text>
+                  <Text style={styles.workText}>{t('panelJefe.work_pending_total', { count: dashboard.metricas.tareasPendientes })}</Text>
                 </View>
               </View>
             </Section>
@@ -288,6 +293,7 @@ function Section({ title, icon, children }: { title: string; icon: keyof typeof 
 }
 
 function ApprovalCard({ item, disabled, onApprove, onReject }: { item: RequestReportItem; disabled: boolean; onApprove: () => void; onReject: () => void }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.approvalCard}>
       <View style={styles.approvalTop}>
@@ -303,11 +309,11 @@ function ApprovalCard({ item, disabled, onApprove, onReject }: { item: RequestRe
       <View style={styles.actionsRow}>
         <TouchableOpacity disabled={disabled} onPress={onReject} style={[styles.actionButton, styles.rejectButton, disabled && styles.disabledButton]}>
           <MaterialIcons name="close" size={17} color="#FCA5A5" />
-          <Text style={styles.rejectText}>Rechazar</Text>
+          <Text style={styles.rejectText}>{t('panelJefe.btn_reject')}</Text>
         </TouchableOpacity>
         <TouchableOpacity disabled={disabled} onPress={onApprove} style={[styles.actionButton, styles.approveButton, disabled && styles.disabledButton]}>
           <MaterialIcons name="check" size={17} color="#FFFFFF" />
-          <Text style={styles.approveText}>Aprobar</Text>
+          <Text style={styles.approveText}>{t('panelJefe.btn_approve')}</Text>
         </TouchableOpacity>
       </View>
     </View>

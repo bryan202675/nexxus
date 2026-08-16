@@ -283,7 +283,8 @@ export default function UserNavigator() {
       tabBar={(props: any) => <CustomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        animation: 'fade',
+        animation: 'none',
+        sceneStyle: { backgroundColor: 'transparent' },
       }}
     >
       <Tab.Screen name="Home" component={MiPulso} />

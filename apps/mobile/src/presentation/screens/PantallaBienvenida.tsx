@@ -8,7 +8,6 @@
 import React, { useEffect, useRef } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   Animated,
   SafeAreaView,
@@ -22,8 +21,11 @@ import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { BlurView } from 'expo-blur';
+import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
+
+const Text = AdminTranslatedText;
 
 // Importación estática pre-cargada para cambio de tema instantáneo en memoria nativa
 const FONDO_OSCURO = require('../../../assets/fondoNexxus.jpg');
@@ -160,7 +162,7 @@ export default function PantallaBienvenida() {
                 },
               ]}
             >
-              {'Eleva tu\nEmpresa'}
+              {t('pantallaBienvenida.title')}
             </Animated.Text>
 
             <Animated.Text
@@ -179,7 +181,7 @@ export default function PantallaBienvenida() {
                 },
               ]}
             >
-              El sistema operativo inteligente que transforma la gestión de talento en El Salvador.
+              {t('pantallaBienvenida.subtitle')}
             </Animated.Text>
 
             {/* Fila de Botones de Acción */}
@@ -233,10 +235,10 @@ export default function PantallaBienvenida() {
                 </BlurView>
               </BotonAnimado>
 
-              {/* Botón Glass para Soporte */}
+              {/* Botón Glass para Soporte Global */}
               <BotonAnimado
                 style={estilos.botonWrapGlass}
-                onPress={() => navegacion.navigate('CentroApoyo')}
+                onPress={() => navegacion.navigate('SoporteGeneral')}
                 scaleTo={0.92}
               >
                 <BlurView intensity={intensidadBlur + 25} tint={blurTint} style={estilos.botonGlass}>

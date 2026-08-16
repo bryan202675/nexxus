@@ -6,7 +6,9 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { MaterialIcons } from '@expo/vector-icons';
-import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, ScrollView, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
 import { EmpresaDetalle, PlatformStats, SaResetMode, UserFilters, UsuarioGlobal } from 'domain/entities/SuperAdmin';
 import { useCases } from '@/infrastructure/container';
 import { useAuth } from '@/presentation/hooks/useAuth';
@@ -21,16 +23,11 @@ import {
   SaAvatarChip, SaStatusIndicator, SaFilterPill, SaBadgeTone,
 } from './components/SaWidgets';
 
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
+
 type LoadState = 'loading' | 'ready' | 'empty' | 'error';
 type EstadoFiltro = 'activos' | 'inactivos' | 'baneados' | 'eliminados' | 'todos';
-
-const FILTROS_ESTADO: { value: EstadoFiltro; label: string }[] = [
-  { value: 'todos', label: 'Todos' },
-  { value: 'activos', label: 'Activos' },
-  { value: 'inactivos', label: 'Inactivos' },
-  { value: 'baneados', label: 'Baneados' },
-  { value: 'eliminados', label: 'Eliminados' },
-];
 
 const emptyStats: PlatformStats = {
   empresasTotal: 0, empresasActivas: 0, empresasSuspendidas: 0, empresasExpiradas: 0, empresasBaneadas: 0,
@@ -48,12 +45,21 @@ const estadoTone = (estado: string): SaBadgeTone => {
 };
 
 export default function SaUsuarios() {
+  const { t } = useTranslation();
   const { theme } = useSaTheme();
   const { theme: modalTheme } = useAdminAppearance();
   const { user } = useAuth();
   const { width } = useWindowDimensions();
   const compact = width < 900;
   useSaEntrance();
+
+  const FILTROS_ESTADO: { value: EstadoFiltro; label: string }[] = [
+    { value: 'todos', label: t('superadmin.saUsuarios.filtros.todos') },
+    { value: 'activos', label: t('superadmin.saUsuarios.filtros.activos') },
+    { value: 'inactivos', label: t('superadmin.saUsuarios.filtros.inactivos') },
+    { value: 'baneados', label: t('superadmin.saUsuarios.filtros.baneados') },
+    { value: 'eliminados', label: t('superadmin.saUsuarios.filtros.eliminados') },
+  ];
 
   const [state, setState] = useState<LoadState>('loading');
   const [errorMessage, setErrorMessage] = useState('');
@@ -99,7 +105,7 @@ export default function SaUsuarios() {
       setHayMas(result.hayMas);
       setState(result.items.length > 0 ? 'ready' : 'empty');
     }, (error) => {
-      setErrorMessage(error.message || 'No se pudieron cargar los usuarios.');
+      setErrorMessage(error.message || t('superadmin.saUsuarios.error.cargaUsuarios'));
       setState('error');
     });
     return () => unsubscribe();
@@ -144,7 +150,7 @@ export default function SaUsuarios() {
       setCursor(result.cursor);
       setHayMas(result.hayMas);
     } catch (error: any) {
-      setErrorMessage(error.message || 'No se pudieron cargar más usuarios.');
+      setErrorMessage(error.message || t('superadmin.saUsuarios.error.cargaMasUsuarios'));
     } finally {
       setCargandoMas(false);
     }
@@ -203,10 +209,10 @@ export default function SaUsuarios() {
         ) : null}
 
         <View>
-          <SaKpiCard index={0} theme={theme} icon="groups" label="Usuarios totales" value={String(platformStats.usuariosTotal)} delta={`${platformStats.usuariosActivos} activos`} tone="positive" />
-          <SaKpiCard index={1} theme={theme} icon="admin-panel-settings" label="Propietarios" value={String(platformStats.porRol.admin_empresa || 0)} delta="Admin de empresa" />
-          <SaKpiCard index={2} theme={theme} icon="supervisor-account" label="Jefes" value={String(platformStats.porRol.jefe || 0)} delta="Líderes de equipo" />
-          <SaKpiCard index={3} theme={theme} icon="badge" label="Empleados" value={String(platformStats.porRol.empleado || 0)} delta={`+${platformStats.usuariosNuevos30d} en 30 días`} tone={platformStats.usuariosNuevos30d > 0 ? 'positive' : 'neutral'} />
+          <SaKpiCard index={0} theme={theme} icon="groups" label={t('superadmin.saUsuarios.kpi.usuariosTotales')} value={String(platformStats.usuariosTotal)} delta={t('superadmin.saUsuarios.kpi.activosDelta', { count: platformStats.usuariosActivos })} tone="positive" />
+          <SaKpiCard index={1} theme={theme} icon="admin-panel-settings" label={t('superadmin.saUsuarios.kpi.propietarios')} value={String(platformStats.porRol.admin_empresa || 0)} delta={t('superadmin.saUsuarios.kpi.adminDeEmpresa')} />
+          <SaKpiCard index={2} theme={theme} icon="supervisor-account" label={t('superadmin.saUsuarios.kpi.jefes')} value={String(platformStats.porRol.jefe || 0)} delta={t('superadmin.saUsuarios.kpi.lideresDeEquipo')} />
+          <SaKpiCard index={3} theme={theme} icon="badge" label={t('superadmin.saUsuarios.kpi.empleados')} value={String(platformStats.porRol.empleado || 0)} delta={t('superadmin.saUsuarios.kpi.deltaEn30Dias', { count: platformStats.usuariosNuevos30d })} tone={platformStats.usuariosNuevos30d > 0 ? 'positive' : 'neutral'} />
         </View>
 
         {!selectedCompanyId ? (
@@ -220,9 +226,9 @@ export default function SaUsuarios() {
               />
             </View>
 
-            <SaSectionCard theme={theme} title="Directorio de empresas">
+            <SaSectionCard theme={theme} title={t('superadmin.saUsuarios.seccion.directorioEmpresas')}>
               {!compact && empresasFiltradas.length > 0 ? (
-                <SaTableHeader theme={theme} columns={[{ label: 'EMPRESA', flex: 2 }, { label: 'CÓDIGO' }, { label: 'PLAN' }]} />
+                <SaTableHeader theme={theme} columns={[{ label: t('superadmin.saUsuarios.tabla.empresa'), flex: 2 }, { label: t('superadmin.saUsuarios.tabla.codigo') }, { label: t('superadmin.saUsuarios.tabla.plan') }]} />
               ) : null}
               {empresasFiltradas.map((emp, i) => (
                 <SaTableRow key={emp.id} theme={theme} last={i === empresasFiltradas.length - 1} onPress={() => { setSelectedCompanyId(emp.id); setBusqueda(''); }}>
@@ -242,7 +248,7 @@ export default function SaUsuarios() {
                   )}
                 </SaTableRow>
               ))}
-              {empresasFiltradas.length === 0 ? <Text>No se encontraron empresas.</Text> : null}
+              {empresasFiltradas.length === 0 ? <Text>{t('superadmin.saUsuarios.vacio.sinEmpresas')}</Text> : null}
             </SaSectionCard>
           </>
         ) : (
@@ -250,7 +256,7 @@ export default function SaUsuarios() {
             <View>
               <TouchableOpacity onPress={() => { setSelectedCompanyId(null); setBusqueda(''); }}>
                 <MaterialIcons name="arrow-back" size={18} />
-                <Text>Volver a empresas</Text>
+                <Text>{t('superadmin.saUsuarios.acciones.volverEmpresas')}</Text>
               </TouchableOpacity>
 
               <View>
@@ -263,7 +269,7 @@ export default function SaUsuarios() {
               </View>
             </View>
 
-            <SaSectionCard theme={theme} title={`Empleados de ${empresaNombre(selectedCompanyId)}`}>
+            <SaSectionCard theme={theme} title={t('superadmin.saUsuarios.seccion.empleadosDe', { empresa: empresaNombre(selectedCompanyId) })}>
               <View>
                 {FILTROS_ESTADO.map((item) => (
                   <SaFilterPill key={item.value} theme={theme} label={item.label} active={filtroEstado === item.value} onPress={() => setFiltroEstado(item.value)} />
@@ -277,7 +283,7 @@ export default function SaUsuarios() {
               ) : (
                 <>
                   {!compact && usuariosFiltrados.length > 0 ? (
-                    <SaTableHeader theme={theme} columns={[{ label: 'NOMBRE', flex: 2 }, { label: 'ROL' }, { label: 'ESTADO' }]} />
+                    <SaTableHeader theme={theme} columns={[{ label: t('superadmin.saUsuarios.tabla.nombre'), flex: 2 }, { label: t('superadmin.saUsuarios.tabla.rol') }, { label: t('superadmin.saUsuarios.tabla.estado') }]} />
                   ) : null}
                   {usuariosFiltrados.map((u, i) => {
                     const estado = etiquetaEstadoUsuario(u);
@@ -303,10 +309,10 @@ export default function SaUsuarios() {
                       </SaTableRow>
                     );
                   })}
-                  {usuariosFiltrados.length === 0 ? <Text>Esta empresa aún no tiene usuarios registrados con este estado.</Text> : null}
+                  {usuariosFiltrados.length === 0 ? <Text>{t('superadmin.saUsuarios.vacio.sinUsuariosEstado')}</Text> : null}
                   {hayMas ? (
                     <TouchableOpacity onPress={cargarMas} disabled={cargandoMas}>
-                      {cargandoMas ? <ActivityIndicator /> : <Text>Cargar más empleados</Text>}
+                      {cargandoMas ? <ActivityIndicator /> : <Text>{t('superadmin.saUsuarios.acciones.cargarMasEmpleados')}</Text>}
                     </TouchableOpacity>
                   ) : null}
                 </>
@@ -321,15 +327,15 @@ export default function SaUsuarios() {
         <View>
           <AdminModalFormGlass>
             <View>
-              <Text numberOfLines={1}>{detalle?.nombre || 'Usuario'}</Text>
+              <Text numberOfLines={1}>{detalle?.nombre || t('superadmin.saUsuarios.modal.usuarioFallback')}</Text>
               <TouchableOpacity onPress={cerrarDetalle}><MaterialIcons name="close" size={16} /></TouchableOpacity>
             </View>
             <View>
               <TouchableOpacity onPress={() => setPestana('datos')}>
-                <Text>Datos</Text>
+                <Text>{t('superadmin.saUsuarios.modal.tabs.datos')}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setPestana('acciones')}>
-                <Text>Acciones y Acceso</Text>
+                <Text>{t('superadmin.saUsuarios.modal.tabs.acciones')}</Text>
               </TouchableOpacity>
             </View>
 
@@ -351,47 +357,47 @@ export default function SaUsuarios() {
                     ))}
                   </View>
                   <TouchableOpacity onPress={guardarEdicion} disabled={accionEnCurso === 'editar'}>
-                    <Text>{accionEnCurso === 'editar' ? 'Guardando…' : 'Guardar cambios'}</Text>
+                    <Text>{accionEnCurso === 'editar' ? t('superadmin.saUsuarios.acciones.guardando') : t('superadmin.saUsuarios.acciones.guardarCambios')}</Text>
                   </TouchableOpacity>
                 </View>
               ) : null}
 
               {pestana === 'acciones' && detalle ? (
                 <View>
-                  <Text>Estado en la empresa</Text>
+                  <Text>{t('superadmin.saUsuarios.accionesTab.estadoEmpresa')}</Text>
                   <View>
                     {detalle.activo ? (
                       <TouchableOpacity onPress={() => cambiarEstado('suspender')} disabled={!!accionEnCurso}>
-                        <Text>{accionEnCurso === 'suspender' ? 'Aplicando…' : 'Suspender'}</Text>
+                        <Text>{accionEnCurso === 'suspender' ? t('superadmin.saUsuarios.accionesTab.aplicando') : t('superadmin.saUsuarios.accionesTab.suspender')}</Text>
                       </TouchableOpacity>
                     ) : (
                       <TouchableOpacity onPress={() => cambiarEstado('reactivar')} disabled={!!accionEnCurso}>
-                        <Text>{accionEnCurso === 'reactivar' ? 'Aplicando…' : 'Reactivar'}</Text>
+                        <Text>{accionEnCurso === 'reactivar' ? t('superadmin.saUsuarios.accionesTab.aplicando') : t('superadmin.saUsuarios.accionesTab.reactivar')}</Text>
                       </TouchableOpacity>
                     )}
                   </View>
 
-                  <Text>Autenticación</Text>
+                  <Text>{t('superadmin.saUsuarios.accionesTab.autenticacion')}</Text>
                   <Text>Banear impide que el usuario inicie sesión. Resetear contraseña genera un enlace por correo o fuerza una contraseña temporal.</Text>
                   <View>
                     {detalle.baneado ? (
                       <TouchableOpacity onPress={() => cambiarBaneo(false)} disabled={!!accionEnCurso}>
-                        <Text>{accionEnCurso === 'desbanear' ? 'Aplicando…' : 'Desbanear'}</Text>
+                        <Text>{accionEnCurso === 'desbanear' ? t('superadmin.saUsuarios.accionesTab.aplicando') : t('superadmin.saUsuarios.accionesTab.desbanear')}</Text>
                       </TouchableOpacity>
                     ) : (
                       <TouchableOpacity onPress={() => cambiarBaneo(true)} disabled={!!accionEnCurso}>
-                        <Text>{accionEnCurso === 'banear' ? 'Aplicando…' : 'Banear'}</Text>
+                        <Text>{accionEnCurso === 'banear' ? t('superadmin.saUsuarios.accionesTab.aplicando') : t('superadmin.saUsuarios.accionesTab.banear')}</Text>
                       </TouchableOpacity>
                     )}
                     <TouchableOpacity onPress={() => { setResetParams({ mode: 'link', tempPassword: '' }); setModalReset(true); }} disabled={!!accionEnCurso}>
-                      <Text>{accionEnCurso === 'reset' ? 'Aplicando…' : 'Resetear contraseña'}</Text>
+                      <Text>{accionEnCurso === 'reset' ? t('superadmin.saUsuarios.accionesTab.aplicando') : t('superadmin.saUsuarios.accionesTab.resetearContrasena')}</Text>
                     </TouchableOpacity>
                   </View>
 
-                  <Text>Zona de peligro</Text>
+                  <Text>{t('superadmin.saUsuarios.accionesTab.zonaPeligro')}</Text>
                   <Text>Borra la cuenta del usuario permanentemente (solo del Auth, sus registros quedan huérfanos).</Text>
                   <TouchableOpacity onPress={() => setConfirmarEliminar(true)}>
-                    <Text>Eliminar cuenta</Text>
+                    <Text>{t('superadmin.saUsuarios.accionesTab.eliminarCuenta')}</Text>
                   </TouchableOpacity>
                 </View>
               ) : null}
@@ -405,16 +411,16 @@ export default function SaUsuarios() {
         <View>
           <AdminModalFormGlass>
             <View>
-              <Text>Resetear contraseña</Text>
+              <Text>{t('superadmin.saUsuarios.resetModal.titulo')}</Text>
               <TouchableOpacity onPress={() => setModalReset(false)}><MaterialIcons name="close" size={16} /></TouchableOpacity>
             </View>
             <View>
               <View>
                 <TouchableOpacity onPress={() => setResetParams((p) => ({ ...p, mode: 'link' }))}>
-                  <Text>Enviar link</Text>
+                  <Text>{t('superadmin.saUsuarios.resetModal.enviarLink')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => setResetParams((p) => ({ ...p, mode: 'set' }))}>
-                  <Text>Clave temporal</Text>
+                  <Text>{t('superadmin.saUsuarios.resetModal.claveTemporal')}</Text>
                 </TouchableOpacity>
               </View>
               {resetParams.mode === 'link' ? (
@@ -426,7 +432,7 @@ export default function SaUsuarios() {
                 </>
               )}
               <TouchableOpacity onPress={aplicarReset}>
-                <Text>Confirmar reset</Text>
+                <Text>{t('superadmin.saUsuarios.resetModal.confirmarReset')}</Text>
               </TouchableOpacity>
             </View>
           </AdminModalFormGlass>
@@ -436,8 +442,8 @@ export default function SaUsuarios() {
       <SaConfirmarEliminacion
         visible={confirmarEliminar}
         theme={modalTheme}
-        titulo="Eliminar cuenta"
-        mensaje="Esta acción borra la cuenta en Firebase Auth. Sus datos seguirán existiendo referenciados a su ID, pero no podrá iniciar sesión nunca más."
+        titulo={t('superadmin.saUsuarios.accionesTab.eliminarCuenta')}
+        mensaje={t('superadmin.saUsuarios.eliminarModal.mensaje')}
         nombreEsperado={detalle?.correo || ''}
         procesando={accionEnCurso === 'eliminar'}
         onCancelar={() => setConfirmarEliminar(false)}

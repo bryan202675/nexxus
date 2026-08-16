@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
-  TextInput,
   Alert,
   ScrollView,
   KeyboardAvoidingView,
@@ -20,6 +18,7 @@ import { BlurView } from 'expo-blur';
 import { COLORES, ESPACIADO, RADIOS, SOMBRAS } from '@/shared/constants/diseno';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
 import { InternalRequest } from 'domain/entities/InternalRequest';
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
@@ -28,6 +27,9 @@ import ModalShell from '@/presentation/components/ui/ModalShell';
 import EmptyState from '@/presentation/components/ui/EmptyState';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
 import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
+
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
 
 const TODOS_LOS_TIPOS: InternalRequest['tipo'][] = [
   'vacaciones',
@@ -150,7 +152,7 @@ export default function SolicitudesInternas({ navigation }: Props) {
             });
             setArchivoAdjunto(uploaded.url);
           } catch (e: any) {
-            Alert.alert('No se pudo subir el archivo', e?.message || 'Intenta de nuevo.');
+            Alert.alert(t('solicitudesInternas.upload_error_title', { defaultValue: 'No se pudo subir el archivo' }), e?.message || t('solicitudesInternas.upload_error_retry', { defaultValue: 'Intenta de nuevo.' }));
           } finally {
             setSubiendoAdjunto(false);
           }
@@ -158,10 +160,10 @@ export default function SolicitudesInternas({ navigation }: Props) {
         input.click();
         return;
       }
-      Alert.alert('Subida no disponible', 'Adjunta el certificado desde la versión web por ahora.');
+      Alert.alert(t('solicitudesInternas.upload_unavailable_title', { defaultValue: 'Subida no disponible' }), t('solicitudesInternas.upload_unavailable_msg', { defaultValue: 'Adjunta el certificado desde la versión web por ahora.' }));
     } catch (e: any) {
       setSubiendoAdjunto(false);
-      Alert.alert('No se pudo subir el archivo', e?.message || 'Intenta de nuevo.');
+      Alert.alert(t('solicitudesInternas.upload_error_title', { defaultValue: 'No se pudo subir el archivo' }), e?.message || t('solicitudesInternas.upload_error_retry', { defaultValue: 'Intenta de nuevo.' }));
     }
   };
 
@@ -237,7 +239,7 @@ export default function SolicitudesInternas({ navigation }: Props) {
 
       <NavbarEnterprise
         titulo={t('solicitudesInternas.title', { defaultValue: 'Solicitudes Internas' })}
-        subtitulo="Peticiones, compras y permisos"
+        subtitulo={t('solicitudesInternas.nav_subtitle', { defaultValue: 'Peticiones, compras y permisos' })}
         mostrarAtras
       />
 
@@ -253,19 +255,19 @@ export default function SolicitudesInternas({ navigation }: Props) {
             <View style={estilos.resumenGrid}>
               <View style={estilos.resumenCard}>
                 <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.resumenContent}>
-                  <Text style={estilos.resumenLabel}>Total</Text>
+                  <Text style={estilos.resumenLabel}>{t('solicitudesInternas.summary_total', { defaultValue: 'Total' })}</Text>
                   <Text style={estilos.resumenValor}>{totalSolicitudes}</Text>
                 </BlurView>
               </View>
               <View style={estilos.resumenCard}>
                 <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.resumenContent}>
-                  <Text style={[estilos.resumenLabel, { color: '#F59E0B' }]}>Pendientes</Text>
+                  <Text style={[estilos.resumenLabel, { color: '#F59E0B' }]}>{t('solicitudesInternas.summary_pending', { defaultValue: 'Pendientes' })}</Text>
                   <Text style={[estilos.resumenValor, { color: '#F59E0B' }]}>{pendientes}</Text>
                 </BlurView>
               </View>
               <View style={estilos.resumenCard}>
                 <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.resumenContent}>
-                  <Text style={[estilos.resumenLabel, { color: '#10B981' }]}>Aprobadas</Text>
+                  <Text style={[estilos.resumenLabel, { color: '#10B981' }]}>{t('solicitudesInternas.summary_approved', { defaultValue: 'Aprobadas' })}</Text>
                   <Text style={[estilos.resumenValor, { color: '#10B981' }]}>{aprobadas}</Text>
                 </BlurView>
               </View>
@@ -282,8 +284,8 @@ export default function SolicitudesInternas({ navigation }: Props) {
                   <Feather name="plus" size={18} color="#ffffff" />
                 </View>
                 <View style={estilos.textosNuevaSolicitud}>
-                  <Text style={estilos.tituloNuevaSolicitud}>Crear Nueva Solicitud</Text>
-                  <Text style={estilos.subtituloNuevaSolicitud}>Permisos, compras, adelantos y más</Text>
+                  <Text style={estilos.tituloNuevaSolicitud}>{t('solicitudesInternas.create_button_title', { defaultValue: 'Crear Nueva Solicitud' })}</Text>
+                  <Text style={estilos.subtituloNuevaSolicitud}>{t('solicitudesInternas.create_button_subtitle', { defaultValue: 'Permisos, compras, adelantos y más' })}</Text>
                 </View>
                 <Feather name="chevron-right" size={18} color={colores.textoSuave} />
               </BlurView>
@@ -291,17 +293,17 @@ export default function SolicitudesInternas({ navigation }: Props) {
 
             {/* Cabecera de Lista y Filtros */}
             <View style={estilos.cabeceraLista}>
-              <Text style={estilos.tituloSeccion}>Historial de Peticiones</Text>
-              <Text style={estilos.conteoVisible}>{solicitudesFiltradas.length} visibles</Text>
+              <Text style={estilos.tituloSeccion}>{t('solicitudesInternas.history_title', { defaultValue: 'Historial de Peticiones' })}</Text>
+              <Text style={estilos.conteoVisible}>{t('solicitudesInternas.visible_count', { count: solicitudesFiltradas.length, defaultValue: `${solicitudesFiltradas.length} visibles` })}</Text>
             </View>
 
             {/* Chips de Filtro */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={estilos.filtrosScroll}>
               {[
-                { id: 'todas', label: 'Todas' },
-                { id: 'pendiente', label: 'Pendientes' },
-                { id: 'aprobado', label: 'Aprobadas' },
-                { id: 'rechazado', label: 'Rechazadas' },
+                { id: 'todas', label: t('solicitudesInternas.filter_all', { defaultValue: 'Todas' }) },
+                { id: 'pendiente', label: t('solicitudesInternas.filter_pending', { defaultValue: 'Pendientes' }) },
+                { id: 'aprobado', label: t('solicitudesInternas.filter_approved', { defaultValue: 'Aprobadas' }) },
+                { id: 'rechazado', label: t('solicitudesInternas.filter_rejected', { defaultValue: 'Rechazadas' }) },
               ].map((f) => (
                 <TouchableOpacity
                   key={f.id}
@@ -316,7 +318,7 @@ export default function SolicitudesInternas({ navigation }: Props) {
           </View>
         }
         ListEmptyComponent={
-          <EmptyState icono="inbox" titulo={t('solicitudesInternas.no_requests', { defaultValue: 'Sin solicitudes' })} detalle="No hay registros en esta categoría." />
+          <EmptyState icono="inbox" titulo={t('solicitudesInternas.no_requests', { defaultValue: 'Sin solicitudes' })} detalle={t('solicitudesInternas.empty_detail', { defaultValue: 'No hay registros en esta categoría.' })} />
         }
       />
 
@@ -326,7 +328,7 @@ export default function SolicitudesInternas({ navigation }: Props) {
           <View style={estilos.modalHeader}>
             <View style={{ flex: 1 }}>
               <Text style={estilos.modalTitulo}>{t('solicitudesInternas.new_request', { defaultValue: 'Nueva Solicitud' })}</Text>
-              <Text style={estilos.modalSubtitulo}>Trámite interno y solicitudes operativas</Text>
+              <Text style={estilos.modalSubtitulo}>{t('solicitudesInternas.modal_subtitle', { defaultValue: 'Trámite interno y solicitudes operativas' })}</Text>
             </View>
             <TouchableOpacity onPress={() => setModalVisible(false)} style={estilos.botonCerrarModal} activeOpacity={0.8}>
               <Feather name="x" size={18} color={colores.texto} />
@@ -338,7 +340,7 @@ export default function SolicitudesInternas({ navigation }: Props) {
             <View style={estilos.seccionFormulario}>
               <View style={estilos.filaSeccionHeader}>
                 <Feather name="grid" size={13} color={esOscuro ? '#93C5FD' : '#2563EB'} />
-                <Text style={estilos.labelSeccion}>TIPO DE TRÁMITE</Text>
+                <Text style={estilos.labelSeccion}>{t('solicitudesInternas.section_type', { defaultValue: 'TIPO DE TRÁMITE' })}</Text>
               </View>
               <View style={estilos.gridTipos}>
                 {TODOS_LOS_TIPOS.map((itemTipo) => {
@@ -368,7 +370,7 @@ export default function SolicitudesInternas({ navigation }: Props) {
             <View style={estilos.seccionFormulario}>
               <View style={estilos.filaSeccionHeader}>
                 <Feather name="flag" size={13} color={esOscuro ? '#93C5FD' : '#2563EB'} />
-                <Text style={estilos.labelSeccion}>NIVEL DE PRIORIDAD</Text>
+                <Text style={estilos.labelSeccion}>{t('solicitudesInternas.section_priority', { defaultValue: 'NIVEL DE PRIORIDAD' })}</Text>
               </View>
               <View style={estilos.filaPrioridades}>
                 {(['baja', 'media', 'alta'] as const).map((p) => {
@@ -399,13 +401,13 @@ export default function SolicitudesInternas({ navigation }: Props) {
               <View style={estilos.seccionFormulario}>
                 <View style={estilos.filaSeccionHeader}>
                   <Feather name="sliders" size={13} color={esOscuro ? '#93C5FD' : '#2563EB'} />
-                  <Text style={estilos.labelSeccion}>PARÁMETROS DEL TRÁMITE</Text>
+                  <Text style={estilos.labelSeccion}>{t('solicitudesInternas.section_params', { defaultValue: 'PARÁMETROS DEL TRÁMITE' })}</Text>
                 </View>
 
                 {TIPOS_RANGO_FECHA.has(tipo) && (
                   <View style={estilos.filaDosColumnas}>
                     <View style={{ flex: 1 }}>
-                      <Text style={estilos.labelInput}>Fecha Inicio</Text>
+                      <Text style={estilos.labelInput}>{t('solicitudesInternas.date_start_label', { defaultValue: 'Fecha Inicio' })}</Text>
                       <View style={estilos.inputConIcono}>
                         <Feather name="calendar" size={14} color={colores.textoSuave} />
                         <TextInput
@@ -418,7 +420,7 @@ export default function SolicitudesInternas({ navigation }: Props) {
                       </View>
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={estilos.labelInput}>Fecha Fin</Text>
+                      <Text style={estilos.labelInput}>{t('solicitudesInternas.date_end_label', { defaultValue: 'Fecha Fin' })}</Text>
                       <View style={estilos.inputConIcono}>
                         <Feather name="calendar" size={14} color={colores.textoSuave} />
                         <TextInput
@@ -435,7 +437,7 @@ export default function SolicitudesInternas({ navigation }: Props) {
 
                 {TIPOS_FECHA_UNICA.has(tipo) && (
                   <View>
-                    <Text style={estilos.labelInput}>Fecha Correspondiente</Text>
+                    <Text style={estilos.labelInput}>{t('solicitudesInternas.field_date_single', { defaultValue: 'Fecha Correspondiente' })}</Text>
                     <View style={estilos.inputConIcono}>
                       <Feather name="calendar" size={14} color={colores.textoSuave} />
                       <TextInput
@@ -451,7 +453,7 @@ export default function SolicitudesInternas({ navigation }: Props) {
 
                 {TIPOS_HORAS.has(tipo) && (
                   <View>
-                    <Text style={estilos.labelInput}>Cantidad de Horas</Text>
+                    <Text style={estilos.labelInput}>{t('solicitudesInternas.field_hours', { defaultValue: 'Cantidad de Horas' })}</Text>
                     <View style={estilos.inputConIcono}>
                       <Feather name="clock" size={14} color={colores.textoSuave} />
                       <TextInput
@@ -479,7 +481,7 @@ export default function SolicitudesInternas({ navigation }: Props) {
 
                 {TIPOS_MONTO.has(tipo) && (
                   <View>
-                    <Text style={estilos.labelInput}>Monto Estimado ($ USD)</Text>
+                    <Text style={estilos.labelInput}>{t('solicitudesInternas.field_amount', { defaultValue: 'Monto Estimado ($ USD)' })}</Text>
                     <View style={estilos.inputConIcono}>
                       <Feather name="dollar-sign" size={14} color={colores.textoSuave} />
                       <TextInput
@@ -507,7 +509,7 @@ export default function SolicitudesInternas({ navigation }: Props) {
 
                 {TIPOS_ADJUNTO.has(tipo) && (
                   <View>
-                    <Text style={estilos.labelInput}>Certificado o Comprobante</Text>
+                    <Text style={estilos.labelInput}>{t('solicitudesInternas.field_attachment', { defaultValue: 'Certificado o Comprobante' })}</Text>
                     <TouchableOpacity style={estilos.botonAdjunto} onPress={subirCertificado} disabled={subiendoAdjunto} activeOpacity={0.8}>
                       {subiendoAdjunto ? (
                         <ActivityIndicator size="small" color={esOscuro ? '#93C5FD' : '#2563EB'} />
@@ -516,10 +518,10 @@ export default function SolicitudesInternas({ navigation }: Props) {
                       )}
                       <Text style={[estilos.textoBotonAdjunto, !!archivoAdjunto && { color: '#10B981' }]}>
                         {subiendoAdjunto
-                          ? 'Subiendo archivo...'
+                          ? t('solicitudesInternas.attachment_btn_uploading', { defaultValue: 'Subiendo archivo...' })
                           : archivoAdjunto
-                            ? 'Documento Adjunto ✓'
-                            : 'Adjuntar certificado médico (PDF)'}
+                            ? t('solicitudesInternas.attachment_btn_uploaded', { defaultValue: 'Documento Adjunto ✓' })
+                            : t('solicitudesInternas.attachment_btn_placeholder', { defaultValue: 'Adjuntar certificado médico (PDF)' })}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -531,25 +533,25 @@ export default function SolicitudesInternas({ navigation }: Props) {
             <View style={estilos.seccionFormulario}>
               <View style={estilos.filaSeccionHeader}>
                 <Feather name="file-text" size={13} color={esOscuro ? '#93C5FD' : '#2563EB'} />
-                <Text style={estilos.labelSeccion}>INFORMACIÓN PRINCIPAL</Text>
+                <Text style={estilos.labelSeccion}>{t('solicitudesInternas.section_info', { defaultValue: 'INFORMACIÓN PRINCIPAL' })}</Text>
               </View>
 
-              <Text style={estilos.labelInput}>Asunto / Título del Trámite</Text>
+              <Text style={estilos.labelInput}>{t('solicitudesInternas.field_subject', { defaultValue: 'Asunto / Título del Trámite' })}</Text>
               <TextInput
                 style={estilos.input}
                 value={titulo}
                 onChangeText={setTitulo}
-                placeholder="Ej. Solicitud de vacaciones de verano"
+                placeholder={t('solicitudesInternas.field_subject_placeholder', { defaultValue: 'Ej. Solicitud de vacaciones de verano' })}
                 placeholderTextColor={colores.textoSuave}
               />
 
-              <Text style={[estilos.labelInput, { marginTop: 12 }]}>Detalles y Justificación</Text>
+              <Text style={[estilos.labelInput, { marginTop: 12 }]}>{t('solicitudesInternas.field_details', { defaultValue: 'Detalles y Justificación' })}</Text>
               <TextInput
                 style={[estilos.input, estilos.textArea]}
                 value={descripcion}
                 onChangeText={setDescripcion}
                 multiline
-                placeholder="Explica el motivo del trámite y cualquier consideración relevante..."
+                placeholder={t('solicitudesInternas.field_details_placeholder', { defaultValue: 'Explica el motivo del trámite y cualquier consideración relevante...' })}
                 placeholderTextColor={colores.textoSuave}
                 textAlignVertical="top"
               />
@@ -569,7 +571,9 @@ export default function SolicitudesInternas({ navigation }: Props) {
                   <Feather name="send" size={16} color="#ffffff" />
                 )}
                 <Text style={estilos.textoBotonEnviar}>
-                  {enviando ? 'Registrando Solicitud...' : 'Enviar Solicitud'}
+                  {enviando
+                    ? t('solicitudesInternas.submit_sending', { defaultValue: 'Registrando Solicitud...' })
+                    : t('solicitudesInternas.send_request', { defaultValue: 'Enviar Solicitud' })}
                 </Text>
               </View>
             </BotonAnimado>

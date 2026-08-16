@@ -1,12 +1,16 @@
 import React from 'react';
-import { SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
 import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
 import { ESPACIADO, RADIOS, SOMBRAS } from '@/shared/constants/diseno';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
+
+const Text = AdminTranslatedText;
 
 const SECCIONES_PRIVACIDAD = [
   {
@@ -43,6 +47,7 @@ const DERECHOS_ARCO = [
 ];
 
 export default function PoliticaPrivacidad() {
+  const { t } = useTranslation();
   const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
   const estilos = crearEstilos(colores, esOscuro);
 
@@ -50,7 +55,7 @@ export default function PoliticaPrivacidad() {
     <SafeAreaView style={estilos.contenedor}>
       <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
       <View pointerEvents="none" style={estilos.fondoAbsoluto}><FondoMobilePremium /></View>
-      <NavbarEnterprise titulo="Privacidad" subtitulo="Políticas y gobernanza de datos" mostrarAtras />
+      <NavbarEnterprise titulo={t('politicaPrivacidad.navbar_title')} subtitulo={t('politicaPrivacidad.navbar_subtitle')} mostrarAtras />
 
       <ScrollView contentContainerStyle={estilos.scroll} showsVerticalScrollIndicator={false}>
         {/* Hero Card de Seguridad */}
@@ -63,16 +68,16 @@ export default function PoliticaPrivacidad() {
               <Feather name="shield" size={26} color={esOscuro ? '#93C5FD' : '#2563EB'} />
             </View>
             <View style={estilos.heroTextos}>
-              <Text style={estilos.heroTitulo}>Tu información, protegida</Text>
+              <Text style={estilos.heroTitulo}>{t('politicaPrivacidad.hero_title')}</Text>
               <Text style={estilos.heroSubtitulo}>
-                Conoce las directivas de seguridad y cómo resguardamos tus datos en el ecosistema Nexxus Enterprise.
+                {t('politicaPrivacidad.hero_subtitle')}
               </Text>
             </View>
           </BlurView>
         </Animated.View>
 
         {/* Sección de Pilares de Privacidad */}
-        <Text style={estilos.seccionLabel}>PILARES DE PRIVACIDAD</Text>
+        <Text style={estilos.seccionLabel}>{t('politicaPrivacidad.pillars_label')}</Text>
         <View style={estilos.listaSecciones}>
           {SECCIONES_PRIVACIDAD.map((sec, idx) => (
             <Animated.View
@@ -97,7 +102,7 @@ export default function PoliticaPrivacidad() {
         </View>
 
         {/* Derechos de Usuario */}
-        <Text style={estilos.seccionLabel}>TUS DERECHOS ARCO</Text>
+        <Text style={estilos.seccionLabel}>{t('politicaPrivacidad.rights_label')}</Text>
         <Animated.View
           entering={FadeInDown.duration(260).delay(180).easing(Easing.out(Easing.quad))}
           style={estilos.gridDerechos}
@@ -121,7 +126,7 @@ export default function PoliticaPrivacidad() {
           <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.notaContent}>
             <Feather name="info" size={18} color={esOscuro ? '#93C5FD' : '#2563EB'} />
             <Text style={estilos.notaTexto}>
-              Para ejercer cualquiera de tus derechos o solicitar la rectificación de tus datos, contacta al administrador de Recursos Humanos de tu organización.
+              {t('politicaPrivacidad.note_text')}
             </Text>
           </BlurView>
         </Animated.View>

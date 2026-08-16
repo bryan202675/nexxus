@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   FlatList,
@@ -18,10 +17,13 @@ import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
 import { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/constants/diseno';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 import { Notification } from 'domain/entities/Notification';
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import { translateWithApi } from '@/shared/i18n/translatorApi';
+
+const Text = AdminTranslatedText;
 
 interface Props {
   navigation: any;
@@ -186,7 +188,7 @@ export default function Notificaciones({ navigation }: Props) {
       </View>
       <NavbarEnterprise
         titulo={t('notificaciones.title', { defaultValue: 'Notificaciones' })}
-        subtitulo="Avisos, tareas y actividad"
+        subtitulo={t('notificaciones.subtitle', { defaultValue: 'Avisos, tareas y actividad' })}
         mostrarAtras
       />
 
@@ -243,7 +245,9 @@ export default function Notificaciones({ navigation }: Props) {
               {noLeidas > 0 && (
                 <TouchableOpacity onPress={marcarTodasComoLeidas} disabled={marcandoTodas} activeOpacity={0.8}>
                   <Text style={estilos.linkMarcarLeidas}>
-                    {marcandoTodas ? 'Marcando...' : 'Marcar todas leídas'}
+                    {marcandoTodas
+                      ? t('notificaciones.marking', { defaultValue: 'Marcando...' })
+                      : t('notificaciones.mark_all_read', { defaultValue: 'Marcar todas leídas' })}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -269,7 +273,7 @@ export default function Notificaciones({ navigation }: Props) {
           </View>
         }
         ListEmptyComponent={
-          <EmptyState icono="bell-off" titulo={t('notificaciones.no_notifications', { defaultValue: 'Bandeja al día' })} detalle="No tienes notificaciones pendientes en este momento." />
+          <EmptyState icono="bell-off" titulo={t('notificaciones.no_notifications', { defaultValue: 'Bandeja al día' })} detalle={t('notificaciones.no_notifications_detail', { defaultValue: 'No tienes notificaciones pendientes en este momento.' })} />
         }
       />
     </SafeAreaView>

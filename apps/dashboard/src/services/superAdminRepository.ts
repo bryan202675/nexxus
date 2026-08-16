@@ -433,3 +433,123 @@ export function subscribeSupportSessions(callback, onError) {
     return { data };
   }, () => {}, onError);
 }
+
+// --- Bandeja de soporte: tickets de empresa/usuario + solicitudes públicas ---
+
+// "admin"/"admin_empresa" abrió el ticket a nombre de la empresa (ej. dueño reportando algo
+// operativo); cualquier otro rol (empleado, jefe, psicologo...) es soporte a nivel de usuario
+// individual. Mismo criterio que isAdminEmpresa() en supabase/functions/_shared/nexxus.ts.
+const ROLES_EMPRESA = new Set(["admin", "admin_empresa"]);
+
+const mapTicket = (row) => {
+  const autor = row.usuarios || {};
+  const empresa = row.empresas || {};
+  const esEmpresa = ROLES_EMPRESA.has(autor.rol);
+  return {
+    id: row.id,
+    tipo: esEmpresa ? "empresa" : "usuario",
+    empresaId: row.empresa_id,
+    empresaNombre: textValue(empresa.nombre, "—"),
+    creadoPor: row.creado_por,
+    creadoPorNombre: textValue(row.creado_por_nombre, textValue(autor.nombre, "—")),
+    creadoPorCorreo: textValue(autor.correo),
+    creadoPorTelefono: textValue(autor.telefono),
+    creadoPorRol: textValue(autor.rol),
+    titulo: textValue(row.titulo),
+    descripcion: textValue(row.descripcion),
+    categoria: row.categoria,
+    prioridad: row.prioridad,
+    estado: row.estado,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+};
+
+export function subscribeSupportTickets(callback, onError) {
+  return realtimeQuery("tickets", null, async () => {
+    const { data, error } = await supabase
+      .from("tickets")
+      .select("*, empresas(nombre), usuarios!tickets_creado_por_fkey(nombre, correo, telefono, rol)")
+      .order("created_at", { ascending: false })
+      .limit(300);
+    if (error) throw error;
+    callback((data || []).map(mapTicket));
+    return { data };
+  }, () => {}, onError);
+}
+
+export function subscribeTicketThread(ticketId, callback, onError) {
+  if (!ticketId) {
+    callback([]);
+    return () => {};
+  }
+  return realtimeQuery("ticket_mensajes", `ticket_id=eq.${ticketId}`, async () => {
+    const { data, error } = await supabase
+      .from("ticket_mensajes")
+      .select("*")
+      .eq("ticket_id", ticketId)
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    callback((data || []).map((row) => ({
+      id: row.id,
+      ticketId: row.ticket_id,
+      autorId: row.autor_id,
+      autorNombre: textValue(row.autor_nombre, "—"),
+      texto: row.texto,
+      createdAt: row.created_at,
+    })));
+    return { data };
+  }, () => {}, onError);
+}
+
+export async function responderTicket(ticketId: string, texto: string, nuevoEstado: string | null = null) {
+  const { error } = await supabase.rpc("responder_ticket_soporte", {
+    p_ticket_id: ticketId,
+    p_texto: texto,
+    p_nuevo_estado: nuevoEstado,
+  });
+  if (error) throw new Error(error.message || "No se pudo enviar la respuesta.");
+}
+
+const mapSolicitudPublica = (row) => ({
+  id: row.id,
+  ticketCodigo: row.ticket_codigo,
+  nombre: textValue(row.nombre, "—"),
+  correo: textValue(row.correo),
+  telefono: textValue(row.telefono),
+  empresa: textValue(row.empresa),
+  categoria: row.categoria,
+  asunto: textValue(row.asunto),
+  mensaje: textValue(row.mensaje),
+  prioridad: row.prioridad,
+  estado: row.estado,
+  origen: row.origen,
+  respuestaSoporte: textValue(row.respuesta_soporte),
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+});
+
+export function subscribePublicSupportRequests(callback, onError) {
+  return realtimeQuery("solicitudes_soporte_publico", null, async () => {
+    const { data, error } = await supabase
+      .from("solicitudes_soporte_publico")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(300);
+    if (error) throw error;
+    callback((data || []).map(mapSolicitudPublica));
+    return { data };
+  }, () => {}, onError);
+}
+
+export async function responderSoportePublico(payload: {
+  id: string;
+  respuesta: string;
+  nuevoEstado?: string;
+  incluirLinkRecuperacion?: boolean;
+  redirectTo?: string;
+}) {
+  const { data, error } = await supabase.functions.invoke("sa-responder-soporte-publico", { body: payload });
+  if (error) throw new Error(error.message || "No se pudo enviar la respuesta.");
+  return data;
+}

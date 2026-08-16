@@ -16,8 +16,6 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
-  Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -35,6 +33,7 @@ import { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/consta
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
 // Importa FondoMobilePremium; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
 import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
@@ -44,6 +43,16 @@ import { useCases } from '@/infrastructure/container';
 import { Ticket, TicketCategoria } from 'domain/entities/Ticket';
 import TicketHiloModal from '@/presentation/components/TicketHiloModal';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
+
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
+
+const PRIORIDAD_COLORES: Record<Ticket['prioridad'], string> = {
+  baja: '#10B981',
+  media: '#F59E0B',
+  alta: '#EF4444',
+  urgente: '#EC4899',
+};
 
 const FAQ_ITEMS: { pregunta: string; respuesta: string }[] = [
   { pregunta: '¿Cómo registro mi entrada y salida?', respuesta: 'Ve a Control de asistencia desde el inicio o recursos y marca tu entrada o salida con un toque.' },
@@ -88,6 +97,7 @@ export default function CentroApoyo({ navigation }: Props) {
   const [tituloTicket, setTituloTicket] = useState('');
   const [descripcionTicket, setDescripcionTicket] = useState('');
   const [categoriaTicket, setCategoriaTicket] = useState<TicketCategoria>('tecnico');
+  const [prioridadTicket, setPrioridadTicket] = useState<Ticket['prioridad']>('media');
   const [enviandoTicket, setEnviandoTicket] = useState(false);
   const [faqAbierta, setFaqAbierta] = useState<number | null>(null);
 
@@ -101,7 +111,7 @@ export default function CentroApoyo({ navigation }: Props) {
 
   const crearTicket = async () => {
     if (!perfil?.id || !perfil?.empresaId || !tituloTicket.trim() || !descripcionTicket.trim()) {
-      Alert.alert('Incompleto', 'Completa el título y la descripción.');
+      Alert.alert(t('centroApoyo.alert_incomplete_title'), t('centroApoyo.alert_incomplete_msg'));
       return;
     }
     setEnviandoTicket(true);
@@ -113,14 +123,15 @@ export default function CentroApoyo({ navigation }: Props) {
         titulo: tituloTicket.trim(),
         descripcion: descripcionTicket.trim(),
         categoria: categoriaTicket,
-        prioridad: 'media',
+        prioridad: prioridadTicket,
       });
       setModalNuevoTicket(false);
       setTituloTicket('');
       setDescripcionTicket('');
       setCategoriaTicket('tecnico');
+      setPrioridadTicket('media');
     } catch {
-      Alert.alert('Error', 'No se pudo crear el ticket. Intenta de nuevo.');
+      Alert.alert(t('common.error', { defaultValue: 'Error' }), t('centroApoyo.alert_error_ticket'));
     } finally {
       setEnviandoTicket(false);
     }
@@ -156,26 +167,26 @@ export default function CentroApoyo({ navigation }: Props) {
   // Declara acciones; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const acciones: { titulo: string; desc: string; icono: IconoMaterial; accion: () => void }[] = [
     {
-      titulo: 'Nexxus IA',
-      desc: 'Consulta dudas operativas y genera solicitudes al instante.',
+      titulo: t('centroApoyo.action_items.chat_ia.title'),
+      desc: t('centroApoyo.action_items.chat_ia.desc'),
       icono: 'auto-awesome',
       accion: () => navigation.navigate('ChatIA'),
     },
     {
-      titulo: 'Solicitudes Internas',
-      desc: 'Peticiones formales, permisos y trámites internos.',
+      titulo: t('centroApoyo.action_items.solicitudes.title'),
+      desc: t('centroApoyo.action_items.solicitudes.desc'),
       icono: 'assignment',
       accion: () => navigation.navigate('SolicitudesInternas'),
     },
     {
-      titulo: 'Nuevo Ticket',
-      desc: 'Reporta un problema técnico o incidente de forma directa.',
+      titulo: t('centroApoyo.action_items.nuevo_ticket.title'),
+      desc: t('centroApoyo.action_items.nuevo_ticket.desc'),
       icono: 'confirmation-number',
       accion: () => setModalNuevoTicket(true),
     },
     {
-      titulo: 'Mis Activos',
-      desc: 'Consulta equipo asignado y reporta incidencias internas.',
+      titulo: t('centroApoyo.action_items.mis_activos.title'),
+      desc: t('centroApoyo.action_items.mis_activos.desc'),
       icono: 'inventory-2',
       accion: () => navigation.navigate('MisActivos'),
     },
@@ -183,10 +194,10 @@ export default function CentroApoyo({ navigation }: Props) {
 
   const normalizar = (estado: string) => {
     switch (estado) {
-      case 'abierto': return 'Abierto';
-      case 'en_progreso': return 'En Progreso';
-      case 'resuelto': return 'Resuelto';
-      case 'cerrado': return 'Cerrado';
+      case 'abierto': return t('centroApoyo.ticket_status.abierto');
+      case 'en_progreso': return t('centroApoyo.ticket_status.en_progreso');
+      case 'resuelto': return t('centroApoyo.ticket_status.resuelto');
+      case 'cerrado': return t('centroApoyo.ticket_status.cerrado');
       default: return estado;
     }
   };
@@ -210,7 +221,7 @@ export default function CentroApoyo({ navigation }: Props) {
       </View>
 
       {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-      <NavbarEnterprise titulo={t('centroApoyo.title', { defaultValue: 'Centro de Apoyo' })} subtitulo="Soporte y atención al empleado" mostrarAtras />
+      <NavbarEnterprise titulo={t('centroApoyo.title', { defaultValue: 'Centro de Apoyo' })} subtitulo={t('centroApoyo.subtitle')} mostrarAtras />
 
       {/* Area desplazable; permite ver todo el contenido cuando la pantalla no cabe completa. */}
       <ScrollView contentContainerStyle={estilos.scroll} showsVerticalScrollIndicator={false}>
@@ -264,9 +275,9 @@ export default function CentroApoyo({ navigation }: Props) {
         {/* Mis Tickets */}
         <View style={estilos.seccion}>
           <View style={estilos.encabezadoSeccion}>
-            <Text style={estilos.tituloSeccion}>Mis Tickets de Soporte</Text>
+            <Text style={estilos.tituloSeccion}>{t('centroApoyo.tickets_section_title')}</Text>
             <TouchableOpacity onPress={() => setModalNuevoTicket(true)} activeOpacity={0.8}>
-              <Text style={estilos.linkSeccion}>+ Nuevo Ticket</Text>
+              <Text style={estilos.linkSeccion}>{t('centroApoyo.new_ticket_link')}</Text>
             </TouchableOpacity>
           </View>
           {tickets.length > 0 ? (
@@ -292,14 +303,14 @@ export default function CentroApoyo({ navigation }: Props) {
               ))}
             </View>
           ) : (
-            <EmptyState icono="message-square" titulo={t('centroApoyo.no_requests', { defaultValue: 'Sin tickets activos' })} detalle="Crea un ticket cuando tengas un problema técnico o incidente." />
+            <EmptyState icono="message-square" titulo={t('centroApoyo.no_requests', { defaultValue: 'Sin tickets activos' })} detalle={t('centroApoyo.no_requests_detail')} />
           )}
         </View>
 
         {/* Preguntas Frecuentes */}
         <View style={estilos.seccion}>
           <View style={estilos.encabezadoSeccion}>
-            <Text style={estilos.tituloSeccion}>Preguntas Frecuentes</Text>
+            <Text style={estilos.tituloSeccion}>{t('centroApoyo.faq_section_title')}</Text>
           </View>
           <View style={estilos.lista}>
             {FAQ_ITEMS.map((item, indice) => {
@@ -343,7 +354,7 @@ export default function CentroApoyo({ navigation }: Props) {
 
       <ModalShell visible={modalNuevoTicket} onClose={() => setModalNuevoTicket(false)} maxHeight="80%" style={estilos.modalNuevoTicket}>
         <View style={estilos.encabezadoSeccion}>
-          <Text style={estilos.tituloSeccion}>Nuevo Ticket de Soporte</Text>
+          <Text style={estilos.tituloSeccion}>{t('centroApoyo.new_ticket_modal_title')}</Text>
           <TouchableOpacity onPress={() => setModalNuevoTicket(false)} style={estilos.botonCerrarModal}>
             <Feather name="x" size={18} color={colores.texto} />
           </TouchableOpacity>
@@ -357,20 +368,47 @@ export default function CentroApoyo({ navigation }: Props) {
                 onPress={() => setCategoriaTicket(cat)}
               >
                 <Text style={[estilos.textoChipCategoria, categoriaTicket === cat && estilos.textoChipCategoriaActivo]}>
-                  {cat === 'tecnico' ? 'Técnico' : cat === 'incidente' ? 'Incidente' : 'Otro'}
+                  {cat === 'tecnico' ? t('centroApoyo.category_tecnico') : cat === 'incidente' ? t('centroApoyo.category_incidente') : t('centroApoyo.category_otro')}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
+          <View style={estilos.gridPrioridad}>
+            {(['baja', 'media', 'alta', 'urgente'] as Ticket['prioridad'][]).map((p) => {
+              const seleccionada = prioridadTicket === p;
+              const colorP = PRIORIDAD_COLORES[p];
+              return (
+                <TouchableOpacity
+                  key={p}
+                  style={[
+                    estilos.chipPrioridad,
+                    seleccionada && { borderColor: colorP, backgroundColor: `${colorP}18` },
+                  ]}
+                  onPress={() => setPrioridadTicket(p)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[estilos.puntoPrioridad, { backgroundColor: colorP }]} />
+                  <Text
+                    style={[
+                      estilos.textoChipPrioridad,
+                      seleccionada && { color: colorP, fontWeight: '800' },
+                    ]}
+                  >
+                    {t(`common.priority.${p}`).toUpperCase()}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
           <TextInput
-            placeholder="Título del problema"
+            placeholder={t('centroApoyo.placeholder_title')}
             placeholderTextColor={colores.textoSuave}
             value={tituloTicket}
             onChangeText={setTituloTicket}
             style={estilos.inputModal}
           />
           <TextInput
-            placeholder="Describe qué ocurrió detalladamente..."
+            placeholder={t('centroApoyo.placeholder_desc')}
             placeholderTextColor={colores.textoSuave}
             value={descripcionTicket}
             onChangeText={setDescripcionTicket}
@@ -383,7 +421,7 @@ export default function CentroApoyo({ navigation }: Props) {
             style={estilos.botonEnviarModal}
             scaleTo={0.97}
           >
-            <Text style={estilos.textoBotonEnviarModal}>{enviandoTicket ? 'Creando...' : 'Crear Ticket'}</Text>
+            <Text style={estilos.textoBotonEnviarModal}>{enviandoTicket ? t('centroApoyo.creating_ticket') : t('centroApoyo.btn_create_ticket')}</Text>
           </BotonAnimado>
         </ScrollView>
       </ModalShell>
@@ -648,6 +686,33 @@ function crearEstilosApoyo(c: any, esOscuro: boolean) {
     textoChipCategoriaActivo: {
       color: '#fff',
       fontWeight: '800',
+    },
+    gridPrioridad: {
+      flexDirection: 'row',
+      gap: 6,
+      marginBottom: 14,
+    },
+    chipPrioridad: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 8,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: c.borde,
+      backgroundColor: glassMini,
+    },
+    puntoPrioridad: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      marginRight: 5,
+    },
+    textoChipPrioridad: {
+      fontSize: 10.5,
+      fontWeight: '700',
+      color: c.textoSuave,
     },
     inputModal: {
       backgroundColor: glassMini,

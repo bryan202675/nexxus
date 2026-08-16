@@ -10,7 +10,6 @@
 import React from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   FlatList,
@@ -30,12 +29,15 @@ import { COLORES, ESPACIADO } from '@/shared/constants/diseno';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 // Importa { InboxItem }; usa tipos de dominio para que los datos mantengan estructura consistente.
 import { InboxItem } from 'domain/entities/Inbox';
 // Importa FondoMobilePremium; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
 import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
+
+const Text = AdminTranslatedText;
 
 /**
  * Define el contrato de datos Props; documenta campos esperados y evita pasar objetos ambiguos entre capas.

@@ -12,6 +12,7 @@ import {
   SuperAdminCompanyAction,
   SupportSessionResult,
   SupportSessionRow,
+  PublicSupportRequest,
   UserFilters,
   UsuarioGlobal,
 } from '../../../entities/SuperAdmin';
@@ -157,5 +158,26 @@ export class SuperAdminUseCases {
 
   subscribeSupportSessions(callback: (rows: SupportSessionRow[]) => void, onError: (error: Error) => void): () => void {
     return this.superAdminRepository.subscribeSupportSessions(callback, onError);
+  }
+
+  submitPublicSupportRequest(dto: {
+    nombre: string;
+    correo: string;
+    telefono?: string;
+    empresa?: string;
+    categoria: string;
+    asunto: string;
+    mensaje: string;
+    prioridad: string;
+  }): Promise<{ ticketCodigo: string }> {
+    return this.superAdminRepository.submitPublicSupportRequest(dto);
+  }
+
+  subscribePublicSupportRequests(callback: (requests: PublicSupportRequest[]) => void, onError: (error: Error) => void): () => void {
+    return this.superAdminRepository.subscribePublicSupportRequests(callback, onError);
+  }
+
+  updatePublicSupportRequestStatus(id: string, estado: PublicSupportRequest['estado'], respuestaSoporte?: string): Promise<void> {
+    return this.superAdminRepository.updatePublicSupportRequestStatus(id, estado, respuestaSoporte);
   }
 }

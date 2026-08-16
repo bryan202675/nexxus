@@ -31,8 +31,18 @@ export class SupabaseCheckInRepository implements ICheckInRepository {
     return mapRow(row);
   }
 
-  async getByUser(userId: string): Promise<CheckIn[]> {
-    const { data, error } = await supabase.from('checkins').select('*').eq('usuario_id', userId);
+  async getByUser(userId: string, limit?: number): Promise<CheckIn[]> {
+    let query = supabase
+      .from('checkins')
+      .select('*')
+      .eq('usuario_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (limit) {
+      query = query.limit(limit);
+    }
+
+    const { data, error } = await query;
     if (error) throw error;
     return (data || []).map(mapRow);
   }

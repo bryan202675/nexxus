@@ -12,6 +12,7 @@ import { ICheckInRepository } from '../../../repositories/ICheckInRepository';
 import { WellnessMetricsDTO } from '../../dtos/CheckInDTO';
 // Importa { CheckIn }; usa tipos de dominio para que los datos mantengan estructura consistente.
 import { CheckIn } from '../../../entities/CheckIn';
+import { toLocalDateKey } from '../../../services/priorityEngine';
 
 /**
  * Caso de Uso: Obtener métricas de bienestar calculadas para la UI.
@@ -131,9 +132,9 @@ export class GetWellnessMetrics {
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       fecha.setDate(hoy.getDate() - (6 - idx));
       // Declara fechaStr; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const fechaStr = fecha.toISOString().split('T')[0];
+      const fechaStr = toLocalDateKey(fecha);
       // Declara ci; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      const ci = checkIns.find(c => c.fecha.startsWith(fechaStr));
+      const ci = checkIns.find(c => c.fecha && toLocalDateKey(c.fecha) === fechaStr);
       // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (ci) {
         // Devuelve el valor final calculado para esta funcion o caso de uso.

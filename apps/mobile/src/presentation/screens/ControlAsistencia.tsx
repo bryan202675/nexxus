@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   SafeAreaView,
   StatusBar,
@@ -19,6 +18,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -28,6 +28,8 @@ import { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/consta
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
+
+const Text = AdminTranslatedText;
 
 interface Props {
   navigation: any;
@@ -158,7 +160,7 @@ export default function ControlAsistencia({ navigation }: Props) {
         setEnPausa(false);
       }
     } catch (e: any) {
-      Alert.alert(t('common.error', { defaultValue: 'Error' }), `No se pudo registrar el cambio de pausa.\n\nDetalle: ${e.message || e}`);
+      Alert.alert(t('common.error', { defaultValue: 'Error' }), `${t('controlAsistencia.alert_error_pause')}\n\nDetalle: ${e.message || e}`);
     } finally {
       setRegistrando(false);
     }
@@ -209,7 +211,7 @@ export default function ControlAsistencia({ navigation }: Props) {
 
       <NavbarEnterprise
         titulo={t('controlAsistencia.title', { defaultValue: 'Control de Asistencia' })}
-        subtitulo="Registro de jornada y marcajes"
+        subtitulo={t('controlAsistencia.subtitle')}
         mostrarAtras
       />
 
@@ -232,9 +234,9 @@ export default function ControlAsistencia({ navigation }: Props) {
               ]}>
                 {estaActivo
                   ? enPausa
-                    ? 'EN PAUSA (DESCANSO)'
-                    : 'JORNADA EN CURSO'
-                  : 'FUERA DE TURNO'}
+                    ? t('controlAsistencia.status_pause')
+                    : t('controlAsistencia.status_active')
+                  : t('controlAsistencia.status_off')}
               </Text>
             </View>
 
@@ -271,7 +273,7 @@ export default function ControlAsistencia({ navigation }: Props) {
                       <Feather name="play" size={18} color="#ffffff" />
                     )}
                     <Text style={estilos.textoBotonPrimario}>
-                      {registrando ? 'Registrando Entrada...' : 'Iniciar Jornada'}
+                      {registrando ? 'Registrando Entrada...' : t('controlAsistencia.btn_start')}
                     </Text>
                   </View>
                 </BotonAnimado>
@@ -286,7 +288,7 @@ export default function ControlAsistencia({ navigation }: Props) {
                     <View style={estilos.contenidoBotonPausa}>
                       <Feather name={enPausa ? "play" : "pause"} size={16} color={enPausa ? "#10B981" : "#F59E0B"} />
                       <Text style={[estilos.textoBotonPausa, enPausa && { color: "#10B981" }]}>
-                        {enPausa ? 'Reanudar' : 'Pausar'}
+                        {enPausa ? t('controlAsistencia.btn_resume') : t('controlAsistencia.btn_pause')}
                       </Text>
                     </View>
                   </BotonAnimado>
@@ -303,7 +305,7 @@ export default function ControlAsistencia({ navigation }: Props) {
                       ) : (
                         <Feather name="square" size={16} color="#ffffff" />
                       )}
-                      <Text style={estilos.textoBotonSalida}>Finalizar Turno</Text>
+                      <Text style={estilos.textoBotonSalida}>{t('controlAsistencia.btn_end')}</Text>
                     </View>
                   </BotonAnimado>
                 </View>
@@ -313,7 +315,7 @@ export default function ControlAsistencia({ navigation }: Props) {
         </Animated.View>
 
         {/* MÉTRICAS BENTO DE ASISTENCIA */}
-        <Text style={estilos.seccionLabel}>RESUMEN DE ASISTENCIA</Text>
+        <Text style={estilos.seccionLabel}>{t('controlAsistencia.summary_label')}</Text>
         <Animated.View
           entering={FadeInDown.duration(260).delay(40).easing(Easing.out(Easing.quad))}
           style={estilos.resumenGrid}
@@ -350,7 +352,7 @@ export default function ControlAsistencia({ navigation }: Props) {
         </Animated.View>
 
         {/* DETALLE Y NORMAS DE ASISTENCIA */}
-        <Text style={estilos.seccionLabel}>POLÍTICA DE MARCACIÓN</Text>
+        <Text style={estilos.seccionLabel}>{t('controlAsistencia.policy_label')}</Text>
         <Animated.View
           entering={FadeInDown.duration(260).delay(80).easing(Easing.out(Easing.quad))}
           style={estilos.tarjetaNormas}

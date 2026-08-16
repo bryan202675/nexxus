@@ -8,7 +8,7 @@ export function SidebarLinks(props) {
   // Chakra color mode
   let location = useLocation();
 
-  const { routes } = props;
+  const { routes, badges = {} } = props;
 
   // verifies if routeName is the one active (in browser input)
   const activeRoute = (routeName) => {
@@ -35,13 +35,18 @@ export function SidebarLinks(props) {
                   {route.icon ? route.icon : <DashIcon />}{" "}
                 </span>
                 <p
-                  className={`leading-1 ml-4 flex ${
+                  className={`leading-1 ml-4 flex items-center gap-2 ${
                     activeRoute(route.path) === true
                       ? "font-bold text-navy-700 dark:text-white"
                       : "font-medium text-gray-600"
                   }`}
                 >
                   {route.name}
+                  {badges[route.path] > 0 ? (
+                    <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">
+                      {badges[route.path] > 9 ? "9+" : badges[route.path]}
+                    </span>
+                  ) : null}
                 </p>
               </li>
               {activeRoute(route.path) ? (

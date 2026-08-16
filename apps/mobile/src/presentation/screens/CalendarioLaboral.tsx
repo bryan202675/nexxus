@@ -8,8 +8,8 @@
 
 // Importa React, { useState } desde React; habilita componentes, hooks y tipos base para esta pieza.
 import React, { useState } from 'react';
-// Importa { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, ScrollView } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, ScrollView } from 'react-native';
+// Importa { View, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, ScrollView } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
+import { View, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, ScrollView } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
@@ -21,10 +21,13 @@ import { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/consta
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
 import EmptyState from '@/presentation/components/ui/EmptyState';
 import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
+
+const Text = AdminTranslatedText;
 
 /**
  * Define el contrato de datos Props; documenta campos esperados y evita pasar objetos ambiguos entre capas.

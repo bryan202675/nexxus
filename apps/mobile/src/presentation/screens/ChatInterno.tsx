@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
@@ -13,11 +14,10 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
-  Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
@@ -33,6 +33,9 @@ import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
 import { SOMBRAS } from '@/shared/constants/diseno';
+
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
 
 const obtenerEmpresaId = (perfil: { empresaId?: string } | null) => {
   const empresaId = perfil?.empresaId || '';
@@ -162,6 +165,7 @@ const uploadChatAttachmentAsset = async (
 };
 
 const AnimatedVistoBadge = ({ leido }: { leido: boolean }) => {
+  const { t } = useTranslation();
   const animScale = useRef(new Animated.Value(0.5)).current;
   const animOpacity = useRef(new Animated.Value(0)).current;
 
@@ -199,7 +203,7 @@ const AnimatedVistoBadge = ({ leido }: { leido: boolean }) => {
       }}
     >
       <MaterialIcons name="done-all" size={14} color="#3B82F6" />
-      <Text style={{ fontSize: 10, fontWeight: '800', color: '#3B82F6' }}>Visto</Text>
+      <Text style={{ fontSize: 10, fontWeight: '800', color: '#3B82F6' }}>{t('chatInterno.readReceipt')}</Text>
     </Animated.View>
   );
 };
@@ -275,6 +279,7 @@ const formatearPreviewUltimoMensaje = (
 };
 
 export default function ChatInterno() {
+  const { t } = useTranslation();
   const { perfil } = useContextoUsuario();
   const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
 
@@ -646,7 +651,7 @@ export default function ChatInterno() {
   const handleLeaveGroup = async (conv: Conversation) => {
     if (!perfil || !empresaId) return;
     const groupTitle = getTituloConversacion(conv, perfil.id, users);
-    const confirmMessage = `¿Estás seguro de abandonar el grupo "${groupTitle}"? Ya no tendrás acceso a este chat.`;
+    const confirmMessage = t('chatInterno.alerts.leaveGroupMessage', { name: groupTitle });
 
     const executeLeave = async () => {
       setSending(true);
@@ -677,9 +682,9 @@ export default function ChatInterno() {
         await executeLeave();
       }
     } else {
-      Alert.alert('Abandonar grupo', confirmMessage, [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Abandonar', style: 'destructive', onPress: executeLeave },
+      Alert.alert(t('chatInterno.alerts.leaveGroupTitle'), confirmMessage, [
+        { text: t('chatInterno.common.cancel'), style: 'cancel' },
+        { text: t('chatInterno.alerts.leaveGroupConfirm'), style: 'destructive', onPress: executeLeave },
       ]);
     }
   };
@@ -692,7 +697,7 @@ export default function ChatInterno() {
       if (Platform.OS !== 'web') {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
-          Alert.alert('Permisos requeridos', 'Se requieren permisos para acceder a las fotos de tu dispositivo.');
+          Alert.alert(t('chatInterno.alerts.permissionsTitle'), t('chatInterno.alerts.permissionsMessage'));
           return;
         }
       }
@@ -726,7 +731,7 @@ export default function ChatInterno() {
   const handleDeleteConv = async (conv: Conversation) => {
     if (!perfil || !empresaId) return;
     const convTitle = getTituloConversacion(conv, perfil.id, users);
-    const confirmMessage = `¿Estás seguro de eliminar la conversación "${convTitle}"? Se borrará el historial de mensajes.`;
+    const confirmMessage = t('chatInterno.alerts.deleteConvMessage', { name: convTitle });
 
     const executeDelete = async () => {
       setDeletingConv(true);
@@ -750,9 +755,9 @@ export default function ChatInterno() {
         await executeDelete();
       }
     } else {
-      Alert.alert('Eliminar conversación', confirmMessage, [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Eliminar', style: 'destructive', onPress: executeDelete },
+      Alert.alert(t('chatInterno.alerts.deleteConvTitle'), confirmMessage, [
+        { text: t('chatInterno.common.cancel'), style: 'cancel' },
+        { text: t('chatInterno.alerts.deleteConfirm'), style: 'destructive', onPress: executeDelete },
       ]);
     }
   };
@@ -1245,10 +1250,10 @@ export default function ChatInterno() {
                   </View>
                   <View style={styles.actionMenuTextWrap}>
                     <Text style={[styles.actionMenuItemText, { color: colores.texto }]}>
-                      Modificar nombre
+                      {t('chatInterno.actionMenu.renameTitle')}
                     </Text>
                     <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
-                      {actionMenuConv.tipo === 'equipo' ? 'Cambiar nombre del grupo' : 'Cambiar apodo del contacto'}
+                      {actionMenuConv.tipo === 'equipo' ? t('chatInterno.actionMenu.renameSubGroup') : t('chatInterno.actionMenu.renameSubContact')}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -1273,10 +1278,10 @@ export default function ChatInterno() {
                   </View>
                   <View style={styles.actionMenuTextWrap}>
                     <Text style={[styles.actionMenuItemText, { color: colores.texto }]}>
-                      {mutedConvIds.includes(actionMenuConv.id) ? 'Desactivar silencio' : 'Silenciar chat'}
+                      {mutedConvIds.includes(actionMenuConv.id) ? t('chatInterno.actionMenu.muteOff') : t('chatInterno.actionMenu.muteOn')}
                     </Text>
                     <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
-                      {mutedConvIds.includes(actionMenuConv.id) ? 'Recibir notificaciones' : 'Silenciar notificaciones de este chat'}
+                      {mutedConvIds.includes(actionMenuConv.id) ? t('chatInterno.actionMenu.muteOffSub') : t('chatInterno.actionMenu.muteOnSub')}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -1294,10 +1299,10 @@ export default function ChatInterno() {
                       </View>
                       <View style={styles.actionMenuTextWrap}>
                         <Text style={[styles.actionMenuItemText, { color: colores.texto }]}>
-                          Cambiar foto del grupo
+                          {t('chatInterno.actionMenu.changePhoto')}
                         </Text>
                         <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
-                          Actualizar la foto de perfil de este grupo
+                          {t('chatInterno.actionMenu.changePhotoSub')}
                         </Text>
                       </View>
                     </TouchableOpacity>
@@ -1312,10 +1317,10 @@ export default function ChatInterno() {
                       </View>
                       <View style={styles.actionMenuTextWrap}>
                         <Text style={[styles.actionMenuItemText, { color: colores.texto }]}>
-                          Añadir personas
+                          {t('chatInterno.actionMenu.addPeople')}
                         </Text>
                         <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
-                          Agregar más integrantes a este equipo
+                          {t('chatInterno.actionMenu.addPeopleSub')}
                         </Text>
                       </View>
                     </TouchableOpacity>
@@ -1330,10 +1335,10 @@ export default function ChatInterno() {
                       </View>
                       <View style={styles.actionMenuTextWrap}>
                         <Text style={[styles.actionMenuItemText, { color: '#EF4444' }]}>
-                          Abandonar grupo
+                          {t('chatInterno.actionMenu.leaveGroup')}
                         </Text>
                         <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
-                          Salir de esta conversación de equipo
+                          {t('chatInterno.actionMenu.leaveGroupSub')}
                         </Text>
                       </View>
                     </TouchableOpacity>
@@ -1358,10 +1363,10 @@ export default function ChatInterno() {
                     </View>
                     <View style={styles.actionMenuTextWrap}>
                       <Text style={[styles.actionMenuItemText, { color: colores.texto }]}>
-                        {blockedConvIds.includes(actionMenuConv.id) ? 'Desbloquear chat' : 'Bloquear chat'}
+                        {blockedConvIds.includes(actionMenuConv.id) ? t('chatInterno.actionMenu.blockOff') : t('chatInterno.actionMenu.blockOn')}
                       </Text>
                       <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
-                        {blockedConvIds.includes(actionMenuConv.id) ? 'Permitir enviar mensajes nuevamente' : 'Impedir el envío de nuevos mensajes'}
+                        {blockedConvIds.includes(actionMenuConv.id) ? t('chatInterno.actionMenu.blockOffSub') : t('chatInterno.actionMenu.blockOnSub')}
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -1384,10 +1389,10 @@ export default function ChatInterno() {
                   </View>
                   <View style={styles.actionMenuTextWrap}>
                     <Text style={[styles.actionMenuItemText, { color: '#EF4444' }]}>
-                      Borrar conversación
+                      {t('chatInterno.actionMenu.deleteConv')}
                     </Text>
                     <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
-                      Eliminar el historial completo de mensajes
+                      {t('chatInterno.actionMenu.deleteConvSub')}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -1430,7 +1435,7 @@ export default function ChatInterno() {
               <TouchableOpacity activeOpacity={1} onPress={(e) => (e as any)?.stopPropagation?.()}>
                 <View style={styles.actionMenuHeader}>
                   <Text style={[styles.actionMenuTitle, { color: colores.texto, fontWeight: '900' }]}>
-                    {targetConvToRename.tipo === 'equipo' ? 'Renombrar equipo' : 'Editar nombre de contacto'}
+                    {targetConvToRename.tipo === 'equipo' ? t('chatInterno.rename.titleGroup') : t('chatInterno.rename.titleContact')}
                   </Text>
                   <TouchableOpacity onPress={() => cerrarRenameModalConAnimacion()}>
                     <MaterialIcons name="close" size={20} color={colores.textoSuave} />
@@ -1438,13 +1443,13 @@ export default function ChatInterno() {
                 </View>
 
                 <Text style={{ fontSize: 13, color: colores.textoSuave, marginTop: 2, marginBottom: 12 }}>
-                  Ingresa el nuevo apodo o nombre visible para esta conversación.
+                  {t('chatInterno.rename.description')}
                 </Text>
 
                 <TextInput
                   value={renameInput}
                   onChangeText={setRenameInput}
-                  placeholder="Escribe el nombre personalizado..."
+                  placeholder={t('chatInterno.rename.placeholder')}
                   placeholderTextColor={colores.textoSuave}
                   style={[
                     styles.groupInput,
@@ -1470,7 +1475,7 @@ export default function ChatInterno() {
                       { borderColor: colores.borde, borderRadius: 16, height: 42, paddingHorizontal: 18 },
                     ]}
                   >
-                    <Text style={{ color: colores.texto, fontSize: 13, fontWeight: '800' }}>Cancelar</Text>
+                    <Text style={{ color: colores.texto, fontSize: 13, fontWeight: '800' }}>{t('chatInterno.common.cancel')}</Text>
                   </BotonAnimado>
                   <BotonAnimado
                     disabled={sending || !renameInput.trim()}
@@ -1491,7 +1496,7 @@ export default function ChatInterno() {
                       <ActivityIndicator size="small" color={esOscuro ? '#000000' : '#FFFFFF'} />
                     ) : (
                       <Text style={{ color: esOscuro ? '#000000' : '#FFFFFF', fontSize: 13, fontWeight: '900' }}>
-                        Guardar cambios
+                        {t('chatInterno.common.saveChanges')}
                       </Text>
                     )}
                   </BotonAnimado>
@@ -1538,7 +1543,7 @@ export default function ChatInterno() {
               <TouchableOpacity activeOpacity={1} onPress={(e) => (e as any)?.stopPropagation?.()}>
                 <View style={styles.actionMenuHeader}>
                   <Text style={[styles.actionMenuTitle, { color: colores.texto, fontWeight: '900' }]}>
-                    Añadir personas al grupo
+                    {t('chatInterno.addMembers.title')}
                   </Text>
                   <TouchableOpacity onPress={() => cerrarAddMembersModalConAnimacion()}>
                     <MaterialIcons name="close" size={20} color={colores.textoSuave} />
@@ -1548,7 +1553,7 @@ export default function ChatInterno() {
                 <ScrollView style={{ maxHeight: 280, marginVertical: 12 }}>
                   {availableUsers.length === 0 ? (
                     <Text style={[styles.noResultsText, { color: colores.textoSuave, textAlign: 'center', marginVertical: 16 }]}>
-                      Todos los integrantes ya pertenecen a este grupo.
+                      {t('chatInterno.addMembers.empty')}
                     </Text>
                   ) : (
                     availableUsers.map((u) => {
@@ -1600,7 +1605,7 @@ export default function ChatInterno() {
                       { borderColor: colores.borde, borderRadius: 16, height: 42, paddingHorizontal: 18 },
                     ]}
                   >
-                    <Text style={{ color: colores.texto, fontSize: 13, fontWeight: '800' }}>Cancelar</Text>
+                    <Text style={{ color: colores.texto, fontSize: 13, fontWeight: '800' }}>{t('chatInterno.common.cancel')}</Text>
                   </BotonAnimado>
                   <BotonAnimado
                     disabled={sending || newMembersSelectedIds.length === 0}
@@ -1621,7 +1626,7 @@ export default function ChatInterno() {
                       <ActivityIndicator size="small" color={esOscuro ? '#000000' : '#FFFFFF'} />
                     ) : (
                       <Text style={{ color: esOscuro ? '#000000' : '#FFFFFF', fontSize: 13, fontWeight: '900' }}>
-                        Añadir ({newMembersSelectedIds.length})
+                        {t('chatInterno.addMembers.addCount', { count: newMembersSelectedIds.length })}
                       </Text>
                     )}
                   </BotonAnimado>
@@ -1641,12 +1646,12 @@ export default function ChatInterno() {
         <View style={styles.fondoAbsoluto}>
           <FondoMobilePremium />
         </View>
-        <NavbarEnterprise titulo="Mensajes" />
+        <NavbarEnterprise titulo={t('chatInterno.navbar.unavailableTitle')} />
         <View style={styles.centerState}>
           <MaterialIcons name="business" size={44} color={colores.textoSuave} />
-          <Text style={[styles.stateTitle, { color: colores.texto }]}>Chat no disponible</Text>
+          <Text style={[styles.stateTitle, { color: colores.texto }]}>{t('chatInterno.unavailable.title')}</Text>
           <Text style={[styles.stateText, { color: colores.textoSuave }]}>
-            Tu cuenta requiere una empresa activa para acceder a los chats de equipo.
+            {t('chatInterno.unavailable.message')}
           </Text>
         </View>
       </SafeAreaView>
@@ -1672,7 +1677,7 @@ export default function ChatInterno() {
           {/* Header de conversación activa utilizando el componente uniforme NavbarEnterprise */}
           <NavbarEnterprise
           titulo={activeTitle}
-          subtitulo={selectedConversation.tipo === 'equipo' ? `${selectedConversation.participantes?.length || 2} miembros` : 'Chat directo'}
+          subtitulo={selectedConversation.tipo === 'equipo' ? t('chatInterno.conversation.groupMembers', { count: selectedConversation.participantes?.length || 2 }) : t('chatInterno.conversation.directChat')}
           mostrarAtras
           onBackPress={handleCloseChat}
           avatarUrl={activePhoto}
@@ -1707,9 +1712,9 @@ export default function ChatInterno() {
             {messages.length === 0 && !loading ? (
               <View style={styles.emptyWrap}>
                 <MaterialIcons name="chat-bubble-outline" size={40} color={colores.textoSuave} />
-                <Text style={[styles.emptyTitle, { color: colores.texto }]}>Inicio de conversación</Text>
+                <Text style={[styles.emptyTitle, { color: colores.texto }]}>{t('chatInterno.conversation.emptyTitle')}</Text>
                 <Text style={[styles.emptySub, { color: colores.textoSuave }]}>
-                  Envía un mensaje para comenzar la comunicación con {activeTitle}.
+                  {t('chatInterno.conversation.emptyMessage', { name: activeTitle })}
                 </Text>
               </View>
             ) : null}
@@ -1818,7 +1823,7 @@ export default function ChatInterno() {
             <View style={[styles.pendingTray, { backgroundColor: glassBg, borderColor: colores.borde }]}>
               <View style={styles.pendingTrayHeader}>
                 <Text style={[styles.pendingTrayTitle, { color: colores.texto }]}>
-                  Adjuntos ({pendingAttachments.length})
+                  {t('chatInterno.attachments.title', { count: pendingAttachments.length })}
                 </Text>
                 <TouchableOpacity
                   disabled={sending}
@@ -1826,7 +1831,7 @@ export default function ChatInterno() {
                   style={styles.addMoreBtn}
                 >
                   <MaterialIcons name="add-photo-alternate" size={16} color={colores.primarioClaro} />
-                  <Text style={[styles.addMoreText, { color: colores.primarioClaro }]}>Agregar más</Text>
+                  <Text style={[styles.addMoreText, { color: colores.primarioClaro }]}>{t('chatInterno.attachments.addMore')}</Text>
                 </TouchableOpacity>
               </View>
 
@@ -1896,10 +1901,10 @@ export default function ChatInterno() {
 
               <View style={{ flex: 1, marginHorizontal: 10 }}>
                 <Text style={{ fontSize: 14, fontWeight: '900', color: colores.texto }}>
-                  Conversación bloqueada
+                  {t('chatInterno.blocked.title')}
                 </Text>
                 <Text style={{ fontSize: 12, color: colores.textoSuave, marginTop: 2 }} numberOfLines={1}>
-                  No se pueden enviar ni recibir mensajes.
+                  {t('chatInterno.blocked.message')}
                 </Text>
               </View>
 
@@ -1917,7 +1922,7 @@ export default function ChatInterno() {
                 }}
               >
                 <MaterialIcons name="lock-open" size={16} color="#FFFFFF" />
-                <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '900' }}>Desbloquear</Text>
+                <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '900' }}>{t('chatInterno.blocked.unblock')}</Text>
               </BotonAnimado>
             </View>
           ) : (
@@ -1943,7 +1948,7 @@ export default function ChatInterno() {
             <TextInput
               value={input}
               onChangeText={setInput}
-              placeholder="Escribe un mensaje..."
+              placeholder={t('chatInterno.input.placeholder')}
               placeholderTextColor={colores.textoSuave}
               style={[styles.textInput, { color: colores.texto }]}
               multiline
@@ -2031,7 +2036,7 @@ export default function ChatInterno() {
       </View>
 
       {/* Navbar Superior consistente con el resto de pantallas */}
-      <NavbarEnterprise titulo="Chat" />
+      <NavbarEnterprise titulo={t('chatInterno.navbar.title')} />
 
       {error ? (
         <TouchableOpacity onPress={() => setError('')} style={styles.errorCard} activeOpacity={0.8}>
@@ -2048,7 +2053,7 @@ export default function ChatInterno() {
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholder="Buscar conversación..."
+            placeholder={t('chatInterno.search.placeholder')}
             placeholderTextColor={colores.textoSuave}
             style={[styles.searchInput, { color: colores.texto }]}
           />
@@ -2079,10 +2084,10 @@ export default function ChatInterno() {
       <View style={styles.chipsFiltroRow}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsFiltroScroll}>
           {[
-            { id: 'todos' as const, label: `Todos (${userConversations.length})`, icono: 'forum' as const },
-            { id: 'no_leidos' as const, label: `No leídos (${totalNoLeidos})`, icono: 'mark-chat-unread' as const, badge: totalNoLeidos > 0 },
-            { id: 'directos' as const, label: 'Directos', icono: 'person' as const },
-            { id: 'grupos' as const, label: 'Grupos', icono: 'group' as const },
+            { id: 'todos' as const, label: t('chatInterno.filters.all', { count: userConversations.length }), icono: 'forum' as const },
+            { id: 'no_leidos' as const, label: t('chatInterno.filters.unread', { count: totalNoLeidos }), icono: 'mark-chat-unread' as const, badge: totalNoLeidos > 0 },
+            { id: 'directos' as const, label: t('chatInterno.filters.direct'), icono: 'person' as const },
+            { id: 'grupos' as const, label: t('chatInterno.filters.groups'), icono: 'group' as const },
           ].map((chip) => {
             const activo = filtroTipo === chip.id;
             return (
@@ -2168,7 +2173,7 @@ export default function ChatInterno() {
             >
               <View style={styles.actionMenuHeader}>
                 <Text style={[styles.actionMenuTitle, { color: esOscuro ? '#FFFFFF' : '#000000', fontSize: 18, fontWeight: '900' }]}>
-                  Nueva conversación
+                  {t('chatInterno.newChat.title')}
                 </Text>
                 <TouchableOpacity onPress={() => cerrarNuevoChatModalConAnimacion()}>
                   <MaterialIcons name="close" size={22} color={colores.textoSuave} />
@@ -2181,7 +2186,7 @@ export default function ChatInterno() {
                 <TextInput
                   value={searchQuery}
                   onChangeText={setSearchQuery}
-                  placeholder="Buscar integrantes..."
+                  placeholder={t('chatInterno.newChat.searchPlaceholder')}
                   placeholderTextColor={colores.textoSuave}
                   style={[styles.searchInput, { color: colores.texto }]}
                 />
@@ -2215,20 +2220,20 @@ export default function ChatInterno() {
                 <TextInput
                   value={groupName}
                   onChangeText={setGroupName}
-                  placeholder="Nombre del grupo de trabajo..."
+                  placeholder={t('chatInterno.newChat.groupNamePlaceholder')}
                   placeholderTextColor={colores.textoSuave}
                   style={[styles.groupInput, { backgroundColor: cardBg, borderColor: colores.borde, color: colores.texto }]}
                 />
               ) : null}
 
               <Text style={[styles.sectionTitle, { color: colores.textoSuave, marginTop: 4 }]}>
-                Integrantes disponibles ({filteredUsers.length})
+                {t('chatInterno.newChat.availableMembers', { count: filteredUsers.length })}
               </Text>
 
               <ScrollView style={styles.userListScroll} showsVerticalScrollIndicator={false}>
                 {filteredUsers.length === 0 ? (
                   <Text style={[styles.noResultsText, { color: colores.textoSuave }]}>
-                    No hay colaboradores disponibles.
+                    {t('chatInterno.newChat.noUsers')}
                   </Text>
                 ) : (
                   filteredUsers.map((user) => {
@@ -2301,10 +2306,10 @@ export default function ChatInterno() {
                   )}
                   <Text style={[styles.createBtnText, { color: esOscuro ? '#000000' : '#FFFFFF', fontWeight: '900', fontSize: 14 }]}>
                     {sending
-                      ? 'Creando conversación...'
+                      ? t('chatInterno.newChat.creating')
                       : selectedUsers.length > 1
-                      ? 'Crear chat de grupo'
-                      : 'Iniciar conversación'}
+                      ? t('chatInterno.newChat.createGroup')
+                      : t('chatInterno.newChat.startChat')}
                   </Text>
                 </BotonAnimado>
               ) : null}
@@ -2322,13 +2327,13 @@ export default function ChatInterno() {
         ) : filteredConversations.length === 0 ? (
           <View style={styles.emptyWrap}>
             <MaterialIcons name="forum" size={44} color={colores.textoSuave} />
-            <Text style={[styles.emptyTitle, { color: colores.texto }]}>No hay conversaciones</Text>
+            <Text style={[styles.emptyTitle, { color: colores.texto }]}>{t('chatInterno.list.emptyTitle')}</Text>
             <Text style={[styles.emptySub, { color: colores.textoSuave }]}>
               {searchQuery
-                ? 'No se encontraron resultados para la búsqueda.'
+                ? t('chatInterno.list.emptySearch')
                 : filtroTipo === 'no_leidos'
-                ? '¡Estás al día! No tienes mensajes sin leer.'
-                : 'Toca el botón "+" para iniciar un nuevo chat con tu equipo.'}
+                ? t('chatInterno.list.emptyUnread')
+                : t('chatInterno.list.emptyDefault')}
             </Text>
           </View>
         ) : (
@@ -2398,7 +2403,7 @@ export default function ChatInterno() {
                     numberOfLines={1}
                   >
                     {isBlocked ? (
-                      'Chat bloqueado'
+                      t('chatInterno.blocked.previewText')
                     ) : (
                       <>
                         {preview.emisor ? (

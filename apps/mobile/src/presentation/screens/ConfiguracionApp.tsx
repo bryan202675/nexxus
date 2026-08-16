@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   SafeAreaView,
@@ -15,6 +14,7 @@ import { BlurView } from 'expo-blur';
 import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
 import { Skeleton } from '@/presentation/components/ui';
 import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 import { COLORES, ESPACIADO, RADIOS, SOMBRAS } from '@/shared/constants/diseno';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
@@ -25,6 +25,8 @@ import { useCases } from '@/infrastructure/container';
 import { SessionDevice } from 'domain/entities/SessionDevice';
 import { obtenerDeviceId } from '@/infrastructure/storage/deviceIdentity';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
+
+const Text = AdminTranslatedText;
 
 export default function ConfiguracionApp({ navigation }: { navigation: any }) {
   const { t, i18n } = useTranslation();
@@ -48,12 +50,12 @@ export default function ConfiguracionApp({ navigation }: { navigation: any }) {
 
   const manejarCerrarOtrasSesiones = () => {
     Alert.alert(
-      'Cerrar otras sesiones',
-      'Se cerrará la sesión en todos tus demás dispositivos. Esta sesión seguirá activa.',
+      t('configuracionApp.close_other_sessions_title', { defaultValue: 'Cerrar otras sesiones' }),
+      t('configuracionApp.close_other_sessions_msg', { defaultValue: 'Se cerrará la sesión en todos tus demás dispositivos. Esta sesión seguirá activa.' }),
       [
         { text: t('common.cancel', { defaultValue: 'Cancelar' }), style: 'cancel' },
         {
-          text: 'Cerrar otras sesiones',
+          text: t('configuracionApp.close_other_sessions_title', { defaultValue: 'Cerrar otras sesiones' }),
           style: 'destructive',
           onPress: async () => {
             setCerrandoOtras(true);
@@ -63,7 +65,10 @@ export default function ConfiguracionApp({ navigation }: { navigation: any }) {
                 await useCases.sessionDevices.removeOthers.execute(perfil.id, deviceIdActual);
               }
             } catch {
-              Alert.alert('Error', 'No se pudieron cerrar las otras sesiones. Intenta de nuevo.');
+              Alert.alert(
+                t('common.error', { defaultValue: 'Error' }),
+                t('configuracionApp.close_other_sessions_error', { defaultValue: 'No se pudieron cerrar las otras sesiones. Intenta de nuevo.' })
+              );
             } finally {
               setCerrandoOtras(false);
             }
@@ -109,7 +114,7 @@ export default function ConfiguracionApp({ navigation }: { navigation: any }) {
         <FondoMobilePremium />
       </View>
 
-      <NavbarEnterprise titulo={t('common.settings', { defaultValue: 'Configuración' })} subtitulo="Preferencias y seguridad" />
+      <NavbarEnterprise titulo={t('common.settings', { defaultValue: 'Configuración' })} subtitulo={t('configuracionApp.subtitle', { defaultValue: 'Preferencias y seguridad' })} />
 
       <ScrollView contentContainerStyle={estilos.scroll} showsVerticalScrollIndicator={false}>
         {/* Preferencias de la App */}
@@ -123,7 +128,7 @@ export default function ConfiguracionApp({ navigation }: { navigation: any }) {
                 onPress={() => {
                   Alert.alert(
                     t('common.language', { defaultValue: 'Idioma' }),
-                    'Selecciona tu idioma preferido',
+                    t('configuracionApp.language_prompt', { defaultValue: 'Selecciona tu idioma preferido' }),
                     [
                       { text: 'Español', onPress: () => cambiarIdioma('es') },
                       { text: 'English', onPress: () => cambiarIdioma('en') },
@@ -149,7 +154,7 @@ export default function ConfiguracionApp({ navigation }: { navigation: any }) {
               <View style={[estilos.itemConfig, { borderBottomWidth: 0 }]}>
                 <View style={estilos.itemIzq}>
                   <View style={estilos.iconoContenedor}>
-                    <Feather name="moon" size={17} color={esOscuro ? '#FBBF24' : '#64748B'} />
+                    <Feather name={esOscuro ? 'sun' : 'moon'} size={17} color={esOscuro ? '#FBBF24' : '#64748B'} />
                   </View>
                   <Text style={estilos.itemLabel}>{t('common.theme', { defaultValue: 'Modo Oscuro' })}</Text>
                 </View>
@@ -166,7 +171,7 @@ export default function ConfiguracionApp({ navigation }: { navigation: any }) {
 
         {/* Cuenta y Perfil */}
         <Animated.View entering={FadeInDown.duration(260).delay(60).easing(Easing.out(Easing.quad))} style={estilos.seccion}>
-          <Text style={estilos.tituloSeccion}>CUENTA Y ACTIVIDAD</Text>
+          <Text style={estilos.tituloSeccion}>{t('configuracionApp.section_account', { defaultValue: 'CUENTA Y ACTIVIDAD' })}</Text>
           <View style={estilos.tarjetaGrupo}>
             <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.grupoContenido}>
               <TouchableOpacity style={estilos.itemConfig} onPress={() => navigation.navigate('Notificaciones')} activeOpacity={0.7}>
@@ -222,7 +227,7 @@ export default function ConfiguracionApp({ navigation }: { navigation: any }) {
 
         {/* Sesiones Activas */}
         <Animated.View entering={FadeInDown.duration(260).delay(180).easing(Easing.out(Easing.quad))} style={estilos.seccion}>
-          <Text style={estilos.tituloSeccion}>SESIONES ACTIVAS</Text>
+          <Text style={estilos.tituloSeccion}>{t('configuracionApp.section_sessions', { defaultValue: 'SESIONES ACTIVAS' })}</Text>
           <View style={estilos.tarjetaGrupo}>
             <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.grupoContenido}>
               {dispositivos.length === 0 ? (
@@ -247,12 +252,16 @@ export default function ConfiguracionApp({ navigation }: { navigation: any }) {
                             <Text style={estilos.itemLabel}>{dispositivo.deviceName}</Text>
                             {esEsteDispositivo && (
                               <View style={estilos.badgeEsteDispositivo}>
-                                <Text style={estilos.textoEsteDispositivo}>ESTE DISPOSITIVO</Text>
+                                <Text style={estilos.textoEsteDispositivo}>{t('configuracionApp.this_device', { defaultValue: 'ESTE DISPOSITIVO' })}</Text>
                               </View>
                             )}
                           </View>
                           <Text style={estilos.subtextoDispositivo}>
-                            {dispositivo.deviceOs} · Últ. acceso {formatearUltimoAcceso(dispositivo.lastSeenAt)}
+                            {t('configuracionApp.last_seen', {
+                              os: dispositivo.deviceOs,
+                              date: formatearUltimoAcceso(dispositivo.lastSeenAt),
+                              defaultValue: `${dispositivo.deviceOs} · Últ. acceso ${formatearUltimoAcceso(dispositivo.lastSeenAt)}`,
+                            })}
                           </Text>
                         </View>
                       </View>
@@ -267,7 +276,9 @@ export default function ConfiguracionApp({ navigation }: { navigation: any }) {
                   disabled={cerrandoOtras}
                 >
                   <Text style={estilos.textoCerrarOtras}>
-                    {cerrandoOtras ? 'Cerrando...' : 'Cerrar todas las demás sesiones'}
+                    {cerrandoOtras
+                      ? t('configuracionApp.closing', { defaultValue: 'Cerrando...' })
+                      : t('configuracionApp.close_all_other_sessions', { defaultValue: 'Cerrar todas las demás sesiones' })}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -287,8 +298,7 @@ export default function ConfiguracionApp({ navigation }: { navigation: any }) {
 
         {/* Footer */}
         <View style={estilos.footer}>
-          <Text style={estilos.textoVersion}>Nexxus Enterprise v1.1.0</Text>
-          <Text style={estilos.textoCopyright}>© 2026 Nexxus. Todos los derechos reservados.</Text>
+          <Text style={estilos.textoCopyright}>{t('configuracionApp.copyright', { defaultValue: '© 2026 Nexxus. Todos los derechos reservados.' })}</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -305,6 +315,8 @@ function crearEstilosConfig(c: any, esOscuro: boolean) {
     fondoAbsoluto: { ...StyleSheet.absoluteFillObject, zIndex: -1 },
 
     scroll: {
+      flexGrow: 1,
+      justifyContent: 'center',
       paddingHorizontal: 16,
       paddingTop: 12,
       paddingBottom: 110,
@@ -431,12 +443,6 @@ function crearEstilosConfig(c: any, esOscuro: boolean) {
     footer: {
       alignItems: 'center',
       marginTop: 28,
-      gap: 4,
-    },
-    textoVersion: {
-      fontSize: 12.5,
-      fontWeight: '800',
-      color: c.textoSuave,
     },
     textoCopyright: {
       fontSize: 11,

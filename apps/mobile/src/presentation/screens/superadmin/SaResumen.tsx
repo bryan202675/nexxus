@@ -7,7 +7,9 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { MaterialIcons } from '@expo/vector-icons';
-import { ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { ScrollView, View, useWindowDimensions } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 import { useNavigation } from '@react-navigation/native';
 import { PlatformSnapshot, PlatformStats } from 'domain/entities/SuperAdmin';
 import { useCases } from '@/infrastructure/container';
@@ -19,6 +21,8 @@ import {
   SaBadgeTone, SaIconBox,
 } from './components/SaWidgets';
 import { formatoFecha, formatoMoneda, etiquetaEstadoEmpresa } from './saFormat';
+
+const Text = AdminTranslatedText;
 
 type LoadState = 'loading' | 'ready' | 'empty' | 'error';
 
@@ -44,6 +48,7 @@ const PLAN_COLORS = ['#C0B8FE', '#8171FC', '#422AFB', '#3311DB', '#190793'];
 const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
 export default function SaResumen() {
+  const { t } = useTranslation();
   const { theme } = useSaTheme();
   const navigation = useNavigation<any>();
   const { width } = useWindowDimensions();
@@ -72,7 +77,7 @@ export default function SaResumen() {
         return hasData ? 'ready' : 'empty';
       });
     }, (error) => {
-      setErrorMessage(error.message || 'No se pudo cargar el panel global.');
+      setErrorMessage(error.message || t('superadmin.saResumen.error.cargaPanel'));
       setState('error');
     });
     return () => unsubscribe();
@@ -150,41 +155,41 @@ export default function SaResumen() {
         ) : null}
 
         <View>
-          <SaKpiCard index={0} theme={theme} icon="domain" label="Empresas totales" value={String(stats.empresasTotal)} delta={`+${stats.empresasNuevas30d} en 30 días`} tone={stats.empresasNuevas30d > 0 ? 'positive' : 'neutral'} />
-          <SaKpiCard index={1} theme={theme} icon="verified" label="Empresas activas" value={String(stats.empresasActivas)} delta="Suscripción vigente" />
-          <SaKpiCard index={2} theme={theme} icon="health-and-safety" label="Baneadas" value={String(stats.empresasBaneadas)} tone={riesgos > 0 ? 'warning' : 'neutral'} />
-          <SaKpiCard index={3} theme={theme} icon="groups" label="Usuarios totales" value={String(stats.usuariosTotal)} delta={`${stats.usuariosActivos} activos`} tone="positive" />
-          <SaKpiCard index={4} theme={theme} icon="admin-panel-settings" label="Propietarios" value={String(stats.porRol.admin_empresa || 0)} delta="Admin de empresa" />
-          <SaKpiCard index={5} theme={theme} icon="supervisor-account" label="Jefes" value={String(stats.porRol.jefe || 0)} delta="Líderes de equipo" />
-          <SaKpiCard index={6} theme={theme} icon="badge" label="Empleados" value={String(stats.porRol.empleado || 0)} delta={`+${stats.usuariosNuevos30d} en 30 días`} tone={stats.usuariosNuevos30d > 0 ? 'positive' : 'neutral'} />
-          <SaKpiCard index={7} theme={theme} icon="paid" label="Ingresos confirmados" value={formatoMoneda(stats.ingresosTotales)} delta={`${formatoMoneda(stats.ingresos30d)} en 30 días`} tone="positive" />
+          <SaKpiCard index={0} theme={theme} icon="domain" label={t('superadmin.saResumen.kpi.empresasTotales')} value={String(stats.empresasTotal)} delta={t('superadmin.saResumen.kpi.deltaEn30Dias', { count: stats.empresasNuevas30d })} tone={stats.empresasNuevas30d > 0 ? 'positive' : 'neutral'} />
+          <SaKpiCard index={1} theme={theme} icon="verified" label={t('superadmin.saResumen.kpi.empresasActivas')} value={String(stats.empresasActivas)} delta={t('superadmin.saResumen.kpi.suscripcionVigente')} />
+          <SaKpiCard index={2} theme={theme} icon="health-and-safety" label={t('superadmin.saResumen.kpi.baneadas')} value={String(stats.empresasBaneadas)} tone={riesgos > 0 ? 'warning' : 'neutral'} />
+          <SaKpiCard index={3} theme={theme} icon="groups" label={t('superadmin.saResumen.kpi.usuariosTotales')} value={String(stats.usuariosTotal)} delta={t('superadmin.saResumen.kpi.activosDelta', { count: stats.usuariosActivos })} tone="positive" />
+          <SaKpiCard index={4} theme={theme} icon="admin-panel-settings" label={t('superadmin.saResumen.kpi.propietarios')} value={String(stats.porRol.admin_empresa || 0)} delta={t('superadmin.saResumen.kpi.adminDeEmpresa')} />
+          <SaKpiCard index={5} theme={theme} icon="supervisor-account" label={t('superadmin.saResumen.kpi.jefes')} value={String(stats.porRol.jefe || 0)} delta={t('superadmin.saResumen.kpi.lideresDeEquipo')} />
+          <SaKpiCard index={6} theme={theme} icon="badge" label={t('superadmin.saResumen.kpi.empleados')} value={String(stats.porRol.empleado || 0)} delta={t('superadmin.saResumen.kpi.deltaEn30Dias', { count: stats.usuariosNuevos30d })} tone={stats.usuariosNuevos30d > 0 ? 'positive' : 'neutral'} />
+          <SaKpiCard index={7} theme={theme} icon="paid" label={t('superadmin.saResumen.kpi.ingresosConfirmados')} value={formatoMoneda(stats.ingresosTotales)} delta={t('superadmin.saResumen.kpi.ingresosEn30Dias', { monto: formatoMoneda(stats.ingresos30d) })} tone="positive" />
         </View>
 
         <View>
-          <SaSectionCard theme={theme} title="Ingresos por mes">
+          <SaSectionCard theme={theme} title={t('superadmin.saResumen.secciones.ingresosPorMes')}>
             {hayIngresosRecientes ? (
               <SaBarChart theme={theme} data={ingresosPorMes} />
             ) : (
-              <Text>Sin pagos confirmados en los últimos meses.</Text>
+              <Text>{t('superadmin.saResumen.vacio.sinPagos')}</Text>
             )}
           </SaSectionCard>
 
-          <SaSectionCard theme={theme} title="Distribución de planes">
+          <SaSectionCard theme={theme} title={t('superadmin.saResumen.secciones.distribucionPlanes')}>
             {planEntries.length > 0 ? (
               <SaDonutChart
                 theme={theme}
                 data={planEntries.slice(0, 4).map(([plan, cantidad], i) => ({ label: plan, value: cantidad, color: PLAN_COLORS[i % PLAN_COLORS.length] }))}
               />
             ) : (
-              <Text>Sin planes asignados todavía.</Text>
+              <Text>{t('superadmin.saResumen.vacio.sinPlanes')}</Text>
             )}
           </SaSectionCard>
         </View>
 
         <View>
-          <SaSectionCard theme={theme} title="Empresas recientes" action="Ver todas" onAction={() => navigation.navigate('SaEmpresas')}>
+          <SaSectionCard theme={theme} title={t('superadmin.saResumen.secciones.empresasRecientes')} action={t('superadmin.saResumen.secciones.verTodas')} onAction={() => navigation.navigate('SaEmpresas')}>
             {!compact ? (
-              <SaTableHeader theme={theme} columns={[{ label: 'EMPRESA', flex: 2 }, { label: 'PLAN' }, { label: 'ESTADO' }, { label: 'ALTA' }]} />
+              <SaTableHeader theme={theme} columns={[{ label: t('superadmin.saResumen.tabla.empresa'), flex: 2 }, { label: t('superadmin.saResumen.tabla.plan') }, { label: t('superadmin.saResumen.tabla.estado') }, { label: t('superadmin.saResumen.tabla.alta') }]} />
             ) : null}
             {empresasRecientes.map((empresa, i) => {
               const estado = etiquetaEstadoEmpresa(empresa.estado);
@@ -208,10 +213,10 @@ export default function SaResumen() {
                 </SaTableRow>
               );
             })}
-            {empresasRecientes.length === 0 ? <Text>Sin empresas registradas.</Text> : null}
+            {empresasRecientes.length === 0 ? <Text>{t('superadmin.saResumen.vacio.sinEmpresas')}</Text> : null}
           </SaSectionCard>
 
-          <SaSectionCard theme={theme} title="Actividad global reciente">
+          <SaSectionCard theme={theme} title={t('superadmin.saResumen.secciones.actividadReciente')}>
             <View>
               {snapshot.auditoria.filter((e) => e.modulo !== 'IA').slice(0, 7).map((event) => (
                 <SaActivityRow
@@ -219,12 +224,12 @@ export default function SaResumen() {
                   theme={theme}
                   icon={activityIcon(event.accion)}
                   title={event.accion}
-                  subtitle={`${event.empresaNombre || event.empresaId || 'Plataforma'} · ${event.modulo}`}
+                  subtitle={`${event.empresaNombre || event.empresaId || t('superadmin.saResumen.plataforma')} · ${event.modulo}`}
                   badge={event.estado}
                   badgeTone={activityTone(event.estado)}
                 />
               ))}
-              {snapshot.auditoria.length === 0 ? <Text>Sin eventos auditados todavía.</Text> : null}
+              {snapshot.auditoria.length === 0 ? <Text>{t('superadmin.saResumen.vacio.sinEventos')}</Text> : null}
             </View>
           </SaSectionCard>
         </View>

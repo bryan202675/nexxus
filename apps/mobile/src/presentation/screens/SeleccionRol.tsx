@@ -10,7 +10,6 @@
 import React, { useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
@@ -24,6 +23,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { MaterialIcons } from '@expo/vector-icons';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 // Importa { useContextoUsuario }; accede a contexto compartido de usuario, tema o estado global.
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 // Importa FondoAurora; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
@@ -34,6 +34,8 @@ import MarcaNexxus from '@/presentation/components/MarcaNexxus';
 import { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/constants/diseno';
 // Importa AuraOrb; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
+
+const Text = AdminTranslatedText;
 
 type ColoresTema = ReturnType<typeof useTemaMobile>['colores'];
 

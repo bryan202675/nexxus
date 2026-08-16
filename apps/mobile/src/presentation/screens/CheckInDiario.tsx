@@ -15,8 +15,6 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
-  Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -35,6 +33,10 @@ import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
+
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
 
 interface Props {
   navigation: any;
@@ -232,7 +234,13 @@ export default function CheckInDiario({ navigation }: Props) {
               <BlurView intensity={Platform.OS === 'ios' ? intensidadBlur + 10 : 80} tint={blurTint} style={estilos.cardCentralContenido}>
                 <Text style={estilos.valorGrande}>{sueno}<Text style={estilos.valorDenominador}>/5</Text></Text>
                 <Text style={estilos.labelDescanso}>
-                  {sueno === 5 ? 'Excelente descanso' : sueno >= 4 ? 'Buen descanso' : sueno >= 3 ? 'Descanso regular' : 'Sueño insuficiente'}
+                  {sueno === 5
+                    ? t('checkInDiario.sleep_excellent', { defaultValue: 'Excelente descanso' })
+                    : sueno >= 4
+                    ? t('checkInDiario.sleep_good', { defaultValue: 'Buen descanso' })
+                    : sueno >= 3
+                    ? t('checkInDiario.sleep_regular', { defaultValue: 'Descanso regular' })
+                    : t('checkInDiario.sleep_insufficient', { defaultValue: 'Sueño insuficiente' })}
                 </Text>
                 <View style={estilos.estrellasFila}>
                   {[1, 2, 3, 4, 5].map((num) => (

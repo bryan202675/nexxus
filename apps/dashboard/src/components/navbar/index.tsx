@@ -7,6 +7,9 @@ import { useTheme } from "context/ThemeContext";
 import Avatar from "components/nexxus/Avatar";
 import { LANDING_URL } from "services/nexxusLinks";
 import GlobalSearch from "./GlobalSearch";
+import NotificationsBell from "./NotificationsBell";
+
+const ROLES_CON_ALERTAS_BIENESTAR = ["admin", "admin_empresa", "jefe", "jefe_sector", "super_admin"];
 
 const Navbar = (props) => {
   const { onOpenSidenav, brandText } = props;
@@ -69,6 +72,13 @@ const Navbar = (props) => {
             <RiMoonFill className="h-4 w-4 text-gray-600 dark:text-white" />
           )}
         </div>
+
+        {/* Timbre de alertas de bienestar (solo admin/jefe) */}
+        {ROLES_CON_ALERTAS_BIENESTAR.includes(rol) ? (
+          <div className="shrink-0">
+            <NotificationsBell />
+          </div>
+        ) : null}
 
         {/* User Dropdown */}
         <div className="shrink-0">

@@ -912,13 +912,9 @@
     }
   },
   "pantallaBienvenida": {
-    "title": "Tu espacio de bienestar",
-    "subtitle": "Monitorea tu salud laboral, accede a soporte guiado por IA y gestiona tu día a día en un entorno seguro.",
-    "feature_1": "Registro de bienestar",
-    "feature_2": "Soporte con IA",
-    "feature_3": "Privacidad garantizada",
-    "btn_start": "Comenzar",
-    "btn_learn_more": "Conocer más"
+    "title": "Eleva tu\nEmpresa",
+    "subtitle": "El sistema operativo inteligente que transforma la gestión de talento en El Salvador.",
+    "btn_start": "Comenzar"
   },
   "comenzar": {
     "alert_missing_data_title": "Datos requeridos",
@@ -1017,6 +1013,38 @@
     "unread": "No leídas",
     "focus_min": "Min. Enfoque",
     "explore_all": "Explorar todo",
+    "greeting_morning": "Buenos días",
+    "greeting_afternoon": "Buenas tardes",
+    "greeting_evening": "Buenas noches",
+    "control_center": "Centro de Control",
+    "all_tasks_updated": "Todas las tareas al día · Excelente rendimiento",
+    "pending_tasks_attention": "{{count}} tareas pendientes de atención",
+    "search_placeholder_hero": "Buscar tareas, solicitudes, documentos...",
+    "badge_registered": "PULSO REGISTRADO",
+    "badge_pending": "CHECK-IN PENDIENTE",
+    "checkin_card_title_done": "Pulso Diario Actualizado",
+    "checkin_card_title_pending": "Registro de Energía y Bienestar",
+    "checkin_card_desc_done": "Tu estado laboral y pulso emocional están al día. Toca para revisar o actualizar.",
+    "checkin_card_desc_pending": "Toma 30 segundos para registrar tu nivel de energía, foco y estado de ánimo de hoy.",
+    "insight_label": "INSIGHT ASISTENTE",
+    "insight_default_text": "Todo listo para una jornada productiva. Revisa tus prioridades y mantén el enfoque.",
+    "attendance_label": "Asistencia",
+    "attendance_sub": "Marcar turno",
+    "metrics_today_title": "Métricas de Hoy",
+    "view_history_link": "Ver historial",
+    "metric_completed_label": "Completadas",
+    "metric_completed_sub": "Tareas finalizadas hoy",
+    "metric_pending_label": "Pendientes",
+    "metric_pending_sub": "Requieren tu atención",
+    "metric_requests_label": "Solicitudes",
+    "metric_requests_sub": "Trámites en curso",
+    "metric_docs_label": "Docs Nuevos",
+    "metric_docs_sub": "Por revisar o firmar",
+    "priorities_today_title": "Prioridades de Hoy",
+    "task_center_link": "Centro de tareas",
+    "empty_priorities_title": "Al día",
+    "empty_priorities_detail": "No tienes prioridades pendientes para hoy.",
+    "operational_access_title": "Accesos Operativos",
     "tiles": {
       "checkin": "Check-In Diario",
       "salary": "Mi Salario",
@@ -1057,6 +1085,7 @@
     "low_risk": "Bajo Riesgo"
   },
   "perfilLaboral": {
+    "labor_info": "INFORMACIÓN LABORAL",
     "role": "Rol",
     "position": "Cargo",
     "department": "Departamento",
@@ -1100,6 +1129,10 @@
   },
   "checkInDiario": {
     "pulse_registered": "Tu pulso ha sido registrado correctamente.",
+    "sleep_excellent": "Excelente descanso",
+    "sleep_good": "Buen descanso",
+    "sleep_regular": "Descanso regular",
+    "sleep_insufficient": "Sueño insuficiente",
     "daily": "Diario",
     "step_of": "Paso {{current}} de {{total}}",
     "private_pulse": "Tu pulso es privado",
@@ -1289,6 +1322,14 @@
     "pending": "PENDIENTE",
     "open_doc": "Abrir documento",
     "no_date": "Sin fecha",
+    "refresh_accessibility": "Actualizar documentos",
+    "official_document": "Documento Oficial",
+    "default_content": "Este documento contiene normativa e información oficial verificada por la empresa.",
+    "version_history": "Historial de Versiones",
+    "version_label": "Versión {{version}}",
+    "open_link": "Abrir Enlace / PDF Externo",
+    "mark_read_full": "Marcar como Leído y Entendido",
+    "close_modal": "Cerrar",
     "summary": {
       "documents": "Documentos",
       "pending": "Pendientes",
@@ -1357,6 +1398,20 @@
     },
     "points_suffix": "{{count}} pts",
     "points_full": "{{count}} puntos",
+    "start_read_modules": "Comenzar / Leer Módulos del Curso",
+    "module_of": "MÓDULO {{current}} DE {{total}}",
+    "module_default_content": "Este módulo incluye guías informativas para el aprendizaje.",
+    "comprehension_eval": "Evaluación de Comprensión",
+    "verify_answer": "Verificar Respuesta",
+    "correct_answer": "¡Excelente! Respuesta correcta.",
+    "incorrect_answer": "Respuesta incorrecta. Inténtalo de nuevo.",
+    "module_completed": "Módulo Completado",
+    "complete_module_full": "Completar Módulo y Marcar Progreso",
+    "certificate_eyebrow": "Nexxus · Certificado de Finalización",
+    "certificate_certifies": "Se certifica que",
+    "certificate_employee_fallback": "Empleado",
+    "certificate_completed_on": "completó satisfactoriamente este curso el {{date}}.",
+    "certificate_verification_code": "Código de verificación: {{code}}",
     "summary": {
       "courses": "Cursos",
       "in_progress": "En progreso",
@@ -1406,7 +1461,114 @@
       "center_docs": "Centro Docs",
       "learn": "Aprender",
       "support": "Soporte"
+    },
+    "ops_center_eyebrow": "CENTRO DE OPERACIONES",
+    "services_title": "Recursos y Servicios",
+    "services_subtitle": "Accede a todas las herramientas, documentos y trámites corporativos.",
+    "see_all": "Ver todos",
+    "shortcut_groups": {
+      "wellness": "Asistencia y Bienestar",
+      "management": "Gestión y Solicitudes",
+      "docs_learning": "Documentos y Aprendizaje",
+      "comms": "Comunicación y Notificaciones",
+      "account": "Cuenta y Soporte"
+    },
+    "shortcut_items": {
+      "ControlAsistencia": {
+        "title": "Control de Asistencia",
+        "subtitle": "Entrada y salida"
+      },
+      "CheckInDiario": {
+        "title": "Check-in Diario",
+        "subtitle": "Pulso de bienestar"
+      },
+      "CalendarioLaboral": {
+        "title": "Calendario Laboral",
+        "subtitle": "Tareas y ausencias"
+      },
+      "CentroTareas": {
+        "title": "Centro de Tareas",
+        "subtitle": "Gestión y entregas"
+      },
+      "MisObjetivos": {
+        "title": "Mis Objetivos",
+        "subtitle": "Metas y OKRs"
+      },
+      "SolicitudesAusencia": {
+        "title": "Ausencias y Permisos",
+        "subtitle": "Vacaciones y licencias"
+      },
+      "SolicitudesInternas": {
+        "title": "Solicitudes Internas",
+        "subtitle": "Peticiones formales"
+      },
+      "CentroDocumentos": {
+        "title": "Centro de Documentos",
+        "subtitle": "Políticas y archivos"
+      },
+      "MiSalario": {
+        "title": "Mi Salario",
+        "subtitle": "Nóminas y pagos"
+      },
+      "CentroAprendizaje": {
+        "title": "Capacitaciones",
+        "subtitle": "Cursos y progreso"
+      },
+      "MisLogros": {
+        "title": "Mis Logros",
+        "subtitle": "Insignias y puntos"
+      },
+      "MisActivos": {
+        "title": "Mis Activos",
+        "subtitle": "Equipos asignados"
+      },
+      "BandejaUnificada": {
+        "title": "Bandeja Unificada",
+        "subtitle": "Mensajería y avisos"
+      },
+      "Notificaciones": {
+        "title": "Centro de Notificaciones",
+        "subtitle": "Alertas del sistema"
+      },
+      "BusquedaGlobal": {
+        "title": "Búsqueda Global",
+        "subtitle": "Explorador inteligente"
+      },
+      "PerfilLaboral": {
+        "title": "Mi Perfil Laboral",
+        "subtitle": "Datos e indicadores"
+      },
+      "HistorialCompleto": {
+        "title": "Historial de Actividad",
+        "subtitle": "Auditoría personal"
+      },
+      "CentroApoyo": {
+        "title": "Centro de Apoyo",
+        "subtitle": "Ayuda y preguntas"
+      },
+      "ConfiguracionApp": {
+        "title": "Configuración",
+        "subtitle": "Tema, idioma y cuenta"
+      }
     }
+  },
+  "soporteGeneral": {
+    "title": "Centro de Soporte",
+    "subtitle": "Asistencia y onboarding",
+    "atencion_cliente": "ATENCIÓN AL CLIENTE",
+    "hero_title": "¿Cómo podemos ayudarte hoy?",
+    "hero_desc": "Si tienes dificultades para ingresar a tu cuenta, problemas con tu empresa o requieres soporte técnico general, completa este formulario para comunicarte directamente con nuestros especialistas.",
+    "tipo_asistencia": "TIPO DE ASISTENCIA",
+    "detalles_contacto": "DETALLES DEL CONTACTO",
+    "nombre_completo": "Tu Nombre Completo *",
+    "correo_contacto": "Correo Electrónico de Contacto *",
+    "empresa_opcional": "Empresa (Opcional)",
+    "telefono_opcional": "Teléfono (Opcional)",
+    "nivel_urgencia": "Nivel de Urgencia",
+    "asunto_titulo": "Asunto o Título del Requerimiento *",
+    "descripcion_detallada": "Descripción Detallada *",
+    "enviar_solicitud": "Enviar Solicitud de Soporte",
+    "preguntas_frecuentes": "PREGUNTAS FRECUENTES"
   },
   "centroApoyo": {
     "title": "Soporte",
@@ -1462,7 +1624,45 @@
         "title": "Registrar feedback",
         "desc": "Reporta una dificultad o sugerencia"
       }
-    }
+    },
+    "action_items": {
+      "chat_ia": {
+        "title": "Nexxus IA",
+        "desc": "Consulta dudas operativas y genera solicitudes al instante."
+      },
+      "solicitudes": {
+        "title": "Solicitudes Internas",
+        "desc": "Peticiones formales, permisos y trámites internos."
+      },
+      "nuevo_ticket": {
+        "title": "Nuevo Ticket",
+        "desc": "Reporta un problema técnico o incidente de forma directa."
+      },
+      "mis_activos": {
+        "title": "Mis Activos",
+        "desc": "Consulta equipo asignado y reporta incidencias internas."
+      }
+    },
+    "alert_incomplete_title": "Incompleto",
+    "alert_incomplete_msg": "Completa el título y la descripción.",
+    "alert_error_ticket": "No se pudo crear el ticket. Intenta de nuevo.",
+    "ticket_status": {
+      "abierto": "Abierto",
+      "en_progreso": "En Progreso",
+      "resuelto": "Resuelto",
+      "cerrado": "Cerrado"
+    },
+    "tickets_section_title": "Mis Tickets de Soporte",
+    "new_ticket_link": "+ Nuevo Ticket",
+    "faq_section_title": "Preguntas Frecuentes",
+    "new_ticket_modal_title": "Nuevo Ticket de Soporte",
+    "category_tecnico": "Técnico",
+    "category_incidente": "Incidente",
+    "category_otro": "Otro",
+    "placeholder_title": "Título del problema",
+    "placeholder_desc": "Describe qué ocurrió detalladamente...",
+    "btn_create_ticket": "Crear Ticket",
+    "creating_ticket": "Creando..."
   },
   "solicitudesInternas": {
     "title": "Solicitudes",
@@ -1510,7 +1710,41 @@
     "attachment_label": "Adjunto (certificado)",
     "attachment_upload": "Subir archivo",
     "attachment_uploading": "Subiendo...",
-    "attachment_uploaded": "Archivo adjunto"
+    "attachment_uploaded": "Archivo adjunto",
+    "nav_subtitle": "Peticiones, compras y permisos",
+    "summary_total": "Total",
+    "summary_pending": "Pendientes",
+    "summary_approved": "Aprobadas",
+    "create_button_title": "Crear Nueva Solicitud",
+    "create_button_subtitle": "Permisos, compras, adelantos y más",
+    "history_title": "Historial de Peticiones",
+    "visible_count": "{{count}} visibles",
+    "filter_all": "Todas",
+    "filter_pending": "Pendientes",
+    "filter_approved": "Aprobadas",
+    "filter_rejected": "Rechazadas",
+    "empty_detail": "No hay registros en esta categoría.",
+    "modal_subtitle": "Trámite interno y solicitudes operativas",
+    "section_type": "TIPO DE TRÁMITE",
+    "section_priority": "NIVEL DE PRIORIDAD",
+    "section_params": "PARÁMETROS DEL TRÁMITE",
+    "section_info": "INFORMACIÓN PRINCIPAL",
+    "field_date_single": "Fecha Correspondiente",
+    "field_hours": "Cantidad de Horas",
+    "field_amount": "Monto Estimado ($ USD)",
+    "field_attachment": "Certificado o Comprobante",
+    "attachment_btn_uploading": "Subiendo archivo...",
+    "attachment_btn_uploaded": "Documento Adjunto ✓",
+    "attachment_btn_placeholder": "Adjuntar certificado médico (PDF)",
+    "field_subject": "Asunto / Título del Trámite",
+    "field_subject_placeholder": "Ej. Solicitud de vacaciones de verano",
+    "field_details": "Detalles y Justificación",
+    "field_details_placeholder": "Explica el motivo del trámite y cualquier consideración relevante...",
+    "submit_sending": "Registrando Solicitud...",
+    "upload_error_title": "No se pudo subir el archivo",
+    "upload_error_retry": "Intenta de nuevo.",
+    "upload_unavailable_title": "Subida no disponible",
+    "upload_unavailable_msg": "Adjunta el certificado desde la versión web por ahora."
   },
   "microFeedback": {
     "title": "Feedback Rápido",
@@ -1551,6 +1785,14 @@
     "welcome_msg": "Hola {{nombre}}. Soy tu copiloto operativo. Puedo ayudarte a resumir tu jornada, ordenar prioridades o revisar señales de bienestar.",
     "today": "Hoy",
     "input_placeholder": "Escribe tu mensaje",
+    "online_badge": "EN LÍNEA",
+    "typing": "Nexxus IA escribiendo",
+    "action_approved": "Acción Aprobada ✓",
+    "action_rejected": "Solicitud Rechazada",
+    "action_error": "Error al procesar",
+    "reject_button": "Rechazar",
+    "approve_button": "Aprobar",
+    "plan_unavailable": "Este módulo no está disponible para el plan actual de tu empresa.",
     "summary": {
       "pending": "Pendientes",
       "urgent": "Urgentes",
@@ -1579,6 +1821,7 @@
   },
   "notificaciones": {
     "title": "Notificaciones",
+    "subtitle": "Avisos, tareas y actividad",
     "summary_title": "Centro de avisos",
     "pending_msg": "{{count}} notificaciones pendientes de revisar.",
     "tray": "Bandeja",
@@ -1586,6 +1829,9 @@
     "all": "Todas",
     "unread": "No leídas",
     "no_notifications": "No tienes notificaciones en esta vista.",
+    "no_notifications_detail": "No tienes notificaciones pendientes en este momento.",
+    "marking": "Marcando...",
+    "mark_all_read": "Marcar todas leídas",
     "summary": {
       "unread": "No leídas",
       "read": "Leídas",
@@ -1622,6 +1868,7 @@
   },
   "misLogros": {
     "title": "Mis Logros",
+    "subtitle": "Gamificación y reconocimientos",
     "accumulated_points": "Puntos Acumulados",
     "streak_days": "{{count}} Días de Racha",
     "obtained_badges": "Insignias Obtenidas",
@@ -1647,7 +1894,38 @@
     "delete_confirm_cancel": "Cancelar",
     "delete_confirm_ok": "Eliminar",
     "no_date": "Sin fecha",
-    "months_short": ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+    "months_short": [
+      "ene",
+      "feb",
+      "mar",
+      "abr",
+      "may",
+      "jun",
+      "jul",
+      "ago",
+      "sep",
+      "oct",
+      "nov",
+      "dic"
+    ],
+    "card_completed": "Completada",
+    "card_mark_done": "Marcar lista",
+    "chip_filter_all": "Todas",
+    "chip_filter_today": "Para Hoy",
+    "chip_filter_urgent": "Urgentes",
+    "chip_filter_overdue": "Vencidas",
+    "hero_progress_badge": "{{percent}}% Avance General",
+    "hero_progress_subtext": "{{completed}} de {{total}} tareas completadas con éxito en tu tablero.",
+    "metric_to_start_label": "Por Iniciar",
+    "metric_to_start_sub": "En columna pendiente",
+    "metric_in_progress_label": "En Progreso",
+    "metric_in_progress_sub": "En ejecución activa",
+    "metric_completed_label": "Completadas",
+    "metric_completed_sub": "Objetivos logrados",
+    "metric_overdue_label": "Vencidas",
+    "metric_overdue_sub": "Plazo excedido",
+    "board_title": "Tablero Operativo",
+    "board_subtitle": "Desliza para ver columnas"
   },
   "planificadorJornada": {
     "title": "Productividad Diaria",
@@ -1713,29 +1991,102 @@
       "medium": "Media",
       "high": "Alta",
       "urgent": "Urgente"
-    }
+    },
+    "nav_subtitle": "Gestión y permisos",
+    "new_request_label": "Nueva Solicitud",
+    "create_request_label": "Crear Solicitud",
+    "summary_total": "Total",
+    "summary_pending": "Pendientes",
+    "summary_approved": "Aprobadas",
+    "empty_detail": "No tienes solicitudes registradas actualmente.",
+    "alert_update_success": "Solicitud Actualizada",
+    "alert_update_success_msg": "Los cambios en tu solicitud se han guardado con éxito.",
+    "cancel_confirm_title": "Cancelar Solicitud",
+    "cancel_confirm_msg": "¿Estás seguro de cancelar tu solicitud de {{subject}}? Esta acción no se puede deshacer.",
+    "cancel_confirm_keep": "No, mantener",
+    "cancel_confirm_confirm": "Sí, cancelar solicitud",
+    "cancel_success_title": "Solicitud Cancelada",
+    "cancel_success_msg": "La solicitud ha sido cancelada correctamente.",
+    "cancel_error_msg": "No se pudo cancelar la solicitud.",
+    "permission_required_title": "Permiso requerido",
+    "permission_camera_msg": "Se necesita acceso a la cámara para tomar una foto.",
+    "permission_gallery_msg": "Se necesita acceso a la galería para seleccionar imágenes.",
+    "error_camera_msg": "No se pudo abrir la cámara.",
+    "error_gallery_msg": "No se pudo abrir la galería.",
+    "error_document_msg": "No se pudo seleccionar el documento.",
+    "attach_options_title": "Adjuntar comprobante o archivo",
+    "attach_options_msg": "Selecciona el origen del archivo:",
+    "attach_option_browse": "Explorar Archivos",
+    "attach_option_photo": "Tomar foto",
+    "attach_option_gallery": "Elegir de la galería",
+    "attach_option_cancel": "Cancelar",
+    "resolution_approved_title": "Solicitud Aprobada",
+    "resolution_rejected_title": "Solicitud Rechazada",
+    "resolution_message_label": "Mensaje / Observación de Administración",
+    "resolution_default_approved": "Tu solicitud ha sido aprobada exitosamente.",
+    "resolution_default_rejected": "Tu solicitud ha sido rechazada por administración.",
+    "detail_status_label": "Estado actual",
+    "detail_priority_label": "Prioridad {{priority}}",
+    "detail_period_label": "Período de Ausencia",
+    "detail_from_label": "Desde",
+    "detail_to_label": "Hasta",
+    "detail_justification_label": "Justificación",
+    "detail_no_justification": "Sin justificación adicional.",
+    "detail_attachments_label": "Comprobantes / Archivos Adjuntos",
+    "attachment_type_photo": "Foto adjunta",
+    "attachment_type_document": "Documento adjunto",
+    "generic_attachment_name": "Archivo adjunto",
+    "attachment_generic_sub": "Comprobante cargado",
+    "edit_request_button": "Editar Solicitud",
+    "cancel_button": "Cancelar",
+    "modal_subtitle_edit": "Modifica las fechas o detalles",
+    "modal_subtitle_create": "Registra tus fechas y motivo",
+    "label_dates_section": "Fechas de Ausencia",
+    "days_count_one": "{{count}} día",
+    "days_count_other": "{{count}} días",
+    "select_placeholder": "Seleccionar",
+    "apply_dates_button": "Aplicar fechas",
+    "optional_badge": "Opcional",
+    "label_attachments_section": "Comprobantes o Archivos",
+    "attach_button_add_another": "+ Adjuntar otro archivo o foto",
+    "attach_button_add": "Adjuntar documento o foto",
+    "attach_button_sub": "Archivos PDF, Word, fotos de galería o cámara",
+    "btn_submit_edit": "Guardar Cambios"
   },
   "busquedaGlobal": {
     "title": "Búsqueda Global",
     "subtitle": "Encuentra tareas, documentos y mensajes en un solo lugar.",
-    "placeholder": "¿Qué buscas hoy?",
+    "placeholder": "Buscar tareas, docs o mensajes...",
     "card_tasks": "Tareas",
-    "card_docs": "Docs",
+    "card_docs": "Documentos",
     "card_messages": "Mensajes",
+    "card_requests": "Solicitudes",
     "quick_searches": "Búsquedas rápidas",
+    "section_index": "ÍNDICE DE INFORMACIÓN",
+    "section_frequent": "BÚSQUEDAS FRECUENTES",
+    "results_found": "Resultados encontrados",
+    "match_count_one": "{{count}} coincidencia",
+    "match_count_other": "{{count}} coincidencias",
+    "clear_search": "Limpiar búsqueda",
     "results_count": "{{count}} resultados",
     "no_results": "No encontramos resultados para \"{{termino}}\"",
     "empty_state": "Escribe algo para comenzar la búsqueda global.",
+    "empty_no_results_title": "Sin coincidencias",
+    "empty_no_results_msg": "No encontramos resultados para \"{{termino}}\". Prueba con otros términos.",
+    "empty_explore_title": "Exploración Global",
+    "empty_explore_msg": "Escribe arriba para buscar en tiempo real en tareas, archivos, notificaciones y trámites.",
     "categories": {
       "todo": "Todo",
       "tareas": "Tareas",
       "documentos": "Documentos",
-      "mensajes": "Mensajes"
+      "mensajes": "Mensajes",
+      "solicitudes": "Solicitudes"
     },
     "suggestions": {
       "urgentes": "Urgentes",
       "contratos": "Contratos",
       "pendientes": "Pendientes",
+      "vacaciones": "Vacaciones",
       "soporte": "Soporte"
     }
   },
@@ -1757,7 +2108,9 @@
     "confirm_end_msg": "¿Estás seguro de registrar tu salida del turno actual?",
     "confirm_end_finish": "Finalizar",
     "success_end_title": "Jornada Finalizada",
-    "success_end_msg": "Se registró tu salida con éxito.\n\nTiempo acumulado: {{tiempo}}"
+    "success_end_msg": "Se registró tu salida con éxito.\n\nTiempo acumulado: {{tiempo}}",
+    "summary_label": "Resumen de Asistencia",
+    "policy_label": "Política de Marcación"
   },
   "historialCompleto": {
     "title": "Historial",
@@ -1957,5 +2310,662 @@
   "Información": "Información",
   "Todas las nóminas ya se encuentran aprobadas.": "Todas las nóminas ya se encuentran aprobadas.",
   "Error": "Error",
-  "No se pudieron aprobar las nóminas.": "No se pudieron aprobar las nóminas."
+  "No se pudieron aprobar las nóminas.": "No se pudieron aprobar las nóminas.",
+  "chatInterno": {
+    "navbar": {
+      "title": "Chat",
+      "unavailableTitle": "Mensajes"
+    },
+    "unavailable": {
+      "title": "Chat no disponible",
+      "message": "Tu cuenta requiere una empresa activa para acceder a los chats de equipo."
+    },
+    "readReceipt": "Visto",
+    "conversation": {
+      "groupMembers": "{{count}} miembros",
+      "directChat": "Chat directo",
+      "emptyTitle": "Inicio de conversación",
+      "emptyMessage": "Envía un mensaje para comenzar la comunicación con {{name}}."
+    },
+    "attachments": {
+      "title": "Adjuntos ({{count}})",
+      "addMore": "Agregar más"
+    },
+    "blocked": {
+      "title": "Conversación bloqueada",
+      "message": "No se pueden enviar ni recibir mensajes.",
+      "unblock": "Desbloquear",
+      "previewText": "Chat bloqueado"
+    },
+    "input": {
+      "placeholder": "Escribe un mensaje..."
+    },
+    "search": {
+      "placeholder": "Buscar conversación..."
+    },
+    "filters": {
+      "all": "Todos ({{count}})",
+      "unread": "No leídos ({{count}})",
+      "direct": "Directos",
+      "groups": "Grupos"
+    },
+    "newChat": {
+      "title": "Nueva conversación",
+      "searchPlaceholder": "Buscar integrantes...",
+      "groupNamePlaceholder": "Nombre del grupo de trabajo...",
+      "availableMembers": "Integrantes disponibles ({{count}})",
+      "noUsers": "No hay colaboradores disponibles.",
+      "creating": "Creando conversación...",
+      "createGroup": "Crear chat de grupo",
+      "startChat": "Iniciar conversación"
+    },
+    "list": {
+      "emptyTitle": "No hay conversaciones",
+      "emptySearch": "No se encontraron resultados para la búsqueda.",
+      "emptyUnread": "¡Estás al día! No tienes mensajes sin leer.",
+      "emptyDefault": "Toca el botón \"+\" para iniciar un nuevo chat con tu equipo."
+    },
+    "actionMenu": {
+      "renameTitle": "Modificar nombre",
+      "renameSubGroup": "Cambiar nombre del grupo",
+      "renameSubContact": "Cambiar apodo del contacto",
+      "muteOn": "Silenciar chat",
+      "muteOff": "Desactivar silencio",
+      "muteOnSub": "Silenciar notificaciones de este chat",
+      "muteOffSub": "Recibir notificaciones",
+      "changePhoto": "Cambiar foto del grupo",
+      "changePhotoSub": "Actualizar la foto de perfil de este grupo",
+      "addPeople": "Añadir personas",
+      "addPeopleSub": "Agregar más integrantes a este equipo",
+      "leaveGroup": "Abandonar grupo",
+      "leaveGroupSub": "Salir de esta conversación de equipo",
+      "blockOn": "Bloquear chat",
+      "blockOff": "Desbloquear chat",
+      "blockOnSub": "Impedir el envío de nuevos mensajes",
+      "blockOffSub": "Permitir enviar mensajes nuevamente",
+      "deleteConv": "Borrar conversación",
+      "deleteConvSub": "Eliminar el historial completo de mensajes"
+    },
+    "rename": {
+      "titleGroup": "Renombrar equipo",
+      "titleContact": "Editar nombre de contacto",
+      "description": "Ingresa el nuevo apodo o nombre visible para esta conversación.",
+      "placeholder": "Escribe el nombre personalizado..."
+    },
+    "common": {
+      "cancel": "Cancelar",
+      "saveChanges": "Guardar cambios"
+    },
+    "addMembers": {
+      "title": "Añadir personas al grupo",
+      "empty": "Todos los integrantes ya pertenecen a este grupo.",
+      "addCount": "Añadir ({{count}})"
+    },
+    "alerts": {
+      "leaveGroupTitle": "Abandonar grupo",
+      "leaveGroupMessage": "¿Estás seguro de abandonar el grupo \"{{name}}\"? Ya no tendrás acceso a este chat.",
+      "leaveGroupConfirm": "Abandonar",
+      "permissionsTitle": "Permisos requeridos",
+      "permissionsMessage": "Se requieren permisos para acceder a las fotos de tu dispositivo.",
+      "deleteConvTitle": "Eliminar conversación",
+      "deleteConvMessage": "¿Estás seguro de eliminar la conversación \"{{name}}\"? Se borrará el historial de mensajes.",
+      "deleteConfirm": "Eliminar"
+    }
+  },
+  "configuracionApp": {
+    "subtitle": "Preferencias y seguridad",
+    "section_account": "CUENTA Y ACTIVIDAD",
+    "section_sessions": "SESIONES ACTIVAS",
+    "language_prompt": "Selecciona tu idioma preferido",
+    "close_other_sessions_title": "Cerrar otras sesiones",
+    "close_other_sessions_msg": "Se cerrará la sesión en todos tus demás dispositivos. Esta sesión seguirá activa.",
+    "close_other_sessions_error": "No se pudieron cerrar las otras sesiones. Intenta de nuevo.",
+    "close_all_other_sessions": "Cerrar todas las demás sesiones",
+    "closing": "Cerrando...",
+    "this_device": "ESTE DISPOSITIVO",
+    "last_seen": "{{os}} · Últ. acceso {{date}}",
+    "copyright": "© 2026 Nexxus. Todos los derechos reservados."
+  },
+  "loginEmpresarial": {
+    "title": "Bienvenido",
+    "subtitle": "Inicia sesión en tu espacio de trabajo.",
+    "alert_missing_company_title": "Falta el código de empresa",
+    "alert_missing_company_msg": "Ingresa el código de tu empresa.",
+    "alert_missing_user_title": "Falta el usuario",
+    "alert_missing_user_msg": "Ingresa tu usuario.",
+    "alert_missing_password_title": "Falta la contraseña",
+    "alert_missing_password_msg": "Ingresa tu contraseña.",
+    "error_account_not_found_title": "Cuenta no encontrada",
+    "error_account_not_found_msg": "Tu cuenta interna existe pero no tiene un usuario de acceso real. Contacta a tu administrador.",
+    "error_password_desync_title": "Contraseña desincronizada",
+    "error_password_desync_msg": "Tu usuario y código son correctos, pero la contraseña no coincide con tu cuenta de acceso. Pide a tu administrador que te la restablezca desde Plantilla.",
+    "error_login_failed_title": "No se pudo iniciar sesión",
+    "error_login_failed_default_msg": "Intenta de nuevo en unos segundos.",
+    "forgot_password": "¿Olvidaste tu contraseña?",
+    "help_link": "Ayuda"
+  },
+  "miSalario": {
+    "title": "Mi Salario",
+    "subtitle": "Nómina y comprobantes",
+    "alert_receipt_generated_title": "Recibo Generado",
+    "alert_receipt_generated_msg": "Guardado en: {{uri}}",
+    "alert_error_generating": "No se pudo generar el comprobante.",
+    "hero_pill": "NÓMINA OFICIAL",
+    "hero_label": "Último salario neto",
+    "hero_meta_empty": "La nómina aparecerá automáticamente cuando administración publique un pago.",
+    "metric_base_salary": "Salario base",
+    "metric_deductions": "Deducciones",
+    "metric_total_paid": "Total pagado",
+    "section_breakdown": "Desglose de Nómina",
+    "btn_view_full": "Ver Completo",
+    "total_card_label": "Total neto depositado",
+    "payment_date": "Fecha de pago: {{fecha}}",
+    "btn_download_receipt": "Descargar Comprobante Oficial",
+    "empty_title": "Sin nómina publicada",
+    "empty_detail": "Cuando administración apruebe y publique tu nómina, verás aquí el desglose y comprobantes oficiales.",
+    "empty_action": "Ver historial completo",
+    "section_history": "Historial de Recibos",
+    "records_count": "{{count}} registros",
+    "modal_kind": "COMPROBANTE DE PAGO",
+    "modal_hero_label": "Total Neto Acreditado",
+    "modal_paid_on": "Pagado el {{fecha}}",
+    "modal_section_income": "Percepciones e Ingresos Brutos",
+    "modal_section_deductions": "Retenciones y Deducciones de Ley",
+    "modal_section_dispersion": "Información de Dispersión",
+    "info_beneficiary": "Beneficiario",
+    "info_role_dept": "Cargo / Depto",
+    "info_bank_account": "Cuenta Bancaria",
+    "info_folio_id": "Folio / ID",
+    "default_employee": "Empleado",
+    "default_general": "General",
+    "default_operations": "Operaciones",
+    "btn_download_share": "Descargar / Compartir Recibo"
+  },
+  "misObjetivos": {
+    "title": "Mis Objetivos",
+    "subtitle": "Metas y OKRs del trimestre",
+    "empty_title": "Sin objetivos en {{ciclo}}",
+    "empty_detail": "Crea tu primer OKR tocando el botón +.",
+    "progress_complete": "{{percent}}% completado",
+    "kr_count": "{{count}} resultados clave",
+    "delete_title": "Eliminar objetivo",
+    "delete_msg": "¿Eliminar \"{{titulo}}\"? Esta acción no se puede deshacer.",
+    "cancel": "Cancelar",
+    "delete_confirm": "Eliminar",
+    "create_error_title": "No se pudo crear",
+    "update_error_title": "No se pudo actualizar",
+    "generic_retry": "Intenta de nuevo en unos segundos.",
+    "invalid_value_title": "Valor inválido",
+    "invalid_value_msg": "Ingresa un número igual o mayor a 0.",
+    "modal_title": "Nuevo Objetivo Trimestral",
+    "label_title": "Título del Objetivo",
+    "placeholder_title": "Ej. Incrementar la satisfacción de entrega en proyectos",
+    "label_description": "Descripción (Opcional)",
+    "placeholder_description": "¿Por qué es clave este objetivo para el equipo?",
+    "label_cycle": "Ciclo",
+    "label_key_results": "Resultados Clave (Medibles)",
+    "placeholder_kr_title": "Ej. Tareas cerradas",
+    "placeholder_kr_goal": "Meta",
+    "placeholder_kr_unit": "Unidad",
+    "unit_default": "unidades",
+    "add_kr": "Agregar Resultado Clave",
+    "save_objective": "Guardar Objetivo"
+  },
+  "panelJefe": {
+    "eyebrow": "Panel de jefe",
+    "title": "Equipo y aprobaciones",
+    "subtitle": "Seguimiento operativo de personas, tareas y solicitudes pendientes bajo tu alcance.",
+    "access_restricted_title": "Acceso reservado",
+    "access_restricted_detail": "Este panel esta disponible solo para jefes con equipo asignado.",
+    "no_company_title": "Empresa no asignada",
+    "no_company_detail": "Tu usuario necesita una empresa activa para cargar el alcance del equipo.",
+    "error_load": "No se pudo cargar el panel de equipo. Revisa la conexion e intenta de nuevo.",
+    "error_update_request": "No se pudo actualizar la solicitud. Intenta de nuevo.",
+    "error_save_evaluation": "No se pudo guardar la evaluación. Intenta de nuevo.",
+    "metric_members": "Miembros",
+    "metric_pending": "Pendientes",
+    "metric_overdue": "Vencidas",
+    "metric_approvals": "Aprobaciones",
+    "metric_performance": "Rendimiento",
+    "section_approvals": "Aprobaciones pendientes",
+    "section_team_pulse": "Pulso del equipo",
+    "section_evaluation": "Evaluación mensual",
+    "section_active_work": "Trabajo activo",
+    "no_approvals_title": "Sin aprobaciones pendientes",
+    "no_approvals_detail": "Cuando tu equipo envíe solicitudes, aparecerán aquí para resolverlas.",
+    "no_team_title": "Sin equipo asignado",
+    "no_team_detail": "Asigna empleados a este jefe desde Gestión de Plantilla para activar este panel.",
+    "member_stat_tasks": "tareas",
+    "member_stat_overdue": "vencidas",
+    "member_stat_eval": "eval.",
+    "default_employee_label": "Empleado",
+    "work_in_progress": "{{count}} tareas en progreso",
+    "work_pending_total": "{{count}} pendientes totales en el equipo.",
+    "btn_reject": "Rechazar",
+    "btn_approve": "Aprobar"
+  },
+  "politicaPrivacidad": {
+    "navbar_title": "Privacidad",
+    "navbar_subtitle": "Políticas y gobernanza de datos",
+    "hero_title": "Tu información, protegida",
+    "hero_subtitle": "Conoce las directivas de seguridad y cómo resguardamos tus datos en el ecosistema Nexxus Enterprise.",
+    "pillars_label": "PILARES DE PRIVACIDAD",
+    "rights_label": "TUS DERECHOS ARCO",
+    "note_text": "Para ejercer cualquiera de tus derechos o solicitar la rectificación de tus datos, contacta al administrador de Recursos Humanos de tu organización."
+  },
+  "recuperarContrasena": {
+    "title": "Recuperar contraseña",
+    "subtitle": "Ingresa el código de tu empresa y tu usuario para enviarte un enlace de restablecimiento.",
+    "alert_missing_data_title": "Faltan datos",
+    "alert_missing_data_msg": "Ingresa el código de empresa y tu usuario.",
+    "alert_error_title": "No se pudo enviar",
+    "alert_error_default_msg": "Intenta de nuevo en unos segundos.",
+    "field_company_code_label": "CÓDIGO DE EMPRESA",
+    "field_company_code_placeholder": "EJ. NEXXUS",
+    "field_user_label": "USUARIO",
+    "field_user_placeholder": "nombre.apellido",
+    "success_title": "¡Solicitud enviada!",
+    "success_msg": "Si tu cuenta existe y tiene un correo de contacto, en unos minutos te llegará un enlace para restablecer tu contraseña. Revisa también tu carpeta de spam.",
+    "btn_send": "Enviar enlace",
+    "btn_back_to_login": "Volver a iniciar sesión"
+  },
+  "restablecerContrasena": {
+    "title": "Nueva contraseña",
+    "subtitle": "Crea una contraseña segura para tu acceso a la plataforma.",
+    "alert_short_password_title": "Contraseña muy corta",
+    "alert_short_password_msg": "Usa al menos 8 caracteres.",
+    "alert_mismatch_title": "No coinciden",
+    "alert_mismatch_msg": "Las contraseñas ingresadas son distintas.",
+    "alert_error_title": "No se pudo actualizar",
+    "alert_error_default_msg": "Intenta de nuevo en unos segundos.",
+    "field_new_password_label": "NUEVA CONTRASEÑA",
+    "field_new_password_placeholder": "Mínimo 8 caracteres",
+    "field_confirm_password_label": "CONFIRMAR CONTRASEÑA",
+    "field_confirm_password_placeholder": "Repite la contraseña",
+    "btn_save": "Guardar contraseña",
+    "success_title": "¡Contraseña actualizada!",
+    "success_msg": "Tu contraseña se actualizó correctamente. Ya puedes iniciar sesión con tus nuevas credenciales.",
+    "btn_go_login": "Ir a iniciar sesión",
+    "notice_web_only": "Por ahora la recuperación de contraseña solo funciona abriendo el enlace desde un navegador.",
+    "notice_invalid_link": "Este enlace no es válido o ya venció. Pide uno nuevo desde la pantalla de inicio de sesión."
+  },
+  "superadmin": {
+    "saResumen": {
+      "kpi": {
+        "empresasTotales": "Empresas totales",
+        "empresasActivas": "Empresas activas",
+        "baneadas": "Baneadas",
+        "usuariosTotales": "Usuarios totales",
+        "propietarios": "Propietarios",
+        "jefes": "Jefes",
+        "empleados": "Empleados",
+        "ingresosConfirmados": "Ingresos confirmados",
+        "deltaEn30Dias": "+{{count}} en 30 días",
+        "activosDelta": "{{count}} activos",
+        "suscripcionVigente": "Suscripción vigente",
+        "adminDeEmpresa": "Admin de empresa",
+        "lideresDeEquipo": "Líderes de equipo",
+        "ingresosEn30Dias": "{{monto}} en 30 días"
+      },
+      "secciones": {
+        "ingresosPorMes": "Ingresos por mes",
+        "distribucionPlanes": "Distribución de planes",
+        "empresasRecientes": "Empresas recientes",
+        "actividadReciente": "Actividad global reciente",
+        "verTodas": "Ver todas"
+      },
+      "vacio": {
+        "sinPagos": "Sin pagos confirmados en los últimos meses.",
+        "sinPlanes": "Sin planes asignados todavía.",
+        "sinEmpresas": "Sin empresas registradas.",
+        "sinEventos": "Sin eventos auditados todavía."
+      },
+      "tabla": {
+        "empresa": "EMPRESA",
+        "plan": "PLAN",
+        "estado": "ESTADO",
+        "alta": "ALTA"
+      },
+      "error": {
+        "cargaPanel": "No se pudo cargar el panel global."
+      },
+      "plataforma": "Plataforma"
+    },
+    "saEmpresas": {
+      "kpi": {
+        "empresasTotales": "Empresas totales",
+        "deltaEn30Dias": "+{{count}} en 30 días",
+        "activas": "Activas",
+        "suscripcionVigente": "Suscripción vigente",
+        "baneadas": "Baneadas",
+        "ingresoMensualPromedio": "Ingreso mensual promedio",
+        "porEmpresaActiva": "Por empresa activa"
+      },
+      "filtros": {
+        "todas": "Todas",
+        "activas": "Activas",
+        "baneadas": "Baneadas"
+      },
+      "acciones": {
+        "crearEmpresa": "Crear empresa"
+      },
+      "seccion": {
+        "todasEmpresas": "Todas las empresas"
+      },
+      "tabla": {
+        "empresa": "EMPRESA",
+        "plan": "PLAN",
+        "estado": "ESTADO",
+        "usuarios": "USUARIOS",
+        "alta": "ALTA"
+      },
+      "vacio": {
+        "sinEmpresasCrear": "Sin empresas todavía. Crea la primera con el botón de arriba.",
+        "sinFiltro": "No se encontraron empresas para este filtro.",
+        "sinUsuarios": "Sin usuarios registrados.",
+        "sinPagos": "Sin pagos registrados."
+      },
+      "cargarMas": "Cargar más",
+      "modal": {
+        "empresaFallback": "Empresa",
+        "tabs": {
+          "datos": "Datos",
+          "propietario": "Propietario",
+          "usuarios": "Usuarios",
+          "pagos": "Plan y pagos",
+          "acciones": "Acciones"
+        }
+      },
+      "guardar": {
+        "cambios": "Guardar cambios",
+        "guardando": "Guardando…"
+      },
+      "pagos": {
+        "recientes": "Pagos recientes"
+      },
+      "accionesTab": {
+        "suscripcion": "Suscripción",
+        "reactivar": "Reactivar",
+        "suspender": "Suspender",
+        "expirar": "Expirar",
+        "aplicando": "Aplicando…",
+        "acceso": "Acceso",
+        "desbanear": "Desbanear",
+        "banear": "Banear",
+        "iniciarSoporte": "Iniciar soporte",
+        "iniciando": "Iniciando…",
+        "zonaPeligro": "Zona de peligro",
+        "eliminarEmpresa": "Eliminar empresa"
+      },
+      "eliminarModal": {
+        "titulo": "Eliminar empresa",
+        "mensaje": "Esta acción borra la empresa, todos sus usuarios (incluida su cuenta de acceso) y todos sus datos de forma permanente."
+      },
+      "crearModal": {
+        "titulo": "Crear empresa",
+        "creando": "Creando…"
+      }
+    },
+    "saUsuarios": {
+      "filtros": {
+        "todos": "Todos",
+        "activos": "Activos",
+        "inactivos": "Inactivos",
+        "baneados": "Baneados",
+        "eliminados": "Eliminados"
+      },
+      "kpi": {
+        "usuariosTotales": "Usuarios totales",
+        "activosDelta": "{{count}} activos",
+        "propietarios": "Propietarios",
+        "adminDeEmpresa": "Admin de empresa",
+        "jefes": "Jefes",
+        "lideresDeEquipo": "Líderes de equipo",
+        "empleados": "Empleados",
+        "deltaEn30Dias": "+{{count}} en 30 días"
+      },
+      "seccion": {
+        "directorioEmpresas": "Directorio de empresas",
+        "empleadosDe": "Empleados de {{empresa}}"
+      },
+      "tabla": {
+        "empresa": "EMPRESA",
+        "codigo": "CÓDIGO",
+        "plan": "PLAN",
+        "nombre": "NOMBRE",
+        "rol": "ROL",
+        "estado": "ESTADO"
+      },
+      "vacio": {
+        "sinEmpresas": "No se encontraron empresas.",
+        "sinUsuariosEstado": "Esta empresa aún no tiene usuarios registrados con este estado."
+      },
+      "acciones": {
+        "volverEmpresas": "Volver a empresas",
+        "cargarMasEmpleados": "Cargar más empleados",
+        "guardando": "Guardando…",
+        "guardarCambios": "Guardar cambios"
+      },
+      "modal": {
+        "usuarioFallback": "Usuario",
+        "tabs": {
+          "datos": "Datos",
+          "acciones": "Acciones y Acceso"
+        }
+      },
+      "accionesTab": {
+        "estadoEmpresa": "Estado en la empresa",
+        "aplicando": "Aplicando…",
+        "suspender": "Suspender",
+        "reactivar": "Reactivar",
+        "autenticacion": "Autenticación",
+        "desbanear": "Desbanear",
+        "banear": "Banear",
+        "resetearContrasena": "Resetear contraseña",
+        "zonaPeligro": "Zona de peligro",
+        "eliminarCuenta": "Eliminar cuenta"
+      },
+      "resetModal": {
+        "titulo": "Resetear contraseña",
+        "enviarLink": "Enviar link",
+        "claveTemporal": "Clave temporal",
+        "confirmarReset": "Confirmar reset"
+      },
+      "eliminarModal": {
+        "mensaje": "Esta acción borra la cuenta en Firebase Auth. Sus datos seguirán existiendo referenciados a su ID, pero no podrá iniciar sesión nunca más."
+      },
+      "error": {
+        "cargaUsuarios": "No se pudieron cargar los usuarios.",
+        "cargaMasUsuarios": "No se pudieron cargar más usuarios."
+      }
+    },
+    "saPagosPlanes": {
+      "kpi": {
+        "ingresosConfirmados": "Ingresos confirmados",
+        "historicoTotal": "Histórico total",
+        "ingresos30Dias": "Ingresos 30 días",
+        "ultimos30Dias": "Últimos 30 días",
+        "empresasConPlan": "Empresas con plan",
+        "planesDistintos": "{{count}} planes distintos",
+        "pagosRecientes": "Pagos recientes",
+        "ultimosRegistrados": "Últimos registrados"
+      },
+      "secciones": {
+        "distribucionPlanes": "Distribución de planes",
+        "pagosRecientes": "Pagos recientes"
+      },
+      "tabla": {
+        "empresa": "EMPRESA",
+        "plan": "PLAN",
+        "monto": "MONTO",
+        "estado": "ESTADO",
+        "fecha": "FECHA"
+      },
+      "vacio": {
+        "sinPlanes": "Sin planes asignados todavía.",
+        "cargando": "Cargando pagos…",
+        "sinPagos": "Sin pagos registrados. Cuando se confirmen pagos de cualquier empresa aparecerán aquí."
+      },
+      "error": {
+        "cargaPagos": "No se pudieron cargar los pagos."
+      }
+    },
+    "saSoporte": {
+      "avisoInicial": "Iniciar soporte firma tu sesión actual como el administrador de esa empresa. Vuelve a iniciar sesión como super admin cuando termines.",
+      "iniciando": "Iniciando…",
+      "secciones": {
+        "iniciarSesion": "Iniciar sesión de soporte",
+        "sesionesSoporte": "Sesiones de soporte"
+      },
+      "tabla": {
+        "empresa": "EMPRESA",
+        "destino": "DESTINO",
+        "actor": "ACTOR",
+        "estado": "ESTADO",
+        "expira": "EXPIRA"
+      },
+      "vacio": {
+        "cargando": "Cargando sesiones…",
+        "sinSesiones": "Sin sesiones de soporte. Cuando inicies soporte para una empresa, la sesión auditada aparecerá aquí."
+      },
+      "error": {
+        "cargaSesiones": "No se pudieron cargar las sesiones de soporte.",
+        "iniciarSoporte": "No se pudo iniciar soporte. La empresa necesita un administrador activo."
+      }
+    },
+    "saAuditoria": {
+      "seccion": {
+        "registroAuditoria": "Registro de auditoría"
+      },
+      "filtros": {
+        "todos": "Todos",
+        "exito": "Éxito",
+        "advertencia": "Advertencia",
+        "error": "Error"
+      },
+      "tabla": {
+        "evento": "EVENTO",
+        "empresa": "EMPRESA",
+        "modulo": "MÓDULO",
+        "estado": "ESTADO",
+        "fecha": "FECHA"
+      },
+      "vacio": {
+        "cargando": "Cargando eventos…",
+        "sinEventos": "Sin eventos auditados. Cuando ocurran acciones administrativas en cualquier empresa aparecerán aquí."
+      },
+      "cargarMas": "Cargar más",
+      "error": {
+        "cargaAuditoria": "No se pudo cargar la auditoría global.",
+        "cargaMasEventos": "No se pudieron cargar más eventos."
+      }
+    },
+    "saConfiguracion": {
+      "secciones": {
+        "apariencia": "Apariencia",
+        "cuenta": "Cuenta",
+        "contrasenaPanel": "Contraseña de acceso al panel"
+      },
+      "modoOscuro": "Modo oscuro",
+      "guardando": "Guardando…",
+      "actualizarContrasena": "Actualizar contraseña",
+      "cerrarSesion": "Cerrar sesión",
+      "mensajeActualizada": "Contraseña de acceso al panel actualizada.",
+      "error": {
+        "longitudMinima": "La contraseña debe tener al menos 8 caracteres.",
+        "actualizarFallo": "No se pudo actualizar la contraseña."
+      }
+    },
+    "saNexxusIA": {
+      "kpi": {
+        "queriesGlobales": "Queries globales",
+        "ultimos30Dias": "+{{count}} últimos 30 días",
+        "consumoTokens": "Consumo de tokens",
+        "historicoGlobal": "Histórico global",
+        "costoEstimado30d": "Costo estimado 30d",
+        "historicoMonto": "${{monto}} histórico",
+        "modelosActivos": "Modelos activos"
+      },
+      "ninguno": "Ninguno",
+      "secciones": {
+        "topEmpresas": "Top empresas por consultas",
+        "distribucionModelo": "Distribución por modelo"
+      },
+      "vacio": {
+        "sinUsoIA": "Sin uso de IA todavía.",
+        "sinUsoModelos": "Sin uso de modelos todavía."
+      }
+    },
+    "saLayout": {
+      "hero": {
+        "eyebrow": "NEXXUS PLATFORM",
+        "saResumen": {
+          "titulo": "Resumen global",
+          "subtitulo": "Empresas, usuarios, planes e ingresos de toda la plataforma en un solo panel."
+        },
+        "saEmpresas": {
+          "titulo": "Empresas",
+          "subtitulo": "Administra las organizaciones registradas, sus planes y su estado."
+        },
+        "saUsuarios": {
+          "titulo": "Usuarios",
+          "subtitulo": "Propietarios, jefes y empleados de todas las empresas activas."
+        },
+        "saNexxusIA": {
+          "titulo": "Nexxus AI",
+          "subtitulo": "Uso del asistente inteligente en toda la plataforma."
+        },
+        "saPagosPlanes": {
+          "titulo": "Pagos y planes",
+          "subtitulo": "Suscripciones, facturación e ingresos por plan."
+        },
+        "saAuditoria": {
+          "titulo": "Auditoría",
+          "subtitulo": "Registro de eventos y cambios críticos de la plataforma."
+        },
+        "saSoporte": {
+          "titulo": "Soporte",
+          "subtitulo": "Sesiones de soporte auditadas para las empresas clientes."
+        },
+        "saConfiguracion": {
+          "titulo": "Configuración",
+          "subtitulo": "Preferencias de cuenta, apariencia y seguridad del panel."
+        }
+      },
+      "nav": {
+        "resumenGlobal": "Resumen global",
+        "empresas": "Empresas",
+        "usuarios": "Usuarios",
+        "nexxusAI": "Nexxus AI",
+        "pagosPlanes": "Pagos y planes",
+        "auditoria": "Auditoría",
+        "soporte": "Soporte",
+        "configuracion": "Configuración"
+      },
+      "sidebar": {
+        "marca": "Nexxus",
+        "platformControl": "PLATFORM CONTROL",
+        "nexxusOS": "NEXXUS OS",
+        "nexxusPlatform": "Nexxus Platform",
+        "nexxusCloud": "Nexxus Cloud",
+        "superAdminNombre": "Nexxus Super Admin",
+        "superAdminBadge": "SUPER ADMIN"
+      },
+      "topbar": {
+        "bienvenido": "Bienvenido, {{nombre}}",
+        "datosVivos": "Datos vivos y módulos sincronizados"
+      },
+      "estados": {
+        "sinDatosTitulo": "Sin datos todavía",
+        "sinDatosTexto": "Cuando existan registros aparecerán aquí sin usar datos simulados.",
+        "errorPanel": "No se pudo cargar el panel"
+      },
+      "confirmarEliminacion": {
+        "etiquetaCampo": "Escribe el nombre para confirmar",
+        "cancelar": "Cancelar",
+        "eliminando": "Eliminando…",
+        "eliminarPermanentemente": "Eliminar permanentemente"
+      }
+    }
+  }
 }

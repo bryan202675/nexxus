@@ -1,6 +1,16 @@
-import React from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
-import Animated, { FadeIn, Layout } from 'react-native-reanimated';
+/**
+ * Documentacion Nexxus - apps/mobile/src/features/voice/components/VoiceTranscript.tsx
+ * Capa: presentacion / features / voice.
+ * Proposito: Muestra la transcripción de voz en tiempo real con animación de reveal por palabra y tipografía fluida.
+ */
+
+import React, { useMemo } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import Animated, {
+  Easing,
+  FadeInDown,
+  Layout,
+} from 'react-native-reanimated';
 import { ESPACIADO, TIPOGRAFIA } from '@/shared/constants/diseno';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import { VoiceTranscriptEntry } from '../types/voice.types';
@@ -12,6 +22,45 @@ interface Props {
 const MAX_ENTRADAS_VISIBLES = 3;
 const ALTO_MAXIMO = 180;
 
+function LineaTranscripcionReveal({
+  entrada,
+  colorTexto,
+  esNexxus,
+}: {
+  entrada: VoiceTranscriptEntry;
+  colorTexto: string;
+  esNexxus: boolean;
+}) {
+  const palabras = useMemo(() => {
+    return entrada.texto.split(' ').filter(Boolean);
+  }, [entrada.texto]);
+
+  return (
+    <Animated.View
+      layout={Layout.duration(160)}
+      style={estilos.contenedorPalabras}
+    >
+      {palabras.map((palabra, indice) => (
+        <Animated.Text
+          key={`${entrada.id}-p-${indice}-${palabra}`}
+          entering={FadeInDown.duration(240).delay(Math.min(indice * 20, 180)).easing(Easing.out(Easing.quad))}
+          style={[
+            TIPOGRAFIA.cuerpoPequeno,
+            estilos.palabra,
+            {
+              color: colorTexto,
+              fontWeight: esNexxus ? '600' : '400',
+              opacity: entrada.final ? 1 : 0.75,
+            },
+          ]}
+        >
+          {palabra}{' '}
+        </Animated.Text>
+      ))}
+    </Animated.View>
+  );
+}
+
 export default function VoiceTranscript({ entradas }: Props) {
   const { colores } = useTemaMobile();
 
@@ -20,24 +69,24 @@ export default function VoiceTranscript({ entradas }: Props) {
   const visibles = entradas.slice(-MAX_ENTRADAS_VISIBLES);
 
   return (
-    <ScrollView style={estilos.scroll} contentContainerStyle={estilos.contenedor}>
-      {visibles.map((entrada) => (
-        <Animated.Text
-          key={entrada.id}
-          entering={FadeIn.duration(200)}
-          layout={Layout.duration(200)}
-          style={[
-            TIPOGRAFIA.cuerpoPequeno,
-            estilos.linea,
-            {
-              color: entrada.rol === 'nexxus' ? colores.texto : colores.textoSecundario,
-              opacity: entrada.final ? 1 : 0.6,
-            },
-          ]}
-        >
-          {entrada.texto}
-        </Animated.Text>
-      ))}
+    <ScrollView
+      style={estilos.scroll}
+      contentContainerStyle={estilos.contenedor}
+      showsVerticalScrollIndicator={false}
+    >
+      {visibles.map((entrada) => {
+        const esNexxus = entrada.rol === 'nexxus';
+        const colorTexto = esNexxus ? colores.texto : colores.textoSecundario;
+
+        return (
+          <LineaTranscripcionReveal
+            key={entrada.id}
+            entrada={entrada}
+            colorTexto={colorTexto}
+            esNexxus={esNexxus}
+          />
+        );
+      })}
     </ScrollView>
   );
 }
@@ -50,7 +99,16 @@ const estilos = StyleSheet.create({
     gap: ESPACIADO.xs,
     paddingHorizontal: ESPACIADO.xl,
   },
-  linea: {
+  contenedorPalabras: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginVertical: 2,
+  },
+  palabra: {
     textAlign: 'center',
+    letterSpacing: -0.2,
+    lineHeight: 22,
   },
 });

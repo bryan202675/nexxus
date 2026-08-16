@@ -15,7 +15,6 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -37,6 +36,7 @@ import { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/consta
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 // Importa { useTranslation }; permite traducir textos visibles y respetar el idioma activo del usuario.
 import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 // Importa { useCases }; contenedor de DI ya resuelto sobre Supabase.
 import { useCases } from '@/infrastructure/container';
 // Importa { Course }; usa tipos de dominio para que los datos mantengan estructura consistente.
@@ -65,6 +65,8 @@ type IconoFeather = React.ComponentProps<typeof Feather>['name'];
 
 // Moved to component for i18n support
 // const LABEL_CATEGORIA: Record<Course['categoria'], string> = { ... };
+
+const Text = AdminTranslatedText;
 
 export default function CentroAprendizaje({ navigation }: Props) {
   // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -180,12 +182,12 @@ export default function CentroAprendizaje({ navigation }: Props) {
         .codigo { margin-top: 50px; font-size: 12px; color: #9CA3AF; letter-spacing: 2px; }
       </style>
       </head><body>
-        <div class="eyebrow">Nexxus &middot; Certificado de Finalización</div>
+        <div class="eyebrow">${t('centroAprendizaje.certificate_eyebrow')}</div>
         <h1>${cursoActivo.titulo}</h1>
-        <p class="parrafo">Se certifica que</p>
-        <div class="nombre">${perfil.nombre || 'Empleado'}</div>
-        <p class="parrafo">completó satisfactoriamente este curso el ${fecha}.</p>
-        <div class="codigo">Código de verificación: ${avanceCursoActivo.certificadoCodigo}</div>
+        <p class="parrafo">${t('centroAprendizaje.certificate_certifies')}</p>
+        <div class="nombre">${perfil.nombre || t('centroAprendizaje.certificate_employee_fallback')}</div>
+        <p class="parrafo">${t('centroAprendizaje.certificate_completed_on', { date: fecha })}</p>
+        <div class="codigo">${t('centroAprendizaje.certificate_verification_code', { code: avanceCursoActivo.certificadoCodigo })}</div>
       </body></html>`;
 
     try {
@@ -432,7 +434,7 @@ export default function CentroAprendizaje({ navigation }: Props) {
               >
                 <Feather name="book-open" size={16} color="#FFFFFF" />
                 <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 14 }}>
-                  Comenzar / Leer Módulos del Curso
+                  {t('centroAprendizaje.start_read_modules')}
                 </Text>
               </TouchableOpacity>
             </BlurView>
@@ -588,7 +590,7 @@ export default function CentroAprendizaje({ navigation }: Props) {
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: colores.borde }}>
                     <View style={{ flex: 1, paddingRight: 12 }}>
                       <Text style={{ fontSize: 12, fontWeight: '700', color: COLORES.primario, letterSpacing: 0.5 }}>
-                        MÓDULO {moduloLecturaIndex + 1} DE {cursoActivo.modulos.length}
+                        {t('centroAprendizaje.module_of', { current: moduloLecturaIndex + 1, total: cursoActivo.modulos.length })}
                       </Text>
                       <Text style={{ fontSize: 18, fontWeight: '800', color: colores.texto, marginTop: 2 }}>{moduloActivo.titulo}</Text>
                     </View>
@@ -604,7 +606,7 @@ export default function CentroAprendizaje({ navigation }: Props) {
                   <ScrollView style={{ flex: 1, marginVertical: 14 }} showsVerticalScrollIndicator={false}>
                     {/* Contenido del Módulo */}
                     <Text style={{ fontSize: 15, color: colores.texto, lineHeight: 24, fontWeight: '400', marginBottom: 20 }}>
-                      {moduloActivo.contenido_texto || 'Este módulo incluye guías informativas para el aprendizaje.'}
+                      {moduloActivo.contenido_texto || t('centroAprendizaje.module_default_content')}
                     </Text>
 
                     {/* Evaluación Corta Interactiva */}
@@ -612,7 +614,7 @@ export default function CentroAprendizaje({ navigation }: Props) {
                       <View style={{ marginTop: 10, padding: 16, borderRadius: RADIOS.xl, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: colores.borde }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
                           <MaterialIcons name="help-outline" size={20} color={COLORES.primario} />
-                          <Text style={{ fontSize: 14, fontWeight: '800', color: colores.texto }}>Evaluación de Comprensión</Text>
+                          <Text style={{ fontSize: 14, fontWeight: '800', color: colores.texto }}>{t('centroAprendizaje.comprehension_eval')}</Text>
                         </View>
                         <Text style={{ fontSize: 13, fontWeight: '600', color: colores.texto, marginBottom: 12 }}>{evalData.pregunta}</Text>
 
@@ -665,7 +667,7 @@ export default function CentroAprendizaje({ navigation }: Props) {
                             }}
                             style={{ backgroundColor: COLORES.primario, paddingVertical: 10, borderRadius: RADIOS.lg, alignItems: 'center', marginTop: 8 }}
                           >
-                            <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 13 }}>Verificar Respuesta</Text>
+                            <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 13 }}>{t('centroAprendizaje.verify_answer')}</Text>
                           </TouchableOpacity>
                         ) : null}
 
@@ -686,7 +688,7 @@ export default function CentroAprendizaje({ navigation }: Props) {
                           >
                             <MaterialIcons name={quizEsCorrecto ? 'check-circle' : 'error'} size={20} color={quizEsCorrecto ? '#10B981' : '#EF4444'} />
                             <Text style={{ fontSize: 12, fontWeight: '700', color: quizEsCorrecto ? '#10B981' : '#EF4444', flex: 1 }}>
-                              {quizEsCorrecto ? '¡Excelente! Respuesta correcta.' : 'Respuesta incorrecta. Inténtalo de nuevo.'}
+                              {quizEsCorrecto ? t('centroAprendizaje.correct_answer') : t('centroAprendizaje.incorrect_answer')}
                             </Text>
                           </View>
                         ) : null}
@@ -715,7 +717,7 @@ export default function CentroAprendizaje({ navigation }: Props) {
                     >
                       <Feather name={moduloCompletado ? 'check-circle' : 'award'} size={18} color="#FFFFFF" />
                       <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 15 }}>
-                        {moduloCompletado ? 'Módulo Completado' : 'Completar Módulo y Marcar Progreso'}
+                        {moduloCompletado ? t('centroAprendizaje.module_completed') : t('centroAprendizaje.complete_module_full')}
                       </Text>
                     </TouchableOpacity>
                   </View>

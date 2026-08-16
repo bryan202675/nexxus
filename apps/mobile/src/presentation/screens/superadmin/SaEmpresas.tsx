@@ -6,7 +6,9 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { MaterialIcons } from '@expo/vector-icons';
-import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, ScrollView, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
 import { CompanyFilters, EmpresaDetalle, PagoResumen, PlatformStats, UsuarioGlobal } from 'domain/entities/SuperAdmin';
 import { useCases } from '@/infrastructure/container';
 import { useAuth } from '@/presentation/hooks/useAuth';
@@ -21,15 +23,12 @@ import {
   SaAvatarChip, SaStatusIndicator, SaFilterPill, SaBadgeTone, SaIconBox,
 } from './components/SaWidgets';
 
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
+
 type LoadState = 'loading' | 'ready' | 'empty' | 'error';
 type EstadoFiltro = 'todas' | 'activas' | 'baneadas';
 type Pestana = 'datos' | 'propietario' | 'usuarios' | 'pagos' | 'acciones';
-
-const FILTROS_ESTADO: { value: EstadoFiltro; label: string }[] = [
-  { value: 'todas', label: 'Todas' },
-  { value: 'activas', label: 'Activas' },
-  { value: 'baneadas', label: 'Baneadas' },
-];
 
 const emptyStats: PlatformStats = {
   empresasTotal: 0, empresasActivas: 0, empresasSuspendidas: 0, empresasExpiradas: 0, empresasBaneadas: 0,
@@ -47,12 +46,19 @@ const estadoTone = (estado: string): SaBadgeTone => {
 };
 
 export default function SaEmpresas() {
+  const { t } = useTranslation();
   const { theme } = useSaTheme();
   const { theme: modalTheme } = useAdminAppearance();
   const { user } = useAuth();
   const { width } = useWindowDimensions();
   const compact = width < 900;
   useSaEntrance();
+
+  const FILTROS_ESTADO: { value: EstadoFiltro; label: string }[] = [
+    { value: 'todas', label: t('superadmin.saEmpresas.filtros.todas') },
+    { value: 'activas', label: t('superadmin.saEmpresas.filtros.activas') },
+    { value: 'baneadas', label: t('superadmin.saEmpresas.filtros.baneadas') },
+  ];
 
   const [state, setState] = useState<LoadState>('loading');
   const [errorMessage, setErrorMessage] = useState('');
@@ -212,10 +218,10 @@ export default function SaEmpresas() {
         ) : null}
 
         <View>
-          <SaKpiCard index={0} theme={theme} icon="domain" label="Empresas totales" value={String(platformStats.empresasTotal)} delta={`+${platformStats.empresasNuevas30d} en 30 días`} tone={platformStats.empresasNuevas30d > 0 ? 'positive' : 'neutral'} />
-          <SaKpiCard index={1} theme={theme} icon="verified" label="Activas" value={String(platformStats.empresasActivas)} delta="Suscripción vigente" />
-          <SaKpiCard index={2} theme={theme} icon="health-and-safety" label="Baneadas" value={String(platformStats.empresasBaneadas)} tone={platformStats.empresasBaneadas > 0 ? 'warning' : 'neutral'} />
-          <SaKpiCard index={3} theme={theme} icon="payments" label="Ingreso mensual promedio" value={formatoMoneda(ingresoMensualPromedio)} delta="Por empresa activa" />
+          <SaKpiCard index={0} theme={theme} icon="domain" label={t('superadmin.saEmpresas.kpi.empresasTotales')} value={String(platformStats.empresasTotal)} delta={t('superadmin.saEmpresas.kpi.deltaEn30Dias', { count: platformStats.empresasNuevas30d })} tone={platformStats.empresasNuevas30d > 0 ? 'positive' : 'neutral'} />
+          <SaKpiCard index={1} theme={theme} icon="verified" label={t('superadmin.saEmpresas.kpi.activas')} value={String(platformStats.empresasActivas)} delta={t('superadmin.saEmpresas.kpi.suscripcionVigente')} />
+          <SaKpiCard index={2} theme={theme} icon="health-and-safety" label={t('superadmin.saEmpresas.kpi.baneadas')} value={String(platformStats.empresasBaneadas)} tone={platformStats.empresasBaneadas > 0 ? 'warning' : 'neutral'} />
+          <SaKpiCard index={3} theme={theme} icon="payments" label={t('superadmin.saEmpresas.kpi.ingresoMensualPromedio')} value={formatoMoneda(ingresoMensualPromedio)} delta={t('superadmin.saEmpresas.kpi.porEmpresaActiva')} />
         </View>
 
         <View>
@@ -229,11 +235,11 @@ export default function SaEmpresas() {
           </View>
           <TouchableOpacity onPress={() => setModalCrear(true)}>
             <MaterialIcons name="add-business" size={18} />
-            <Text>Crear empresa</Text>
+            <Text>{t('superadmin.saEmpresas.acciones.crearEmpresa')}</Text>
           </TouchableOpacity>
         </View>
 
-        <SaSectionCard theme={theme} title="Todas las empresas">
+        <SaSectionCard theme={theme} title={t('superadmin.saEmpresas.seccion.todasEmpresas')}>
           <View>
             {FILTROS_ESTADO.map((item) => (
               <SaFilterPill key={item.value} theme={theme} label={item.label} active={filtroEstado === item.value} onPress={() => setFiltroEstado(item.value)} />
@@ -247,7 +253,7 @@ export default function SaEmpresas() {
           ) : (
             <>
               {!compact && empresasFiltradas.length > 0 ? (
-                <SaTableHeader theme={theme} columns={[{ label: 'EMPRESA', flex: 2 }, { label: 'PLAN' }, { label: 'ESTADO' }, { label: 'USUARIOS', flex: 0.8 }, { label: 'ALTA' }]} />
+                <SaTableHeader theme={theme} columns={[{ label: t('superadmin.saEmpresas.tabla.empresa'), flex: 2 }, { label: t('superadmin.saEmpresas.tabla.plan') }, { label: t('superadmin.saEmpresas.tabla.estado') }, { label: t('superadmin.saEmpresas.tabla.usuarios'), flex: 0.8 }, { label: t('superadmin.saEmpresas.tabla.alta') }]} />
               ) : null}
               {empresasFiltradas.map((empresa, i) => {
                 const estado = empresa.baneada ? 'Baneada' : etiquetaEstadoEmpresa(empresa.subscriptionStatus);
@@ -275,12 +281,12 @@ export default function SaEmpresas() {
               })}
               {empresasFiltradas.length === 0 ? (
                 <Text>
-                  {state === 'empty' ? 'Sin empresas todavía. Crea la primera con el botón de arriba.' : 'No se encontraron empresas para este filtro.'}
+                  {state === 'empty' ? t('superadmin.saEmpresas.vacio.sinEmpresasCrear') : t('superadmin.saEmpresas.vacio.sinFiltro')}
                 </Text>
               ) : null}
               {hayMas ? (
                 <TouchableOpacity onPress={cargarMas} disabled={cargandoMas}>
-                  {cargandoMas ? <ActivityIndicator /> : <Text>Cargar más</Text>}
+                  {cargandoMas ? <ActivityIndicator /> : <Text>{t('superadmin.saEmpresas.cargarMas')}</Text>}
                 </TouchableOpacity>
               ) : null}
             </>
@@ -293,14 +299,14 @@ export default function SaEmpresas() {
         <View>
           <AdminModalFormGlass>
             <View>
-              <Text numberOfLines={1}>{detalle.empresa?.nombre || 'Empresa'}</Text>
+              <Text numberOfLines={1}>{detalle.empresa?.nombre || t('superadmin.saEmpresas.modal.empresaFallback')}</Text>
               <TouchableOpacity onPress={cerrarDetalle}><MaterialIcons name="close" size={16} /></TouchableOpacity>
             </View>
             <View>
               {(['datos', 'propietario', 'usuarios', 'pagos', 'acciones'] as Pestana[]).map((tab) => (
                 <TouchableOpacity key={tab} onPress={() => setPestana(tab)}>
                   <Text>
-                    {tab === 'datos' ? 'Datos' : tab === 'propietario' ? 'Propietario' : tab === 'usuarios' ? 'Usuarios' : tab === 'pagos' ? 'Plan y pagos' : 'Acciones'}
+                    {tab === 'datos' ? t('superadmin.saEmpresas.modal.tabs.datos') : tab === 'propietario' ? t('superadmin.saEmpresas.modal.tabs.propietario') : tab === 'usuarios' ? t('superadmin.saEmpresas.modal.tabs.usuarios') : tab === 'pagos' ? t('superadmin.saEmpresas.modal.tabs.pagos') : t('superadmin.saEmpresas.modal.tabs.acciones')}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -319,7 +325,7 @@ export default function SaEmpresas() {
                   <TextInput value={formEdicion.tamanoEquipo} onChangeText={(v) => setFormEdicion((f) => ({ ...f, tamanoEquipo: v }))} />
                   <Text>Código: {detalle.empresa.codigo} · Creada: {formatoFecha(detalle.empresa.fechaCreacion)}</Text>
                   <TouchableOpacity onPress={guardarEdicion} disabled={accionEnCurso === 'editar'}>
-                    <Text>{accionEnCurso === 'editar' ? 'Guardando…' : 'Guardar cambios'}</Text>
+                    <Text>{accionEnCurso === 'editar' ? t('superadmin.saEmpresas.guardar.guardando') : t('superadmin.saEmpresas.guardar.cambios')}</Text>
                   </TouchableOpacity>
                 </View>
               ) : null}
@@ -334,7 +340,7 @@ export default function SaEmpresas() {
 
               {pestana === 'usuarios' ? (
                 <View>
-                  {detalle.usuarios.length === 0 ? <Text>Sin usuarios registrados.</Text> : null}
+                  {detalle.usuarios.length === 0 ? <Text>{t('superadmin.saEmpresas.vacio.sinUsuarios')}</Text> : null}
                   {detalle.usuarios.map((u) => (
                     <View key={u.id}>
                       <View>
@@ -351,8 +357,8 @@ export default function SaEmpresas() {
                   <Text>Plan: {detalle.empresa.plan} ({detalle.empresa.planBilling})</Text>
                   <Text>Estado de pago: {detalle.empresa.paymentStatus}</Text>
                   <Text>Vence: {formatoFecha(detalle.empresa.planExpiresAt)}</Text>
-                  <Text>Pagos recientes</Text>
-                  {detalle.pagos.length === 0 ? <Text>Sin pagos registrados.</Text> : null}
+                  <Text>{t('superadmin.saEmpresas.pagos.recientes')}</Text>
+                  {detalle.pagos.length === 0 ? <Text>{t('superadmin.saEmpresas.vacio.sinPagos')}</Text> : null}
                   {detalle.pagos.map((pago) => (
                     <View key={pago.id}>
                       <View>
@@ -366,40 +372,40 @@ export default function SaEmpresas() {
 
               {pestana === 'acciones' && detalle.empresa ? (
                 <View>
-                  <Text>Suscripción</Text>
+                  <Text>{t('superadmin.saEmpresas.accionesTab.suscripcion')}</Text>
                   <View>
                     <TouchableOpacity onPress={() => cambiarEstado('reactivar_business')} disabled={!!accionEnCurso}>
-                      <Text>{accionEnCurso === 'reactivar_business' ? 'Aplicando…' : 'Reactivar'}</Text>
+                      <Text>{accionEnCurso === 'reactivar_business' ? t('superadmin.saEmpresas.accionesTab.aplicando') : t('superadmin.saEmpresas.accionesTab.reactivar')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => cambiarEstado('suspender')} disabled={!!accionEnCurso}>
-                      <Text>{accionEnCurso === 'suspender' ? 'Aplicando…' : 'Suspender'}</Text>
+                      <Text>{accionEnCurso === 'suspender' ? t('superadmin.saEmpresas.accionesTab.aplicando') : t('superadmin.saEmpresas.accionesTab.suspender')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => cambiarEstado('expirar')} disabled={!!accionEnCurso}>
-                      <Text>{accionEnCurso === 'expirar' ? 'Aplicando…' : 'Expirar'}</Text>
+                      <Text>{accionEnCurso === 'expirar' ? t('superadmin.saEmpresas.accionesTab.aplicando') : t('superadmin.saEmpresas.accionesTab.expirar')}</Text>
                     </TouchableOpacity>
                   </View>
 
-                  <Text>Acceso</Text>
+                  <Text>{t('superadmin.saEmpresas.accionesTab.acceso')}</Text>
                   <Text>Banear bloquea el acceso de la empresa y de todos sus usuarios. Es reversible.</Text>
                   <View>
                     {detalle.empresa.baneada ? (
                       <TouchableOpacity onPress={() => cambiarBaneo(false)} disabled={!!accionEnCurso}>
-                        <Text>{accionEnCurso === 'desbanear' ? 'Aplicando…' : 'Desbanear'}</Text>
+                        <Text>{accionEnCurso === 'desbanear' ? t('superadmin.saEmpresas.accionesTab.aplicando') : t('superadmin.saEmpresas.accionesTab.desbanear')}</Text>
                       </TouchableOpacity>
                     ) : (
                       <TouchableOpacity onPress={() => cambiarBaneo(true)} disabled={!!accionEnCurso}>
-                        <Text>{accionEnCurso === 'banear' ? 'Aplicando…' : 'Banear'}</Text>
+                        <Text>{accionEnCurso === 'banear' ? t('superadmin.saEmpresas.accionesTab.aplicando') : t('superadmin.saEmpresas.accionesTab.banear')}</Text>
                       </TouchableOpacity>
                     )}
                     <TouchableOpacity onPress={iniciarSoporte} disabled={!!accionEnCurso}>
-                      <Text>{accionEnCurso === 'soporte' ? 'Iniciando…' : 'Iniciar soporte'}</Text>
+                      <Text>{accionEnCurso === 'soporte' ? t('superadmin.saEmpresas.accionesTab.iniciando') : t('superadmin.saEmpresas.accionesTab.iniciarSoporte')}</Text>
                     </TouchableOpacity>
                   </View>
 
-                  <Text>Zona de peligro</Text>
+                  <Text>{t('superadmin.saEmpresas.accionesTab.zonaPeligro')}</Text>
                   <Text>Elimina permanentemente la empresa, sus cuentas de acceso y todos sus datos. No se puede deshacer.</Text>
                   <TouchableOpacity onPress={() => setConfirmarEliminar(true)}>
-                    <Text>Eliminar empresa</Text>
+                    <Text>{t('superadmin.saEmpresas.accionesTab.eliminarEmpresa')}</Text>
                   </TouchableOpacity>
                 </View>
               ) : null}
@@ -411,8 +417,8 @@ export default function SaEmpresas() {
       <SaConfirmarEliminacion
         visible={confirmarEliminar}
         theme={modalTheme}
-        titulo="Eliminar empresa"
-        mensaje="Esta acción borra la empresa, todos sus usuarios (incluida su cuenta de acceso) y todos sus datos de forma permanente."
+        titulo={t('superadmin.saEmpresas.eliminarModal.titulo')}
+        mensaje={t('superadmin.saEmpresas.eliminarModal.mensaje')}
         nombreEsperado={detalle.empresa?.nombre || ''}
         procesando={accionEnCurso === 'eliminar'}
         onCancelar={() => setConfirmarEliminar(false)}
@@ -424,7 +430,7 @@ export default function SaEmpresas() {
         <View>
           <AdminModalFormGlass>
             <View>
-              <Text>Crear empresa</Text>
+              <Text>{t('superadmin.saEmpresas.crearModal.titulo')}</Text>
               <TouchableOpacity onPress={() => setModalCrear(false)}><MaterialIcons name="close" size={16} /></TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false}>
@@ -441,7 +447,7 @@ export default function SaEmpresas() {
                 <TextInput value={crearForm.usuarioInterno} onChangeText={(v) => setCrearForm((f) => ({ ...f, usuarioInterno: v }))} autoCapitalize="none" />
                 {erroCrear ? <Text>{erroCrear}</Text> : null}
                 <TouchableOpacity onPress={crearEmpresa} disabled={creando}>
-                  <Text>{creando ? 'Creando…' : 'Crear empresa'}</Text>
+                  <Text>{creando ? t('superadmin.saEmpresas.crearModal.creando') : t('superadmin.saEmpresas.acciones.crearEmpresa')}</Text>
                 </TouchableOpacity>
               </View>
             </ScrollView>

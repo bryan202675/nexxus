@@ -15,6 +15,7 @@ import TrendChart from "views/nexxus/components/TrendChart";
 import DataTable from "views/nexxus/components/DataTable";
 
 import { useAuth } from "context/AuthContext";
+import { supabase } from "supabaseClient/supabaseConfig";
 import {
   subscribeEmpleados,
   subscribeTareas,
@@ -22,6 +23,7 @@ import {
   subscribeAuditLogs,
   subscribeSolicitudesAusencia,
   subscribeSolicitudesInternas,
+  subscribeSolicitudesExtensionTarea,
   subscribeNotificaciones,
   subscribeAsistenciasHoy,
   subscribeFeedbacks,
@@ -30,23 +32,10 @@ import {
   subscribePayments,
 } from "services/adminRepository";
 import { formatoFecha } from "services/saFormat";
+import { estresDeCheckIn } from "services/checkInAnalytics";
 
 const DIAS_CORTOS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
 const hoyISO = () => new Date().toISOString().slice(0, 10);
-
-// El nivel de estres de un check-in solo vive en el jsonb `datos` (no hay columna dedicada).
-// Misma idea que normalizeCheckIn() en rol-workspace/WorkspaceCheckIn.tsx, simplificada a un numero 1-5.
-function estresDeCheckIn(c) {
-  const raw = c.datos?.estres ?? c.datos?.nivelEstres ?? c.datos?.nivel_estres;
-  const numeric = Number(raw);
-  if (Number.isFinite(numeric) && numeric > 0) return numeric;
-  const texto = String(raw || "").toLowerCase();
-  if (texto.includes("crit")) return 5;
-  if (texto.includes("alto")) return 4;
-  if (texto.includes("moderado")) return 3;
-  if (texto.includes("bajo")) return 1;
-  return null;
-}
 
 const columnsRecientes = [
   { Header: "ACCIÓN", accessor: "accion" },
@@ -65,6 +54,7 @@ export default function DashboardAdmin() {
   const [auditoria, setAuditoria] = useState([]);
   const [ausencias, setAusencias] = useState([]);
   const [internas, setInternas] = useState([]);
+  const [extensiones, setExtensiones] = useState([]);
   const [notificaciones, setNotificaciones] = useState([]);
   const [asistenciasHoy, setAsistenciasHoy] = useState([]);
   const [feedbacks, setFeedbacks] = useState([]);
@@ -82,6 +72,7 @@ export default function DashboardAdmin() {
       subscribeAuditLogs(empresaId, (docs) => setAuditoria(docs.map((d) => ({ id: d.id, ...d.data() }))), onErr),
       subscribeSolicitudesAusencia(empresaId, (docs) => setAusencias(docs.map((d) => ({ id: d.id, ...d.data() }))), onErr),
       subscribeSolicitudesInternas(empresaId, (docs) => setInternas(docs.map((d) => ({ id: d.id, ...d.data() }))), onErr),
+      subscribeSolicitudesExtensionTarea(empresaId, (docs) => setExtensiones(docs.map((d) => ({ id: d.id, ...d.data() }))), onErr),
       subscribeNotificaciones(empresaId, (docs) => setNotificaciones(docs.map((d) => ({ id: d.id, ...d.data() }))), onErr),
       subscribeAsistenciasHoy(empresaId, hoyISO(), (docs) => setAsistenciasHoy(docs.map((d) => ({ id: d.id, ...d.data() }))), onErr),
       subscribeFeedbacks(empresaId, (docs) => setFeedbacks(docs.map((d) => ({ id: d.id, ...d.data() }))), onErr),
@@ -128,7 +119,8 @@ export default function DashboardAdmin() {
     const alertas = auditoria.filter((a) => (a.created_at || "").slice(0, 10) === hoy).length;
     const ausenciasPendientes = ausencias.filter((a) => a.estado === "pendiente").length;
     const internasPendientes = internas.filter((s) => s.estado === "pendiente" || s.estado === "pendiente_aprobacion").length;
-    const aprobacionesPendientes = ausenciasPendientes + internasPendientes;
+    const extensionesPendientes = extensiones.filter((s) => s.estado === "pendiente").length;
+    const aprobacionesPendientes = ausenciasPendientes + internasPendientes + extensionesPendientes;
 
     const documentosPendientes = documentos.filter((d) => !d.leido).length;
     const notificacionesNoLeidas = notificaciones.filter((n) => !n.leido && !n.leida).length;
@@ -140,10 +132,10 @@ export default function DashboardAdmin() {
     return {
       activos: activos.length, inactivos, tareasPendientes, tareasProgreso, tareasCompletadas, tareasVencidas,
       productividad, costoMensual, checkInsHoy, participacion, entradasHoy, salidasHoy, retrasos, horasExtra,
-      bienestar, riesgo, alertas, ausenciasPendientes, internasPendientes, aprobacionesPendientes,
+      bienestar, riesgo, alertas, ausenciasPendientes, internasPendientes, extensionesPendientes, aprobacionesPendientes,
       documentosPendientes, notificacionesNoLeidas, incidenciasAbiertas, inboxCritico,
     };
-  }, [empleados, tareas, payments, checkIns, asistenciasHoy, auditoria, ausencias, internas, documentos, notificaciones, feedbacks, inbox]);
+  }, [empleados, tareas, payments, checkIns, asistenciasHoy, auditoria, ausencias, internas, extensiones, documentos, notificaciones, feedbacks, inbox]);
 
   // Serie de los ultimos 8 dias: tareas completadas ese dia vs check-ins con estres alto.
   const serieDiaria = useMemo(() => {
@@ -171,11 +163,17 @@ export default function DashboardAdmin() {
     const merged = [
       ...ausencias.filter((a) => a.estado === "pendiente").map((a) => ({ ...a, tipoItem: "Ausencia" })),
       ...internas.filter((s) => s.estado === "pendiente" || s.estado === "pendiente_aprobacion").map((s) => ({ ...s, tipoItem: "Solicitud interna" })),
+      ...extensiones.filter((s) => s.estado === "pendiente").map((s) => ({ ...s, tipoItem: "Extensión de tarea", tipo: s.tarea_titulo || "Tarea", timestamp: s.created_at })),
     ];
     return merged
       .sort((a, b) => (b.fecha_solicitud || b.timestamp || "").localeCompare(a.fecha_solicitud || a.timestamp || ""))
       .slice(0, 5);
-  }, [ausencias, internas]);
+  }, [ausencias, internas, extensiones]);
+
+  const resolverExtension = async (solicitud, aprobar) => {
+    const { error: resolveError } = await supabase.rpc("resolver_solicitud_extension_tarea", { p_solicitud_id: solicitud.id, p_aprobar: aprobar, p_observacion: null });
+    if (resolveError) setError("No se pudo resolver la extensión. Inténtalo de nuevo.");
+  };
 
   const empleadosSinCheckIn = useMemo(() => {
     const hoy = hoyISO();
@@ -257,6 +255,7 @@ export default function DashboardAdmin() {
                       <span className="rounded-full bg-amber-50 px-2 py-1 text-xs font-bold text-amber-600 dark:bg-amber-400/10 dark:text-amber-400">
                         Pendiente
                       </span>
+                      {s.tipoItem === "Extensión de tarea" ? <span className="flex gap-2"><button onClick={() => resolverExtension(s, true)} className="rounded-lg bg-emerald-500/10 px-2 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-300">Aprobar</button><button onClick={() => resolverExtension(s, false)} className="rounded-lg bg-red-500/10 px-2 py-1 text-xs font-bold text-red-600 dark:text-red-300">Rechazar</button></span> : null}
                     </div>
                   ))}
                 </div>

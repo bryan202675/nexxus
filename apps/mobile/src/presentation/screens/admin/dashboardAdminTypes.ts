@@ -148,6 +148,21 @@ export type SolicitudInternaAdmin = {
   archivo_adjunto?: string;
 };
 
+export type SolicitudExtensionTareaAdmin = {
+  id?: string;
+  tarea_id?: string;
+  tarea_titulo?: string;
+  solicitante_id?: string;
+  solicitante_nombre?: string;
+  fecha_limite_anterior?: string | null;
+  fecha_limite_solicitada?: string;
+  dias_solicitados?: number;
+  urgencia?: 'Normal' | 'Alta' | 'Crítica';
+  motivo?: string;
+  estado?: 'pendiente' | 'aprobada' | 'rechazada';
+  created_at?: string;
+};
+
 /**
  * Describe la forma tipada FeedbackAdmin; ayuda a que estados, props o respuestas mantengan una estructura predecible.
  */

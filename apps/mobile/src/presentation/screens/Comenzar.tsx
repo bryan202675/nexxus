@@ -7,17 +7,21 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, Image } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Alert, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
 import FondoAurora from '@/presentation/components/FondoAurora';
 import { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/constants/diseno';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
+
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
 
 /**
  * Componente Comenzar. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.

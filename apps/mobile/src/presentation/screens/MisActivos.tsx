@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, View } from 'react-native';
+import { SafeAreaView, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
 import { MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
@@ -13,6 +14,9 @@ import { useCases } from '@/infrastructure/container';
 import { COLORES, RADIOS, SOMBRAS } from '@/shared/constants/diseno';
 import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
+
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
 
 type Props = { navigation: { goBack: () => void } };
 type LoadState = 'loading' | 'ready' | 'empty' | 'error';

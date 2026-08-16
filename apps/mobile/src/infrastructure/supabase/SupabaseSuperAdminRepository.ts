@@ -3,7 +3,7 @@ import { ISuperAdminRepository } from 'domain/repositories/ISuperAdminRepository
 import {
   EmpresaDetalle, EmpresaResumen, PagoResumen, AuditResumen, SupportSessionResult, PlatformSnapshot,
   UsuarioGlobal, PlatformStats, AiUsageRow, AiUsageDaily, PagedResult, CompanyFilters, UserFilters,
-  SaResetMode, SupportSessionRow, SuperAdminCompanyAction,
+  SaResetMode, SupportSessionRow, SuperAdminCompanyAction, PublicSupportRequest,
 } from 'domain/entities/SuperAdmin';
 import { subscribeQuery } from './realtime';
 
@@ -241,5 +241,91 @@ export class SupabaseSuperAdminRepository implements ISuperAdminRepository {
         expiresAt: r.expira_at, createdAt: r.created_at,
       })) as SupportSessionRow[];
     }, callback, onError);
+  }
+
+  async submitPublicSupportRequest(dto: {
+    nombre: string;
+    correo: string;
+    telefono?: string;
+    empresa?: string;
+    categoria: string;
+    asunto: string;
+    mensaje: string;
+    prioridad: string;
+  }): Promise<{ ticketCodigo: string }> {
+    const randomSuffix = Math.floor(10000 + Math.random() * 90000);
+    const ticketCodigo = `NEX-${randomSuffix}`;
+
+    // No solicitamos RETURNING: hacerlo encadena un SELECT y expondría tickets públicos
+    // o fallaría por la política que correctamente reserva esa lectura al superadmin.
+    const { error } = await supabase.from('solicitudes_soporte_publico').insert({
+      ticket_codigo: ticketCodigo,
+      nombre: dto.nombre.trim(),
+      correo: dto.correo.trim().toLowerCase(),
+      telefono: dto.telefono ? dto.telefono.trim() : null,
+      empresa: dto.empresa ? dto.empresa.trim() : null,
+      categoria: dto.categoria,
+      asunto: dto.asunto.trim(),
+      mensaje: dto.mensaje.trim(),
+      prioridad: dto.prioridad,
+      estado: 'pendiente',
+      origen: 'app',
+    });
+
+    if (error) throw error;
+    return { ticketCodigo };
+  }
+
+  subscribePublicSupportRequests(
+    callback: (requests: PublicSupportRequest[]) => void,
+    onError: (error: Error) => void
+  ): () => void {
+    return subscribeQuery('solicitudes_soporte_publico', null, async () => {
+      const { data, error } = await supabase
+        .from('solicitudes_soporte_publico')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (error) throw error;
+
+      return (data || []).map((r) => ({
+        id: r.id,
+        ticketCodigo: r.ticket_codigo,
+        nombre: r.nombre,
+        correo: r.correo,
+        telefono: r.telefono ?? undefined,
+        empresa: r.empresa ?? undefined,
+        categoria: r.categoria,
+        asunto: r.asunto,
+        mensaje: r.mensaje,
+        prioridad: r.prioridad,
+        estado: r.estado,
+        origen: r.origen,
+        respuestaSoporte: r.respuesta_soporte ?? undefined,
+        atendidoPor: r.atendido_por ?? undefined,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+      })) as PublicSupportRequest[];
+    }, callback, onError);
+  }
+
+  async updatePublicSupportRequestStatus(
+    id: string,
+    estado: PublicSupportRequest['estado'],
+    respuestaSoporte?: string
+  ): Promise<void> {
+    const updatePayload: {
+      estado: PublicSupportRequest['estado'];
+      updated_at: string;
+      respuesta_soporte?: string;
+    } = { estado, updated_at: new Date().toISOString() };
+    if (respuestaSoporte !== undefined) {
+      updatePayload.respuesta_soporte = respuestaSoporte;
+    }
+    const { error } = await supabase
+      .from('solicitudes_soporte_publico')
+      .update(updatePayload)
+      .eq('id', id);
+    if (error) throw error;
   }
 }

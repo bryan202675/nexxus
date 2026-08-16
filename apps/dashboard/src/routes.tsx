@@ -27,6 +27,8 @@ import AuditoriaAdmin from "views/nexxus/empresa-auditoria";
 import ConfiguracionAdmin from "views/nexxus/empresa-configuracion";
 import MensajeriaInternaAdmin from "views/nexxus/empresa-mensajeria";
 import ChatIAAdmin from "views/nexxus/empresa-ia";
+import EmpresaSoporte from "views/nexxus/empresa-soporte";
+import CuidadoEquipo from "views/nexxus/empresa-cuidado-equipo";
 import { RoleDashboard, WorkspaceModule } from "views/nexxus/rol-workspace";
 import WorkspaceGroup from "views/nexxus/rol-workspace/WorkspaceGroup";
 import WorkspaceCheckIn from "views/nexxus/rol-workspace/WorkspaceCheckIn";
@@ -68,6 +70,7 @@ import {
   MdOutlineChat,
   MdOutlinePerson,
   MdOutlineFeedback,
+  MdOutlineFavorite,
 } from "react-icons/md";
 import { BsStars } from "react-icons/bs";
 
@@ -139,6 +142,13 @@ export const adminEmpresaRoutes = [
     path: "empresa-resumen",
     icon: <MdOutlineDashboard className="h-6 w-6" />,
     component: <DashboardAdmin />,
+  },
+  {
+    name: "Cuidado del Equipo",
+    layout: "/admin",
+    path: "empresa-cuidado-equipo",
+    icon: <MdOutlineFavorite className="h-6 w-6" />,
+    component: <CuidadoEquipo />,
   },
   {
     name: "Plantilla",
@@ -223,6 +233,13 @@ export const adminEmpresaRoutes = [
     path: "empresa-ia",
     icon: <BsStars className="h-6 w-6" />,
     component: <PlanGate feature="ai"><ChatIAAdmin /></PlanGate>,
+  },
+  {
+    name: "Soporte",
+    layout: "/admin",
+    path: "empresa-soporte",
+    icon: <MdOutlineSupportAgent className="h-6 w-6" />,
+    component: <EmpresaSoporte />,
   },
   {
     name: "Configuración",
@@ -361,6 +378,7 @@ const employeeRoutes = [
 
 const leaderRoutes = [
   { name: "Resumen", layout: "/admin", path: "jefe-resumen", icon: <MdOutlineDashboard className="h-6 w-6" />, component: <RoleDashboard leader /> },
+  { name: "Cuidado del Equipo", layout: "/admin", path: "jefe-cuidado-equipo", icon: <MdOutlineFavorite className="h-6 w-6" />, component: <CuidadoEquipo /> },
   { name: "Equipo", layout: "/admin", path: "jefe-equipo", icon: <MdOutlineGroups className="h-6 w-6" />, component: <WorkspaceModule moduleKey="equipo" scope="team" /> },
   { name: "Aprobaciones", layout: "/admin", path: "jefe-aprobaciones", icon: <MdOutlineFactCheck className="h-6 w-6" />, component: <WorkspaceModule moduleKey="solicitudes" scope="team" /> },
   { name: "Tareas del equipo", layout: "/admin", path: "jefe-tareas-equipo", icon: <MdOutlineAssignmentTurnedIn className="h-6 w-6" />, component: <WorkspaceModule moduleKey="tareas" scope="team" /> },

@@ -101,6 +101,7 @@ export const obtenerTextoPrioridad = (t: any, prioridad?: string) => {
 export const obtenerTextoTipo = (t: any, item: any) => {
   if (!item) return '';
   const tipoSolicitud = item.tipo; // 'ausencia' o 'interna'
+  if (tipoSolicitud === 'extension') return 'Extensión de plazo';
   const valorTipo = item.solicitud?.tipo || item.titulo || '';
   const vtLower = valorTipo.toLowerCase();
 
@@ -129,7 +130,7 @@ export const ApprovalItem = ({
 }: {
   titulo: string;
   detalle: string;
-  tipo: 'ausencia' | 'interna';
+  tipo: 'ausencia' | 'interna' | 'extension';
   prioridad: string;
   fotoPerfil?: string | null;
   onPress: () => void;
@@ -240,4 +241,3 @@ export const IconWrapper = ({
     {children}
   </View>
 );
-

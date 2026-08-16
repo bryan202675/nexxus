@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, ScrollView, useWindowDimensions, DeviceEventEmitter } from 'react-native';
+import { View, TouchableOpacity, ScrollView, useWindowDimensions, DeviceEventEmitter } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '@/presentation/hooks/useAuth';
 import {
@@ -19,23 +21,16 @@ import {
 import { useAdminAppearance } from '../admin/adminTheme';
 import { SaHeroBanner } from './components/SaWidgets';
 
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
+
 interface SuperAdminLayoutProps {
   children: React.ReactNode;
   currentRoute: string;
 }
 
-const HERO_COPY: Record<string, { eyebrow: string; title: string; subtitle: string }> = {
-  SaResumen: { eyebrow: 'NEXXUS PLATFORM', title: 'Resumen global', subtitle: 'Empresas, usuarios, planes e ingresos de toda la plataforma en un solo panel.' },
-  SaEmpresas: { eyebrow: 'NEXXUS PLATFORM', title: 'Empresas', subtitle: 'Administra las organizaciones registradas, sus planes y su estado.' },
-  SaUsuarios: { eyebrow: 'NEXXUS PLATFORM', title: 'Usuarios', subtitle: 'Propietarios, jefes y empleados de todas las empresas activas.' },
-  SaNexxusIA: { eyebrow: 'NEXXUS PLATFORM', title: 'Nexxus AI', subtitle: 'Uso del asistente inteligente en toda la plataforma.' },
-  SaPagosPlanes: { eyebrow: 'NEXXUS PLATFORM', title: 'Pagos y planes', subtitle: 'Suscripciones, facturación e ingresos por plan.' },
-  SaAuditoria: { eyebrow: 'NEXXUS PLATFORM', title: 'Auditoría', subtitle: 'Registro de eventos y cambios críticos de la plataforma.' },
-  SaSoporte: { eyebrow: 'NEXXUS PLATFORM', title: 'Soporte', subtitle: 'Sesiones de soporte auditadas para las empresas clientes.' },
-  SaConfiguracion: { eyebrow: 'NEXXUS PLATFORM', title: 'Configuración', subtitle: 'Preferencias de cuenta, apariencia y seguridad del panel.' },
-};
-
 export default function SuperAdminLayout({ children, currentRoute }: SuperAdminLayoutProps) {
+  const { t } = useTranslation();
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
   const navigation = useNavigation<any>();
@@ -49,15 +44,26 @@ export default function SuperAdminLayout({ children, currentRoute }: SuperAdminL
     if (globalToggleMode) globalToggleMode();
   };
 
+  const HERO_COPY: Record<string, { eyebrow: string; title: string; subtitle: string }> = {
+    SaResumen: { eyebrow: t('superadmin.saLayout.hero.eyebrow'), title: t('superadmin.saLayout.hero.saResumen.titulo'), subtitle: t('superadmin.saLayout.hero.saResumen.subtitulo') },
+    SaEmpresas: { eyebrow: t('superadmin.saLayout.hero.eyebrow'), title: t('superadmin.saLayout.hero.saEmpresas.titulo'), subtitle: t('superadmin.saLayout.hero.saEmpresas.subtitulo') },
+    SaUsuarios: { eyebrow: t('superadmin.saLayout.hero.eyebrow'), title: t('superadmin.saLayout.hero.saUsuarios.titulo'), subtitle: t('superadmin.saLayout.hero.saUsuarios.subtitulo') },
+    SaNexxusIA: { eyebrow: t('superadmin.saLayout.hero.eyebrow'), title: t('superadmin.saLayout.hero.saNexxusIA.titulo'), subtitle: t('superadmin.saLayout.hero.saNexxusIA.subtitulo') },
+    SaPagosPlanes: { eyebrow: t('superadmin.saLayout.hero.eyebrow'), title: t('superadmin.saLayout.hero.saPagosPlanes.titulo'), subtitle: t('superadmin.saLayout.hero.saPagosPlanes.subtitulo') },
+    SaAuditoria: { eyebrow: t('superadmin.saLayout.hero.eyebrow'), title: t('superadmin.saLayout.hero.saAuditoria.titulo'), subtitle: t('superadmin.saLayout.hero.saAuditoria.subtitulo') },
+    SaSoporte: { eyebrow: t('superadmin.saLayout.hero.eyebrow'), title: t('superadmin.saLayout.hero.saSoporte.titulo'), subtitle: t('superadmin.saLayout.hero.saSoporte.subtitulo') },
+    SaConfiguracion: { eyebrow: t('superadmin.saLayout.hero.eyebrow'), title: t('superadmin.saLayout.hero.saConfiguracion.titulo'), subtitle: t('superadmin.saLayout.hero.saConfiguracion.subtitulo') },
+  };
+
   const navItems = [
-    { key: 'SaResumen', label: 'Resumen global', icon: SaIconGlobe },
-    { key: 'SaEmpresas', label: 'Empresas', icon: SaIconBuilding },
-    { key: 'SaUsuarios', label: 'Usuarios', icon: SaIconUsers },
-    { key: 'SaNexxusIA', label: 'Nexxus AI', icon: SaIconSparkles },
-    { key: 'SaPagosPlanes', label: 'Pagos y planes', icon: SaIconCard },
-    { key: 'SaAuditoria', label: 'Auditoría', icon: SaIconAudit },
-    { key: 'SaSoporte', label: 'Soporte', icon: SaIconSupport },
-    { key: 'SaConfiguracion', label: 'Configuración', icon: SaIconSliders },
+    { key: 'SaResumen', label: t('superadmin.saLayout.nav.resumenGlobal'), icon: SaIconGlobe },
+    { key: 'SaEmpresas', label: t('superadmin.saLayout.nav.empresas'), icon: SaIconBuilding },
+    { key: 'SaUsuarios', label: t('superadmin.saLayout.nav.usuarios'), icon: SaIconUsers },
+    { key: 'SaNexxusIA', label: t('superadmin.saLayout.nav.nexxusAI'), icon: SaIconSparkles },
+    { key: 'SaPagosPlanes', label: t('superadmin.saLayout.nav.pagosPlanes'), icon: SaIconCard },
+    { key: 'SaAuditoria', label: t('superadmin.saLayout.nav.auditoria'), icon: SaIconAudit },
+    { key: 'SaSoporte', label: t('superadmin.saLayout.nav.soporte'), icon: SaIconSupport },
+    { key: 'SaConfiguracion', label: t('superadmin.saLayout.nav.configuracion'), icon: SaIconSliders },
   ];
 
   const handleNav = (route: string) => {
@@ -72,17 +78,17 @@ export default function SuperAdminLayout({ children, currentRoute }: SuperAdminL
           <Text>N</Text>
         </View>
         <View>
-          <Text>Nexxus</Text>
-          <Text>PLATFORM CONTROL</Text>
+          <Text>{t('superadmin.saLayout.sidebar.marca')}</Text>
+          <Text>{t('superadmin.saLayout.sidebar.platformControl')}</Text>
         </View>
       </View>
 
       <View>
-        <Text>NEXXUS OS</Text>
-        <Text>Nexxus Platform</Text>
+        <Text>{t('superadmin.saLayout.sidebar.nexxusOS')}</Text>
+        <Text>{t('superadmin.saLayout.sidebar.nexxusPlatform')}</Text>
         <View>
           <View />
-          <Text>Nexxus Cloud</Text>
+          <Text>{t('superadmin.saLayout.sidebar.nexxusCloud')}</Text>
         </View>
       </View>
 
@@ -108,8 +114,8 @@ export default function SuperAdminLayout({ children, currentRoute }: SuperAdminL
           <Text>NE</Text>
         </View>
         <View>
-          <Text>Nexxus Super Admin</Text>
-          <Text>SUPER ADMIN</Text>
+          <Text>{t('superadmin.saLayout.sidebar.superAdminNombre')}</Text>
+          <Text>{t('superadmin.saLayout.sidebar.superAdminBadge')}</Text>
         </View>
       </View>
     </View>
@@ -125,8 +131,8 @@ export default function SuperAdminLayout({ children, currentRoute }: SuperAdminL
         </TouchableOpacity>
       ) : null}
       <View>
-        <Text numberOfLines={1}>Bienvenido, {user?.nombre?.split(' ')[0] || 'Nexxus'}</Text>
-        <Text numberOfLines={1}>Datos vivos y módulos sincronizados</Text>
+        <Text numberOfLines={1}>{t('superadmin.saLayout.topbar.bienvenido', { nombre: user?.nombre?.split(' ')[0] || 'Nexxus' })}</Text>
+        <Text numberOfLines={1}>{t('superadmin.saLayout.topbar.datosVivos')}</Text>
       </View>
 
       <View>

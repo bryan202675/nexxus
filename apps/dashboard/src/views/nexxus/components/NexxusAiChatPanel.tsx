@@ -5,6 +5,7 @@ import { BsStars } from "react-icons/bs";
 
 import NexxusCard from "views/nexxus/components/NexxusCard";
 import Avatar from "components/nexxus/Avatar";
+import RenderMarkdownWeb from "components/nexxus/RenderMarkdownWeb";
 import { useAuth } from "context/AuthContext";
 import { askNexxusAI } from "services/aiAssistant";
 import { useEmpresaPlan, contarUsoMensualIA, limiteAlcanzado } from "services/planEnforcement";
@@ -113,13 +114,17 @@ export default function NexxusAiChatPanel({ title = "Nexxus IA", subtitle = "Asi
                   <Avatar src={perfil?.foto_perfil} name={caller.nombre} size={8} />
                 )}
                 <div
-                  className={`max-w-[75%] whitespace-pre-wrap rounded-2xl px-4 py-2 text-sm ${
+                  className={`max-w-[82%] rounded-2xl px-4 py-2.5 text-sm ${
                     m.rol === "usuario"
-                      ? "bg-brand-500 text-white dark:bg-brand-400"
+                      ? "bg-brand-500 text-white whitespace-pre-wrap dark:bg-brand-400"
                       : "bg-lightPrimary text-navy-700 dark:bg-charcoal-light dark:text-white"
                   }`}
                 >
-                  {m.texto}
+                  {m.rol === "ia" ? (
+                    <RenderMarkdownWeb texto={m.texto} />
+                  ) : (
+                    <span>{m.texto}</span>
+                  )}
                   {m.redirect ? (
                     <button
                       type="button"

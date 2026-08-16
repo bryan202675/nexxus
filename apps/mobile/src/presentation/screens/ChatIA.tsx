@@ -1,14 +1,12 @@
 /**
  * Documentacion Nexxus - apps/mobile/src/presentation/screens/ChatIA.tsx
  * Capa: presentacion.
- * Proposito: Pantalla de la experiencia del empleado. Lee contexto de usuario, muestra informacion operativa y conserva las acciones de navegacion existentes.
- * Dependencias clave: imports superiores y contratos tipados del propio modulo.
- * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras de datos al extender este archivo.
+ * Proposito: Pantalla de chat y copiloto operativo Nexxus IA con la mascota oficial Nexxus IA y experiencia conversacional fluida.
  */
 
-// Importa React, { useEffect, useMemo, useRef, useState } desde React; habilita componentes, hooks y tipos base para esta pieza.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Image,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -21,89 +19,80 @@ import {
 } from 'react-native';
 import Animated, {
   Easing,
+  FadeIn,
+  FadeInDown,
   FadeInLeft,
   FadeInRight,
   FadeInUp,
+  FadeOut,
   Layout,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
   withSequence,
   withTiming,
+  ZoomIn,
+  ZoomOut,
 } from 'react-native-reanimated';
-// Importa { Feather, MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
+import Svg, { Rect } from 'react-native-svg';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
-// Importa { BlurView } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
-import { BlurView } from 'expo-blur';
-// Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
-import { LinearGradient } from 'expo-linear-gradient';
-import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA, SOMBRAS } from '@/shared/constants/diseno';
+import { COLORES, ESPACIADO, SOMBRAS } from '@/shared/constants/diseno';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import { useTranslation } from 'react-i18next';
 import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
-import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import { useCases } from '@/infrastructure/container';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
 import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
 import RenderMarkdownIA from '@/presentation/components/RenderMarkdownIA';
-// Importa { SensitiveAiAction }; acciones sensibles sugeridas por la IA (Fase 8) que requieren
-// confirmacion humana explicita antes de ejecutarse -- ver ask-nexxus-ai (Edge Function).
 import { SensitiveAiAction } from 'domain/entities/AiAssistant';
+
+const MASCOTA_NEXXUS = require('../../../assets/nexxusIA.png');
 
 const Text = AdminTranslatedText;
 const TextInput = AdminTranslatedTextInput;
 
-/**
- * Define el contrato de datos Props; documenta campos esperados y evita pasar objetos ambiguos entre capas.
- */
 interface Props {
   navigation: any;
 }
 
-/**
- * Define el contrato de datos Mensaje; documenta campos esperados y evita pasar objetos ambiguos entre capas.
- */
 interface Mensaje {
   id: string;
   rol: 'ia' | 'usuario';
   texto: string;
   hora: string;
-  /** Acciones sensibles sugeridas por la IA en este mensaje (p.ej. aprobar una solicitud) que
-   * esperan confirmacion humana explicita -- ver Fase 8 del plan. */
   accionesSensibles?: SensitiveAiAction[];
-  /** Resultado de cada accion sensible ya resuelta por el usuario en este mensaje, por id. */
   accionesResueltas?: Record<string, 'aprobada' | 'rechazada' | 'error'>;
 }
 
-/**
- * Describe la forma tipada IconoMaterial; ayuda a que estados, props o respuestas mantengan una estructura predecible.
- */
 type IconoMaterial = React.ComponentProps<typeof MaterialIcons>['name'];
-/**
- * Describe la forma tipada IconoFeather; ayuda a que estados, props o respuestas mantengan una estructura predecible.
- */
-type IconoFeather = React.ComponentProps<typeof Feather>['name'];
 
-/**
- * Componente SUGERENCIAS_RAPIDAS. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
- */
-const SUGERENCIAS_RAPIDAS: { etiquetaKey: string; icono: IconoMaterial; comando: string }[] = [
-  { etiquetaKey: 'chatIA.suggestions.summary', icono: 'assignment', comando: 'resumen' },
-  { etiquetaKey: 'chatIA.suggestions.urgent', icono: 'warning', comando: 'urgentes' },
-  { etiquetaKey: 'chatIA.suggestions.performance', icono: 'insights', comando: 'rendimiento' },
-  { etiquetaKey: 'chatIA.suggestions.prioritize', icono: 'route', comando: 'prioriza' },
-  { etiquetaKey: 'chatIA.suggestions.wellbeing', icono: 'favorite', comando: 'bienestar' },
+const SUGERENCIAS_RAPIDAS: { label: string; icono: IconoMaterial; comando: string }[] = [
+  { label: 'Resumen de mi día', icono: 'assignment', comando: 'resumen' },
+  { label: 'Tareas urgentes', icono: 'warning', comando: 'urgentes' },
+  { label: 'Mi rendimiento', icono: 'insights', comando: 'rendimiento' },
+  { label: 'Priorizar tareas', icono: 'route', comando: 'prioriza' },
+  { label: 'Mi bienestar', icono: 'favorite', comando: 'bienestar' },
 ];
 
 /**
- * Componente ChatIA. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
+ * Icono de Ondas Sonoras para la llamada de voz interactiva
  */
+function IconoOndasVoz({ size = 18, color = '#FFFFFF' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Rect x="4" y="9" width="2" height="6" rx="1" fill={color} />
+      <Rect x="9" y="4" width="2.2" height="16" rx="1.1" fill={color} />
+      <Rect x="14" y="7" width="2.2" height="10" rx="1.1" fill={color} />
+      <Rect x="19" y="10" width="2" height="4" rx="1" fill={color} />
+    </Svg>
+  );
+}
+
 export default function ChatIA({ navigation }: Props) {
-  // Inicializa { t, i18n }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { t, i18n } = useTranslation();
-  // Extrae del contexto global los datos reales que el asistente usa para construir respuestas utiles.
   const {
     perfil,
     generarResumenJornada,
@@ -115,40 +104,35 @@ export default function ChatIA({ navigation }: Props) {
     focusSessions,
   } = useContextoUsuario();
 
-  // Declara { colores, blurTint, intensidadBlur, esOscuro }; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
+  const { colores, esOscuro } = useTemaMobile();
+
+  const primerNombre = useMemo(() => {
+    if (!perfil?.nombre) return i18n.language === 'es' ? 'Colega' : 'Colleague';
+    return perfil.nombre.trim().split(' ')[0];
+  }, [perfil?.nombre, i18n.language]);
 
   const abrirNexxusVoice = () => {
     navigation.navigate('VoiceChatScreen');
   };
-  // Inicializa animacionEscritura; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const animacionEscritura = useSharedValue(0);
-  // Inicializa [textoEntrada, setTextoEntrada]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const [textoEntrada, setTextoEntrada] = useState('');
-  // Inicializa [escribiendo, setEscribiendo]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const [escribiendo, setEscribiendo] = useState(false);
-  // Inicializa referenciaScroll; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const referenciaScroll = useRef<ScrollView>(null);
-  // Inicializa [tecladoVisible, setTecladoVisible]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const [tecladoVisible, setTecladoVisible] = useState(false);
 
-  // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
+  const animacionEscritura = useSharedValue(0);
+  const [textoEntrada, setTextoEntrada] = useState('');
+  const [escribiendo, setEscribiendo] = useState(false);
+  const referenciaScroll = useRef<ScrollView>(null);
+  const [tecladoVisible, setTecladoVisible] = useState(false);
+  const [mostrarSugerencias, setMostrarSugerencias] = useState(true);
+
   useEffect(() => {
-    // Declara mostrarSub; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const mostrarSub = Keyboard.addListener('keyboardDidShow', () => setTecladoVisible(true));
-    // Declara ocultarSub; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const ocultarSub = Keyboard.addListener('keyboardDidHide', () => setTecladoVisible(false));
-    // Devuelve el valor final calculado para esta funcion o caso de uso.
     return () => {
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       mostrarSub.remove();
-      // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
       ocultarSub.remove();
     };
   }, []);
 
-  // Calcula formatearHora; normaliza fechas para comparaciones, filtros o etiquetas visibles.
-  const formatearHora = () => new Date().toLocaleTimeString(i18n.language === 'es' ? 'es-SV' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+  const formatearHora = () =>
+    new Date().toLocaleTimeString(i18n.language === 'es' ? 'es-SV' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
 
@@ -164,16 +148,9 @@ export default function ChatIA({ navigation }: Props) {
 
   const limpiarHistorial = async () => {
     try {
-      const defaultMsg = [
-        {
-          id: '0',
-          rol: 'ia' as const,
-          texto: t('chatIA.welcome_msg', { nombre: perfil?.nombre ?? (i18n.language === 'es' ? 'Usuario' : 'User') }),
-          hora: formatearHora(),
-        }
-      ];
-      await AsyncStorage.setItem(`nexxus_ai_chat_${perfil?.id || 'guest'}`, JSON.stringify(defaultMsg));
-      setMensajes(defaultMsg);
+      await AsyncStorage.removeItem(`nexxus_ai_chat_${perfil?.id || 'guest'}`);
+      setMensajes([]);
+      setMostrarSugerencias(true);
     } catch (err) {
       console.error('Error clearing AI chat history:', err);
     }
@@ -184,16 +161,12 @@ export default function ChatIA({ navigation }: Props) {
       try {
         const stored = await AsyncStorage.getItem(`nexxus_ai_chat_${perfil?.id || 'guest'}`);
         if (stored) {
-          setMensajes(JSON.parse(stored));
-        } else {
-          setMensajes([
-            {
-              id: '0',
-              rol: 'ia',
-              texto: t('chatIA.welcome_msg', { nombre: perfil?.nombre ?? (i18n.language === 'es' ? 'Usuario' : 'User') }),
-              hora: formatearHora(),
-            }
-          ]);
+          const parsed = JSON.parse(stored);
+          const validos = Array.isArray(parsed) ? parsed.filter((m: Mensaje) => m.id !== '0' && m.id !== 'bienvenida') : [];
+          setMensajes(validos);
+          if (validos.length > 0) {
+            setMostrarSugerencias(false);
+          }
         }
       } catch (err) {
         console.error('Error loading AI chat history:', err);
@@ -202,11 +175,9 @@ export default function ChatIA({ navigation }: Props) {
     if (perfil?.id) {
       cargarHistorial();
     }
-  }, [perfil?.id, perfil?.nombre]);
+  }, [perfil?.id]);
 
-  // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
   useEffect(() => {
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (escribiendo) {
       animacionEscritura.value = withRepeat(
         withSequence(
@@ -223,21 +194,13 @@ export default function ChatIA({ navigation }: Props) {
 
   const estiloPuntoEscritura = useAnimatedStyle(() => ({ opacity: animacionEscritura.value }));
 
-  // Inicializa contexto; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const contexto = useMemo(() => {
-    // Calcula pendientes; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const pendientes = tareas.filter((tarea) => tarea.estado !== 'completada').length;
-    // Calcula urgentes; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const urgentes = tareas.filter((tarea) => tarea.prioridad === 'Urgente' && tarea.estado !== 'completada').length;
-    // Calcula documentosPendientes; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const documentosPendientes = documentos.filter((documento) => !documento.leido).length;
-    // Calcula solicitudesPendientes; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const solicitudesPendientes = solicitudesInternas.filter((solicitud) => ['pendiente', 'revisado'].includes(solicitud.estado)).length;
-    // Calcula alertasNoLeidas; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const alertasNoLeidas = notificaciones.filter((notificacion) => !notificacion.leida).length;
-    // Calcula minutosEnfoque; resume varios registros en un valor agregado usado por la UI o la regla de negocio.
     const minutosEnfoque = focusSessions.reduce((total, sesion) => total + (sesion.duracionMinutos || 0), 0);
-    // Devuelve el valor final calculado para esta funcion o caso de uso.
     return {
       pendientes,
       urgentes,
@@ -250,61 +213,43 @@ export default function ChatIA({ navigation }: Props) {
     };
   }, [tareas, documentos, solicitudesInternas, notificaciones, focusSessions, metrics]);
 
-
-
-  // manejarComandoIA agrupa una parte de la logica del modulo para mantener el flujo principal mas legible.
   async function manejarComandoLocal(texto: string) {
-    // Declara tInput; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const tInput = texto.toLowerCase();
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (tInput.includes('resumen')) return generarResumenJornada();
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (tInput.includes('urgente')) {
-      // Calcula urgentes; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
       const urgentes = tareas.filter((tarea) => tarea.prioridad === 'Urgente' && tarea.estado !== 'completada');
-      // Devuelve el valor final calculado para esta funcion o caso de uso.
       return urgentes.length > 0
         ? t('chatIA.responses.urgent_tasks', { count: urgentes.length, tasks: urgentes.map((tarea) => tarea.titulo).join(', ') })
         : t('chatIA.responses.no_urgent');
     }
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (tInput.includes('rendimiento')) {
-      // Devuelve el valor final calculado para esta funcion o caso de uso.
       return t('chatIA.responses.performance', {
         wellbeing: contexto.bienestar,
         streak: contexto.racha,
         pending: contexto.pendientes,
-        focus: contexto.minutosEnfoque
+        focus: contexto.minutosEnfoque,
       });
     }
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (tInput.includes('prioriza') || tInput.includes('prioridad')) {
-      // Calcula pendientes; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
       const pendientes = tareas
         .filter((tarea) => tarea.estado !== 'completada')
         .sort((a, b) => {
-          // Declara prioridad; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
           const prioridad: Record<string, number> = { Urgente: 0, Alta: 1, Media: 2, Baja: 3 };
-          // Devuelve el valor final calculado para esta funcion o caso de uso.
           return (prioridad[a.prioridad] ?? 9) - (prioridad[b.prioridad] ?? 9);
         })
         .slice(0, 3);
-      // Devuelve el valor final calculado para esta funcion o caso de uso.
       return pendientes.length > 0
         ? t('chatIA.responses.prioritize', { tasks: pendientes.map((tarea, index) => `${index + 1}. ${tarea.titulo}`).join('  ') })
         : t('chatIA.responses.no_pendientes');
     }
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (tInput.includes('bienestar')) {
-      // Devuelve el valor final calculado para esta funcion o caso de uso.
       return t('chatIA.responses.wellbeing', {
         wellbeing: contexto.bienestar,
         streak: contexto.racha,
         urgent: contexto.urgentes,
-        docs: contexto.documentosPendientes
+        docs: contexto.documentosPendientes,
       });
     }
-    // Devuelve el valor final calculado para esta funcion o caso de uso.
     return t('chatIA.responses.default');
   }
 
@@ -324,9 +269,6 @@ export default function ChatIA({ navigation }: Props) {
     }
   }
 
-  // confirmarAccionSensible ejecuta una accion sensible sugerida por la IA solo cuando el usuario la
-  // confirma explicitamente aqui -- nunca se ejecuta sola. Vuelve a consultar el registro real antes
-  // de aprobar/rechazar, no confia en el payload de la IA para la mutacion.
   async function confirmarAccionSensible(mensajeId: string, accion: SensitiveAiAction, estado: 'aprobada' | 'rechazada') {
     if (!perfil) return;
     try {
@@ -335,23 +277,28 @@ export default function ChatIA({ navigation }: Props) {
         throw new Error('Esta solicitud ya no está pendiente o no existe.');
       }
       await useCases.leader.resolveApproval(item, estado, { id: perfil.id, nombre: perfil.nombre, rol: perfil.rol });
-      guardarMensajes((anterior) => anterior.map((m) => m.id === mensajeId
-        ? { ...m, accionesResueltas: { ...m.accionesResueltas, [accion.id]: estado } }
-        : m));
+      guardarMensajes((anterior) =>
+        anterior.map((m) =>
+          m.id === mensajeId
+            ? { ...m, accionesResueltas: { ...m.accionesResueltas, [accion.id]: estado } }
+            : m,
+        ),
+      );
     } catch (error) {
       console.error('[ChatIA] Error confirmando acción sensible:', error);
-      guardarMensajes((anterior) => anterior.map((m) => m.id === mensajeId
-        ? { ...m, accionesResueltas: { ...m.accionesResueltas, [accion.id]: 'error' } }
-        : m));
+      guardarMensajes((anterior) =>
+        anterior.map((m) =>
+          m.id === mensajeId
+            ? { ...m, accionesResueltas: { ...m.accionesResueltas, [accion.id]: 'error' } }
+            : m,
+        ),
+      );
     }
   }
 
-  // enviarMensaje agrupa una parte de la logica del modulo para mantener el flujo principal mas legible.
   function enviarMensaje(texto: string) {
-    // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!texto.trim()) return;
 
-    // Calcula mensajeUsuario; normaliza fechas para comparaciones, filtros o etiquetas visibles.
     const mensajeUsuario: Mensaje = {
       id: Date.now().toString(),
       rol: 'usuario',
@@ -359,20 +306,14 @@ export default function ChatIA({ navigation }: Props) {
       hora: formatearHora(),
     };
 
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     guardarMensajes((anterior) => [...anterior, mensajeUsuario]);
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setTextoEntrada('');
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setEscribiendo(true);
+    setMostrarSugerencias(false);
 
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
     setTimeout(async () => {
-      // Declara respuesta; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const respuesta = await manejarComandoIA(texto);
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setEscribiendo(false);
-      // Calcula mensajeIA; normaliza fechas para comparaciones, filtros o etiquetas visibles.
       const mensajeIA: Mensaje = {
         id: (Date.now() + 1).toString(),
         rol: 'ia',
@@ -380,14 +321,11 @@ export default function ChatIA({ navigation }: Props) {
         hora: formatearHora(),
         accionesSensibles: respuesta.accionesSensibles,
       };
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       guardarMensajes((anterior) => [...anterior, mensajeIA]);
-      // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setTimeout(() => referenciaScroll.current?.scrollToEnd({ animated: true }), 80);
-    }, 700);
+    }, 650);
   }
 
-  // Declara estilos; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const estilos = crearEstilosChat(colores, esOscuro);
 
   const parsearMensajeIA = (texto: string) => {
@@ -399,115 +337,93 @@ export default function ChatIA({ navigation }: Props) {
         redirect: {
           ruta: match[1].trim(),
           etiqueta: match[2].trim(),
-        }
+        },
       };
     }
     return { texto, redirect: null };
   };
 
-  // Devuelve el JSX que React Native renderiza en pantalla.
   return (
-    // Contenedor seguro de la pantalla; respeta areas del dispositivo como notch, barra superior y bordes.
     <SafeAreaView style={estilos.contenedor}>
-      {/* Configura la barra de estado del sistema para que combine con el fondo de esta pantalla. */}
       <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
-      {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}
-      <View style={estilos.fondoAbsoluto}>
-        {/* Elemento de fondo visual; construye la atmosfera grafica de la pantalla sin cambiar los datos. */}
+
+      {/* Fondo visual Premium unificado con el resto de la app */}
+      <View pointerEvents="none" style={estilos.fondoAbsoluto}>
         <FondoMobilePremium />
       </View>
 
-      {/* Header uniforme con el resto de pantallas de la app */}
+      {/* Navbar Superior Original */}
       <NavbarEnterprise
         titulo={t('chatIA.title', { defaultValue: 'Asistente IA' })}
-        ocultarAccionesDerechas
         accionDerecha={
-          <BotonAnimado
-            onPress={abrirNexxusVoice}
-            scaleTo={0.92}
-            accessibilityLabel={t('chatIA.voiceCall_accessibility', { defaultValue: 'Iniciar llamada de voz con Nexxus' })}
-            style={estilos.botonVoz}
-          >
-            <Feather name="phone" size={18} color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
-          </BotonAnimado>
+          mensajes.length > 0 ? (
+            <BotonAnimado
+              onPress={limpiarHistorial}
+              scaleTo={0.92}
+              style={estilos.btnLimpiarHeader}
+              accessibilityLabel="Reiniciar conversación"
+            >
+              <Feather name="trash-2" size={17} color={colores.textoSuave} />
+            </BotonAnimado>
+          ) : undefined
         }
       />
 
-      {/* Contenedor que ajusta el layout cuando aparece el teclado. */}
       <KeyboardAvoidingView style={estilos.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={0}>
-        {/* Area desplazable con espaciado generoso */}
-        <ScrollView
-          ref={referenciaScroll}
-          contentContainerStyle={estilos.scrollChat}
-          showsVerticalScrollIndicator={false}
-          onContentSizeChange={() => referenciaScroll.current?.scrollToEnd({ animated: true })}
-        >
-          {/* Card Hero Compacto del Asistente */}
-          <View style={estilos.panelIA}>
-            <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.panelContenido}>
-              <View style={estilos.panelTop}>
-                <View style={estilos.avatarIA}>
-                  <MaterialIcons name="auto-awesome" size={22} color={esOscuro ? '#FFFFFF' : '#0F172A'} />
-                  <View style={estilos.avatarBadgeOnline} />
-                </View>
-                <View style={estilos.panelTextos}>
-                  <View style={estilos.panelTituloRow}>
-                    <Text style={estilos.nombreIA}>{t('chatIA.ia_name', { defaultValue: 'Nexxus IA' })}</Text>
-                    <View style={estilos.badgeEstadoIA}>
-                      <Text style={estilos.badgeEstadoIATexto}>{t('chatIA.online_badge', { defaultValue: 'EN LÍNEA' })}</Text>
-                    </View>
-                  </View>
-                  <Text style={estilos.descripcionIA} numberOfLines={2}>
-                    {t('chatIA.ia_desc', { defaultValue: 'Asistente inteligente contextualizado con tus tareas, métricas y solicitudes.' })}
-                  </Text>
-                </View>
-
-                {mensajes.length > 1 && (
-                  <TouchableOpacity
-                    onPress={limpiarHistorial}
-                    style={estilos.btnLimpiar}
-                    activeOpacity={0.7}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    <MaterialIcons name="restart-alt" size={20} color={colores.textoSuave} />
-                  </TouchableOpacity>
-                )}
+        {/* Estado Inicial de Bienvenida con Mascota Nexxus IA */}
+        {mensajes.length === 0 ? (
+          <View style={estilos.contenedorHeroMascota}>
+            <Animated.View entering={FadeInDown.duration(400).easing(Easing.out(Easing.quad))} style={estilos.heroContenido}>
+              <View style={estilos.iconoMascotaWrap}>
+                <Image source={MASCOTA_NEXXUS} style={estilos.mascotaImgHero} resizeMode="contain" />
               </View>
-            </BlurView>
+              <Text style={estilos.tituloHeroMascota}>
+                ¿Y ahora qué, {primerNombre}?
+              </Text>
+            </Animated.View>
+
+            {/* Sugerencias Rápidas Iniciales */}
+            <Animated.View entering={FadeInUp.delay(120).duration(400)} style={estilos.wrapSugerenciasHero}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={estilos.scrollSugerenciasHero}>
+                {SUGERENCIAS_RAPIDAS.map((sug) => (
+                  <BotonAnimado key={sug.comando} onPress={() => enviarMensaje(sug.label)} scaleTo={0.95}>
+                    <View style={estilos.chipSugerenciaMascota}>
+                      <MaterialIcons name={sug.icono} size={15} color={esOscuro ? '#93C5FD' : '#2563EB'} />
+                      <Text style={estilos.textoChipMascota}>{sug.label}</Text>
+                    </View>
+                  </BotonAnimado>
+                ))}
+              </ScrollView>
+            </Animated.View>
           </View>
+        ) : (
+          <ScrollView
+            ref={referenciaScroll}
+            contentContainerStyle={estilos.scrollChat}
+            showsVerticalScrollIndicator={false}
+            onContentSizeChange={() => referenciaScroll.current?.scrollToEnd({ animated: true })}
+          >
+            {mensajes.map((mensaje) => {
+              const parsed = mensaje.rol === 'ia' ? parsearMensajeIA(mensaje.texto) : { texto: mensaje.texto, redirect: null };
+              const esUsuario = mensaje.rol === 'usuario';
 
-          {/* Divisor de tiempo */}
-          <View style={estilos.divisorTiempo}>
-            <View style={estilos.lineaDivisor} />
-            <View style={estilos.badgeDivisor}>
-              <Text style={estilos.textoDivisor}>{t('chatIA.today', { defaultValue: 'Hoy' })}, {mensajes[0]?.hora || formatearHora()}</Text>
-            </View>
-            <View style={estilos.lineaDivisor} />
-          </View>
+              return (
+                <Animated.View
+                  key={mensaje.id}
+                  entering={esUsuario ? FadeInRight.duration(220).easing(Easing.out(Easing.quad)) : FadeInLeft.duration(220).easing(Easing.out(Easing.quad))}
+                  layout={Layout.duration(160)}
+                  style={[estilos.filaBurbuja, esUsuario ? estilos.filaBurbujaUsuario : estilos.filaBurbujaIA]}
+                >
+                  {/* Avatar con Mascota Nexxus IA */}
+                  {!esUsuario && (
+                    <View style={estilos.miniAvatarMascota}>
+                      <Image source={MASCOTA_NEXXUS} style={estilos.miniAvatarImg} resizeMode="contain" />
+                    </View>
+                  )}
 
-          {/* Lista de Mensajes con Animaciones Suaves Sin Rebote */}
-          {mensajes.map((mensaje) => {
-            const parsed = mensaje.rol === 'ia' ? parsearMensajeIA(mensaje.texto) : { texto: mensaje.texto, redirect: null };
-            const esUsuario = mensaje.rol === 'usuario';
-
-            return (
-              <Animated.View
-                key={mensaje.id}
-                entering={esUsuario ? FadeInRight.duration(260).easing(Easing.out(Easing.quad)) : FadeInLeft.duration(260).easing(Easing.out(Easing.quad))}
-                layout={Layout.duration(200)}
-                style={[estilos.filaBurbuja, esUsuario ? estilos.filaBurbujaUsuario : estilos.filaBurbujaIA]}
-              >
-                {/* Avatar pequeño para la IA */}
-                {!esUsuario && (
-                  <View style={estilos.miniAvatarIA}>
-                    <MaterialIcons name="auto-awesome" size={14} color={esOscuro ? '#C4B5FD' : '#7C3AED'} />
-                  </View>
-                )}
-
-                <View style={[estilos.burbujaWrap, esUsuario && estilos.burbujaWrapUsuario]}>
-                  {!esUsuario ? (
-                    <View style={estilos.burbujaIA}>
-                      <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.burbujaContenido}>
+                  <View style={[estilos.burbujaWrap, esUsuario && estilos.burbujaWrapUsuario]}>
+                    {!esUsuario ? (
+                      <View style={estilos.burbujaIA}>
                         <RenderMarkdownIA texto={parsed.texto} estiloBase={estilos.textoBurbujaIA} />
 
                         {parsed.redirect && (
@@ -526,7 +442,7 @@ export default function ChatIA({ navigation }: Props) {
                           return (
                             <View key={accion.id} style={estilos.tarjetaAccionSensible}>
                               <View style={estilos.tarjetaAccionHeader}>
-                                <MaterialIcons name="verified-user" size={16} color={esOscuro ? '#A78BFA' : '#7C3AED'} />
+                                <MaterialIcons name="verified-user" size={16} color={esOscuro ? '#93C5FD' : '#2563EB'} />
                                 <Text style={estilos.tarjetaAccionTitulo} numberOfLines={2}>{accion.titulo}</Text>
                               </View>
                               {resultado ? (
@@ -564,88 +480,126 @@ export default function ChatIA({ navigation }: Props) {
                         <View style={estilos.metaFilaIA}>
                           <Text style={estilos.horaIA}>{mensaje.hora}</Text>
                         </View>
-                      </BlurView>
-                    </View>
-                  ) : (
-                    <View style={estilos.burbujaUsuario}>
-                      <Text style={estilos.textoBurbujaUsuario}>{parsed.texto}</Text>
-                      <View style={estilos.metaFilaUsuario}>
-                        <Text style={estilos.horaUsuario}>{mensaje.hora}</Text>
-                        <MaterialIcons name="done-all" size={13} color={esOscuro ? 'rgba(11,12,30,0.5)' : 'rgba(255,255,255,0.75)'} />
                       </View>
-                    </View>
-                  )}
-                </View>
-              </Animated.View>
-            );
-          })}
+                    ) : (
+                      <View style={estilos.burbujaUsuario}>
+                        <Text style={estilos.textoBurbujaUsuario}>{parsed.texto}</Text>
+                        <View style={estilos.metaFilaUsuario}>
+                          <Text style={estilos.horaUsuario}>{mensaje.hora}</Text>
+                          <MaterialIcons name="done-all" size={13} color="rgba(255,255,255,0.75)" />
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                </Animated.View>
+              );
+            })}
 
-          {/* Indicador de escritura animado */}
-          {escribiendo && (
-            <Animated.View
-              entering={FadeInLeft.duration(240).easing(Easing.out(Easing.quad))}
-              layout={Layout.duration(200)}
-              style={[estilos.filaBurbuja, estilos.filaBurbujaIA]}
-            >
-              <View style={estilos.miniAvatarIA}>
-                <MaterialIcons name="auto-awesome" size={14} color={esOscuro ? '#C4B5FD' : '#7C3AED'} />
-              </View>
-              <View style={estilos.burbujaIA}>
-                <BlurView intensity={intensidadBlur} tint={blurTint} style={[estilos.burbujaContenido, { paddingVertical: 14, paddingHorizontal: 18 }]}>
+            {/* Indicador escribiendo */}
+            {escribiendo && (
+              <Animated.View
+                entering={FadeInLeft.duration(180).easing(Easing.out(Easing.quad))}
+                layout={Layout.duration(160)}
+                style={[estilos.filaBurbuja, estilos.filaBurbujaIA]}
+              >
+                <View style={estilos.miniAvatarMascota}>
+                  <Image source={MASCOTA_NEXXUS} style={estilos.miniAvatarImg} resizeMode="contain" />
+                </View>
+                <View style={[estilos.burbujaIA, { paddingVertical: 12, paddingHorizontal: 16 }]}>
                   <View style={estilos.indicadorEscribiendo}>
-                    <Text style={estilos.indicadorTexto}>{t('chatIA.typing', { defaultValue: 'Nexxus IA escribiendo' })}</Text>
+                    <Text style={estilos.indicadorTexto}>{t('chatIA.typing', { defaultValue: 'Nexxus IA pensando' })}</Text>
                     {[0, 1, 2].map((indice) => (
                       <Animated.View key={indice} style={[estilos.puntoEscritura, estiloPuntoEscritura]} />
                     ))}
                   </View>
-                </BlurView>
-              </View>
-            </Animated.View>
-          )}
-        </ScrollView>
-
-        {/* Barra Inferior de Entrada y Sugerencias */}
-        <View style={[estilos.contenedorEntrada, { paddingBottom: tecladoVisible ? ESPACIADO.xs : (Platform.OS === 'ios' ? 92 : 100) }]}>
-          {/* Chips de sugerencias rápidas estilizados con iconos morados */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={estilos.sugerencias}>
-            {SUGERENCIAS_RAPIDAS.map((sugerencia) => (
-              <BotonAnimado
-                key={sugerencia.comando}
-                onPress={() => enviarMensaje(t(sugerencia.etiquetaKey))}
-                scaleTo={0.94}
-              >
-                <View style={estilos.chipSugerencia}>
-                  <MaterialIcons name={sugerencia.icono} size={14} color={esOscuro ? '#C4B5FD' : '#7C3AED'} />
-                  <Text style={estilos.textoChip}>{t(sugerencia.etiquetaKey)}</Text>
                 </View>
-              </BotonAnimado>
-            ))}
+              </Animated.View>
+            )}
           </ScrollView>
+        )}
 
-          {/* Caja de Entrada de Texto Flotante */}
-          <View style={estilos.barraMensaje}>
-            <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.barraMensajeContenido}>
-              <TextInput
-                style={estilos.entrada}
-                placeholder={t('chatIA.input_placeholder', { defaultValue: 'Consulta a Nexxus IA...' })}
-                placeholderTextColor={colores.textoSuave}
-                value={textoEntrada}
-                onChangeText={setTextoEntrada}
-                onSubmitEditing={() => enviarMensaje(textoEntrada)}
-                returnKeyType="send"
-                multiline
-                maxLength={500}
-              />
-              <BotonAnimado
-                disabled={!textoEntrada.trim()}
-                onPress={() => enviarMensaje(textoEntrada)}
-                scaleTo={0.92}
-              >
-                <View style={[estilos.botonEnviar, !textoEntrada.trim() && estilos.botonEnviarDeshabilitado]}>
-                  <MaterialIcons name="arrow-upward" size={20} color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
-                </View>
-              </BotonAnimado>
-            </BlurView>
+        {/* Barra Inferior de Entrada */}
+        <View style={[estilos.contenedorEntrada, { paddingBottom: tecladoVisible ? ESPACIADO.xs : (Platform.OS === 'ios' ? 96 : 104) }]}>
+          {/* Chips de sugerencias cuando se está en chat activo */}
+          {mensajes.length > 0 && mostrarSugerencias && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={estilos.sugerencias}>
+              {SUGERENCIAS_RAPIDAS.map((sugerencia) => (
+                <BotonAnimado
+                  key={sugerencia.comando}
+                  onPress={() => enviarMensaje(sugerencia.label)}
+                  scaleTo={0.94}
+                >
+                  <View style={estilos.chipSugerenciaMascota}>
+                    <MaterialIcons name={sugerencia.icono} size={14} color={esOscuro ? '#93C5FD' : '#2563EB'} />
+                    <Text style={estilos.textoChipMascota}>{sugerencia.label}</Text>
+                  </View>
+                </BotonAnimado>
+              ))}
+            </ScrollView>
+          )}
+
+          {/* Cápsula de entrada con botón dinámico de Voz / Enviar */}
+          <View style={estilos.barraCapsula}>
+            <TouchableOpacity
+              style={estilos.btnAccionPlus}
+              activeOpacity={0.7}
+              onPress={() => setMostrarSugerencias((prev) => !prev)}
+              accessibilityLabel="Opciones adicionales"
+            >
+              <MaterialIcons name="add" size={24} color={esOscuro ? 'rgba(255,255,255,0.7)' : '#64748B'} />
+            </TouchableOpacity>
+
+            <TextInput
+              style={estilos.entrada}
+              placeholder="Pregunta a Nexxus IA..."
+              placeholderTextColor={esOscuro ? 'rgba(255,255,255,0.38)' : '#94A3B8'}
+              value={textoEntrada}
+              onChangeText={setTextoEntrada}
+              onSubmitEditing={() => enviarMensaje(textoEntrada)}
+              returnKeyType="send"
+              multiline
+              maxLength={500}
+            />
+
+            <View style={estilos.controlesDerecha}>
+              {textoEntrada.trim().length > 0 ? (
+                <Animated.View
+                  key="btn-enviar"
+                  entering={ZoomIn.duration(200).easing(Easing.out(Easing.quad))}
+                  exiting={ZoomOut.duration(160).easing(Easing.in(Easing.quad))}
+                >
+                  <BotonAnimado
+                    onPress={() => enviarMensaje(textoEntrada)}
+                    scaleTo={0.92}
+                    accessibilityLabel="Enviar mensaje"
+                  >
+                    <View style={estilos.botonEnviar}>
+                      <MaterialIcons
+                        name="arrow-upward"
+                        size={22}
+                        color={esOscuro ? '#0B0C1E' : '#FFFFFF'}
+                      />
+                    </View>
+                  </BotonAnimado>
+                </Animated.View>
+              ) : (
+                <Animated.View
+                  key="btn-voz"
+                  entering={ZoomIn.duration(200).easing(Easing.out(Easing.quad))}
+                  exiting={ZoomOut.duration(160).easing(Easing.in(Easing.quad))}
+                >
+                  <BotonAnimado
+                    onPress={abrirNexxusVoice}
+                    scaleTo={0.92}
+                    accessibilityLabel="Hablar con la IA en tiempo real"
+                  >
+                    <View style={estilos.botonVozOndas}>
+                      <IconoOndasVoz size={18} color="#FFFFFF" />
+                    </View>
+                  </BotonAnimado>
+                </Animated.View>
+              )}
+            </View>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -653,146 +607,109 @@ export default function ChatIA({ navigation }: Props) {
   );
 }
 
-/**
- * Mapa de estilos crearEstilosChat. Centraliza reglas visuales para que el JSX se mantenga legible y consistente.
- */
 function crearEstilosChat(c: any, esOscuro: boolean) {
-  const glass = esOscuro ? 'rgba(24, 24, 38, 0.88)' : 'rgba(255, 255, 255, 0.94)';
-  const glassMini = esOscuro ? 'rgba(255, 255, 255, 0.09)' : 'rgba(15, 23, 42, 0.05)';
+  const fondoApp = esOscuro ? '#090A10' : '#F8FAFC';
+  const capsulaBg = esOscuro ? '#181926' : '#FFFFFF';
+  const bordeCapsula = esOscuro ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)';
+  const cardBlanca = esOscuro ? '#181926' : '#FFFFFF';
 
   return StyleSheet.create({
-    contenedor: { flex: 1, backgroundColor: c.fondo },
-    flex: { flex: 1 },
-    fondoAbsoluto: { ...StyleSheet.absoluteFillObject, zIndex: -1, overflow: 'hidden' },
-
-    botonVoz: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      backgroundColor: esOscuro ? '#FFFFFF' : '#0F172A',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-
-    scrollChat: {
-      paddingHorizontal: 16,
-      paddingTop: 8,
-      paddingBottom: 20,
-      gap: 14,
-    },
-
-    panelIA: {
-      borderRadius: 22,
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: c.borde,
-      backgroundColor: glass,
-      marginBottom: 6,
-      ...SOMBRAS.flotante,
-    },
-    panelContenido: {
-      padding: 16,
-    },
-    panelTop: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-    },
-    avatarIA: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: glassMini,
-      borderWidth: 1,
-      borderColor: c.borde,
-      position: 'relative',
-    },
-    avatarBadgeOnline: {
-      position: 'absolute',
-      bottom: 0,
-      right: 0,
-      width: 11,
-      height: 11,
-      borderRadius: 5.5,
-      backgroundColor: '#8B5CF6',
-      borderWidth: 2,
-      borderColor: esOscuro ? '#0B0C1E' : '#FFFFFF',
-    },
-    panelTextos: {
+    contenedor: {
       flex: 1,
-      minWidth: 0,
+      backgroundColor: 'transparent',
     },
-    panelTituloRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      marginBottom: 2,
+    fondoAbsoluto: {
+      ...StyleSheet.absoluteFillObject,
+      zIndex: -1,
+      overflow: 'hidden',
     },
-    nombreIA: {
-      fontSize: 15,
-      fontWeight: '900',
-      color: c.texto,
+    flex: {
+      flex: 1,
     },
-    badgeEstadoIA: {
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 8,
-      backgroundColor: esOscuro ? 'rgba(139,92,246,0.18)' : 'rgba(124,58,237,0.12)',
-      borderWidth: 1,
-      borderColor: esOscuro ? 'rgba(139,92,246,0.4)' : 'rgba(124,58,237,0.25)',
-    },
-    badgeEstadoIATexto: {
-      fontSize: 9,
-      fontWeight: '900',
-      color: esOscuro ? '#C4B5FD' : '#7C3AED',
-      letterSpacing: 0.5,
-    },
-    descripcionIA: {
-      fontSize: 12,
-      color: c.textoSuave,
-      lineHeight: 16,
-    },
-    btnLimpiar: {
+
+    btnLimpiarHeader: {
       width: 36,
       height: 36,
       borderRadius: 18,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: glassMini,
+      backgroundColor: esOscuro ? 'rgba(255,255,255,0.06)' : '#F1F5F9',
     },
 
-    divisorTiempo: {
+    // Estado Hero con Mascota Nexxus IA
+    contenedorHeroMascota: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 24,
+      paddingBottom: 20,
+    },
+    heroContenido: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 26,
+    },
+    iconoMascotaWrap: {
+      width: 88,
+      height: 88,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+    },
+    mascotaImgHero: {
+      width: 84,
+      height: 84,
+    },
+    tituloHeroMascota: {
+      fontSize: 26,
+      fontWeight: '500',
+      color: esOscuro ? '#FFFFFF' : '#0F172A',
+      textAlign: 'center',
+      letterSpacing: -0.4,
+      lineHeight: 34,
+    },
+    wrapSugerenciasHero: {
+      width: '100%',
+      marginTop: 8,
+    },
+    scrollSugerenciasHero: {
+      paddingHorizontal: 8,
+      gap: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    // Chips
+    chipSugerenciaMascota: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
-      marginVertical: 4,
-    },
-    lineaDivisor: {
-      flex: 1,
-      height: 1,
-      backgroundColor: c.borde,
-    },
-    badgeDivisor: {
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 12,
-      backgroundColor: glassMini,
+      gap: 7,
+      paddingHorizontal: 15,
+      paddingVertical: 9,
+      borderRadius: 20,
+      backgroundColor: esOscuro ? 'rgba(255,255,255,0.06)' : '#FFFFFF',
       borderWidth: 1,
-      borderColor: c.borde,
+      borderColor: bordeCapsula,
+      ...SOMBRAS.flotante,
     },
-    textoDivisor: {
-      fontSize: 11,
-      fontWeight: '700',
-      color: c.textoSuave,
+    textoChipMascota: {
+      fontSize: 12.5,
+      fontWeight: '600',
+      color: esOscuro ? '#E2E8F0' : '#1E293B',
     },
 
+    // Historial de chat
+    scrollChat: {
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: 24,
+      gap: 16,
+    },
     filaBurbuja: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 8,
-      maxWidth: '90%',
+      gap: 10,
+      maxWidth: '92%',
     },
     filaBurbujaIA: {
       alignSelf: 'flex-start',
@@ -801,16 +718,17 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
       alignSelf: 'flex-end',
       justifyContent: 'flex-end',
     },
-    miniAvatarIA: {
+    miniAvatarMascota: {
       width: 28,
       height: 28,
       borderRadius: 14,
-      backgroundColor: esOscuro ? 'rgba(139,92,246,0.18)' : 'rgba(124,58,237,0.12)',
-      borderWidth: 1,
-      borderColor: esOscuro ? 'rgba(139,92,246,0.35)' : 'rgba(124,58,237,0.25)',
       alignItems: 'center',
       justifyContent: 'center',
       marginTop: 2,
+    },
+    miniAvatarImg: {
+      width: 26,
+      height: 26,
     },
     burbujaWrap: {
       flexShrink: 1,
@@ -818,70 +736,98 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
     burbujaWrapUsuario: {
       alignItems: 'flex-end',
     },
+
+    // Burbuja IA
     burbujaIA: {
+      paddingHorizontal: 16,
+      paddingVertical: 14,
       borderRadius: 22,
-      borderTopLeftRadius: 6,
-      overflow: 'hidden',
+      borderTopLeftRadius: 4,
+      backgroundColor: cardBlanca,
       borderWidth: 1,
-      borderColor: c.borde,
-      backgroundColor: glass,
+      borderColor: bordeCapsula,
       ...SOMBRAS.flotante,
-    },
-    burbujaContenido: {
-      padding: 16,
     },
     textoBurbujaIA: {
       fontSize: 14,
-      color: c.texto,
       lineHeight: 22,
-      fontWeight: '500',
+      color: esOscuro ? '#F1F5F9' : '#0F172A',
     },
     metaFilaIA: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginTop: 8,
+      justifyContent: 'flex-start',
+      marginTop: 6,
     },
     horaIA: {
       fontSize: 11,
-      color: c.textoSuave,
       fontWeight: '600',
+      color: c.textoSuave,
+    },
+
+    // Burbuja Usuario
+    burbujaUsuario: {
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderRadius: 20,
+      borderBottomRightRadius: 4,
+      backgroundColor: esOscuro ? '#1E1B4B' : '#0F172A',
+      ...SOMBRAS.flotante,
+    },
+    textoBurbujaUsuario: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: '#FFFFFF',
+      lineHeight: 20,
+    },
+    metaFilaUsuario: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      gap: 4,
+      marginTop: 4,
+    },
+    horaUsuario: {
+      fontSize: 10.5,
+      fontWeight: '600',
+      color: 'rgba(255, 255, 255, 0.75)',
     },
 
     botonRedirect: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
-      marginTop: 12,
-      paddingVertical: 10,
-      paddingHorizontal: 16,
-      borderRadius: 14,
+      gap: 6,
+      marginTop: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 12,
       backgroundColor: esOscuro ? '#FFFFFF' : '#0F172A',
       alignSelf: 'flex-start',
     },
     textoRedirect: {
-      fontSize: 13,
-      color: esOscuro ? '#0B0C1E' : '#FFFFFF',
+      fontSize: 12,
       fontWeight: '800',
+      color: esOscuro ? '#0B0C1E' : '#FFFFFF',
     },
 
     tarjetaAccionSensible: {
       marginTop: 12,
-      padding: 14,
+      padding: 12,
       borderRadius: 16,
-      backgroundColor: esOscuro ? 'rgba(139,92,246,0.08)' : 'rgba(124,58,237,0.05)',
+      backgroundColor: esOscuro ? 'rgba(255,255,255,0.04)' : '#F8FAFC',
       borderWidth: 1,
-      borderColor: esOscuro ? 'rgba(139,92,246,0.28)' : 'rgba(124,58,237,0.2)',
-      gap: 10,
+      borderColor: c.borde,
     },
     tarjetaAccionHeader: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: 6,
+      marginBottom: 8,
     },
     tarjetaAccionTitulo: {
       fontSize: 13,
-      color: c.texto,
       fontWeight: '800',
+      color: c.texto,
       flex: 1,
     },
     tarjetaAccionBotones: {
@@ -890,8 +836,8 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
     },
     tarjetaAccionBoton: {
       flex: 1,
-      height: 38,
-      borderRadius: 12,
+      height: 36,
+      borderRadius: 10,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
@@ -905,12 +851,12 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
       borderColor: 'transparent',
     },
     tarjetaAccionBotonTextoRechazar: {
-      fontSize: 12.5,
+      fontSize: 12,
       color: '#EF4444',
       fontWeight: '800',
     },
     tarjetaAccionBotonTextoAprobar: {
-      fontSize: 12.5,
+      fontSize: 12,
       color: esOscuro ? '#0B0C1E' : '#FFFFFF',
       fontWeight: '800',
     },
@@ -918,121 +864,102 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
       paddingVertical: 4,
     },
     tarjetaAccionResultado: {
-      fontSize: 12.5,
-      color: esOscuro ? '#C4B5FD' : '#7C3AED',
+      fontSize: 12,
+      color: esOscuro ? '#93C5FD' : '#2563EB',
       fontWeight: '800',
     },
     tarjetaAccionResultadoError: {
       color: '#EF4444',
     },
 
-    burbujaUsuario: {
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-      borderRadius: 22,
-      borderTopRightRadius: 6,
-      backgroundColor: esOscuro ? '#FFFFFF' : '#0F172A',
-      ...SOMBRAS.flotante,
-      maxWidth: '100%',
-    },
-    textoBurbujaUsuario: {
-      fontSize: 14,
-      color: esOscuro ? '#0B0C1E' : '#FFFFFF',
-      lineHeight: 21,
-      fontWeight: '600',
-    },
-    metaFilaUsuario: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'flex-end',
-      gap: 4,
-      marginTop: 4,
-    },
-    horaUsuario: {
-      fontSize: 10.5,
-      color: esOscuro ? 'rgba(11,12,30,0.6)' : 'rgba(255,255,255,0.75)',
-      fontWeight: '700',
-    },
-
     indicadorEscribiendo: {
       flexDirection: 'row',
-      gap: 6,
       alignItems: 'center',
+      gap: 6,
     },
     indicadorTexto: {
       fontSize: 12,
-      color: c.textoSuave,
       fontWeight: '600',
+      color: c.textoSuave,
       marginRight: 4,
     },
     puntoEscritura: {
-      width: 7,
-      height: 7,
-      borderRadius: 3.5,
-      backgroundColor: esOscuro ? '#A78BFA' : '#7C3AED',
+      width: 5,
+      height: 5,
+      borderRadius: 2.5,
+      backgroundColor: esOscuro ? '#60A5FA' : '#2563EB',
     },
 
+    // Barra de entrada inferior
     contenedorEntrada: {
-      paddingTop: 8,
+      paddingTop: 4,
     },
     sugerencias: {
       paddingHorizontal: 16,
       gap: 8,
       paddingBottom: 10,
     },
-    chipSugerencia: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      borderRadius: 16,
-      backgroundColor: glass,
-      borderWidth: 1,
-      borderColor: c.borde,
-      ...SOMBRAS.flotante,
-    },
-    textoChip: {
-      fontSize: 12.5,
-      fontWeight: '700',
-      color: c.texto,
-    },
-
-    barraMensaje: {
+    barraCapsula: {
       marginHorizontal: 16,
-      borderRadius: 24,
-      overflow: 'hidden',
+      borderRadius: 32,
+      backgroundColor: capsulaBg,
       borderWidth: 1,
-      borderColor: c.borde,
-      backgroundColor: glass,
-      ...SOMBRAS.flotante,
-    },
-    barraMensajeContenido: {
-      minHeight: 56,
+      borderColor: bordeCapsula,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
-      paddingLeft: 16,
-      paddingRight: 6,
+      paddingLeft: 8,
+      paddingRight: 8,
       paddingVertical: 6,
+      minHeight: 58,
+      ...SOMBRAS.flotante,
+    },
+    btnAccionPlus: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     entrada: {
       flex: 1,
-      fontSize: 14,
-      color: c.texto,
+      fontSize: 15,
+      color: esOscuro ? '#FFFFFF' : '#0F172A',
       maxHeight: 100,
       paddingVertical: 6,
+      paddingHorizontal: 6,
     },
-    botonEnviar: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
+    controlesDerecha: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    grupoVoz: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    btnMicSimple: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: esOscuro ? '#FFFFFF' : '#0F172A',
     },
-    botonEnviarDeshabilitado: {
-      opacity: 0.35,
+    botonVozOndas: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: esOscuro ? '#2563EB' : '#1D4ED8',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    botonEnviar: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: esOscuro ? '#FFFFFF' : '#0F172A',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
   });
 }

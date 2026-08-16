@@ -57,6 +57,9 @@ export default function NavbarEnterprise({
     }
   };
 
+  const fotoUrl = perfil?.foto_perfil || (perfil as any)?.fotoPerfil || (perfil as any)?.photoURL || (perfil as any)?.avatarUrl;
+  const inicialUsuario = (perfil?.nombre || 'Usuario').trim().charAt(0).toUpperCase();
+
   return (
     <View style={{ zIndex: 100 }}>
       <View style={estilos.appBarContainer}>
@@ -99,7 +102,7 @@ export default function NavbarEnterprise({
                   ]}
                 >
                   {avatarUrl ? (
-                    <Image source={{ uri: avatarUrl }} style={estilos.avatarImg} resizeMode="cover" />
+                    <Image source={{ uri: avatarUrl }} style={estilos.avatarImgSubscreen} resizeMode="cover" />
                   ) : (
                     <Text style={[estilos.avatarLetra, { color: colores.texto }]}>
                       {(avatarLetra || titulo || 'C').charAt(0).toUpperCase()}
@@ -116,17 +119,17 @@ export default function NavbarEnterprise({
               style={[
                 estilos.avatarBotonPrincipal,
                 {
-                  borderColor: esOscuro ? 'rgba(255, 255, 255, 0.24)' : colores.borde,
-                  backgroundColor: esOscuro ? 'rgba(255, 255, 255, 0.12)' : colores.primario,
+                  borderColor: esOscuro ? 'rgba(255, 255, 255, 0.22)' : 'rgba(0, 0, 0, 0.12)',
+                  backgroundColor: esOscuro ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
                 },
               ]}
             >
-              {perfil?.foto_perfil ? (
-                <Image source={{ uri: perfil.foto_perfil }} style={estilos.avatarImg} />
+              {fotoUrl ? (
+                <Image source={{ uri: fotoUrl }} style={estilos.avatarImg} resizeMode="cover" />
               ) : (
                 <View style={estilos.avatarPlaceholder}>
-                  <Text style={[estilos.avatarLetra, { color: '#FFFFFF' }]}>
-                    {perfil?.nombre?.charAt(0).toUpperCase() || 'U'}
+                  <Text style={[estilos.avatarLetra, { color: colores.texto }]}>
+                    {inicialUsuario}
                   </Text>
                 </View>
               )}
@@ -234,35 +237,42 @@ const estilos = StyleSheet.create({
     borderWidth: 1.5,
   },
   avatarBotonPrincipal: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    overflow: 'hidden',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  avatarWrapSubscreen: {
     width: 38,
     height: 38,
     borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1.5,
+    overflow: 'hidden',
+  },
+  avatarWrapSubscreen: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     overflow: 'hidden',
   },
-  avatarImg: { width: '100%', height: '100%' },
+  avatarImg: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+  },
+  avatarImgSubscreen: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
   avatarPlaceholder: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
     width: '100%',
     height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  avatarLetra: { fontSize: 14, fontWeight: '900' },
+  avatarLetra: {
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: -0.2,
+  },
 });

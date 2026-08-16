@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  View, Text, StyleSheet, ScrollView,
+  View, StyleSheet, ScrollView,
   StatusBar, SafeAreaView, TouchableOpacity,
 } from 'react-native';
 import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
@@ -11,66 +11,69 @@ import { BlurView } from 'expo-blur';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import EmptyState from '@/presentation/components/ui/EmptyState';
 
+const Text = AdminTranslatedText;
+
 interface Props { navigation: any; }
 
 type GrupoAtajos = {
-  titulo: string;
+  tituloKey: string;
   icono: keyof typeof MaterialIcons.glyphMap;
-  atajos: { titulo: string; subtitulo: string; icono: React.ComponentProps<typeof Feather>['name']; destino: string; color: string }[];
+  atajos: { tituloKey: string; subtituloKey: string; icono: React.ComponentProps<typeof Feather>['name']; destino: string; color: string }[];
 };
 
 const GRUPOS_ATAJOS: GrupoAtajos[] = [
   {
-    titulo: 'Asistencia y Bienestar',
+    tituloKey: 'recursos.shortcut_groups.wellness',
     icono: 'favorite',
     atajos: [
-      { titulo: 'Control de Asistencia', subtitulo: 'Entrada y salida', icono: 'clock', destino: 'ControlAsistencia', color: '#3B82F6' },
-      { titulo: 'Check-in Diario', subtitulo: 'Pulso de bienestar', icono: 'activity', destino: 'CheckInDiario', color: '#EC4899' },
-      { titulo: 'Calendario Laboral', subtitulo: 'Tareas y ausencias', icono: 'calendar', destino: 'CalendarioLaboral', color: '#10B981' },
-      { titulo: 'Centro de Tareas', subtitulo: 'Gestión y entregas', icono: 'check-square', destino: 'CentroTareas', color: '#8B5CF6' },
-      { titulo: 'Mis Objetivos', subtitulo: 'Metas y OKRs', icono: 'flag', destino: 'MisObjetivos', color: '#06B6D4' },
+      { tituloKey: 'recursos.shortcut_items.ControlAsistencia.title', subtituloKey: 'recursos.shortcut_items.ControlAsistencia.subtitle', icono: 'clock', destino: 'ControlAsistencia', color: '#3B82F6' },
+      { tituloKey: 'recursos.shortcut_items.CheckInDiario.title', subtituloKey: 'recursos.shortcut_items.CheckInDiario.subtitle', icono: 'activity', destino: 'CheckInDiario', color: '#EC4899' },
+      { tituloKey: 'recursos.shortcut_items.CalendarioLaboral.title', subtituloKey: 'recursos.shortcut_items.CalendarioLaboral.subtitle', icono: 'calendar', destino: 'CalendarioLaboral', color: '#10B981' },
+      { tituloKey: 'recursos.shortcut_items.CentroTareas.title', subtituloKey: 'recursos.shortcut_items.CentroTareas.subtitle', icono: 'check-square', destino: 'CentroTareas', color: '#8B5CF6' },
+      { tituloKey: 'recursos.shortcut_items.MisObjetivos.title', subtituloKey: 'recursos.shortcut_items.MisObjetivos.subtitle', icono: 'flag', destino: 'MisObjetivos', color: '#06B6D4' },
     ],
   },
   {
-    titulo: 'Gestión y Solicitudes',
+    tituloKey: 'recursos.shortcut_groups.management',
     icono: 'assignment-turned-in',
     atajos: [
-      { titulo: 'Ausencias y Permisos', subtitulo: 'Vacaciones y licencias', icono: 'sun', destino: 'SolicitudesAusencia', color: '#F59E0B' },
-      { titulo: 'Solicitudes Internas', subtitulo: 'Peticiones formales', icono: 'file-text', destino: 'SolicitudesInternas', color: '#06B6D4' },
+      { tituloKey: 'recursos.shortcut_items.SolicitudesAusencia.title', subtituloKey: 'recursos.shortcut_items.SolicitudesAusencia.subtitle', icono: 'sun', destino: 'SolicitudesAusencia', color: '#F59E0B' },
+      { tituloKey: 'recursos.shortcut_items.SolicitudesInternas.title', subtituloKey: 'recursos.shortcut_items.SolicitudesInternas.subtitle', icono: 'file-text', destino: 'SolicitudesInternas', color: '#06B6D4' },
     ],
   },
   {
-    titulo: 'Documentos y Aprendizaje',
+    tituloKey: 'recursos.shortcut_groups.docs_learning',
     icono: 'menu-book',
     atajos: [
-      { titulo: 'Centro de Documentos', subtitulo: 'Políticas y archivos', icono: 'folder', destino: 'CentroDocumentos', color: '#3B82F6' },
-      { titulo: 'Mi Salario', subtitulo: 'Nóminas y pagos', icono: 'credit-card', destino: 'MiSalario', color: '#10B981' },
-      { titulo: 'Capacitaciones', subtitulo: 'Cursos y progreso', icono: 'book-open', destino: 'CentroAprendizaje', color: '#8B5CF6' },
-      { titulo: 'Mis Logros', subtitulo: 'Insignias y puntos', icono: 'award', destino: 'MisLogros', color: '#F59E0B' },
-      { titulo: 'Mis Activos', subtitulo: 'Equipos asignados', icono: 'briefcase', destino: 'MisActivos', color: '#EC4899' },
+      { tituloKey: 'recursos.shortcut_items.CentroDocumentos.title', subtituloKey: 'recursos.shortcut_items.CentroDocumentos.subtitle', icono: 'folder', destino: 'CentroDocumentos', color: '#3B82F6' },
+      { tituloKey: 'recursos.shortcut_items.MiSalario.title', subtituloKey: 'recursos.shortcut_items.MiSalario.subtitle', icono: 'credit-card', destino: 'MiSalario', color: '#10B981' },
+      { tituloKey: 'recursos.shortcut_items.CentroAprendizaje.title', subtituloKey: 'recursos.shortcut_items.CentroAprendizaje.subtitle', icono: 'book-open', destino: 'CentroAprendizaje', color: '#8B5CF6' },
+      { tituloKey: 'recursos.shortcut_items.MisLogros.title', subtituloKey: 'recursos.shortcut_items.MisLogros.subtitle', icono: 'award', destino: 'MisLogros', color: '#F59E0B' },
+      { tituloKey: 'recursos.shortcut_items.MisActivos.title', subtituloKey: 'recursos.shortcut_items.MisActivos.subtitle', icono: 'briefcase', destino: 'MisActivos', color: '#EC4899' },
     ],
   },
   {
-    titulo: 'Comunicación y Notificaciones',
+    tituloKey: 'recursos.shortcut_groups.comms',
     icono: 'forum',
     atajos: [
-      { titulo: 'Bandeja Unificada', subtitulo: 'Mensajería y avisos', icono: 'inbox', destino: 'BandejaUnificada', color: '#06B6D4' },
-      { titulo: 'Centro de Notificaciones', subtitulo: 'Alertas del sistema', icono: 'bell', destino: 'Notificaciones', color: '#F59E0B' },
-      { titulo: 'Búsqueda Global', subtitulo: 'Explorador inteligente', icono: 'search', destino: 'BusquedaGlobal', color: '#3B82F6' },
+      { tituloKey: 'recursos.shortcut_items.BandejaUnificada.title', subtituloKey: 'recursos.shortcut_items.BandejaUnificada.subtitle', icono: 'inbox', destino: 'BandejaUnificada', color: '#06B6D4' },
+      { tituloKey: 'recursos.shortcut_items.Notificaciones.title', subtituloKey: 'recursos.shortcut_items.Notificaciones.subtitle', icono: 'bell', destino: 'Notificaciones', color: '#F59E0B' },
+      { tituloKey: 'recursos.shortcut_items.BusquedaGlobal.title', subtituloKey: 'recursos.shortcut_items.BusquedaGlobal.subtitle', icono: 'search', destino: 'BusquedaGlobal', color: '#3B82F6' },
     ],
   },
   {
-    titulo: 'Cuenta y Soporte',
+    tituloKey: 'recursos.shortcut_groups.account',
     icono: 'account-circle',
     atajos: [
-      { titulo: 'Mi Perfil Laboral', subtitulo: 'Datos e indicadores', icono: 'user', destino: 'PerfilLaboral', color: '#8B5CF6' },
-      { titulo: 'Historial de Actividad', subtitulo: 'Auditoría personal', icono: 'clock', destino: 'HistorialCompleto', color: '#10B981' },
-      { titulo: 'Centro de Apoyo', subtitulo: 'Ayuda y preguntas', icono: 'headphones', destino: 'CentroApoyo', color: '#F59E0B' },
-      { titulo: 'Configuración', subtitulo: 'Tema, idioma y cuenta', icono: 'settings', destino: 'ConfiguracionApp', color: '#64748B' },
+      { tituloKey: 'recursos.shortcut_items.PerfilLaboral.title', subtituloKey: 'recursos.shortcut_items.PerfilLaboral.subtitle', icono: 'user', destino: 'PerfilLaboral', color: '#8B5CF6' },
+      { tituloKey: 'recursos.shortcut_items.HistorialCompleto.title', subtituloKey: 'recursos.shortcut_items.HistorialCompleto.subtitle', icono: 'clock', destino: 'HistorialCompleto', color: '#10B981' },
+      { tituloKey: 'recursos.shortcut_items.CentroApoyo.title', subtituloKey: 'recursos.shortcut_items.CentroApoyo.subtitle', icono: 'headphones', destino: 'CentroApoyo', color: '#F59E0B' },
+      { tituloKey: 'recursos.shortcut_items.ConfiguracionApp.title', subtituloKey: 'recursos.shortcut_items.ConfiguracionApp.subtitle', icono: 'settings', destino: 'ConfiguracionApp', color: '#64748B' },
     ],
   },
 ];
@@ -111,9 +114,9 @@ export default function Recursos({ navigation }: Props) {
         {/* Banner Hero Ejecutivo */}
         <View style={estilos.headerHero}>
           <View style={estilos.headerHeroTextos}>
-            <Text style={estilos.eyebrow}>CENTRO DE OPERACIONES</Text>
-            <Text style={estilos.tituloHero}>Recursos y Servicios</Text>
-            <Text style={estilos.subtituloHero}>Accede a todas las herramientas, documentos y trámites corporativos.</Text>
+            <Text style={estilos.eyebrow}>{t('recursos.ops_center_eyebrow')}</Text>
+            <Text style={estilos.tituloHero}>{t('recursos.services_title')}</Text>
+            <Text style={estilos.subtituloHero}>{t('recursos.services_subtitle')}</Text>
           </View>
         </View>
 
@@ -146,7 +149,7 @@ export default function Recursos({ navigation }: Props) {
               <Text style={estilos.tituloSec}>{t('recursos.your_documents', { defaultValue: 'Documentos Recientes' })}</Text>
             </View>
             <TouchableOpacity onPress={() => navigation.navigate('CentroDocumentos')} activeOpacity={0.7}>
-              <Text style={estilos.verTodosText}>Ver todos</Text>
+              <Text style={estilos.verTodosText}>{t('recursos.see_all')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -201,18 +204,18 @@ export default function Recursos({ navigation }: Props) {
 
         {/* Hub de Dominios 2x2 */}
         {GRUPOS_ATAJOS.map((grupo, indiceGrupo) => (
-          <View key={grupo.titulo} style={estilos.seccionRecursos}>
+          <View key={grupo.tituloKey} style={estilos.seccionRecursos}>
             <View style={estilos.cabeceraSec}>
               <View style={estilos.cabeceraTituloRow}>
                 <MaterialIcons name={grupo.icono} size={20} color={esOscuro ? '#FFFFFF' : '#0F172A'} />
-                <Text style={estilos.tituloSec}>{grupo.titulo}</Text>
+                <Text style={estilos.tituloSec}>{t(grupo.tituloKey)}</Text>
               </View>
             </View>
 
             <View style={estilos.gridAtajos2x2}>
               {grupo.atajos.map((atajo, indiceAtajo) => (
                 <Animated.View
-                  key={atajo.titulo}
+                  key={atajo.tituloKey}
                   entering={FadeInDown.duration(260).delay(indiceAtajo * 35).easing(Easing.out(Easing.quad))}
                   style={estilos.cardAtajo2x2Wrap}
                 >
@@ -225,8 +228,8 @@ export default function Recursos({ navigation }: Props) {
                         <MaterialIcons name="chevron-right" size={19} color={colores.textoSuave} />
                       </View>
                       <View style={estilos.cardAtajoBody}>
-                        <Text style={estilos.cardAtajoTitulo} numberOfLines={1}>{atajo.titulo}</Text>
-                        <Text style={estilos.cardAtajoSubtitulo} numberOfLines={1}>{atajo.subtitulo}</Text>
+                        <Text style={estilos.cardAtajoTitulo} numberOfLines={1}>{t(atajo.tituloKey)}</Text>
+                        <Text style={estilos.cardAtajoSubtitulo} numberOfLines={1}>{t(atajo.subtituloKey)}</Text>
                       </View>
                     </BlurView>
                   </BotonAnimado>

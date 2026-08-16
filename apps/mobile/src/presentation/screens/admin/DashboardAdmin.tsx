@@ -65,6 +65,7 @@ import {
   NotificacionAdmin,
   AsistenciaAdmin,
   SolicitudInternaAdmin,
+  SolicitudExtensionTareaAdmin,
   FeedbackAdmin,
   InboxAdmin,
   DocumentoAdmin,
@@ -140,6 +141,7 @@ export default function DashboardAdmin() {
   const [asistencias, setAsistencias] = useState<AsistenciaAdmin[]>([]);
   // Inicializa [solicitudesInternas, setSolicitudesInternas]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [solicitudesInternas, setSolicitudesInternas] = useState<SolicitudInternaAdmin[]>([]);
+  const [solicitudesExtension, setSolicitudesExtension] = useState<SolicitudExtensionTareaAdmin[]>([]);
   // Inicializa [feedbacks, setFeedbacks]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [feedbacks, setFeedbacks] = useState<FeedbackAdmin[]>([]);
   // Inicializa [inboxItems, setInboxItems]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -192,6 +194,7 @@ export default function DashboardAdmin() {
       setAsistencias([]);
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setSolicitudesInternas([]);
+      setSolicitudesExtension([]);
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
       setFeedbacks([]);
       // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
@@ -206,7 +209,7 @@ export default function DashboardAdmin() {
       return;
     }
 
-    const TOTAL_CONSULTAS_DASHBOARD = 12;
+    const TOTAL_CONSULTAS_DASHBOARD = 13;
     const cargadas = new Set<string>();
     const marcarCargada = (clave: string) => {
       cargadas.add(clave);
@@ -250,6 +253,7 @@ export default function DashboardAdmin() {
       crearListener<NotificacionAdmin>('notificaciones', 'notificaciones', setNotificaciones),
       crearListener<AsistenciaAdmin>('asistencias', 'asistencias', setAsistencias),
       crearListener<SolicitudInternaAdmin>('solicitudesInternas', 'solicitudes_internas', setSolicitudesInternas),
+      crearListener<SolicitudExtensionTareaAdmin>('solicitudesExtension', 'solicitudes_extension_tarea', setSolicitudesExtension),
       crearListener<FeedbackAdmin>('feedbacks', 'feedbacks', setFeedbacks),
       crearListener<InboxAdmin>('inboxItems', 'inbox_unificado', setInboxItems),
       crearListener<DocumentoAdmin>('documentos', 'documentos', setDocumentos),
@@ -387,6 +391,30 @@ export default function DashboardAdmin() {
     }
   };
 
+  const resolverSolicitudExtension = async (solicitud: SolicitudExtensionTareaAdmin, aprobar: boolean) => {
+    if (!solicitud.id) return;
+    try {
+      const { error } = await supabase.rpc('resolver_solicitud_extension_tarea', {
+        p_solicitud_id: solicitud.id,
+        p_aprobar: aprobar,
+        p_observacion: null,
+      });
+      if (error) throw error;
+      await registrarAuditoria(
+        aprobar ? 'Aprobación de extensión de tarea' : 'Rechazo de extensión de tarea',
+        'Centro de Aprobaciones',
+        solicitud.tarea_titulo || 'Tarea',
+        aprobar ? 'Success' : 'Warning'
+      );
+      toast.success({
+        title: aprobar ? 'Extensión aprobada' : 'Extensión rechazada',
+        description: aprobar ? 'La fecha límite de la tarea fue actualizada.' : 'Se notificó la decisión al colaborador.',
+      });
+    } catch (error: any) {
+      toast.error({ title: 'No se pudo resolver', description: error?.message || 'Intenta nuevamente.' });
+    }
+  };
+
   // Inicializa metricas; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const metricas = useMemo(() => {
     // Calcula activos; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
@@ -484,8 +512,9 @@ export default function DashboardAdmin() {
     const ausenciasPendientes = ausencias.filter((ausencia) => ausencia.estado === 'pendiente').length;
     // Calcula solicitudesInternasPendientes; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const solicitudesInternasPendientes = solicitudesInternas.filter((solicitud) => solicitud.estado === 'pendiente' || solicitud.estado === 'revisado').length;
+    const extensionesPendientes = solicitudesExtension.filter((solicitud) => solicitud.estado === 'pendiente').length;
     // Declara aprobacionesPendientes; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const aprobacionesPendientes = ausenciasPendientes + solicitudesInternasPendientes;
+    const aprobacionesPendientes = ausenciasPendientes + solicitudesInternasPendientes + extensionesPendientes;
     // Calcula incidenciasAbiertas; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
     const incidenciasAbiertas = feedbacks.filter((feedback) => feedback.estado !== 'resuelto' && (feedback.tipo === 'problema' || feedback.tipo === 'dificultad')).length;
     // Calcula inboxCritico; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
@@ -710,6 +739,23 @@ export default function DashboardAdmin() {
             solicitud,
           };
         }),
+      ...solicitudesExtension
+        .filter((solicitud) => solicitud.estado === 'pendiente')
+        .map((solicitud) => {
+          const usuario = usuarios.find((item) => item.id === solicitud.solicitante_id);
+          const fechaReferencia = solicitud.fecha_limite_solicitada || solicitud.created_at || '';
+          return {
+            id: solicitud.id || '',
+            tipo: 'extension' as const,
+            titulo: `Extensión · ${solicitud.tarea_titulo || 'Tarea'}`,
+            empleado: solicitud.solicitante_nombre || usuario?.nombre || 'Empleado',
+            prioridad: solicitud.urgencia || 'Normal',
+            fecha: fechaReferencia,
+            score: computeSignalScore(computeUrgencyFromDate(fechaReferencia), fechaReferencia, solicitud.urgencia),
+            fotoPerfil: usuario?.foto_perfil || usuario?.fotoPerfil || usuario?.photoURL || usuario?.avatarUrl || null,
+            solicitud,
+          };
+        }),
       // Centro Inteligente: ordena por urgencia por tiempo (vencida > hoy > proxima > normal) + prioridad
       // declarada, no por fecha de envio -- ver packages/domain/services/priorityEngine.ts.
     ].sort((a, b) => b.score - a.score).slice(0, 5);
@@ -784,6 +830,7 @@ export default function DashboardAdmin() {
       alertas,
       ausenciasPendientes,
       solicitudesInternasPendientes,
+      extensionesPendientes,
       aprobacionesPendientes,
       incidenciasAbiertas,
       inboxCritico,
@@ -801,7 +848,7 @@ export default function DashboardAdmin() {
       actividad,
       topDepartamentos,
     };
-  }, [usuarios, tareas, pagos, checkIns, logs, ausencias, notificaciones, asistencias, solicitudesInternas, feedbacks, inboxItems, documentos]);
+  }, [usuarios, tareas, pagos, checkIns, logs, ausencias, notificaciones, asistencias, solicitudesInternas, solicitudesExtension, feedbacks, inboxItems, documentos]);
 
   // Calcula el resumen del periodo seleccionado
   const resumenPeriodo = useMemo(() => {
@@ -1275,8 +1322,8 @@ export default function DashboardAdmin() {
                       prioridad={item.prioridad}
                       fotoPerfil={item.fotoPerfil}
                       onPress={() => setSolicitudSeleccionada(item)}
-                      onAprobar={() => item.tipo === 'ausencia' ? actualizarSolicitudAusencia(item.solicitud as AusenciaAdmin, 'aprobada') : actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'aprobado')}
-                      onRechazar={() => item.tipo === 'ausencia' ? actualizarSolicitudAusencia(item.solicitud as AusenciaAdmin, 'rechazada') : actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'rechazado')}
+                      onAprobar={() => item.tipo === 'ausencia' ? actualizarSolicitudAusencia(item.solicitud as AusenciaAdmin, 'aprobada') : item.tipo === 'extension' ? resolverSolicitudExtension(item.solicitud as SolicitudExtensionTareaAdmin, true) : actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'aprobado')}
+                      onRechazar={() => item.tipo === 'ausencia' ? actualizarSolicitudAusencia(item.solicitud as AusenciaAdmin, 'rechazada') : item.tipo === 'extension' ? resolverSolicitudExtension(item.solicitud as SolicitudExtensionTareaAdmin, false) : actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'rechazado')}
                     />
                   )) : (
                     // EmptyState renderiza una pieza visual reutilizable dentro de esta pantalla.
@@ -1363,6 +1410,8 @@ export default function DashboardAdmin() {
                 <Text style={estilos.modalTitle}>
                   {solicitudSeleccionada?.tipo === 'ausencia'
                     ? t('admin.dashboard.approvals.absence_detail', { defaultValue: 'DETALLES DE AUSENCIA' })
+                    : solicitudSeleccionada?.tipo === 'extension'
+                      ? 'DETALLES DE EXTENSIÓN'
                     : t('admin.dashboard.approvals.request_detail', { defaultValue: 'DETALLES DE SOLICITUD' })}
                 </Text>
                 <Text style={estilos.modalSubtitle}>
@@ -1428,14 +1477,14 @@ export default function DashboardAdmin() {
                     <View style={estilos.detailsGridCol}>
                       <Text style={estilos.detailsLabel}>{t('admin.dashboard.approvals.start_date', { defaultValue: 'Fecha Inicio' })}</Text>
                       <Text style={estilos.detailsValue}>
-                        {solicitudSeleccionada.solicitud?.fecha_inicio || solicitudSeleccionada.solicitud?.fecha_solicitud || t('admin.dashboard.approvals.not_specified', { defaultValue: 'No especificada' })}
+                        {solicitudSeleccionada.solicitud?.fecha_inicio || solicitudSeleccionada.solicitud?.fecha_limite_anterior || solicitudSeleccionada.solicitud?.fecha_solicitud || t('admin.dashboard.approvals.not_specified', { defaultValue: 'No especificada' })}
                       </Text>
                     </View>
 
                     <View style={estilos.detailsGridCol}>
                       <Text style={estilos.detailsLabel}>{t('admin.dashboard.approvals.end_date', { defaultValue: 'Fecha Fin' })}</Text>
                       <Text style={estilos.detailsValue}>
-                        {solicitudSeleccionada.solicitud?.fecha_fin || t('admin.dashboard.approvals.not_specified', { defaultValue: 'No especificada' })}
+                        {solicitudSeleccionada.solicitud?.fecha_fin || solicitudSeleccionada.solicitud?.fecha_limite_solicitada || t('admin.dashboard.approvals.not_specified', { defaultValue: 'No especificada' })}
                       </Text>
                     </View>
 
@@ -1498,6 +1547,8 @@ export default function DashboardAdmin() {
                   setSolicitudSeleccionada(null);
                   if (item.tipo === 'ausencia') {
                     await actualizarSolicitudAusencia(item.solicitud as AusenciaAdmin, 'rechazada');
+                  } else if (item.tipo === 'extension') {
+                    await resolverSolicitudExtension(item.solicitud as SolicitudExtensionTareaAdmin, false);
                   } else {
                     await actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'rechazado');
                   }
@@ -1516,6 +1567,8 @@ export default function DashboardAdmin() {
                   setSolicitudSeleccionada(null);
                   if (item.tipo === 'ausencia') {
                     await actualizarSolicitudAusencia(item.solicitud as AusenciaAdmin, 'aprobada');
+                  } else if (item.tipo === 'extension') {
+                    await resolverSolicitudExtension(item.solicitud as SolicitudExtensionTareaAdmin, true);
                   } else {
                     await actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'aprobado');
                   }
@@ -1533,4 +1586,3 @@ export default function DashboardAdmin() {
     </Animated.View>
   );
 };
-

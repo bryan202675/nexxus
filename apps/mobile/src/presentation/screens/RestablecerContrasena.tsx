@@ -8,10 +8,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
   Animated,
   Easing,
   KeyboardAvoidingView,
@@ -26,10 +24,15 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Feather, Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import { AdminToastProvider, useAdminToast } from '@/presentation/screens/admin/adminToast';
 import { supabase } from '@/infrastructure/supabase/supabaseClient';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
+
+const Text = AdminTranslatedText;
+const TextInput = AdminTranslatedTextInput;
 
 // Importación estática pre-cargada para cambio de tema instantáneo en memoria nativa
 const FONDO_OSCURO = require('../../../assets/fondoNexxus.jpg');
@@ -38,6 +41,7 @@ const ISO_OSCURO = require('../../../assets/isoNexxus.png');
 const ISO_CLARO = require('../../../assets/isoNexxusBlack.png');
 
 function RestablecerContrasenaContent({ navigation }: { navigation: any }) {
+  const { t } = useTranslation();
   const { colores, blurTint, intensidadBlur, esOscuro, alternarModo } = useTemaMobile();
   const toast = useAdminToast();
 
@@ -104,11 +108,11 @@ function RestablecerContrasenaContent({ navigation }: { navigation: any }) {
 
   const guardarNuevaContrasena = async () => {
     if (password.length < 8) {
-      toast.warning({ title: 'Contraseña muy corta', description: 'Usa al menos 8 caracteres.' });
+      toast.warning({ title: t('restablecerContrasena.alert_short_password_title'), description: t('restablecerContrasena.alert_short_password_msg') });
       return;
     }
     if (password !== confirmar) {
-      toast.warning({ title: 'No coinciden', description: 'Las contraseñas ingresadas son distintas.' });
+      toast.warning({ title: t('restablecerContrasena.alert_mismatch_title'), description: t('restablecerContrasena.alert_mismatch_msg') });
       return;
     }
     setGuardando(true);
@@ -123,7 +127,7 @@ function RestablecerContrasenaContent({ navigation }: { navigation: any }) {
 
       setListo(true);
     } catch (err: any) {
-      toast.error({ title: 'No se pudo actualizar', description: err?.message || 'Intenta de nuevo en unos segundos.' });
+      toast.error({ title: t('restablecerContrasena.alert_error_title'), description: err?.message || t('restablecerContrasena.alert_error_default_msg') });
     } finally {
       setGuardando(false);
     }
@@ -219,8 +223,8 @@ function RestablecerContrasenaContent({ navigation }: { navigation: any }) {
                 },
               ]}
             >
-              <Text style={estilos.titulo}>Nueva contraseña</Text>
-              <Text style={estilos.subtitulo}>Crea una contraseña segura para tu acceso a la plataforma.</Text>
+              <Text style={estilos.titulo}>{t('restablecerContrasena.title')}</Text>
+              <Text style={estilos.subtitulo}>{t('restablecerContrasena.subtitle')}</Text>
             </Animated.View>
 
             {/* Panel de Formulario Glass Panel */}
@@ -245,21 +249,21 @@ function RestablecerContrasenaContent({ navigation }: { navigation: any }) {
                   <ActivityIndicator color={esOscuro ? '#FFFFFF' : '#000000'} size="small" style={{ paddingVertical: 20 }} />
                 ) : Platform.OS !== 'web' ? (
                   <Text style={estilos.aviso}>
-                    Por ahora la recuperación de contraseña solo funciona abriendo el enlace desde un navegador.
+                    {t('restablecerContrasena.notice_web_only')}
                   </Text>
                 ) : !sesionValida ? (
                   <Text style={estilos.aviso}>
-                    Este enlace no es válido o ya venció. Pide uno nuevo desde la pantalla de inicio de sesión.
+                    {t('restablecerContrasena.notice_invalid_link')}
                   </Text>
                 ) : listo ? (
                   <View style={estilos.exitoBox}>
                     <Ionicons name="checkmark-circle" size={42} color="#22C55E" />
-                    <Text style={estilos.exitoTitulo}>¡Contraseña actualizada!</Text>
-                    <Text style={estilos.exitoTexto}>Tu contraseña se actualizó correctamente. Ya puedes iniciar sesión con tus nuevas credenciales.</Text>
-                    
+                    <Text style={estilos.exitoTitulo}>{t('restablecerContrasena.success_title')}</Text>
+                    <Text style={estilos.exitoTexto}>{t('restablecerContrasena.success_msg')}</Text>
+
                     <BotonAnimado style={estilos.botonWrapSubmit} onPress={() => navigation.navigate('LoginEmpresarial')} scaleTo={0.96}>
                       <View style={estilos.botonSubmit}>
-                        <Text style={estilos.textoBotonSubmit}>Ir a iniciar sesión</Text>
+                        <Text style={estilos.textoBotonSubmit}>{t('restablecerContrasena.btn_go_login')}</Text>
                         <Feather name="arrow-right" size={20} color={esOscuro ? '#000000' : '#FFFFFF'} style={estilos.iconoBotonSubmit} />
                       </View>
                     </BotonAnimado>
@@ -268,12 +272,12 @@ function RestablecerContrasenaContent({ navigation }: { navigation: any }) {
                   <>
                     {/* Campo Nueva Contraseña */}
                     <View style={estilos.inputGroup}>
-                      <Text style={estilos.label}>NUEVA CONTRASEÑA</Text>
+                      <Text style={estilos.label}>{t('restablecerContrasena.field_new_password_label')}</Text>
                       <View style={estilos.inputWrapper}>
                         <Feather name="lock" size={18} color={esOscuro ? 'rgba(255,255,255,0.6)' : 'rgba(15,23,42,0.6)'} style={estilos.inputIcon} />
                         <TextInput
                           style={estilos.input}
-                          placeholder="Mínimo 8 caracteres"
+                          placeholder={t('restablecerContrasena.field_new_password_placeholder')}
                           placeholderTextColor={esOscuro ? 'rgba(255,255,255,0.4)' : 'rgba(15,23,42,0.4)'}
                           value={password}
                           onChangeText={setPassword}
@@ -288,12 +292,12 @@ function RestablecerContrasenaContent({ navigation }: { navigation: any }) {
 
                     {/* Campo Confirmar Contraseña */}
                     <View style={estilos.inputGroup}>
-                      <Text style={estilos.label}>CONFIRMAR CONTRASEÑA</Text>
+                      <Text style={estilos.label}>{t('restablecerContrasena.field_confirm_password_label')}</Text>
                       <View style={estilos.inputWrapper}>
                         <Feather name="lock" size={18} color={esOscuro ? 'rgba(255,255,255,0.6)' : 'rgba(15,23,42,0.6)'} style={estilos.inputIcon} />
                         <TextInput
                           style={estilos.input}
-                          placeholder="Repite la contraseña"
+                          placeholder={t('restablecerContrasena.field_confirm_password_placeholder')}
                           placeholderTextColor={esOscuro ? 'rgba(255,255,255,0.4)' : 'rgba(15,23,42,0.4)'}
                           value={confirmar}
                           onChangeText={setConfirmar}
@@ -310,7 +314,7 @@ function RestablecerContrasenaContent({ navigation }: { navigation: any }) {
                           <ActivityIndicator color={esOscuro ? '#000000' : '#FFFFFF'} size="small" />
                         ) : (
                           <>
-                            <Text style={estilos.textoBotonSubmit}>Guardar contraseña</Text>
+                            <Text style={estilos.textoBotonSubmit}>{t('restablecerContrasena.btn_save')}</Text>
                             <Feather name="arrow-right" size={20} color={esOscuro ? '#000000' : '#FFFFFF'} style={estilos.iconoBotonSubmit} />
                           </>
                         )}

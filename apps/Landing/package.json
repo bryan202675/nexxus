@@ -1,0 +1,11 @@
+{
+  "name": "landing",
+  "private": true,
+  "scripts": {
+    "dev": "node dev-server.mjs",
+    "start": "node dev-server.mjs"
+  },
+  "devDependencies": {
+    "serve-handler": "^6.1.7"
+  }
+}

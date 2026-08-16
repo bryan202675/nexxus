@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   SafeAreaView,
   StatusBar,
@@ -14,6 +13,7 @@ import Animated, { Easing, FadeInDown, useAnimatedStyle, useSharedValue, withTim
 import { EmptyState, Skeleton, SkeletonLista } from '@/presentation/components/ui';
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
 import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 import { COLORES, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/constants/diseno';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import { useCases } from '@/infrastructure/container';
@@ -21,6 +21,8 @@ import { calcularPuntos, calcularProgresoLogros, siguienteLogro } from 'domain/s
 import { AchievementProgress, EarnedAchievement } from 'domain/entities/Achievement';
 import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
+
+const Text = AdminTranslatedText;
 
 type ColoresTema = ReturnType<typeof useTemaMobile>['colores'];
 
@@ -122,7 +124,7 @@ export default function MisLogros({ navigation }: Props) {
     <SafeAreaView style={estilos.contenedor}>
       <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
       <View style={estilos.fondoAbsoluto}><FondoMobilePremium /></View>
-      <NavbarEnterprise titulo={t('misLogros.title', { defaultValue: 'Mis Logros' })} subtitulo="Gamificación y reconocimientos" mostrarAtras />
+      <NavbarEnterprise titulo={t('misLogros.title', { defaultValue: 'Mis Logros' })} subtitulo={t('misLogros.subtitle')} mostrarAtras />
 
       {cargando ? (
         <View style={estilos.scroll}>

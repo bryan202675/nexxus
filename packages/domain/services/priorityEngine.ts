@@ -181,14 +181,40 @@ export const mapAprobacionesReportAPrioritySignals = (items: RequestReportItem[]
     });
 
 /**
+ * Convierte una fecha o string ISO a clave de fecha local ('YYYY-MM-DD') según la zona horaria del cliente.
+ */
+export const toLocalDateKey = (fechaInput: string | Date): string => {
+  if (fechaInput instanceof Date) {
+    const y = fechaInput.getFullYear();
+    const m = String(fechaInput.getMonth() + 1).padStart(2, '0');
+    const d = String(fechaInput.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  if (typeof fechaInput === 'string') {
+    const trimmed = fechaInput.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      return trimmed;
+    }
+    const parsed = new Date(trimmed);
+    if (!Number.isNaN(parsed.getTime())) {
+      const y = parsed.getFullYear();
+      const m = String(parsed.getMonth() + 1).padStart(2, '0');
+      const d = String(parsed.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+  }
+  return '';
+};
+
+/**
  * Señal de "check-in de hoy no realizado" -- se construye a mano (no hay una entidad que representar,
  * es la ausencia de un CheckIn del día). `ultimoCheckIn` es el más reciente del usuario, o null/undefined
  * si nunca hizo uno.
  */
 export const buildCheckInPendingSignal = (ultimoCheckIn: { fecha: string } | null | undefined, ahora: Date = new Date()): PrioritySignal | null => {
-  const hoyKey = new Date(soloFechaUTC(ahora)).toISOString().slice(0, 10);
-  const ultimoKey = ultimoCheckIn ? new Date(soloFechaUTC(new Date(ultimoCheckIn.fecha))).toISOString().slice(0, 10) : null;
-  if (ultimoKey === hoyKey) return null;
+  const hoyKey = toLocalDateKey(ahora);
+  const ultimoKey = ultimoCheckIn?.fecha ? toLocalDateKey(ultimoCheckIn.fecha) : null;
+  if (ultimoKey && ultimoKey === hoyKey) return null;
 
   return {
     id: 'checkin-pendiente-hoy',

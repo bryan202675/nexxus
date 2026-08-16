@@ -1,6 +1,10 @@
 import React from 'react';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
+
+const Text = AdminTranslatedText;
 
 export function MetricTile({ label, value, detail, icon, tone, estilos, index = 0 }: {
   label: string;
@@ -28,11 +32,12 @@ export function MetricTile({ label, value, detail, icon, tone, estilos, index = 
 }
 
 export function EmptyState({ estilos, title, text }: { estilos?: any; title?: string; text?: string }) {
+  const { t } = useTranslation();
   return (
     <View>
       <MaterialIcons name="domain-disabled" size={28} />
-      <Text>{title || 'Sin datos todavía'}</Text>
-      <Text>{text || 'Cuando existan registros aparecerán aquí sin usar datos simulados.'}</Text>
+      <Text>{title || t('superadmin.saLayout.estados.sinDatosTitulo')}</Text>
+      <Text>{text || t('superadmin.saLayout.estados.sinDatosTexto')}</Text>
     </View>
   );
 }
@@ -52,10 +57,11 @@ export function LoadingState({ estilos, tiles = 4 }: { estilos?: any; tiles?: nu
 }
 
 export function ErrorPanel({ estilos, theme, message }: { estilos?: any; theme?: any; message: string }) {
+  const { t } = useTranslation();
   return (
     <View>
       <MaterialIcons name="error-outline" size={28} />
-      <Text>No se pudo cargar el panel</Text>
+      <Text>{t('superadmin.saLayout.estados.errorPanel')}</Text>
       <Text>{message}</Text>
     </View>
   );

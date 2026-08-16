@@ -13,7 +13,6 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
-  Text,
   View,
   RefreshControl,
   ActivityIndicator,
@@ -25,6 +24,8 @@ import * as Sharing from 'expo-sharing';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import { RADIOS, SOMBRAS } from '@/shared/constants/diseno';
@@ -34,6 +35,8 @@ import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
 import ModalShell from '@/presentation/components/ui/ModalShell';
 import EmptyState from '@/presentation/components/ui/EmptyState';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
+
+const Text = AdminTranslatedText;
 
 type Props = { navigation: { goBack: () => void; navigate: (route: string) => void } };
 
@@ -90,6 +93,7 @@ const buildReceiptText = (payment: Payment, employeeName: string, companyName = 
 ].filter(Boolean).join('\n');
 
 export default function MiSalario({ navigation }: Props) {
+  const { t } = useTranslation();
   const { perfil, pagos, recargarDatos, cargando } = useContextoUsuario();
   const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
   const estilos = useMemo(() => crearEstilosSalario(colores, esOscuro), [colores, esOscuro]);
@@ -136,7 +140,7 @@ export default function MiSalario({ navigation }: Props) {
   const downloadReceipt = async (payment: Payment) => {
     setDownloadingReceiptId(payment.id);
     try {
-      const content = buildReceiptText(payment, perfil?.nombre || payment.usuarioNombre || 'Empleado');
+      const content = buildReceiptText(payment, perfil?.nombre || payment.usuarioNombre || t('miSalario.default_employee'));
       const filename = `Recibo_${filenameSafe(payment.periodo)}_${filenameSafe(payment.id)}.txt`;
 
       if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -157,10 +161,10 @@ export default function MiSalario({ navigation }: Props) {
       if (isAvailable) {
         await Sharing.shareAsync(uri, { mimeType: 'text/plain', dialogTitle: `Recibo de Nómina - ${payment.periodo}` });
       } else {
-        Alert.alert('Recibo Generado', `Guardado en: ${uri}`);
+        Alert.alert(t('miSalario.alert_receipt_generated_title'), t('miSalario.alert_receipt_generated_msg', { uri }));
       }
     } catch (e: any) {
-      Alert.alert('Error', e?.message || 'No se pudo generar el comprobante.');
+      Alert.alert(t('common.error', { defaultValue: 'Error' }), e?.message || t('miSalario.alert_error_generating'));
     } finally {
       setDownloadingReceiptId(null);
     }
@@ -190,8 +194,8 @@ export default function MiSalario({ navigation }: Props) {
       </View>
 
       <NavbarEnterprise
-        titulo="Mi Salario"
-        subtitulo="Nómina y comprobantes"
+        titulo={t('miSalario.title')}
+        subtitulo={t('miSalario.subtitle')}
         mostrarAtras
         ocultarAccionesDerechas
         accionDerecha={
@@ -228,7 +232,7 @@ export default function MiSalario({ navigation }: Props) {
             <View style={estilos.heroTopRow}>
               <View style={estilos.heroPill}>
                 <Feather name="shield" size={12} color={colores.textoSuave} />
-                <Text style={estilos.heroPillTexto}>NÓMINA OFICIAL</Text>
+                <Text style={estilos.heroPillTexto}>{t('miSalario.hero_pill')}</Text>
               </View>
               {latest && (
                 <View
@@ -247,7 +251,7 @@ export default function MiSalario({ navigation }: Props) {
               )}
             </View>
 
-            <Text style={estilos.heroLabel}>Último salario neto</Text>
+            <Text style={estilos.heroLabel}>{t('miSalario.hero_label')}</Text>
             <Text style={estilos.heroAmount}>
               {latest ? money(latest.salario_neto, latest.moneda || 'USD') : money(0)}
             </Text>
@@ -255,7 +259,7 @@ export default function MiSalario({ navigation }: Props) {
             <Text style={estilos.heroMeta}>
               {latest
                 ? `Período: ${latest.periodo} · Desembolsado el ${dateLabel(latest.fecha_pago)}`
-                : 'La nómina aparecerá automáticamente cuando administración publique un pago.'}
+                : t('miSalario.hero_meta_empty')}
             </Text>
 
             <View style={estilos.divisorHero} />
@@ -263,7 +267,7 @@ export default function MiSalario({ navigation }: Props) {
             {/* Grid 3 métricas ejecutivas */}
             <View style={estilos.heroGrid}>
               <View style={estilos.metricItem}>
-                <Text style={estilos.metricLabel}>Salario base</Text>
+                <Text style={estilos.metricLabel}>{t('miSalario.metric_base_salary')}</Text>
                 <Text style={estilos.metricValue} numberOfLines={1}>
                   {money(latest?.salario_base ?? perfil?.salarioBase ?? 0, latest?.moneda || 'USD')}
                 </Text>
@@ -272,7 +276,7 @@ export default function MiSalario({ navigation }: Props) {
               <View style={estilos.divisorVerticalMetric} />
 
               <View style={estilos.metricItem}>
-                <Text style={estilos.metricLabel}>Deducciones</Text>
+                <Text style={estilos.metricLabel}>{t('miSalario.metric_deductions')}</Text>
                 <Text style={[estilos.metricValue, { color: '#EF4444' }]} numberOfLines={1}>
                   {latestDeducciones > 0 ? `-${money(latestDeducciones, latest?.moneda || 'USD')}` : '$0.00'}
                 </Text>
@@ -281,7 +285,7 @@ export default function MiSalario({ navigation }: Props) {
               <View style={estilos.divisorVerticalMetric} />
 
               <View style={estilos.metricItem}>
-                <Text style={estilos.metricLabel}>Total pagado</Text>
+                <Text style={estilos.metricLabel}>{t('miSalario.metric_total_paid')}</Text>
                 <Text style={[estilos.metricValue, { color: '#10B981' }]} numberOfLines={1}>
                   {money(totalPaid)}
                 </Text>
@@ -296,7 +300,7 @@ export default function MiSalario({ navigation }: Props) {
             <BlurView intensity={Platform.OS === 'ios' ? intensidadBlur + 8 : 80} tint={blurTint} style={estilos.breakdownCard}>
               <View style={estilos.seccionHeaderBreakdown}>
                 <View>
-                  <Text style={estilos.sectionTitle}>Desglose de Nómina</Text>
+                  <Text style={estilos.sectionTitle}>{t('miSalario.section_breakdown')}</Text>
                   <Text style={estilos.sectionSubtitle}>{latest.periodo}</Text>
                 </View>
                 <BotonAnimado
@@ -304,7 +308,7 @@ export default function MiSalario({ navigation }: Props) {
                   scaleTo={0.92}
                   style={estilos.botonVerDetalleChip}
                 >
-                  <Text style={estilos.textoVerDetalleChip}>Ver Completo</Text>
+                  <Text style={estilos.textoVerDetalleChip}>{t('miSalario.btn_view_full')}</Text>
                   <Feather name="chevron-right" size={14} color={colores.texto} />
                 </BotonAnimado>
               </View>
@@ -337,8 +341,8 @@ export default function MiSalario({ navigation }: Props) {
               {/* Total Card */}
               <View style={estilos.totalCard}>
                 <View>
-                  <Text style={estilos.totalCardLabel}>Total neto depositado</Text>
-                  <Text style={estilos.totalCardDate}>Fecha de pago: {dateLabel(latest.fecha_pago)}</Text>
+                  <Text style={estilos.totalCardLabel}>{t('miSalario.total_card_label')}</Text>
+                  <Text style={estilos.totalCardDate}>{t('miSalario.payment_date', { fecha: dateLabel(latest.fecha_pago) })}</Text>
                 </View>
                 <Text style={estilos.totalCardValue}>{money(latest.salario_neto, latest.moneda)}</Text>
               </View>
@@ -355,7 +359,7 @@ export default function MiSalario({ navigation }: Props) {
                 ) : (
                   <>
                     <Feather name="download" size={17} color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
-                    <Text style={estilos.receiptButtonText}>Descargar Comprobante Oficial</Text>
+                    <Text style={estilos.receiptButtonText}>{t('miSalario.btn_download_receipt')}</Text>
                   </>
                 )}
               </BotonAnimado>
@@ -364,9 +368,9 @@ export default function MiSalario({ navigation }: Props) {
         ) : (
           <EmptyState
             icono="dollar-sign"
-            titulo="Sin nómina publicada"
-            detalle="Cuando administración apruebe y publique tu nómina, verás aquí el desglose y comprobantes oficiales."
-            accionLabel="Ver historial completo"
+            titulo={t('miSalario.empty_title')}
+            detalle={t('miSalario.empty_detail')}
+            accionLabel={t('miSalario.empty_action')}
             onAccion={() => navigation.navigate('HistorialCompleto')}
           />
         )}
@@ -375,10 +379,10 @@ export default function MiSalario({ navigation }: Props) {
         <View style={estilos.sectionHeader}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Feather name="file-text" size={16} color={colores.texto} />
-            <Text style={estilos.sectionTitle}>Historial de Recibos</Text>
+            <Text style={estilos.sectionTitle}>{t('miSalario.section_history')}</Text>
           </View>
           <View style={estilos.badgeCount}>
-            <Text style={estilos.textoBadgeCount}>{orderedPayments.length} registros</Text>
+            <Text style={estilos.textoBadgeCount}>{t('miSalario.records_count', { count: orderedPayments.length })}</Text>
           </View>
         </View>
 
@@ -435,7 +439,7 @@ export default function MiSalario({ navigation }: Props) {
               <View style={{ flex: 1, marginRight: 10 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                   <Feather name="shield" size={12} color={colores.textoSuave} />
-                  <Text style={estilos.tipoSolicitud}>COMPROBANTE DE PAGO</Text>
+                  <Text style={estilos.tipoSolicitud}>{t('miSalario.modal_kind')}</Text>
                 </View>
                 <Text style={estilos.modalTitulo} numberOfLines={1}>
                   {pagoSeleccionado.periodo}
@@ -449,7 +453,7 @@ export default function MiSalario({ navigation }: Props) {
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={estilos.scrollModal}>
               {/* Tarjeta Destacada de Monto Neto */}
               <View style={estilos.modalHeroNeto}>
-                <Text style={estilos.modalHeroNetoLabel}>Total Neto Acreditado</Text>
+                <Text style={estilos.modalHeroNetoLabel}>{t('miSalario.modal_hero_label')}</Text>
                 <Text style={estilos.modalHeroNetoAmount}>
                   {money(pagoSeleccionado.salario_neto, pagoSeleccionado.moneda)}
                 </Text>
@@ -468,14 +472,14 @@ export default function MiSalario({ navigation }: Props) {
                     </Text>
                   </View>
                   <Text style={estilos.modalFechaPagoTexto}>
-                    Pagado el {dateLabel(pagoSeleccionado.fecha_pago)}
+                    {t('miSalario.modal_paid_on', { fecha: dateLabel(pagoSeleccionado.fecha_pago) })}
                   </Text>
                 </View>
               </View>
 
               {/* Sección Ingresos */}
               <View style={estilos.detalleSeccionCard}>
-                <Text style={estilos.detalleLabel}>Percepciones e Ingresos Brutos</Text>
+                <Text style={estilos.detalleLabel}>{t('miSalario.modal_section_income')}</Text>
                 <PayrollLineItem label="Salario Base" value={money(pagoSeleccionado.salario_base || pagoSeleccionado.salario_bruto, pagoSeleccionado.moneda)} estilos={estilos} positive />
                 {!!pagoSeleccionado.bono && (
                   <PayrollLineItem label="Bonos" value={`+${money(pagoSeleccionado.bono, pagoSeleccionado.moneda)}`} estilos={estilos} positive />
@@ -497,7 +501,7 @@ export default function MiSalario({ navigation }: Props) {
 
               {/* Sección Deducciones */}
               <View style={estilos.detalleSeccionCard}>
-                <Text style={estilos.detalleLabel}>Retenciones y Deducciones de Ley</Text>
+                <Text style={estilos.detalleLabel}>{t('miSalario.modal_section_deductions')}</Text>
                 <PayrollLineItem label="ISSS (Seguro Social 3%)" value={`-${money(pagoSeleccionado.isss, pagoSeleccionado.moneda)}`} estilos={estilos} />
                 <PayrollLineItem label="AFP (Fondo de Pensiones 7.25%)" value={`-${money(pagoSeleccionado.afp, pagoSeleccionado.moneda)}`} estilos={estilos} />
                 <PayrollLineItem label="Renta (Retención ISR)" value={`-${money(pagoSeleccionado.renta, pagoSeleccionado.moneda)}`} estilos={estilos} />
@@ -514,23 +518,23 @@ export default function MiSalario({ navigation }: Props) {
 
               {/* Sección Datos de Dispersión / Empleado */}
               <View style={estilos.detalleSeccionCard}>
-                <Text style={estilos.detalleLabel}>Información de Dispersión</Text>
+                <Text style={estilos.detalleLabel}>{t('miSalario.modal_section_dispersion')}</Text>
                 <View style={estilos.infoRowModal}>
-                  <Text style={estilos.infoRowKey}>Beneficiario</Text>
-                  <Text style={estilos.infoRowVal}>{perfil?.nombre || pagoSeleccionado.usuarioNombre || 'Empleado'}</Text>
+                  <Text style={estilos.infoRowKey}>{t('miSalario.info_beneficiary')}</Text>
+                  <Text style={estilos.infoRowVal}>{perfil?.nombre || pagoSeleccionado.usuarioNombre || t('miSalario.default_employee')}</Text>
                 </View>
                 <View style={estilos.infoRowModal}>
-                  <Text style={estilos.infoRowKey}>Cargo / Depto</Text>
-                  <Text style={estilos.infoRowVal}>{pagoSeleccionado.cargo || perfil?.cargo || 'General'} · {pagoSeleccionado.departamento || 'Operaciones'}</Text>
+                  <Text style={estilos.infoRowKey}>{t('miSalario.info_role_dept')}</Text>
+                  <Text style={estilos.infoRowVal}>{pagoSeleccionado.cargo || perfil?.cargo || t('miSalario.default_general')} · {pagoSeleccionado.departamento || t('miSalario.default_operations')}</Text>
                 </View>
                 {pagoSeleccionado.banco && (
                   <View style={estilos.infoRowModal}>
-                    <Text style={estilos.infoRowKey}>Cuenta Bancaria</Text>
+                    <Text style={estilos.infoRowKey}>{t('miSalario.info_bank_account')}</Text>
                     <Text style={estilos.infoRowVal}>{pagoSeleccionado.banco} {pagoSeleccionado.cuenta_bancaria ? `(***${pagoSeleccionado.cuenta_bancaria.slice(-4)})` : ''}</Text>
                   </View>
                 )}
                 <View style={estilos.infoRowModal}>
-                  <Text style={estilos.infoRowKey}>Folio / ID</Text>
+                  <Text style={estilos.infoRowKey}>{t('miSalario.info_folio_id')}</Text>
                   <Text style={estilos.infoRowVal} numberOfLines={1}>{pagoSeleccionado.id}</Text>
                 </View>
               </View>
@@ -547,7 +551,7 @@ export default function MiSalario({ navigation }: Props) {
                 ) : (
                   <>
                     <Feather name="share-2" size={17} color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
-                    <Text style={estilos.receiptButtonText}>Descargar / Compartir Recibo</Text>
+                    <Text style={estilos.receiptButtonText}>{t('miSalario.btn_download_share')}</Text>
                   </>
                 )}
               </BotonAnimado>

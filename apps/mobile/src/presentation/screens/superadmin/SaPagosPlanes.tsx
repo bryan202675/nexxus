@@ -5,7 +5,9 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { ScrollView, View, useWindowDimensions } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 import { PagoResumen, PlatformStats } from 'domain/entities/SuperAdmin';
 import { useCases } from '@/infrastructure/container';
 import { formatoFecha, formatoMoneda } from './saFormat';
@@ -13,6 +15,8 @@ import {
   useSaTheme, useSaEntrance,
   SaKpiCard, SaSectionCard, SaTableHeader, SaTableRow, SaCell, SaStatusIndicator, SaDonutChart, SaBadgeTone,
 } from './components/SaWidgets';
+
+const Text = AdminTranslatedText;
 
 type LoadState = 'loading' | 'ready' | 'empty' | 'error';
 
@@ -33,6 +37,7 @@ const pagoTone = (status: string): SaBadgeTone => {
 };
 
 export default function SaPagosPlanes() {
+  const { t } = useTranslation();
   const { theme } = useSaTheme();
   const { width } = useWindowDimensions();
   const compact = width < 900;
@@ -52,7 +57,7 @@ export default function SaPagosPlanes() {
       setPagos(result.items);
       setState(result.items.length > 0 ? 'ready' : 'empty');
     }, (error) => {
-      setErrorMessage(error.message || 'No se pudieron cargar los pagos.');
+      setErrorMessage(error.message || t('superadmin.saPagosPlanes.error.cargaPagos'));
       setState('error');
     });
     return () => unsubscribe();
@@ -70,24 +75,24 @@ export default function SaPagosPlanes() {
         ) : null}
 
         <View>
-          <SaKpiCard index={0} theme={theme} icon="paid" label="Ingresos confirmados" value={formatoMoneda(stats.ingresosTotales)} delta="Histórico total" tone="positive" />
-          <SaKpiCard index={1} theme={theme} icon="trending-up" label="Ingresos 30 días" value={formatoMoneda(stats.ingresos30d)} delta="Últimos 30 días" tone="positive" />
-          <SaKpiCard index={2} theme={theme} icon="workspace-premium" label="Empresas con plan" value={String(stats.empresasTotal)} delta={`${planEntries.length} planes distintos`} />
-          <SaKpiCard index={3} theme={theme} icon="receipt-long" label="Pagos recientes" value={String(pagos.length)} delta="Últimos registrados" />
+          <SaKpiCard index={0} theme={theme} icon="paid" label={t('superadmin.saPagosPlanes.kpi.ingresosConfirmados')} value={formatoMoneda(stats.ingresosTotales)} delta={t('superadmin.saPagosPlanes.kpi.historicoTotal')} tone="positive" />
+          <SaKpiCard index={1} theme={theme} icon="trending-up" label={t('superadmin.saPagosPlanes.kpi.ingresos30Dias')} value={formatoMoneda(stats.ingresos30d)} delta={t('superadmin.saPagosPlanes.kpi.ultimos30Dias')} tone="positive" />
+          <SaKpiCard index={2} theme={theme} icon="workspace-premium" label={t('superadmin.saPagosPlanes.kpi.empresasConPlan')} value={String(stats.empresasTotal)} delta={t('superadmin.saPagosPlanes.kpi.planesDistintos', { count: planEntries.length })} />
+          <SaKpiCard index={3} theme={theme} icon="receipt-long" label={t('superadmin.saPagosPlanes.kpi.pagosRecientes')} value={String(pagos.length)} delta={t('superadmin.saPagosPlanes.kpi.ultimosRegistrados')} />
         </View>
 
         <View>
-          <SaSectionCard theme={theme} title="Distribución de planes">
+          <SaSectionCard theme={theme} title={t('superadmin.saPagosPlanes.secciones.distribucionPlanes')}>
             {planEntries.length > 0 ? (
               <SaDonutChart theme={theme} data={planEntries.slice(0, 4).map(([plan, cantidad], i) => ({ label: plan, value: cantidad, color: PLAN_COLORS[i % PLAN_COLORS.length] }))} />
             ) : (
-              <Text>Sin planes asignados todavía.</Text>
+              <Text>{t('superadmin.saPagosPlanes.vacio.sinPlanes')}</Text>
             )}
           </SaSectionCard>
 
-          <SaSectionCard theme={theme} title="Pagos recientes">
+          <SaSectionCard theme={theme} title={t('superadmin.saPagosPlanes.secciones.pagosRecientes')}>
             {!compact && pagos.length > 0 ? (
-              <SaTableHeader theme={theme} columns={[{ label: 'EMPRESA', flex: 1.6 }, { label: 'PLAN' }, { label: 'MONTO' }, { label: 'ESTADO' }, { label: 'FECHA' }]} />
+              <SaTableHeader theme={theme} columns={[{ label: t('superadmin.saPagosPlanes.tabla.empresa'), flex: 1.6 }, { label: t('superadmin.saPagosPlanes.tabla.plan') }, { label: t('superadmin.saPagosPlanes.tabla.monto') }, { label: t('superadmin.saPagosPlanes.tabla.estado') }, { label: t('superadmin.saPagosPlanes.tabla.fecha') }]} />
             ) : null}
             {pagos.map((pago, i) => (
               <SaTableRow key={pago.id} theme={theme} last={i === pagos.length - 1}>
@@ -106,7 +111,7 @@ export default function SaPagosPlanes() {
             ))}
             {pagos.length === 0 ? (
               <Text>
-                {state === 'loading' ? 'Cargando pagos…' : 'Sin pagos registrados. Cuando se confirmen pagos de cualquier empresa aparecerán aquí.'}
+                {state === 'loading' ? t('superadmin.saPagosPlanes.vacio.cargando') : t('superadmin.saPagosPlanes.vacio.sinPagos')}
               </Text>
             ) : null}
           </SaSectionCard>
