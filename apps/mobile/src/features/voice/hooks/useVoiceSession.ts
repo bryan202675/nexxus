@@ -145,6 +145,11 @@ export function useVoiceSession() {
     });
   }, [audio.detenerGrabacion, iniciarEscucha]);
 
+  const interrumpir = useCallback(() => {
+    if (estadoRef.current !== 'speaking') return;
+    audio.interrumpirHabla();
+  }, [audio]);
+
   const finalizarLlamada = useCallback(() => {
     activoRef.current = false;
     procesandoRef.current = false;
@@ -167,6 +172,7 @@ export function useVoiceSession() {
     transcripcion,
     iniciarLlamada,
     alternarMute,
+    interrumpir,
     finalizarLlamada,
   };
 }

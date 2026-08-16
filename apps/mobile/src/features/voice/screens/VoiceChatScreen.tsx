@@ -31,6 +31,7 @@ export default function VoiceChatScreen({ navigation }: Props) {
     transcripcion,
     iniciarLlamada,
     alternarMute,
+    interrumpir,
     finalizarLlamada,
   } = useVoiceSession();
   const yaInicioRef = useRef(false);
@@ -84,7 +85,14 @@ export default function VoiceChatScreen({ navigation }: Props) {
       </View>
 
       <View style={estilos.centro}>
-        <VoiceOrb estado={estado} nivelEntrada={nivelEntrada} nivelSalida={nivelSalida} />
+        <BotonAnimado
+          onPress={interrumpir}
+          disabled={estado !== 'speaking'}
+          scaleTo={0.96}
+          accessibilityLabel="Interrumpir a Nexxus"
+        >
+          <VoiceOrb estado={estado} nivelEntrada={nivelEntrada} nivelSalida={nivelSalida} />
+        </BotonAnimado>
         <VoiceStatus estado={estado} error={error} />
       </View>
 

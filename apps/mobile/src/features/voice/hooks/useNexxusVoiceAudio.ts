@@ -21,6 +21,7 @@ interface UseNexxusVoiceAudioResult {
   detenerYLeer: () => Promise<VoiceAudioClip | null>;
   nivelEntrada: number;
   hablar: (texto: string, alTerminar?: () => void) => void;
+  interrumpirHabla: () => void;
   liberar: () => void;
 }
 
@@ -86,6 +87,9 @@ export function useNexxusVoiceAudio(): UseNexxusVoiceAudioResult {
       onError: () => alTerminar?.(),
     });
   }, []);
+  const interrumpirHabla = useCallback(() => {
+    Speech.stop();
+  }, []);
   const liberar = useCallback(() => {
     if (recorder.isRecording) void recorder.stop();
     Speech.stop();
@@ -101,6 +105,7 @@ export function useNexxusVoiceAudio(): UseNexxusVoiceAudioResult {
     detenerYLeer,
     nivelEntrada: Math.max(0, Math.min(1, ((recorderState.metering ?? -60) + 60) / 60)),
     hablar,
+    interrumpirHabla,
     liberar,
   };
 }
