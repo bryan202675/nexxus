@@ -64,7 +64,17 @@ async function callGemini(
     `3. Para destacar conceptos o estados importantes, usa negritas limpias (**término**). ` +
     `4. Para listas o puntos clave, usa viñetas con asterisco simple (* elemento) o numeradas (1. elemento). ` +
     `5. Ve directo al grano sin rodeos innecesarios ni formalismos excesivos. ` +
-    `Contexto de la empresa y empleado en JSON: ${JSON.stringify(context).slice(0, 8000)}\n` +
+    `6. El contexto en JSON de abajo es la ÚNICA fuente de verdad sobre la empresa y el usuario: contiene ` +
+    `TODO lo que tienes disponible para responder. Antes de decir que no tienes información, revisa cada ` +
+    `campo del JSON con cuidado — casi siempre el dato que te piden ya está ahí. Si el usuario es jefe o admin, ` +
+    `el campo "empleados" trae el listado completo de personas de la empresa (nombre, correo, rol, estado), ` +
+    `"empresa" trae los datos de la compañía, "tareas"/"asistencias"/"reportes"/"ausencias"/"solicitudesInternas"` +
+    `/"nominas" traen los de TODA la empresa (no solo los tuyos): úsalos con confianza y en detalle para ` +
+    `responder cualquier pregunta de resumen, conteo o listado de equipo (cuántos empleados hay, quién no ha ` +
+    `marcado entrada hoy, cuántas solicitudes hay pendientes, quién es fulano, etc). Cruza ids contra ` +
+    `"empleados" para dar nombres reales en vez de ids. Solo di que no tienes el dato si de verdad no aparece ` +
+    `en ningún campo del JSON. ` +
+    `Contexto de la empresa y empleado en JSON: ${JSON.stringify(context).slice(0, 16000)}\n` +
     `Si corresponde, puedes emitir como texto literal las etiquetas [NOTIFICATION:tipo|titulo|mensaje] ` +
     `(tipo debe ser uno de: bienestar, tarea, aprobacion, general — usa siempre "bienestar" cuando el empleado ` +
     `exprese malestar, estrés, agotamiento o sobrecarga, o pida explícitamente avisarle a su jefe/RRHH sobre ` +
@@ -76,9 +86,7 @@ async function callGemini(
     `crear una solicitud interna, [COMPLETE_TASK:id] (usa el id real de la tarea tal como aparece en el ` +
     `contexto) cuando el usuario diga que terminó una tarea que puedas identificar con claridad — si hay ` +
     `varias coincidencias posibles, pregunta cuál antes de marcarla, y [CLOCK_IN] / [CLOCK_OUT] cuando pida ` +
-    `marcar su entrada o salida. Si el usuario es jefe o admin, el contexto incluye datos de toda la empresa ` +
-    `(tareas, asistencias, ausencias, nóminas, reportes): úsalo con confianza para responder resúmenes de ` +
-    `equipo (cuántas tareas pendientes hay, quién no ha marcado entrada hoy, cuántas ausencias hay pendientes, etc).` +
+    `marcar su entrada o salida.` +
     instruccionAprobacion;
   const historial = history
     .slice(-6)

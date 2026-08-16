@@ -108,39 +108,55 @@ export async function buildAiContext(
   admin: SupabaseClient,
   caller: Caller,
 ): Promise<Record<string, unknown>> {
+  // Columnas seguras de usuarios para meter en el prompt de la IA -- nunca incluir
+  // password_interno_hash/password_hash_algorithm aunque el resto del registro sea inocuo.
+  const COLUMNAS_USUARIO_SEGURAS =
+    "id, nombre, correo, telefono, rol, estado_trabajo, estado_activo, racha, ultimo_check_in, baneado, eliminado, created_at";
+
   if (isSuperAdmin(caller) && !caller.empresa_id) {
     const [{ data: empresas }, { data: usuarios }, { data: pagos }] = await Promise.all([
       admin.from("empresas").select("*").limit(50),
-      admin.from("usuarios").select("*").limit(120),
+      admin.from("usuarios").select(COLUMNAS_USUARIO_SEGURAS).limit(120),
       admin.from("payments").select("*").limit(80),
     ]);
     return { alcance: "plataforma", empresas, usuarios, pagos };
   }
   if (!caller.empresa_id) throw new HttpError(412, "Tu usuario no tiene empresa asociada.");
   if (isCanonicalRole(caller.rol)) {
-    const [tareas, asistencias, reportes, ausencias, nominas, notificaciones] = await Promise.all([
-      admin.from("tareas").select("*").eq("empresa_id", caller.empresa_id).limit(80),
-      admin.from("asistencias").select("*").eq("empresa_id", caller.empresa_id).limit(80),
-      admin.from("reportes").select("*").eq("empresa_id", caller.empresa_id).limit(60),
-      admin.from("solicitudes_ausencia").select("*").eq("empresa_id", caller.empresa_id).limit(60),
-      admin.from("nominas").select("*").eq("empresa_id", caller.empresa_id).limit(60),
-      admin.from("notificaciones").select("*").eq("empresa_id", caller.empresa_id).eq("usuario_id", caller.id)
-        .order("created_at", { ascending: false }).limit(20),
-    ]);
+    const [tareas, asistencias, reportes, ausencias, internas, nominas, notificaciones, empleados, empresaInfo] =
+      await Promise.all([
+        admin.from("tareas").select("*").eq("empresa_id", caller.empresa_id).limit(80),
+        admin.from("asistencias").select("*").eq("empresa_id", caller.empresa_id).limit(80),
+        admin.from("reportes").select("*").eq("empresa_id", caller.empresa_id).limit(60),
+        admin.from("solicitudes_ausencia").select("*").eq("empresa_id", caller.empresa_id).limit(60),
+        admin.from("solicitudes_internas").select("*").eq("empresa_id", caller.empresa_id).limit(60),
+        admin.from("nominas").select("*").eq("empresa_id", caller.empresa_id).limit(60),
+        admin.from("notificaciones").select("*").eq("empresa_id", caller.empresa_id).eq("usuario_id", caller.id)
+          .order("created_at", { ascending: false }).limit(20),
+        // Sin esto, un admin/jefe no podía preguntar nada sobre su equipo (nombres, cuántos
+        // empleados hay, quién es quién) -- la IA decía "no tengo información" para casi todo.
+        admin.from("usuarios").select(COLUMNAS_USUARIO_SEGURAS).eq("empresa_id", caller.empresa_id).limit(150),
+        admin.from("empresas").select("id, nombre, codigo, plan_id, created_at").eq("id", caller.empresa_id)
+          .maybeSingle(),
+      ]);
     return {
       alcance: "empresa",
       fechaActual: new Date().toISOString(),
+      empresa: empresaInfo.data,
+      empleados: empleados.data,
       tareas: tareas.data,
       asistencias: asistencias.data,
       reportes: reportes.data,
       ausencias: ausencias.data,
+      solicitudesInternas: internas.data,
       nominas: nominas.data,
       notificaciones: notificaciones.data,
     };
   }
-  const [tareas, ausencias, nominas, notificaciones] = await Promise.all([
+  const [tareas, ausencias, internas, nominas, notificaciones] = await Promise.all([
     admin.from("tareas").select("*").eq("empresa_id", caller.empresa_id).eq("asignado_a", caller.id).limit(20),
     admin.from("solicitudes_ausencia").select("*").eq("empresa_id", caller.empresa_id).eq("usuario_id", caller.id).limit(12),
+    admin.from("solicitudes_internas").select("*").eq("empresa_id", caller.empresa_id).eq("usuario_id", caller.id).limit(12),
     admin.from("nominas").select("*").eq("empresa_id", caller.empresa_id).eq("usuario_id", caller.id).limit(12),
     admin.from("notificaciones").select("*").eq("empresa_id", caller.empresa_id).eq("usuario_id", caller.id)
       .order("created_at", { ascending: false }).limit(20),
@@ -168,6 +184,7 @@ export async function buildAiContext(
     fechaActual: new Date().toISOString(),
     tareas: tareasConCreador,
     ausencias: ausencias.data,
+    solicitudesInternas: internas.data,
     nominas: nominas.data,
     notificaciones: notificaciones.data,
   };
