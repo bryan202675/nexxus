@@ -1,109 +1,106 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  initialize,
-  playPCMData,
-  tearDown,
-  toggleRecording,
-  useExpoTwoWayAudioEventListener,
-  useIsRecording,
-  useMicrophonePermissions,
-} from '@speechmatics/expo-two-way-audio';
+import { useCallback, useState } from 'react';
+import { File } from 'expo-file-system';
+import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
+import * as Speech from 'expo-speech';
 import { VoiceSessionError } from '../types/voice.types';
-import { normalizarNivelAudio } from '../utils/audio.utils';
 
 export type EstadoPermisoMicrofono = 'granted' | 'denied' | 'undetermined';
+export interface VoiceAudioClip {
+  data: string;
+  mimeType: string;
+}
 
 interface UseNexxusVoiceAudioResult {
   estadoPermiso: EstadoPermisoMicrofono;
   solicitarPermiso: () => Promise<boolean>;
-  inicializado: boolean;
   errorInicializacion: VoiceSessionError | null;
   inicializarAudio: () => Promise<boolean>;
   grabando: boolean;
-  iniciarGrabacion: () => void;
-  detenerGrabacion: () => void;
+  iniciarGrabacion: () => Promise<void>;
+  detenerGrabacion: () => Promise<void>;
+  detenerYLeer: () => Promise<VoiceAudioClip | null>;
   nivelEntrada: number;
-  nivelSalida: number;
-  reproducirAudio: (pcm: Uint8Array) => void;
+  hablar: (texto: string, alTerminar?: () => void) => void;
   liberar: () => void;
 }
 
 export function useNexxusVoiceAudio(): UseNexxusVoiceAudioResult {
-  const [permiso, solicitarPermisoNativo] = useMicrophonePermissions();
-  const [inicializado, setInicializado] = useState(false);
+  const recorder = useAudioRecorder({ ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true });
+  const recorderState = useAudioRecorderState(recorder, 150);
+  const [estadoPermiso, setEstadoPermiso] = useState<EstadoPermisoMicrofono>('undetermined');
   const [errorInicializacion, setErrorInicializacion] = useState<VoiceSessionError | null>(null);
-  const [nivelEntrada, setNivelEntrada] = useState(0);
-  const [nivelSalida, setNivelSalida] = useState(0);
-  const grabando = useIsRecording();
-  const liberadoRef = useRef(false);
-
-  useExpoTwoWayAudioEventListener('onInputVolumeLevelData', (evento) => {
-    setNivelEntrada(normalizarNivelAudio(evento.data));
-  });
-
-  useExpoTwoWayAudioEventListener('onOutputVolumeLevelData', (evento) => {
-    setNivelSalida(normalizarNivelAudio(evento.data));
-  });
-
-  useEffect(() => {
-    liberadoRef.current = false;
-    return () => {
-      liberadoRef.current = true;
-      tearDown();
-    };
-  }, []);
-
   const solicitarPermiso = useCallback(async () => {
-    const resultado = await solicitarPermisoNativo();
-    return resultado.status === 'granted';
-  }, [solicitarPermisoNativo]);
-
-  const inicializarAudio = useCallback(async () => {
     try {
-      await initialize();
-      if (liberadoRef.current) return false;
-      setInicializado(true);
-      setErrorInicializacion(null);
-      return true;
-    } catch (error) {
-      setErrorInicializacion({
-        code: 'audio_init_failed',
-        message: error instanceof Error ? error.message : 'No se pudo iniciar el audio',
-      });
+      const permission = await requestRecordingPermissionsAsync();
+      const granted = permission.granted;
+      setEstadoPermiso(granted ? 'granted' : 'denied');
+      return granted;
+    } catch {
+      setEstadoPermiso('denied');
       return false;
     }
   }, []);
 
-  const iniciarGrabacion = useCallback(() => {
-    toggleRecording(true);
-  }, []);
+  const inicializarAudio = useCallback(async () => {
+    try {
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
+        interruptionMode: 'doNotMix',
+        shouldPlayInBackground: false,
+        shouldRouteThroughEarpiece: false,
+      });
+      setErrorInicializacion(null);
+      return true;
+    } catch (cause) {
+      setErrorInicializacion({
+        code: 'audio_init_failed',
+        message: cause instanceof Error ? cause.message : 'No se pudo iniciar el micrófono.',
+      });
+      return false;
+    }
+  }, [recorder]);
 
-  const detenerGrabacion = useCallback(() => {
-    toggleRecording(false);
+  const iniciarGrabacion = useCallback(async () => {
+    if (recorder.isRecording) return;
+    await recorder.prepareToRecordAsync();
+    recorder.record();
+  }, [recorder]);
+  const detenerGrabacion = useCallback(async () => {
+    if (recorder.isRecording) await recorder.stop();
+  }, [recorder]);
+  const detenerYLeer = useCallback(async (): Promise<VoiceAudioClip | null> => {
+    await detenerGrabacion();
+    if (!recorder.uri) return null;
+    return {
+      data: await new File(recorder.uri).base64(),
+      mimeType: 'audio/mp4',
+    };
+  }, [detenerGrabacion, recorder]);
+  const hablar = useCallback((texto: string, alTerminar?: () => void) => {
+    Speech.speak(texto, {
+      language: 'es-SV',
+      rate: 0.96,
+      onDone: alTerminar,
+      onStopped: alTerminar,
+      onError: () => alTerminar?.(),
+    });
   }, []);
-
-  const reproducirAudio = useCallback((pcm: Uint8Array) => {
-    playPCMData(pcm);
-  }, []);
-
   const liberar = useCallback(() => {
-    toggleRecording(false);
-    tearDown();
-    setInicializado(false);
-  }, []);
-
+    if (recorder.isRecording) void recorder.stop();
+    Speech.stop();
+  }, [recorder]);
   return {
-    estadoPermiso: (permiso?.status ?? 'undetermined') as EstadoPermisoMicrofono,
+    estadoPermiso,
     solicitarPermiso,
-    inicializado,
     errorInicializacion,
     inicializarAudio,
-    grabando,
+    grabando: recorderState.isRecording,
     iniciarGrabacion,
     detenerGrabacion,
-    nivelEntrada,
-    nivelSalida,
-    reproducirAudio,
+    detenerYLeer,
+    nivelEntrada: Math.max(0, Math.min(1, ((recorderState.metering ?? -60) + 60) / 60)),
+    hablar,
     liberar,
   };
 }

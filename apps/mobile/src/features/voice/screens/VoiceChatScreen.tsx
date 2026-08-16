@@ -28,6 +28,7 @@ export default function VoiceChatScreen({ navigation }: Props) {
     muteado,
     nivelEntrada,
     nivelSalida,
+    transcripcion,
     iniciarLlamada,
     alternarMute,
     finalizarLlamada,
@@ -88,7 +89,7 @@ export default function VoiceChatScreen({ navigation }: Props) {
       </View>
 
       <View style={estilos.transcripcion}>
-        <VoiceTranscript entradas={[]} />
+        <VoiceTranscript entradas={transcripcion} />
       </View>
 
       <View style={estilos.pie}>

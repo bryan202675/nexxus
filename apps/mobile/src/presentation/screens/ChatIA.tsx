@@ -48,8 +48,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
 import RenderMarkdownIA from '@/presentation/components/RenderMarkdownIA';
-import { useToast } from '@/presentation/components/ui/ToastProvider';
-import Constants, { ExecutionEnvironment } from 'expo-constants';
 // Importa { SensitiveAiAction }; acciones sensibles sugeridas por la IA (Fase 8) que requieren
 // confirmacion humana explicita antes de ejecutarse -- ver ask-nexxus-ai (Edge Function).
 import { SensitiveAiAction } from 'domain/entities/AiAssistant';
@@ -119,13 +117,8 @@ export default function ChatIA({ navigation }: Props) {
 
   // Declara { colores, blurTint, intensidadBlur, esOscuro }; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
-  const toast = useToast();
 
   const abrirNexxusVoice = () => {
-    if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) {
-      toast.info('Nexxus Voice requiere la app de desarrollo de Nexxus, no está disponible en Expo Go.');
-      return;
-    }
     navigation.navigate('VoiceChatScreen');
   };
   // Inicializa animacionEscritura; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.

@@ -18,14 +18,17 @@ const config = getDefaultConfig(__dirname);
 
 const monorepoRoot = path.resolve(__dirname, '../..');
 
-// Permite que Metro vea el paquete compartido packages/domain (fuera de apps/mobile)
-// y resuelva su node_modules simlinkeado desde la raiz del monorepo (npm workspaces).
-config.watchFolders = [path.resolve(monorepoRoot, 'packages/domain')];
+// Conserva las carpetas que Expo detecta automáticamente y garantiza el paquete
+// compartido aunque la estructura del workspace cambie.
+config.watchFolders = Array.from(new Set([
+  ...config.watchFolders,
+  path.resolve(monorepoRoot, 'packages/domain'),
+]));
 config.resolver.nodeModulesPaths = [
   path.resolve(__dirname, 'node_modules'),
   path.resolve(monorepoRoot, 'node_modules'),
 ];
-config.resolver.unstable_enableSymlinks = true;
+delete config.resolver.unstable_enableSymlinks;
 
 // Bloquear escaneo de carpetas fuera del frontend para mejorar rendimiento
 config.resolver.blockList = [
