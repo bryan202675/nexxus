@@ -1,4 +1,5 @@
 import { supabase } from '@/infrastructure/supabase/supabaseClient';
+import { SensitiveAiAction } from 'domain/entities/AiAssistant';
 
 export async function enviarTurnoDeVoz(audio: { data: string; mimeType: string }) {
   const { data, error } = await supabase.functions.invoke('voice-turn', { body: { audio } });
@@ -14,5 +15,5 @@ export async function enviarTurnoDeVoz(audio: { data: string; mimeType: string }
     }
     throw new Error(mensaje);
   }
-  return data as { transcripcion: string; respuesta: string };
+  return data as { transcripcion: string; respuesta: string; accionesSensibles?: SensitiveAiAction[] };
 }

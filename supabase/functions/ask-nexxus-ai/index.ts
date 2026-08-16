@@ -71,9 +71,14 @@ async function callGemini(
     `cómo se siente), [TASK:prioridad|titulo|descripcion|asignado_a], ` +
     `[EVENT:tipo|titulo|inicio|fin|descripcion], ` +
     `[REQUEST_AUSENCIA:tipo|fecha_inicio|fecha_fin|motivo] (tipo uno de: vacaciones, permiso, enfermedad, ` +
-    `incapacidad, personal; fechas en formato YYYY-MM-DD) cuando el usuario pida solicitar una ausencia, o ` +
+    `incapacidad, personal; fechas en formato YYYY-MM-DD) cuando el usuario pida solicitar una ausencia, ` +
     `[REQUEST_INTERNA:tipo|detalle] (tipo uno de: adelanto, permiso, capacitacion, compra, equipo) cuando pida ` +
-    `crear una solicitud interna, para que el sistema cree ese registro.` +
+    `crear una solicitud interna, [COMPLETE_TASK:id] (usa el id real de la tarea tal como aparece en el ` +
+    `contexto) cuando el usuario diga que terminó una tarea que puedas identificar con claridad — si hay ` +
+    `varias coincidencias posibles, pregunta cuál antes de marcarla, y [CLOCK_IN] / [CLOCK_OUT] cuando pida ` +
+    `marcar su entrada o salida. Si el usuario es jefe o admin, el contexto incluye datos de toda la empresa ` +
+    `(tareas, asistencias, ausencias, nóminas, reportes): úsalo con confianza para responder resúmenes de ` +
+    `equipo (cuántas tareas pendientes hay, quién no ha marcado entrada hoy, cuántas ausencias hay pendientes, etc).` +
     instruccionAprobacion;
   const historial = history
     .slice(-6)

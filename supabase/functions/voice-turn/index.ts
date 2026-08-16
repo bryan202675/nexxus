@@ -4,6 +4,7 @@ import {
   extractSensitiveActions,
   fetchGeminiConRotacion,
   getCaller,
+  isCanonicalRole,
   HttpError,
   withHandler,
 } from '../_shared/nexxus.ts';
@@ -66,7 +67,14 @@ async function transcribeWithGroq(audio: { data: string; mimeType: string }): Pr
   return typeof result?.text === 'string' ? result.text.trim() : null;
 }
 
-function buildVoiceSystemPrompt(nombre: string, rol: string, context: unknown): string {
+function buildVoiceSystemPrompt(nombre: string, rol: string, context: unknown, puedeAprobar: boolean): string {
+  const instruccionAprobacion = puedeAprobar
+    ? `10. Si te piden aprobar o rechazar una solicitud de ausencia o interna que veas en el contexto, NO la ` +
+      `apruebes tú mismo: incluye [APPROVE:coleccion|id|titulo] (coleccion es "solicitudes_ausencia" o ` +
+      `"solicitudes_internas", id es el id real del contexto, titulo un resumen breve) y dile al usuario que ` +
+      `le vas a mostrar una tarjeta para confirmar — nunca digas que ya quedó aprobada. `
+    : `10. No puedes aprobar ni rechazar solicitudes por voz: si te lo piden, explica con naturalidad que esa ` +
+      `acción se debe confirmar desde la app. `;
   return (
     `Eres Nexxus Brain, el asistente inteligente integrado dentro de Nexxus (plataforma empresarial de RRHH, ` +
     `nómina y gestión operativa). Tu objetivo es ayudar al usuario a hacer su trabajo rápido y de forma natural. ` +
@@ -91,8 +99,14 @@ function buildVoiceSystemPrompt(nombre: string, rol: string, context: unknown): 
     `como "mañana" o "el viernes"). ` +
     `8. Si te pide crear una solicitud interna (adelanto, compra, equipo, capacitación, permiso), incluye ` +
     `[REQUEST_INTERNA:tipo|detalle] (tipo uno de: adelanto, permiso, capacitacion, compra, equipo). ` +
-    `9. No puedes aprobar ni rechazar solicitudes por voz todavía: si te lo piden, explica con naturalidad que ` +
-    `esa acción se debe confirmar desde la app. ` +
+    `9. Si dice que ya terminó una tarea y la identificas con claridad en el contexto, incluye ` +
+    `[COMPLETE_TASK:id] con el id real de esa tarea (si hay varias que podrían ser, pregunta cuál antes de ` +
+    `marcarla). Si te pide marcar su entrada o salida, incluye [CLOCK_IN] o [CLOCK_OUT] según corresponda y ` +
+    `confírmaselo de forma natural. ` +
+    instruccionAprobacion +
+    `11. Si ${nombre} es jefe o admin, el contexto trae datos de toda la empresa (tareas, asistencias, ` +
+    `ausencias, nóminas, reportes): úsalo con confianza para dar resúmenes de equipo si te lo pide (cuántas ` +
+    `tareas pendientes hay, quién no ha marcado entrada hoy, etc). ` +
     `Contexto real del usuario y su empresa en JSON: ${JSON.stringify(context).slice(0, 4000)}`
   );
 }
@@ -108,7 +122,8 @@ Deno.serve(withHandler(async (req, admin) => {
   const transcripcion = await transcribeWithGroq(audio);
   const mimeType = typeof audio.mimeType === 'string' && audio.mimeType ? audio.mimeType : 'audio/m4a';
   const context = await buildAiContext(admin, caller);
-  const systemPrompt = buildVoiceSystemPrompt(caller.nombre, caller.rol, context);
+  const puedeAprobar = isCanonicalRole(caller.rol);
+  const systemPrompt = buildVoiceSystemPrompt(caller.nombre, caller.rol, context, puedeAprobar);
 
   type InteractionInput =
     | { type: 'text'; text: string }
@@ -156,11 +171,12 @@ Deno.serve(withHandler(async (req, admin) => {
     throw new HttpError(502, 'La IA devolvió una respuesta de voz inválida.');
   }
 
-  // Voz no soporta aprobar/rechazar todavía: se descarta cualquier [APPROVE:] que el modelo
-  // haya emitido igual (el prompt le pide no hacerlo, esto es el respaldo del servidor) para
-  // que nunca se lea la etiqueta en voz alta. El resto de etiquetas sí se ejecutan de verdad.
-  const { clean: respuestaSinAprobaciones } = extractSensitiveActions(parsed.respuesta);
+  // [APPROVE:...] nunca se lee en voz alta ni se ejecuta solo -- se extrae aparte y, si el rol
+  // puede aprobar, se devuelve para que el cliente muestre una tarjeta de confirmación (igual
+  // que el chat de texto); si no puede, se descarta (respaldo de servidor, el prompt ya se lo pide).
+  const { clean: respuestaSinAprobaciones, acciones } = extractSensitiveActions(parsed.respuesta);
   parsed.respuesta = await applyActionTags(admin, caller, respuestaSinAprobaciones);
+  const accionesSensibles = puedeAprobar ? acciones : [];
 
   const usage = json?.usage_metadata || json?.usageMetadata || {};
   await admin.from('ai_usage').insert({
@@ -171,5 +187,5 @@ Deno.serve(withHandler(async (req, admin) => {
     tokens_salida: usage.candidates_token_count ?? usage.candidatesTokenCount ?? 0,
   });
 
-  return parsed;
+  return { ...parsed, accionesSensibles };
 }));

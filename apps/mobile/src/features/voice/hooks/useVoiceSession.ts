@@ -2,6 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNexxusVoiceAudio } from './useNexxusVoiceAudio';
 import { enviarTurnoDeVoz } from '../services/voiceTurn.service';
 import { VoiceSessionError, VoiceSessionState, VoiceTranscriptEntry } from '../types/voice.types';
+import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
+import { useCases } from '@/infrastructure/container';
+import { SensitiveAiAction } from 'domain/entities/AiAssistant';
 
 // Nivel mínimo para considerar que el usuario "empezó a hablar" (entrada al estado de voz).
 const UMBRAL_VOZ = 0.18;
@@ -21,10 +24,13 @@ function logVoz(...args: unknown[]) {
 
 export function useVoiceSession() {
   const audio = useNexxusVoiceAudio();
+  const { perfil } = useContextoUsuario();
   const [estado, setEstado] = useState<VoiceSessionState>('idle');
   const [error, setError] = useState<VoiceSessionError | null>(null);
   const [muteado, setMuteado] = useState(false);
   const [transcripcion, setTranscripcion] = useState<VoiceTranscriptEntry[]>([]);
+  const [accionesPendientes, setAccionesPendientes] = useState<SensitiveAiAction[]>([]);
+  const accionesPendientesRef = useRef<SensitiveAiAction[]>([]);
   const estadoRef = useRef<VoiceSessionState>('idle');
   const activoRef = useRef(false);
   const muteadoRef = useRef(false);
@@ -71,6 +77,8 @@ export function useVoiceSession() {
     muteadoRef.current = false;
     setMuteado(false);
     setError(null);
+    accionesPendientesRef.current = [];
+    setAccionesPendientes([]);
     cambiarEstado('connecting');
 
     const granted = audio.estadoPermiso === 'granted' || await audio.solicitarPermiso();
@@ -125,11 +133,17 @@ export function useVoiceSession() {
         { id: `${ahora}-u`, rol: 'usuario', texto: turno.transcripcion, final: true },
         { id: `${ahora}-n`, rol: 'nexxus', texto: turno.respuesta, final: true },
       ]);
+      if (turno.accionesSensibles?.length) {
+        accionesPendientesRef.current = turno.accionesSensibles;
+        setAccionesPendientes(turno.accionesSensibles);
+      }
       cambiarEstado('speaking');
       void audio.hablar(turno.respuesta, () => {
         logVoz('Nexxus terminó de hablar');
         procesandoRef.current = false;
-        if (activoRef.current) void iniciarEscucha();
+        // Si quedó una acción sensible por confirmar, no se vuelve a escuchar sola: se
+        // espera a que el usuario toque Aprobar/Rechazar en la tarjeta (ver resolverAccionPendiente).
+        if (activoRef.current && accionesPendientesRef.current.length === 0) void iniciarEscucha();
       });
     } catch (cause) {
       logVoz('error procesando el turno', cause);
@@ -194,6 +208,24 @@ export function useVoiceSession() {
     });
   }, [audio.detenerGrabacion, iniciarEscucha]);
 
+  const resolverAccionPendiente = useCallback(async (accion: SensitiveAiAction, resultado: 'aprobada' | 'rechazada') => {
+    if (!perfil) return;
+    try {
+      const item = await useCases.admin.requestReports.getById(accion.sourceCollection, accion.itemId);
+      if (!item || item.estado !== 'pendiente') throw new Error('Esta solicitud ya no está pendiente o no existe.');
+      await useCases.leader.resolveApproval(item, resultado, { id: perfil.id, nombre: perfil.nombre, rol: perfil.rol });
+    } catch (cause) {
+      logVoz('error confirmando acción sensible', cause);
+    } finally {
+      const restantes = accionesPendientesRef.current.filter((a) => a.id !== accion.id);
+      accionesPendientesRef.current = restantes;
+      setAccionesPendientes(restantes);
+      if (restantes.length === 0 && activoRef.current && estadoRef.current !== 'listening') {
+        void iniciarEscucha();
+      }
+    }
+  }, [perfil, iniciarEscucha]);
+
   const interrumpir = useCallback(() => {
     if (estadoRef.current !== 'speaking') return;
     audio.interrumpirHabla();
@@ -205,6 +237,8 @@ export function useVoiceSession() {
     procesandoRef.current = false;
     silencioDesdeRef.current = null;
     escuchandoDesdeRef.current = null;
+    accionesPendientesRef.current = [];
+    setAccionesPendientes([]);
     audio.liberar();
     cambiarEstado('ended');
   }, [audio.liberar, cambiarEstado]);
@@ -221,6 +255,8 @@ export function useVoiceSession() {
     nivelEntrada: audio.nivelEntrada,
     nivelSalida: estado === 'speaking' ? 0.7 : 0,
     transcripcion,
+    accionesPendientes,
+    resolverAccionPendiente,
     iniciarLlamada,
     alternarMute,
     interrumpir,

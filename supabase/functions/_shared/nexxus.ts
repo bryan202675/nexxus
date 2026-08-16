@@ -189,8 +189,9 @@ const APPROVE_COLLECTIONS = new Set(["solicitudes_ausencia", "solicitudes_intern
  * requiere confirmacion humana explicita en el cliente. Este parser solo recorta el tag del
  * texto y devuelve la lista para que el cliente muestre una tarjeta de confirmacion; la
  * mutacion real ocurre despues, cuando el usuario confirma, y en ese punto el cliente vuelve
- * a consultar el registro real (nunca confia en este payload). Solo el chat de texto expone
- * esto al usuario hoy -- voice-turn ni siquiera le enseña este tag al modelo.
+ * a consultar el registro real (nunca confia en este payload). Chat de texto y voz exponen esto
+ * por igual a roles canonicos (jefe/admin/super_admin); voice-turn descarta el resultado para
+ * el resto de roles.
  */
 export function extractSensitiveActions(text: string): { clean: string; acciones: SensitiveAiAction[] } {
   let clean = text;
@@ -227,8 +228,11 @@ const FECHA_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
  *   [EVENT:tipo|titulo|inicio|fin|descripcion]
  *   [REQUEST_AUSENCIA:tipo|fecha_inicio|fecha_fin|motivo]  -- fechas en YYYY-MM-DD
  *   [REQUEST_INTERNA:tipo|detalle]
- * Ninguna de estas es "sensible": crean un registro pendiente que igual pasa por el flujo de
- * aprobacion normal de la empresa, no ejecutan nada irreversible por si solas.
+ *   [COMPLETE_TASK:id]                               -- id real de una tarea del contexto
+ *   [CLOCK_IN] / [CLOCK_OUT]                          -- marca entrada/salida del caller
+ * Ninguna de estas es "sensible": crean o actualizan un registro que igual pasa por el flujo de
+ * aprobacion normal de la empresa (o, en el caso de tareas, solo modifica una propia), no
+ * ejecutan nada irreversible por si solas.
  */
 export async function applyActionTags(admin: SupabaseClient, caller: Caller, text: string): Promise<string> {
   let clean = text;
@@ -309,6 +313,42 @@ export async function applyActionTags(admin: SupabaseClient, caller: Caller, tex
     } else {
       console.error("REQUEST_INTERNA con tipo inválido, se ignora", match[0]);
     }
+    clean = clean.replace(match[0], "").trim();
+  }
+
+  while ((match = clean.match(/\[COMPLETE_TASK:([^\]]+)\]/))) {
+    const tareaId = match[1].trim();
+    // Un empleado solo puede completar sus propias tareas; jefe/admin/super_admin pueden
+    // completar cualquiera de su empresa (p.ej. si delegan y confirman en nombre de otro).
+    let query = admin.from("tareas").update({ estado: "completada" }).eq("id", tareaId).eq(
+      "empresa_id",
+      caller.empresa_id,
+    );
+    if (!isCanonicalRole(caller.rol)) query = query.eq("asignado_a", caller.id);
+    const { error } = await query;
+    if (error) console.error("COMPLETE_TASK falló", error);
+    clean = clean.replace(match[0], "").trim();
+  }
+
+  while ((match = clean.match(/\[CLOCK_IN\]/))) {
+    await admin.from("asistencias").insert({
+      empresa_id: caller.empresa_id,
+      usuario_id: caller.id,
+      tipo: "entrada",
+      metodo_registro: "manual",
+      estado_aprobacion: "pendiente",
+    });
+    clean = clean.replace(match[0], "").trim();
+  }
+
+  while ((match = clean.match(/\[CLOCK_OUT\]/))) {
+    await admin.from("asistencias").insert({
+      empresa_id: caller.empresa_id,
+      usuario_id: caller.id,
+      tipo: "salida",
+      metodo_registro: "manual",
+      estado_aprobacion: "pendiente",
+    });
     clean = clean.replace(match[0], "").trim();
   }
 
