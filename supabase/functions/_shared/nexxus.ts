@@ -21,9 +21,12 @@ const GEMINI_API_KEYS = (Deno.env.get("GEMINI_API_KEYS") || Deno.env.get("GEMINI
   .map((clave) => clave.trim())
   .filter(Boolean);
 
-// Llama a un endpoint de Gemini probando cada clave en orden: si una responde 429 (cuota
-// agotada), prueba la siguiente en vez de fallar de inmediato. Cualquier otro código de
-// error (400, 500, etc.) se devuelve tal cual -- rotar clave no arregla un request inválido.
+// Códigos que indican "esta clave puntual no sirvió" (cuota agotada, o Google la rechazó)
+// -- vale la pena probar la siguiente. Otros códigos (400 por request mal formado que no es
+// culpa de la clave, 500, etc.) se devuelven tal cual porque cambiar de clave no los arregla.
+const CODIGOS_ROTAR_CLAVE = new Set([400, 401, 403, 429]);
+
+// Llama a un endpoint de Gemini probando cada clave en orden hasta que una funcione.
 export async function fetchGeminiConRotacion(url: string, body: unknown): Promise<Response> {
   if (!GEMINI_API_KEYS.length) throw new HttpError(503, "La IA no está configurada.");
   let ultimaRespuesta: Response | null = null;
@@ -33,8 +36,8 @@ export async function fetchGeminiConRotacion(url: string, body: unknown): Promis
       headers: { "Content-Type": "application/json", "x-goog-api-key": clave },
       body: JSON.stringify(body),
     });
-    if (response.status !== 429) return response;
-    console.error(`Gemini: clave terminada en ...${clave.slice(-4)} sin cuota, probando la siguiente`);
+    if (response.ok || !CODIGOS_ROTAR_CLAVE.has(response.status)) return response;
+    console.error(`Gemini: clave terminada en ...${clave.slice(-4)} falló (${response.status}), probando la siguiente`);
     ultimaRespuesta = response;
   }
   return ultimaRespuesta!;
