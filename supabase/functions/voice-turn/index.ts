@@ -1,6 +1,5 @@
-import { buildAiContext, getCaller, HttpError, withHandler } from '../_shared/nexxus.ts';
+import { buildAiContext, fetchGeminiConRotacion, getCaller, HttpError, withHandler } from '../_shared/nexxus.ts';
 
-const apiKey = Deno.env.get('GEMINI_API_KEY') || '';
 const model = Deno.env.get('GEMINI_MODEL') || 'gemini-3.6-flash';
 const groqApiKey = Deno.env.get('GROQ_API_KEY') || '';
 const groqModel = Deno.env.get('GROQ_STT_MODEL') || 'whisper-large-v3';
@@ -80,7 +79,6 @@ function buildVoiceSystemPrompt(nombre: string, rol: string, context: unknown): 
 
 Deno.serve(withHandler(async (req, admin) => {
   const caller = await getCaller(req, admin);
-  if (!apiKey) throw new HttpError(503, 'La IA de voz no está configurada.');
   const body = await req.json();
   const audio = body?.audio;
   if (typeof audio?.data !== 'string' || !audio.data || audio.data.length > 12_000_000) {
@@ -103,28 +101,24 @@ Deno.serve(withHandler(async (req, admin) => {
   }];
   if (!transcripcion) input.push({ type: 'audio', data: audio.data, mime_type: mimeType === 'audio/mp4' ? 'audio/m4a' : mimeType });
 
-  const response = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-    body: JSON.stringify({
-      model,
-      store: false,
-      input,
-      // "minimal" evita que el modelo gaste tiempo/tokens "pensando" antes de responder --
-      // para una respuesta de voz corta y conversacional no hace falta razonamiento profundo,
-      // y esto reduce la latencia notablemente (medido: ~200 thought tokens de más por turno).
-      generation_config: { thinking_level: 'minimal' },
-      response_format: {
-        type: 'text',
-        mime_type: 'application/json',
-        schema: {
-          type: 'object',
-          properties: { transcripcion: { type: 'string' }, respuesta: { type: 'string' } },
-          required: ['transcripcion', 'respuesta'],
-          additionalProperties: false,
-        },
+  const response = await fetchGeminiConRotacion('https://generativelanguage.googleapis.com/v1beta/interactions', {
+    model,
+    store: false,
+    input,
+    // "minimal" evita que el modelo gaste tiempo/tokens "pensando" antes de responder --
+    // para una respuesta de voz corta y conversacional no hace falta razonamiento profundo,
+    // y esto reduce la latencia notablemente (medido: ~200 thought tokens de más por turno).
+    generation_config: { thinking_level: 'minimal' },
+    response_format: {
+      type: 'text',
+      mime_type: 'application/json',
+      schema: {
+        type: 'object',
+        properties: { transcripcion: { type: 'string' }, respuesta: { type: 'string' } },
+        required: ['transcripcion', 'respuesta'],
+        additionalProperties: false,
       },
-    }),
+    },
   });
   if (!response.ok) {
     console.error('Gemini voice-turn error', response.status, await response.text().catch(() => ''));

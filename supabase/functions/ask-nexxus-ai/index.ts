@@ -8,6 +8,7 @@
 // ai_usage con costo estimado.
 import {
   buildAiContext,
+  fetchGeminiConRotacion,
   getCaller,
   isCanonicalRole,
   safeString,
@@ -18,7 +19,6 @@ import {
 } from "../_shared/nexxus.ts";
 import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") || "";
 const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash";
 const GEMINI_PRICING: Record<string, { input: number; output: number }> = {
   "gemini-3.6-flash": { input: 0.75, output: 3.75 },
@@ -47,7 +47,6 @@ async function callGemini(
   history: { rol: string; texto: string }[],
   puedeAprobar: boolean
 ) {
-  if (!GEMINI_API_KEY) return null;
   const instruccionAprobacion = puedeAprobar
     ? ` Si el usuario pide aprobar o rechazar una solicitud de ausencia o interna que veas en el contexto (colección ` +
       `"ausencias" o "solicitudes"), NO la apruebes tú mismo: emite [APPROVE:coleccion|id|titulo] (coleccion es ` +
@@ -86,15 +85,14 @@ async function callGemini(
   }\n\nUsuario: ${prompt}`;
   const endpoint =
     "https://generativelanguage.googleapis.com/v1beta/interactions";
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-goog-api-key": GEMINI_API_KEY,
-    },
+  let response: Response;
+  try {
     // `store: false` evita retener en Gemini el contexto interno de RR. HH. que enviamos por petición.
-    body: JSON.stringify({ model: GEMINI_MODEL, input, store: false }),
-  });
+    response = await fetchGeminiConRotacion(endpoint, { model: GEMINI_MODEL, input, store: false });
+  } catch (cause) {
+    console.error("Gemini no disponible (sin claves configuradas o todas sin cuota)", cause);
+    return null;
+  }
   if (!response.ok) {
     console.error("Gemini error", await response.text().catch(() => ""));
     return null;

@@ -13,6 +13,33 @@ export class HttpError extends Error {
   }
 }
 
+// Varias claves de Gemini separadas por coma (secreto GEMINI_API_KEYS) para rotar cuando
+// una se queda sin cuota del tier gratuito -- cada proyecto/clave de Google AI Studio tiene
+// su propio límite de 20 req/min. Si solo existe GEMINI_API_KEY (una sola), se usa esa.
+const GEMINI_API_KEYS = (Deno.env.get("GEMINI_API_KEYS") || Deno.env.get("GEMINI_API_KEY") || "")
+  .split(",")
+  .map((clave) => clave.trim())
+  .filter(Boolean);
+
+// Llama a un endpoint de Gemini probando cada clave en orden: si una responde 429 (cuota
+// agotada), prueba la siguiente en vez de fallar de inmediato. Cualquier otro código de
+// error (400, 500, etc.) se devuelve tal cual -- rotar clave no arregla un request inválido.
+export async function fetchGeminiConRotacion(url: string, body: unknown): Promise<Response> {
+  if (!GEMINI_API_KEYS.length) throw new HttpError(503, "La IA no está configurada.");
+  let ultimaRespuesta: Response | null = null;
+  for (const clave of GEMINI_API_KEYS) {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": clave },
+      body: JSON.stringify(body),
+    });
+    if (response.status !== 429) return response;
+    console.error(`Gemini: clave terminada en ...${clave.slice(-4)} sin cuota, probando la siguiente`);
+    ultimaRespuesta = response;
+  }
+  return ultimaRespuesta!;
+}
+
 export function adminClient(): SupabaseClient {
   return createClient(
     Deno.env.get("SUPABASE_URL")!,
