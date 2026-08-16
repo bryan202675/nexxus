@@ -72,8 +72,14 @@ export function useVoiceSession() {
     silencioDesdeRef.current = null;
     vozDetectadaRef.current = false;
     picoNivelRef.current = 0;
+    logVoz('volviendo a escuchar, iniciando grabación');
     try {
-      await audio.iniciarGrabacion();
+      // Mismo salvavidas que en iniciarLlamada: volver a activar el modo de grabación justo
+      // después de haber hablado (que cambió el modo de audio a altavoz) es otro punto donde
+      // expo-audio puede quedarse colgado sin lanzar error -- sin timeout, la llamada se queda
+      // pegada en "hablando" para siempre porque nunca se llega a cambiarEstado('listening').
+      await conTimeout(audio.iniciarGrabacion(), 'iniciarGrabacion');
+      logVoz('grabación iniciada correctamente');
     } catch (cause) {
       logVoz('error al iniciar micrófono', cause);
       if (!activoRef.current) return;

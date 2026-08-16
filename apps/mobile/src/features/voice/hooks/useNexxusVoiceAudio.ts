@@ -157,12 +157,30 @@ export function useNexxusVoiceAudio(): UseNexxusVoiceAudioResult {
       if (exito) return;
       if (__DEV__) console.log('[VOICE] voz neuronal no disponible, usando voz del sistema');
     }
+    // Salvavidas: si por lo que sea expo-speech nunca dispara ningún callback (se ha visto
+    // colgarse tras cambiar de modo de audio dos veces seguidas -- neural TTS y luego esto),
+    // no dejamos la llamada pegada en "hablando" para siempre. ~90ms/palabra a rate 0.96,
+    // con mínimo generoso y tope razonable.
+    let yaTermino = false;
+    const terminarUnaVez = (origen: string) => {
+      if (yaTermino) return;
+      yaTermino = true;
+      if (__DEV__) console.log('[VOICE] Speech.speak terminó vía', origen);
+      clearTimeout(temporizadorSalvavidas);
+      alTerminar?.();
+    };
+    const duracionEstimadaMs = Math.min(Math.max(texto.split(/\s+/).length * 350, 3000), 20000);
+    const temporizadorSalvavidas = setTimeout(() => terminarUnaVez('timeout'), duracionEstimadaMs);
+    if (__DEV__) console.log('[VOICE] Speech.speak() iniciando, timeout de respaldo en', duracionEstimadaMs, 'ms');
     Speech.speak(texto, {
       language: 'es-SV',
       rate: 0.96,
-      onDone: alTerminar,
-      onStopped: alTerminar,
-      onError: () => alTerminar?.(),
+      onDone: () => terminarUnaVez('onDone'),
+      onStopped: () => terminarUnaVez('onStopped'),
+      onError: (err) => {
+        if (__DEV__) console.log('[VOICE] Speech.speak() onError', err);
+        terminarUnaVez('onError');
+      },
     });
   }, [activarModoAltavoz, neuralTts]);
 
