@@ -88,32 +88,58 @@ export async function buildAiContext(
   }
   if (!caller.empresa_id) throw new HttpError(412, "Tu usuario no tiene empresa asociada.");
   if (isCanonicalRole(caller.rol)) {
-    const [tareas, asistencias, reportes, ausencias, nominas] = await Promise.all([
+    const [tareas, asistencias, reportes, ausencias, nominas, notificaciones] = await Promise.all([
       admin.from("tareas").select("*").eq("empresa_id", caller.empresa_id).limit(80),
       admin.from("asistencias").select("*").eq("empresa_id", caller.empresa_id).limit(80),
       admin.from("reportes").select("*").eq("empresa_id", caller.empresa_id).limit(60),
       admin.from("solicitudes_ausencia").select("*").eq("empresa_id", caller.empresa_id).limit(60),
       admin.from("nominas").select("*").eq("empresa_id", caller.empresa_id).limit(60),
+      admin.from("notificaciones").select("*").eq("empresa_id", caller.empresa_id).eq("usuario_id", caller.id)
+        .order("created_at", { ascending: false }).limit(20),
     ]);
     return {
       alcance: "empresa",
+      fechaActual: new Date().toISOString(),
       tareas: tareas.data,
       asistencias: asistencias.data,
       reportes: reportes.data,
       ausencias: ausencias.data,
       nominas: nominas.data,
+      notificaciones: notificaciones.data,
     };
   }
-  const [tareas, ausencias, nominas] = await Promise.all([
+  const [tareas, ausencias, nominas, notificaciones] = await Promise.all([
     admin.from("tareas").select("*").eq("empresa_id", caller.empresa_id).eq("asignado_a", caller.id).limit(20),
     admin.from("solicitudes_ausencia").select("*").eq("empresa_id", caller.empresa_id).eq("usuario_id", caller.id).limit(12),
     admin.from("nominas").select("*").eq("empresa_id", caller.empresa_id).eq("usuario_id", caller.id).limit(12),
+    admin.from("notificaciones").select("*").eq("empresa_id", caller.empresa_id).eq("usuario_id", caller.id)
+      .order("created_at", { ascending: false }).limit(20),
   ]);
+
+  // Resuelve el nombre de quien asignó cada tarea (creado_por es un uuid) para que el
+  // asistente pueda responder "¿quién me la asignó?" sin inventar el nombre.
+  const creadorIds = Array.from(
+    new Set((tareas.data || []).map((tarea: { creado_por?: string }) => tarea.creado_por).filter(Boolean)),
+  );
+  let nombresCreadores: Record<string, string> = {};
+  if (creadorIds.length) {
+    const { data: creadores } = await admin.from("usuarios").select("id, nombre").in("id", creadorIds);
+    nombresCreadores = Object.fromEntries(
+      (creadores || []).map((usuario: { id: string; nombre: string }) => [usuario.id, usuario.nombre]),
+    );
+  }
+  const tareasConCreador = (tareas.data || []).map((tarea: { creado_por?: string }) => ({
+    ...tarea,
+    creado_por_nombre: (tarea.creado_por && nombresCreadores[tarea.creado_por]) || null,
+  }));
+
   return {
     alcance: "personal",
-    tareas: tareas.data,
+    fechaActual: new Date().toISOString(),
+    tareas: tareasConCreador,
     ausencias: ausencias.data,
     nominas: nominas.data,
+    notificaciones: notificaciones.data,
   };
 }
 

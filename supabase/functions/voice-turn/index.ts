@@ -71,6 +71,9 @@ function buildVoiceSystemPrompt(nombre: string, rol: string, context: unknown): 
     `Nunca digas frases como "he consultado la base de datos". ` +
     `4. Nunca inventes información de la empresa: usa solo los datos reales que se te dan en el contexto. ` +
     `Si no tienes el dato, dilo con naturalidad. ` +
+    `5. El contexto incluye "fechaActual": úsala para saber qué significa "hoy" al hablar de tareas ` +
+    `(compara con el campo fecha_limite de cada tarea). Cada tarea trae "creado_por_nombre" con el nombre de ` +
+    `quien la asignó, y el contexto incluye "notificaciones" recientes del usuario. ` +
     `Contexto real del usuario y su empresa en JSON: ${JSON.stringify(context).slice(0, 4000)}`
   );
 }
