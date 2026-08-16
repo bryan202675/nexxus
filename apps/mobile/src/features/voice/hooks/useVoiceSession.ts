@@ -137,8 +137,17 @@ export function useVoiceSession() {
         accionesPendientesRef.current = turno.accionesSensibles;
         setAccionesPendientes(turno.accionesSensibles);
       }
+      // Speech.speak('') no siempre dispara onDone -- si por lo que sea llega vacía, no nos
+      // quedamos congelados en 'speaking': se trata como turno terminado de inmediato.
+      const textoAHablar = turno.respuesta?.trim();
+      if (!textoAHablar) {
+        logVoz('respuesta vacía, se omite el habla');
+        procesandoRef.current = false;
+        if (activoRef.current && accionesPendientesRef.current.length === 0) void iniciarEscucha();
+        return;
+      }
       cambiarEstado('speaking');
-      void audio.hablar(turno.respuesta, () => {
+      void audio.hablar(textoAHablar, () => {
         logVoz('Nexxus terminó de hablar');
         procesandoRef.current = false;
         // Si quedó una acción sensible por confirmar, no se vuelve a escuchar sola: se

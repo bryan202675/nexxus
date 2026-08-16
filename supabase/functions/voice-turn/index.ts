@@ -177,6 +177,10 @@ Deno.serve(withHandler(async (req, admin) => {
   const { clean: respuestaSinAprobaciones, acciones } = extractSensitiveActions(parsed.respuesta);
   parsed.respuesta = await applyActionTags(admin, caller, respuestaSinAprobaciones);
   const accionesSensibles = puedeAprobar ? acciones : [];
+  // Si el modelo devolvió la respuesta hablada compuesta solo por etiquetas (sin nada de
+  // texto natural alrededor), applyActionTags las recorta todas y queda vacía -- Speech.speak('')
+  // en el cliente no siempre dispara onDone, dejando la llamada congelada sin sonido ni avance.
+  if (!parsed.respuesta.trim()) parsed.respuesta = 'Listo, ya quedó.';
 
   const usage = json?.usage_metadata || json?.usageMetadata || {};
   await admin.from('ai_usage').insert({
