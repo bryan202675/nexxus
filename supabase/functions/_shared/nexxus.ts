@@ -123,8 +123,10 @@ export async function buildAiContext(
   }
   if (!caller.empresa_id) throw new HttpError(412, "Tu usuario no tiene empresa asociada.");
   if (isCanonicalRole(caller.rol)) {
-    const [tareas, asistencias, reportes, ausencias, internas, nominas, notificaciones, empleados, empleadosCount, empresaInfo] =
-      await Promise.all([
+    const [
+      tareas, asistencias, reportes, ausencias, internas, nominas, notificaciones, empleados, empleadosCount,
+      empresaInfo, checkins, incidencias, evaluaciones, feedbacks,
+    ] = await Promise.all([
         admin.from("tareas").select("*").eq("empresa_id", caller.empresa_id).limit(80),
         admin.from("asistencias").select("*").eq("empresa_id", caller.empresa_id).limit(80),
         admin.from("reportes").select("*").eq("empresa_id", caller.empresa_id).limit(60),
@@ -142,6 +144,16 @@ export async function buildAiContext(
         admin.from("usuarios").select("*", { count: "exact", head: true }).eq("empresa_id", caller.empresa_id),
         admin.from("empresas").select("id, nombre, codigo, plan_id, created_at").eq("id", caller.empresa_id)
           .maybeSingle(),
+        // Bienestar/ánimo (checkins), incidencias, evaluaciones de desempeño y feedback --
+        // faltaban por completo, así que la IA no podía responder nada sobre bienestar de equipo.
+        admin.from("checkins").select("*").eq("empresa_id", caller.empresa_id)
+          .order("created_at", { ascending: false }).limit(150),
+        admin.from("incidencias").select("*").eq("empresa_id", caller.empresa_id)
+          .order("created_at", { ascending: false }).limit(60),
+        admin.from("evaluaciones").select("*").eq("empresa_id", caller.empresa_id)
+          .order("created_at", { ascending: false }).limit(60),
+        admin.from("feedbacks").select("*").eq("empresa_id", caller.empresa_id)
+          .order("created_at", { ascending: false }).limit(60),
       ]);
     return {
       alcance: "empresa",
@@ -156,14 +168,24 @@ export async function buildAiContext(
       solicitudesInternas: internas.data,
       nominas: nominas.data,
       notificaciones: notificaciones.data,
+      checkinsBienestar: checkins.data,
+      incidencias: incidencias.data,
+      evaluaciones: evaluaciones.data,
+      feedbacks: feedbacks.data,
     };
   }
-  const [tareas, ausencias, internas, nominas, notificaciones] = await Promise.all([
+  const [tareas, ausencias, internas, nominas, notificaciones, checkins, evaluaciones, feedbacks] = await Promise.all([
     admin.from("tareas").select("*").eq("empresa_id", caller.empresa_id).eq("asignado_a", caller.id).limit(20),
     admin.from("solicitudes_ausencia").select("*").eq("empresa_id", caller.empresa_id).eq("usuario_id", caller.id).limit(12),
     admin.from("solicitudes_internas").select("*").eq("empresa_id", caller.empresa_id).eq("usuario_id", caller.id).limit(12),
     admin.from("nominas").select("*").eq("empresa_id", caller.empresa_id).eq("usuario_id", caller.id).limit(12),
     admin.from("notificaciones").select("*").eq("empresa_id", caller.empresa_id).eq("usuario_id", caller.id)
+      .order("created_at", { ascending: false }).limit(20),
+    admin.from("checkins").select("*").eq("empresa_id", caller.empresa_id).eq("usuario_id", caller.id)
+      .order("created_at", { ascending: false }).limit(30),
+    admin.from("evaluaciones").select("*").eq("empresa_id", caller.empresa_id).eq("empleado_id", caller.id)
+      .order("created_at", { ascending: false }).limit(20),
+    admin.from("feedbacks").select("*").eq("empresa_id", caller.empresa_id).eq("usuario_id", caller.id)
       .order("created_at", { ascending: false }).limit(20),
   ]);
 
@@ -192,6 +214,9 @@ export async function buildAiContext(
     solicitudesInternas: internas.data,
     nominas: nominas.data,
     notificaciones: notificaciones.data,
+    checkinsBienestar: checkins.data,
+    evaluaciones: evaluaciones.data,
+    feedbacks: feedbacks.data,
   };
 }
 

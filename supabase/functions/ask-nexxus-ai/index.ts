@@ -72,11 +72,16 @@ async function callGemini(
     `arreglo "empleados" a mano, porque ese arreglo puede venir recortado por límites de tamaño y contarlo ` +
     `manualmente da un número menor al real. "empleados" trae el listado de personas de la empresa (nombre, ` +
     `correo, rol, estado) para buscar a alguien específico o cruzar ids con nombres, "empresa" trae los datos ` +
-    `de la compañía, "tareas"/"asistencias"/"reportes"/"ausencias"/"solicitudesInternas"/"nominas" traen los ` +
-    `de TODA la empresa (no solo los tuyos): úsalos con confianza y en detalle para responder cualquier ` +
-    `pregunta de resumen, conteo o listado de equipo (quién no ha marcado entrada hoy, cuántas solicitudes hay ` +
-    `pendientes, quién es fulano, etc). Solo di que no tienes el dato si de verdad no aparece en el JSON. ` +
-    `Contexto de la empresa y empleado en JSON: ${JSON.stringify(context).slice(0, 40000)}\n` +
+    `de la compañía. "nominas" trae el detalle completo de nómina de cada empleado (salario bruto y neto, ` +
+    `ISSS, AFP, renta, otras deducciones, período, estado); "checkinsBienestar" trae los check-ins de ánimo ` +
+    `del equipo (estado_animo, nota, fecha) para responder sobre bienestar, clima laboral o quién ha reportado ` +
+    `malestar; "incidencias" son reportes de problemas, "evaluaciones" son evaluaciones de desempeño (puntaje, ` +
+    `comentarios), "feedbacks" son comentarios libres del equipo. "tareas"/"asistencias"/"reportes"/` +
+    `"ausencias"/"solicitudesInternas" son de TODA la empresa (no solo los tuyos): úsalos con confianza y en ` +
+    `detalle para responder cualquier pregunta de resumen, conteo o listado de equipo (quién no ha marcado ` +
+    `entrada hoy, cuántas solicitudes hay pendientes, quién es fulano, cómo va el bienestar del equipo, etc). ` +
+    `Solo di que no tienes el dato si de verdad no aparece en el JSON. ` +
+    `Contexto de la empresa y empleado en JSON: ${JSON.stringify(context).slice(0, 55000)}\n` +
     `Si corresponde, puedes emitir como texto literal las etiquetas [NOTIFICATION:tipo|titulo|mensaje] ` +
     `(tipo debe ser uno de: bienestar, tarea, aprobacion, general — usa siempre "bienestar" cuando el empleado ` +
     `exprese malestar, estrés, agotamiento o sobrecarga, o pida explícitamente avisarle a su jefe/RRHH sobre ` +

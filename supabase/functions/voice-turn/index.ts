@@ -108,10 +108,13 @@ function buildVoiceSystemPrompt(nombre: string, rol: string, context: unknown, p
     `(contado directo en la base de datos) — úsalo siempre que pregunten cuántos empleados hay, nunca cuentes ` +
     `a mano el arreglo "empleados" porque puede venir recortado y da un número menor al real. "empleados" ` +
     `trae el listado (nombre, correo, rol, estado) para buscar a alguien o dar nombres reales cruzando ids, ` +
-    `"empresa" los datos de la compañía; "tareas"/"asistencias"/"reportes"/"ausencias"/"solicitudesInternas"/` +
-    `"nominas" son de TODA la empresa, no solo suyos. Úsalos con confianza y en detalle. Solo di que no tienes ` +
-    `el dato si de verdad no aparece en el JSON. ` +
-    `Contexto real del usuario y su empresa en JSON: ${JSON.stringify(context).slice(0, 14000)}`
+    `"empresa" los datos de la compañía. "nominas" trae el detalle de nómina (salario, deducciones, estado), ` +
+    `"checkinsBienestar" los check-ins de ánimo del equipo para preguntas de bienestar o clima laboral, ` +
+    `"incidencias"/"evaluaciones"/"feedbacks" son reportes, evaluaciones de desempeño y comentarios del ` +
+    `equipo. "tareas"/"asistencias"/"reportes"/"ausencias"/"solicitudesInternas" son de TODA la empresa, no ` +
+    `solo suyos. Úsalos con confianza y en detalle. Solo di que no tienes el dato si de verdad no aparece en ` +
+    `el JSON. ` +
+    `Contexto real del usuario y su empresa en JSON: ${JSON.stringify(context).slice(0, 20000)}`
   );
 }
 
