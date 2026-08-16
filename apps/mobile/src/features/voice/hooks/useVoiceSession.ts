@@ -32,6 +32,12 @@ export function useVoiceSession() {
   const [transcripcion, setTranscripcion] = useState<VoiceTranscriptEntry[]>([]);
   const [accionesPendientes, setAccionesPendientes] = useState<SensitiveAiAction[]>([]);
   const accionesPendientesRef = useRef<SensitiveAiAction[]>([]);
+  // Espejo de "transcripcion" en ref (no en las deps de procesarTurno, para no recrearlo en
+  // cada turno) -- sin esto, cada llamada a voice-turn arrancaba sin memoria de la llamada:
+  // Nexxus pedía el título, el usuario lo daba, y el siguiente turno no sabía que ya lo tenía
+  // (cada turno era una petición nueva y aislada a Gemini), así que preguntaba todo de nuevo
+  // en bucle. Ver enviarTurnoDeVoz(clip, historial).
+  const transcripcionRef = useRef<VoiceTranscriptEntry[]>([]);
   const estadoRef = useRef<VoiceSessionState>('idle');
   const activoRef = useRef(false);
   const muteadoRef = useRef(false);
@@ -80,6 +86,8 @@ export function useVoiceSession() {
     setError(null);
     accionesPendientesRef.current = [];
     setAccionesPendientes([]);
+    transcripcionRef.current = [];
+    setTranscripcion([]);
     cambiarEstado('connecting');
 
     const granted = audio.estadoPermiso === 'granted' || await audio.solicitarPermiso();
@@ -124,16 +132,23 @@ export function useVoiceSession() {
         return;
       }
 
-      const turno = await enviarTurnoDeVoz(clip);
+      // Últimos turnos de ESTA llamada, para que Gemini recuerde lo ya dicho (p.ej. un título
+      // que ya dio el usuario) en vez de tratar cada turno como una conversación nueva.
+      const historialReciente = transcripcionRef.current.slice(-10).map((entrada) => ({
+        rol: entrada.rol,
+        texto: entrada.texto,
+      }));
+      const turno = await enviarTurnoDeVoz(clip, historialReciente);
       logVoz('respuesta recibida', turno.transcripcion ? `"${turno.transcripcion}"` : '(sin transcripción)');
       if (!activoRef.current) return;
 
       const ahora = Date.now();
-      setTranscripcion((previa) => [
-        ...previa,
+      const nuevasEntradas: VoiceTranscriptEntry[] = [
         { id: `${ahora}-u`, rol: 'usuario', texto: turno.transcripcion, final: true },
         { id: `${ahora}-n`, rol: 'nexxus', texto: turno.respuesta, final: true },
-      ]);
+      ];
+      transcripcionRef.current = [...transcripcionRef.current, ...nuevasEntradas];
+      setTranscripcion((previa) => [...previa, ...nuevasEntradas]);
       if (turno.accionesSensibles?.length) {
         accionesPendientesRef.current = turno.accionesSensibles;
         setAccionesPendientes(turno.accionesSensibles);

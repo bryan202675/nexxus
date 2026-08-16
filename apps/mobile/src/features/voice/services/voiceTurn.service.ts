@@ -1,8 +1,16 @@
 import { supabase } from '@/infrastructure/supabase/supabaseClient';
 import { SensitiveAiAction } from 'domain/entities/AiAssistant';
 
-export async function enviarTurnoDeVoz(audio: { data: string; mimeType: string }) {
-  const { data, error } = await supabase.functions.invoke('voice-turn', { body: { audio } });
+export interface TurnoDeVozHistorialEntrada {
+  rol: 'usuario' | 'nexxus';
+  texto: string;
+}
+
+export async function enviarTurnoDeVoz(
+  audio: { data: string; mimeType: string },
+  historial?: TurnoDeVozHistorialEntrada[],
+) {
+  const { data, error } = await supabase.functions.invoke('voice-turn', { body: { audio, history: historial } });
   if (error) {
     let mensaje = error.message || 'No pudimos procesar tu mensaje de voz.';
     try {

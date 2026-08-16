@@ -96,7 +96,10 @@ function buildVoiceSystemPrompt(
     `1. Responde siempre en español, de forma profesional, natural, cercana y directa. ` +
     `2. Sé breve: 1 a 3 frases, como en una llamada real, nunca un párrafo largo. ` +
     `3. Nunca leas estructuras JSON en voz alta, ni menciones APIs, bases de datos o "herramientas internas". ` +
-    `Nunca digas frases como "he consultado la base de datos". ` +
+    `Nunca digas frases como "he consultado la base de datos". Si abajo hay "Historial reciente de esta ` +
+    `llamada", son turnos anteriores de esta MISMA llamada: úsalo para recordar lo que el usuario ya te dijo ` +
+    `(un título, una fecha, a quién asignar algo, etc.) y no perder el hilo. Nunca vuelvas a preguntar algo ` +
+    `que el usuario ya te dio en un turno anterior de ese historial. ` +
     `4. El contexto JSON de abajo es TODO lo que tienes disponible: revísalo con cuidado antes de decir que ` +
     `no tienes un dato, casi siempre está ahí. Nunca inventes información que no esté en el contexto. ` +
     `5. El contexto incluye "fechaActual": úsala para saber qué significa "hoy" al hablar de tareas ` +
@@ -155,14 +158,25 @@ Deno.serve(withHandler(async (req, admin) => {
   const puedeAprobarNomina = isAdminEmpresa(caller);
   const systemPrompt = buildVoiceSystemPrompt(caller.nombre, caller.rol, context, puedeAprobar, puedeAprobarNomina);
 
+  // Sin esto, cada turno era una petición aislada a Gemini sin memoria de la llamada: al pedir
+  // agendar algo, Nexxus preguntaba el título, el usuario lo daba, y el siguiente turno no
+  // sabía que ya lo tenía (arrancaba de cero) -- entraba en bucle pidiendo lo mismo otra vez.
+  const historyRaw = Array.isArray(body?.history) ? body.history : [];
+  const historial = historyRaw
+    .filter((h: unknown): h is { rol?: unknown; texto?: unknown } => !!h && typeof h === 'object')
+    .slice(-10)
+    .map((h) => `${h.rol === 'usuario' ? 'Usuario' : 'Nexxus'}: ${String(h.texto ?? '').slice(0, 500)}`)
+    .join('\n');
+  const bloqueHistorial = historial ? `\n\nHistorial reciente de esta llamada:\n${historial}` : '';
+
   type InteractionInput =
     | { type: 'text'; text: string }
     | { type: 'audio'; data: string; mime_type: string };
   const input: InteractionInput[] = [{
     type: 'text',
     text: transcripcion
-      ? `${systemPrompt}\n\nDevuelve SOLO JSON válido con las claves transcripcion y respuesta. Transcripción del usuario: ${transcripcion}`
-      : `${systemPrompt}\n\nTranscribe el audio adjunto y responde como Nexxus Brain. Devuelve SOLO JSON válido con las claves transcripcion y respuesta.`,
+      ? `${systemPrompt}${bloqueHistorial}\n\nDevuelve SOLO JSON válido con las claves transcripcion y respuesta. Transcripción del usuario: ${transcripcion}`
+      : `${systemPrompt}${bloqueHistorial}\n\nTranscribe el audio adjunto y responde como Nexxus Brain. Devuelve SOLO JSON válido con las claves transcripcion y respuesta.`,
   }];
   if (!transcripcion) input.push({ type: 'audio', data: audio.data, mime_type: mimeType === 'audio/mp4' ? 'audio/m4a' : mimeType });
 
