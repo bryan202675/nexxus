@@ -6,8 +6,18 @@ const groqApiKey = Deno.env.get('GROQ_API_KEY') || '';
 const groqModel = Deno.env.get('GROQ_STT_MODEL') || 'whisper-large-v3';
 
 function extractText(value: unknown): string {
-  const text = typeof value === 'object' && value ? (value as { output_text?: unknown }).output_text : '';
-  return typeof text === 'string' ? text.trim() : '';
+  const json = value as {
+    output_text?: unknown;
+    steps?: { type?: string; content?: { type?: string; text?: string }[] }[];
+  };
+  if (typeof json?.output_text === 'string') return json.output_text.trim();
+  const text = (json?.steps || [])
+    .filter((step) => step.type === 'model_output')
+    .flatMap((step) => step.content || [])
+    .filter((content) => content.type === 'text')
+    .map((content) => content.text || '')
+    .join('\n');
+  return text.trim();
 }
 
 function decodeBase64(value: string): Uint8Array {
