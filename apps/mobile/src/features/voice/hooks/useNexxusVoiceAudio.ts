@@ -149,14 +149,12 @@ export function useNexxusVoiceAudio(): UseNexxusVoiceAudioResult {
     } catch {
       // Si falla el cambio de modo, igual intentamos hablar con la ruta de audio actual.
     }
-    // La voz neuronal es una mejora opcional, no una dependencia dura -- si falla (endpoint
-    // caído, sesión expirada, red, etc.) se cae a la voz del sistema en vez de quedar en
-    // silencio total (mismo patrón que Groq STT: mejor calidad si está, nunca bloqueante).
-    if (neuralTts.available) {
-      const exito = await neuralTts.speak(texto, alTerminar);
-      if (exito) return;
-      if (__DEV__) console.log('[VOICE] voz neuronal no disponible, usando voz del sistema');
-    }
+    // Voz neuronal desactivada por ahora: agrega latencia real (función serverless en Vercel +
+    // servicio externo, varios segundos por turno, más en frío) y durante las pruebas la
+    // llamada terminaba cortándose antes de que el audio llegara a reproducirse. El código de
+    // useNeuralTTS se deja intacto (incluido el stop() de más abajo) para retomarlo con calma
+    // más adelante; por ahora se usa siempre la voz del sistema, instantánea y sin dependencias
+    // externas.
     // Salvavidas: si por lo que sea expo-speech nunca dispara ningún callback (se ha visto
     // colgarse tras cambiar de modo de audio dos veces seguidas -- neural TTS y luego esto),
     // no dejamos la llamada pegada en "hablando" para siempre. ~90ms/palabra a rate 0.96,
@@ -182,7 +180,7 @@ export function useNexxusVoiceAudio(): UseNexxusVoiceAudioResult {
         terminarUnaVez('onError');
       },
     });
-  }, [activarModoAltavoz, neuralTts]);
+  }, [activarModoAltavoz]);
 
   const interrumpirHabla = useCallback(() => {
     neuralTts.stop();
