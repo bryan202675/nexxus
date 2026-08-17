@@ -62,14 +62,20 @@ export function useNeuralTTS(): UseNeuralTTSResult {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({ text, voice: 'es-MX-DaliaNeural' }),
       });
+      if (__DEV__) console.log('[VOICE] neuralTts: respuesta HTTP', response.status, 'content-type', response.headers.get('content-type'), 'content-length', response.headers.get('content-length'));
       if (!response.ok) {
         const detalle = await response.text().catch(() => '');
         throw new Error(`voz neuronal respondió ${response.status}: ${detalle.slice(0, 200)}`);
       }
       if (requestId !== requestIdRef.current) return true;
 
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      if (__DEV__) console.log('[VOICE] neuralTts: audio recibido,', bytes.length, 'bytes');
+      if (bytes.length < 1000) throw new Error(`audio recibido sospechosamente pequeño (${bytes.length} bytes)`);
+
       const file = new File(Paths.cache, `nexxus-voice-${Date.now()}.mp3`);
-      file.write(new Uint8Array(await response.arrayBuffer()));
+      file.write(bytes);
+      if (__DEV__) console.log('[VOICE] neuralTts: archivo escrito', file.uri, 'existe:', file.exists, 'tamaño:', file.size);
       if (requestId !== requestIdRef.current) {
         if (file.exists) file.delete();
         return true;
@@ -79,6 +85,7 @@ export function useNeuralTTS(): UseNeuralTTSResult {
       playerRef.current = player;
       fileRef.current = file;
       player.addListener('playbackStatusUpdate', (status) => {
+        if (__DEV__) console.log('[VOICE] neuralTts: playbackStatusUpdate', JSON.stringify(status));
         if (!status.didJustFinish) return;
         const complete = doneRef.current;
         clearPlayer(false);
@@ -86,6 +93,7 @@ export function useNeuralTTS(): UseNeuralTTSResult {
       });
       setIsLoading(false);
       setIsPlaying(true);
+      if (__DEV__) console.log('[VOICE] neuralTts: llamando player.play(), volume:', player.volume, 'muted:', player.muted);
       player.play();
       return true;
     } catch (cause) {
