@@ -1,0 +1,15 @@
+# Vercel solo necesita construir el dashboard (apps/dashboard) + landing (apps/Landing) +
+# expo web (apps/mobile web export) + las funciones serverless en /api. Todo lo demás aquí
+# infla el tamaño de subida sin aportar nada al deploy -- con --archive=tgz, Vercel no parece
+# respetar .gitignore de la misma forma que en el modo de subida normal, así que carpetas
+# nativas regenerables (ios/) se estaban empaquetando igual (1.2G) y causando fallos de red.
+
+prototypes/
+apps/mobile/ios/
+apps/mobile/android/
+apps/mobile/.expo/
+node_modules/
+apps/dashboard/node_modules/
+apps/mobile/node_modules/
+apps/Landing/node_modules/
+packages/*/node_modules/
