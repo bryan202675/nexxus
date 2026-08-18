@@ -46,7 +46,16 @@ Deno.serve(withHandler(async (req, admin) => {
     estado: "confirmado",
     referencia_externa: purchaseId,
   });
-  if (paymentError) throw new HttpError(500, paymentError.message);
+  if (paymentError) {
+    // El índice único payments_referencia_externa_unique convierte la carrera (dos solicitudes
+    // concurrentes con el mismo purchaseId, ej. un reintento de red) en un error 23505 en vez
+    // de una segunda fila silenciosa -- se trata como éxito idempotente, igual que
+    // evaluate-automation-rules/marcarEjecucion para el mismo patrón de "solo una vez".
+    if (paymentError.code === "23505") {
+      return { confirmed: true, plan: plan.nombre, expiresAt: expiresAt.toISOString() };
+    }
+    throw new HttpError(500, paymentError.message);
+  }
 
   const { error: subError } = await admin.from("suscripciones").upsert({
     empresa_id: caller.empresa_id,

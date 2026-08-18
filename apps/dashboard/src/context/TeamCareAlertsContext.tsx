@@ -135,14 +135,15 @@ export function TeamCareAlertsProvider({ children }: { children: React.ReactNode
   };
 
   const markAsRead = async (id: string) => {
-    await supabase
+    const { error: updateError } = await supabase
       .from("notificaciones")
       .update({ leida: true, fecha_lectura: new Date().toISOString() })
       .eq("id", id);
+    if (updateError) setError(updateError?.message || "No se pudo marcar la alerta como leída.");
   };
 
   const markAsResolved = async (id: string) => {
-    await supabase
+    const { error: updateError } = await supabase
       .from("notificaciones")
       .update({
         resuelta: true,
@@ -152,6 +153,7 @@ export function TeamCareAlertsProvider({ children }: { children: React.ReactNode
         fecha_lectura: new Date().toISOString(),
       })
       .eq("id", id);
+    if (updateError) setError(updateError?.message || "No se pudo marcar la alerta como resuelta.");
   };
 
   const value = useMemo<TeamCareAlertsValue>(

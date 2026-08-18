@@ -32,7 +32,7 @@ const SuperAdminDashboard = () => {
       .catch((err) => active && setError(err.message || "No se pudieron cargar las estadísticas."));
     const unsubscribe = subscribePlatform(
       (value) => active && setSnapshot(value),
-      (err) => active && setError(err.message || "No se pudo conectar con Firestore.")
+      (err) => active && setError(err.message || "No se pudo conectar con el servidor.")
     );
     return () => {
       active = false;

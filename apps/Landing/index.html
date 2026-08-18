@@ -223,7 +223,356 @@
 <svg viewBox="0 0 16 15" overflow="visible" id="svg451365482_313"><path d="M 0 0 L 16 0 L 16 11 L 4 11 L 0 15 Z" fill="transparent" stroke-width="1.8" stroke="rgb(255,255,255)" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray=""/></svg>
 </div>
 	<!-- Start of bodyEnd -->
-    
+    <script>
+      (function() {
+        const SUPABASE_URL = "https://sehmquyehjboznvwztqh.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_wmxXYmeqSlu6eicxsdjFFA_-Sb_qHWS";
+
+        // Toast notification container
+        let toastContainer = null;
+        function getToastContainer() {
+          if (!toastContainer) {
+            toastContainer = document.createElement("div");
+            toastContainer.id = "nexxus-landing-toast-container";
+            toastContainer.style.cssText = `
+              position: fixed;
+              top: 24px;
+              right: 24px;
+              z-index: 2147483647;
+              display: flex;
+              flex-direction: column;
+              gap: 12px;
+              max-width: calc(100vw - 48px);
+              width: 420px;
+              pointer-events: none;
+              font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            `;
+            document.body.appendChild(toastContainer);
+          }
+          return toastContainer;
+        }
+
+        function showToast({ title, message, type = 'success', duration = 6000 }) {
+          const container = getToastContainer();
+          const toast = document.createElement("div");
+          const isSuccess = type === 'success';
+          const isError = type === 'error';
+
+          const accentColor = isSuccess ? '#10b981' : (isError ? '#ef4444' : '#f59e0b');
+          const glowColor = isSuccess ? 'rgba(16, 185, 129, 0.2)' : (isError ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)');
+
+          toast.style.cssText = `
+            pointer-events: auto;
+            background: rgba(18, 20, 29, 0.94);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-left: 4px solid ${accentColor};
+            border-radius: 14px;
+            padding: 16px 18px;
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5), 0 0 20px ${glowColor};
+            color: #ffffff;
+            opacity: 0;
+            transform: translateY(-12px) scale(0.97);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+          `;
+
+          const iconSvg = isSuccess
+            ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${accentColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`
+            : (isError
+              ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${accentColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`
+              : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${accentColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`
+            );
+
+          toast.innerHTML = `
+            ${iconSvg}
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-weight: 700; font-size: 14px; letter-spacing: -0.2px; line-height: 1.3; color: #ffffff; margin-bottom: 3px;">
+                ${title}
+              </div>
+              <div style="font-size: 12.5px; line-height: 1.45; color: rgba(255, 255, 255, 0.75);">
+                ${message}
+              </div>
+            </div>
+            <button type="button" aria-label="Cerrar" style="background:none;border:none;color:rgba(255,255,255,0.45);cursor:pointer;padding:2px;margin:-2px -4px 0 0;line-height:1;display:flex;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          `;
+
+          const closeBtn = toast.querySelector("button");
+          let dismissTimer = null;
+
+          function removeToast() {
+            if (dismissTimer) clearTimeout(dismissTimer);
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-12px) scale(0.95)';
+            setTimeout(() => {
+              if (toast.parentNode) toast.parentNode.removeChild(toast);
+            }, 300);
+          }
+
+          if (closeBtn) closeBtn.onclick = removeToast;
+          container.appendChild(toast);
+
+          requestAnimationFrame(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateY(0) scale(1)';
+          });
+
+          dismissTimer = setTimeout(removeToast, duration);
+        }
+
+        // Helper to extract values from inputs
+        function extractFormData(rootEl) {
+          const findInput = (selectors) => {
+            for (const s of selectors) {
+              const el = rootEl.querySelector(s);
+              if (el && typeof el.value === 'string' && el.value.trim().length > 0) {
+                return { value: el.value.trim(), element: el };
+              }
+            }
+            for (const s of selectors) {
+              const el = rootEl.querySelector(s);
+              if (el) return { value: '', element: el };
+            }
+            return { value: '', element: null };
+          };
+
+          const nameData = findInput([
+            'input[name="Name"]',
+            'input[name="name"]',
+            'input[name="nombre"]',
+            'label[data-framer-name*="Name" i] input',
+            'input[placeholder*="nombre" i]'
+          ]);
+
+          const emailData = findInput([
+            'input[name="Email"]',
+            'input[name="email"]',
+            'input[name="correo"]',
+            'input[type="email"]',
+            'label[data-framer-name*="Email" i] input',
+            'input[placeholder*="ejemplo" i]',
+            'input[placeholder*="@" i]'
+          ]);
+
+          const phoneData = findInput([
+            'input[name="Phone Number"]',
+            'input[name="phone"]',
+            'input[name="telefono"]',
+            'input[type="tel"]',
+            'label[data-framer-name*="Phone" i] input',
+            'input[placeholder*="contacto" i]',
+            'input[placeholder*="tel" i]'
+          ]);
+
+          const subjectData = findInput([
+            'input[name="Subject"]',
+            'input[name="subject"]',
+            'input[name="asunto"]',
+            'label[data-framer-name*="Subject" i] input',
+            'input[placeholder*="ayudarte" i]',
+            'input[placeholder*="asunto" i]'
+          ]);
+
+          const messageData = findInput([
+            'textarea[name="Message"]',
+            'textarea[name="message"]',
+            'textarea[name="mensaje"]',
+            'input[name="Message"]',
+            'label[data-framer-name*="Message" i] textarea',
+            'label[data-framer-name*="Message" i] input',
+            'textarea',
+            'input[placeholder*="mensaje" i]'
+          ]);
+
+          return {
+            nombre: nameData.value,
+            correo: emailData.value,
+            telefono: phoneData.value,
+            asunto: subjectData.value,
+            mensaje: messageData.value,
+            elements: {
+              name: nameData.element,
+              email: emailData.element,
+              phone: phoneData.element,
+              subject: subjectData.element,
+              message: messageData.element,
+            }
+          };
+        }
+
+        let isSubmitting = false;
+
+        async function handleSubmit(formOrContainer, triggerButton) {
+          if (isSubmitting) return;
+
+          const data = extractFormData(formOrContainer);
+
+          // Validation
+          if (!data.nombre) {
+            showToast({
+              title: "Nombre requerido",
+              message: "Por favor ingresa tu nombre completo.",
+              type: "warning"
+            });
+            if (data.elements.name) data.elements.name.focus();
+            return;
+          }
+
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!data.correo || !emailRegex.test(data.correo)) {
+            showToast({
+              title: "Correo electrónico requerido",
+              message: "Por favor ingresa un correo electrónico válido (ej. tu@empresa.com).",
+              type: "warning"
+            });
+            if (data.elements.email) data.elements.email.focus();
+            return;
+          }
+
+          const submitBtn = triggerButton || formOrContainer.querySelector('button[type="submit"], button, .framer-sc9PP');
+          const btnTextEl = submitBtn ? (submitBtn.querySelector('p, span') || submitBtn) : null;
+          const originalBtnHtml = btnTextEl ? btnTextEl.innerHTML : '';
+
+          try {
+            isSubmitting = true;
+            if (submitBtn) {
+              submitBtn.disabled = true;
+              submitBtn.style.opacity = '0.7';
+              submitBtn.style.cursor = 'wait';
+            }
+            if (btnTextEl) {
+              btnTextEl.innerHTML = `Enviando mensaje...`;
+            }
+
+            const ticketCodigo = 'NEX-' + Math.floor(10000 + Math.random() * 90000);
+
+            const payload = {
+              ticket_codigo: ticketCodigo,
+              nombre: data.nombre,
+              correo: data.correo.toLowerCase(),
+              telefono: data.telefono || null,
+              empresa: null,
+              categoria: 'otro',
+              asunto: data.asunto || 'Contacto desde Landing',
+              mensaje: data.mensaje || 'Consulta enviada desde el formulario de contacto de la landing.',
+              prioridad: 'media',
+              origen: 'landing',
+              estado: 'pendiente'
+            };
+
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/solicitudes_soporte_publico`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'Prefer': 'return=minimal'
+              },
+              body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+              const errBody = await response.text().catch(() => '');
+              throw new Error(`Error en el servidor (${response.status}): ${errBody || response.statusText}`);
+            }
+
+            // Success UI
+            if (btnTextEl) {
+              btnTextEl.innerHTML = `✓ ¡Mensaje enviado!`;
+              if (submitBtn) submitBtn.style.backgroundColor = '#10b981';
+            }
+
+            // Clear inputs
+            formOrContainer.querySelectorAll('input, textarea').forEach(input => {
+              input.value = '';
+            });
+
+            showToast({
+              title: "¡Mensaje recibido con éxito!",
+              message: `Tu solicitud fue registrada con el ticket <b style="color:#a78bfa;font-family:monospace;background:rgba(167,139,250,0.15);padding:1px 6px;border-radius:4px;">${ticketCodigo}</b>. Nuestro equipo te responderá a <b>${data.correo}</b>.`,
+              type: "success",
+              duration: 7000
+            });
+
+            setTimeout(() => {
+              if (btnTextEl && originalBtnHtml) {
+                btnTextEl.innerHTML = originalBtnHtml;
+              }
+              if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '';
+                submitBtn.style.cursor = '';
+                submitBtn.style.backgroundColor = '';
+              }
+            }, 4000);
+
+          } catch (err) {
+            console.error('Error al enviar formulario de contacto a Supabase:', err);
+            if (btnTextEl) {
+              btnTextEl.innerHTML = `✕ Error al enviar`;
+              if (submitBtn) submitBtn.style.backgroundColor = '#ef4444';
+            }
+
+            showToast({
+              title: "Error al enviar",
+              message: "No fue posible guardar tu mensaje. Por favor verifica tu conexión o intenta nuevamente.",
+              type: "error",
+              duration: 6000
+            });
+
+            setTimeout(() => {
+              if (btnTextEl && originalBtnHtml) {
+                btnTextEl.innerHTML = originalBtnHtml;
+              }
+              if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '';
+                submitBtn.style.cursor = '';
+                submitBtn.style.backgroundColor = '';
+              }
+            }, 3500);
+
+          } finally {
+            isSubmitting = false;
+          }
+        }
+
+        // Intercept native submit
+        window.addEventListener('submit', function(event) {
+          const form = event.target;
+          if (!form || !(form instanceof HTMLFormElement)) return;
+          event.preventDefault();
+          event.stopPropagation();
+          handleSubmit(form);
+        }, true);
+
+        // Intercept button clicks for Framer components
+        window.addEventListener('click', function(event) {
+          const target = event.target;
+          const button = target.closest('button[type="submit"], .framer-sc9PP, button');
+          if (!button) return;
+
+          const btnText = (button.innerText || button.textContent || '').trim().toLowerCase();
+          const isContactButton = btnText.includes('enviar mensaje') || button.getAttribute('type') === 'submit' || button.classList.contains('framer-sc9PP');
+
+          if (!isContactButton) return;
+
+          const container = button.closest('form') || button.closest('.framer-1klb3f0') || button.closest('.framer-ms2xm2') || button.closest('main') || document;
+          const hasInputs = container.querySelector('input[name="Name"], input[name="Email"], input[placeholder*="nombre" i], input[type="email"]');
+          if (hasInputs) {
+            event.preventDefault();
+            event.stopPropagation();
+            handleSubmit(container, button);
+          }
+        }, true);
+
+      })();
+    </script>
     <!-- End of bodyEnd -->
 </body>
 </html>

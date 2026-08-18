@@ -424,7 +424,7 @@ export default function SaUsuarios() {
                 </TouchableOpacity>
               </View>
               {resetParams.mode === 'link' ? (
-                <Text>Se enviará un correo a {detalle?.correo} con un enlace seguro de Firebase para que el usuario elija su nueva contraseña.</Text>
+                <Text>Se enviará un correo a {detalle?.correo} con un enlace seguro para que el usuario elija su nueva contraseña.</Text>
               ) : (
                 <>
                   <Text>Escribe la nueva contraseña manualmente. Si el usuario intenta entrar de inmediato, funcionará.</Text>

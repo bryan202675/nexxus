@@ -24,10 +24,6 @@ type BorderGlowProps = {
   glowRadius?: number;
 };
 
-// =========================================================================
-// Helpers: color y gradiente (variables CSS del glow y del fondo)
-// =========================================================================
-
 function parseHSL(hslStr: string) {
   const match = hslStr.match(/([\d.]+)\s*([\d.]+)%?\s*([\d.]+)%?/);
   if (!match) return { h: 40, s: 80, l: 80 };
@@ -59,10 +55,6 @@ function buildGradientVars(colors: string[]) {
   vars['--gradient-base'] = `linear-gradient(${colors[0]} 0 100%)`;
   return vars;
 }
-
-// =========================================================================
-// Helpers: easing y animacion por tiempo (usados en el "sweep" de entrada)
-// =========================================================================
 
 function easeOutCubic(x: number) {
   return 1 - Math.pow(1 - x, 3);
@@ -114,10 +106,6 @@ function animateValue({
 function canUsePointerGlow() {
   return typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 }
-
-// =========================================================================
-// Componente principal
-// =========================================================================
 
 const BorderGlow = memo(function BorderGlow({
   animated = false,

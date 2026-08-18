@@ -1,12 +1,26 @@
+import { useState } from "react";
 import InternalChatPanel from "views/nexxus/components/InternalChatPanel";
 import NexxusAiChatPanel from "views/nexxus/components/NexxusAiChatPanel";
+import VoiceAiPanel from "views/nexxus/components/VoiceAiPanel";
 
-// Antes estas dos pantallas tenían versiones reducidas propias (sin avatares, adjuntos, límite de
-// plan ni indicador de no leído) mientras que "Mensajería" y "Nexxus IA" en el panel de admin sí
-// los tenían. Ahora las tres usan los mismos paneles compartidos para que empleado, jefe y admin
-// vean exactamente la misma experiencia.
+// Paneles compartidos para que empleado, jefe y admin disfruten de la misma experiencia completa.
 export function WorkspaceAi() {
-  return <NexxusAiChatPanel title="Nexxus IA" subtitle="Consulta procesos, tareas y recursos de tu espacio de trabajo." />;
+  const [voiceOpen, setVoiceOpen] = useState(false);
+
+  return (
+    <>
+      <NexxusAiChatPanel
+        title="Nexxus IA"
+        subtitle="Consulta procesos, tareas y recursos de tu espacio de trabajo."
+        onOpenVoice={() => setVoiceOpen(true)}
+      />
+      {voiceOpen ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/60 p-3 backdrop-blur-md transition-all sm:p-6 animate-fadeIn">
+          <VoiceAiPanel onClose={() => setVoiceOpen(false)} />
+        </div>
+      ) : null}
+    </>
+  );
 }
 
 export function WorkspaceInternalChat() {

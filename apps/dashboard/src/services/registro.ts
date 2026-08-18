@@ -1,5 +1,6 @@
 import { supabase } from "supabaseClient/supabaseConfig";
 import { subscriptionExpiration, purchaseId as generarPurchaseId } from "services/checkout";
+import { subirLogoEmpresa } from "services/companyLogoUpload";
 
 // Reglas y textos portados de nexxus/app/src/Landing/LandingAuth.tsx, adaptados a JS/Horizon.
 // El alta de empresa (empresa + usuario admin + sede + departamento + configuraciones_empresa +
@@ -148,7 +149,7 @@ async function generarCodigoEmpresa(nombreEmpresa) {
 // configuraciones_empresa + suscripcion. A diferencia de la version Firebase,
 // el plan NO se denormaliza en cada fila (usuarios/empresas): vive solo en
 // "suscripciones", una fila por empresa.
-export async function crearCuentaYEmpresa({ uid, correo, nombreAdmin, fotoPerfil, empresa, prefijoSeleccionado, checkout }) {
+export async function crearCuentaYEmpresa({ uid, correo, nombreAdmin, fotoPerfil, empresa, prefijoSeleccionado, checkout, logo }) {
   const emailSeguro = correo || "";
   const telefonoCompleto = `${prefijoSeleccionado.trim()} ${limpiarTexto(empresa.telefono)}`.trim();
   const codigo = await generarCodigoEmpresa(empresa.nombre);
@@ -180,6 +181,20 @@ export async function crearCuentaYEmpresa({ uid, correo, nombreAdmin, fotoPerfil
     foto_perfil: fotoPerfil || null,
   });
   if (usuarioInicialError) throw usuarioInicialError;
+
+  // 2.1 Logo de la empresa (opcional) — sube a Cloudinary y lo guarda en empresas.datos.
+  // Necesita el empresaId ya creado para la carpeta, por eso va después del paso 1.
+  if (logo) {
+    const { url: logoUrl, publicId: logoPublicId } = await subirLogoEmpresa(logo, empresaId);
+    const { error: logoError } = await supabase
+      .from("empresas")
+      .update({ datos: { logo_url: logoUrl, logo_public_id: logoPublicId } })
+      .eq("id", empresaId);
+    if (logoError) throw logoError;
+    if (!fotoPerfil) {
+      await supabase.from("usuarios").update({ foto_perfil: logoUrl }).eq("id", uid);
+    }
+  }
 
   // 3. Crear sede principal
   const { data: sedeRow, error: sedeError } = await supabase

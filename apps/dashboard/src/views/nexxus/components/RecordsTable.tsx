@@ -7,18 +7,10 @@ import {
   getPaginationRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { MdCancel, MdCheckCircle, MdOutlineError } from "react-icons/md";
-import Progress from "components/progress";
 import NexxusCard from "./NexxusCard";
 
 const columnHelper = createColumnHelper();
 const PAGE_SIZE = 8;
-
-const STATUS_ICON = {
-  Approved: <MdCheckCircle className="me-1 text-green-500 dark:text-green-400" />,
-  Disable: <MdCancel className="me-1 text-red-500 dark:text-red-400" />,
-  Error: <MdOutlineError className="me-1 text-amber-500 dark:text-amber-400" />,
-};
 
 const RecordsTable = ({ title = "Records", columnsData, tableData, delay = 0 }) => {
   const [sorting, setSorting] = useState([]);
@@ -33,23 +25,6 @@ const RecordsTable = ({ title = "Records", columnsData, tableData, delay = 0 }) 
         </p>
       ),
       cell: (info) => {
-        if (col.accessor === "status") {
-          return (
-            <div className="flex items-center">
-              {STATUS_ICON[info.getValue()]}
-              <p className="text-sm font-bold text-navy-700 dark:text-white">
-                {info.getValue()}
-              </p>
-            </div>
-          );
-        }
-        if (col.accessor === "progress") {
-          return (
-            <div className="flex items-center">
-              <Progress width="w-[108px]" value={info.getValue()} />
-            </div>
-          );
-        }
         return (
           <div className="text-sm font-bold text-navy-700 dark:text-white">
             {info.getValue()}
@@ -117,7 +92,7 @@ const RecordsTable = ({ title = "Records", columnsData, tableData, delay = 0 }) 
 
       <div className="mt-4 flex items-center justify-between px-1 text-sm font-medium text-gray-600 dark:text-white/70">
         <p>
-          Page {pagination.pageIndex + 1} of {table.getPageCount()}
+          Página {pagination.pageIndex + 1} de {table.getPageCount()}
         </p>
         <div className="flex gap-2">
           <button
@@ -125,14 +100,14 @@ const RecordsTable = ({ title = "Records", columnsData, tableData, delay = 0 }) 
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
-            Prev
+            Anterior
           </button>
           <button
             className="rounded-lg bg-brand-500 px-3 py-1 text-white transition duration-250 disabled:opacity-40 dark:bg-brand-400"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
-            Next
+            Siguiente
           </button>
         </div>
       </div>

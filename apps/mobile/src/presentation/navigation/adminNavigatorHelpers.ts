@@ -8,16 +8,12 @@
 
 import { MaterialIcons } from '@expo/vector-icons';
 import { esPanelSuperAdmin } from './adminMenuConfig';
+import { getTenantId } from '@/shared/auth/tenant';
 
 /**
  * Declaracion obtenerEmpresaId. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
  */
-export const obtenerEmpresaId = (user: any) => {
-  // Declara valor; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const valor = user?.empresaId || user?.empresa_id || user?.empresaID;
-  // Devuelve el valor final calculado para esta funcion o caso de uso.
-  return typeof valor === 'string' ? valor.trim() : '';
-};
+export const obtenerEmpresaId = (user: any) => getTenantId(user);
 
 /**
  * Declaracion obtenerNombreEmpresa. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.

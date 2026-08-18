@@ -125,6 +125,7 @@ export function calculateStreak(rows: Array<{ created_at: string }>) {
     previous.setHours(0, 0, 0, 0);
     const difference = (current.getTime() - previous.getTime()) / (1000 * 60 * 60 * 24);
     if (difference === 1) streak += 1;
+    else if (difference === 0) continue;
     else break;
   }
   return streak;

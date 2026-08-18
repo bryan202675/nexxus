@@ -71,6 +71,10 @@ import {
   MdOutlinePerson,
   MdOutlineFeedback,
   MdOutlineFavorite,
+  MdOutlineManageAccounts,
+  MdOutlineAdminPanelSettings,
+  MdOutlineContacts,
+  MdOutlineTune,
 } from "react-icons/md";
 import { BsStars } from "react-icons/bs";
 
@@ -134,7 +138,7 @@ export const saRoutes = [
   },
 ];
 
-// Rutas del panel de empresa (Admin / propietario) — todo acotado a su propio empresaId.
+// Rutas del panel de empresa (Admin / propietario) — organizadas por categorías funcionales.
 export const adminEmpresaRoutes = [
   {
     name: "Resumen",
@@ -144,46 +148,81 @@ export const adminEmpresaRoutes = [
     component: <DashboardAdmin />,
   },
   {
-    name: "Cuidado del Equipo",
-    layout: "/admin",
-    path: "empresa-cuidado-equipo",
-    icon: <MdOutlineFavorite className="h-6 w-6" />,
-    component: <CuidadoEquipo />,
+    name: "Gestión",
+    icon: <MdOutlineManageAccounts className="h-6 w-6" />,
+    collapse: true,
+    items: [
+      {
+        name: "Bienestar",
+        layout: "/admin",
+        path: "empresa-cuidado-equipo",
+        icon: <MdOutlineFavorite className="h-5 w-5" />,
+        component: <CuidadoEquipo />,
+      },
+      {
+        name: "Plantilla",
+        layout: "/admin",
+        path: "empresa-plantilla",
+        icon: <MdOutlineBadge className="h-5 w-5" />,
+        component: <GestionPlantilla />,
+      },
+      {
+        name: "Estructura",
+        layout: "/admin",
+        path: "empresa-organizacion",
+        icon: <MdOutlineAccountTree className="h-5 w-5" />,
+        component: <EstructuraOrganizativa />,
+      },
+      {
+        name: "Auditoría",
+        layout: "/admin",
+        path: "empresa-auditoria",
+        icon: <MdOutlineHistory className="h-5 w-5" />,
+        component: <AuditoriaAdmin />,
+      },
+    ],
   },
   {
-    name: "Plantilla",
-    layout: "/admin",
-    path: "empresa-plantilla",
-    icon: <MdOutlineBadge className="h-6 w-6" />,
-    component: <GestionPlantilla />,
-  },
-  {
-    name: "Estructura",
-    layout: "/admin",
-    path: "empresa-organizacion",
-    icon: <MdOutlineAccountTree className="h-6 w-6" />,
-    component: <EstructuraOrganizativa />,
-  },
-  {
-    name: "Nómina",
-    layout: "/admin",
-    path: "empresa-nomina",
-    icon: <MdOutlinePayment className="h-6 w-6" />,
-    component: <PlanGate feature="payroll"><GestionNomina /></PlanGate>,
-  },
-  {
-    name: "Asistencia",
-    layout: "/admin",
-    path: "empresa-asistencia",
-    icon: <MdOutlineAccessTime className="h-6 w-6" />,
-    component: <GestionAsistencia />,
-  },
-  {
-    name: "Solicitudes",
-    layout: "/admin",
-    path: "empresa-solicitudes",
-    icon: <MdOutlineFactCheck className="h-6 w-6" />,
-    component: <CentroReportesSolicitudes />,
+    name: "Administración",
+    icon: <MdOutlineAdminPanelSettings className="h-6 w-6" />,
+    collapse: true,
+    items: [
+      {
+        name: "Nómina",
+        layout: "/admin",
+        path: "empresa-nomina",
+        icon: <MdOutlinePayment className="h-5 w-5" />,
+        component: <PlanGate feature="payroll"><GestionNomina /></PlanGate>,
+      },
+      {
+        name: "Asistencia",
+        layout: "/admin",
+        path: "empresa-asistencia",
+        icon: <MdOutlineAccessTime className="h-5 w-5" />,
+        component: <GestionAsistencia />,
+      },
+      {
+        name: "Solicitudes",
+        layout: "/admin",
+        path: "empresa-solicitudes",
+        icon: <MdOutlineFactCheck className="h-5 w-5" />,
+        component: <CentroReportesSolicitudes />,
+      },
+      {
+        name: "Inventario",
+        layout: "/admin",
+        path: "empresa-inventario",
+        icon: <MdOutlineInventory2 className="h-5 w-5" />,
+        component: <PlanGate feature="inventory"><GestionInventario /></PlanGate>,
+      },
+      {
+        name: "Documentos",
+        layout: "/admin",
+        path: "empresa-documentos",
+        icon: <MdOutlineDescription className="h-5 w-5" />,
+        component: <PlanGate feature="documents"><GestionDocumentos /></PlanGate>,
+      },
+    ],
   },
   {
     name: "Calendario",
@@ -193,39 +232,25 @@ export const adminEmpresaRoutes = [
     component: <CalendarioEmpresarial />,
   },
   {
-    name: "Comunicación",
-    layout: "/admin",
-    path: "empresa-comunicacion",
-    icon: <MdOutlineCampaign className="h-6 w-6" />,
-    component: <ComunicacionAdmin />,
-  },
-  {
-    name: "Inventario",
-    layout: "/admin",
-    path: "empresa-inventario",
-    icon: <MdOutlineInventory2 className="h-6 w-6" />,
-    component: <PlanGate feature="inventory"><GestionInventario /></PlanGate>,
-  },
-  {
-    name: "Documentos",
-    layout: "/admin",
-    path: "empresa-documentos",
-    icon: <MdOutlineDescription className="h-6 w-6" />,
-    component: <PlanGate feature="documents"><GestionDocumentos /></PlanGate>,
-  },
-  {
-    name: "Auditoría",
-    layout: "/admin",
-    path: "empresa-auditoria",
-    icon: <MdOutlineHistory className="h-6 w-6" />,
-    component: <AuditoriaAdmin />,
-  },
-  {
-    name: "Mensajería",
-    layout: "/admin",
-    path: "empresa-mensajeria",
-    icon: <MdOutlineForum className="h-6 w-6" />,
-    component: <PlanGate feature="internalChat"><MensajeriaInternaAdmin /></PlanGate>,
+    name: "Contactos",
+    icon: <MdOutlineContacts className="h-6 w-6" />,
+    collapse: true,
+    items: [
+      {
+        name: "Comunicación",
+        layout: "/admin",
+        path: "empresa-comunicacion",
+        icon: <MdOutlineCampaign className="h-5 w-5" />,
+        component: <ComunicacionAdmin />,
+      },
+      {
+        name: "Mensajería",
+        layout: "/admin",
+        path: "empresa-mensajeria",
+        icon: <MdOutlineForum className="h-5 w-5" />,
+        component: <PlanGate feature="internalChat"><MensajeriaInternaAdmin /></PlanGate>,
+      },
+    ],
   },
   {
     name: "Nexxus IA",
@@ -235,18 +260,25 @@ export const adminEmpresaRoutes = [
     component: <PlanGate feature="ai"><ChatIAAdmin /></PlanGate>,
   },
   {
-    name: "Soporte",
-    layout: "/admin",
-    path: "empresa-soporte",
-    icon: <MdOutlineSupportAgent className="h-6 w-6" />,
-    component: <EmpresaSoporte />,
-  },
-  {
-    name: "Configuración",
-    layout: "/admin",
-    path: "empresa-configuracion",
-    icon: <MdOutlineSettings className="h-6 w-6" />,
-    component: <ConfiguracionAdmin />,
+    name: "Preferencias",
+    icon: <MdOutlineTune className="h-6 w-6" />,
+    collapse: true,
+    items: [
+      {
+        name: "Soporte",
+        layout: "/admin",
+        path: "empresa-soporte",
+        icon: <MdOutlineSupportAgent className="h-5 w-5" />,
+        component: <EmpresaSoporte />,
+      },
+      {
+        name: "Configuración",
+        layout: "/admin",
+        path: "empresa-configuracion",
+        icon: <MdOutlineSettings className="h-5 w-5" />,
+        component: <ConfiguracionAdmin />,
+      },
+    ],
   },
 ];
 
@@ -412,8 +444,22 @@ const authRoutes = [
   },
 ];
 
+// Helper para aplanar rutas con subcategorías anidadas
+export function flattenRoutes(routes: any[]): any[] {
+  const flat: any[] = [];
+  if (!Array.isArray(routes)) return flat;
+  routes.forEach((route) => {
+    if (route.items && Array.isArray(route.items)) {
+      flat.push(...flattenRoutes(route.items));
+    } else {
+      flat.push(route);
+    }
+  });
+  return flat;
+}
+
 // Une todo para que AuthLayout (no depende del rol) siga encontrando /auth/sa-login.
-const allRoutes = [...saRoutes, ...adminEmpresaRoutes, ...authRoutes];
+const allRoutes = [...saRoutes, ...flattenRoutes(adminEmpresaRoutes), ...authRoutes];
 
 // AdminLayout llama esto con el rol de la sesion activa para saber que sidebar/rutas mostrar.
 // Antes de saber el rol (loading) o para cualquier otro caso no reconocido, no se expone nada.

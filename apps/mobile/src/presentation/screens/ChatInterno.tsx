@@ -33,14 +33,12 @@ import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
 import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
 import { SOMBRAS } from '@/shared/constants/diseno';
+import { getTenantId } from '@/shared/auth/tenant';
 
 const Text = AdminTranslatedText;
 const TextInput = AdminTranslatedTextInput;
 
-const obtenerEmpresaId = (perfil: { empresaId?: string } | null) => {
-  const empresaId = perfil?.empresaId || '';
-  return typeof empresaId === 'string' ? empresaId.trim() : '';
-};
+const obtenerEmpresaId = (perfil: { empresaId?: string } | null) => getTenantId(perfil);
 
 const getTituloConversacion = (conv: Conversation, userId: string, usersList: ChatUser[] = []): string => {
   if (conv.tipo === 'directa') {

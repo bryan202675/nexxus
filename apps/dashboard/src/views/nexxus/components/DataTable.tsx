@@ -6,7 +6,6 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import Checkbox from "components/checkbox";
 import NexxusCard from "./NexxusCard";
 
 const columnHelper = createColumnHelper<any>();
@@ -32,17 +31,6 @@ const DataTable = ({ title = "Data Table", columnsData, tableData, readOnly = fa
         </p>
       ),
       cell: (info) => {
-        if (col.accessor === "name") {
-          const [label, checked] = info.getValue();
-          return (
-            <div className="flex items-center">
-              <Checkbox defaultChecked={checked} disabled={readOnly} />
-              <p className="ml-3 text-sm font-bold text-navy-700 dark:text-white">
-                {label}
-              </p>
-            </div>
-          );
-        }
         return (
           <div className="text-sm font-bold text-navy-700 dark:text-white">
             {info.getValue()}

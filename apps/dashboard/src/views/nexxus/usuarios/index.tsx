@@ -147,7 +147,7 @@ export default function Usuarios() {
         setLoading(false);
       },
       (err) => {
-        setError(err.message || "No se pudo conectar con Firestore.");
+        setError(err.message || "No se pudo conectar con el servidor.");
         setLoading(false);
       }
     );

@@ -5,10 +5,26 @@ import {
   MdOutlineCancel,
   MdOutlineSupervisorAccount,
   MdOutlineBadge,
+  MdOutlineSearch,
+  MdOutlinePersonAdd,
+  MdOutlineAssignment,
+  MdOutlineEdit,
+  MdOutlineCorporateFare,
+  MdOutlineContentCopy,
+  MdCheck,
+  MdOutlineDelete,
+  MdOutlineClose,
+  MdOutlineWarningAmber,
+  MdOutlinePerson,
+  MdOutlineEmail,
+  MdOutlineAlternateEmail,
+  MdOutlineLock,
+  MdOutlineVisibility,
+  MdOutlineVisibilityOff,
+  MdOutlineLocationOn,
+  MdOutlineRefresh,
 } from "react-icons/md";
 import NexxusCard from "views/nexxus/components/NexxusCard";
-import NexxusWidget from "views/nexxus/components/NexxusWidget";
-import DataTable from "views/nexxus/components/DataTable";
 import Modal from "components/nexxus/Modal";
 import Avatar from "components/nexxus/Avatar";
 import InputField from "components/fields/InputField";
@@ -17,19 +33,22 @@ import CodigoEmpresaDisplay from "components/nexxus/CodigoEmpresaDisplay";
 import { useAuth } from "context/AuthContext";
 import { useEmpresaPlan, limiteAlcanzado } from "services/planEnforcement";
 import { supabase } from "supabaseClient/supabaseConfig";
-import { subscribeEmpleados, subscribeSedes, subscribeCargos, subscribeDepartamentos } from "services/adminRepository";
+import {
+  subscribeEmpleados,
+  subscribeSedes,
+  subscribeCargos,
+  subscribeDepartamentos,
+} from "services/adminRepository";
 import { etiquetaRol, ROLE_OPTIONS } from "services/saFormat";
 
-// Alias de rol identicos a los usados en superAdminRepository.js / la app movil, para que un
-// documento viejo con "admin"/"jefe_sector"/"psicologo" se muestre y filtre igual que su
-// equivalente canonico.
 const ROLE_ALIASES = {
   super_admin: ["super_admin"],
   admin_empresa: ["admin_empresa", "admin"],
   jefe: ["jefe", "jefe_sector"],
   empleado: ["empleado", "psicologo"],
 };
-const normalizeRol = (rol) => {
+
+const normalizeRol = (rol: any) => {
   const value = String(rol || "").trim().toLowerCase();
   for (const [canonico, alias] of Object.entries(ROLE_ALIASES)) {
     if (alias.includes(value)) return canonico;
@@ -37,74 +56,113 @@ const normalizeRol = (rol) => {
   return value || "empleado";
 };
 
-const textValue = (value, fallback = "") =>
+const textValue = (value: any, fallback = "") =>
   typeof value === "string" && value.trim().length > 0 ? value.trim() : fallback;
 
+const isUuidOrHash = (str: any) => {
+  if (!str || typeof str !== "string") return false;
+  const s = str.trim();
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s) || /^[0-9a-f]{24,}$/i.test(s);
+};
+
+const resolverCargo = (data: any, lookups: any, rol: string, depto: string) => {
+  const { cargos = {} } = lookups;
+  if (data.cargo_id && cargos[data.cargo_id] && !isUuidOrHash(cargos[data.cargo_id])) {
+    return cargos[data.cargo_id];
+  }
+  if (data.cargo && typeof data.cargo === "string" && !isUuidOrHash(data.cargo)) {
+    return data.cargo.trim();
+  }
+  if (data.puesto && typeof data.puesto === "string" && !isUuidOrHash(data.puesto)) {
+    return data.puesto.trim();
+  }
+  if (data.cargo_nombre && typeof data.cargo_nombre === "string" && !isUuidOrHash(data.cargo_nombre)) {
+    return data.cargo_nombre.trim();
+  }
+  // Smart fallback
+  if (rol === "jefe") return depto && depto !== "General" ? `Jefe de ${depto}` : "Líder de Área";
+  if (rol === "admin_empresa") return "Administrador";
+  if (rol === "super_admin") return "Super Administrador";
+  if (depto && depto !== "General" && depto !== "—") return `Especialista en ${depto}`;
+  return "Colaborador";
+};
+
+const resolverDepartamento = (data: any, lookups: any) => {
+  const { departamentos = {} } = lookups;
+  if (data.departamento_id && departamentos[data.departamento_id]) return departamentos[data.departamento_id];
+  if (data.departamento && typeof data.departamento === "string" && !isUuidOrHash(data.departamento)) return data.departamento.trim();
+  if (data.area && typeof data.area === "string" && !isUuidOrHash(data.area)) return data.area.trim();
+  return "General";
+};
+
+const resolverSede = (data: any, lookups: any) => {
+  const { sedes = {} } = lookups;
+  if (data.sede_id && sedes[data.sede_id]) return sedes[data.sede_id];
+  if (data.sede && typeof data.sede === "string" && !isUuidOrHash(data.sede)) return data.sede.trim();
+  if (data.sucursal && typeof data.sucursal === "string" && !isUuidOrHash(data.sucursal)) return data.sucursal.trim();
+  return "Sede Principal";
+};
+
 const mapEmpleado = (docSnap: any, lookups: any = {}) => {
-  const data = docSnap.data() || {};
-  const { cargos = {}, departamentos = {}, sedes = {} } = lookups;
+  const data = docSnap.data ? docSnap.data() : docSnap;
+  const rol = normalizeRol(data.rol);
+  const departamento = resolverDepartamento(data, lookups);
+  const cargo = resolverCargo(data, lookups, rol, departamento);
+  const sede = resolverSede(data, lookups);
+
   return {
-    id: docSnap.id,
+    id: docSnap.id || data.id,
     nombre: textValue(data.nombre, "Sin nombre"),
-    correo: textValue(data.correo),
-    usuario: textValue(data.usuario_interno),
-    rol: normalizeRol(data.rol),
+    correo: textValue(data.correo || data.email),
+    usuario: textValue(data.usuario_interno || data.usuario),
+    rol,
     cargoId: textValue(data.cargo_id),
-    cargo: cargos[data.cargo_id] || "",
+    cargo,
     telefono: textValue(data.telefono),
     departamentoId: textValue(data.departamento_id),
-    departamento: departamentos[data.departamento_id] || "",
-    sede: sedes[data.sede_id] || "",
+    departamento,
+    sede,
     sedeId: textValue(data.sede_id),
     salarioBase: typeof data.salario_base === "number" ? data.salario_base : Number(data.salario_base) || 0,
     empresaId: textValue(data.empresa_id),
-    activo: data.estado_activo !== false,
+    activo: data.estado_activo !== false && data.activo !== false,
     eliminado: data.eliminado === true,
     ultimoCheckIn: data.ultimo_check_in || null,
     createdAt: data.created_at || null,
-    foto: textValue(data.foto_perfil),
+    foto: textValue(data.foto_perfil || data.foto_url || data.avatar_url),
   };
 };
 
-const mapListaSimple = (docSnap) => {
-  const data = docSnap.data() || {};
-  return { id: docSnap.id, nombre: textValue(data.nombre, docSnap.id) };
+const mapListaSimple = (docSnap: any) => {
+  const data = docSnap.data ? docSnap.data() : docSnap;
+  return { id: docSnap.id || data.id, nombre: textValue(data.nombre, docSnap.id) };
 };
 
-const ESTADO_BADGE_CLASSES = {
-  Activo: "bg-green-50 text-green-600 dark:bg-green-400/10 dark:text-green-400",
-  Inactivo: "bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-white/60",
+const ROLE_BADGE: Record<string, string> = {
+  super_admin: "bg-purple-500/10 text-purple-600 dark:bg-purple-400/20 dark:text-purple-300 border border-purple-500/20",
+  admin_empresa: "bg-brand-500/10 text-brand-600 dark:bg-brand-400/20 dark:text-brand-300 border border-brand-500/20",
+  jefe: "bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300 border border-blue-500/20",
+  empleado: "bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-white/70 border border-gray-200 dark:border-white/10",
 };
-
-const ESTADO_FILTRO_OPTIONS = [
-  { value: "", label: "Todos" },
-  { value: "activos", label: "Activos" },
-  { value: "inactivos", label: "Inactivos" },
-];
 
 const selectClasses =
-  "mt-2 flex h-12 w-full items-center justify-center rounded-xl border border-gray-200 bg-white/0 p-3 text-sm outline-none dark:!border-white/10 dark:text-white dark:bg-charcoal";
-const selectLabelClasses = "ml-3 text-sm font-bold text-navy-700 dark:text-white";
+  "mt-1 flex h-10 w-full items-center justify-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400";
+const selectLabelClasses = "text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50";
 
-const ActionButton = ({ children, className = "", busy, ...rest }) => (
+const ActionButton = ({ children, className = "", busy, ...rest }: any) => (
   <button
     type="button"
     disabled={busy}
-    className={`rounded-lg px-3 py-2 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+    className={`inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-50 active:scale-95 ${className}`}
     {...rest}
   >
-    {busy ? "..." : children}
+    {busy ? "Procesando..." : children}
   </button>
 );
 
 const CAMPO_VACIO = "__vacio__";
 
-// supabase-js lanza err.message = "Edge Function returned a non-2xx status code" para
-// CUALQUIER error de una Edge Function, sin importar la causa real -- el motivo real que
-// devolvio la funcion (ej. "correo ya registrado") viaja en err.context, que es la Response
-// HTTP cruda y hay que leerla aparte. Sin esto, cualquier error de una Edge Function se ve
-// igual en pantalla y no dice nada util.
-async function mensajeErrorEdgeFunction(err, fallback) {
+async function mensajeErrorEdgeFunction(err: any, fallback: string) {
   try {
     if (err?.context && typeof err.context.json === "function") {
       const body = await err.context.clone().json();
@@ -112,12 +170,12 @@ async function mensajeErrorEdgeFunction(err, fallback) {
       if (body?.message) return body.message;
     }
   } catch {
-    // El cuerpo no era JSON u otro fallo al leerlo; se usa el mensaje generico de abajo.
+    // Ignorar fallback
   }
   return err?.message || fallback;
 }
 
-const SelectListaField = ({ label, id, value, onChange, opciones }) => (
+const SelectListaField = ({ label, id, value, onChange, opciones }: any) => (
   <div>
     <label className={selectLabelClasses} htmlFor={id}>
       {label}
@@ -129,7 +187,7 @@ const SelectListaField = ({ label, id, value, onChange, opciones }) => (
       onChange={(e) => onChange(e.target.value === CAMPO_VACIO ? "" : e.target.value)}
     >
       <option value={CAMPO_VACIO}>Sin asignar</option>
-      {opciones.map((opt) => (
+      {opciones.map((opt: string) => (
         <option key={opt} value={opt}>
           {opt}
         </option>
@@ -138,41 +196,55 @@ const SelectListaField = ({ label, id, value, onChange, opciones }) => (
   </div>
 );
 
-const EMPTY_CREATE_FORM = { nombre: "", correo: "", usuario: "", contrasena: "", rol: "empleado", cargo: "", departamento: "", sede: "" };
+const EMPTY_CREATE_FORM = {
+  nombre: "",
+  correo: "",
+  usuario: "",
+  contrasena: "",
+  rol: "empleado",
+  cargo: "",
+  departamento: "",
+  sede: "",
+};
 
 export default function GestionPlantilla() {
   const { empresaId, user } = useAuth();
   const { plan, planLimits, codigoEmpresa } = useEmpresaPlan();
 
-  const [empleadosDocs, setEmpleadosDocs] = useState([]);
-  const [sedes, setSedes] = useState([]);
-  const [cargos, setCargos] = useState([]);
-  const [departamentos, setDepartamentos] = useState([]);
+  const [empleadosDocs, setEmpleadosDocs] = useState<any[]>([]);
+  const [sedes, setSedes] = useState<any[]>([]);
+  const [cargos, setCargos] = useState<any[]>([]);
+  const [departamentos, setDepartamentos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [copiado, setCopiado] = useState(false);
 
+  const [busqueda, setBusqueda] = useState("");
+  const [filtroRapido, setFiltroRapido] = useState<"todos" | "activos" | "jefes" | "operativos" | "inactivos">("todos");
   const [filtroDepartamento, setFiltroDepartamento] = useState("");
   const [filtroCargo, setFiltroCargo] = useState("");
   const [filtroSede, setFiltroSede] = useState("");
-  const [filtroRol, setFiltroRol] = useState("");
-  const [filtroEstado, setFiltroEstado] = useState("");
 
-  const [selectedEmpleado, setSelectedEmpleado] = useState(null);
-  const [editForm, setEditForm] = useState(null);
+  const [selectedEmpleado, setSelectedEmpleado] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState<any | null>(null);
   const [rolSeleccionado, setRolSeleccionado] = useState("");
   const [nuevaContrasena, setNuevaContrasena] = useState("");
   const [busyAction, setBusyAction] = useState("");
   const [actionMsg, setActionMsg] = useState("");
 
+  // Estado del Modal Crear Empleado
   const [showCreatePanel, setShowCreatePanel] = useState(false);
   const [createForm, setCreateForm] = useState(EMPTY_CREATE_FORM);
+  const [showPassword, setShowPassword] = useState(false);
   const [creatingEmpleado, setCreatingEmpleado] = useState(false);
   const [createError, setCreateError] = useState("");
 
+  // Estado del Modal de Tareas
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [taskSearch, setTaskSearch] = useState("");
   const [taskForm, setTaskForm] = useState({
-    tipoAsignacion: "todos", // todos, empleados, departamentos, cargos, sedes
-    seleccionados: [],
+    tipoAsignacion: "todos",
+    seleccionados: [] as string[],
     titulo: "",
     descripcion: "",
     urgencia: "media",
@@ -192,8 +264,8 @@ export default function GestionPlantilla() {
         setEmpleadosDocs(docs);
         setLoading(false);
       },
-      (err) => {
-        setError(err.message || "No se pudo conectar con Firestore.");
+      (err: any) => {
+        setError(err.message || "No se pudo conectar con el servidor.");
         setLoading(false);
       }
     );
@@ -202,27 +274,42 @@ export default function GestionPlantilla() {
 
   useEffect(() => {
     if (!empresaId) return;
-    const unsubscribe = subscribeSedes(empresaId, (docs) => setSedes(docs.map(mapListaSimple)), () => setSedes([]));
+    const unsubscribe = subscribeSedes(
+      empresaId,
+      (docs) => setSedes(docs.map(mapListaSimple)),
+      () => setSedes([])
+    );
     return () => unsubscribe();
   }, [empresaId]);
 
   useEffect(() => {
     if (!empresaId) return;
-    const unsubscribe = subscribeCargos(empresaId, (docs) => setCargos(docs.map(mapListaSimple)), () => setCargos([]));
+    const unsubscribe = subscribeCargos(
+      empresaId,
+      (docs) => setCargos(docs.map(mapListaSimple)),
+      () => setCargos([])
+    );
     return () => unsubscribe();
   }, [empresaId]);
 
   useEffect(() => {
     if (!empresaId) return;
-    const unsubscribe = subscribeDepartamentos(empresaId, (docs) => setDepartamentos(docs.map(mapListaSimple)), () => setDepartamentos([]));
+    const unsubscribe = subscribeDepartamentos(
+      empresaId,
+      (docs) => setDepartamentos(docs.map(mapListaSimple)),
+      () => setDepartamentos([])
+    );
     return () => unsubscribe();
   }, [empresaId]);
 
-  const lookups = useMemo(() => ({
-    cargos: Object.fromEntries(cargos.map((c) => [c.id, c.nombre])),
-    departamentos: Object.fromEntries(departamentos.map((d) => [d.id, d.nombre])),
-    sedes: Object.fromEntries(sedes.map((s) => [s.id, s.nombre])),
-  }), [cargos, departamentos, sedes]);
+  const lookups = useMemo(
+    () => ({
+      cargos: Object.fromEntries(cargos.map((c) => [c.id, c.nombre])),
+      departamentos: Object.fromEntries(departamentos.map((d) => [d.id, d.nombre])),
+      sedes: Object.fromEntries(sedes.map((s) => [s.id, s.nombre])),
+    }),
+    [cargos, departamentos, sedes]
+  );
 
   const empleados = useMemo(
     () => empleadosDocs.map((docSnap) => mapEmpleado(docSnap, lookups)).filter((e) => !e.eliminado),
@@ -256,7 +343,8 @@ export default function GestionPlantilla() {
     [departamentos, empleados]
   );
   const cargosDistintos = useMemo(
-    () => [...new Set([...cargos.map((c) => c.nombre), ...empleados.map((e) => e.cargo)].filter(Boolean))].sort(),
+    () =>
+      [...new Set([...cargos.map((c) => c.nombre), ...empleados.map((e) => e.cargo)].filter((c) => Boolean(c) && !isUuidOrHash(c)))].sort(),
     [cargos, empleados]
   );
   const sedesDistintas = useMemo(
@@ -264,32 +352,91 @@ export default function GestionPlantilla() {
     [sedes, empleados]
   );
 
-  const empleadosFiltrados = useMemo(() => {
-    return empleados.filter((e) => {
-      if (filtroDepartamento && e.departamento !== filtroDepartamento) return false;
-      if (filtroCargo && e.cargo !== filtroCargo) return false;
-      if (filtroSede && e.sede !== filtroSede) return false;
-      if (filtroRol && e.rol !== filtroRol) return false;
-      if (filtroEstado === "activos" && !e.activo) return false;
-      if (filtroEstado === "inactivos" && e.activo) return false;
-      return true;
-    });
-  }, [empleados, filtroDepartamento, filtroCargo, filtroSede, filtroRol, filtroEstado]);
-
-  const kpis = useMemo(() => {
+  const metricas = useMemo(() => {
     const total = empleados.length;
     const activos = empleados.filter((e) => e.activo).length;
     const inactivos = total - activos;
     const jefes = empleados.filter((e) => e.rol === "jefe").length;
     const operativos = empleados.filter((e) => e.rol === "empleado").length;
-    return [
-      { icon: MdOutlinePeople, title: "Total empleados", subtitle: String(total) },
-      { icon: MdOutlineCheckCircle, title: "Activos", subtitle: String(activos) },
-      { icon: MdOutlineCancel, title: "Inactivos", subtitle: String(inactivos) },
-      { icon: MdOutlineSupervisorAccount, title: "Jefes", subtitle: String(jefes) },
-      { icon: MdOutlineBadge, title: "Empleados operativos", subtitle: String(operativos) },
-    ];
+    return { total, activos, inactivos, jefes, operativos };
   }, [empleados]);
+
+  const empleadosFiltrados = useMemo(() => {
+    return empleados.filter((e) => {
+      const q = busqueda.toLowerCase().trim();
+      if (
+        q &&
+        !e.nombre.toLowerCase().includes(q) &&
+        !e.correo.toLowerCase().includes(q) &&
+        !e.usuario.toLowerCase().includes(q) &&
+        !e.cargo.toLowerCase().includes(q) &&
+        !e.departamento.toLowerCase().includes(q)
+      ) {
+        return false;
+      }
+      if (filtroRapido === "activos" && !e.activo) return false;
+      if (filtroRapido === "inactivos" && e.activo) return false;
+      if (filtroRapido === "jefes" && e.rol !== "jefe") return false;
+      if (filtroRapido === "operativos" && e.rol !== "empleado") return false;
+
+      if (filtroDepartamento && e.departamento !== filtroDepartamento) return false;
+      if (filtroCargo && e.cargo !== filtroCargo) return false;
+      if (filtroSede && e.sede !== filtroSede) return false;
+
+      return true;
+    });
+  }, [empleados, busqueda, filtroRapido, filtroDepartamento, filtroCargo, filtroSede]);
+
+  // Lista de destinatarios filtrados dentro del modal de tareas
+  const destinatariosFiltrados = useMemo(() => {
+    const q = taskSearch.toLowerCase().trim();
+    if (taskForm.tipoAsignacion === "empleados") {
+      return empleados.filter((e) => {
+        if (!q) return true;
+        return (
+          e.nombre.toLowerCase().includes(q) ||
+          e.correo.toLowerCase().includes(q) ||
+          e.usuario.toLowerCase().includes(q) ||
+          e.departamento.toLowerCase().includes(q) ||
+          e.cargo.toLowerCase().includes(q)
+        );
+      });
+    }
+    if (taskForm.tipoAsignacion === "departamentos") {
+      return departamentosDistintos.filter((d) => !q || d.toLowerCase().includes(q));
+    }
+    if (taskForm.tipoAsignacion === "cargos") {
+      return cargosDistintos.filter((c) => !q || c.toLowerCase().includes(q));
+    }
+    if (taskForm.tipoAsignacion === "sedes") {
+      return sedesDistintas.filter((s) => !q || s.toLowerCase().includes(q));
+    }
+    return [];
+  }, [taskForm.tipoAsignacion, taskSearch, empleados, departamentosDistintos, cargosDistintos, sedesDistintas]);
+
+  // Cantidad calculada de colaboradores destino
+  const totalDestinatariosCalculados = useMemo(() => {
+    if (taskForm.tipoAsignacion === "todos") return empleados.length;
+    if (taskForm.tipoAsignacion === "empleados") return taskForm.seleccionados.length;
+    if (taskForm.tipoAsignacion === "departamentos") {
+      return empleados.filter((e) => e.departamento && taskForm.seleccionados.includes(e.departamento)).length;
+    }
+    if (taskForm.tipoAsignacion === "cargos") {
+      return empleados.filter((e) => e.cargo && taskForm.seleccionados.includes(e.cargo)).length;
+    }
+    if (taskForm.tipoAsignacion === "sedes") {
+      return empleados.filter((e) => e.sede && taskForm.seleccionados.includes(e.sede)).length;
+    }
+    return 0;
+  }, [taskForm.tipoAsignacion, taskForm.seleccionados, empleados]);
+
+  const handleCopiarCodigo = () => {
+    if (codigoEmpresa) {
+      navigator.clipboard.writeText(codigoEmpresa);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    }
+  };
 
   const handleGuardarCambios = async () => {
     if (!selectedEmpleado || !editForm) return;
@@ -312,20 +459,14 @@ export default function GestionPlantilla() {
         })
         .eq("id", selectedEmpleado.id);
       if (error) throw error;
-      setActionMsg("Cambios guardados.");
-    } catch (err) {
+      setActionMsg("Cambios guardados con éxito.");
+    } catch (err: any) {
       setActionMsg(err.message || "No se pudieron guardar los cambios.");
     } finally {
       setBusyAction("");
     }
   };
 
-  // Cambia la contraseña del empleado sin pedirle al admin la contraseña anterior. El SDK de
-  // cliente de Supabase Auth no puede cambiar la contraseña de OTRO usuario sin conocer la
-  // anterior -- por diseño, para que nadie pueda secuestrar cuentas ajenas -- así que esto
-  // requiere sí o sí una Edge Function con privilegios de service_role (reset-employee-password),
-  // que sincroniza en un solo paso la contraseña real de Supabase Auth y el hash interno que usa
-  // el login de la app móvil (loginEmpresarial).
   const handleCambiarContrasena = async () => {
     if (!selectedEmpleado) return;
     if (nuevaContrasena.trim().length < 6) {
@@ -340,8 +481,8 @@ export default function GestionPlantilla() {
       });
       if (error) throw error;
       setNuevaContrasena("");
-      setActionMsg("Contraseña actualizada.");
-    } catch (err) {
+      setActionMsg("Contraseña actualizada exitosamente.");
+    } catch (err: any) {
       setActionMsg(await mensajeErrorEdgeFunction(err, "No se pudo cambiar la contraseña."));
     } finally {
       setBusyAction("");
@@ -357,9 +498,9 @@ export default function GestionPlantilla() {
         body: { empleadoId: selectedEmpleado.id, rol: rolSeleccionado },
       });
       if (error) throw error;
-      setActionMsg("Rol actualizado.");
-      setSelectedEmpleado((prev) => (prev ? { ...prev, rol: rolSeleccionado } : prev));
-    } catch (err) {
+      setActionMsg("Rol actualizado correctamente.");
+      setSelectedEmpleado((prev: any) => (prev ? { ...prev, rol: rolSeleccionado } : prev));
+    } catch (err: any) {
       setActionMsg(await mensajeErrorEdgeFunction(err, "No se pudo cambiar el rol."));
     } finally {
       setBusyAction("");
@@ -372,11 +513,14 @@ export default function GestionPlantilla() {
     setBusyAction("estado");
     setActionMsg("");
     try {
-      const { error } = await supabase.from("usuarios").update({ estado_activo: nuevoEstado }).eq("id", selectedEmpleado.id);
+      const { error } = await supabase
+        .from("usuarios")
+        .update({ estado_activo: nuevoEstado })
+        .eq("id", selectedEmpleado.id);
       if (error) throw error;
-      setActionMsg(nuevoEstado ? "Empleado activado." : "Empleado desactivado.");
-      setSelectedEmpleado((prev) => (prev ? { ...prev, activo: nuevoEstado } : prev));
-    } catch (err) {
+      setActionMsg(nuevoEstado ? "Colaborador activado." : "Colaborador desactivado.");
+      setSelectedEmpleado((prev: any) => (prev ? { ...prev, activo: nuevoEstado } : prev));
+    } catch (err: any) {
       setActionMsg(err.message || "No se pudo cambiar el estado.");
     } finally {
       setBusyAction("");
@@ -385,18 +529,30 @@ export default function GestionPlantilla() {
 
   const handleEliminar = async () => {
     if (!selectedEmpleado) return;
-    if (!window.confirm(`¿Eliminar a "${selectedEmpleado.nombre}"? Esta acción no se puede deshacer.`)) return;
+    if (!window.confirm(`¿Dar de baja a "${selectedEmpleado.nombre}"? Esta acción deshabilitará su acceso.`))
+      return;
     setBusyAction("eliminar");
     setActionMsg("");
     try {
-      // Borrado directo (no via Edge Function sa-delete-user: esa requiere
-      // super_admin). La policy RLS de usuarios ya permite a un
-      // admin_empresa borrar empleados de su propia empresa.
-      const { error } = await supabase.from("usuarios").delete().eq("id", selectedEmpleado.id);
+      const { error } = await supabase
+        .from("usuarios")
+        .update({ estado_activo: false, eliminado: true })
+        .eq("id", selectedEmpleado.id);
       if (error) throw error;
+      try {
+        await supabase.from("audit_logs").insert({
+          empresa_id: empresaId,
+          actor_id: user?.id || null,
+          accion: "Baja de empleado",
+          modulo: "Plantilla",
+          detalles: `${selectedEmpleado.nombre || selectedEmpleado.correo} fue dado de baja.`,
+        });
+      } catch {
+        // Extra
+      }
       setSelectedEmpleado(null);
-    } catch (err) {
-      setActionMsg(err.message || "No se pudo eliminar el empleado.");
+    } catch (err: any) {
+      setActionMsg(err.message || "No se pudo eliminar el colaborador.");
     } finally {
       setBusyAction("");
     }
@@ -404,24 +560,51 @@ export default function GestionPlantilla() {
 
   const limiteEmpleadosAlcanzado = limiteAlcanzado(empleadosDocs.length, planLimits.employees);
 
-  const handleCrearEmpleado = async (event) => {
+  const handleGenerarPassword = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
+    let pass = "";
+    for (let i = 0; i < 10; i++) {
+      pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setCreateForm((prev) => ({ ...prev, contrasena: pass }));
+  };
+
+  const handleNombreChange = (val: string) => {
+    setCreateForm((prev) => {
+      const autoUser = val
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]/g, ".")
+        .replace(/\.+/g, ".")
+        .replace(/^\.|\.$/g, "");
+
+      // Si el usuario interno estaba vacío o coincidía con la sugerencia previa, actualizarlo
+      const shouldUpdateUser = !prev.usuario || prev.usuario === prev.nombre.toLowerCase().replace(/[^a-z0-9]/g, ".");
+      return {
+        ...prev,
+        nombre: val,
+        usuario: shouldUpdateUser ? autoUser : prev.usuario,
+      };
+    });
+  };
+
+  const handleCrearEmpleado = async (event: any) => {
     event.preventDefault();
     setCreateError("");
     if (!empresaId) return;
     if (limiteEmpleadosAlcanzado) {
-      setCreateError(`Tu plan ${plan} permite hasta ${planLimits.employees} empleados. Actualiza de plan para agregar más.`);
+      setCreateError(
+        `Tu plan ${plan} permite hasta ${planLimits.employees} colaboradores. Actualiza tu suscripción para continuar agregando.`
+      );
       return;
     }
     if (!createForm.nombre.trim() || !createForm.correo.trim() || createForm.contrasena.length < 6) {
-      setCreateError("Nombre, correo y una contraseña de al menos 6 caracteres son obligatorios.");
+      setCreateError("Nombre, correo y una contraseña de mínimo 6 caracteres son obligatorios.");
       return;
     }
     setCreatingEmpleado(true);
     try {
-      // Alta via Edge Function (crear-usuario-empresa, Fase 2): crea la cuenta
-      // de Auth y la fila de usuarios con el hash de password interno en un
-      // solo paso server-side (bcrypt via service_role) -- reemplaza el
-      // truco de "app secundaria" + hash en el cliente.
       const { data, error } = await supabase.functions.invoke("crear-usuario-empresa", {
         body: {
           nombre: createForm.nombre.trim(),
@@ -438,20 +621,23 @@ export default function GestionPlantilla() {
         const departamentoId = departamentos.find((d) => d.nombre === createForm.departamento)?.id || null;
         const sedeId = sedes.find((s) => s.nombre === createForm.sede)?.id || null;
         if (cargoId || departamentoId || sedeId) {
-          await supabase.from("usuarios").update({ cargo_id: cargoId, departamento_id: departamentoId, sede_id: sedeId }).eq("id", uid);
+          await supabase
+            .from("usuarios")
+            .update({ cargo_id: cargoId, departamento_id: departamentoId, sede_id: sedeId })
+            .eq("id", uid);
         }
       }
 
       setCreateForm(EMPTY_CREATE_FORM);
       setShowCreatePanel(false);
-    } catch (err) {
-      setCreateError(await mensajeErrorEdgeFunction(err, "No se pudo crear el empleado."));
+    } catch (err: any) {
+      setCreateError(await mensajeErrorEdgeFunction(err, "No se pudo registrar el colaborador."));
     } finally {
       setCreatingEmpleado(false);
     }
   };
 
-  const handleAssignTask = async (e) => {
+  const handleAssignTask = async (e: any) => {
     e.preventDefault();
     setTaskError("");
     setTaskSuccess("");
@@ -459,47 +645,50 @@ export default function GestionPlantilla() {
       setTaskError("El título y la descripción son obligatorios.");
       return;
     }
-    
+
     if (taskForm.tipoAsignacion !== "todos" && taskForm.seleccionados.length === 0) {
-      setTaskError("Debes seleccionar al menos una opción para asignar.");
+      setTaskError("Debes seleccionar al menos un destinatario para asignar.");
       return;
     }
 
     setAssigningTask(true);
-    
+
     try {
       const dbEmpleados = empleados;
-      let targetEmpleados = [];
-      
+      let targetEmpleados: any[] = [];
+
       switch (taskForm.tipoAsignacion) {
         case "todos":
           targetEmpleados = dbEmpleados;
           break;
         case "empleados":
-          targetEmpleados = dbEmpleados.filter(e => taskForm.seleccionados.includes(e.id));
+          targetEmpleados = dbEmpleados.filter((emp) => taskForm.seleccionados.includes(emp.id));
           break;
         case "departamentos":
-          targetEmpleados = dbEmpleados.filter(e => e.departamento && taskForm.seleccionados.includes(e.departamento));
+          targetEmpleados = dbEmpleados.filter(
+            (emp) => emp.departamento && taskForm.seleccionados.includes(emp.departamento)
+          );
           break;
         case "cargos":
-          targetEmpleados = dbEmpleados.filter(e => e.cargo && taskForm.seleccionados.includes(e.cargo));
+          targetEmpleados = dbEmpleados.filter((emp) => emp.cargo && taskForm.seleccionados.includes(emp.cargo));
           break;
         case "sedes":
-          targetEmpleados = dbEmpleados.filter(e => e.sede && taskForm.seleccionados.includes(e.sede));
+          targetEmpleados = dbEmpleados.filter((emp) => emp.sede && taskForm.seleccionados.includes(emp.sede));
           break;
         default:
           break;
       }
-      
+
       if (targetEmpleados.length === 0) {
-        throw new Error("No se encontraron empleados que coincidan con la selección.");
+        throw new Error("No se encontraron colaboradores que coincidan con la selección.");
       }
-      
-      // Nombres de columna de la tabla "tareas" (Supabase, Fase 0):
-      // empresa_id, asignado_a, titulo, descripcion, prioridad, estado,
-      // fecha_limite, creado_por -- coincide con lo que
-      // SupabaseTaskRepository.ts (app movil) usa para consultar.
-      const prioridadPorUrgencia = { baja: "Baja", media: "Media", alta: "Alta", urgente: "Urgente" };
+
+      const prioridadPorUrgencia: Record<string, string> = {
+        baja: "Baja",
+        media: "Media",
+        alta: "Alta",
+        urgente: "Urgente",
+      };
       const filas = targetEmpleados.map((emp) => ({
         empresa_id: empresaId,
         asignado_a: emp.id,
@@ -509,155 +698,331 @@ export default function GestionPlantilla() {
         prioridad: prioridadPorUrgencia[taskForm.urgencia] || "Media",
         fecha_limite: taskForm.fechaLimite || null,
         estado: "pendiente",
-        datos: { progreso: 0, jefe: user?.nombre || user?.correo || "Administrador", depto: emp.departamento || "" },
+        datos: {
+          progreso: 0,
+          jefe: user?.nombre || user?.correo || "Administrador",
+          depto: emp.departamento || "",
+        },
       }));
 
       const { error: insertError } = await supabase.from("tareas").insert(filas);
       if (insertError) throw insertError;
-      
-      setTaskSuccess(`Se han asignado ${targetEmpleados.length} tareas correctamente.`);
+
+      setTaskSuccess(`Se asignaron ${targetEmpleados.length} tareas correctamente.`);
       setTimeout(() => {
         setShowTaskModal(false);
-        setTaskForm({ tipoAsignacion: "todos", seleccionados: [], titulo: "", descripcion: "", urgencia: "media", fechaLimite: "" });
+        setTaskForm({
+          tipoAsignacion: "todos",
+          seleccionados: [],
+          titulo: "",
+          descripcion: "",
+          urgencia: "media",
+          fechaLimite: "",
+        });
+        setTaskSearch("");
         setTaskSuccess("");
-      }, 2000);
-      
-    } catch (err) {
+      }, 1600);
+    } catch (err: any) {
       setTaskError(err.message || "Ocurrió un error al asignar las tareas.");
     } finally {
       setAssigningTask(false);
     }
   };
 
-  const columnsData = [
-    { Header: "EMPLEADO", accessor: "empleado" },
-    { Header: "CORREO", accessor: "correo" },
-    { Header: "ROL", accessor: "rol" },
-    { Header: "CARGO", accessor: "cargo" },
-    { Header: "DEPARTAMENTO", accessor: "departamento" },
-    { Header: "SEDE", accessor: "sede" },
-    { Header: "ESTADO", accessor: "estado" },
-    { Header: "ACCIONES", accessor: "acciones" },
-  ];
+  const handleToggleSeleccionDestinatario = (id: string) => {
+    setTaskForm((prev) => {
+      const exists = prev.seleccionados.includes(id);
+      return {
+        ...prev,
+        seleccionados: exists ? prev.seleccionados.filter((s) => s !== id) : [...prev.seleccionados, id],
+      };
+    });
+  };
 
-  const tableData = useMemo(
-    () =>
-      empleadosFiltrados.map((empleado) => ({
-        id: empleado.id,
-        empleado: (
-          <div className="flex items-center gap-3">
-            <Avatar src={empleado.foto} name={empleado.nombre} size={9} />
-            <span>{empleado.nombre}</span>
-          </div>
-        ),
-        correo: empleado.correo || "—",
-        rol: etiquetaRol(empleado.rol),
-        cargo: empleado.cargo || "—",
-        departamento: empleado.departamento || "—",
-        sede: empleado.sede || "—",
-        estado: (
-          <span
-            className={`rounded-full px-2 py-1 text-xs font-bold ${
-              empleado.activo ? ESTADO_BADGE_CLASSES.Activo : ESTADO_BADGE_CLASSES.Inactivo
-            }`}
-          >
-            {empleado.activo ? "Activo" : "Inactivo"}
-          </span>
-        ),
-        acciones: (
-          <button
-            type="button"
-            onClick={() => setSelectedEmpleado(empleado)}
-            className="rounded-lg bg-lightPrimary px-3 py-1.5 text-sm font-bold text-brand-500 transition hover:bg-brand-500/10 dark:bg-charcoal-light dark:text-white"
-          >
-            Ver
-          </button>
-        ),
-      })),
-    [empleadosFiltrados]
-  );
+  const handleSelectAllDestinatarios = () => {
+    let ids: string[] = [];
+    if (taskForm.tipoAsignacion === "empleados") {
+      ids = destinatariosFiltrados.map((e: any) => e.id);
+    } else if (taskForm.tipoAsignacion === "departamentos") {
+      ids = destinatariosFiltrados;
+    } else if (taskForm.tipoAsignacion === "cargos") {
+      ids = destinatariosFiltrados;
+    } else if (taskForm.tipoAsignacion === "sedes") {
+      ids = destinatariosFiltrados;
+    }
+    setTaskForm((prev) => ({
+      ...prev,
+      seleccionados: [...new Set([...prev.seleccionados, ...ids])],
+    }));
+  };
+
+  const handleClearAllDestinatarios = () => {
+    setTaskForm((prev) => ({ ...prev, seleccionados: [] }));
+  };
 
   if (!empresaId) {
     return (
-      <p className="rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-500 dark:bg-red-400/10 dark:text-red-400">
-        No se pudo determinar la empresa de este administrador.
-      </p>
+      <div className="flex h-64 items-center justify-center rounded-2xl bg-white p-6 shadow-3xl shadow-shadow-500 dark:bg-charcoal dark:border dark:border-charcoal-border">
+        <p className="text-base font-semibold text-gray-600 dark:text-white/70">
+          No se pudo determinar la empresa asociada a este usuario.
+        </p>
+      </div>
     );
   }
 
   return (
-    <div>
-      {error ? (
-        <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-500 dark:bg-red-400/10 dark:text-red-400">
+    <div className="flex flex-col gap-6 pb-6">
+      {/* Banner de error */}
+      {error && (
+        <div className="rounded-xl bg-red-50 p-4 text-sm font-semibold text-red-600 dark:bg-red-500/10 dark:text-red-400">
           {error}
-        </p>
-      ) : null}
-
-      <div className="mb-6 flex flex-col justify-between gap-4 rounded-xl border border-brand-100 bg-brand-50 p-4 md:flex-row md:items-center dark:border-white/10 dark:bg-navy-900">
-        <div>
-          <h4 className="text-lg font-bold text-navy-700 dark:text-white">
-            Código de Empresa:{" "}
-            <span className="ml-2 rounded-lg bg-brand-500 px-3 py-1 text-white tracking-widest">
-              <CodigoEmpresaDisplay code={codigoEmpresa} />
-            </span>
-          </h4>
-          <p className="mt-1 text-sm text-gray-600 dark:text-white/60">
-            Comparte este código con tus empleados. Lo necesitarán para registrarse o iniciar sesión en la aplicación móvil.
-          </p>
-        </div>
-      </div>
-
-      {loading ? (
-        <p className="text-sm font-medium text-gray-600 dark:text-white/70">Cargando estadísticas...</p>
-      ) : (
-        <div className="mt-3 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-5">
-          {kpis.map((w, i) => (
-            <NexxusWidget key={w.title} {...w} delay={i * 100} />
-          ))}
         </div>
       )}
 
-      <NexxusCard extra="mt-8 w-full p-4" delay={100}>
-        <div className="grid grid-cols-1 items-end gap-4 md:grid-cols-4 xl:grid-cols-7">
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
+            Plantilla de Colaboradores
+          </h2>
+          <p className="mt-1 text-sm font-medium text-gray-500 dark:text-white/60">
+            Directorio organizacional, asignación de cargos, departamentos y control de accesos.
+          </p>
+        </div>
+
+        {/* Tarjeta de Código de Registro */}
+        <div className="flex items-center gap-3 rounded-2xl border border-brand-500/20 bg-brand-500/[0.04] p-3.5 shadow-sm dark:border-brand-400/20 dark:bg-brand-500/10">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-500 text-white shadow-md shadow-brand-500/20">
+            <MdOutlineCorporateFare className="h-5 w-5" />
+          </div>
           <div>
-            <label className={selectLabelClasses} htmlFor="filtro-departamento">
-              Departamento
-            </label>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50">
+              Código de Registro
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-sm font-black text-navy-700 dark:text-white">
+                <CodigoEmpresaDisplay code={codigoEmpresa} />
+              </span>
+              <button
+                type="button"
+                onClick={handleCopiarCodigo}
+                className="flex items-center gap-1 rounded-lg bg-white px-2 py-0.5 text-[11px] font-bold text-brand-600 shadow-sm transition hover:bg-gray-50 active:scale-95 dark:bg-charcoal dark:text-brand-300"
+                title="Copiar código"
+              >
+                {copiado ? <MdCheck className="h-3.5 w-3.5 text-emerald-600" /> : <MdOutlineContentCopy className="h-3.5 w-3.5" />}
+                <span>{copiado ? "Copiado" : "Copiar"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
+                Total Plantilla
+              </p>
+              <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
+                {metricas.total}
+              </h3>
+            </div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500/10 text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
+              <MdOutlinePeople className="h-6 w-6" />
+            </div>
+          </div>
+          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
+            <span>Capacidad máx: {planLimits.employees}</span>
+            <span className="font-bold text-brand-500">Plan {plan}</span>
+          </div>
+        </NexxusCard>
+
+        {/* Activos vs Inactivos */}
+        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
+                Colaboradores Activos
+              </p>
+              <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
+                {metricas.activos}
+                <span className="ml-1.5 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                  ({metricas.total > 0 ? Math.round((metricas.activos / metricas.total) * 100) : 0}%)
+                </span>
+              </h3>
+            </div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
+              <MdOutlineCheckCircle className="h-6 w-6" />
+            </div>
+          </div>
+          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
+            <span className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              Operativos con acceso
+            </span>
+            <span>{metricas.inactivos} inactivos</span>
+          </div>
+        </NexxusCard>
+
+        {/* Líderes & Jefes */}
+        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
+                Jefes & Supervisores
+              </p>
+              <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
+                {metricas.jefes}
+              </h3>
+            </div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
+              <MdOutlineSupervisorAccount className="h-6 w-6" />
+            </div>
+          </div>
+          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
+            <span>Líderes de departamento</span>
+            <span className="font-bold text-navy-700 dark:text-white">{departamentosDistintos.length} áreas</span>
+          </div>
+        </NexxusCard>
+
+        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
+                Equipo Operativo
+              </p>
+              <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
+                {metricas.operativos}
+              </h3>
+            </div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-500/10 text-purple-600 dark:bg-purple-400/20 dark:text-purple-300">
+              <MdOutlineBadge className="h-6 w-6" />
+            </div>
+          </div>
+          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
+            <span>Personal asignado</span>
+            <span className="font-bold text-purple-600 dark:text-purple-400">{sedesDistintas.length} sedes</span>
+          </div>
+        </NexxusCard>
+      </div>
+
+      <NexxusCard extra="p-6 flex flex-col gap-5" delay={100}>
+        {/* Fila Superior: Buscador y Botones de Acción */}
+        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+          <div>
+            <h4 className="text-xl font-bold tracking-tight text-navy-700 dark:text-white">
+              Directorio de la Plantilla
+            </h4>
+            <p className="mt-0.5 text-xs font-medium text-gray-500 dark:text-white/60">
+              Gestión de expedientes, cargos reales y asignación departamental.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Buscador Rápido */}
+            <div className="relative w-full sm:w-64">
+              <MdOutlineSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-gray-400 dark:text-white/40" />
+              <input
+                type="text"
+                placeholder="Buscar colaborador..."
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2 pl-9 pr-3 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowTaskModal(true);
+                setTaskSearch("");
+              }}
+              className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-xs font-bold text-navy-700 shadow-sm transition hover:bg-gray-50 active:scale-95 dark:border-white/10 dark:bg-charcoal dark:text-white dark:hover:bg-white/5"
+            >
+              <MdOutlineAssignment className="h-4 w-4 text-brand-500" />
+              <span>Asignar Tarea</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={limiteEmpleadosAlcanzado}
+              onClick={() => setShowCreatePanel(true)}
+              className="flex items-center gap-1.5 rounded-xl bg-brand-500 px-4 py-2 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50 active:scale-95"
+            >
+              <MdOutlinePersonAdd className="h-4 w-4" />
+              <span>Crear Empleado</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Fila de Filtros Rápidos (Pestañas) */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-4 dark:border-white/10">
+          <div className="flex flex-wrap items-center gap-2">
+            {[
+              { id: "todos", label: "Todos", count: metricas.total },
+              { id: "activos", label: "Activos", count: metricas.activos },
+              { id: "jefes", label: "Jefes / Líderes", count: metricas.jefes },
+              { id: "operativos", label: "Operativos", count: metricas.operativos },
+              { id: "inactivos", label: "Inactivos", count: metricas.inactivos },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setFiltroRapido(tab.id as any)}
+                className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all duration-150 ${
+                  filtroRapido === tab.id
+                    ? "bg-brand-500 text-white shadow-sm shadow-brand-500/20"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200/80 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/10"
+                }`}
+              >
+                <span>{tab.label}</span>
+                <span
+                  className={`rounded-md px-1.5 py-0.2 text-[10px] ${
+                    filtroRapido === tab.id
+                      ? "bg-white/20 text-white"
+                      : "bg-black/5 dark:bg-white/10 text-gray-500 dark:text-white/60"
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Filtros Dropdowns Compactos */}
+          <div className="flex flex-wrap items-center gap-2">
             <select
-              id="filtro-departamento"
-              className={selectClasses}
+              className="h-8 rounded-xl border border-gray-200 bg-gray-50/50 px-2.5 text-xs font-semibold text-gray-700 outline-none dark:border-white/10 dark:bg-charcoal dark:text-white/80"
               value={filtroDepartamento}
               onChange={(e) => setFiltroDepartamento(e.target.value)}
             >
-              <option value="">Todos</option>
+              <option value="">Departamento: Todos</option>
               {departamentosDistintos.map((d) => (
                 <option key={d} value={d}>
                   {d}
                 </option>
               ))}
             </select>
-          </div>
 
-          <div>
-            <label className={selectLabelClasses} htmlFor="filtro-cargo">
-              Cargo
-            </label>
-            <select id="filtro-cargo" className={selectClasses} value={filtroCargo} onChange={(e) => setFiltroCargo(e.target.value)}>
-              <option value="">Todos</option>
+            <select
+              className="h-8 rounded-xl border border-gray-200 bg-gray-50/50 px-2.5 text-xs font-semibold text-gray-700 outline-none dark:border-white/10 dark:bg-charcoal dark:text-white/80"
+              value={filtroCargo}
+              onChange={(e) => setFiltroCargo(e.target.value)}
+            >
+              <option value="">Cargo: Todos</option>
               {cargosDistintos.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>
               ))}
             </select>
-          </div>
 
-          <div>
-            <label className={selectLabelClasses} htmlFor="filtro-sede">
-              Sede
-            </label>
-            <select id="filtro-sede" className={selectClasses} value={filtroSede} onChange={(e) => setFiltroSede(e.target.value)}>
-              <option value="">Todas</option>
+            <select
+              className="h-8 rounded-xl border border-gray-200 bg-gray-50/50 px-2.5 text-xs font-semibold text-gray-700 outline-none dark:border-white/10 dark:bg-charcoal dark:text-white/80"
+              value={filtroSede}
+              onChange={(e) => setFiltroSede(e.target.value)}
+            >
+              <option value="">Sede: Todas</option>
               {sedesDistintas.map((s) => (
                 <option key={s} value={s}>
                   {s}
@@ -665,431 +1030,907 @@ export default function GestionPlantilla() {
               ))}
             </select>
           </div>
-
-          <div>
-            <label className={selectLabelClasses} htmlFor="filtro-rol">
-              Rol
-            </label>
-            <select id="filtro-rol" className={selectClasses} value={filtroRol} onChange={(e) => setFiltroRol(e.target.value)}>
-              <option value="">Todos</option>
-              {ROLE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className={selectLabelClasses} htmlFor="filtro-estado">
-              Estado
-            </label>
-            <select id="filtro-estado" className={selectClasses} value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
-              {ESTADO_FILTRO_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col items-stretch gap-2">
-            <button
-              type="button"
-              disabled={limiteEmpleadosAlcanzado}
-              onClick={() => setShowCreatePanel((prev) => !prev)}
-              title={limiteEmpleadosAlcanzado ? `Límite de ${planLimits.employees} empleados alcanzado en el plan ${plan}.` : undefined}
-              className="flex h-12 w-full items-center justify-center rounded-xl bg-brand-500 text-sm font-bold text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 dark:bg-brand-400 dark:disabled:bg-white/10 dark:disabled:text-white/40"
-            >
-              Crear empleado
-            </button>
-            {limiteEmpleadosAlcanzado ? (
-              <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
-                Límite de {planLimits.employees} empleados alcanzado.
-              </p>
-            ) : null}
-          </div>
-
-          <div className="flex flex-col items-stretch gap-2">
-            <button
-              type="button"
-              onClick={() => setShowTaskModal(true)}
-              className="flex h-12 w-full items-center justify-center rounded-xl border border-brand-500 text-brand-500 text-sm font-bold transition hover:bg-brand-50 dark:border-brand-400 dark:text-brand-400 dark:hover:bg-white/5"
-            >
-              Asignar Tarea
-            </button>
-          </div>
         </div>
+
+        {/* Tabla */}
+        {loading ? (
+          <div className="flex h-64 w-full flex-col items-center justify-center gap-3">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-500 border-t-transparent" />
+            <p className="text-sm font-medium text-gray-500 dark:text-white/60">
+              Sincronizando plantilla de colaboradores...
+            </p>
+          </div>
+        ) : empleadosFiltrados.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 py-16 text-center dark:border-white/10">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-gray-400 dark:bg-white/5 dark:text-white/40">
+              <MdOutlinePeople className="h-6 w-6" />
+            </div>
+            <p className="mt-3 text-sm font-bold text-navy-700 dark:text-white">
+              No se encontraron colaboradores
+            </p>
+            <p className="mt-0.5 text-xs text-gray-400 dark:text-white/50">
+              Prueba a cambiar los filtros o el término de búsqueda.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-2xl border border-gray-100 dark:border-white/5">
+            <table className="w-full border-collapse text-left">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50/70 dark:border-white/10 dark:bg-white/[0.02]">
+                  <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                    Colaborador
+                  </th>
+                  <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                    Correo Electrónico
+                  </th>
+                  <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                    Rol
+                  </th>
+                  <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                    Cargo
+                  </th>
+                  <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                    Departamento
+                  </th>
+                  <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                    Sede
+                  </th>
+                  <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                    Estado
+                  </th>
+                  <th className="px-4 py-3.5 text-right text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                {empleadosFiltrados.map((e) => (
+                  <tr
+                    key={e.id}
+                    className="cursor-pointer transition hover:bg-gray-50/70 dark:hover:bg-white/[0.02]"
+                    onClick={() => setSelectedEmpleado(e)}
+                  >
+                    {/* Colaborador */}
+                    <td className="min-w-[200px] px-4 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <Avatar src={e.foto} name={e.nombre} size={9} />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-bold text-navy-700 dark:text-white">
+                            {e.nombre}
+                          </p>
+                          <p className="truncate text-xs text-gray-400 dark:text-white/40">
+                            @{e.usuario || "sin_usuario"}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Correo */}
+                    <td className="whitespace-nowrap px-4 py-3.5 text-xs font-medium text-gray-500 dark:text-white/60">
+                      {e.correo || "—"}
+                    </td>
+
+                    {/* Rol */}
+                    <td className="whitespace-nowrap px-4 py-3.5">
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                          ROLE_BADGE[e.rol] || ROLE_BADGE.empleado
+                        }`}
+                      >
+                        {etiquetaRol(e.rol)}
+                      </span>
+                    </td>
+
+                    {/* Cargo Real */}
+                    <td className="whitespace-nowrap px-4 py-3.5 text-xs font-bold text-navy-700 dark:text-white">
+                      {e.cargo}
+                    </td>
+
+                    {/* Departamento */}
+                    <td className="whitespace-nowrap px-4 py-3.5 text-xs text-gray-600 dark:text-white/70">
+                      {e.departamento}
+                    </td>
+
+                    {/* Sede */}
+                    <td className="whitespace-nowrap px-4 py-3.5 text-xs text-gray-500 dark:text-white/50">
+                      {e.sede}
+                    </td>
+
+                    {/* Estado */}
+                    <td className="whitespace-nowrap px-4 py-3.5">
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                          e.activo
+                            ? "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300"
+                            : "bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-white/50"
+                        }`}
+                      >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            e.activo ? "bg-emerald-500" : "bg-gray-400"
+                          }`}
+                        />
+                        {e.activo ? "Activo" : "Inactivo"}
+                      </span>
+                    </td>
+
+                    {/* Acciones */}
+                    <td className="whitespace-nowrap px-4 py-3.5 text-right" onClick={(ev) => ev.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedEmpleado(e)}
+                        className="inline-flex items-center gap-1 rounded-xl bg-lightPrimary px-3 py-1.5 text-xs font-bold text-brand-500 shadow-sm transition hover:bg-brand-500/10 active:scale-95 dark:bg-white/5 dark:text-brand-300 dark:hover:bg-white/10"
+                      >
+                        <MdOutlineEdit className="h-3.5 w-3.5" />
+                        <span>Ficha</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </NexxusCard>
 
-      <Modal isOpen={showCreatePanel} onClose={() => setShowCreatePanel(false)} title="Crear empleado">
-        <div className="p-2">
-          <form onSubmit={handleCrearEmpleado}>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <InputField
-                label="Nombre"
-                id="crear-nombre"
-                placeholder="Nombre completo"
-                value={createForm.nombre}
-                onChange={(e) => setCreateForm((prev) => ({ ...prev, nombre: e.target.value }))}
-              />
-              <InputField
-                label="Correo"
-                id="crear-correo"
-                type="email"
-                placeholder="correo@empresa.com"
-                value={createForm.correo}
-                onChange={(e) => setCreateForm((prev) => ({ ...prev, correo: e.target.value }))}
-              />
-              <InputField
-                label="Usuario"
-                id="crear-usuario"
-                placeholder="usuario123"
-                value={createForm.usuario}
-                onChange={(e) => setCreateForm((prev) => ({ ...prev, usuario: e.target.value }))}
-              />
-              <InputField
-                label="Contraseña inicial"
-                id="crear-contrasena"
-                type="password"
-                placeholder="Mín. 6 caracteres"
-                value={createForm.contrasena}
-                onChange={(e) => setCreateForm((prev) => ({ ...prev, contrasena: e.target.value }))}
-              />
-              <div>
-                <label className={selectLabelClasses} htmlFor="crear-rol">
-                  Rol
-                </label>
-                <select
-                  id="crear-rol"
-                  className={selectClasses}
-                  value={createForm.rol}
-                  onChange={(e) => setCreateForm((prev) => ({ ...prev, rol: e.target.value }))}
-                >
-                  {ROLE_OPTIONS.filter((opt) => opt.value !== "super_admin").map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+      <Modal
+        isOpen={!!selectedEmpleado}
+        onClose={() => setSelectedEmpleado(null)}
+        title="Ficha del Colaborador"
+        width="max-w-3xl"
+      >
+        {selectedEmpleado && editForm ? (
+          <div className="flex flex-col gap-6 py-2">
+            {/* Header del colaborador */}
+            <div className="flex items-center justify-between gap-4 rounded-2xl bg-gray-50 p-4.5 dark:bg-white/[0.03]">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <Avatar src={selectedEmpleado.foto} name={selectedEmpleado.nombre} size={12} />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-lg font-black text-navy-700 dark:text-white">
+                      {selectedEmpleado.nombre}
+                    </p>
+                    <span
+                      className={`inline-flex rounded-full px-2 py-0.5 text-[10.5px] font-bold ${
+                        ROLE_BADGE[selectedEmpleado.rol] || ROLE_BADGE.empleado
+                      }`}
+                    >
+                      {etiquetaRol(selectedEmpleado.rol)}
+                    </span>
+                  </div>
+                  <p className="truncate text-xs font-medium text-gray-500 dark:text-white/60">
+                    @{selectedEmpleado.usuario || "sin_usuario"} · {selectedEmpleado.correo || "Sin correo"}
+                  </p>
+                </div>
               </div>
-              <SelectListaField
-                label="Cargo"
-                id="crear-cargo"
-                value={createForm.cargo}
-                onChange={(v) => setCreateForm((prev) => ({ ...prev, cargo: v }))}
-                opciones={cargosDistintos}
-              />
-              <SelectListaField
-                label="Departamento"
-                id="crear-departamento"
-                value={createForm.departamento}
-                onChange={(v) => setCreateForm((prev) => ({ ...prev, departamento: v }))}
-                opciones={departamentosDistintos}
-              />
-              <SelectListaField
-                label="Sede"
-                id="crear-sede"
-                value={createForm.sede}
-                onChange={(v) => setCreateForm((prev) => ({ ...prev, sede: v }))}
-                opciones={sedesDistintas}
-              />
+
+              <div className="text-right shrink-0">
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
+                    selectedEmpleado.activo
+                      ? "bg-emerald-500/15 text-emerald-700 dark:bg-emerald-400/20 dark:text-emerald-300"
+                      : "bg-gray-200 text-gray-600 dark:bg-white/10 dark:text-white/60"
+                  }`}
+                >
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      selectedEmpleado.activo ? "bg-emerald-500" : "bg-gray-400"
+                    }`}
+                  />
+                  {selectedEmpleado.activo ? "Cuenta Activa" : "Cuenta Pausada"}
+                </span>
+              </div>
             </div>
-            {createError ? (
-              <p className="mt-3 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-500 dark:bg-red-400/10 dark:text-red-400">
-                {createError}
+
+            {/* Mensaje de acción */}
+            {actionMsg && (
+              <div className="rounded-xl bg-brand-500/10 p-3 text-xs font-bold text-brand-600 dark:bg-brand-400/20 dark:text-brand-300">
+                {actionMsg}
+              </div>
+            )}
+
+            {/* Bloque 1: Datos Personales y Laborales */}
+            <div>
+              <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
+                Información Laboral & Perfil
               </p>
-            ) : null}
-            <div className="mt-4">
-              <ActionButton type="submit" busy={creatingEmpleado} className="bg-brand-500 dark:bg-brand-400">
-                Crear empleado
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <InputField
+                  label="Nombre Completo"
+                  id="editar-nombre"
+                  value={editForm.nombre}
+                  onChange={(e) => setEditForm((f: any) => ({ ...f, nombre: e.target.value }))}
+                />
+                <InputField
+                  label="Correo Electrónico (Login)"
+                  id="editar-correo"
+                  value={editForm.correo}
+                  onChange={(e) => setEditForm((f: any) => ({ ...f, correo: e.target.value }))}
+                />
+                <InputField
+                  label="Usuario Interno"
+                  id="editar-usuario"
+                  value={editForm.usuario}
+                  onChange={(e) => setEditForm((f: any) => ({ ...f, usuario: e.target.value }))}
+                />
+                <InputField
+                  label="Teléfono"
+                  id="editar-telefono"
+                  value={editForm.telefono}
+                  onChange={(e) => setEditForm((f: any) => ({ ...f, telefono: e.target.value }))}
+                />
+                <SelectListaField
+                  label="Cargo"
+                  id="editar-cargo"
+                  value={editForm.cargo}
+                  onChange={(v: string) => setEditForm((f: any) => ({ ...f, cargo: v }))}
+                  opciones={cargosDistintos}
+                />
+                <SelectListaField
+                  label="Departamento"
+                  id="editar-departamento"
+                  value={editForm.departamento}
+                  onChange={(v: string) => setEditForm((f: any) => ({ ...f, departamento: v }))}
+                  opciones={departamentosDistintos}
+                />
+                <SelectListaField
+                  label="Sede Asignada"
+                  id="editar-sede"
+                  value={editForm.sede}
+                  onChange={(v: string) => setEditForm((f: any) => ({ ...f, sede: v }))}
+                  opciones={sedesDistintas}
+                />
+                <InputField
+                  label="Salario Base ($)"
+                  id="editar-salario"
+                  type="number"
+                  value={editForm.salarioBase}
+                  onChange={(e) => setEditForm((f: any) => ({ ...f, salarioBase: e.target.value }))}
+                />
+              </div>
+
+              <div className="mt-4 flex justify-end">
+                <ActionButton
+                  busy={busyAction === "guardar"}
+                  onClick={handleGuardarCambios}
+                  className="bg-brand-500 shadow-md shadow-brand-500/20 hover:bg-brand-600 dark:bg-brand-400"
+                >
+                  Guardar Datos Laborales
+                </ActionButton>
+              </div>
+            </div>
+
+            {/* Bloque 2: Credenciales & Seguridad */}
+            <div className="border-t border-gray-100 pt-5 dark:border-white/10">
+              <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
+                Seguridad & Acceso
+              </p>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {/* Cambiar Rol */}
+                <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-4 dark:border-white/5 dark:bg-white/[0.02]">
+                  <label className={selectLabelClasses} htmlFor="editar-rol">
+                    Cambiar Rol Jerárquico
+                  </label>
+                  <div className="mt-2 flex items-center gap-2">
+                    <select
+                      id="editar-rol"
+                      className={selectClasses}
+                      value={rolSeleccionado}
+                      onChange={(e) => setRolSeleccionado(e.target.value)}
+                    >
+                      {ROLE_OPTIONS.filter((opt) => opt.value !== "super_admin").map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                    <ActionButton
+                      busy={busyAction === "rol"}
+                      onClick={handleCambiarRol}
+                      className="mt-1 shrink-0 bg-blueSecondary hover:bg-blueSecondary/80"
+                    >
+                      Actualizar
+                    </ActionButton>
+                  </div>
+                </div>
+
+                {/* Resetear Contraseña */}
+                <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-4 dark:border-white/5 dark:bg-white/[0.02]">
+                  <label className={selectLabelClasses} htmlFor="editar-nueva-contrasena">
+                    Restablecer Contraseña
+                  </label>
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      id="editar-nueva-contrasena"
+                      type="password"
+                      placeholder="Mínimo 6 caracteres"
+                      value={nuevaContrasena}
+                      onChange={(e) => setNuevaContrasena(e.target.value)}
+                      className={selectClasses}
+                    />
+                    <ActionButton
+                      busy={busyAction === "password"}
+                      onClick={handleCambiarContrasena}
+                      className="mt-1 shrink-0 bg-amber-500 hover:bg-amber-600 shadow-amber-500/20"
+                    >
+                      Restablecer
+                    </ActionButton>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bloque 3: Acciones Críticas de la Cuenta */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-5 dark:border-white/10">
+              <div className="flex items-center gap-2">
+                <ActionButton
+                  busy={busyAction === "estado"}
+                  onClick={handleToggleActivo}
+                  className={selectedEmpleado.activo ? "bg-amber-600 hover:bg-amber-700" : "bg-emerald-600 hover:bg-emerald-700"}
+                >
+                  {selectedEmpleado.activo ? "Pausar Acceso" : "Reactivar Acceso"}
+                </ActionButton>
+                <ActionButton
+                  busy={busyAction === "eliminar"}
+                  onClick={handleEliminar}
+                  className="bg-rose-500 hover:bg-rose-600 shadow-rose-500/20"
+                >
+                  <MdOutlineDelete className="h-4 w-4" />
+                  <span>Dar de Baja</span>
+                </ActionButton>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedEmpleado(null)}
+                className="rounded-xl bg-gray-100 px-4 py-2 text-xs font-bold text-gray-700 transition hover:bg-gray-200 active:scale-95 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
+
+      <Modal
+        isOpen={showCreatePanel}
+        onClose={() => setShowCreatePanel(false)}
+        title="Registrar Nuevo Colaborador"
+        width="max-w-2xl"
+      >
+        <div className="py-2">
+          <form onSubmit={handleCrearEmpleado} className="flex flex-col gap-5">
+            {/* Banner Informativo y Capacidad del Plan */}
+            <div className="flex items-center justify-between rounded-2xl bg-brand-500/[0.05] p-3.5 border border-brand-500/15 dark:bg-brand-500/10">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-500 text-white shadow-sm shadow-brand-500/20">
+                  <MdOutlinePersonAdd className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-navy-700 dark:text-white">
+                    Alta Institucional en {plan}
+                  </p>
+                  <p className="text-[11px] text-gray-500 dark:text-white/60">
+                    Crea las credenciales de acceso para la aplicación web y móvil.
+                  </p>
+                </div>
+              </div>
+              <span className="rounded-full bg-white px-2.5 py-1 text-[10.5px] font-extrabold text-brand-600 shadow-sm dark:bg-charcoal dark:text-brand-300">
+                {metricas.total} / {planLimits.employees} cupos
+              </span>
+            </div>
+
+            {/* SECCIÓN 1: Credenciales & Identidad */}
+            <div>
+              <p className="mb-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
+                1. Datos de Identidad & Acceso
+              </p>
+              <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+                {/* Nombre Completo */}
+                <div>
+                  <label className={selectLabelClasses} htmlFor="crear-nombre">
+                    Nombre Completo *
+                  </label>
+                  <div className="relative mt-1">
+                    <MdOutlinePerson className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-gray-400 dark:text-white/40" />
+                    <input
+                      id="crear-nombre"
+                      type="text"
+                      placeholder="Ej. Ana Morales"
+                      value={createForm.nombre}
+                      onChange={(e) => handleNombreChange(e.target.value)}
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2.5 pl-10 pr-3.5 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
+                    />
+                  </div>
+                </div>
+
+                {/* Correo Electrónico */}
+                <div>
+                  <label className={selectLabelClasses} htmlFor="crear-correo">
+                    Correo Electrónico (Login) *
+                  </label>
+                  <div className="relative mt-1">
+                    <MdOutlineEmail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-gray-400 dark:text-white/40" />
+                    <input
+                      id="crear-correo"
+                      type="email"
+                      placeholder="ana@empresa.com"
+                      value={createForm.correo}
+                      onChange={(e) => setCreateForm((prev) => ({ ...prev, correo: e.target.value }))}
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2.5 pl-10 pr-3.5 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className={selectLabelClasses} htmlFor="crear-usuario">
+                    Usuario Interno
+                  </label>
+                  <div className="relative mt-1">
+                    <MdOutlineAlternateEmail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-gray-400 dark:text-white/40" />
+                    <input
+                      id="crear-usuario"
+                      type="text"
+                      placeholder="ana.morales"
+                      value={createForm.usuario}
+                      onChange={(e) => setCreateForm((prev) => ({ ...prev, usuario: e.target.value }))}
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2.5 pl-10 pr-3.5 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
+                    />
+                  </div>
+                </div>
+
+                {/* Contraseña con Generador y Toggle */}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <label className={selectLabelClasses} htmlFor="crear-contrasena">
+                      Contraseña Inicial *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleGenerarPassword}
+                      className="flex items-center gap-1 text-[11px] font-bold text-brand-600 hover:text-brand-700 dark:text-brand-400"
+                    >
+                      <MdOutlineRefresh className="h-3.5 w-3.5" />
+                      <span>Generar</span>
+                    </button>
+                  </div>
+                  <div className="relative mt-1">
+                    <MdOutlineLock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-gray-400 dark:text-white/40" />
+                    <input
+                      id="crear-contrasena"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Mínimo 6 caracteres"
+                      value={createForm.contrasena}
+                      onChange={(e) => setCreateForm((prev) => ({ ...prev, contrasena: e.target.value }))}
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2.5 pl-10 pr-10 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-white"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? (
+                        <MdOutlineVisibilityOff className="h-4 w-4" />
+                      ) : (
+                        <MdOutlineVisibility className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* SECCIÓN 2: Asignación Organizacional */}
+            <div className="border-t border-gray-100 pt-4 dark:border-white/10">
+              <p className="mb-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
+                2. Asignación Organizacional & Puesto
+              </p>
+
+              {/* Selector de Rol en Pills */}
+              <div className="mb-3.5">
+                <label className={selectLabelClasses}>Rol Jerárquico Asignado</label>
+                <div className="mt-1.5 grid grid-cols-3 gap-2">
+                  {[
+                    { id: "empleado", label: "Empleado", desc: "Acceso operativo estándar" },
+                    { id: "jefe", label: "Jefe de Sector", desc: "Líder con gestión de equipo" },
+                    { id: "admin_empresa", label: "Administrador", desc: "Control administrativo" },
+                  ].map((r) => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => setCreateForm((prev) => ({ ...prev, rol: r.id }))}
+                      className={`flex flex-col items-start rounded-xl p-2.5 text-left transition-all active:scale-95 ${
+                        createForm.rol === r.id
+                          ? "border border-brand-500 bg-brand-500/[0.08] shadow-sm shadow-brand-500/10 dark:border-brand-400 dark:bg-brand-500/20"
+                          : "border border-gray-200 bg-gray-50/50 hover:bg-gray-100/70 dark:border-white/10 dark:bg-charcoal dark:hover:bg-white/5"
+                      }`}
+                    >
+                      <span
+                        className={`text-xs font-bold ${
+                          createForm.rol === r.id
+                            ? "text-brand-600 dark:text-brand-300"
+                            : "text-navy-700 dark:text-white"
+                        }`}
+                      >
+                        {r.label}
+                      </span>
+                      <span className="mt-0.5 text-[10px] text-gray-400 dark:text-white/50 leading-tight">
+                        {r.desc}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
+                {/* Cargo */}
+                <div>
+                  <label className={selectLabelClasses} htmlFor="crear-cargo">
+                    Cargo / Puesto
+                  </label>
+                  <div className="relative mt-1">
+                    <select
+                      id="crear-cargo"
+                      className={selectClasses}
+                      value={createForm.cargo || CAMPO_VACIO}
+                      onChange={(e) =>
+                        setCreateForm((prev) => ({
+                          ...prev,
+                          cargo: e.target.value === CAMPO_VACIO ? "" : e.target.value,
+                        }))
+                      }
+                    >
+                      <option value={CAMPO_VACIO}>Sin asignar</option>
+                      {cargosDistintos.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Departamento */}
+                <div>
+                  <label className={selectLabelClasses} htmlFor="crear-departamento">
+                    Departamento / Área
+                  </label>
+                  <div className="relative mt-1">
+                    <select
+                      id="crear-departamento"
+                      className={selectClasses}
+                      value={createForm.departamento || CAMPO_VACIO}
+                      onChange={(e) =>
+                        setCreateForm((prev) => ({
+                          ...prev,
+                          departamento: e.target.value === CAMPO_VACIO ? "" : e.target.value,
+                        }))
+                      }
+                    >
+                      <option value={CAMPO_VACIO}>Sin asignar</option>
+                      {departamentosDistintos.map((d) => (
+                        <option key={d} value={d}>
+                          {d}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Sede */}
+                <div>
+                  <label className={selectLabelClasses} htmlFor="crear-sede">
+                    Sede Asignada
+                  </label>
+                  <div className="relative mt-1">
+                    <select
+                      id="crear-sede"
+                      className={selectClasses}
+                      value={createForm.sede || CAMPO_VACIO}
+                      onChange={(e) =>
+                        setCreateForm((prev) => ({
+                          ...prev,
+                          sede: e.target.value === CAMPO_VACIO ? "" : e.target.value,
+                        }))
+                      }
+                    >
+                      <option value={CAMPO_VACIO}>Sin asignar</option>
+                      {sedesDistintas.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Error si ocurre */}
+            {createError && (
+              <div className="flex items-center gap-2 rounded-xl bg-red-50 p-3.5 text-xs font-bold text-red-600 dark:bg-red-500/10 dark:text-red-400">
+                <MdOutlineWarningAmber className="h-4 w-4 shrink-0 text-red-500" />
+                <span>{createError}</span>
+              </div>
+            )}
+
+            {/* Botones del Formulario */}
+            <div className="mt-2 flex items-center justify-end gap-3 border-t border-gray-100 pt-4 dark:border-white/10">
+              <button
+                type="button"
+                onClick={() => setShowCreatePanel(false)}
+                className="rounded-xl px-4 py-2 text-xs font-bold text-gray-700 transition hover:bg-gray-100 dark:text-white dark:hover:bg-white/10"
+              >
+                Cancelar
+              </button>
+              <ActionButton
+                type="submit"
+                busy={creatingEmpleado}
+                className="bg-brand-500 shadow-md shadow-brand-500/20 hover:bg-brand-600 dark:bg-brand-400"
+              >
+                <MdOutlinePersonAdd className="h-4 w-4" />
+                <span>Registrar Colaborador</span>
               </ActionButton>
             </div>
           </form>
         </div>
       </Modal>
 
-      <div className="mt-8">
-        {loading ? (
-          <p className="text-sm font-medium text-gray-600 dark:text-white/70">Cargando empleados...</p>
-        ) : (
-          <DataTable title="Plantilla de la empresa" columnsData={columnsData} tableData={tableData} readOnly delay={150} />
-        )}
-      </div>
-
-      <Modal isOpen={!!selectedEmpleado} onClose={() => setSelectedEmpleado(null)} title={selectedEmpleado?.nombre || "Editar empleado"}>
-        {selectedEmpleado ? (
-        <div className="p-2">
-
-          {editForm ? (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <InputField
-                label="Nombre"
-                id="editar-nombre"
-                value={editForm.nombre}
-                onChange={(e) => setEditForm((f) => ({ ...f, nombre: e.target.value }))}
-              />
-              <InputField
-                label="Correo (Login)"
-                id="editar-correo"
-                value={editForm.correo}
-                onChange={(e) => setEditForm((f) => ({ ...f, correo: e.target.value }))}
-              />
-              <InputField
-                label="Usuario"
-                id="editar-usuario"
-                value={editForm.usuario}
-                onChange={(e) => setEditForm((f) => ({ ...f, usuario: e.target.value }))}
-              />
-              <InputField
-                label="Teléfono"
-                id="editar-telefono"
-                value={editForm.telefono}
-                onChange={(e) => setEditForm((f) => ({ ...f, telefono: e.target.value }))}
-              />
-              <InputField
-                label="Salario base"
-                id="editar-salario"
-                type="number"
-                value={editForm.salarioBase}
-                onChange={(e) => setEditForm((f) => ({ ...f, salarioBase: e.target.value }))}
-              />
-              <SelectListaField
-                label="Cargo"
-                id="editar-cargo"
-                value={editForm.cargo}
-                onChange={(v) => setEditForm((f) => ({ ...f, cargo: v }))}
-                opciones={cargosDistintos}
-              />
-              <SelectListaField
-                label="Departamento"
-                id="editar-departamento"
-                value={editForm.departamento}
-                onChange={(v) => setEditForm((f) => ({ ...f, departamento: v }))}
-                opciones={departamentosDistintos}
-              />
-              <SelectListaField
-                label="Sede"
-                id="editar-sede"
-                value={editForm.sede}
-                onChange={(v) => setEditForm((f) => ({ ...f, sede: v }))}
-                opciones={sedesDistintas}
-              />
-            </div>
-          ) : null}
-
-          <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-gray-100 pt-4 dark:border-white/10">
-            <div>
-              <label className={selectLabelClasses} htmlFor="editar-rol">
-                Rol
-              </label>
-              <select
-                id="editar-rol"
-                className={selectClasses}
-                value={rolSeleccionado}
-                onChange={(e) => setRolSeleccionado(e.target.value)}
-              >
-                {ROLE_OPTIONS.filter((opt) => opt.value !== "super_admin").map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <ActionButton busy={busyAction === "rol"} onClick={handleCambiarRol} className="bg-blueSecondary">
-              Cambiar rol
-            </ActionButton>
-          </div>
-
-          <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-gray-100 pt-4 dark:border-white/10">
-            <InputField
-              label="Nueva contraseña"
-              id="editar-nueva-contrasena"
-              type="text"
-              placeholder="Mínimo 6 caracteres"
-              value={nuevaContrasena}
-              onChange={(e) => setNuevaContrasena(e.target.value)}
-            />
-            <ActionButton busy={busyAction === "password"} onClick={handleCambiarContrasena} className="bg-orange-500">
-              Cambiar contraseña
-            </ActionButton>
-          </div>
-
-          {actionMsg ? <p className="mt-3 text-sm font-medium text-gray-600 dark:text-white/70">{actionMsg}</p> : null}
-
-          <div className="mt-3 flex flex-wrap gap-3">
-            <ActionButton busy={busyAction === "guardar"} onClick={handleGuardarCambios} className="bg-brand-500 dark:bg-brand-400">
-              Guardar cambios
-            </ActionButton>
-            <ActionButton busy={busyAction === "estado"} onClick={handleToggleActivo} className="bg-orange-500">
-              {selectedEmpleado.activo ? "Desactivar" : "Activar"}
-            </ActionButton>
-            <ActionButton busy={busyAction === "eliminar"} onClick={handleEliminar} className="bg-red-500">
-              Eliminar
-            </ActionButton>
-          </div>
-        </div>
-        ) : null}
-      </Modal>
-
-      {/* MODAL PARA ASIGNACION DE TAREAS MASIVAS */}
-      <Modal isOpen={showTaskModal} onClose={() => setShowTaskModal(false)} title="Asignación de Tareas">
-        <div className="p-2">
+      <Modal
+        isOpen={showTaskModal}
+        onClose={() => setShowTaskModal(false)}
+        title="Asignación Masiva de Tareas"
+        width="max-w-2xl"
+      >
+        <div className="py-2">
           {taskSuccess ? (
-            <div className="mb-4 rounded-lg bg-green-50 p-4 text-green-700 dark:bg-green-400/10 dark:text-green-400">
-              {taskSuccess}
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 shadow-md shadow-emerald-500/20">
+                <MdOutlineCheckCircle className="h-8 w-8" />
+              </div>
+              <p className="mt-4 text-base font-extrabold text-navy-700 dark:text-white">{taskSuccess}</p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-white/60">
+                Las tareas fueron asignadas y notificadas al equipo.
+              </p>
             </div>
           ) : (
-            <form onSubmit={handleAssignTask}>
+            <form onSubmit={handleAssignTask} className="flex flex-col gap-4">
               {taskError && (
-                <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-500 dark:bg-red-400/10 dark:text-red-400">
-                  {taskError}
-                </p>
-              )}
-              
-              <div className="mb-4">
-                <label className="mb-2 block text-sm font-bold text-navy-700 dark:text-white">Destinatarios</label>
-                <select
-                  className={selectClasses}
-                  value={taskForm.tipoAsignacion}
-                  onChange={(e) => setTaskForm({ ...taskForm, tipoAsignacion: e.target.value, seleccionados: [] })}
-                >
-                  <option value="todos">Toda la empresa ({empleados.length} empleados)</option>
-                  <option value="departamentos">Por Departamento</option>
-                  <option value="cargos">Por Cargo</option>
-                  <option value="sedes">Por Sede</option>
-                  <option value="empleados">Empleados Específicos</option>
-                </select>
-              </div>
-
-              {taskForm.tipoAsignacion !== "todos" && (
-                <div className="mb-4 max-h-40 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50/50 p-3 dark:border-white/10 dark:bg-navy-900">
-                  {taskForm.tipoAsignacion === "departamentos" && departamentosDistintos.map(d => (
-                    <label key={d} className="mb-2 flex items-center gap-2 text-sm text-navy-700 dark:text-white">
-                      <input
-                        type="checkbox"
-                        checked={taskForm.seleccionados.includes(d)}
-                        onChange={(e) => {
-                          const newSel = e.target.checked 
-                            ? [...taskForm.seleccionados, d] 
-                            : taskForm.seleccionados.filter(s => s !== d);
-                          setTaskForm({...taskForm, seleccionados: newSel});
-                        }}
-                        className="rounded border-gray-300 dark:border-white/10 dark:bg-charcoal"
-                      />
-                      {d}
-                    </label>
-                  ))}
-                  {taskForm.tipoAsignacion === "cargos" && cargosDistintos.map(c => (
-                    <label key={c} className="mb-2 flex items-center gap-2 text-sm text-navy-700 dark:text-white">
-                      <input
-                        type="checkbox"
-                        checked={taskForm.seleccionados.includes(c)}
-                        onChange={(e) => {
-                          const newSel = e.target.checked 
-                            ? [...taskForm.seleccionados, c] 
-                            : taskForm.seleccionados.filter(s => s !== c);
-                          setTaskForm({...taskForm, seleccionados: newSel});
-                        }}
-                        className="rounded border-gray-300 dark:border-white/10 dark:bg-charcoal"
-                      />
-                      {c}
-                    </label>
-                  ))}
-                  {taskForm.tipoAsignacion === "sedes" && sedesDistintas.map(s => (
-                    <label key={s} className="mb-2 flex items-center gap-2 text-sm text-navy-700 dark:text-white">
-                      <input
-                        type="checkbox"
-                        checked={taskForm.seleccionados.includes(s)}
-                        onChange={(e) => {
-                          const newSel = e.target.checked 
-                            ? [...taskForm.seleccionados, s] 
-                            : taskForm.seleccionados.filter(sel => sel !== s);
-                          setTaskForm({...taskForm, seleccionados: newSel});
-                        }}
-                        className="rounded border-gray-300 dark:border-white/10 dark:bg-charcoal"
-                      />
-                      {s}
-                    </label>
-                  ))}
-                  {taskForm.tipoAsignacion === "empleados" && empleados.map(e => (
-                    <label key={e.id} className="mb-2 flex items-center gap-2 text-sm text-navy-700 dark:text-white">
-                      <input
-                        type="checkbox"
-                        checked={taskForm.seleccionados.includes(e.id)}
-                        onChange={(ev) => {
-                          const newSel = ev.target.checked 
-                            ? [...taskForm.seleccionados, e.id] 
-                            : taskForm.seleccionados.filter(s => s !== e.id);
-                          setTaskForm({...taskForm, seleccionados: newSel});
-                        }}
-                        className="rounded border-gray-300 dark:border-white/10 dark:bg-charcoal"
-                      />
-                      {e.nombre} ({e.rol}) {!e.activo && "(Inactivo)"}
-                    </label>
-                  ))}
+                <div className="rounded-xl bg-red-50 p-3.5 text-xs font-bold text-red-600 dark:bg-red-500/10 dark:text-red-400 flex items-center gap-2">
+                  <MdOutlineWarningAmber className="h-4 w-4 shrink-0 text-red-500" />
+                  <span>{taskError}</span>
                 </div>
               )}
 
+              {/* 1. Selector de Tipo de Destinatarios */}
+              <div>
+                <div className="flex items-center justify-between">
+                  <label className={selectLabelClasses}>Destinatarios de la Tarea</label>
+                  <span className="text-[11px] font-bold text-brand-600 dark:text-brand-400">
+                    {totalDestinatariosCalculados} destinatarios calculados
+                  </span>
+                </div>
+                <select
+                  className={selectClasses}
+                  value={taskForm.tipoAsignacion}
+                  onChange={(e) => {
+                    setTaskForm({ ...taskForm, tipoAsignacion: e.target.value, seleccionados: [] });
+                    setTaskSearch("");
+                  }}
+                >
+                  <option value="todos">Toda la empresa ({empleados.length} colaboradores)</option>
+                  <option value="empleados">Colaboradores Específicos (Selección individual)</option>
+                  <option value="departamentos">Por Departamento / Área</option>
+                  <option value="cargos">Por Cargo / Puesto</option>
+                  <option value="sedes">Por Sede de Trabajo</option>
+                </select>
+              </div>
+
+              {/* 2. Caja de Selección Interactiva con Buscador */}
+              {taskForm.tipoAsignacion !== "todos" && (
+                <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-3 dark:border-white/10 dark:bg-charcoal">
+                  {/* Barra de Búsqueda y Botones de Selección Rápida */}
+                  <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="relative flex-1">
+                      <MdOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-base text-gray-400 dark:text-white/40" />
+                      <input
+                        type="text"
+                        placeholder={`Buscar ${
+                          taskForm.tipoAsignacion === "empleados"
+                            ? "colaborador, correo o cargo..."
+                            : taskForm.tipoAsignacion === "departamentos"
+                            ? "departamento..."
+                            : taskForm.tipoAsignacion === "cargos"
+                            ? "cargo..."
+                            : "sede..."
+                        }`}
+                        value={taskSearch}
+                        onChange={(e) => setTaskSearch(e.target.value)}
+                        className="w-full rounded-xl border border-gray-200 bg-white py-1.5 pl-8 pr-7 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 dark:border-white/10 dark:bg-navy-900 dark:text-white dark:focus:border-brand-400"
+                      />
+                      {taskSearch && (
+                        <button
+                          type="button"
+                          onClick={() => setTaskSearch("")}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-white"
+                        >
+                          <MdOutlineClose className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={handleSelectAllDestinatarios}
+                        className="rounded-lg bg-white px-2.5 py-1.5 text-[11px] font-bold text-navy-700 shadow-sm transition hover:bg-gray-100 active:scale-95 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
+                      >
+                        Marcar todos
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleClearAllDestinatarios}
+                        className="rounded-lg bg-white px-2.5 py-1.5 text-[11px] font-bold text-gray-500 shadow-sm transition hover:bg-gray-100 active:scale-95 dark:bg-white/10 dark:text-white/60 dark:hover:bg-white/20"
+                      >
+                        Limpiar
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Lista de Selección con Checkboxes Modernos */}
+                  <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                    {destinatariosFiltrados.length === 0 ? (
+                      <div className="py-6 text-center text-xs text-gray-400 dark:text-white/40">
+                        No se encontraron opciones para "{taskSearch}"
+                      </div>
+                    ) : (
+                      destinatariosFiltrados.map((item: any) => {
+                        const id = typeof item === "string" ? item : item.id;
+                        const isSelected = taskForm.seleccionados.includes(id);
+
+                        return (
+                          <div
+                            key={id}
+                            onClick={() => handleToggleSeleccionDestinatario(id)}
+                            className={`flex cursor-pointer items-center justify-between rounded-xl p-2 transition-all ${
+                              isSelected
+                                ? "border border-brand-500/40 bg-brand-500/[0.08] dark:border-brand-400/40 dark:bg-brand-500/15"
+                                : "border border-gray-100 bg-white hover:bg-gray-50 dark:border-white/5 dark:bg-charcoal-card dark:hover:bg-white/[0.03]"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              {/* Checkbox personalizado */}
+                              <div
+                                className={`flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-md border transition ${
+                                  isSelected
+                                    ? "border-brand-500 bg-brand-500 text-white"
+                                    : "border-gray-300 bg-white dark:border-white/20 dark:bg-charcoal"
+                                }`}
+                              >
+                                {isSelected && <MdCheck className="h-3.5 w-3.5 font-black" />}
+                              </div>
+
+                              {/* Datos del elemento */}
+                              {taskForm.tipoAsignacion === "empleados" ? (
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <Avatar src={item.foto} name={item.nombre} size={7} />
+                                  <div className="min-w-0">
+                                    <p className="truncate text-xs font-bold text-navy-700 dark:text-white">
+                                      {item.nombre}
+                                    </p>
+                                    <p className="truncate text-[10.5px] text-gray-400 dark:text-white/40">
+                                      {item.cargo} · {item.departamento}
+                                    </p>
+                                  </div>
+                                </div>
+                              ) : (
+                                <p className="truncate text-xs font-bold text-navy-700 dark:text-white">
+                                  {id}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Detalle secundario */}
+                            {taskForm.tipoAsignacion === "empleados" && (
+                              <span
+                                className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                  ROLE_BADGE[item.rol] || ROLE_BADGE.empleado
+                                }`}
+                              >
+                                {etiquetaRol(item.rol)}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* 3. Título de la Tarea */}
               <InputField
-                label="Título de la tarea"
+                label="Título de la Tarea *"
                 id="tarea-titulo"
-                placeholder="Ej. Revisión mensual"
+                placeholder="Ej. Revisión mensual de indicadores clave"
                 value={taskForm.titulo}
                 onChange={(e) => setTaskForm({ ...taskForm, titulo: e.target.value })}
               />
 
-              <div className="mb-4">
-                <label className="mb-2 block text-sm font-bold text-navy-700 dark:text-white">Descripción</label>
+              {/* 4. Descripción y Alcance */}
+              <div>
+                <label className={selectLabelClasses}>Descripción y Alcance *</label>
                 <textarea
-                  className="w-full rounded-xl border border-gray-200 bg-white/0 p-3 text-sm outline-none dark:border-white/10 dark:bg-charcoal dark:text-white"
+                  className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50/50 p-3 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
                   rows={3}
-                  placeholder="Detalles de lo que se debe hacer..."
+                  placeholder="Detalles, objetivos e instrucciones específicas para los asignados..."
                   value={taskForm.descripcion}
                   onChange={(e) => setTaskForm({ ...taskForm, descripcion: e.target.value })}
-                ></textarea>
+                />
               </div>
 
-              <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+              {/* 5. Nivel de Urgencia y Fecha Límite */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm font-bold text-navy-700 dark:text-white">Urgencia</label>
-                  <select
-                    className={selectClasses}
-                    value={taskForm.urgencia}
-                    onChange={(e) => setTaskForm({ ...taskForm, urgencia: e.target.value })}
-                  >
-                    <option value="baja">Baja</option>
-                    <option value="media">Media</option>
-                    <option value="alta">Alta</option>
-                    <option value="urgente">Urgente</option>
-                  </select>
+                  <label className={selectLabelClasses}>Nivel de Prioridad</label>
+                  <div className="mt-1 grid grid-cols-4 gap-1.5">
+                    {[
+                      { id: "baja", label: "Baja", activeClass: "bg-emerald-500 text-white shadow-emerald-500/30" },
+                      { id: "media", label: "Media", activeClass: "bg-blue-500 text-white shadow-blue-500/30" },
+                      { id: "alta", label: "Alta", activeClass: "bg-amber-500 text-white shadow-amber-500/30" },
+                      { id: "urgente", label: "Urgente", activeClass: "bg-red-500 text-white shadow-red-500/30" },
+                    ].map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setTaskForm({ ...taskForm, urgencia: p.id })}
+                        className={`rounded-xl py-2 text-center text-xs font-bold transition-all active:scale-95 ${
+                          taskForm.urgencia === p.id
+                            ? `${p.activeClass} shadow-sm`
+                            : "bg-gray-100 text-gray-600 hover:bg-gray-200/80 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/10"
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+
                 <div>
-                  <label className="mb-2 block text-sm font-bold text-navy-700 dark:text-white">Fecha límite (Opcional)</label>
-                  <input
-                    type="date"
-                    className="flex h-12 w-full items-center justify-center rounded-xl border border-gray-200 bg-white/0 p-3 text-sm outline-none dark:border-white/10 dark:bg-charcoal dark:text-white"
-                    value={taskForm.fechaLimite}
-                    onChange={(e) => setTaskForm({ ...taskForm, fechaLimite: e.target.value })}
-                  />
+                  <label className={selectLabelClasses}>Fecha Límite (Opcional)</label>
+                  <div className="relative mt-1">
+                    <input
+                      type="date"
+                      className={selectClasses}
+                      value={taskForm.fechaLimite}
+                      onChange={(e) => setTaskForm({ ...taskForm, fechaLimite: e.target.value })}
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="mt-6 flex justify-end gap-3">
+              {/* 6. Botones de Acción */}
+              <div className="mt-3 flex items-center justify-end gap-3 border-t border-gray-100 pt-4 dark:border-white/10">
                 <button
                   type="button"
                   onClick={() => setShowTaskModal(false)}
-                  className="rounded-lg px-4 py-2 text-sm font-medium text-navy-700 transition hover:bg-gray-100 dark:text-white dark:hover:bg-white/10"
+                  className="rounded-xl px-4 py-2 text-xs font-bold text-gray-700 transition hover:bg-gray-100 dark:text-white dark:hover:bg-white/10"
                 >
                   Cancelar
                 </button>
-                <button
+                <ActionButton
                   type="submit"
-                  disabled={assigningTask}
-                  className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-600 disabled:opacity-50"
+                  busy={assigningTask}
+                  className="bg-brand-500 shadow-md shadow-brand-500/20 hover:bg-brand-600 dark:bg-brand-400"
                 >
-                  {assigningTask ? "Asignando..." : "Asignar Tareas"}
-                </button>
+                  <MdOutlineAssignment className="h-4 w-4" />
+                  <span>
+                    {taskForm.tipoAsignacion === "todos"
+                      ? `Asignar a Toda la Empresa (${empleados.length})`
+                      : `Asignar (${totalDestinatariosCalculados} colaboradores)`}
+                  </span>
+                </ActionButton>
               </div>
             </form>
           )}

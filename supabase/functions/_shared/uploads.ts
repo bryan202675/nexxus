@@ -27,15 +27,14 @@ export function assertUploadAccess(caller: Caller, data: Record<string, unknown>
 }
 
 export async function enforceUploadRateLimit(admin: SupabaseClient, uid: string) {
-  const windowMs = 5 * 60 * 1000;
-  const { data: row } = await admin.from("upload_rate_limits").select("*").eq("usuario_id", uid).maybeSingle();
-  const windowStart = row ? new Date(row.ventana_inicio).getTime() : 0;
-  const now = Date.now();
-  const count = now - windowStart > windowMs ? 0 : Number(row?.cantidad || 0);
-  if (count >= 10) throw new HttpError(429, "Demasiadas subidas. Intenta nuevamente en unos minutos.");
-  await admin.from("upload_rate_limits").upsert({
-    usuario_id: uid,
-    ventana_inicio: count === 0 ? new Date(now).toISOString() : row!.ventana_inicio,
-    cantidad: count + 1,
-  }, { onConflict: "usuario_id" });
+  // Chequeo + incremento atómico en una sola sentencia SQL (ver
+  // migración rate_limit_uploads_atomico) -- un SELECT separado seguido de un UPSERT permitía
+  // que dos subidas simultáneas del mismo usuario ambas pasaran el límite de 10 cada 5 minutos.
+  const { error } = await admin.rpc("enforce_upload_rate_limit", { p_usuario_id: uid });
+  if (error) {
+    if (error.message?.includes("RATE_LIMIT_EXCEEDED")) {
+      throw new HttpError(429, "Demasiadas subidas. Intenta nuevamente en unos minutos.");
+    }
+    throw new HttpError(500, error.message);
+  }
 }

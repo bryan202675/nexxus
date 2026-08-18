@@ -59,7 +59,7 @@ export default function Auditoria() {
       },
       (err) => {
         if (!active) return;
-        setError(err.message || "No se pudo conectar con Firestore.");
+        setError(err.message || "No se pudo conectar con el servidor.");
         setCargando(false);
       }
     );

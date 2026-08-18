@@ -9,15 +9,9 @@ import { getActivePlan, NexxusPlan, PLAN_ORDER } from './planAccess';
 import StarButton from './StarButton';
 import './Landing.css';
 
-// ============================================================================
-// Tipos
-// ============================================================================
 type BillingCycle = 'monthly' | 'annual';
 type IconName = 'activity' | 'ai' | 'analytics' | 'automation' | 'briefcase' | 'building' | 'chart' | 'check' | 'clock' | 'command' | 'database' | 'file' | 'lock' | 'message' | 'payroll' | 'shield' | 'spark' | 'users' | 'workflow' | 'zap';
 
-// ============================================================================
-// Contenido / copy (landingText)
-// ============================================================================
 const landingText = {
   meta: {
     title: 'Nexxus | Impulsa tu empresa con rendimiento real',
@@ -189,9 +183,6 @@ const landingText = {
   },
 };
 
-// ============================================================================
-// Datos de iconos (paths SVG)
-// ============================================================================
 const iconPaths: Record<IconName, string[]> = {
   activity: ['M22 12h-4l-3 8-6-16-3 8H2'],
   ai: ['M12 2l1.6 5.2L19 8.8l-5.4 1.6L12 16l-1.6-5.6L5 8.8l5.4-1.6L12 2z', 'M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z'],
@@ -215,9 +206,6 @@ const iconPaths: Record<IconName, string[]> = {
   zap: ['M13 2L3 14h8l-1 8 10-12h-8l1-8z'],
 };
 
-// ============================================================================
-// Componentes auxiliares
-// ============================================================================
 function Icon({ name }: { name: IconName }) {
   return (
     <svg className="nx-icon" fill="none" viewBox="0 0 24 24" aria-hidden="true">
@@ -244,9 +232,6 @@ function GlowCard({ animated = false, children, className }: { animated?: boolea
   );
 }
 
-// ============================================================================
-// Funciones utilitarias
-// ============================================================================
 function profileInitials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return 'N';
@@ -295,9 +280,6 @@ function priceFor(monthly: number, cycle: BillingCycle) {
   return cycle === 'annual' ? Math.round(monthly * 12 * 0.6) : monthly;
 }
 
-// ============================================================================
-// Componente principal: Landing
-// ============================================================================
 export default function Landing() {
   // --- Estado (UI, navegacion, autenticacion/perfil) ---
   const [billing, setBilling] = useState<BillingCycle>('monthly');

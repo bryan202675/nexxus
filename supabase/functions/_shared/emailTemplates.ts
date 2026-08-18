@@ -33,6 +33,50 @@ export function plantillaRecuperacionPassword(params: {
   };
 }
 
+// Correo de bienvenida al crear la cuenta (paso 1 del registro self-service, antes de que
+// exista una empresa) -- distinto de plantillaBienvenidaEmpleado, que es para empleados
+// invitados por un admin y ya incluye credenciales de una empresa existente.
+export function plantillaBienvenidaNuevoUsuario(params: { nombre: string }): { subject: string; html: string } {
+  const { nombre } = params;
+  return {
+    subject: `¡Bienvenido a Nexxus, ${nombre}!`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; color: #1a1a1a;">
+        <h2 style="color: #7C3AED;">¡Bienvenido a Nexxus, ${nombre}!</h2>
+        <p>Tu cuenta ya está creada. Nexxus es la plataforma donde vas a gestionar tu equipo, asistencia, nómina y mucho más, todo en un solo lugar.</p>
+        <p>Solo te falta un paso: registra los datos de tu empresa para activar tu panel de administración.</p>
+        <p style="color: #666; font-size: 13px; margin-top: 20px;">Si tú no creaste esta cuenta, puedes ignorar este correo.</p>
+      </div>
+    `,
+  };
+}
+
+// Enviado justo después de crearCuentaYEmpresa (registro self-service, paso 3), para
+// confirmar que la empresa quedó activa y darle al admin su código de acceso real.
+export function plantillaEmpresaCreada(params: {
+  nombreAdmin: string;
+  nombreEmpresa: string;
+  codigoEmpresa: string;
+  plan?: string;
+}): { subject: string; html: string } {
+  const { nombreAdmin, nombreEmpresa, codigoEmpresa, plan } = params;
+  return {
+    subject: `Tu empresa ${nombreEmpresa} ya está lista en Nexxus`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; color: #1a1a1a;">
+        <h2 style="color: #7C3AED;">¡Tu empresa ya está activa!</h2>
+        <p>Hola ${nombreAdmin}, confirmamos que <strong>${nombreEmpresa}</strong> se creó correctamente en Nexxus y tu panel de administración ya está disponible.</p>
+        <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+          <tr><td style="padding: 6px 0; color: #666;">Empresa</td><td style="padding: 6px 0; font-weight: bold;">${nombreEmpresa}</td></tr>
+          <tr><td style="padding: 6px 0; color: #666;">Código de empresa</td><td style="padding: 6px 0; font-weight: bold;">${codigoEmpresa}</td></tr>
+          ${plan ? `<tr><td style="padding: 6px 0; color: #666;">Plan</td><td style="padding: 6px 0; font-weight: bold;">${plan}</td></tr>` : ''}
+        </table>
+        <p>Usa el código de empresa para invitar a tu equipo desde el panel de administración.</p>
+      </div>
+    `,
+  };
+}
+
 export function plantillaBienvenidaEmpleado(params: {
   nombre: string;
   nombreEmpresa: string;

@@ -14,6 +14,8 @@ Deno.serve(withHandler(async (req, admin) => {
     contrasenaAdmin: typeof body?.contrasenaAdmin === "string" ? body.contrasenaAdmin : "",
     usuarioInterno: safeString(body?.usuarioInterno, 60),
     planId: body?.planId || null,
+    giro: safeString(body?.giroActividad, 120),
+    tamanoEquipo: safeString(body?.tamanoEquipo, 60),
   });
 
   await writeAuditLog(admin, {

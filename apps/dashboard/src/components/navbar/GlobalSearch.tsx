@@ -12,7 +12,7 @@ import {
   MdChevronRight,
 } from "react-icons/md";
 import { useAuth } from "context/AuthContext";
-import { getRoutesForRole } from "routes";
+import { getRoutesForRole, flattenRoutes } from "routes";
 import { supabase } from "supabaseClient/supabaseConfig";
 
 const BADGE_STYLES = {
@@ -33,6 +33,14 @@ export default function GlobalSearch() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const containerRef = useRef(null);
+
+  // Detectar sistema operativo para mostrar el atajo adecuado (⌘K en Mac / Ctrl K en Windows/Linux)
+  const isMac = React.useMemo(() => {
+    if (typeof window === "undefined" || !navigator) return true;
+    const platform =
+      (navigator as any).userAgentData?.platform || navigator.platform || navigator.userAgent || "";
+    return /Mac|iPhone|iPod|iPad/i.test(platform);
+  }, []);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -76,7 +84,7 @@ export default function GlobalSearch() {
       const searchResults = [];
 
       // 1. Dashboard Sections / Routes
-      const routes = getRoutesForRole(rol);
+      const routes = flattenRoutes(getRoutesForRole(rol));
       const matchedRoutes = routes.filter((r) =>
         r.name?.toLowerCase().includes(trimmed)
       );
@@ -259,8 +267,8 @@ export default function GlobalSearch() {
             <FiX className="h-4 w-4" />
           </button>
         ) : (
-          <span className="hidden sm:flex items-center gap-0.5 shrink-0 rounded-md bg-white px-1.5 py-0.5 text-[10px] font-bold text-gray-400 shadow-sm border border-gray-200/80 dark:!bg-[#18181b] dark:!border-[#242427] dark:!text-zinc-400">
-            ⌘K
+          <span className="hidden sm:flex items-center gap-0.5 shrink-0 rounded-md bg-white px-1.5 py-0.5 text-[10px] font-bold text-gray-400 shadow-sm border border-gray-200/80 dark:!bg-[#18181b] dark:!border-[#242427] dark:!text-zinc-400 select-none">
+            {isMac ? "⌘K" : "Ctrl K"}
           </span>
         )}
       </div>

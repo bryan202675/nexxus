@@ -1421,7 +1421,7 @@ export default function EstructuraOrganizativa() {
                 {`${modoModal === 'crear' ? t('common.create') : t('common.edit')} ${modalActivo === 'sede' ? t('admin.estructura.btn_sede') : modalActivo === 'departamento' ? t('admin.estructura.btn_dept') : modalActivo === 'cargo' ? t('admin.estructura.btn_cargo') : t('admin.estructura.btn_create_role')}`}
               </Text>
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
-              <Text style={estilos.modalSubtitle}>{t('admin.estructura.modal_subtitle', { defaultValue: 'Configuración organizacional conectada a Firebase' })}</Text>
+              <Text style={estilos.modalSubtitle}>{t('admin.estructura.modal_subtitle', { defaultValue: 'Configuración organizacional conectada al servidor' })}</Text>
             </View>
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
             <TouchableOpacity style={estilos.modalClose} onPress={cerrarModal}>

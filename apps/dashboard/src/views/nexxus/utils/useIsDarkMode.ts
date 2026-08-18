@@ -1,20 +1,29 @@
 import { useEffect, useState } from "react";
 
-// FixedPlugin toggles the "dark" class on document.body; ApexCharts needs JS-level
-// color values (it can't read Tailwind's `dark:` classes), so components read this hook.
+const isDarkNow = () =>
+  typeof document !== "undefined" &&
+  (document.documentElement.classList.contains("dark") || document.body.classList.contains("dark"));
+
 const useIsDarkMode = () => {
-  const [isDark, setIsDark] = useState(() =>
-    document.body.classList.contains("dark")
-  );
+  const [isDark, setIsDark] = useState(isDarkNow);
 
   useEffect(() => {
-    const observer = new MutationObserver(() => {
-      setIsDark(document.body.classList.contains("dark"));
-    });
-    observer.observe(document.body, {
-      attributes: true,
-      attributeFilter: ["class"],
-    });
+    const check = () => setIsDark(isDarkNow());
+    const observer = new MutationObserver(check);
+
+    if (document.documentElement) {
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["class"],
+      });
+    }
+    if (document.body) {
+      observer.observe(document.body, {
+        attributes: true,
+        attributeFilter: ["class"],
+      });
+    }
+
     return () => observer.disconnect();
   }, []);
 

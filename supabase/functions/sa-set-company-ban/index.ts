@@ -25,11 +25,16 @@ Deno.serve(withHandler(async (req, admin) => {
 
   await admin.from("usuarios").update({ baneado: banned, estado_activo: !banned }).eq("empresa_id", empresaId);
 
-  for (const usuario of usuarios || []) {
-    await admin.auth.admin.updateUserById(usuario.id, { ban_duration: banned ? "876000h" : "none" }).catch((error: Error) => {
-      console.warn("saSetCompanyBan auth update", usuario.id, error.message);
-    });
-  }
+  // En paralelo en vez de una llamada de Auth a la vez: una empresa con cientos/miles de
+  // empleados podía agotar el tiempo límite de ejecución de la función a mitad del baneo,
+  // dejándolo a medias. allSettled conserva el "avisa pero sigue" por usuario que ya había.
+  await Promise.allSettled(
+    (usuarios || []).map((usuario) =>
+      admin.auth.admin.updateUserById(usuario.id, { ban_duration: banned ? "876000h" : "none" }).catch((error: Error) => {
+        console.warn("saSetCompanyBan auth update", usuario.id, error.message);
+      })
+    )
+  );
 
   await writeAuditLog(admin, {
     empresaId,

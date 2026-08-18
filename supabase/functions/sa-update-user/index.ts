@@ -1,5 +1,5 @@
 // Equivalente a exports.saUpdateUser (nexxus/backend/index.js:2111).
-import { getCaller, isSuperAdmin, safeString, withHandler, writeAuditLog, HttpError, assertValidEmail } from "../_shared/nexxus.ts";
+import { getCaller, isDuplicateEmailError, isSuperAdmin, safeString, withHandler, writeAuditLog, HttpError, assertValidEmail } from "../_shared/nexxus.ts";
 
 const PATCH_FIELDS = ["nombre", "correo", "telefono", "departamento_id", "cargo_id", "sede_id", "salario_base", "usuario_interno"];
 
@@ -29,7 +29,7 @@ Deno.serve(withHandler(async (req, admin) => {
     assertValidEmail(patch.correo as string);
     const { error } = await admin.auth.admin.updateUserById(userId, { email: patch.correo as string });
     if (error) {
-      if (error.message?.toLowerCase().includes("already")) throw new HttpError(409, "Ya existe una cuenta con ese correo.");
+      if (isDuplicateEmailError(error)) throw new HttpError(409, "Ya existe una cuenta con ese correo.");
       throw new HttpError(400, error.message);
     }
     correoActualizado = true;

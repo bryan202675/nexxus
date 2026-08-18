@@ -33,6 +33,7 @@ import {
   validarEmpresaForm,
   crearCuentaYEmpresa,
 } from "services/registro";
+import { validarLogoEmpresa } from "services/companyLogoUpload";
 
 const estadoEmpresaInicial = {
   nombre: "",
@@ -95,6 +96,8 @@ export default function Registro() {
 
   const [empresa, setEmpresa] = useState(estadoEmpresaInicial);
   const [prefijo, setPrefijo] = useState("+503");
+  const [logo, setLogo] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState("");
 
   const planConfig = PLAN_CATALOG[planSeleccionado];
   const subtotal = priceFor(planConfig.monthly, billing);
@@ -123,6 +126,11 @@ export default function Registro() {
         "Usuario";
       const fotoPerfil =
         user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
+
+      // Cubre el registro con Google: este efecto es el único punto donde detectamos que un
+      // usuario recién autenticado todavía no tiene empresa. send-welcome-email es idempotente
+      // (marca user_metadata.welcomeEmailSentAt), así que no reenvía el correo en cada remount.
+      void supabase.functions.invoke("send-welcome-email").catch(() => {});
 
       setUsuarioPendiente({
         uid: user.id,
@@ -163,6 +171,8 @@ export default function Registro() {
         options: { data: { displayName: limpiarTexto(cuenta.nombre) } },
       });
       if (signUpError) throw signUpError;
+      // Fire-and-forget: un correo de bienvenida lento o caído no debe bloquear el registro.
+      void supabase.functions.invoke("send-welcome-email").catch(() => {});
       setUsuarioPendiente({
         uid: data.user.id,
         correo: data.user.email,
@@ -237,6 +247,26 @@ export default function Registro() {
     }
   };
 
+  // Libera el object URL anterior cada vez que cambia el logo (o al desmontar), para no
+  // acumular memoria mientras el usuario prueba distintas imágenes.
+  useEffect(() => {
+    return () => {
+      if (logoPreview) URL.revokeObjectURL(logoPreview);
+    };
+  }, [logoPreview]);
+
+  const seleccionarLogo = (archivo?: File | null) => {
+    if (!archivo) return;
+    const errorLogo = validarLogoEmpresa(archivo);
+    setErrores((prev) => ({ ...prev, logo: errorLogo || undefined }));
+    if (errorLogo) return;
+    setLogo(archivo);
+    setLogoPreview((actual) => {
+      if (actual) URL.revokeObjectURL(actual);
+      return URL.createObjectURL(archivo);
+    });
+  };
+
   const validarPaso3 = () => {
     const nuevos = validarEmpresaForm(empresa, prefijo);
     setErrores(nuevos);
@@ -267,7 +297,11 @@ export default function Registro() {
         empresa,
         prefijoSeleccionado: prefijo,
         checkout: checkoutInfo,
+        logo,
       });
+      // Fire-and-forget: la fila de usuarios ya existe en este punto, así que
+      // send-company-created-email puede leer caller/empresa por sí solo.
+      void supabase.functions.invoke("send-company-created-email").catch(() => {});
       navigate("/admin/empresa-resumen", { replace: true });
     } catch (err) {
       setError(err.message || "No se pudo crear la empresa.");
@@ -578,6 +612,29 @@ export default function Registro() {
             Plan {checkoutInfo?.plan} confirmado. Último paso para activar tu panel.
           </div>
           <h4 className="mb-2.5 text-3xl font-bold text-navy-700 dark:text-white">Datos de tu empresa</h4>
+
+          <div className="mb-4">
+            <label className="ml-1.5 text-sm font-medium text-navy-700 dark:text-white">Logo de la empresa</label>
+            <label
+              htmlFor="empresa-logo"
+              className="mt-2 flex h-24 w-24 cursor-pointer items-center justify-center overflow-hidden rounded-xl border border-dashed border-gray-300 bg-white/0 text-center text-xs font-medium text-gray-500 hover:border-brand-500 dark:!border-white/15 dark:text-white/60"
+            >
+              {logoPreview ? (
+                <img alt="Logo de la empresa" src={logoPreview} className="h-full w-full object-cover" />
+              ) : (
+                <span className="px-2">Subir logo</span>
+              )}
+            </label>
+            <input
+              id="empresa-logo"
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={(e) => seleccionarLogo(e.target.files?.[0])}
+            />
+            <p className="mt-1.5 text-xs text-gray-500 dark:text-white/50">Opcional. JPG, PNG o WEBP, máximo 3 MB.</p>
+            {errores.logo ? <p className="mt-1 text-xs font-medium text-red-500">{errores.logo}</p> : null}
+          </div>
 
           <InputField
             variant="auth"

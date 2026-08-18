@@ -25,8 +25,22 @@ Deno.serve(withHandler(async (req, admin) => {
   } else if (mode === "set") {
     const newPassword = typeof body?.newPassword === "string" ? body.newPassword : "";
     assertValidPassword(newPassword);
+    // Antes solo actualizaba la contraseña de Supabase Auth: si el usuario también inicia
+    // sesión vía login_empresarial (usuario/contraseña interno, verificado contra
+    // password_interno_hash), la contraseña "reseteada" por el super admin seguía sin
+    // cambiar en ese segundo camino de login. Se calcula el hash ANTES de tocar Auth para
+    // que un fallo al hashear no deje la cuenta a medio cambiar.
+    const passwordHash = await hashPasswordInterno(admin, newPassword);
     const { error } = await admin.auth.admin.updateUserById(userId, { password: newPassword });
     if (error) throw new HttpError(500, error.message);
+    const { error: hashError } = await admin.from("usuarios").update({
+      password_interno_hash: passwordHash,
+      password_hash_algorithm: "bcrypt",
+      password_updated_at: new Date().toISOString(),
+    }).eq("id", userId);
+    if (hashError) {
+      throw new HttpError(500, `La contraseña de Auth se cambió pero el login interno no se pudo actualizar: ${hashError.message}`);
+    }
   } else {
     const newPassword = typeof body?.newPassword === "string" ? body.newPassword : "";
     assertValidPassword(newPassword);

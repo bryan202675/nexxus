@@ -43,7 +43,7 @@ const NexxusIA = () => {
       hace30Dias(),
       LIMITE,
       (value) => active && setRows(value),
-      (err) => active && setError(err.message || "No se pudo conectar con Firestore.")
+      (err) => active && setError(err.message || "No se pudo conectar con el servidor.")
     );
     return () => {
       active = false;

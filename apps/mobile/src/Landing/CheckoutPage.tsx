@@ -24,10 +24,6 @@ import { BillingCycle, getActivePlan, NexxusPlan, savePurchasedPlan } from './pl
 import './Landing.css';
 import './CheckoutPage.css';
 
-// =========================================================================
-// Tipos
-// =========================================================================
-
 type Translate = (key: string, options?: Record<string, unknown>) => string;
 
 type PaymentMethod = 'apple' | 'link' | 'card' | 'bank';
@@ -80,10 +76,6 @@ const initialForm: CheckoutForm = {
   terms: false,
 };
 
-// =========================================================================
-// Helpers: formato y validacion de campos
-// =========================================================================
-
 const onlyDigits = (value: string) => value.replace(/\D/g, '');
 const validTestCard = (value: string) => /^\d{12,19}$/.test(onlyDigits(value));
 const priceFor = (monthly: number, billing: BillingCycle) => billing === 'annual' ? Math.round(monthly * 12 * 0.6) : monthly;
@@ -112,10 +104,6 @@ function navigate(path: string) {
   window.dispatchEvent(new Event('nexxus:navigate'));
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
-
-// =========================================================================
-// Componente principal
-// =========================================================================
 
 export default function CheckoutPage() {
   const { t, i18n } = useTranslation();
@@ -365,10 +353,6 @@ export default function CheckoutPage() {
   );
 }
 
-// =========================================================================
-// Encabezado
-// =========================================================================
-
 type CheckoutTopbarProps = {
   t: Translate;
   language: string;
@@ -390,10 +374,6 @@ function CheckoutTopbar({ t, language, onBack, onToggleLanguage }: CheckoutTopba
     </header>
   );
 }
-
-// =========================================================================
-// Panel de resumen (columna izquierda)
-// =========================================================================
 
 type SummaryPanelProps = {
   t: Translate;
@@ -506,10 +486,6 @@ function SummaryPanel({
   );
 }
 
-// =========================================================================
-// Estados del panel de pago: exito y procesando
-// =========================================================================
-
 type SuccessStateProps = {
   t: Translate;
   selectedPlan: PlanOption;
@@ -542,10 +518,6 @@ function ProcessingState({ t }: { t: Translate }) {
     </div>
   );
 }
-
-// =========================================================================
-// Formulario: pagos express, contacto, metodo de pago, direccion, envio
-// =========================================================================
 
 type ExpressPaymentsSectionProps = {
   t: Translate;
@@ -731,10 +703,6 @@ function SubmitSection({ t, form, errors, total, paymentLabel, onUpdate, onSubmi
     </>
   );
 }
-
-// =========================================================================
-// Piezas reutilizables de formulario
-// =========================================================================
 
 function Field({ children, error, hideLabel = false, label }: { children: ReactNode; error?: string; hideLabel?: boolean; label: string }) {
   return (

@@ -14,7 +14,6 @@ import { StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 // Importa { useTemaMobile }; accede a contexto compartido de usuario, tema o estado global.
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
-// Importa Plasma; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
 
 /**
  * Componente FondoMobilePremium. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.

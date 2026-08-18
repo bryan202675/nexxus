@@ -9,6 +9,7 @@
 import {
   applyActionTags,
   buildAiContext,
+  DEFAULT_GEMINI_MODEL,
   extractSensitiveActions,
   fetchGeminiConRotacion,
   getCaller,
@@ -21,7 +22,7 @@ import {
   SensitiveAiAction,
 } from "../_shared/nexxus.ts";
 
-const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash";
+const GEMINI_MODEL = DEFAULT_GEMINI_MODEL;
 const GEMINI_PRICING: Record<string, { input: number; output: number }> = {
   "gemini-3.6-flash": { input: 0.75, output: 3.75 },
   "gemini-2.5-pro": { input: 1.25, output: 10.0 },

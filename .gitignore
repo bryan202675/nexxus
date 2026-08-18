@@ -9,6 +9,9 @@ node_modules/
 
 # Secrets
 .mcp.json
+.env
+.env.*
+!.env.example
 
 # Builds & Caches
 dist/
@@ -16,4 +19,7 @@ build/
 .next/
 .expo/
 
-
+.vercel
+.env*
+.idea/
+prototypes/

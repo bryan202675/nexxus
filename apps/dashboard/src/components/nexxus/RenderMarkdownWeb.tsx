@@ -89,7 +89,7 @@ export default function RenderMarkdownWeb({ texto, className = '' }: Props) {
     }
 
     // Divisores horizontales (---, ___, ***)
-    if (/^(\-{3,}|\_{3,}|\*{3,})$/.test(linea)) {
+    if (/^(-{3,}|_{3,}|\*{3,})$/.test(linea)) {
       bloques.push(
         <hr key={`divider-${i}`} className="my-2.5 border-t border-black/10 dark:border-white/10" />
       );
@@ -119,8 +119,8 @@ export default function RenderMarkdownWeb({ texto, className = '' }: Props) {
     }
 
     // Viñetas no ordenadas (* item, - item, • item)
-    if (/^(\*|\-|\•)\s+/.test(linea)) {
-      const contenido = linea.replace(/^(\*|\-|\•)\s+/, '');
+    if (/^(\*|-|•)\s+/.test(linea)) {
+      const contenido = linea.replace(/^(\*|-|•)\s+/, '');
       bloques.push(
         <div key={`bullet-${i}`} className="my-1 flex items-start gap-2 pl-1">
           <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-70" />

@@ -32,7 +32,6 @@ import FondoAurora from '@/presentation/components/FondoAurora';
 import MarcaNexxus from '@/presentation/components/MarcaNexxus';
 // Importa { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA }; reutiliza tokens visuales y constantes comunes del sistema de diseno.
 import { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/constants/diseno';
-// Importa AuraOrb; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 
 const Text = AdminTranslatedText;

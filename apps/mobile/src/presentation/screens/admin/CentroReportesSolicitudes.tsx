@@ -17,6 +17,7 @@ import { ExportFile, ExportFormat } from 'domain/entities/ExportFile';
 import { NewReportInput, RequestReportItem, RequestReportPriority } from 'domain/entities/RequestReport';
 import { useAuth } from '@/presentation/hooks/useAuth';
 import { ADMIN, type AdminPalette, useAdminAppearance } from './adminTheme';
+import { getTenantId } from '@/shared/auth/tenant';
 
 const Text = AdminTranslatedText;
 const TextInput = AdminTranslatedTextInput;
@@ -24,10 +25,7 @@ const TextInput = AdminTranslatedTextInput;
 type LoadState = 'loading' | 'ready' | 'empty' | 'error';
 type ToastState = { type: 'success' | 'error'; message: string } | null;
 
-const tenantIdOf = (user: any) => {
-  const tenant = user?.empresaId || user?.empresa_id || user?.empresaID || '';
-  return typeof tenant === 'string' ? tenant.trim() : '';
-};
+const tenantIdOf = (user: any) => getTenantId(user);
 
 const textOf = (value: unknown, fallback = '') => typeof value === 'string' && value.trim().length > 0 ? value.trim() : fallback;
 

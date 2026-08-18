@@ -19,6 +19,8 @@ import { SupabaseTaskAttachmentRepository } from './supabase/SupabaseTaskAttachm
 import { SupabaseTicketRepository } from './supabase/SupabaseTicketRepository';
 import { SupabaseTicketMessageRepository } from './supabase/SupabaseTicketMessageRepository';
 import { SupabaseSessionDeviceRepository } from './supabase/SupabaseSessionDeviceRepository';
+import { SupabasePauseRepository } from './supabase/SupabasePauseRepository';
+import { SavePause, GetPausesByUser } from './PauseUseCases';
 
 // Casos de Uso
 import { GetTasks } from 'domain/application/use-cases/tasks/GetTasks';
@@ -163,6 +165,7 @@ const taskAttachmentRepository = new SupabaseTaskAttachmentRepository();
 const ticketRepository = new SupabaseTicketRepository();
 const ticketMessageRepository = new SupabaseTicketMessageRepository();
 const sessionDeviceRepository = new SupabaseSessionDeviceRepository();
+const pauseRepository = new SupabasePauseRepository();
 
 // ── Casos de Uso ─────────────────────────────────────────────
 export const useCases = {
@@ -178,6 +181,10 @@ export const useCases = {
     getMetrics: new GetWellnessMetrics(checkInRepository),
     getFocusSessions: new GetFocusSessions(focusSessionRepository),
     saveFocusSession: new SaveFocusSession(focusSessionRepository),
+  },
+  pauses: {
+    save: new SavePause(pauseRepository),
+    getByUser: new GetPausesByUser(pauseRepository),
   },
   tasks: {
     getTasks: new GetTasks(taskRepository),

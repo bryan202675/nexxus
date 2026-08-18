@@ -711,14 +711,21 @@ export default function GestionPlantilla() {
     const empresaId = obtenerEmpresaIdAdmin(user);
     if (!empresaId) throw new Error(toastSessionErrorDesc);
 
-    const [{ data: usuariosRows }, { data: sedesRows }] = await Promise.all([
+    const [{ data: usuariosRows, error: usuariosError }, { data: sedesRows, error: sedesError }] = await Promise.all([
       supabase.from('usuarios').select('*').eq('empresa_id', empresaId),
       supabase.from('sedes').select('*').eq('empresa_id', empresaId),
     ]);
+    if (usuariosError || sedesError) {
+      throw new Error(
+        usuariosError?.message ||
+          sedesError?.message ||
+          'No se pudieron cargar los empleados o sedes existentes para validar la importación.'
+      );
+    }
 
-    const usuariosFirestore = (usuariosRows || []) as UsuarioPlantilla[];
+    const usuariosSupabase = (usuariosRows || []) as UsuarioPlantilla[];
     const usuariosPorUsuario = new Map<string, UsuarioPlantilla>();
-    usuariosFirestore.forEach((empleado) => {
+    usuariosSupabase.forEach((empleado) => {
       const usuarioEmpleado = obtenerUsuarioImportacion(empleado);
       if (usuarioEmpleado) usuariosPorUsuario.set(usuarioEmpleado, empleado);
     });
@@ -924,7 +931,7 @@ export default function GestionPlantilla() {
     }
   };
 
-  const crearEmpleadoFirestore = async ({ nombre, correo, contrasena, rol, departamento_id, empleado, correoPersonal }: CrearEmpleadoLocalInput) => {
+  const crearEmpleadoSupabase = async ({ nombre, correo, contrasena, rol, departamento_id, empleado, correoPersonal }: CrearEmpleadoLocalInput) => {
     if (!obtenerEmpresaIdAdmin(user)) throw new Error(toastSessionErrorDesc);
     const { data, error } = await supabase.functions.invoke('crear-usuario-empresa', {
       body: { nombre, correo, contrasena, rol, departamento_id, empleado, correoPersonal },
@@ -1004,7 +1011,7 @@ export default function GestionPlantilla() {
         }
         const payload = crearPayloadImportacion(fila, empresaId, codigoEmpresa);
         const correoInterno = `${fila.usuarioNormalizado}@${codigoEmpresa.toLowerCase()}.nexxus`;
-        const resultado = await crearEmpleadoFirestore({
+        const resultado = await crearEmpleadoSupabase({
           nombre: payload.nombre,
           correo: correoInterno,
           contrasena: fila.password.trim(),
@@ -1441,7 +1448,7 @@ export default function GestionPlantilla() {
         const correoInterno = `${usuarioInterno}@${codigoEmpresa.toLowerCase()}.nexxus`;
 
         // Calcula resultado; normaliza fechas para comparaciones, filtros o etiquetas visibles.
-        const resultado = await crearEmpleadoFirestore({
+        const resultado = await crearEmpleadoSupabase({
           nombre,
           correo: correoInterno,
           contrasena: formulario.contrasena.trim(),
@@ -1536,7 +1543,7 @@ export default function GestionPlantilla() {
       // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
       console.error('Error al guardar empleado:', error);
       // Declara mensajeError; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-      let mensajeError = error?.message || 'Firebase no confirmó la operación.';
+      let mensajeError = error?.message || 'El servidor no confirmó la operación.';
       // Declara codigo; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
       const codigo = error?.code || 'unknown';
 

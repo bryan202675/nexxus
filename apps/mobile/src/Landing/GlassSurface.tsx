@@ -1,9 +1,6 @@
 import { forwardRef, memo, ReactNode, useEffect, useId, useImperativeHandle, useRef, useState } from 'react';
 import './GlassSurface.css';
 
-// ============================================================================
-// Tipos
-// ============================================================================
 type GlassSurfaceProps = {
   as?: 'div' | 'nav';
   backgroundOpacity?: number;
@@ -28,9 +25,6 @@ type GlassSurfaceProps = {
   yChannel?: 'R' | 'G' | 'B';
 };
 
-// ============================================================================
-// Componente GlassSurface
-// ============================================================================
 const GlassSurface = memo(forwardRef<HTMLElement, GlassSurfaceProps>(({
   as = 'div',
   backgroundOpacity = 0,

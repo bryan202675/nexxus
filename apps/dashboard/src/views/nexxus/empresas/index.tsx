@@ -33,6 +33,7 @@ import {
   etiquetaEstadoUsuario,
 } from "services/saFormat";
 import { columnsEmpresas, columnsUsuariosEmpresa, columnsPagosEmpresa } from "./columns";
+import { subirLogoEmpresa, validarLogoEmpresa } from "services/companyLogoUpload";
 
 const LIMITE = 20;
 const BLAZE_TOOLTIP = "Requiere plan Blaze (Cloud Functions)";
@@ -111,6 +112,9 @@ export default function Empresas() {
     tamanoEquipo: "",
     plan: "Starter",
   });
+  const [createLogo, setCreateLogo] = useState<File | null>(null);
+  const [createLogoPreview, setCreateLogoPreview] = useState("");
+  const [createLogoError, setCreateLogoError] = useState("");
 
   // --- KPIs ---
   useEffect(() => {
@@ -144,7 +148,7 @@ export default function Empresas() {
         setLoadingCompanies(false);
       },
       (err) => {
-        setCompaniesError(err.message || "No se pudo conectar con Firestore.");
+        setCompaniesError(err.message || "No se pudo conectar con el servidor.");
         setLoadingCompanies(false);
       }
     );
@@ -295,16 +299,38 @@ export default function Empresas() {
     }
   };
 
+  const seleccionarLogoCreacion = (archivo?: File | null) => {
+    if (!archivo) return;
+    const error = validarLogoEmpresa(archivo);
+    setCreateLogoError(error || "");
+    if (error) return;
+    setCreateLogo(archivo);
+    setCreateLogoPreview((actual) => {
+      if (actual) URL.revokeObjectURL(actual);
+      return URL.createObjectURL(archivo);
+    });
+  };
+
   const handleCrearEmpresa = async (event) => {
     event.preventDefault();
     setCreating(true);
     setCreateError("");
     try {
-      await createCompany(createForm);
+      const { empresaId } = await createCompany(createForm);
+      // El logo necesita el empresaId ya creado (misma razón que en el registro de autoservicio,
+      // ver services/registro.ts): se sube después, en un segundo paso.
+      if (createLogo && empresaId) {
+        const { url, publicId } = await subirLogoEmpresa(createLogo, empresaId);
+        await updateCompanyProfile(empresaId, { logoUrl: url, logoPublicId: publicId });
+      }
       setCreateForm({
         nombreEmpresa: "", nombreAdmin: "", correoAdmin: "", contrasenaAdmin: "",
         giroActividad: "", tamanoEquipo: "", plan: "Starter",
       });
+      if (createLogoPreview) URL.revokeObjectURL(createLogoPreview);
+      setCreateLogo(null);
+      setCreateLogoPreview("");
+      setCreateLogoError("");
       setShowCreatePanel(false);
     } catch (err) {
       setCreateError(err.message || "No se pudo crear la empresa.");
@@ -369,6 +395,28 @@ export default function Empresas() {
       <Modal isOpen={showCreatePanel} onClose={() => setShowCreatePanel(false)} title="Crear empresa">
         <div className="p-2">
           <form onSubmit={handleCrearEmpresa}>
+            <div className="mb-4">
+              <label className="ml-1.5 text-sm font-medium text-navy-700 dark:text-white">Logo de la empresa</label>
+              <label
+                htmlFor="crear-empresa-logo"
+                className="mt-2 flex h-20 w-20 cursor-pointer items-center justify-center overflow-hidden rounded-xl border border-dashed border-gray-300 bg-white/0 text-center text-xs font-medium text-gray-500 hover:border-brand-500 dark:!border-white/15 dark:text-white/60"
+              >
+                {createLogoPreview ? (
+                  <img alt="Logo de la empresa" src={createLogoPreview} className="h-full w-full object-cover" />
+                ) : (
+                  <span className="px-2">Subir logo</span>
+                )}
+              </label>
+              <input
+                id="crear-empresa-logo"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={(e) => seleccionarLogoCreacion(e.target.files?.[0])}
+              />
+              <p className="mt-1.5 text-xs text-gray-500 dark:text-white/50">Opcional. JPG, PNG o WEBP, máximo 3 MB.</p>
+              {createLogoError ? <p className="mt-1 text-xs font-medium text-red-500">{createLogoError}</p> : null}
+            </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <InputField
                 label="Nombre de la empresa"

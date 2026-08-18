@@ -521,7 +521,7 @@ export default function DetalleTareaModal({
             url: uploaded.url,
             publicId: uploaded.publicId,
             mime: adj.tipo,
-            tamano: 2048,
+            tamano: uploaded.size,
             subidoPor: perfil.id,
             subidoPorNombre: perfil.nombre || 'Usuario',
           });

@@ -9,30 +9,37 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let perfilChannel = null;
 
-    const loadPerfil = async (user) => {
-      let { data } = await supabase
-        .from("usuarios")
-        .select("*, empresas(*)")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (
-        data &&
-        data.empresa_id &&
-        (!data.empresas || (Array.isArray(data.empresas) && data.empresas.length === 0))
-      ) {
-        const { data: empData } = await supabase
-          .from("empresas")
-          .select("*")
-          .eq("id", data.empresa_id)
+    const loadPerfil = async (user, isSilent = false) => {
+      try {
+        let { data } = await supabase
+          .from("usuarios")
+          .select("*, empresas(*)")
+          .eq("id", user.id)
           .maybeSingle();
-        if (empData) {
-          data = { ...data, empresas: empData };
+
+        if (
+          data &&
+          data.empresa_id &&
+          (!data.empresas || (Array.isArray(data.empresas) && data.empresas.length === 0))
+        ) {
+          const { data: empData } = await supabase
+            .from("empresas")
+            .select("*")
+            .eq("id", data.empresa_id)
+            .maybeSingle();
+          if (empData) {
+            data = { ...data, empresas: empData };
+          }
+        }
+
+        const rol = String(data?.rol || "").trim().toLowerCase();
+        setState({ loading: false, user, perfil: data, rol });
+      } catch (error) {
+        console.error("AuthContext: error cargando perfil", error);
+        if (!isSilent) {
+          setState({ loading: false, user, perfil: null, rol: "" });
         }
       }
-
-      const rol = String(data?.rol || "").trim().toLowerCase();
-      setState({ loading: false, user, perfil: data, rol });
     };
 
     const subscribePerfil = (user) => {
@@ -40,36 +47,51 @@ export function AuthProvider({ children }) {
         supabase.removeChannel(perfilChannel);
         perfilChannel = null;
       }
-      // Suscripcion en vivo (no solo lectura unica): el registro crea la cuenta de
-      // Auth primero y la fila de usuarios recien despues (paso de "datos de
-      // empresa"), en el mismo login ya autenticado -- sin esto el contexto se
-      // quedaba pegado en rol:"" hasta recargar la pagina.
       perfilChannel = supabase
         .channel(`auth-perfil:${user.id}:${Math.random().toString(36).slice(2)}`)
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "usuarios", filter: `id=eq.${user.id}` },
-          () => loadPerfil(user),
+          () => loadPerfil(user, true),
         )
         .subscribe();
     };
 
     const handleSession = (session) => {
       const user = session?.user || null;
-      if (perfilChannel) {
-        supabase.removeChannel(perfilChannel);
-        perfilChannel = null;
-      }
       if (!user) {
+        if (perfilChannel) {
+          supabase.removeChannel(perfilChannel);
+          perfilChannel = null;
+        }
         setState({ loading: false, user: null, perfil: null, rol: "" });
         return;
       }
-      setState((current) => ({ ...current, loading: true, user }));
-      loadPerfil(user);
-      subscribePerfil(user);
+
+      // Si el usuario ya está cargado (mismo ID y perfil presente), actualizamos en segundo plano
+      // de forma transparente SIN reiniciar loading: true, evitando que la app desmonte o parpadee la pantalla de carga.
+      setState((current) => {
+        const isSameUser = current.user?.id === user.id && !!current.perfil;
+        return {
+          ...current,
+          loading: isSameUser ? false : current.loading,
+          user,
+        };
+      });
+
+      loadPerfil(user, true);
+      if (!perfilChannel) {
+        subscribePerfil(user);
+      }
     };
 
-    supabase.auth.getSession().then(({ data }) => handleSession(data.session));
+    supabase.auth
+      .getSession()
+      .then(({ data }) => handleSession(data.session))
+      .catch((error) => {
+        console.error("AuthContext: error obteniendo sesión", error);
+        setState({ loading: false, user: null, perfil: null, rol: "" });
+      });
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => handleSession(session));
 
     return () => {

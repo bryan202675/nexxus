@@ -35,56 +35,6 @@ export function calcularRentaMensual(salarioGravable: number): number {
   return Math.round(renta * 100) / 100;
 }
 
-// ── Cálculo completo de nómina El Salvador ───────────────────────────────
-export function calcularNomina(params: {
-  salario_base: number;
-  horas_extra?: number;
-  valor_hora?: number;
-  bono?: number;
-  comision?: number;
-  descuentos_adicionales?: number;
-}): {
-  salario_bruto: number;
-  isss: number;
-  afp: number;
-  renta: number;
-  salario_neto: number;
-} {
-  // Declara TASA_ISSS; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const TASA_ISSS = 0.03;
-  // Declara TOPE_ISSS; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const TOPE_ISSS = 30.00; // Tope salarial de $1000 para ISSS en ES (30.00)
-  // Declara TASA_AFP; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const TASA_AFP = 0.0725;
-
-  // Declara extra; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const extra = (params.horas_extra || 0) * (params.valor_hora || 0) * 1.5;
-  // Declara bruto; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const bruto = params.salario_base + extra + (params.bono || 0) + (params.comision || 0);
-  
-  // Declara isss; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const isss = Math.min(bruto * TASA_ISSS, TOPE_ISSS);
-  // Declara afp; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const afp = bruto * TASA_AFP;
-  
-  // La renta se calcula sobre el ingreso gravable (Bruto - ISSS - AFP)
-  const gravable = bruto - isss - afp;
-  // Declara renta; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const renta = calcularRentaMensual(gravable);
-  
-  // Declara neto; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const neto = bruto - isss - afp - renta - (params.descuentos_adicionales || 0);
-
-  // Devuelve el valor final calculado para esta funcion o caso de uso.
-  return {
-    salario_bruto: Math.round(bruto * 100) / 100,
-    isss: Math.round(isss * 100) / 100,
-    afp: Math.round(afp * 100) / 100,
-    renta: Math.round(renta * 100) / 100,
-    salario_neto: Math.round(Math.max(neto, 0) * 100) / 100,
-  };
-}
-
 /**
  * Implementa AdminPaymentUseCases; agrupa comportamiento con estado interno o dependencias de infraestructura.
  */

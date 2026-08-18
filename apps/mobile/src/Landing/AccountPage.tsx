@@ -9,10 +9,6 @@ import { getActivePlan, NexxusPlan, normalizePlan, schedulePlanCancellation } fr
 import './Landing.css';
 import './AccountPage.css';
 
-// =========================================================================
-// Tipos
-// =========================================================================
-
 type StoredData = Record<string, any>;
 
 type CompanyAccount = {
@@ -28,10 +24,6 @@ const PLAN_DETAILS: Record<NexxusPlan, { monthly: number; employeeLimit: number 
   Business: { monthly: 50, employeeLimit: 100, description: 'Control avanzado para empresas en expansión.' },
   Enterprise: { monthly: 200, employeeLimit: null, description: 'Escala corporativa sin límite de empleados.' },
 };
-
-// =========================================================================
-// Helpers (sin estado, reutilizables)
-// =========================================================================
 
 function navigate(path: string) {
   window.history.pushState({}, '', path);
@@ -110,10 +102,6 @@ async function loadOwnedCompanies(user: User, userData: StoredData) {
     return { data, employeeCount, id };
   }));
 }
-
-// =========================================================================
-// Sección: Perfil
-// =========================================================================
 
 type ProfileSectionProps = {
   firebaseUser: User | null;
@@ -257,10 +245,6 @@ function ProfileSection({
   );
 }
 
-// =========================================================================
-// Sección: Empresas
-// =========================================================================
-
 type CompanyCardProps = {
   company: CompanyAccount;
   activePlan: NexxusPlan | null;
@@ -354,7 +338,7 @@ function CompanyCard({
       <div className="nx-account-row">
         <div>
           <strong>ID de empresa</strong>
-          <small>Identificador del documento en Firebase</small>
+          <small>Identificador del registro en el servidor</small>
         </div>
         <code className="nx-account-value">{company.id}</code>
       </div>
@@ -463,10 +447,6 @@ function CompaniesSection({
   );
 }
 
-// =========================================================================
-// Sección: Plan
-// =========================================================================
-
 type PlanSectionProps = {
   activePlan: NexxusPlan | null;
   billing: 'annual' | 'monthly';
@@ -553,10 +533,6 @@ function PlanSection({
   );
 }
 
-// =========================================================================
-// Modal: Cancelar plan
-// =========================================================================
-
 type CancelPlanModalProps = {
   open: boolean;
   busy: string;
@@ -609,10 +585,6 @@ function CancelPlanModal({ open, busy, expiry, onClose, onConfirm }: CancelPlanM
     </div>
   ), document.body);
 }
-
-// =========================================================================
-// Componente principal
-// =========================================================================
 
 function AccountPageContent() {
   const toast = useAdminToast();

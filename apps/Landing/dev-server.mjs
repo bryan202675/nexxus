@@ -28,7 +28,16 @@ const server = http.createServer((request, response) => {
     response.end();
     return;
   }
-  return handler(request, response, { public: '.' });
+  return handler(request, response, {
+    public: '.',
+    rewrites: [
+      { source: '/contacto', destination: '/index.html' },
+      { source: '/contacto/**', destination: '/index.html' },
+      { source: '/faqs', destination: '/index.html' },
+      { source: '/faqs/**', destination: '/index.html' },
+      { source: '/legal/**', destination: '/index.html' },
+    ],
+  });
 });
 
 server.listen(PORT, () => {

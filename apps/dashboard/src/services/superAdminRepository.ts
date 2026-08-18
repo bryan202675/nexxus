@@ -32,9 +32,10 @@ const mapEmpresa = (row) => ({
 
 const mapEmpresaDetalle = (row, usuariosTotal = 0) => ({
   ...mapEmpresa(row),
-  giro: "",
-  tamanoEquipo: "",
-  logoUrl: "",
+  giro: row.datos?.giro || "",
+  tamanoEquipo: row.datos?.tamanoEquipo || "",
+  logoUrl: row.datos?.logo_url || "",
+  logoPublicId: row.datos?.logo_public_id || "",
   adminId: row.admin_id || "",
   adminNombre: "",
   adminCorreo: "",
@@ -169,10 +170,16 @@ export function subscribePlatform(callback, onError) {
       return r;
     }, () => {}, onError),
   ];
-  supabase.from("usuarios").select("id", { count: "exact", head: true }).then(({ count }) => {
-    state.usuariosTotal = count || 0;
-    publish();
-  });
+  (async () => {
+    try {
+      const { count, error } = await supabase.from("usuarios").select("id", { count: "exact", head: true });
+      if (error) throw error;
+      state.usuariosTotal = count || 0;
+      publish();
+    } catch (err) {
+      if (onError) onError(err);
+    }
+  })();
 
   return () => unsubs.forEach((unsub) => unsub());
 }
@@ -185,23 +192,35 @@ function applyCompanyFilter(query, filtros) {
   return query;
 }
 
+// Mismo bug y mismo arreglo que subscribeUsers/loadMoreUsers: paginación real por rango en vez
+// de un límite fijo con hayMas siempre en false. De paso, filtros.plan nunca se aplicaba
+// (applyCompanyFilter solo miraba "estado") -- el selector de plan de la UI no filtraba nada.
+async function fetchCompaniesPage(filtros, limite, offset) {
+  let q = supabase.from("empresas").select("*, planes(nombre)").range(offset, offset + limite - 1);
+  q = applyCompanyFilter(q, filtros);
+  const { data, error } = await q;
+  if (error) throw error;
+  let items = await Promise.all((data || []).map(async (row) => {
+    const { count } = await supabase.from("usuarios").select("id", { count: "exact", head: true }).eq("empresa_id", row.id);
+    return mapEmpresaDetalle(row, count || 0);
+  }));
+  if (filtros.plan) items = items.filter((empresa) => empresa.plan === filtros.plan);
+  const hayMas = (data || []).length === limite;
+  return { items, cursor: hayMas ? offset + limite : null, hayMas, data };
+}
+
 export function subscribeCompanies(filtros, limite, callback, onError) {
   return realtimeQuery("empresas", null, async () => {
-    let q = supabase.from("empresas").select("*, planes(nombre)").limit(limite);
-    q = applyCompanyFilter(q, filtros);
-    const { data, error } = await q;
-    if (error) throw error;
-    const items = await Promise.all((data || []).map(async (row) => {
-      const { count } = await supabase.from("usuarios").select("id", { count: "exact", head: true }).eq("empresa_id", row.id);
-      return mapEmpresaDetalle(row, count || 0);
-    }));
-    callback({ items, cursor: null, hayMas: false });
+    const { items, cursor, hayMas, data } = await fetchCompaniesPage(filtros, limite, 0);
+    callback({ items, cursor, hayMas });
     return { data };
   }, () => {}, onError);
 }
 
-export async function loadMoreCompanies(..._args: any[]) {
-  return { items: [], cursor: null, hayMas: false };
+export async function loadMoreCompanies(filtros, limite, cursor) {
+  const offset = typeof cursor === "number" ? cursor : 0;
+  const { items, cursor: nextCursor, hayMas } = await fetchCompaniesPage(filtros, limite, offset);
+  return { items, cursor: nextCursor, hayMas };
 }
 
 export function subscribeCompanyDetail(empresaId, callback, onError) {
@@ -251,6 +270,22 @@ export async function updateCompanyProfile(empresaId: string, patch: any) {
   const data: Record<string, any> = {};
   if (patch.nombre !== undefined) data.nombre = patch.nombre;
   if (patch.codigo !== undefined) data.codigo = patch.codigo;
+
+  // giro/tamanoEquipo/logo viven en la columna jsonb "datos" (no son columnas propias), así que
+  // hay que leer el valor actual y fusionar -- un UPDATE directo de "datos" reemplazaría el
+  // objeto completo y borraría cualquier otro campo que ya viviera ahí (ej. el logo al editar
+  // solo el giro). Antes esta función ni siquiera intentaba guardar estos 3 campos.
+  if (patch.giro !== undefined || patch.tamanoEquipo !== undefined || patch.logoUrl !== undefined || patch.logoPublicId !== undefined) {
+    const { data: actual, error: fetchError } = await supabase.from("empresas").select("datos").eq("id", empresaId).maybeSingle();
+    if (fetchError) throw fetchError;
+    const datos = { ...(actual?.datos || {}) };
+    if (patch.giro !== undefined) datos.giro = patch.giro;
+    if (patch.tamanoEquipo !== undefined) datos.tamanoEquipo = patch.tamanoEquipo;
+    if (patch.logoUrl !== undefined) datos.logo_url = patch.logoUrl;
+    if (patch.logoPublicId !== undefined) datos.logo_public_id = patch.logoPublicId;
+    data.datos = datos;
+  }
+
   if (Object.keys(data).length === 0) return;
   const { error } = await supabase.from("empresas").update(data).eq("id", empresaId);
   if (error) throw error;
@@ -288,23 +323,37 @@ export async function createCompany(payload) {
 
 // --- Usuarios de plataforma ---
 
+// La pantalla de Usuarios del super admin solo podía ver los primeros `limite` usuarios de
+// toda la plataforma: subscribeUsers ignoraba el límite real con `hayMas` fijo en false, y
+// loadMoreUsers era un stub que nunca devolvía nada. Ahora ambas usan paginación real por rango
+// (offset), consistente con el cursor (número) que ya esperaba la vista (usuarios/index.tsx).
+async function fetchUsersPage(filtros, limite, offset) {
+  let q = supabase.from("usuarios").select("*, empresas(nombre)").range(offset, offset + limite - 1);
+  if (filtros.empresaId) q = q.eq("empresa_id", filtros.empresaId);
+  if (filtros.rol && ROLE_ALIAS_GROUPS[filtros.rol]) q = q.in("rol", ROLE_ALIAS_GROUPS[filtros.rol]);
+  q = q.order("nombre");
+  const { data, error } = await q;
+  if (error) throw error;
+  let items = (data || []).map((row) => mapUsuario(row));
+  items = applyUserClientFilters(items, filtros);
+  // Heurística estándar de paginación por rango: si la página vino completa, probablemente
+  // haya más; si vino incompleta, es la última.
+  const hayMas = (data || []).length === limite;
+  return { items, cursor: hayMas ? offset + limite : null, hayMas, data };
+}
+
 export function subscribeUsers(filtros, limite, callback, onError) {
   return realtimeQuery("usuarios", filtros.empresaId ? `empresa_id=eq.${filtros.empresaId}` : null, async () => {
-    let q = supabase.from("usuarios").select("*, empresas(nombre)").limit(limite);
-    if (filtros.empresaId) q = q.eq("empresa_id", filtros.empresaId);
-    if (filtros.rol && ROLE_ALIAS_GROUPS[filtros.rol]) q = q.in("rol", ROLE_ALIAS_GROUPS[filtros.rol]);
-    q = q.order("nombre");
-    const { data, error } = await q;
-    if (error) throw error;
-    let items = (data || []).map((row) => mapUsuario(row));
-    items = applyUserClientFilters(items, filtros);
-    callback({ items, cursor: null, hayMas: false });
+    const { items, cursor, hayMas, data } = await fetchUsersPage(filtros, limite, 0);
+    callback({ items, cursor, hayMas });
     return { data };
   }, () => {}, onError);
 }
 
-export async function loadMoreUsers(..._args: any[]) {
-  return { items: [], cursor: null, hayMas: false };
+export async function loadMoreUsers(filtros, limite, cursor) {
+  const offset = typeof cursor === "number" ? cursor : 0;
+  const { items, cursor: nextCursor, hayMas } = await fetchUsersPage(filtros, limite, offset);
+  return { items, cursor: nextCursor, hayMas };
 }
 
 export async function updateUser(userId: string, patch: any, rol: string | null = null, empresaId: string | null = null) {
@@ -470,6 +519,7 @@ export function subscribeSupportTickets(callback, onError) {
     const { data, error } = await supabase
       .from("tickets")
       .select("*, empresas(nombre), usuarios!tickets_creado_por_fkey(nombre, correo, telefono, rol)")
+      .eq("canal", "plataforma")
       .order("created_at", { ascending: false })
       .limit(300);
     if (error) throw error;

@@ -6,17 +6,11 @@
  * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras de datos al extender este archivo.
  */
 
-// ============================================================================
-// Imports
-// ============================================================================
 import { useEffect, useRef } from 'react';
 import { createElement } from 'react';
 import { Mesh, Program, Renderer, Triangle, Vec2 } from 'ogl';
 import './DarkVeil.css';
 
-// ============================================================================
-// Shaders GLSL
-// ============================================================================
 // Los shaders se mantienen como strings sin modificar su contenido: son datos
 // consumidos por `ogl`, no logica de React.
 
@@ -92,9 +86,6 @@ void main(){
 }
 `;
 
-// ============================================================================
-// Tipos
-// ============================================================================
 type DarkVeilProps = {
   hueShift?: number;
   maxFps?: number;
@@ -107,9 +98,6 @@ type DarkVeilProps = {
   resolutionScale?: number;
 };
 
-// ============================================================================
-// Componente DarkVeil
-// ============================================================================
 export default function DarkVeil({
   hueShift = 0,
   maxFps = 60,
@@ -197,7 +185,6 @@ export default function DarkVeil({
     resize();
 
     // --- Pausa del loop cuando el hero no esta visible ---
-    // Setup IntersectionObserver to pause loop when hero is offscreen
     let isHeroVisible = true;
     let observer: IntersectionObserver | null = null;
     const heroEl = document.getElementById('hero');

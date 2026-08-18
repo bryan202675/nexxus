@@ -23,6 +23,7 @@ import { LoginDTO } from 'domain/application/dtos/AuthDTO';
 // Importa { useCases }; contenedor de DI ya resuelto sobre Supabase.
 import { useCases } from '@/infrastructure/container';
 import { obtenerDeviceId, obtenerNombreDispositivo, obtenerSistemaOperativo, obtenerVersionApp } from '@/infrastructure/storage/deviceIdentity';
+import { getTenantId } from '@/shared/auth/tenant';
 // Importa { Task }; usa tipos de dominio para que los datos mantengan estructura consistente.
 import { Task } from 'domain/entities/Task';
 // Importa { Absence }; usa tipos de dominio para que los datos mantengan estructura consistente.
@@ -111,12 +112,7 @@ const ContextoUsuario = createContext<EstadoContextoUsuario | null>(null);
 /**
  * Declaracion obtenerEmpresaId. Mantiene una pieza reutilizable de datos, logica o presentacion dentro de este modulo.
  */
-const obtenerEmpresaId = (user: User | null | undefined) => {
-  // Declara valor; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const valor = user?.empresaId || (user as any)?.empresa_id || (user as any)?.empresaID;
-  // Devuelve el valor final calculado para esta funcion o caso de uso.
-  return typeof valor === 'string' ? valor.trim() : '';
-};
+const obtenerEmpresaId = (user: User | null | undefined) => getTenantId(user);
 
 /**
  * Componente ProveedorUsuario. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
@@ -293,10 +289,15 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
 
   // Declara registrarPausaGuiada; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const registrarPausaGuiada = async (dto: any) => {
-    // Registra informacion de diagnostico para entender errores o eventos durante desarrollo/operacion.
-    console.log('Pausa registrada:', dto);
-    // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-    await fetchMetrics();
+    if (!user) return;
+    try {
+      // Persiste la pausa en Supabase antes de refrescar metricas.
+      await useCases.pauses.save.execute(user.id, dto);
+      // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
+      await fetchMetrics();
+    } catch (e) {
+      console.error('Error registrando pausa guiada:', e);
+    }
   };
 
   // Declara actualizarTarea; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.

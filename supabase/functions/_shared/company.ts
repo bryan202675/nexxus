@@ -2,7 +2,7 @@
 // Compartido por sa-create-company/sa-create-user (super admin) y crear-usuario-empresa (admin de empresa).
 
 import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { HttpError, assertValidEmail, assertValidPassword, hashPasswordInterno, safeString } from "./nexxus.ts";
+import { HttpError, assertValidEmail, assertValidPassword, hashPasswordInterno, isDuplicateEmailError, safeString } from "./nexxus.ts";
 import { sendEmail } from "./gmail.ts";
 import { plantillaBienvenidaEmpleado } from "./emailTemplates.ts";
 
@@ -21,6 +21,8 @@ export async function createCompanyWithOwner(admin: SupabaseClient, params: {
   contrasenaAdmin: string;
   usuarioInterno?: string;
   planId?: string | null;
+  giro?: string;
+  tamanoEquipo?: string;
 }) {
   assertValidEmail(params.correoAdmin);
   assertValidPassword(params.contrasenaAdmin);
@@ -35,7 +37,7 @@ export async function createCompanyWithOwner(admin: SupabaseClient, params: {
     user_metadata: { displayName: params.nombreAdmin },
   });
   if (createError || !userRecord?.user) {
-    if (createError?.message?.toLowerCase().includes("already")) {
+    if (isDuplicateEmailError(createError)) {
       throw new HttpError(409, "Ya existe un usuario con ese correo.");
     }
     throw new HttpError(400, createError?.message || "No se pudo crear la cuenta.");
@@ -54,9 +56,13 @@ export async function createCompanyWithOwner(admin: SupabaseClient, params: {
     }
   }
 
+  const datos: Record<string, string> = {};
+  if (params.giro) datos.giro = params.giro;
+  if (params.tamanoEquipo) datos.tamanoEquipo = params.tamanoEquipo;
+
   const { data: empresa, error: empresaError } = await admin
     .from("empresas")
-    .insert({ nombre: params.nombreEmpresa, codigo, admin_id: uid, plan_id: params.planId || null })
+    .insert({ nombre: params.nombreEmpresa, codigo, admin_id: uid, plan_id: params.planId || null, datos })
     .select("id, codigo")
     .single();
   if (empresaError) {
@@ -132,7 +138,7 @@ export async function createCompanyUser(admin: SupabaseClient, params: {
     user_metadata: { displayName: params.nombre },
   });
   if (createError || !userRecord?.user) {
-    if (createError?.message?.toLowerCase().includes("already")) {
+    if (isDuplicateEmailError(createError)) {
       throw new HttpError(409, "Ya existe un usuario con ese correo.");
     }
     throw new HttpError(400, createError?.message || "No se pudo crear la cuenta.");

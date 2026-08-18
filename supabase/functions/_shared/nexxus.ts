@@ -26,6 +26,10 @@ const GEMINI_API_KEYS = (Deno.env.get("GEMINI_API_KEYS") || Deno.env.get("GEMINI
 // culpa de la clave, 500, etc.) se devuelven tal cual porque cambiar de clave no los arregla.
 const CODIGOS_ROTAR_CLAVE = new Set([400, 401, 403, 429]);
 
+// Antes duplicado por separado en ask-nexxus-ai/index.ts y voice-turn/index.ts -- si el modelo
+// default cambiaba, era fácil actualizar uno y olvidar el otro.
+export const DEFAULT_GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash";
+
 // Llama a un endpoint de Gemini probando cada clave en orden hasta que una funcione.
 export async function fetchGeminiConRotacion(url: string, body: unknown): Promise<Response> {
   if (!GEMINI_API_KEYS.length) throw new HttpError(503, "La IA no está configurada.");
@@ -441,6 +445,13 @@ export async function writeAuditLog(admin: SupabaseClient, entry: {
     detalles: entry.detalles || null,
     target_id: entry.targetId || null,
   });
+}
+
+// Antes repetido literal en 3 lugares (_shared/company.ts x2, sa-update-user/index.ts) --
+// un cambio de texto en el mensaje de error de Supabase Auth habría roto el manejo del 409
+// "ya existe" en los 3 a la vez sin que nada lo avisara.
+export function isDuplicateEmailError(error: { message?: string } | null | undefined): boolean {
+  return Boolean(error?.message?.toLowerCase().includes("already"));
 }
 
 export function safeString(value: unknown, maxLength = 160): string {

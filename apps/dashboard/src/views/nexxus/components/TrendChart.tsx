@@ -10,10 +10,19 @@ interface TrendChartProps {
   series: Array<{ name: string; data: number[]; color?: string }>;
   categories: string[];
   delay?: number;
+  min?: number;
+  max?: number;
 }
 
-const TrendChart = ({ title, total, change, series, categories, delay = 0 }: TrendChartProps) => {
+const TrendChart = ({ title, total, change, series, categories, delay = 0, min = 0, max }: TrendChartProps) => {
   const isDark = useIsDarkMode();
+
+  const maxDataVal = useMemo(() => {
+    if (typeof max === "number") return max;
+    const allValues = series.flatMap((s) => s.data || []);
+    const highest = allValues.length ? Math.max(...allValues) : 0;
+    return highest > 4 ? Math.ceil(highest * 1.2) : 5;
+  }, [series, max]);
 
   const options = useMemo(
     () => ({
@@ -24,6 +33,7 @@ const TrendChart = ({ title, total, change, series, categories, delay = 0 }: Tre
         toolbar: { show: false },
         background: "transparent",
         animations: { enabled: true, easing: "easeinout", speed: 400 },
+        parentHeightOffset: 0,
       },
       dataLabels: { enabled: false },
       stroke: { curve: "smooth", width: 3.5 },
@@ -34,6 +44,7 @@ const TrendChart = ({ title, total, change, series, categories, delay = 0 }: Tre
         strokeDashArray: 4,
         yaxis: { lines: { show: true } },
         xaxis: { lines: { show: false } },
+        padding: { top: 0, right: 10, bottom: 0, left: 10 },
       },
       xaxis: {
         axisBorder: { show: false },
@@ -49,9 +60,9 @@ const TrendChart = ({ title, total, change, series, categories, delay = 0 }: Tre
         categories,
       },
       yaxis: {
-        min: 0,
-        max: 5,
-        tickAmount: 5,
+        min,
+        max: maxDataVal,
+        tickAmount: Math.min(5, maxDataVal),
         labels: {
           style: {
             colors: isDark ? "#A3AED0" : "#707EAE",
@@ -62,11 +73,11 @@ const TrendChart = ({ title, total, change, series, categories, delay = 0 }: Tre
         },
       },
     }),
-    [isDark, categories]
+    [isDark, categories, min, maxDataVal]
   );
 
   return (
-    <NexxusCard extra="flex flex-col w-full rounded-[20px] p-6" delay={delay}>
+    <NexxusCard extra="flex flex-col justify-between w-full h-full rounded-[20px] p-6" delay={delay}>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-2">
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
@@ -80,7 +91,7 @@ const TrendChart = ({ title, total, change, series, categories, delay = 0 }: Tre
           {change}
         </div>
       </div>
-      <div className="h-[220px] w-full pt-2">
+      <div className="h-[260px] w-full pt-1">
         <LineChart series={series} options={options} />
       </div>
     </NexxusCard>

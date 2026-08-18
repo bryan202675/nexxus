@@ -8,6 +8,10 @@
     { "source": "/workspace/(.*)", "destination": "/app.html" },
     { "source": "/landing", "destination": "/index.html" },
     { "source": "/landing/(.*)", "destination": "/index.html" },
+    { "source": "/contacto", "destination": "/index.html" },
+    { "source": "/contacto/(.*)", "destination": "/index.html" },
+    { "source": "/faqs", "destination": "/index.html" },
+    { "source": "/faqs/(.*)", "destination": "/index.html" },
     { "source": "/app", "destination": "/app/index.html" },
     { "source": "/app/(.*)", "destination": "/app/index.html" }
   ],

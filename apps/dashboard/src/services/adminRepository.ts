@@ -109,7 +109,15 @@ export function subscribeAlertasBienestar(empresaId, callback, onError, limite =
   })(callback, onError);
 }
 
-export function subscribeAsistenciasHoy(empresaId, fechaJornada, callback, onError, limite = 1000) {
+export function subscribeAsistencias(empresaId: string, callback: any, onError: any, limite = 1000) {
+  return subscribeTable("asistencias", empresaId, {
+    orderColumn: "created_at",
+    ascending: false,
+    limit: limite,
+  })(callback, onError);
+}
+
+export function subscribeAsistenciasHoy(empresaId: string, fechaJornada: string, callback: any, onError: any, limite = 1000) {
   return subscribeTable("asistencias", empresaId, {
     orderColumn: "created_at",
     ascending: true,

@@ -13,6 +13,7 @@ import { LeaderEvaluationForm, LeaderEvaluationPayload } from '@/presentation/co
 import { useCases } from '@/infrastructure/container';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import { normalizeRole } from '@/shared/auth/roles';
+import { getTenantId } from '@/shared/auth/tenant';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
 import EmptyState from '@/presentation/components/ui/EmptyState';
 import { SkeletonLista } from '@/presentation/components/ui/Skeleton';
@@ -33,10 +34,7 @@ const EMPTY_DASHBOARD: LeaderDashboard = {
   evaluaciones: [],
 };
 
-const obtenerEmpresaId = (perfil: { empresaId?: string; empresa?: string } | null) => {
-  const empresaId = perfil?.empresaId || '';
-  return typeof empresaId === 'string' ? empresaId.trim() : '';
-};
+const obtenerEmpresaId = (perfil: { empresaId?: string; empresa?: string } | null) => getTenantId(perfil);
 
 export default function PanelJefe() {
   const { t } = useTranslation();

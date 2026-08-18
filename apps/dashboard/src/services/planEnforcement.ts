@@ -18,7 +18,10 @@ export function useEmpresaPlan() {
       setState({ loading: false, empresa: null, suscripcion: null });
       return undefined;
     }
-    setState((current) => ({ ...current, loading: true }));
+    setState((current) => ({
+      ...current,
+      loading: current.empresa || current.suscripcion ? false : true,
+    }));
 
     const load = async () => {
       const [{ data: empresa }, { data: suscripcion }] = await Promise.all([
@@ -31,7 +34,9 @@ export function useEmpresaPlan() {
 
     const channel = supabase
       .channel(`plan:${empresaId}:${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "suscripciones", filter: `empresa_id=eq.${empresaId}` }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "suscripciones", filter: `empresa_id=eq.${empresaId}` }, () => {
+        void load();
+      })
       .subscribe();
     return () => {
       supabase.removeChannel(channel);

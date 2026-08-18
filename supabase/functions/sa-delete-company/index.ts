@@ -35,11 +35,15 @@ Deno.serve(withHandler(async (req, admin) => {
   const { error: deleteError } = await admin.from("empresas").delete().eq("id", empresaId);
   if (deleteError) throw new HttpError(500, deleteError.message);
 
-  for (const usuario of usuarios || []) {
-    await admin.auth.admin.deleteUser(usuario.id).catch((error: Error) => {
-      console.warn("saDeleteCompany auth delete", usuario.id, error.message);
-    });
-  }
+  // En paralelo en vez de un borrado de Auth a la vez, por la misma razón que en
+  // sa-set-company-ban: evitar agotar el tiempo límite de ejecución con empresas grandes.
+  await Promise.allSettled(
+    (usuarios || []).map((usuario) =>
+      admin.auth.admin.deleteUser(usuario.id).catch((error: Error) => {
+        console.warn("saDeleteCompany auth delete", usuario.id, error.message);
+      })
+    )
+  );
 
   await writeAuditLog(admin, {
     empresaId: null,

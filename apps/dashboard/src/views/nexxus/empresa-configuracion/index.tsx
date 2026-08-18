@@ -1,5 +1,19 @@
 import { useEffect, useState } from "react";
 import { RiMoonFill, RiSunFill } from "react-icons/ri";
+import {
+  MdOutlinePerson,
+  MdOutlineSecurity,
+  MdOutlineAccessTime,
+  MdOutlineWorkspacePremium,
+  MdOutlineCheckCircle,
+  MdOutlinePalette,
+  MdOutlineExitToApp,
+  MdOutlineOpenInNew,
+  MdOutlineCheck,
+  MdOutlineStorage,
+  MdEmail,
+  MdPhone,
+} from "react-icons/md";
 import { supabase } from "supabaseClient/supabaseConfig";
 import { subscribeConfiguracionEmpresa } from "services/adminRepository";
 import { useAuth } from "context/AuthContext";
@@ -7,7 +21,6 @@ import { useTheme } from "context/ThemeContext";
 import { useEmpresaPlan, FEATURE_LABELS } from "services/planEnforcement";
 import { LANDING_URL } from "services/nexxusLinks";
 import NexxusCard from "views/nexxus/components/NexxusCard";
-import InputField from "components/fields/InputField";
 import Avatar from "components/nexxus/Avatar";
 
 const DEFAULT_ASISTENCIA = {
@@ -18,12 +31,13 @@ const DEFAULT_ASISTENCIA = {
 };
 
 export default function ConfiguracionAdmin() {
-  const { user, perfil, empresaId, signOut } = useAuth();
+  const { user, perfil, empresaId, empresaNombre, signOut } = useAuth();
   const { dark, toggleDark } = useTheme();
   const { plan, planFeatures, planLimits, subscriptionStatus: estadoPlan } = useEmpresaPlan();
 
-  const usaPassword = !user?.app_metadata?.providers?.includes("google") || user?.app_metadata?.providers?.includes("email");
-  const nombreActual = perfil?.nombre || user?.user_metadata?.displayName || "";
+  const usaPassword =
+    !user?.app_metadata?.providers?.includes("google") || user?.app_metadata?.providers?.includes("email");
+  const nombreActual = perfil?.nombre || user?.user_metadata?.displayName || "Administrador";
   const foto = perfil?.foto_perfil || "";
 
   const [nombre, setNombre] = useState(nombreActual);
@@ -61,7 +75,7 @@ export default function ConfiguracionAdmin() {
     return () => unsub();
   }, [empresaId]);
 
-  const guardarNombre = async (event) => {
+  const guardarNombre = async (event: any) => {
     event.preventDefault();
     const limpio = nombre.trim();
     if (limpio.length < 3) {
@@ -71,18 +85,18 @@ export default function ConfiguracionAdmin() {
     setGuardandoNombre(true);
     setNombreMsg("");
     try {
-      const { error } = await supabase.from("usuarios").update({ nombre: limpio }).eq("id", user.id);
+      const { error } = await supabase.from("usuarios").update({ nombre: limpio }).eq("id", user?.id);
       if (error) throw error;
       await supabase.auth.updateUser({ data: { displayName: limpio } });
-      setNombreMsg("Nombre actualizado.");
-    } catch (err) {
+      setNombreMsg("Nombre actualizado correctamente.");
+    } catch (err: any) {
       setNombreMsg(err.message || "No se pudo actualizar el nombre.");
     } finally {
       setGuardandoNombre(false);
     }
   };
 
-  const cambiarPassword = async (event) => {
+  const cambiarPassword = async (event: any) => {
     event.preventDefault();
     setPasswordError("");
     setPasswordMsg("");
@@ -96,33 +110,38 @@ export default function ConfiguracionAdmin() {
     }
     setGuardandoPassword(true);
     try {
-      if (usaPassword) {
-        // Confirma la contraseña actual re-autenticando antes de cambiarla
-        // (Supabase no exige esto para updateUser, pero se mantiene el mismo
-        // chequeo explícito que tenía la versión Firebase).
-        const { error: reauthError } = await supabase.auth.signInWithPassword({ email: user.email, password: passwordActual });
+      if (usaPassword && user?.email) {
+        const { error: reauthError } = await supabase.auth.signInWithPassword({
+          email: user.email,
+          password: passwordActual,
+        });
         if (reauthError) throw reauthError;
       }
       const { error } = await supabase.auth.updateUser({ password: passwordNueva });
       if (error) throw error;
-      setPasswordMsg("Contraseña actualizada.");
+      setPasswordMsg("Contraseña actualizada con éxito.");
       setPasswordActual("");
       setPasswordNueva("");
-    } catch (err) {
+    } catch (err: any) {
       setPasswordError(err.message || "No se pudo cambiar la contraseña.");
     } finally {
       setGuardandoPassword(false);
     }
   };
 
-  const guardarAsistencia = async (event) => {
+  const guardarAsistencia = async (event: any) => {
     event.preventDefault();
     if (!empresaId) return;
     setGuardandoAsistencia(true);
     setAsistenciaMsg("");
     setErrorAsistencia("");
     try {
-      const { data: current } = await supabase.from("configuraciones_empresa").select("configuracion").eq("empresa_id", empresaId).maybeSingle();
+      const { data: current } = await supabase
+        .from("configuraciones_empresa")
+        .select("configuracion")
+        .eq("empresa_id", empresaId)
+        .maybeSingle();
+
       const { error } = await supabase.from("configuraciones_empresa").upsert({
         empresa_id: empresaId,
         configuracion: {
@@ -133,12 +152,12 @@ export default function ConfiguracionAdmin() {
             toleranciaMinutos: Number(asistencia.toleranciaMinutos),
             horasEsperadas: Number(asistencia.horasEsperadas),
           },
-          updatedBy: user.id,
+          updatedBy: user?.id,
         },
       });
       if (error) throw error;
-      setAsistenciaMsg("Horario actualizado.");
-    } catch (err) {
+      setAsistenciaMsg("Parámetros de asistencia guardados.");
+    } catch (err: any) {
       setErrorAsistencia(err.message || "No se pudo guardar el horario.");
     } finally {
       setGuardandoAsistencia(false);
@@ -154,242 +173,437 @@ export default function ConfiguracionAdmin() {
     window.location.assign(LANDING_URL);
   };
 
+  if (!empresaId) {
+    return (
+      <div className="flex h-64 items-center justify-center rounded-2xl bg-white p-6 shadow-3xl shadow-shadow-500 dark:bg-charcoal dark:border dark:border-charcoal-border">
+        <p className="text-base font-semibold text-gray-600 dark:text-white/70">
+          Tu cuenta no tiene una empresa asociada.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-        <NexxusCard extra="p-6" delay={0}>
-          <h4 className="mb-4 text-lg font-bold text-navy-700 dark:text-white">Tu cuenta</h4>
-          <div className="mb-5 flex items-center gap-3">
-            <Avatar src={foto} name={nombreActual} size={14} />
+    <div className="flex flex-col gap-6 pb-6">
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
+          Configuración & Preferencias Corporativas
+        </h2>
+        <p className="mt-1 text-sm font-medium text-gray-500 dark:text-white/60">
+          Gestión del perfil del administrador, parámetros de asistencia, suscripción y apariencia de {empresaNombre || "la empresa"}.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        {/* Plan Activo */}
+        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
+          <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm font-bold text-navy-700 dark:text-white">{nombreActual}</p>
-              <p className="text-xs text-gray-500 dark:text-white/60">{user?.email}</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
+                Plan Contratado
+              </p>
+              <h3 className="mt-2 text-3xl font-extrabold text-brand-500 dark:text-brand-300">
+                {plan}
+              </h3>
+            </div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500/10 text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
+              <MdOutlineWorkspacePremium className="h-6 w-6" />
             </div>
           </div>
-
-          <form onSubmit={guardarNombre} className="mb-6">
-            <InputField
-              label="Nombre"
-              id="config-nombre"
-              type="text"
-              value={nombre}
-              onChange={(event) => setNombre(event.target.value)}
-            />
-            {nombreMsg ? (
-              <p className="mt-2 text-xs font-medium text-gray-600 dark:text-white/70">{nombreMsg}</p>
-            ) : null}
-            <button
-              type="submit"
-              disabled={guardandoNombre}
-              className="mt-3 rounded-xl bg-brand-500 px-5 py-2 text-sm font-medium text-white transition duration-250 hover:bg-brand-600 disabled:opacity-50 dark:bg-brand-400 dark:hover:bg-brand-300"
-            >
-              {guardandoNombre ? "Guardando..." : "Guardar nombre"}
-            </button>
-          </form>
-
-          <form onSubmit={cambiarPassword}>
-            <h5 className="mb-2 text-sm font-bold text-navy-700 dark:text-white">
-              {usaPassword ? "Cambiar contraseña" : "Crear contraseña"}
-            </h5>
-            {usaPassword ? (
-              <InputField
-                variant="auth"
-                extra="mb-3"
-                label="Contraseña actual"
-                id="config-password-actual"
-                type="password"
-                autoComplete="current-password"
-                value={passwordActual}
-                onChange={(event) => setPasswordActual(event.target.value)}
-              />
-            ) : (
-              <p className="mb-3 text-xs text-gray-500 dark:text-white/60">
-                Tu cuenta usa Google. Para crear una contraseña se te pedirá confirmar con Google primero.
-              </p>
-            )}
-            <InputField
-              variant="auth"
-              extra="mb-3"
-              label="Contraseña nueva"
-              id="config-password-nueva"
-              type="password"
-              autoComplete="new-password"
-              value={passwordNueva}
-              onChange={(event) => setPasswordNueva(event.target.value)}
-            />
-            {passwordError ? (
-              <p className="mb-2 text-xs font-medium text-red-500 dark:text-red-400">{passwordError}</p>
-            ) : null}
-            {passwordMsg ? (
-              <p className="mb-2 text-xs font-medium text-gray-600 dark:text-white/70">{passwordMsg}</p>
-            ) : null}
-            <button
-              type="submit"
-              disabled={guardandoPassword}
-              className="rounded-xl bg-brand-500 px-5 py-2 text-sm font-medium text-white transition duration-250 hover:bg-brand-600 disabled:opacity-50 dark:bg-brand-400 dark:hover:bg-brand-300"
-            >
-              {guardandoPassword ? "Guardando..." : "Guardar contraseña"}
-            </button>
-          </form>
+          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
+            <span>Estado de suscripción</span>
+            <span className="font-bold capitalize text-emerald-600 dark:text-emerald-400">
+              {estadoPlan || "Activo"}
+            </span>
+          </div>
         </NexxusCard>
 
-        <div className="flex flex-col gap-5">
-          <NexxusCard extra="p-6" delay={100}>
-            <h4 className="mb-4 text-lg font-bold text-navy-700 dark:text-white">Apariencia</h4>
-            <button
-              type="button"
-              onClick={toggleDark}
-              className="flex w-full items-center justify-between rounded-xl border border-gray-200 px-4 py-3 text-sm font-medium text-navy-700 transition-colors duration-250 hover:bg-gray-50 dark:!border-charcoal-border dark:text-white dark:hover:bg-charcoal-light"
-            >
-              <span>Modo {dark ? "oscuro" : "claro"}</span>
-              {dark ? <RiSunFill className="h-5 w-5" /> : <RiMoonFill className="h-5 w-5" />}
-            </button>
+        {/* Almacenamiento en Nube */}
+        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
+                Almacenamiento Cloud
+              </p>
+              <h3 className="mt-2 text-3xl font-extrabold text-blue-600 dark:text-blue-400">
+                {planLimits.storageGb || 500} GB
+              </h3>
+            </div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
+              <MdOutlineStorage className="h-6 w-6" />
+            </div>
+          </div>
+          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
+            <span>Cuota de documentos</span>
+            <span className="font-bold text-blue-600">Espacio seguro</span>
+          </div>
+        </NexxusCard>
+
+        {/* Horario de Jornada */}
+        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
+                Jornada Laboral
+              </p>
+              <h3 className="mt-2 text-2xl font-extrabold text-navy-700 dark:text-white">
+                {asistencia.horaEntrada} - {asistencia.horaSalida}
+              </h3>
+            </div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
+              <MdOutlineAccessTime className="h-6 w-6" />
+            </div>
+          </div>
+          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
+            <span>Horas base por día</span>
+            <span className="font-bold text-emerald-600">{asistencia.horasEsperadas} hrs / jornada</span>
+          </div>
+        </NexxusCard>
+
+        {/* Margen de Tolerancia */}
+        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
+                Tolerancia de Entrada
+              </p>
+              <h3 className="mt-2 text-3xl font-extrabold text-amber-600 dark:text-amber-400">
+                {asistencia.toleranciaMinutos} min
+              </h3>
+            </div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:bg-amber-400/20 dark:text-amber-300">
+              <MdOutlineCheckCircle className="h-6 w-6" />
+            </div>
+          </div>
+          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
+            <span>Margen antes de retardo</span>
+            <span className="font-bold text-amber-600">Configurado</span>
+          </div>
+        </NexxusCard>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <div className="flex flex-col gap-6">
+          {/* Card 1: Perfil & Cuenta del Administrador */}
+          <NexxusCard extra="p-6 flex flex-col justify-between gap-5">
+            <div>
+              <div className="flex items-center gap-4 border-b border-gray-100 pb-4 dark:border-white/5">
+                <Avatar src={foto} name={nombreActual} size={14} />
+                <div className="min-w-0">
+                  <h4 className="truncate text-base font-black text-navy-700 dark:text-white">
+                    {nombreActual}
+                  </h4>
+                  <p className="truncate text-xs font-medium text-gray-500 dark:text-white/60">
+                    {user?.email}
+                  </p>
+                  <div className="mt-1 flex items-center gap-1.5">
+                    <span className="rounded-full bg-brand-500/10 px-2.5 py-0.5 text-[10px] font-bold text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
+                      Administrador
+                    </span>
+                    <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
+                      {empresaNombre}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Formulario de Edición de Nombre */}
+              <form onSubmit={guardarNombre} className="mt-4 flex flex-col gap-3">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="config-nombre-adm">
+                  Nombre Completo
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    id="config-nombre-adm"
+                    type="text"
+                    value={nombre}
+                    onChange={(e) => setNombre(e.target.value)}
+                    className="flex-1 rounded-xl border border-gray-200 bg-gray-50/50 py-2.5 px-3 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white"
+                  />
+                  <button
+                    type="submit"
+                    disabled={guardandoNombre}
+                    className="rounded-xl bg-brand-500 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 active:scale-95 disabled:opacity-50 dark:bg-brand-400"
+                  >
+                    {guardandoNombre ? "Guardando..." : "Guardar"}
+                  </button>
+                </div>
+                {nombreMsg && (
+                  <p className="text-xs font-bold text-brand-500 dark:text-brand-300">{nombreMsg}</p>
+                )}
+              </form>
+            </div>
+
+            {/* Datos de contacto de la cuenta */}
+            <div className="grid grid-cols-2 gap-2 border-t border-gray-100 pt-3.5 text-xs text-gray-500 dark:border-white/5 dark:text-white/60">
+              <div className="flex items-center gap-1.5 truncate">
+                <MdEmail className="h-4 w-4 text-brand-500 shrink-0" />
+                <span className="truncate">{user?.email || "Sin correo"}</span>
+              </div>
+              <div className="flex items-center gap-1.5 truncate">
+                <MdPhone className="h-4 w-4 text-brand-500 shrink-0" />
+                <span className="truncate">{perfil?.telefono || "+503 Corporativo"}</span>
+              </div>
+            </div>
           </NexxusCard>
 
-          <NexxusCard extra="p-6" delay={150}>
-            <h4 className="mb-4 text-lg font-bold text-navy-700 dark:text-white">Horario de asistencia</h4>
+          {/* Card 2: Plan & Capacidades Corporativas */}
+          <NexxusCard extra="p-6 flex flex-col gap-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3 dark:border-white/5">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
+                  <MdOutlineWorkspacePremium className="h-5 w-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-navy-700 dark:text-white">Plan {plan}</h4>
+                  <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                    Suscripción corporativa activa
+                  </p>
+                </div>
+              </div>
+              <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
+                Enterprise
+              </span>
+            </div>
+
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40 mb-2">
+                Capacidades & Límites
+              </p>
+              <div className="grid grid-cols-2 gap-2 text-xs font-medium text-navy-700 dark:text-white/80">
+                <div className="rounded-xl bg-gray-50/70 p-2.5 dark:bg-charcoal">
+                  <span className="text-gray-400 dark:text-white/40 block text-[10px] uppercase">Empleados</span>
+                  <strong>{planLimits.employees ?? "Ilimitado"}</strong>
+                </div>
+                <div className="rounded-xl bg-gray-50/70 p-2.5 dark:bg-charcoal">
+                  <span className="text-gray-400 dark:text-white/40 block text-[10px] uppercase">Departamentos</span>
+                  <strong>{planLimits.departments ?? "Ilimitado"}</strong>
+                </div>
+                <div className="rounded-xl bg-gray-50/70 p-2.5 dark:bg-charcoal">
+                  <span className="text-gray-400 dark:text-white/40 block text-[10px] uppercase">Sedes</span>
+                  <strong>{planLimits.branches ?? "Ilimitado"}</strong>
+                </div>
+                <div className="rounded-xl bg-gray-50/70 p-2.5 dark:bg-charcoal">
+                  <span className="text-gray-400 dark:text-white/40 block text-[10px] uppercase">Consultas IA</span>
+                  <strong>{planLimits.aiRequestsMonthly ?? "15,000"}/mes</strong>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40 mb-2">
+                Módulos Habilitados
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {Object.entries(FEATURE_LABELS).map(([key, label]) => (
+                  <span
+                    key={key}
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10.5px] font-bold ${
+                      planFeatures[key]
+                        ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 dark:bg-emerald-400/20 dark:text-emerald-300"
+                        : "bg-gray-100 text-gray-400 dark:bg-white/5 dark:text-white/30"
+                    }`}
+                  >
+                    <MdOutlineCheck className="h-3 w-3" />
+                    <span>{label}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </NexxusCard>
+        </div>
+
+        <div className="flex flex-col gap-6">
+          {/* Card 1: Horario de Asistencia de la Empresa */}
+          <NexxusCard extra="p-6 flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
+                <MdOutlineAccessTime className="h-5 w-5" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-navy-700 dark:text-white">
+                  Horario de Asistencia de la Empresa
+                </h4>
+                <p className="text-xs text-gray-500 dark:text-white/50">
+                  Reglas de puntualidad y cálculo de jornadas para los colaboradores.
+                </p>
+              </div>
+            </div>
+
             {cargandoAsistencia ? (
-              <p className="text-sm font-medium text-gray-600 dark:text-white/70">Cargando horario...</p>
+              <div className="flex h-28 items-center justify-center">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+              </div>
             ) : (
-              <form onSubmit={guardarAsistencia}>
-                <div className="mb-3 grid grid-cols-2 gap-3">
+              <form onSubmit={guardarAsistencia} className="flex flex-col gap-3.5 pt-1">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
-                    <label
-                      htmlFor="config-hora-entrada"
-                      className="mb-1 block text-xs font-bold text-navy-700 dark:text-white"
-                    >
-                      Hora de entrada
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="hora-entrada">
+                      Hora de Entrada
                     </label>
                     <input
-                      id="config-hora-entrada"
+                      id="hora-entrada"
                       type="time"
                       value={asistencia.horaEntrada}
-                      onChange={(event) =>
-                        setAsistencia((prev) => ({ ...prev, horaEntrada: event.target.value }))
-                      }
-                      className="flex h-10 w-full items-center rounded-xl border border-gray-200 bg-white/0 p-3 text-sm text-navy-700 outline-none dark:!border-charcoal-border dark:text-white"
+                      onChange={(e) => setAsistencia((prev) => ({ ...prev, horaEntrada: e.target.value }))}
+                      className="mt-1 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
                     />
                   </div>
+
                   <div>
-                    <label
-                      htmlFor="config-hora-salida"
-                      className="mb-1 block text-xs font-bold text-navy-700 dark:text-white"
-                    >
-                      Hora de salida
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="hora-salida">
+                      Hora de Salida
                     </label>
                     <input
-                      id="config-hora-salida"
+                      id="hora-salida"
                       type="time"
                       value={asistencia.horaSalida}
-                      onChange={(event) =>
-                        setAsistencia((prev) => ({ ...prev, horaSalida: event.target.value }))
-                      }
-                      className="flex h-10 w-full items-center rounded-xl border border-gray-200 bg-white/0 p-3 text-sm text-navy-700 outline-none dark:!border-charcoal-border dark:text-white"
+                      onChange={(e) => setAsistencia((prev) => ({ ...prev, horaSalida: e.target.value }))}
+                      className="mt-1 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
                     />
                   </div>
+
                   <div>
-                    <label
-                      htmlFor="config-tolerancia"
-                      className="mb-1 block text-xs font-bold text-navy-700 dark:text-white"
-                    >
-                      Tolerancia (min)
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="tolerancia-min">
+                      Tolerancia (minutos)
                     </label>
                     <input
-                      id="config-tolerancia"
+                      id="tolerancia-min"
                       type="number"
                       min="0"
                       value={asistencia.toleranciaMinutos}
-                      onChange={(event) =>
-                        setAsistencia((prev) => ({ ...prev, toleranciaMinutos: Number(event.target.value) }))
+                      onChange={(e) =>
+                        setAsistencia((prev) => ({ ...prev, toleranciaMinutos: Number(e.target.value) }))
                       }
-                      className="flex h-10 w-full items-center rounded-xl border border-gray-200 bg-white/0 p-3 text-sm text-navy-700 outline-none dark:!border-charcoal-border dark:text-white"
+                      className="mt-1 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
                     />
                   </div>
+
                   <div>
-                    <label
-                      htmlFor="config-horas-esperadas"
-                      className="mb-1 block text-xs font-bold text-navy-700 dark:text-white"
-                    >
-                      Horas esperadas
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="horas-esperadas">
+                      Horas Esperadas
                     </label>
                     <input
-                      id="config-horas-esperadas"
+                      id="horas-esperadas"
                       type="number"
                       min="0"
                       value={asistencia.horasEsperadas}
-                      onChange={(event) =>
-                        setAsistencia((prev) => ({ ...prev, horasEsperadas: Number(event.target.value) }))
+                      onChange={(e) =>
+                        setAsistencia((prev) => ({ ...prev, horasEsperadas: Number(e.target.value) }))
                       }
-                      className="flex h-10 w-full items-center rounded-xl border border-gray-200 bg-white/0 p-3 text-sm text-navy-700 outline-none dark:!border-charcoal-border dark:text-white"
+                      className="mt-1 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
                     />
                   </div>
                 </div>
-                {errorAsistencia ? (
-                  <p className="mb-2 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-500 dark:bg-red-400/10 dark:text-red-400">
-                    {errorAsistencia}
-                  </p>
-                ) : null}
-                {asistenciaMsg ? (
-                  <p className="mb-2 text-xs font-medium text-gray-600 dark:text-white/70">{asistenciaMsg}</p>
-                ) : null}
+
+                {errorAsistencia && <p className="text-xs font-bold text-red-500">{errorAsistencia}</p>}
+                {asistenciaMsg && (
+                  <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{asistenciaMsg}</p>
+                )}
+
                 <button
                   type="submit"
                   disabled={guardandoAsistencia}
-                  className="rounded-xl bg-brand-500 px-5 py-2 text-sm font-medium text-white transition duration-250 hover:bg-brand-600 disabled:opacity-50 dark:bg-brand-400 dark:hover:bg-brand-300"
+                  className="w-fit rounded-xl bg-brand-500 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 active:scale-95 disabled:opacity-50 dark:bg-brand-400"
                 >
-                  {guardandoAsistencia ? "Guardando..." : "Guardar horario"}
+                  {guardandoAsistencia ? "Guardando..." : "Guardar Horario"}
                 </button>
               </form>
             )}
           </NexxusCard>
 
-          <NexxusCard extra="p-6" delay={200}>
-            <h4 className="mb-1 text-lg font-bold text-navy-700 dark:text-white">Plan: {plan}</h4>
-            <p className="mb-4 text-xs font-medium text-gray-500 dark:text-white/50">Estado: {estadoPlan}</p>
+          {/* Card 2: Seguridad, Tema Visual & Sesión */}
+          <NexxusCard extra="p-6 flex flex-col gap-5">
+            {/* Sección Contraseña */}
+            <div>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:bg-purple-400/20 dark:text-purple-300">
+                  <MdOutlineSecurity className="h-4.5 w-4.5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-navy-700 dark:text-white">
+                    {usaPassword ? "Cambiar Contraseña" : "Crear Contraseña"}
+                  </h4>
+                </div>
+              </div>
 
-            <p className="mb-2 text-xs font-bold uppercase text-gray-500 dark:text-white/40">Límites</p>
-            <ul className="mb-4 grid grid-cols-2 gap-x-3 gap-y-1 text-sm text-navy-700 dark:text-white/80">
-              <li>Empleados: {planLimits.employees ?? "Ilimitado"}</li>
-              <li>Departamentos: {planLimits.departments ?? "Ilimitado"}</li>
-              <li>Sedes: {planLimits.branches ?? "Ilimitado"}</li>
-              <li>Almacenamiento: {planLimits.storageGb} GB</li>
-              <li>Consultas IA/mes: {planLimits.aiRequestsMonthly}</li>
-            </ul>
+              <form onSubmit={cambiarPassword} className="flex flex-col gap-3">
+                {usaPassword ? (
+                  <div>
+                    <input
+                      type="password"
+                      autoComplete="current-password"
+                      placeholder="Contraseña actual"
+                      value={passwordActual}
+                      onChange={(e) => setPasswordActual(e.target.value)}
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                    />
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-gray-500 dark:text-white/50">
+                    Tu cuenta inició sesión con Google. Puedes asignar una contraseña directa.
+                  </p>
+                )}
 
-            <p className="mb-2 text-xs font-bold uppercase text-gray-500 dark:text-white/40">Funciones incluidas</p>
-            <div className="flex flex-wrap gap-2">
-              {Object.entries(FEATURE_LABELS).map(([key, label]) => (
-                <span
-                  key={key}
-                  className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                    planFeatures[key]
-                      ? "bg-green-50 text-green-600 dark:bg-green-400/10 dark:text-green-400"
-                      : "bg-gray-100 text-gray-400 dark:bg-white/5 dark:text-white/30"
-                  }`}
-                >
-                  {label}
-                </span>
-              ))}
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder="Nueva contraseña (mín. 8 caracteres)"
+                    value={passwordNueva}
+                    onChange={(e) => setPasswordNueva(e.target.value)}
+                    className="flex-1 rounded-xl border border-gray-200 bg-gray-50/50 py-2 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                  />
+                  <button
+                    type="submit"
+                    disabled={guardandoPassword}
+                    className="rounded-xl bg-brand-500 px-4 py-2 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 active:scale-95 disabled:opacity-50 dark:bg-brand-400"
+                  >
+                    {guardandoPassword ? "..." : "Actualizar"}
+                  </button>
+                </div>
+
+                {passwordError && <p className="text-xs font-bold text-red-500">{passwordError}</p>}
+                {passwordMsg && (
+                  <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{passwordMsg}</p>
+                )}
+              </form>
             </div>
-          </NexxusCard>
 
-          <NexxusCard extra="p-6" delay={250}>
-            <h4 className="mb-4 text-lg font-bold text-navy-700 dark:text-white">Sesión</h4>
-            <div className="flex flex-col gap-3">
+            {/* Sección Tema Visual */}
+            <div className="flex items-center justify-between border-t border-gray-100 pt-3 dark:border-white/5">
+              <div className="flex items-center gap-2">
+                <MdOutlinePalette className="h-4.5 w-4.5 text-gray-400" />
+                <span className="text-xs font-bold text-navy-700 dark:text-white">Tema de Interfaz</span>
+              </div>
+              <button
+                type="button"
+                onClick={toggleDark}
+                className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-1.5 text-xs font-bold text-navy-700 transition hover:bg-gray-100 active:scale-95 dark:border-white/10 dark:bg-charcoal dark:text-white dark:hover:bg-white/10"
+              >
+                {dark ? <RiSunFill className="h-4 w-4 text-amber-500" /> : <RiMoonFill className="h-4 w-4 text-indigo-500" />}
+                <span>Modo {dark ? "Oscuro" : "Claro"}</span>
+              </button>
+            </div>
+
+            {/* Acciones de Sesión */}
+            <div className="flex flex-col gap-2 border-t border-gray-100 pt-3 dark:border-white/5">
               <button
                 type="button"
                 onClick={() => window.location.assign(LANDING_URL)}
-                className="w-full rounded-xl border border-gray-200 px-5 py-2 text-sm font-medium text-navy-700 transition duration-250 hover:bg-gray-50 dark:!border-charcoal-border dark:text-white dark:hover:bg-charcoal-light"
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-2.5 text-xs font-bold text-navy-700 shadow-xs transition hover:bg-gray-50 active:scale-95 dark:border-white/10 dark:bg-charcoal dark:text-white dark:hover:bg-white/5"
               >
-                Volver a la landing
+                <MdOutlineOpenInNew className="h-4 w-4 text-gray-500" />
+                <span>Volver a la Página Principal</span>
               </button>
+
               <button
                 type="button"
                 onClick={cerrarSesion}
-                className="w-full rounded-xl bg-red-500 px-5 py-2 text-sm font-medium text-white transition duration-250 hover:bg-red-600"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-500 py-2.5 text-xs font-bold text-white shadow-md shadow-red-500/25 transition hover:bg-red-600 active:scale-95"
               >
-                Cerrar sesión y salir a la landing
+                <MdOutlineExitToApp className="h-4 w-4" />
+                <span>Cerrar Sesión y Salir a la Landing</span>
               </button>
             </div>
           </NexxusCard>

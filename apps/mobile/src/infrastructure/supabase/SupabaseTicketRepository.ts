@@ -20,11 +20,15 @@ function mapRow(row: any): Ticket {
 }
 
 export class SupabaseTicketRepository implements ITicketRepository {
+  // Solo tickets internos (empleado -> admin de su empresa): un admin que también
+  // presentó tickets de "canal=plataforma" (hacia soporte Nexxus, vía el dashboard
+  // web) no debe verlos mezclados en su propia lista de "mis tickets".
   async getByUser(userId: string): Promise<Ticket[]> {
     const { data, error } = await supabase
       .from('tickets')
       .select('*')
       .eq('creado_por', userId)
+      .eq('canal', 'interno')
       .order('created_at', { ascending: false });
     if (error) throw error;
     return (data || []).map(mapRow);
@@ -34,11 +38,14 @@ export class SupabaseTicketRepository implements ITicketRepository {
     return subscribeQuery('tickets', `creado_por=eq.${userId}`, () => this.getByUser(userId), callback);
   }
 
+  // Cola de helpdesk interno del admin de empresa: excluye los tickets "canal=plataforma"
+  // que ese mismo admin haya enviado a soporte Nexxus (pantalla empresa-soporte del dashboard).
   async getByCompany(empresaId: string): Promise<Ticket[]> {
     const { data, error } = await supabase
       .from('tickets')
       .select('*')
       .eq('empresa_id', empresaId)
+      .eq('canal', 'interno')
       .order('created_at', { ascending: false });
     if (error) throw error;
     return (data || []).map(mapRow);
@@ -57,6 +64,7 @@ export class SupabaseTicketRepository implements ITicketRepository {
       descripcion: ticket.descripcion,
       categoria: ticket.categoria,
       prioridad: ticket.prioridad,
+      canal: 'interno',
     }).select('*').single();
     if (error) throw error;
     return mapRow(row);

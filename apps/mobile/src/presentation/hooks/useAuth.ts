@@ -54,7 +54,7 @@ export function useAuth() {
   // manuales en un par de pantallas -- cualquier cambio hecho por un admin desde el dashboard
   // web (p.ej. asignar un salario) nunca llegaba a la sesión ya abierta del empleado hasta que
   // cerraba sesión y volvía a entrar. Este listener mantiene el perfil sincronizado en vivo con
-  // el documento real en Firestore.
+  // la fila real en la tabla `usuarios` de Supabase (Postgres), vía un canal realtime.
   useEffect(() => {
     if (!user?.id) return undefined;
     // Nombre de canal unico por instancia: useAuth() se usa en varios

@@ -14,6 +14,7 @@ import { useCases } from '@/infrastructure/container';
 import { COLORES, RADIOS, SOMBRAS } from '@/shared/constants/diseno';
 import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
+import { getTenantId } from '@/shared/auth/tenant';
 
 const Text = AdminTranslatedText;
 const TextInput = AdminTranslatedTextInput;
@@ -21,11 +22,7 @@ const TextInput = AdminTranslatedTextInput;
 type Props = { navigation: { goBack: () => void } };
 type LoadState = 'loading' | 'ready' | 'empty' | 'error';
 
-const empresaIdOf = (perfil: unknown) => {
-  const data = perfil as Record<string, unknown> | null;
-  const value = data?.empresaId || data?.empresa_id || data?.empresaID;
-  return typeof value === 'string' ? value.trim() : '';
-};
+const empresaIdOf = (perfil: unknown) => getTenantId(perfil as any);
 
 export default function MisActivos({ navigation }: Props) {
   const { t } = useTranslation();

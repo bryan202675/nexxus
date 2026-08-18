@@ -18,15 +18,13 @@ import { useCases } from '@/infrastructure/container';
 import { useAuth } from '@/presentation/hooks/useAuth';
 import { ADMIN, type AdminPalette, useAdminAppearance } from './adminTheme';
 import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
+import { getTenantId } from '@/shared/auth/tenant';
 
 const Text = AdminTranslatedText;
 
 type LoadState = 'loading' | 'ready' | 'empty' | 'error';
 
-const tenantIdOf = (user: any) => {
-  const tenant = user?.empresaId || user?.empresa_id || user?.empresaID || '';
-  return typeof tenant === 'string' ? tenant.trim() : '';
-};
+const tenantIdOf = (user: any) => getTenantId(user);
 
 function MetricCard({ icon, label, value, detail, tone, estilos }: {
   icon: keyof typeof MaterialIcons.glyphMap;

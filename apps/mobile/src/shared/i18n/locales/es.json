@@ -440,7 +440,7 @@
     "dashboard": {
       "title": "Centro operativo",
       "subtitle": "Lo esencial para decidir y actuar sin ruido.",
-      "live_status": "Firebase live",
+      "live_status": "En vivo",
       "stats": {
         "active_team": "Equipo activo",
         "registered_count": "{{count}} registrados",
@@ -585,7 +585,7 @@
       "modal": {
         "title_create": "Crear evento",
         "title_edit": "Editar evento",
-        "subtitle": "Sincronizado con Firestore en tiempo real"
+        "subtitle": "Sincronizado en tiempo real"
       },
       "label_title": "Título",
       "label_desc": "Descripción",
@@ -624,7 +624,7 @@
       "global": "Global",
       "todos": "Todos",
       "error_envio": "No se pudo enviar",
-      "error_envio_msg": "Firebase did not confirm announcement creation."
+      "error_envio_msg": "El servidor no confirmó la creación del anuncio."
     },
     "nomina": {
       "title": "Gestión de Nómina",
@@ -751,7 +751,7 @@
         "alert_labor_required": "Datos laborales requeridos",
         "alert_labor_required_msg": "Selecciona cargo, departamento y sede desde los catálogos creados en Estructura.",
         "alert_error": "No se pudo guardar",
-        "alert_error_msg": "Firebase no confirmó la operación."
+        "alert_error_msg": "El servidor no confirmó la operación."
       },
       "modal_task": {
         "title": "Asignar Nueva Tarea",
@@ -768,7 +768,7 @@
         "alert_no_dest_title": "Sin destinatarios",
         "alert_no_dest_msg": "Selecciona una sede, departamento o empleado con colaboradores activos.",
         "alert_error": "No se pudo asignar",
-        "alert_error_msg": "Firebase no confirmó la asignación de tareas.",
+        "alert_error_msg": "El servidor no confirmó la asignación de tareas.",
         "audit_error": "Error al Asignar Tareas"
       },
       "btn_new_employee": "Nuevo Empleado",
@@ -841,7 +841,7 @@
       "cargo": "Cargo",
       "rol": "Rol",
       "empty_depts_msg": "No se encontraron departamentos.",
-      "modal_subtitle": "Configuración organizacional conectada a Firebase",
+      "modal_subtitle": "Configuración organizacional conectada al servidor",
       "modal_sede": {
         "title_create": "Nueva Sede / Sucursal",
         "title_edit": "Editar Sede",
@@ -1311,7 +1311,7 @@
     "require_review": "Requieren revisión",
     "pending_count": "{{count}} pendientes",
     "unread_docs": "Documentos sin leer",
-    "unread_docs_msg": "Abre cada archivo para marcarlo como revisado en Firebase.",
+    "unread_docs_msg": "Abre cada archivo para marcarlo como revisado en el servidor.",
     "recent": "Recientes",
     "last_recent_count": "{{count}} últimos",
     "library": "Biblioteca",
@@ -2164,7 +2164,7 @@
     "aside_eyebrow": "Acceso empresarial",
     "aside_title_empresa": "Configura la base operativa de tu empresa.",
     "aside_title_default": "Crea tu workspace Nexxus con seguridad y control.",
-    "aside_desc": "Registro, autenticación y onboarding empresarial conectado a Firebase Auth, Firestore y Cloudinary.",
+    "aside_desc": "Registro, autenticación y onboarding empresarial conectado a un servidor seguro en la nube y Cloudinary.",
     "page_title_login": "Iniciar sesión | Nexxus",
     "page_title_register": "Crear empresa | Nexxus",
     "nav_back_home": "Volver al inicio",
@@ -2772,7 +2772,7 @@
         "confirmarReset": "Confirmar reset"
       },
       "eliminarModal": {
-        "mensaje": "Esta acción borra la cuenta en Firebase Auth. Sus datos seguirán existiendo referenciados a su ID, pero no podrá iniciar sesión nunca más."
+        "mensaje": "Esta acción borra la cuenta del sistema de autenticación. Sus datos seguirán existiendo referenciados a su ID, pero no podrá iniciar sesión nunca más."
       },
       "error": {
         "cargaUsuarios": "No se pudieron cargar los usuarios.",

@@ -3,7 +3,7 @@ import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Navbar from "components/navbar";
 import Sidebar from "components/sidebar";
 import Footer from "components/footer/Footer";
-import { getRoutesForRole } from "routes";
+import { getRoutesForRole, flattenRoutes } from "routes";
 import { useAuth } from "context/AuthContext";
 import { TeamCareAlertsProvider } from "context/TeamCareAlertsContext";
 
@@ -12,47 +12,52 @@ export default function Admin(props) {
   const location = useLocation();
   const { rol } = useAuth();
   const routes = getRoutesForRole(rol);
-  const defaultPath = routes[0] ? `${routes[0].layout}/${routes[0].path}` : "/auth/sa-login";
+  const flatRoutes = React.useMemo(() => flattenRoutes(routes), [routes]);
+  const defaultPath = flatRoutes[0] ? `${flatRoutes[0].layout}/${flatRoutes[0].path}` : "/auth/sa-login";
 
   const [open, setOpen] = React.useState(true);
-  const [currentRoute, setCurrentRoute] = React.useState(routes[0]?.name || "");
+  const [currentRoute, setCurrentRoute] = React.useState(flatRoutes[0]?.name || "");
 
   React.useEffect(() => {
     window.addEventListener("resize", () =>
       window.innerWidth < 1200 ? setOpen(false) : setOpen(true)
     );
   }, []);
-  React.useEffect(() => {
-    getActiveRoute(routes);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname]);
 
-  const getActiveRoute = (routes) => {
-    const activeRoute = "Main Dashboard";
-    for (let i = 0; i < routes.length; i++) {
+  React.useEffect(() => {
+    getActiveRoute(flatRoutes);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, flatRoutes]);
+
+  const getActiveRoute = (flatList) => {
+    let activeRouteName = "Main Dashboard";
+    for (let i = 0; i < flatList.length; i++) {
       if (
         window.location.href.indexOf(
-          routes[i].layout + "/" + routes[i].path
+          flatList[i].layout + "/" + flatList[i].path
         ) !== -1
       ) {
-        setCurrentRoute(routes[i].name);
+        setCurrentRoute(flatList[i].name);
+        activeRouteName = flatList[i].name;
       }
     }
-    return activeRoute;
+    return activeRouteName;
   };
-  const getActiveNavbar = (routes) => {
+
+  const getActiveNavbar = (flatList) => {
     const activeNavbar = false;
-    for (let i = 0; i < routes.length; i++) {
+    for (let i = 0; i < flatList.length; i++) {
       if (
-        window.location.href.indexOf(routes[i].layout + routes[i].path) !== -1
+        window.location.href.indexOf(flatList[i].layout + flatList[i].path) !== -1
       ) {
-        return routes[i].secondary;
+        return flatList[i].secondary;
       }
     }
     return activeNavbar;
   };
-  const getRoutes = (routes) => {
-    return routes.map((prop, key) => {
+
+  const getRoutes = (flatList) => {
+    return flatList.map((prop, key) => {
       if (prop.layout === "/admin") {
         return (
           <Route path={`/${prop.path}`} element={prop.component} key={key} />
@@ -63,36 +68,40 @@ export default function Admin(props) {
     });
   };
 
+  const isIaView = location.pathname.includes("-ia");
+
   document.documentElement.dir = "ltr";
   return (
     <TeamCareAlertsProvider>
-      <div className="flex h-full w-full">
+      <div className="flex h-full min-h-screen w-full bg-lightPrimary dark:!bg-black">
         <Sidebar open={open} onClose={() => setOpen(false)} />
         {/* Navbar & Main Content */}
-        <div className="h-full w-full bg-lightPrimary dark:!bg-navy-900">
+        <div className="h-full min-h-screen w-full bg-lightPrimary dark:!bg-black">
           {/* Main Content */}
           <main
-            className={`mx-[12px] h-full flex-none transition-all md:pr-2 xl:ml-[313px]`}
+            className={`mx-[12px] h-full min-h-screen flex-none transition-all md:pr-2 xl:ml-[313px] bg-lightPrimary dark:!bg-black`}
           >
             {/* Routes */}
-            <div className="h-full">
-              <Navbar
-                onOpenSidenav={() => setOpen(true)}
-                logoText={"Horizon UI Tailwind React"}
-                brandText={currentRoute}
-                secondary={getActiveNavbar(routes)}
-                {...rest}
-              />
-              <div className="pt-8 mx-auto mb-auto h-full min-h-[84vh] p-2 md:pr-2">
-                <Routes>
-                  {getRoutes(routes)}
+            <div className="h-full min-h-screen flex flex-col justify-between bg-lightPrimary dark:!bg-black">
+              <div className="bg-lightPrimary dark:!bg-black">
+                <Navbar
+                  onOpenSidenav={() => setOpen(true)}
+                  brandText={currentRoute}
+                  {...rest}
+                />
+                <div className={`pt-4 mx-auto mb-auto h-full p-2 md:pr-2 bg-lightPrimary dark:!bg-black ${isIaView ? "min-h-[calc(100vh-100px)]" : "min-h-[84vh]"}`}>
+                  <Routes>
+                    {getRoutes(flatRoutes)}
 
-                  <Route path="/" element={<Navigate to={defaultPath} replace />} />
-                </Routes>
+                    <Route path="/" element={<Navigate to={defaultPath} replace />} />
+                  </Routes>
+                </div>
               </div>
-              <div className="p-3">
-                <Footer />
-              </div>
+              {!isIaView && (
+                <div className="p-3 bg-lightPrimary dark:!bg-black">
+                  <Footer />
+                </div>
+              )}
             </div>
           </main>
         </div>

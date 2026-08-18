@@ -1,6 +1,7 @@
 import {
   applyActionTags,
   buildAiContext,
+  DEFAULT_GEMINI_MODEL,
   extractSensitiveActions,
   fetchGeminiConRotacion,
   getCaller,
@@ -10,7 +11,7 @@ import {
   withHandler,
 } from '../_shared/nexxus.ts';
 
-const model = Deno.env.get('GEMINI_MODEL') || 'gemini-3.6-flash';
+const model = DEFAULT_GEMINI_MODEL;
 const groqApiKey = Deno.env.get('GROQ_API_KEY') || '';
 const groqModel = Deno.env.get('GROQ_STT_MODEL') || 'whisper-large-v3';
 

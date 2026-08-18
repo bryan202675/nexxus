@@ -29,7 +29,3 @@ export class GetPlans {
     return inFlight;
   }
 }
-
-export function getCachedPlans(): PlanCatalogEntry[] | null {
-  return cache;
-}
