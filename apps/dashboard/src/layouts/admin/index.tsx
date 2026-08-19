@@ -6,6 +6,7 @@ import Footer from "components/footer/Footer";
 import { getRoutesForRole, flattenRoutes } from "routes";
 import { useAuth } from "context/AuthContext";
 import { TeamCareAlertsProvider } from "context/TeamCareAlertsContext";
+import { routeSegment, routeUrl } from "utils/routePath";
 
 export default function Admin(props) {
   const { ...rest } = props;
@@ -13,7 +14,7 @@ export default function Admin(props) {
   const { rol } = useAuth();
   const routes = getRoutesForRole(rol);
   const flatRoutes = React.useMemo(() => flattenRoutes(routes), [routes]);
-  const defaultPath = flatRoutes[0] ? `${flatRoutes[0].layout}/${flatRoutes[0].path}` : "/auth/sa-login";
+  const defaultPath = flatRoutes[0] ? routeUrl(flatRoutes[0].layout, flatRoutes[0].path) : "/auth/sa-login";
 
   const [open, setOpen] = React.useState(true);
   const [currentRoute, setCurrentRoute] = React.useState(flatRoutes[0]?.name || "");
@@ -33,9 +34,7 @@ export default function Admin(props) {
     let activeRouteName = "Main Dashboard";
     for (let i = 0; i < flatList.length; i++) {
       if (
-        window.location.href.indexOf(
-          flatList[i].layout + "/" + flatList[i].path
-        ) !== -1
+        window.location.href.indexOf(routeUrl(flatList[i].layout, flatList[i].path)) !== -1
       ) {
         setCurrentRoute(flatList[i].name);
         activeRouteName = flatList[i].name;
@@ -48,7 +47,7 @@ export default function Admin(props) {
     const activeNavbar = false;
     for (let i = 0; i < flatList.length; i++) {
       if (
-        window.location.href.indexOf(flatList[i].layout + flatList[i].path) !== -1
+        window.location.href.indexOf(routeUrl(flatList[i].layout, flatList[i].path)) !== -1
       ) {
         return flatList[i].secondary;
       }
@@ -60,7 +59,7 @@ export default function Admin(props) {
     return flatList.map((prop, key) => {
       if (prop.layout === "/admin") {
         return (
-          <Route path={`/${prop.path}`} element={prop.component} key={key} />
+          <Route path={`/${routeSegment(prop.layout, prop.path)}`} element={prop.component} key={key} />
         );
       } else {
         return null;
@@ -68,7 +67,13 @@ export default function Admin(props) {
     });
   };
 
-  const isIaView = location.pathname.includes("-ia");
+  // El nombre semántico de la ruta ("-ia") ya no vive en el pathname (que ahora es opaco) --
+  // se busca la ruta activa por su segmento opaco y se lee el "-ia" de su path original.
+  const activeFlatRoute = React.useMemo(
+    () => flatRoutes.find((r) => location.pathname.includes(routeSegment(r.layout, r.path))),
+    [flatRoutes, location.pathname]
+  );
+  const isIaView = !!activeFlatRoute?.path.includes("-ia");
 
   document.documentElement.dir = "ltr";
   return (

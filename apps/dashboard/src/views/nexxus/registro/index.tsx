@@ -34,6 +34,7 @@ import {
   crearCuentaYEmpresa,
 } from "services/registro";
 import { validarLogoEmpresa } from "services/companyLogoUpload";
+import { routeUrl } from "utils/routePath";
 
 const estadoEmpresaInicial = {
   nombre: "",
@@ -109,11 +110,11 @@ export default function Registro() {
     if (authLoading || !user) return;
 
     if (esSuperAdmin) {
-      navigate("/admin/nexxus-superadmin", { replace: true });
+      navigate(routeUrl("/admin", "nexxus-superadmin"), { replace: true });
       return;
     }
     if (esAdminEmpresa) {
-      navigate("/admin/empresa-resumen", { replace: true });
+      navigate(routeUrl("/admin", "empresa-resumen"), { replace: true });
       return;
     }
 
@@ -302,7 +303,7 @@ export default function Registro() {
       // Fire-and-forget: la fila de usuarios ya existe en este punto, así que
       // send-company-created-email puede leer caller/empresa por sí solo.
       void supabase.functions.invoke("send-company-created-email").catch(() => {});
-      navigate("/admin/empresa-resumen", { replace: true });
+      navigate(routeUrl("/admin", "empresa-resumen"), { replace: true });
     } catch (err) {
       setError(err.message || "No se pudo crear la empresa.");
     } finally {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import DashIcon from "components/icons/DashIcon";
 import { HiChevronDown } from "react-icons/hi";
+import { routeSegment, routeUrl } from "utils/routePath";
 
 function SidebarGroupItem({
   route,
@@ -15,7 +16,7 @@ function SidebarGroupItem({
   locationPath: string;
 }) {
   const isAnyChildActive = (route.items || []).some((item: any) =>
-    activeRoute(item.path)
+    activeRoute(routeSegment(item.layout, item.path))
   );
   const [isOpen, setIsOpen] = useState(isAnyChildActive);
 
@@ -82,13 +83,13 @@ function SidebarGroupItem({
         <div className="overflow-hidden">
           <ul className="flex flex-col gap-1 pl-14 pr-6">
             {(route.items || []).map((subRoute: any, subIndex: number) => {
-              const isSubActive = activeRoute(subRoute.path);
+              const isSubActive = activeRoute(routeSegment(subRoute.layout, subRoute.path));
               const subBadge = badges[subRoute.path] || 0;
 
               return (
                 <li key={subIndex} className="relative">
                   <Link
-                    to={subRoute.layout + "/" + subRoute.path}
+                    to={routeUrl(subRoute.layout, subRoute.path)}
                     className="relative flex items-center justify-between py-2 text-sm transition-colors duration-150 hover:cursor-pointer"
                   >
                     <span
@@ -149,11 +150,11 @@ export function SidebarLinks(props: any) {
 
       // Elemento simple directo
       if (route.layout === "/admin") {
-        const isActive = activeRoute(route.path);
+        const isActive = activeRoute(routeSegment(route.layout, route.path));
         const badgeCount = badges[route.path] || 0;
 
         return (
-          <Link key={index} to={route.layout + "/" + route.path}>
+          <Link key={index} to={routeUrl(route.layout, route.path)}>
             <div className="relative mb-3 flex hover:cursor-pointer">
               <li
                 className="my-[3px] flex cursor-pointer items-center px-8"

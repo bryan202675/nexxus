@@ -8,6 +8,7 @@ import Avatar from "components/nexxus/Avatar";
 import { LANDING_URL } from "services/nexxusLinks";
 import GlobalSearch from "./GlobalSearch";
 import NotificationsBell from "./NotificationsBell";
+import { routeUrl } from "utils/routePath";
 
 const ROLES_CON_ALERTAS_BIENESTAR = ["admin", "admin_empresa", "jefe", "jefe_sector", "super_admin"];
 
@@ -18,7 +19,7 @@ const Navbar = (props) => {
 
   const nombre = perfil?.nombre || user?.displayName || user?.email || "Usuario";
   const etiquetaRol = esSuperAdmin ? "Super Admin" : ["jefe", "jefe_sector"].includes(rol) ? "Jefe" : ["empleado", "psicologo"].includes(rol) ? "Empleado" : "Admin";
-  const rutaConfiguracion = esSuperAdmin ? "/admin/nexxus-configuracion" : "/admin/empresa-configuracion";
+  const rutaConfiguracion = esSuperAdmin ? routeUrl("/admin", "nexxus-configuracion") : routeUrl("/admin", "empresa-configuracion");
   const foto = perfil?.foto_perfil || user?.photoURL || "";
 
   const cerrarSesion = async () => {

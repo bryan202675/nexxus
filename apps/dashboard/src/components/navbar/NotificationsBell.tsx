@@ -5,6 +5,7 @@ import Dropdown from "components/dropdown";
 import { useAuth } from "context/AuthContext";
 import { useTeamCareAlerts, TeamCareAlert } from "context/TeamCareAlertsContext";
 import AlertDetailModal from "./AlertDetailModal";
+import { routeUrl } from "utils/routePath";
 
 const PRIORIDAD_DOT: Record<string, string> = {
   critica: "bg-red-500",
@@ -33,7 +34,7 @@ export default function NotificationsBell() {
   const [detalle, setDetalle] = useState<TeamCareAlert | null>(null);
   const [bannerDescartado, setBannerDescartado] = useState(false);
 
-  const cuidadoPath = ["jefe", "jefe_sector"].includes(rol) ? "/admin/jefe-cuidado-equipo" : "/admin/empresa-cuidado-equipo";
+  const cuidadoPath = ["jefe", "jefe_sector"].includes(rol) ? routeUrl("/admin", "jefe-cuidado-equipo") : routeUrl("/admin", "empresa-cuidado-equipo");
   const recientes = alerts.slice(0, 8);
   const mostrarBannerActivar = notificationPermission === "default" && !bannerDescartado;
 

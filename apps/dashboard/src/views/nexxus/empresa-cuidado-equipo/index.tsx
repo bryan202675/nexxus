@@ -23,6 +23,7 @@ import {
   normalizeCheckIn,
   calculatePulse,
 } from "services/checkInAnalytics";
+import { routeUrl } from "utils/routePath";
 
 const DIAS_CORTOS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
 
@@ -148,7 +149,7 @@ export default function CuidadoEquipo() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => navigate("/admin/empresa-resumen")}
+                onClick={() => navigate(routeUrl("/admin", "empresa-resumen"))}
                 className="flex items-center gap-1.5 rounded-xl bg-white px-3.5 py-2 text-xs font-bold text-navy-700 shadow-sm transition hover:bg-gray-50 dark:bg-charcoal dark:border dark:border-charcoal-border dark:text-white dark:hover:bg-white/5"
               >
                 <span>Ver Resumen General</span>

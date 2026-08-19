@@ -3,6 +3,7 @@ import { MdOutlineFavorite, MdCheckCircle, MdOutlineArrowForward } from "react-i
 import Modal from "components/nexxus/Modal";
 import { useAuth } from "context/AuthContext";
 import { useTeamCareAlerts, TeamCareAlert } from "context/TeamCareAlertsContext";
+import { routeUrl } from "utils/routePath";
 
 const PRIORIDAD_ESTILO: Record<string, { label: string; className: string }> = {
   critica: { label: "Crítica", className: "bg-red-500/10 text-red-600 dark:text-red-400" },
@@ -27,7 +28,7 @@ export default function AlertDetailModal({ alert, onClose }: { alert: TeamCareAl
   if (!alert) return null;
   const prioridad = PRIORIDAD_ESTILO[alert.prioridad] || PRIORIDAD_ESTILO.media;
   const motivo = typeof alert.datos?.motivo === "string" ? alert.datos.motivo : "";
-  const cuidadoPath = ["jefe", "jefe_sector"].includes(rol) ? "/admin/jefe-cuidado-equipo" : "/admin/empresa-cuidado-equipo";
+  const cuidadoPath = ["jefe", "jefe_sector"].includes(rol) ? routeUrl("/admin", "jefe-cuidado-equipo") : routeUrl("/admin", "empresa-cuidado-equipo");
 
   return (
     <Modal isOpen={!!alert} onClose={onClose} title="Alerta de bienestar" width="max-w-lg">

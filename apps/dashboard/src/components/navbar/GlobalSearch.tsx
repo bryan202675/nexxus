@@ -14,6 +14,7 @@ import {
 import { useAuth } from "context/AuthContext";
 import { getRoutesForRole, flattenRoutes } from "routes";
 import { supabase } from "supabaseClient/supabaseConfig";
+import { routeUrl } from "utils/routePath";
 
 const BADGE_STYLES = {
   Sección: "bg-brand-500/10 text-brand-500 dark:bg-brand-400/20 dark:text-brand-300",
@@ -95,7 +96,7 @@ export default function GlobalSearch() {
           subtitle: "Apartado del Dashboard",
           type: "Sección",
           icon: <MdOutlineDashboard className="h-5 w-5 text-brand-500 dark:text-brand-400" />,
-          action: () => navigate(`${r.layout}/${r.path}`),
+          action: () => navigate(routeUrl(r.layout, r.path)),
         });
       });
 
@@ -117,7 +118,7 @@ export default function GlobalSearch() {
               subtitle: `${u.correo || ""} • ${u.rol || "Empleado"}`,
               type: "Empleado",
               icon: <MdOutlinePerson className="h-5 w-5 text-blue-500 dark:text-blue-400" />,
-              action: () => navigate(`/admin/empresa-plantilla?search=${encodeURIComponent(u.nombre || u.correo)}`),
+              action: () => navigate(`${routeUrl("/admin", "empresa-plantilla")}?search=${encodeURIComponent(u.nombre || u.correo)}`),
             });
           });
 
@@ -136,7 +137,7 @@ export default function GlobalSearch() {
               subtitle: s.direccion || "Sede empresarial",
               type: "Sede",
               icon: <MdOutlineStorefront className="h-5 w-5 text-emerald-500 dark:text-emerald-400" />,
-              action: () => navigate("/admin/empresa-organizacion?tab=sedes"),
+              action: () => navigate(`${routeUrl("/admin", "empresa-organizacion")}?tab=sedes`),
             });
           });
 
@@ -155,7 +156,7 @@ export default function GlobalSearch() {
               subtitle: c.descripcion || "Cargo de plantilla",
               type: "Cargo",
               icon: <MdOutlineWork className="h-5 w-5 text-purple-500 dark:text-purple-400" />,
-              action: () => navigate("/admin/empresa-organizacion?tab=cargos"),
+              action: () => navigate(`${routeUrl("/admin", "empresa-organizacion")}?tab=cargos`),
             });
           });
 
@@ -174,7 +175,7 @@ export default function GlobalSearch() {
               subtitle: "Departamento",
               type: "Departamento",
               icon: <MdOutlineBusiness className="h-5 w-5 text-amber-500 dark:text-amber-400" />,
-              action: () => navigate("/admin/empresa-organizacion?tab=departamentos"),
+              action: () => navigate(`${routeUrl("/admin", "empresa-organizacion")}?tab=departamentos`),
             });
           });
 
@@ -193,7 +194,7 @@ export default function GlobalSearch() {
               subtitle: doc.categoria || "Archivo de empresa",
               type: "Documento",
               icon: <MdOutlineDescription className="h-5 w-5 text-rose-500 dark:text-rose-400" />,
-              action: () => navigate("/admin/empresa-documentos"),
+              action: () => navigate(routeUrl("/admin", "empresa-documentos")),
             });
           });
 
@@ -213,7 +214,7 @@ export default function GlobalSearch() {
               subtitle: `${codigo ? `[${codigo}] ` : ""}${inv.categoria || "Activo de inventario"}`,
               type: "Inventario",
               icon: <MdOutlineInventory2 className="h-5 w-5 text-indigo-500 dark:text-indigo-400" />,
-              action: () => navigate("/admin/empresa-inventario"),
+              action: () => navigate(routeUrl("/admin", "empresa-inventario")),
             });
           });
         } catch (err) {

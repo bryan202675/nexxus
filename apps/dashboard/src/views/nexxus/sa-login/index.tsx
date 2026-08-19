@@ -4,6 +4,7 @@ import { FcGoogle } from "react-icons/fc";
 import InputField from "components/fields/InputField";
 import { supabase } from "supabaseClient/supabaseConfig";
 import { useAuth } from "context/AuthContext";
+import { routeUrl } from "utils/routePath";
 
 const traducirError = (message) => {
   const msg = String(message || "").toLowerCase();
@@ -23,15 +24,15 @@ export default function SaLogin() {
   const evaluarNavegacion = useCallback(() => {
     if (!user) return;
     if (esSuperAdmin) {
-      navigate("/admin/nexxus-superadmin", { replace: true });
+      navigate(routeUrl("/admin", "nexxus-superadmin"), { replace: true });
       return;
     }
     if (esAdminEmpresa) {
-      navigate("/admin/empresa-resumen", { replace: true });
+      navigate(routeUrl("/admin", "empresa-resumen"), { replace: true });
       return;
     }
     if (esWorkspaceUser) {
-      navigate(["jefe", "jefe_sector"].includes(rol) ? "/admin/jefe-resumen" : "/admin/empleado-resumen", { replace: true });
+      navigate(["jefe", "jefe_sector"].includes(rol) ? routeUrl("/admin", "jefe-resumen") : routeUrl("/admin", "empleado-resumen"), { replace: true });
       return;
     }
     if (!rol) {

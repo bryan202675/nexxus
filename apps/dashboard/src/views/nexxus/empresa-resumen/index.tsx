@@ -40,6 +40,7 @@ import {
 } from "services/adminRepository";
 import { formatoFecha } from "services/saFormat";
 import { summarizeTeamCheckIns, teamCareStats } from "services/checkInAnalytics";
+import { routeUrl } from "utils/routePath";
 
 const DIAS_CORTOS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
 const hoyISO = () => new Date().toISOString().slice(0, 10);
@@ -408,7 +409,7 @@ export default function DashboardAdmin() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => navigate("/admin/empresa-plantilla")}
+                onClick={() => navigate(routeUrl("/admin", "empresa-plantilla"))}
                 className="flex items-center gap-1.5 rounded-xl bg-white px-3.5 py-2 text-xs font-bold text-navy-700 shadow-sm transition hover:bg-gray-50 dark:bg-charcoal dark:border dark:border-charcoal-border dark:text-white dark:hover:bg-white/5"
               >
                 <MdOutlinePeople className="h-4 w-4 text-brand-500" />
@@ -416,7 +417,7 @@ export default function DashboardAdmin() {
               </button>
               <button
                 type="button"
-                onClick={() => navigate("/admin/empresa-cuidado-equipo")}
+                onClick={() => navigate(routeUrl("/admin", "empresa-cuidado-equipo"))}
                 className="flex items-center gap-1.5 rounded-xl bg-brand-500 px-3.5 py-2 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 active:scale-95"
               >
                 <MdOutlineFavorite className="h-4 w-4" />
@@ -429,7 +430,7 @@ export default function DashboardAdmin() {
             {/* KPI 1: Capital Humano */}
             <NexxusCard
               extra="p-5 cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
-              onClick={() => navigate("/admin/empresa-plantilla")}
+              onClick={() => navigate(routeUrl("/admin", "empresa-plantilla"))}
             >
               <div className="flex items-start justify-between">
                 <div>
@@ -492,7 +493,7 @@ export default function DashboardAdmin() {
             {/* KPI 3: Bienestar del Equipo (Métrica Real) */}
             <NexxusCard
               extra="p-5 cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
-              onClick={() => navigate("/admin/empresa-cuidado-equipo")}
+              onClick={() => navigate(routeUrl("/admin", "empresa-cuidado-equipo"))}
             >
               <div className="flex items-start justify-between">
                 <div>
@@ -528,7 +529,7 @@ export default function DashboardAdmin() {
             {/* KPI 4: Aprobaciones Pendientes */}
             <NexxusCard
               extra="p-5 cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
-              onClick={() => navigate("/admin/empresa-solicitudes")}
+              onClick={() => navigate(routeUrl("/admin", "empresa-solicitudes"))}
             >
               <div className="flex items-start justify-between">
                 <div>
@@ -724,7 +725,7 @@ export default function DashboardAdmin() {
 
                 <div className="mt-4 pt-3 border-t border-gray-100 dark:border-white/10">
                   <Link
-                    to="/admin/empresa-solicitudes"
+                    to={routeUrl("/admin", "empresa-solicitudes")}
                     className="flex items-center justify-center gap-1 text-xs font-bold text-brand-500 hover:text-brand-600 dark:text-brand-400"
                   >
                     Ver centro completo de solicitudes <MdOutlineArrowForward className="h-4 w-4" />
@@ -869,7 +870,7 @@ export default function DashboardAdmin() {
 
                 <div className="mt-4 pt-3 border-t border-gray-100 dark:border-white/10">
                   <Link
-                    to="/admin/empresa-cuidado-equipo"
+                    to={routeUrl("/admin", "empresa-cuidado-equipo")}
                     className="flex items-center justify-center gap-1 text-xs font-bold text-brand-500 hover:text-brand-600 dark:text-brand-400"
                   >
                     Ver seguimiento en Bienestar <MdOutlineArrowForward className="h-4 w-4" />

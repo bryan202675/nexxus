@@ -13,6 +13,7 @@ import {
   calculateStreak,
   normalizeCheckIn,
 } from "services/checkInAnalytics";
+import { routeUrl } from "utils/routePath";
 
 type SaveState = { status: "idle" | "pending" | "success" | "error"; message: string };
 
@@ -147,7 +148,7 @@ export default function WorkspaceCheckIn() {
 
   return <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
     <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-bold uppercase tracking-wide text-brand-500 dark:text-brand-300">Bienestar diario</p><h2 className="mt-1 text-3xl font-bold text-navy-700 dark:text-white">Check-in diario</h2><p className="mt-2 text-sm text-gray-500 dark:text-white/60">Tu pulso es privado y se guarda en tu perfil laboral.</p></div><div className="rounded-xl bg-brand-500/10 px-3 py-2 text-right"><p className="text-xs font-bold uppercase text-brand-500">Paso</p><p className="text-lg font-black text-brand-600 dark:text-brand-300">{step} de {steps.length}</p></div></div>
-    {saveState.status === "success" ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3"><p className="text-sm font-semibold text-emerald-600 dark:text-emerald-300">✓ {saveState.message}</p><div className="flex gap-2"><button type="button" onClick={reset} className="rounded-lg border border-emerald-500/30 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-200">Nuevo registro</button><button type="button" onClick={() => navigate(["jefe", "jefe_sector"].includes(rol) ? "/admin/jefe-resumen" : "/admin/empleado-resumen")} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white">Volver al resumen</button></div></div> : null}
+    {saveState.status === "success" ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3"><p className="text-sm font-semibold text-emerald-600 dark:text-emerald-300">✓ {saveState.message}</p><div className="flex gap-2"><button type="button" onClick={reset} className="rounded-lg border border-emerald-500/30 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-200">Nuevo registro</button><button type="button" onClick={() => navigate(["jefe", "jefe_sector"].includes(rol) ? routeUrl("/admin", "jefe-resumen") : routeUrl("/admin", "empleado-resumen"))} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white">Volver al resumen</button></div></div> : null}
     {historyState.loading ? <p className="rounded-xl bg-brand-500/10 px-4 py-3 text-sm font-semibold text-brand-600 dark:text-brand-300">Consultando tus registros anteriores…</p> : null}
     {historyState.error ? <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-500">{historyState.error}</p> : null}
     <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-brand-500 to-blue-500 transition-all duration-200" style={{ width: `${(step / steps.length) * 100}%` }} /></div>
