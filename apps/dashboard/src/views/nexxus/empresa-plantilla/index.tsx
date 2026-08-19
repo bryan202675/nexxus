@@ -138,6 +138,15 @@ const mapListaSimple = (docSnap: any) => {
   return { id: docSnap.id || data.id, nombre: textValue(data.nombre, docSnap.id) };
 };
 
+// cargos.titulo, no cargos.nombre -- a diferencia de sedes/departamentos. Sin esto, cada cargo
+// caía en el fallback al id (mapListaSimple) y el filtro !isUuidOrHash lo escondía por completo:
+// el selector de "Cargo/Puesto" del formulario de empleado quedaba siempre vacío, y al guardar
+// cualquier edición de empleado se le borraba el cargo asignado (cargoId siempre resolvía null).
+const mapCargoSimple = (docSnap: any) => {
+  const data = docSnap.data ? docSnap.data() : docSnap;
+  return { id: docSnap.id || data.id, nombre: textValue(data.titulo, docSnap.id) };
+};
+
 const ROLE_BADGE: Record<string, string> = {
   super_admin: "bg-purple-500/10 text-purple-600 dark:bg-purple-400/20 dark:text-purple-300 border border-purple-500/20",
   admin_empresa: "bg-brand-500/10 text-brand-600 dark:bg-brand-400/20 dark:text-brand-300 border border-brand-500/20",
@@ -286,7 +295,7 @@ export default function GestionPlantilla() {
     if (!empresaId) return;
     const unsubscribe = subscribeCargos(
       empresaId,
-      (docs) => setCargos(docs.map(mapListaSimple)),
+      (docs) => setCargos(docs.map(mapCargoSimple)),
       () => setCargos([])
     );
     return () => unsubscribe();
@@ -620,12 +629,19 @@ export default function GestionPlantilla() {
         const cargoId = cargos.find((c) => c.nombre === createForm.cargo)?.id || null;
         const departamentoId = departamentos.find((d) => d.nombre === createForm.departamento)?.id || null;
         const sedeId = sedes.find((s) => s.nombre === createForm.sede)?.id || null;
-        if (cargoId || departamentoId || sedeId) {
-          await supabase
-            .from("usuarios")
-            .update({ cargo_id: cargoId, departamento_id: departamentoId, sede_id: sedeId })
-            .eq("id", uid);
-        }
+        // Siempre corre (antes solo si cargo/depto/sede estaban seteados) -- sin esto fecha_ingreso
+        // se quedaba NULL para siempre en cualquier empleado creado desde el dashboard, rompiendo
+        // el cálculo de vacaciones (Art. 177) que depende de esa fecha. Mismo default que usa
+        // GestionPlantilla.tsx del lado mobile cuando no se captura una fecha explícita.
+        await supabase
+          .from("usuarios")
+          .update({
+            cargo_id: cargoId,
+            departamento_id: departamentoId,
+            sede_id: sedeId,
+            fecha_ingreso: new Date().toISOString().slice(0, 10),
+          })
+          .eq("id", uid);
       }
 
       setCreateForm(EMPTY_CREATE_FORM);

@@ -154,8 +154,8 @@ describe('mapSolicitudesInternasAPrioritySignals', () => {
 
     expect(mapSolicitudesInternasAPrioritySignals([{ ...base, estado: 'pendiente' }], HOY)).toHaveLength(1);
     expect(mapSolicitudesInternasAPrioritySignals([{ ...base, estado: 'revisado' }], HOY)).toHaveLength(1);
-    expect(mapSolicitudesInternasAPrioritySignals([{ ...base, estado: 'aprobado' }], HOY)).toHaveLength(0);
-    expect(mapSolicitudesInternasAPrioritySignals([{ ...base, estado: 'rechazado' }], HOY)).toHaveLength(0);
+    expect(mapSolicitudesInternasAPrioritySignals([{ ...base, estado: 'aprobada' }], HOY)).toHaveLength(0);
+    expect(mapSolicitudesInternasAPrioritySignals([{ ...base, estado: 'rechazada' }], HOY)).toHaveLength(0);
   });
 });
 

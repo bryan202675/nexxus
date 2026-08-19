@@ -22,6 +22,12 @@
     {
       "name": "framer-static-v2",
       "url": "http://localhost:8123"
+    },
+    {
+      "name": "dashboard-build-preview",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--workspace", "dashboard", "exec", "--", "vite", "preview", "--port", "4174", "--strictPort"],
+      "port": 4174
     }
   ]
 }

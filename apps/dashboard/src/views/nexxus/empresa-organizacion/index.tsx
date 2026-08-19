@@ -260,16 +260,15 @@ export default function EstructuraOrganizativa() {
     setCreatingDept(true);
     setCreateDeptError("");
     try {
-      const jefeObj = jefesDisponibles.find((j) => j.id === createDeptForm.jefeId);
-      const sedeObj = (sedes || []).find((s) => s.id === createDeptForm.sedeId);
-
+      // "departamentos" no tiene columnas sede_nombre/jefe_nombre (solo sede_id/jefe_id, FKs
+      // reales) -- mandarlas hacía fallar el insert completo con "column not found". Los nombres
+      // se resuelven por lookup al leer (ver departamentosEnriquecidos más abajo), igual que el
+      // resto del módulo; jefeObj/sedeObj ya no hacen falta aquí.
       const { error: insertError } = await supabase.from("departamentos").insert({
         empresa_id: empresaId,
         nombre: createDeptForm.nombre.trim(),
         sede_id: createDeptForm.sedeId || null,
-        sede_nombre: sedeObj?.nombre || null,
         jefe_id: createDeptForm.jefeId || null,
-        jefe_nombre: jefeObj?.nombre || null,
       });
       if (insertError) throw insertError;
       await logAudit({
@@ -319,17 +318,13 @@ export default function EstructuraOrganizativa() {
     setSavingDept(true);
     setSaveDeptError("");
     try {
-      const jefeObj = jefesDisponibles.find((j) => j.id === deptEditForm.jefeId);
-      const sedeObj = (sedes || []).find((s) => s.id === deptEditForm.sedeId);
-
+      // Mismo motivo que en handleCrearDepartamento: sede_nombre/jefe_nombre no son columnas reales.
       const { error: updateError } = await supabase
         .from("departamentos")
         .update({
           nombre: deptEditForm.nombre.trim(),
           sede_id: deptEditForm.sedeId || null,
-          sede_nombre: sedeObj?.nombre || null,
           jefe_id: deptEditForm.jefeId || null,
-          jefe_nombre: jefeObj?.nombre || null,
         })
         .eq("id", selectedDept.id);
       if (updateError) throw updateError;

@@ -42,6 +42,7 @@ import { FocusSession } from 'domain/entities/FocusSession';
 import { Feedback } from 'domain/entities/Feedback';
 // Importa { InternalRequest, NuevaSolicitudInterna }; usa tipos de dominio para que los datos mantengan estructura consistente.
 import { InternalRequest, NuevaSolicitudInterna } from 'domain/entities/InternalRequest';
+import { CompanyCalendarEvent } from 'domain/entities/CompanyCalendar';
 import { calcularDiasVacacionesDisponibles } from 'domain/services/vacationEngine';
 // Importa { ContextualMessage }; depende de contratos de repositorio sin acoplarse a una implementacion concreta.
 import { ContextualMessage } from 'domain/repositories/IFase2Repositories';
@@ -72,6 +73,7 @@ interface EstadoContextoUsuario {
   feedbacks: Feedback[];
   inboxItems: any[];
   solicitudesInternas: InternalRequest[];
+  eventosCalendario: CompanyCalendarEvent[];
   especialistas: any[];
   alertasNoLeidas: number;
 
@@ -147,6 +149,10 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
   const [inboxItems, setInboxItems] = useState<any[]>([]);
   // Inicializa [solicitudesInternas, setSolicitudesInternas]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [solicitudesInternas, setSolicitudesInternas] = useState<InternalRequest[]>([]);
+  // Sin esto, CalendarioLaboral.tsx (la única pantalla de calendario del empleado) nunca podía
+  // mostrar eventos de calendario_empresarial creados por un admin -- solo leía tareas/solicitudes/
+  // citas. Se filtra por relevancia (ver eventosCalendarioRelevantes más abajo).
+  const [eventosCalendarioRaw, setEventosCalendarioRaw] = useState<CompanyCalendarEvent[]>([]);
   // Inicializa [especialistas, setEspecialistas]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const [especialistas, setEspecialistas] = useState<any[]>([]);
   // Inicializa [cargandoSaaS, setCargandoSaaS]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
@@ -176,6 +182,9 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
       const unsubAbsences = useCases.absences.subscribe.execute(user.id, (items) => {
         setSolicitudes(items);
       });
+      const unsubCalendar = useCases.admin.calendar.subscribe(empresaId, (snapshot: { eventos?: CompanyCalendarEvent[] }) => {
+        setEventosCalendarioRaw(snapshot.eventos || []);
+      });
       // Devuelve el valor final calculado para esta funcion o caso de uso.
       return () => {
         // Ejecuta esta instruccion por su efecto: cambia estado, dispara una accion o invoca una integracion.
@@ -185,6 +194,7 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
         unsubNotifications();
         unsubPayments();
         unsubAbsences();
+        unsubCalendar();
       };
     }
   }, [isAuthenticated, user]);
@@ -559,6 +569,23 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
   // Calcula alertasNoLeidas; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
   const alertasNoLeidas = notificaciones.filter(n => !n.leida).length;
 
+  // Un evento es relevante para este empleado si no tiene ninguna segmentación (empresa completa)
+  // o si el empleado coincide con alguna de las segmentaciones que sí tiene (empleado, su
+  // departamento o su sede) -- la misma semántica "enviar a cualquiera de estas audiencias" que
+  // usa el formulario de creación en CalendarioEmpresarial.tsx (admin).
+  const eventosCalendario = useMemo(() => {
+    if (!user) return [];
+    return eventosCalendarioRaw.filter((evento) => {
+      const sinSegmentar =
+        !(evento.empleadoIds?.length) && !(evento.departamentoIds?.length) && !(evento.sedeIds?.length);
+      if (sinSegmentar) return true;
+      if (evento.empleadoIds?.includes(user.id)) return true;
+      if (user.departamentoId && evento.departamentoIds?.includes(user.departamentoId)) return true;
+      if (user.sedeId && evento.sedeIds?.includes(user.sedeId)) return true;
+      return false;
+    });
+  }, [eventosCalendarioRaw, user]);
+
   // dias_vacaciones_disponibles no se guarda como columna -- se calcula aqui (Codigo de Trabajo de
   // El Salvador, Art. 177) a partir de fecha_ingreso + las solicitudes ya cargadas en memoria, sin
   // pedir datos extra. Se recalcula solo si fecha_ingreso o las solicitudes cambian.
@@ -588,6 +615,7 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
     feedbacks,
     inboxItems,
     solicitudesInternas,
+    eventosCalendario,
     especialistas,
     alertasNoLeidas,
     login,

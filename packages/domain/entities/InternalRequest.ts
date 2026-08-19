@@ -30,7 +30,10 @@ export interface InternalRequest {
   fecha_fin?: string;
   archivo_adjunto?: string;
   horas_cantidad?: number; // Para horas extra
-  estado: 'pendiente' | 'revisado' | 'aprobado' | 'rechazado' | 'resuelto';
+  // Femenino ('aprobada'/'rechazada'), no masculino -- es lo que de verdad escribe/lee
+  // toda la cadena real (dashboard, SupabaseRequestReportRepository.ts, DashboardAdmin.tsx,
+  // SolicitudesInternas.tsx); el tipo tenía la forma masculina, desalineado con el runtime.
+  estado: 'pendiente' | 'revisado' | 'aprobada' | 'rechazada' | 'resuelto';
   prioridad: 'baja' | 'media' | 'alta' | 'urgente';
   flujo_aprobacion: {
     paso: number;

@@ -68,6 +68,9 @@ const PRIORIDADES_CONFIG: Record<string, { label: string; cls: string; dot: stri
   },
 };
 
+// Alcances que el dashboard sabe CREAR (cada uno tiene su propio selector condicional más abajo
+// en el formulario -- "cargo" no lo tiene, así que no se ofrece aquí para no dejar seleccionable
+// un alcance sin forma de elegir a qué cargo).
 const ALCANCES = [
   { value: "todos", label: "Toda la Empresa" },
   { value: "departamento", label: "Departamento" },
@@ -75,6 +78,11 @@ const ALCANCES = [
   { value: "rol", label: "Rol Específico" },
   { value: "privado", label: "Colaboradores Seleccionados" },
 ];
+
+// Superset solo para mostrar/filtrar (incluye "cargo", que mobile sí puede crear vía
+// ComunicacionAdmin.tsx) -- sin esto, un anuncio por cargo mostraba el string crudo "cargo" en
+// vez de una etiqueta legible, y no se podía filtrar por él.
+const ALCANCE_LABELS = [...ALCANCES, { value: "cargo", label: "Cargo" }];
 
 const PAGE_SIZE = 8;
 
@@ -516,7 +524,7 @@ export default function ComunicacionAdmin() {
               className="h-8 rounded-xl border border-gray-200 bg-gray-50/50 px-2.5 text-xs font-semibold text-navy-700 outline-none dark:border-white/10 dark:bg-charcoal dark:text-white"
             >
               <option value="todos">Todos los alcances</option>
-              {ALCANCES.map((alc) => (
+              {ALCANCE_LABELS.map((alc) => (
                 <option key={alc.value} value={alc.value}>
                   {alc.label}
                 </option>
@@ -578,7 +586,7 @@ export default function ComunicacionAdmin() {
                   const Icon = prioInfo.icon;
                   const isBusy = busyId === anuncio.id;
                   const alcanceLabel =
-                    ALCANCES.find((al) => al.value === anuncio.alcance)?.label || anuncio.alcance || "Toda la Empresa";
+                    ALCANCE_LABELS.find((al) => al.value === anuncio.alcance)?.label || anuncio.alcance || "Toda la Empresa";
 
                   return (
                     <tr
@@ -927,7 +935,7 @@ export default function ComunicacionAdmin() {
                 <strong className="text-navy-700 dark:text-white">
                   {selectedAnuncio.departamentoDestino ||
                     selectedAnuncio.sedeDestino ||
-                    ALCANCES.find((a) => a.value === selectedAnuncio.alcance)?.label ||
+                    ALCANCE_LABELS.find((a) => a.value === selectedAnuncio.alcance)?.label ||
                     "Toda la Empresa"}
                 </strong>
               </span>

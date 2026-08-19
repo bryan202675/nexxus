@@ -184,7 +184,7 @@ export default function HistorialCompleto({ navigation }: Props) {
         estado: solicitud.estado,
         fecha: solicitud.timestamp,
         icono: 'assignment-ind',
-        color: solicitud.estado === 'aprobado' || solicitud.estado === 'resuelto' ? '#10B981' : solicitud.estado === 'rechazado' ? '#EF4444' : '#F59E0B',
+        color: solicitud.estado === 'aprobada' || solicitud.estado === 'resuelto' ? '#10B981' : solicitud.estado === 'rechazada' ? '#EF4444' : '#F59E0B',
         prioridad: solicitud.prioridad,
       })
     );

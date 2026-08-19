@@ -9,6 +9,9 @@ import { mapUserRow } from './mappers';
 
 const numberValue = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? value : Number(value) || 0;
 const textValue = (value: unknown, fallback = '') => typeof value === 'string' && value.trim().length > 0 ? value.trim() : fallback;
+// Mismo mapeo que ESTADO_PAYMENT en apps/dashboard/.../empresa-nomina/index.tsx -- payments.estado
+// usa un vocabulario distinto (pendiente/procesando/confirmado) al de nominas.estado.
+const ESTADO_PAYMENT: Record<string, string> = { pendiente: 'pendiente', revisado: 'procesando', pagado: 'confirmado' };
 
 function mapRow(row: Record<string, any>): PayrollRecord {
   return {
@@ -120,6 +123,38 @@ export class SupabasePayrollRepository implements IPayrollRepository {
     const { error } = await supabase.from('nominas').insert(rows);
     if (error) throw error;
 
+    // Sin este espejo en "payments", la nómina generada desde el admin de mobile jamás aparecía
+    // en "Mi Salario" del empleado (esa pantalla lee de payments, no de nominas) -- igual que
+    // handleGenerarNomina en apps/dashboard/.../empresa-nomina/index.tsx.
+    await supabase.from('payments').insert(rows.map((row) => {
+      // Mismo cálculo interno de calculatePayroll (no lo devuelve por separado) -- necesario para
+      // que "Mi Salario" no muestre siempre $0 en horas extra, y para poder derivar salario_base
+      // (nominas no tiene esa columna, solo salario_bruto).
+      const horasExtraPago = numberValue(row.horas_extra) * numberValue(row.valor_hora_extra) * 1.5;
+      return {
+        empresa_id: row.empresa_id,
+        usuario_id: row.usuario_id,
+        monto: row.salario_neto,
+        moneda: 'USD',
+        estado: 'pendiente',
+        datos: {
+          periodo: row.periodo,
+          salario_base: row.salario_bruto - row.bonos - row.comisiones - horasExtraPago,
+          bono: row.bonos,
+          comision: row.comisiones,
+          horas_extra: horasExtraPago,
+          descuentos_adicionales: row.otras_deducciones,
+          salario_bruto: row.salario_bruto,
+          isss: row.isss_empleado,
+          afp: row.afp_empleado,
+          renta: row.renta,
+          salario_neto: row.salario_neto,
+        },
+      };
+    })).then(({ error: paymentsError }) => {
+      if (paymentsError) console.error('[SupabasePayrollRepository] No se pudo espejar en payments:', paymentsError);
+    });
+
     await supabase.from('audit_logs').insert({
       empresa_id: params.empresaId,
       actor_id: params.actorId,
@@ -138,6 +173,15 @@ export class SupabasePayrollRepository implements IPayrollRepository {
       fecha_aprobacion: estado === 'pagado' ? now : null, updated_at: now,
     }).eq('id', payrollId);
     if (error) throw error;
+
+    // Igual que handleCambiarEstado del dashboard: sin esto, "Mi Salario" se queda mostrando
+    // "Pendiente" para siempre aunque el admin ya haya marcado la nómina como pagada desde mobile.
+    if (record) {
+      const estadoPayment = ESTADO_PAYMENT[estado] || 'pendiente';
+      await supabase.from('payments').update({ estado: estadoPayment })
+        .eq('usuario_id', record.usuario_id).eq('empresa_id', record.empresa_id)
+        .contains('datos', { periodo: record.periodo });
+    }
 
     if (estado === 'pagado' && record) {
       await supabase.from('notificaciones').insert({
@@ -161,6 +205,13 @@ export class SupabasePayrollRepository implements IPayrollRepository {
       fecha_aprobacion: now, updated_at: now,
     }).in('id', pending.map((r) => r.id));
     if (error) throw error;
+
+    await supabase.from('payments').update({ estado: ESTADO_PAYMENT.pagado })
+      .eq('empresa_id', params.empresaId).contains('datos', { periodo: params.periodo })
+      .in('usuario_id', pending.map((r) => r.empleadoId))
+      .then(({ error: paymentsError }) => {
+        if (paymentsError) console.error('[SupabasePayrollRepository] No se pudo sincronizar payments:', paymentsError);
+      });
 
     await supabase.from('notificaciones').insert(pending.map((r) => ({
       usuario_id: r.empleadoId,

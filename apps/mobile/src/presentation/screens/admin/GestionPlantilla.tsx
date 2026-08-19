@@ -449,7 +449,12 @@ export default function GestionPlantilla() {
     // Declara unsubSedes; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const unsubSedes = crearListener<SedeCatalogo>('sedes', 'sedes', setSedesCatalogo);
     // Declara unsubCargos; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-    const unsubCargos = crearListener<CargoCatalogo>('cargos', 'cargos', setCargosCatalogo);
+    // cargos.titulo, no cargos.nombre -- sin este mapeo cargo.nombre siempre era undefined, el
+    // selector de "Cargo/Puesto" quedaba vacío y guardar cualquier edición de empleado le borraba
+    // el cargo asignado (mismo bug que en el dashboard; misma normalización que EstructuraOrganizativa.tsx).
+    const unsubCargos = crearListener<CargoCatalogo>('cargos', 'cargos', (datos) =>
+      setCargosCatalogo((datos || []).map((row: any) => ({ ...row, nombre: row.titulo })))
+    );
     // Declara unsubRoles; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
     const unsubRoles = crearListener<RolCatalogo>('roles', 'roles_personalizados', setRolesPersonalizados);
 

@@ -7,11 +7,13 @@ import {
 } from 'domain/entities/SuperAdmin';
 import { subscribeQuery } from './realtime';
 
+// row.planes viene del join "planes(nombre)" -- antes se mostraba plan_id (un uuid) crudo en
+// vez del nombre real del plan, igual que ya resuelve mapEmpresaDetalle del lado dashboard.
 function mapEmpresaResumen(row: Record<string, any>): EmpresaResumen {
   return {
     id: row.id, nombre: row.nombre, codigo: row.codigo,
     estado: row.baneado ? 'baneada' : 'activa',
-    plan: row.plan_id ?? 'Sin plan',
+    plan: row.planes?.nombre ?? 'Sin plan',
     paymentStatus: row.baneado ? 'suspended' : 'active',
     fechaCreacion: row.created_at ?? null,
   };
@@ -46,15 +48,15 @@ export class SupabaseSuperAdminRepository implements ISuperAdminRepository {
   subscribePlatform(callback: (snapshot: PlatformSnapshot) => void, onError: (error: Error) => void): () => void {
     const load = async (): Promise<PlatformSnapshot> => {
       const [{ data: empresas }, { data: pagos }, { data: auditoria }, { count: usuariosTotal }] = await Promise.all([
-        supabase.from('empresas').select('*').limit(50),
+        supabase.from('empresas').select('*, planes(nombre)').limit(50),
         supabase.from('payments').select('*').limit(80),
-        supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(80),
+        supabase.from('audit_logs').select('*, empresas(nombre)').order('created_at', { ascending: false }).limit(80),
         supabase.from('usuarios').select('id', { count: 'exact', head: true }),
       ]);
       return {
         empresas: (empresas || []).map(mapEmpresaResumen),
         pagos: (pagos || []).map((p) => ({ id: p.id, empresaId: p.empresa_id, plan: '', status: p.estado, amount: Number(p.monto), createdAt: p.created_at })),
-        auditoria: (auditoria || []).map((a) => ({ id: a.id, empresaId: a.empresa_id, accion: a.accion, modulo: a.modulo ?? '', estado: 'Success', detalles: a.detalles ?? '', timestamp: a.created_at })),
+        auditoria: (auditoria || []).map((a) => ({ id: a.id, empresaId: a.empresa_id, empresaNombre: a.empresas?.nombre ?? '', accion: a.accion, modulo: a.modulo ?? '', estado: '', detalles: a.detalles ?? '', timestamp: a.created_at })),
         usuariosTotal: usuariosTotal ?? 0,
       };
     };
@@ -69,7 +71,7 @@ export class SupabaseSuperAdminRepository implements ISuperAdminRepository {
 
   subscribeCompanies(filtros: CompanyFilters, limite: number, callback: (result: PagedResult<EmpresaDetalle>) => void, onError: (error: Error) => void): () => void {
     const load = async (): Promise<PagedResult<EmpresaDetalle>> => {
-      let query = supabase.from('empresas').select('*').limit(limite);
+      let query = supabase.from('empresas').select('*, planes(nombre)').limit(limite);
       if (filtros.estado === 'baneadas') query = query.eq('baneado', true);
       const { data, error } = await query;
       if (error) throw error;
@@ -89,7 +91,7 @@ export class SupabaseSuperAdminRepository implements ISuperAdminRepository {
   subscribeCompanyDetail(empresaId: string, callback: (data: { empresa: EmpresaDetalle | null; usuarios: UsuarioGlobal[]; pagos: PagoResumen[] }) => void, onError: (error: Error) => void): () => void {
     const load = async () => {
       const [{ data: empresa }, { data: usuarios }, { data: pagos }] = await Promise.all([
-        supabase.from('empresas').select('*').eq('id', empresaId).maybeSingle(),
+        supabase.from('empresas').select('*, planes(nombre)').eq('id', empresaId).maybeSingle(),
         supabase.from('usuarios').select('*').eq('empresa_id', empresaId),
         supabase.from('payments').select('*').eq('empresa_id', empresaId),
       ]);
@@ -110,9 +112,32 @@ export class SupabaseSuperAdminRepository implements ISuperAdminRepository {
     if (error) throw error;
   }
 
+  // Mismos 3 estados que ya reconoce planEnforcement.ts del dashboard (activa/suspendida/vencida)
+  // -- antes solo banear/desbanear estaban implementados; el resto no hacía nada (peor que el
+  // dashboard, que al menos lanzaba un error visible).
   async applyCompanyAction(companyId: string, action: SuperAdminCompanyAction): Promise<void> {
-    if (action === 'banear') await this.setCompanyBan(companyId, true);
-    else if (action === 'desbanear') await this.setCompanyBan(companyId, false);
+    if (action === 'banear') return void await this.setCompanyBan(companyId, true);
+    if (action === 'desbanear') return void await this.setCompanyBan(companyId, false);
+    if (action === 'suspender') {
+      const { error } = await supabase.from('suscripciones').update({ estado: 'suspendida' }).eq('empresa_id', companyId);
+      if (error) throw error;
+      return;
+    }
+    if (action === 'expirar') {
+      const { error } = await supabase.from('suscripciones').update({ estado: 'vencida' }).eq('empresa_id', companyId);
+      if (error) throw error;
+      return;
+    }
+    if (action === 'reactivar_business') {
+      const { data: plan, error: planError } = await supabase.from('planes').select('id').eq('nombre', 'Business').maybeSingle();
+      if (planError) throw planError;
+      if (!plan) throw new Error('No se encontró el plan Business.');
+      const { error } = await supabase.from('suscripciones').update({ estado: 'activa', plan_id: plan.id }).eq('empresa_id', companyId);
+      if (error) throw error;
+      await supabase.from('empresas').update({ plan_id: plan.id }).eq('id', companyId);
+      return;
+    }
+    throw new Error(`Acción no soportada: ${action}`);
   }
 
   async startSupportSession(companyId: string): Promise<SupportSessionResult> {
@@ -185,9 +210,11 @@ export class SupabaseSuperAdminRepository implements ISuperAdminRepository {
 
   subscribeAuditGlobal(limite: number, callback: (result: PagedResult<AuditResumen>) => void, onError: (error: Error) => void): () => void {
     const load = async (): Promise<PagedResult<AuditResumen>> => {
-      const { data, error } = await supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(limite);
+      // join a empresas(nombre) -- sin esto la columna "Empresa" de SaAuditoria.tsx siempre
+      // mostraba "Plataforma" (fallback), igual que ya resolvía nombreEmpresaPorId del dashboard.
+      const { data, error } = await supabase.from('audit_logs').select('*, empresas(nombre)').order('created_at', { ascending: false }).limit(limite);
       if (error) throw error;
-      const items = (data || []).map((a) => ({ id: a.id, empresaId: a.empresa_id, accion: a.accion, modulo: a.modulo ?? '', estado: 'Success' as const, detalles: a.detalles ?? '', timestamp: a.created_at }));
+      const items = (data || []).map((a) => ({ id: a.id, empresaId: a.empresa_id, empresaNombre: a.empresas?.nombre ?? '', accion: a.accion, modulo: a.modulo ?? '', estado: '', detalles: a.detalles ?? '', timestamp: a.created_at }));
       return { items, cursor: null, hayMas: false };
     };
     return subscribeQuery('audit_logs', null, load, callback, onError);

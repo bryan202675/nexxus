@@ -8,7 +8,12 @@ import {
 } from "react-icons/md";
 
 export const MODULES = {
-  tareas: { title: "Mis tareas", table: "tareas", icon: MdOutlineAssignment, filter: "asignado_a", columns: ["titulo", "estado", "prioridad", "fecha_limite", "created_at"], form: [{ key: "titulo", label: "Título", required: true }, { key: "descripcion", label: "Descripción", type: "textarea" }, { key: "prioridad", label: "Prioridad", type: "select", options: ["baja", "media", "alta", "urgente"] }, { key: "fecha_limite", label: "Fecha límite", type: "date" }] },
+  // prioridad va capitalizada ("Alta", no "alta") -- es la convención real de tareas.prioridad en
+  // todo el resto del código (empresa-plantilla/index.tsx del dashboard y prácticamente todo
+  // mobile: CentroTareas, ContextoUsuario, DashboardAdmin, ChatIAAdmin, SupabaseTaskRepository).
+  // Con minúsculas, una tarea creada aquí como "urgente" no aparecía en ningún filtro/KPI/resumen
+  // de IA que compara contra "Urgente".
+  tareas: { title: "Mis tareas", table: "tareas", icon: MdOutlineAssignment, filter: "asignado_a", columns: ["titulo", "estado", "prioridad", "fecha_limite", "created_at"], form: [{ key: "titulo", label: "Título", required: true }, { key: "descripcion", label: "Descripción", type: "textarea" }, { key: "prioridad", label: "Prioridad", type: "select", options: ["Baja", "Media", "Alta", "Urgente"] }, { key: "fecha_limite", label: "Fecha límite", type: "date" }] },
   asistencia: { title: "Control de asistencia", table: "asistencias", icon: MdOutlineAccessTime, filter: "usuario_id", columns: ["tipo", "fecha_jornada", "entrada", "salida", "horas_trabajadas", "horas_extra", "tarde"], form: [] },
   checkins: { title: "Check-in y bienestar", table: "checkins", icon: MdOutlinePsychology, filter: "usuario_id", columns: ["estado_animo", "nota", "created_at"], form: [{ key: "estado_animo", label: "¿Cómo te sientes?", type: "select", options: ["excelente", "bien", "neutral", "estresado", "agotado"], required: true }, { key: "nota", label: "Nota", type: "textarea" }] },
   solicitudes: { title: "Solicitudes de ausencia", table: "solicitudes_ausencia", icon: MdOutlineRequestPage, filter: "usuario_id", columns: ["tipo", "fecha_inicio", "fecha_fin", "estado"], form: [{ key: "tipo", label: "Tipo", required: true }, { key: "fecha_inicio", label: "Desde", type: "date", required: true }, { key: "fecha_fin", label: "Hasta", type: "date", required: true }, { key: "motivo", label: "Motivo", type: "textarea" }] },

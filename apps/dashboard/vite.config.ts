@@ -17,6 +17,10 @@ export default defineConfig(({ command }) => {
     },
     build: {
       outDir: 'dist',
+      // Explícito a propósito: sin esto, un source map filtrado en el deploy dejaría ver el
+      // código fuente original y legible desde el inspector del navegador, sin importar qué tan
+      // ofuscado quede el bundle real (ver scripts/obfuscate-build.mjs).
+      sourcemap: false,
     },
   };
 });

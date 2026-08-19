@@ -5,11 +5,15 @@ import SaLogin from '../index';
 
 const signInWithPassword = vi.fn().mockResolvedValue({ error: null });
 
-vi.mock('context/AuthContext', () => ({
+// vi.mock no intercepta especificadores resueltos vía el alias de tsconfig (baseUrl "src") en
+// este setup de vite-tsconfig-paths -- SaLogin/index.tsx importa con el alias y seguía recibiendo
+// el AuthContext real (probado: el mismo mock con ruta relativa sí intercepta). Ruta relativa
+// obligatoria aquí en vez del alias "context/..." / "supabaseClient/..." que usa el resto del repo.
+vi.mock('../../../../context/AuthContext', () => ({
   useAuth: () => ({ user: null, loading: false, rol: null, esSuperAdmin: false, esAdminEmpresa: false }),
 }));
 
-vi.mock('supabaseClient/supabaseConfig', () => ({
+vi.mock('../../../../supabaseClient/supabaseConfig', () => ({
   supabase: {
     auth: {
       signInWithPassword: (...args: any[]) => signInWithPassword(...args),

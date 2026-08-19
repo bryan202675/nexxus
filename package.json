@@ -19,6 +19,7 @@
     "msedge-tts": "^2.0.7"
   },
   "devDependencies": {
+    "javascript-obfuscator": "^5.5.0",
     "turbo": "^2.3.0"
   },
   "overrides": {

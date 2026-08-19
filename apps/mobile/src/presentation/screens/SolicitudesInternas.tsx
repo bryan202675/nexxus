@@ -78,8 +78,8 @@ export default function SolicitudesInternas({ navigation }: Props) {
 
   const totalSolicitudes = solicitudesInternas.length;
   const pendientes = solicitudesInternas.filter((s) => s.estado === 'pendiente').length;
-  const aprobadas = solicitudesInternas.filter((s) => s.estado === 'aprobado').length;
-  const rechazadas = solicitudesInternas.filter((s) => s.estado === 'rechazado').length;
+  const aprobadas = solicitudesInternas.filter((s) => s.estado === 'aprobada').length;
+  const rechazadas = solicitudesInternas.filter((s) => s.estado === 'rechazada').length;
 
   const solicitudesFiltradas = solicitudesInternas.filter((s) => {
     if (filtroEstado === 'todas') return true;
@@ -169,8 +169,8 @@ export default function SolicitudesInternas({ navigation }: Props) {
 
   const obtenerColorEstado = (e: string) => {
     switch (e) {
-      case 'aprobado': return '#10B981';
-      case 'rechazado': return '#EF4444';
+      case 'aprobada': return '#10B981';
+      case 'rechazada': return '#EF4444';
       case 'pendiente': return '#F59E0B';
       default: return colores.textoSuave;
     }
@@ -302,8 +302,8 @@ export default function SolicitudesInternas({ navigation }: Props) {
               {[
                 { id: 'todas', label: t('solicitudesInternas.filter_all', { defaultValue: 'Todas' }) },
                 { id: 'pendiente', label: t('solicitudesInternas.filter_pending', { defaultValue: 'Pendientes' }) },
-                { id: 'aprobado', label: t('solicitudesInternas.filter_approved', { defaultValue: 'Aprobadas' }) },
-                { id: 'rechazado', label: t('solicitudesInternas.filter_rejected', { defaultValue: 'Rechazadas' }) },
+                { id: 'aprobada', label: t('solicitudesInternas.filter_approved', { defaultValue: 'Aprobadas' }) },
+                { id: 'rechazada', label: t('solicitudesInternas.filter_rejected', { defaultValue: 'Rechazadas' }) },
               ].map((f) => (
                 <TouchableOpacity
                   key={f.id}

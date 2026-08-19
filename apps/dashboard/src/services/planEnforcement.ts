@@ -45,7 +45,12 @@ export function useEmpresaPlan() {
 
   const planActivo = state.suscripcion?.planes?.nombre;
   const { plan, planFeatures, planLimits } = planEntitlements(planActivo);
-  const suspendida = state.suscripcion?.estado === "cancelando" || state.suscripcion?.estado === "vencida";
+  // "suspendida": nuevo estado que puede fijar el super admin (acción "Suspender" en
+  // apps/dashboard/.../empresas/index.tsx) -- debe bloquear el acceso igual que "vencida".
+  const suspendida =
+    state.suscripcion?.estado === "cancelando" ||
+    state.suscripcion?.estado === "vencida" ||
+    state.suscripcion?.estado === "suspendida";
 
   return {
     loading: state.loading,

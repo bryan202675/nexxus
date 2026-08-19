@@ -3,17 +3,23 @@ import { IAuditLogRepository } from 'domain/repositories/IAuditLogRepository';
 import { AuditLog } from 'domain/entities/AuditLog';
 import { subscribeQuery } from './realtime';
 
+// audit_logs no tiene columna de estado/severidad ni "datos" jsonb -- row.datos?.estado siempre
+// era undefined y el "?? 'Success'" fabricaba un valor fijo. AuditoriaLogs.tsx ya trata "sin
+// estado" como éxito para las tarjetas/filtros (l.estado === 'Success' || !l.estado), así que
+// devolver undefined no cambia lo que se ve -- pero deja de mentir con un literal 'Success' donde
+// cualquier código que lea `estado` directamente asumiría que hubo una señal real registrada.
+// Mismo criterio que mapAudit en apps/dashboard/.../superAdminRepository.ts.
 function mapRow(row: Record<string, any>): AuditLog {
   return {
     id: row.id,
     empresaId: row.empresa_id,
     timestamp: row.created_at,
     usuarioId: row.actor_id ?? '',
-    usuarioNombre: row.datos?.usuarioNombre ?? '',
+    usuarioNombre: '',
     accion: row.accion,
     modulo: row.modulo ?? '',
     detalles: row.detalles ?? '',
-    estado: row.datos?.estado ?? 'Success',
+    estado: undefined,
   };
 }
 

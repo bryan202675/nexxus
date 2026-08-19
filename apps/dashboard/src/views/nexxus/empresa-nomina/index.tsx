@@ -286,16 +286,26 @@ export default function GestionNomina() {
       for (const empleado of faltantes) {
         const acumEmpleado = acumulado.get(empleado.id) || { horasExtra: 0, minutosTarde: 0 };
         const salarioBase = Number(empleado.salarioBase || 0);
+        // Antes hardcodeado en 0 -- si un admin configuraba un bono/comisión/descuento recurrente
+        // desde el "Perfil Salarial" de mobile, generar la nómina desde el dashboard lo ignoraba
+        // por completo, subpagando (o sobrecobrando) al empleado.
+        const bonos = Number(empleado.bonos_recurrentes) || 0;
+        const comisiones = Number(empleado.comisiones_recurrentes) || 0;
+        const descuentos = Number(empleado.descuentos_recurrentes) || 0;
         const calculo = calculatePayroll({
           salarioBase,
-          bonos: 0,
-          comisiones: 0,
-          descuentos: 0,
+          bonos,
+          comisiones,
+          descuentos,
           minutosTarde: acumEmpleado.minutosTarde,
           diasAusencia: 0,
           horasExtra: acumEmpleado.horasExtra,
         });
         const empleadoNombre = empleado.nombre || empleado.correo || "Sin nombre";
+        // Mismo cálculo de pago por horas extra que hace calculatePayroll internamente (no lo
+        // devuelve por separado) -- necesario para que el desglose del recibo en "Mi Salario" no
+        // muestre siempre $0 en horas extra.
+        const horasExtraPago = calculo.horasExtra * calculo.valorHoraExtra * 1.5;
 
         filasNominas.push({
           empresa_id: empresaId,
@@ -304,9 +314,9 @@ export default function GestionNomina() {
           periodo: periodoActual,
           periodo_anio: new Date().getFullYear(),
           periodo_mes: new Date().getMonth() + 1,
-          bonos: 0,
-          comisiones: 0,
-          otras_deducciones: 0,
+          bonos,
+          comisiones,
+          otras_deducciones: descuentos,
           horas_extra: calculo.horasExtra,
           valor_hora_extra: calculo.valorHoraExtra,
           descuento_tardanzas: calculo.descuentoTardanzas,
@@ -328,6 +338,11 @@ export default function GestionNomina() {
           estado: "pendiente",
           datos: {
             periodo: periodoActual,
+            salario_base: salarioBase,
+            bono: bonos,
+            comision: comisiones,
+            horas_extra: horasExtraPago,
+            descuentos_adicionales: descuentos,
             salario_bruto: calculo.salarioBruto,
             isss: calculo.isss,
             afp: calculo.afp,
@@ -410,6 +425,15 @@ export default function GestionNomina() {
         })
         .in("id", pendientes.map((n) => n.id));
       if (error) throw error;
+
+      // Igual que handleCambiarEstado (fila por fila) -- sin esto, "Mi Salario" se quedaba
+      // mostrando "Pendiente" para los empleados aprobados en lote con "Revisar Todos".
+      await supabase
+        .from("payments")
+        .update({ estado: ESTADO_PAYMENT.revisado })
+        .eq("empresa_id", empresaId)
+        .in("usuario_id", pendientes.map((n) => n.empleadoId))
+        .contains("datos", { periodo: periodoActual });
     } catch (err: any) {
       setAccionError(err.message || "No se pudieron aprobar las nóminas.");
     } finally {

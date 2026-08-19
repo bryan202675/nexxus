@@ -1265,7 +1265,8 @@
     "event_types": {
       "tarea": "TAREA",
       "ausencia": "AUSENCIA",
-      "cita": "CITA"
+      "cita": "CITA",
+      "evento_empresa": "EVENTO DE EMPRESA"
     },
     "days": {
       "Dom": "Dom",
@@ -1343,6 +1344,7 @@
       "rrhh": "RRHH",
       "certificado": "Certificados",
       "evaluacion": "Evaluaciones",
+      "general": "General",
       "otro": "Otros"
     }
   },

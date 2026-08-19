@@ -66,7 +66,7 @@ export default function CalendarioLaboral({ navigation }: Props) {
   // Inicializa { t, i18n }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const { t, i18n } = useTranslation();
   // Inicializa { tareas, solicitudes, citas }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const { tareas, solicitudes, citas } = useContextoUsuario();
+  const { tareas, solicitudes, citas, eventosCalendario } = useContextoUsuario();
   const { colores, esOscuro } = useTemaMobile();
   const estilos = crearEstilos(colores);
   // Calcula hoy; normaliza fechas para comparaciones, filtros o etiquetas visibles.
@@ -101,11 +101,28 @@ export default function CalendarioLaboral({ navigation }: Props) {
   // Declara fechaFormat; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const fechaFormat = `${anio}-${String(mes + 1).padStart(2, '0')}-${String(diaSel).padStart(2, '0')}`;
 
+  // calendario_empresarial.fecha_inicio/fecha_fin son timestamptz (con hora), no date -- se
+  // normalizan a "YYYY-MM-DD" en hora local antes de comparar contra fechaFormat, igual criterio
+  // que el resto de la agenda (día completo, no instante exacto).
+  const fechaSoloDia = (valor: any): string => {
+    if (!valor) return '';
+    const fecha = typeof valor?.toDate === 'function' ? valor.toDate() : new Date(valor);
+    if (Number.isNaN(fecha.getTime())) return '';
+    return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`;
+  };
+
   // Calcula eventosDelDia; filtra la coleccion para mostrar solo los elementos que cumplen la condicion de negocio.
   const eventosDelDia = [
     ...tareas.filter(t => t.fecha_limite === fechaFormat).map(t => ({ ...t, tipoEvento: 'tarea' })),
     ...solicitudes.filter(s => s.fecha_inicio <= fechaFormat && s.fecha_fin >= fechaFormat).map(s => ({ ...s, tipoEvento: 'ausencia' })),
     ...citas.filter(c => c.fecha === fechaFormat).map(c => ({ ...c, tipoEvento: 'cita' })),
+    ...eventosCalendario
+      .filter((ev) => {
+        const inicio = fechaSoloDia(ev.inicio);
+        const fin = fechaSoloDia(ev.fin) || inicio;
+        return inicio && inicio <= fechaFormat && fin >= fechaFormat;
+      })
+      .map((ev) => ({ ...ev, tipoEvento: 'evento_empresa' })),
   ];
 
   // Devuelve el JSX que React Native renderiza en pantalla.

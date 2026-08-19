@@ -291,9 +291,32 @@ export async function updateCompanyProfile(empresaId: string, patch: any) {
   if (error) throw error;
 }
 
+// suscripciones.estado: "activa" (default) / "cancelando" (ya existía, cancelación programada) /
+// "vencida" (ya existía, usado por planEnforcement.ts) / "suspendida" (nuevo, ver
+// planEnforcement.ts). Antes estas 3 acciones -- ya con botones reales en la UI -- tiraban
+// "Acción no soportada" en el dashboard y no hacían nada en mobile.
 export async function applyCompanyAction(companyId, action) {
   if (action === "banear") return setCompanyBan(companyId, true);
   if (action === "desbanear") return setCompanyBan(companyId, false);
+  if (action === "suspender") {
+    const { error } = await supabase.from("suscripciones").update({ estado: "suspendida" }).eq("empresa_id", companyId);
+    if (error) throw error;
+    return;
+  }
+  if (action === "expirar") {
+    const { error } = await supabase.from("suscripciones").update({ estado: "vencida" }).eq("empresa_id", companyId);
+    if (error) throw error;
+    return;
+  }
+  if (action === "reactivar_business") {
+    const { data: plan, error: planError } = await supabase.from("planes").select("id").eq("nombre", "Business").maybeSingle();
+    if (planError) throw planError;
+    if (!plan) throw new Error("No se encontró el plan Business.");
+    const { error } = await supabase.from("suscripciones").update({ estado: "activa", plan_id: plan.id }).eq("empresa_id", companyId);
+    if (error) throw error;
+    await supabase.from("empresas").update({ plan_id: plan.id }).eq("id", companyId);
+    return;
+  }
   throw new Error(`Acción no soportada: ${action}`);
 }
 

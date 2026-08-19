@@ -353,7 +353,11 @@ export default function DashboardAdmin() {
   };
 
   // Prepara actualizarSolicitudInterna; construye la referencia o consulta Firebase que se usara para leer/escribir datos.
-  const actualizarSolicitudInterna = async (solicitud: SolicitudInternaAdmin, estado: 'aprobado' | 'rechazado' | 'resuelto') => {
+  // 'aprobada'/'rechazada' (femenino), no 'aprobado'/'rechazado' -- igual que
+  // actualizarSolicitudAusencia arriba, el dashboard, y SupabaseRequestReportRepository.ts
+  // (Centro de Reportes de mobile). Con el masculino, el pill de estado de SolicitudesInternas.tsx
+  // no reconocía el valor y la solicitud se quedaba mostrando como si no hubiera respuesta.
+  const actualizarSolicitudInterna = async (solicitud: SolicitudInternaAdmin, estado: 'aprobada' | 'rechazada' | 'resuelto') => {
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!solicitud.id) return;
     // Protege operaciones que pueden fallar; captura errores para mostrar mensajes o lanzar fallos controlados.
@@ -366,15 +370,15 @@ export default function DashboardAdmin() {
       if (updateError) throw updateError;
       // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
       await registrarAuditoria(
-        estado === 'aprobado' ? 'Aprobación de Solicitud Interna' : estado === 'resuelto' ? 'Resolución de Solicitud Interna' : 'Rechazo de Solicitud Interna',
+        estado === 'aprobada' ? 'Aprobación de Solicitud Interna' : estado === 'resuelto' ? 'Resolución de Solicitud Interna' : 'Rechazo de Solicitud Interna',
         'Centro de Aprobaciones',
         solicitud.titulo || solicitud.tipo || 'Solicitud interna',
-        estado === 'rechazado' ? 'Warning' : 'Success'
+        estado === 'rechazada' ? 'Warning' : 'Success'
       );
       // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
       if (solicitud.userId) {
         // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-        const titulo = estado === 'aprobado' ? 'Solicitud aprobada' : estado === 'resuelto' ? 'Solicitud resuelta' : 'Solicitud rechazada';
+        const titulo = estado === 'aprobada' ? 'Solicitud aprobada' : estado === 'resuelto' ? 'Solicitud resuelta' : 'Solicitud rechazada';
         const mensaje = solicitud.titulo || solicitud.descripcion || 'Tu solicitud fue actualizada por administración.';
         await supabase.from('inbox_unificado').insert({
           empresa_id: empresaId,
@@ -1322,8 +1326,8 @@ export default function DashboardAdmin() {
                       prioridad={item.prioridad}
                       fotoPerfil={item.fotoPerfil}
                       onPress={() => setSolicitudSeleccionada(item)}
-                      onAprobar={() => item.tipo === 'ausencia' ? actualizarSolicitudAusencia(item.solicitud as AusenciaAdmin, 'aprobada') : item.tipo === 'extension' ? resolverSolicitudExtension(item.solicitud as SolicitudExtensionTareaAdmin, true) : actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'aprobado')}
-                      onRechazar={() => item.tipo === 'ausencia' ? actualizarSolicitudAusencia(item.solicitud as AusenciaAdmin, 'rechazada') : item.tipo === 'extension' ? resolverSolicitudExtension(item.solicitud as SolicitudExtensionTareaAdmin, false) : actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'rechazado')}
+                      onAprobar={() => item.tipo === 'ausencia' ? actualizarSolicitudAusencia(item.solicitud as AusenciaAdmin, 'aprobada') : item.tipo === 'extension' ? resolverSolicitudExtension(item.solicitud as SolicitudExtensionTareaAdmin, true) : actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'aprobada')}
+                      onRechazar={() => item.tipo === 'ausencia' ? actualizarSolicitudAusencia(item.solicitud as AusenciaAdmin, 'rechazada') : item.tipo === 'extension' ? resolverSolicitudExtension(item.solicitud as SolicitudExtensionTareaAdmin, false) : actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'rechazada')}
                     />
                   )) : (
                     // EmptyState renderiza una pieza visual reutilizable dentro de esta pantalla.
@@ -1550,7 +1554,7 @@ export default function DashboardAdmin() {
                   } else if (item.tipo === 'extension') {
                     await resolverSolicitudExtension(item.solicitud as SolicitudExtensionTareaAdmin, false);
                   } else {
-                    await actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'rechazado');
+                    await actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'rechazada');
                   }
                 }}
               >
@@ -1570,7 +1574,7 @@ export default function DashboardAdmin() {
                   } else if (item.tipo === 'extension') {
                     await resolverSolicitudExtension(item.solicitud as SolicitudExtensionTareaAdmin, true);
                   } else {
-                    await actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'aprobado');
+                    await actualizarSolicitudInterna(item.solicitud as SolicitudInternaAdmin, 'aprobada');
                   }
                 }}
               >

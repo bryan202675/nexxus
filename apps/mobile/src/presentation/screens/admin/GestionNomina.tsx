@@ -115,8 +115,8 @@ const moneda = (valor: number) => `$${valor.toLocaleString('en-US', { minimumFra
  * Componente GestionNomina. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 export default function GestionNomina() {
-  // Inicializa { t, i18n }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const { t, i18n } = useTranslation();
+  // Inicializa { t }; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
+  const { t } = useTranslation();
   // Inicializa toast; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const toast = useAdminToast();
   const { width } = useWindowDimensions();
@@ -236,13 +236,17 @@ export default function GestionNomina() {
     }).start();
   }, [entrada]);
 
-  // Inicializa periodoActual; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
+  // "periodo" es una clave de coincidencia exacta contra nominas.periodo (usada para filtrar y
+  // para el .contains("datos", {periodo}) que sincroniza payments) -- NUNCA debe depender del
+  // idioma del dispositivo. Antes usaba i18n.language ('en-US' con el teléfono en inglés vs.
+  // "es-ES" fijo del dashboard): un admin generando nómina desde mobile en inglés producía
+  // "August 2026", que nunca hacía match con "Agosto de 2026" del lado dashboard -- la nómina
+  // desaparecía silenciosamente de una de las dos plataformas. Locale fijo, igual que
+  // periodoActualLabel() en apps/dashboard/.../empresa-nomina/payrollCalc.ts.
   const periodoActual = useMemo(() => {
-    // Calcula etiqueta; normaliza fechas para comparaciones, filtros o etiquetas visibles.
-    const etiqueta = new Date().toLocaleDateString(i18n.language === 'es' ? 'es-SV' : 'en-US', { month: 'long', year: 'numeric' });
-    // Devuelve el valor final calculado para esta funcion o caso de uso.
+    const etiqueta = new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
     return etiqueta.charAt(0).toUpperCase() + etiqueta.slice(1);
-  }, [i18n.language]);
+  }, []);
 
   // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
   useEffect(() => {

@@ -64,10 +64,22 @@ export class SupabaseAttendanceRepository implements IAttendanceRepository {
   async getDailySummaryByCompany(empresaId: string, dateIso: string, limit = 100): Promise<AttendanceDailySummary[]> {
     const start = `${dateIso}T00:00:00`;
     const end = `${dateIso}T23:59:59`;
-    const { data, error } = await supabase.from('asistencias').select('*').eq('empresa_id', empresaId).gte('created_at', start).lte('created_at', end).limit(limit);
-    if (error) throw error;
+    // fecha_jornada es la fecha real del turno; created_at es solo cuándo se insertó la fila. El
+    // check-in normal de mobile (registrarEventoAsistencia en ContextoUsuario.tsx) nunca setea
+    // fecha_jornada, así que no se puede filtrar solo por esa columna sin perder esos registros --
+    // pero un backfill manual desde el dashboard (empresa-asistencia/index.tsx) sí la setea al día
+    // real, con created_at en el momento de la inserción (hoy). Sin esta segunda consulta, un
+    // backfill de "ayer" aparecía en el resumen de "hoy" en vez de "ayer".
+    const [{ data: porCreacion, error: errorCreacion }, { data: porJornada, error: errorJornada }] = await Promise.all([
+      supabase.from('asistencias').select('*').eq('empresa_id', empresaId).gte('created_at', start).lte('created_at', end).limit(limit),
+      supabase.from('asistencias').select('*').eq('empresa_id', empresaId).eq('fecha_jornada', dateIso).limit(limit),
+    ]);
+    if (errorCreacion) throw errorCreacion;
+    if (errorJornada) throw errorJornada;
+    const filas = new Map<string, any>();
+    for (const row of [...(porCreacion || []), ...(porJornada || [])]) filas.set(row.id, row);
     const byUser = new Map<string, AttendanceDailySummary>();
-    for (const row of data || []) {
+    for (const row of filas.values()) {
       const rec = mapRow(row);
       const summary = byUser.get(rec.userId) || {
         userId: rec.userId, empresaId, fecha: dateIso,

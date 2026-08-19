@@ -23,7 +23,8 @@ export interface Documento {
   userId: string;
   empresaId: string;
   titulo: string;
-  tipo: 'nomina' | 'contrato' | 'rrhh' | 'certificado' | 'evaluacion' | 'otro';
+  // 'general' es una categoría real del dashboard (fallback + opción "General / Comunicados" al subir).
+  tipo: 'nomina' | 'contrato' | 'rrhh' | 'certificado' | 'evaluacion' | 'general' | 'otro';
   url: string;
   publicId?: string;
   hash?: string;

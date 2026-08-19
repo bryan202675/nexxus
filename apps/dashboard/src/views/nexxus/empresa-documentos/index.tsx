@@ -240,26 +240,43 @@ export default function GestionDocumentos() {
 
     try {
       let fileUrl = uploadForm.url.trim();
-      let fileSize = selectedFile ? selectedFile.size : 1024 * 150; // fallback simulado 150KB
+      const fileSize = selectedFile ? selectedFile.size : 1024 * 150; // fallback simulado 150KB
 
       // Si seleccionó un archivo físico, intentar subirlo al bucket de Supabase Storage
       if (selectedFile) {
         const fileExt = selectedFile.name.split(".").pop();
         const fileName = `${empresaId}/${Date.now()}_${selectedFile.name}`;
         try {
+          // El bucket real se llama "documents" (inglés) -- con "documentos" (como estaba antes)
+          // el upload fallaba siempre en silencio (bucket inexistente), así que ningún archivo
+          // subido desde esta pantalla llegaba de verdad a Supabase Storage.
           const { data: uploadData, error: uploadErr } = await supabase.storage
-            .from("documentos")
+            .from("documents")
             .upload(fileName, selectedFile, { upsert: true });
 
+          // El bucket es privado a propósito (documentos de RRHH: nómina, contratos,
+          // evaluaciones) -- getPublicUrl() nunca sirve un objeto de un bucket privado, la URL
+          // que devolvía jamás funcionaba. Con un bucket privado hay que generar una URL firmada;
+          // como el resto del código (dashboard y mobile) espera una sola URL ya lista guardada
+          // en datos.url, se firma con una vigencia muy larga (10 años) en vez de regenerarla en
+          // cada lectura -- la protección real la dan las políticas RLS de storage.objects
+          // (aisladas por empresa_id vía misma_empresa()), no que la URL sea "secreta".
           if (!uploadErr && uploadData) {
-            const { data: pubUrl } = supabase.storage.from("documentos").getPublicUrl(fileName);
-            fileUrl = pubUrl.publicUrl;
+            const DIEZ_ANIOS_EN_SEGUNDOS = 10 * 365 * 24 * 60 * 60;
+            const { data: firmada, error: firmaErr } = await supabase.storage
+              .from("documents")
+              .createSignedUrl(fileName, DIEZ_ANIOS_EN_SEGUNDOS);
+            if (!firmaErr && firmada) fileUrl = firmada.signedUrl;
           }
         } catch {
           // Si el bucket no está creado aún, continuamos guardando el registro
         }
       }
 
+      // "documentos" no tiene columna "url" -- la ubicación real vive en storage_path (NOT NULL)
+      // + se espeja en datos.url, igual que SupabaseDocumentoRepository.ts del lado mobile. Sin
+      // storage_path el insert siempre fallaba (columna inexistente + NOT NULL sin valor): subir
+      // un documento desde el dashboard nunca funcionaba.
       const payload = {
         empresa_id: empresaId,
         usuario_id: user?.id,
@@ -267,9 +284,10 @@ export default function GestionDocumentos() {
         categoria: uploadForm.categoria,
         departamento_id: uploadForm.departamentoId || null,
         tamano_bytes: fileSize,
-        url: fileUrl || null,
+        storage_path: fileUrl || "",
         leido: false,
         datos: {
+          url: fileUrl || null,
           descripcion: uploadForm.descripcion.trim() || null,
           nombreArchivo: selectedFile ? selectedFile.name : `${uploadForm.titulo.trim()}.pdf`,
           subidoPorNombre: perfil?.nombre || user?.email || "Admin",
@@ -286,6 +304,44 @@ export default function GestionDocumentos() {
         modulo: "Documentos",
         detalles: uploadForm.titulo.trim(),
       });
+
+      // Compartir un documento desde el dashboard nunca avisaba a nadie (mobile sí manda inbox +
+      // push al subir uno). El dashboard no tiene un selector de "para quién" -- solo un
+      // departamento opcional -- así que se notifica a ese departamento cuando se elige uno; sin
+      // departamento (documento de toda la empresa) no se dispara un push masivo a todos.
+      if (uploadForm.departamentoId) {
+        const mensaje = `${perfil?.nombre || "Administración"} compartió un documento nuevo con tu departamento.`;
+        const tituloDoc = uploadForm.titulo.trim();
+        const departamentoIdNotif = uploadForm.departamentoId;
+        (async () => {
+          try {
+            const { data: destinatarios, error: destinatariosError } = await supabase
+              .from("usuarios")
+              .select("id")
+              .eq("empresa_id", empresaId)
+              .eq("departamento_id", departamentoIdNotif)
+              .eq("eliminado", false);
+            if (destinatariosError || !destinatarios?.length) return;
+            await supabase.from("inbox_unificado").insert(
+              destinatarios.map((destino) => ({
+                usuario_id: destino.id,
+                empresa_id: empresaId,
+                origen: "documento",
+                contenido: { origenRefId: "", prioridad: "normal", estado: "pendiente", titulo: tituloDoc, mensaje },
+              }))
+            );
+            await Promise.all(
+              destinatarios.map((destino) =>
+                supabase.functions.invoke("send-push-notification", {
+                  body: { userId: destino.id, titulo: tituloDoc, mensaje },
+                }).catch(() => {})
+              )
+            );
+          } catch {
+            // Best-effort: el documento ya quedó subido, una notificación fallida no debe romper el flujo.
+          }
+        })();
+      }
 
       setShowUploadModal(false);
       setSelectedFile(null);

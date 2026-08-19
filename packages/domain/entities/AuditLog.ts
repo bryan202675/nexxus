@@ -16,5 +16,6 @@ export interface AuditLog {
   modulo: string; // e.g., "Roles y Permisos", "Nómina"
   detalles: string;
   ipAddress?: string;
-  estado: 'Success' | 'Warning' | 'Error';
+  // audit_logs no tiene columna de severidad real -- opcional a propósito, ver SupabaseAuditLogRepository.ts.
+  estado?: 'Success' | 'Warning' | 'Error';
 }

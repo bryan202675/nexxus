@@ -43,6 +43,9 @@ interface Props {
 type CategoriaDoc = 'todos' | Documento['tipo'];
 type IconoFeather = React.ComponentProps<typeof Feather>['name'];
 
+// "general" es la categoría real que usa el dashboard (fallback cuando no se elige otra, y
+// también seleccionable como "General / Comunicados" al subir) -- sin este chip, un documento
+// categoria="general" subido desde el dashboard no aparecía bajo ningún filtro específico aquí.
 const CATEGORIAS_KEYS: { id: CategoriaDoc; icono: IconoFeather }[] = [
   { id: 'todos', icono: 'grid' },
   { id: 'nomina', icono: 'credit-card' },
@@ -50,6 +53,7 @@ const CATEGORIAS_KEYS: { id: CategoriaDoc; icono: IconoFeather }[] = [
   { id: 'rrhh', icono: 'users' },
   { id: 'certificado', icono: 'award' },
   { id: 'evaluacion', icono: 'bar-chart-2' },
+  { id: 'general', icono: 'file' },
   { id: 'otro', icono: 'folder' },
 ];
 
