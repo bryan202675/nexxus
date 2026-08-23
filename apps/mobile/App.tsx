@@ -8,8 +8,8 @@
 
 // Importa React, { useEffect, useRef, useState } desde React; habilita componentes, hooks y tipos base para esta pieza.
 import React, { useEffect, useRef, useState } from 'react';
-// Importa { View, Text, StatusBar, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { View, Text, StatusBar, StyleSheet, TouchableOpacity, ActivityIndicator, Platform, Image as RNImage } from 'react-native';
+// Importa { View, Text, StatusBar, StyleSheet, ActivityIndicator, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
+import { View, Text, StatusBar, StyleSheet, ActivityIndicator, Platform, Image as RNImage } from 'react-native';
 // Importa { NavigationContainer, useNavigation }; permite declarar navegacion, rutas y transiciones entre pantallas.
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { useCases } from './src/infrastructure/container';

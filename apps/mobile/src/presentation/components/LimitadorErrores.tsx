@@ -8,8 +8,8 @@
 
 // Importa React desde React; habilita componentes, hooks y tipos base para esta pieza.
 import React from 'react';
-// Importa { View, Text, TouchableOpacity, StyleSheet, ScrollView } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+// Importa { View, Text, Pressable, StyleSheet, ScrollView } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
+import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';
 // Importa { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA }; reutiliza tokens visuales y constantes comunes del sistema de diseno.
@@ -99,12 +99,12 @@ export class LimitadorErrores extends React.Component<Props, Estado> {
               </Text>
             </View>
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-            <TouchableOpacity style={estilos.boton} onPress={this.reiniciar} activeOpacity={0.85}>
+            <Pressable style={({ pressed }) => [estilos.boton, pressed && estilos.botonPresionado]} onPress={this.reiniciar}>
               {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <MaterialIcons name="refresh" size={20} color={COLORES.textoInverso} />
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.textoBoton}>Reintentar</Text>
-            </TouchableOpacity>
+            </Pressable>
           </ScrollView>
         </View>
       );
@@ -212,6 +212,9 @@ const estilos = StyleSheet.create({
     paddingHorizontal: ESPACIADO.xl,
     // borderRadius redondea esquinas para definir la forma visual.
     borderRadius: RADIOS.lg,
+  },
+  botonPresionado: {
+    opacity: 0.85,
   },
   // textoBoton: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.
   textoBoton: {

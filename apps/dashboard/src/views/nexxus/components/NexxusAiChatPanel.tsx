@@ -270,14 +270,19 @@ export default function NexxusAiChatPanel({
           {mensajes.length === 0 ? (
             /* Estado Inicial de Bienvenida (Estilo Gemini con Mascota Nexxus IA y Saludo Dinámico) */
             <div className="flex h-full flex-col items-center justify-center py-6 px-4 text-center select-none animate-fadeIn max-w-2xl mx-auto">
-              <div className="mb-4 relative group cursor-pointer" onClick={() => setSaludoIndex((prev) => prev + 1)}>
+              <button
+                type="button"
+                aria-label="Cambiar saludo"
+                className="group relative mb-4 cursor-pointer"
+                onClick={() => setSaludoIndex((prev) => prev + 1)}
+              >
                 <div className="absolute -inset-4 rounded-full bg-brand-500/15 blur-xl dark:bg-brand-400/10 pointer-events-none" />
                 <img
                   src={MASCOTA_URL}
                   alt="Nexxus IA"
                   className="relative h-20 w-20 sm:h-24 sm:w-24 object-contain filter drop-shadow-lg transition-transform group-hover:scale-110 duration-300"
                 />
-              </div>
+              </button>
 
               <h2 className="mb-6 text-2xl sm:text-3xl font-semibold tracking-tight text-navy-700 dark:text-white transition-all duration-300">
                 {saludoActual.prefix}

@@ -649,13 +649,17 @@ export default function InternalChatPanel({
                   return (
                     <div
                       key={c.id}
-                      onClick={() => setSelectedId(c.id)}
                       className={`group relative flex cursor-pointer items-center gap-3 rounded-2xl p-3 transition ${
                         activa
                           ? "bg-brand-500/10 dark:bg-brand-400/20 border border-brand-500/20 dark:border-brand-400/30"
                           : "hover:bg-gray-50/80 dark:hover:bg-white/[0.04] border border-transparent"
                       }`}
                     >
+                      <button
+                        type="button"
+                        onClick={() => setSelectedId(c.id)}
+                        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                      >
                       <div className="relative shrink-0">
                         {esGrupo ? (
                           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-500/15 text-indigo-600 dark:bg-indigo-400/25 dark:text-indigo-200">
@@ -666,6 +670,8 @@ export default function InternalChatPanel({
                         )}
                         <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500 dark:border-charcoal" />
                       </div>
+
+                      </button>
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-1">

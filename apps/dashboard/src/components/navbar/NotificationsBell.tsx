@@ -46,6 +46,7 @@ export default function NotificationsBell() {
   return (
     <>
       <Dropdown
+        buttonAriaLabel="Abrir alertas de bienestar"
         button={
           <span className="relative flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-gray-600 transition hover:bg-gray-100 dark:text-white dark:hover:bg-navy-700">
             <MdOutlineNotificationsActive className="h-5 w-5" />

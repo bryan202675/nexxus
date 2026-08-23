@@ -12,7 +12,8 @@
     "build:web": "expo export --platform web",
     "build:web:report": "npm run build:web && node scripts/report-web-bundle.mjs",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "doctor": "npx react-doctor@latest"
   },
   "dependencies": {
     "@expo-google-fonts/dm-sans": "^0.4.2",

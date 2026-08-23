@@ -24,7 +24,8 @@
     "preview": "vite preview",
     "pretty": "prettier --write \"./**/*.{js,jsx,ts,tsx,json}\"",
     "test": "vitest run",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "doctor": "npx react-doctor@latest"
   },
   "browserslist": {
     "production": [

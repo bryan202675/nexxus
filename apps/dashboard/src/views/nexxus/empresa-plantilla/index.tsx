@@ -1806,10 +1806,11 @@ export default function GestionPlantilla() {
                         const isSelected = taskForm.seleccionados.includes(id);
 
                         return (
-                          <div
+                          <button
+                            type="button"
                             key={id}
                             onClick={() => handleToggleSeleccionDestinatario(id)}
-                            className={`flex cursor-pointer items-center justify-between rounded-xl p-2 transition-all ${
+                            className={`flex w-full cursor-pointer items-center justify-between rounded-xl p-2 text-left transition-all ${
                               isSelected
                                 ? "border border-brand-500/40 bg-brand-500/[0.08] dark:border-brand-400/40 dark:bg-brand-500/15"
                                 : "border border-gray-100 bg-white hover:bg-gray-50 dark:border-white/5 dark:bg-charcoal-card dark:hover:bg-white/[0.03]"
@@ -1857,7 +1858,7 @@ export default function GestionPlantilla() {
                                 {etiquetaRol(item.rol)}
                               </span>
                             )}
-                          </div>
+                          </button>
                         );
                       })
                     )}

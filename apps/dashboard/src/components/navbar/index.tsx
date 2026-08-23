@@ -50,12 +50,14 @@ const Navbar = (props) => {
 
       <div className="relative flex h-[60px] w-full items-center justify-between gap-3 rounded-full bg-white px-3.5 shadow-xl shadow-shadow-500 dark:!bg-[#0a0a0a] dark:!border dark:!border-[#242427] dark:shadow-none md:w-auto md:justify-end md:px-4">
         {/* Mobile menu trigger */}
-        <span
+        <button
+          type="button"
+          aria-label="Abrir menú lateral"
           className="flex cursor-pointer text-xl text-gray-600 dark:text-white xl:hidden shrink-0 p-1"
           onClick={onOpenSidenav}
         >
           <FiAlignJustify className="h-5 w-5" />
-        </span>
+        </button>
 
         {/* Global Search Bar */}
         <div className="flex-1 md:w-[320px] lg:w-[360px] md:flex-none">
@@ -63,7 +65,9 @@ const Navbar = (props) => {
         </div>
 
         {/* Dark Mode Toggle */}
-        <div
+        <button
+          type="button"
+          aria-label={dark ? "Activar modo claro" : "Activar modo oscuro"}
           className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-gray-600 transition hover:bg-gray-100 dark:text-white dark:hover:bg-navy-700 shrink-0"
           onClick={toggleDark}
         >
@@ -72,7 +76,7 @@ const Navbar = (props) => {
           ) : (
             <RiMoonFill className="h-4 w-4 text-gray-600 dark:text-white" />
           )}
-        </div>
+        </button>
 
         {/* Timbre de alertas de bienestar (solo admin/jefe) */}
         {ROLES_CON_ALERTAS_BIENESTAR.includes(rol) ? (
@@ -85,6 +89,7 @@ const Navbar = (props) => {
         <div className="shrink-0">
           <Dropdown
             button={<Avatar src={foto} name={nombre} size={10} className="cursor-pointer" />}
+            buttonAriaLabel="Abrir menú de usuario"
             children={
               <div className="flex w-56 flex-col justify-start rounded-[20px] bg-white bg-cover bg-no-repeat shadow-xl shadow-shadow-500 dark:!bg-navy-700 dark:text-white dark:shadow-none">
                 <div className="p-4">

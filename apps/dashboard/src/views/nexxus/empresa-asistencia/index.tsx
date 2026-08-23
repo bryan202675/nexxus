@@ -77,7 +77,7 @@ export default function GestionAsistencia() {
 
   // Filtros de fecha: "hoy", "7dias", "30dias", "todos", "personalizado"
   const [modoFecha, setModoFecha] = useState<"hoy" | "7dias" | "30dias" | "todos" | "personalizado">("todos");
-  const [fechaPersonalizada, setFechaPersonalizada] = useState(hoyISO());
+  const [fechaPersonalizada, setFechaPersonalizada] = useState(hoyISO);
 
   const [asistencias, setAsistencias] = useState<any[] | null>(null);
   const [empleados, setEmpleados] = useState<any[] | null>(null);

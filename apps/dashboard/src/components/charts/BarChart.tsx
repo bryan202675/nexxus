@@ -1,35 +1,12 @@
-import React, { Component } from 'react';
-import Chart from 'react-apexcharts';
+import Chart from "react-apexcharts";
 
-type BarChartProps = { chartData: any; chartOptions: any };
+type BarChartProps = Pick<React.ComponentProps<typeof Chart>, "options" | "series"> & {
+  chartData: React.ComponentProps<typeof Chart>["series"];
+  chartOptions: React.ComponentProps<typeof Chart>["options"];
+};
 
-class BarChart extends Component<BarChartProps, BarChartProps> {
-  constructor(props: BarChartProps) {
-    super(props);
-    this.state = {
-      chartData: [],
-      chartOptions: {},
-    };
-  }
-
-  componentDidMount() {
-    this.setState({
-      chartData: this.props.chartData,
-      chartOptions: this.props.chartOptions,
-    });
-  }
-
-  render() {
-    return (
-      <Chart
-        options={this.state.chartOptions}
-        series={this.state.chartData}
-        type="bar"
-        width="100%"
-        height="100%"
-      />
-    );
-  }
-}
+const BarChart = ({ chartData, chartOptions }: BarChartProps) => (
+  <Chart options={chartOptions} series={chartData} type="bar" width="100%" height="100%" />
+);
 
 export default BarChart;

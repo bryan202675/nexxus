@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LeaderTeamMember } from 'domain/entities/Leader';
 
@@ -61,15 +61,14 @@ export function LeaderEvaluationForm({
         {team.slice(0, 4).map((member) => {
           const active = selected?.id === member.id;
           return (
-            <TouchableOpacity
+            <Pressable
               accessibilityRole="button"
               key={member.id}
               onPress={() => setEmployeeId(member.id)}
-              style={[styles.personButton, active && styles.personButtonActive]}
-              activeOpacity={0.76}
+              style={({ pressed }) => [styles.personButton, active && styles.personButtonActive, pressed && styles.personButtonPressed]}
             >
               <Text style={[styles.personText, active && styles.personTextActive]} numberOfLines={1}>{member.nombre}</Text>
-            </TouchableOpacity>
+            </Pressable>
           );
         })}
       </View>
@@ -87,16 +86,15 @@ export function LeaderEvaluationForm({
         multiline
       />
 
-      <TouchableOpacity
+      <Pressable
         accessibilityRole="button"
         disabled={saving}
         onPress={submit}
-        style={[styles.submitButton, saving && styles.disabled]}
-        activeOpacity={0.78}
+        style={({ pressed }) => [styles.submitButton, saving && styles.disabled, pressed && styles.submitButtonPressed]}
       >
         <MaterialIcons name="save" size={17} color="#FFFFFF" />
         <Text style={styles.submitText}>{saving ? 'Guardando' : `Guardar evaluación ${PERIOD}`}</Text>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 }
@@ -110,12 +108,12 @@ function ScoreControl({ label, value, onChange }: { label: string; value: number
         <Text style={styles.scoreValue}>{value}</Text>
       </View>
       <View style={styles.scoreActions}>
-        <TouchableOpacity accessibilityRole="button" onPress={() => setScore(value - 5)} style={styles.scoreButton}>
+        <Pressable accessibilityRole="button" onPress={() => setScore(value - 5)} style={({ pressed }) => [styles.scoreButton, pressed && styles.scoreButtonPressed]}>
           <MaterialIcons name="remove" size={16} color="#CBD5E1" />
-        </TouchableOpacity>
-        <TouchableOpacity accessibilityRole="button" onPress={() => setScore(value + 5)} style={styles.scoreButton}>
+        </Pressable>
+        <Pressable accessibilityRole="button" onPress={() => setScore(value + 5)} style={({ pressed }) => [styles.scoreButton, pressed && styles.scoreButtonPressed]}>
           <MaterialIcons name="add" size={16} color="#CBD5E1" />
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </View>
   );
@@ -149,6 +147,9 @@ const styles = StyleSheet.create({
   personButtonActive: {
     borderColor: 'rgba(167,139,250,0.5)',
     backgroundColor: 'rgba(124,58,237,0.24)',
+  },
+  personButtonPressed: {
+    opacity: 0.76,
   },
   personText: {
     color: '#CBD5E1',
@@ -196,6 +197,9 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.08)',
     backgroundColor: 'rgba(255,255,255,0.04)',
   },
+  scoreButtonPressed: {
+    opacity: 0.2,
+  },
   input: {
     minHeight: 72,
     borderRadius: 12,
@@ -225,6 +229,9 @@ const styles = StyleSheet.create({
   },
   disabled: {
     opacity: 0.55,
+  },
+  submitButtonPressed: {
+    opacity: 0.78,
   },
   empty: {
     minHeight: 132,

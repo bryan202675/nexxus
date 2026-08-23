@@ -20,16 +20,22 @@ function useOutsideAlerter(ref, setX) {
 }
 
 const Dropdown = (props) => {
-  const { button, children, classNames, animation } = props;
+  const { button, children, classNames, animation, buttonAriaLabel = "Abrir menú" } = props;
   const wrapperRef = React.useRef(null);
   const [openWrapper, setOpenWrapper] = React.useState(false);
   useOutsideAlerter(wrapperRef, setOpenWrapper);
 
   return (
     <div ref={wrapperRef} className="relative flex">
-      <div className="flex" onMouseDown={() => setOpenWrapper(!openWrapper)}>
+      <button
+        type="button"
+        aria-label={buttonAriaLabel}
+        aria-expanded={openWrapper}
+        className="flex"
+        onClick={() => setOpenWrapper((isOpen) => !isOpen)}
+      >
         {button}
-      </div>
+      </button>
       <div
         className={`${classNames} absolute z-10 ${
           animation

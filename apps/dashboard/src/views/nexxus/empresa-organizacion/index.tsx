@@ -1028,13 +1028,13 @@ function CatalogCard({
   const emptyForm = () => Object.fromEntries(fields.map((f: any) => [f.key, ""]));
 
   const [showCreate, setShowCreate] = useState(false);
-  const [createForm, setCreateForm] = useState(emptyForm());
+  const [createForm, setCreateForm] = useState(emptyForm);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
-  const [editForm, setEditForm] = useState(emptyForm());
+  const [editForm, setEditForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -1178,10 +1178,11 @@ function CatalogCard({
             <div className="py-8 text-center text-xs text-gray-400 dark:text-white/40">{emptyMessage}</div>
           ) : (
             filas.map((r: any) => (
-              <div
+              <button
+                type="button"
                 key={r.id}
                 onClick={() => setSelectedId(r.id)}
-                className="flex cursor-pointer items-center justify-between py-2.5 px-1.5 transition rounded-xl hover:bg-gray-50/80 dark:hover:bg-white/[0.03]"
+                className="flex w-full cursor-pointer items-center justify-between rounded-xl px-1.5 py-2.5 text-left transition hover:bg-gray-50/80 dark:hover:bg-white/[0.03]"
               >
                 <div className="min-w-0 flex-1 pr-2">
                   <p className="truncate text-xs font-bold text-navy-700 dark:text-white">{r.nombreLabel}</p>
@@ -1192,7 +1193,7 @@ function CatalogCard({
                 <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600 dark:bg-white/10 dark:text-white/60">
                   {r.empleadosLabel} emp.
                 </span>
-              </div>
+              </button>
             ))
           )}
         </div>

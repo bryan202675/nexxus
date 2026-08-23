@@ -661,10 +661,13 @@ export default function CalendarioEmpresarial() {
                   return (
                     <div
                       key={evento.id}
-                      onClick={() => seleccionarEvento(evento)}
-                      className="flex cursor-pointer flex-col justify-between gap-3 p-4 transition hover:bg-gray-50/70 sm:flex-row sm:items-center dark:hover:bg-white/[0.02]"
+                      className="flex flex-col justify-between gap-3 p-4 transition hover:bg-gray-50/70 sm:flex-row sm:items-center dark:hover:bg-white/[0.02]"
                     >
-                      <div className="flex items-start gap-3">
+                      <button
+                        type="button"
+                        onClick={() => seleccionarEvento(evento)}
+                        className="flex flex-1 items-start gap-3 text-left"
+                      >
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
                           <MdOutlineEvent className="h-5 w-5" />
                         </div>
@@ -695,7 +698,7 @@ export default function CalendarioEmpresarial() {
                             )}
                           </div>
                         </div>
-                      </div>
+                      </button>
 
                       <div className="flex items-center gap-2">
                         {evento.empleadoNombres.length > 0 && (
