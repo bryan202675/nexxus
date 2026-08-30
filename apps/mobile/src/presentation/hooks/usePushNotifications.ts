@@ -11,6 +11,7 @@
 
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
+import { isRunningInExpoGo } from 'expo';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
@@ -41,6 +42,11 @@ export function usePushNotifications(usuarioId: string | null | undefined) {
 
   useEffect(() => {
     if (!usuarioId || Platform.OS === 'web' || yaRegistrado.current === usuarioId) return;
+
+    // Expo Go (SDK 53+) no soporta push remoto en Android; requiere Development Build
+    if (isRunningInExpoGo()) {
+      return;
+    }
 
     if (!Device.isDevice) {
       // Los simuladores/emuladores no pueden recibir push -- Expo lo documenta como limitacion

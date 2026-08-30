@@ -10,7 +10,11 @@
 import 'react-native-gesture-handler';
 // Importa { registerRootComponent } desde expo; agrega una dependencia externa necesaria para este modulo.
 import { registerRootComponent } from 'expo';
-import { Platform } from 'react-native';
+import { Platform, LogBox } from 'react-native';
+
+LogBox.ignoreLogs([
+  'expo-notifications: Android Push notifications',
+]);
 
 const isLandingWeb = Platform.OS === 'web'
   && typeof window !== 'undefined'
