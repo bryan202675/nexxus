@@ -97,7 +97,7 @@ export default function SaLogin() {
         <h4 className="mb-2.5 text-4xl font-bold text-navy-700 dark:text-white">
           Nexxus Workspace
         </h4>
-        <p className="mb-9 ml-1 text-base text-gray-600">
+        <p className="mb-9 ml-1 text-base text-gray-600 dark:text-white/70">
           Inicia sesión con tu cuenta de Nexxus para entrar a tu panel.
         </p>
         <button
