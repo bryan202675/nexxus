@@ -15,7 +15,7 @@ import { supabase } from "supabaseClient/supabaseConfig";
 // Fase 0 -- sin este metodo, un docSnap "encontrado" (a diferencia del branch explicito
 // de "no encontrado" en subscribeConfiguracionEmpresa) revienta con "snap.exists is not
 // a function" en cuanto la fila sí existe.
-const asDocSnap = (row: any) => ({ id: row.id, data: () => row, exists: () => true });
+const asDocSnap = (row: any) => ({ id: row?.id || "", data: () => row || {}, exists: () => Boolean(row) });
 
 type SubscribeTableOptions = {
   orderColumn?: string;
@@ -187,7 +187,7 @@ export function subscribeConfiguracionEmpresa(empresaId, callback, onError) {
     try {
       const { data, error } = await supabase.from("configuraciones_empresa").select("*").eq("empresa_id", empresaId).maybeSingle();
       if (error) throw error;
-      if (active) callback(data ? asDocSnap({ id: empresaId, ...data }) : { id: empresaId, exists: () => false, data: () => undefined });
+      if (active) callback(data ? asDocSnap({ id: empresaId, ...data }) : { id: empresaId, exists: () => false, data: () => ({}) });
     } catch (err) {
       if (active && onError) onError(err);
     }

@@ -21,8 +21,8 @@ export const PLAN_CATALOG = {
     annual: 144,
     limits: { employees: 15, departments: 3, branches: 1, storageGb: 5, aiRequestsMonthly: 0 },
     features: {
-      employees: true, tasks: true, attendance: true, reports: false, payroll: false,
-      requests: true, documents: false, incidents: true, inventory: false, internalChat: false, ai: false,
+      employees: true, tasks: true, attendance: true, reports: true, payroll: false,
+      requests: true, documents: true, incidents: true, inventory: true, internalChat: false, ai: false,
       metrics: false, leaders: false, exports: false, superAdmin: false, customBranding: false,
     },
   },

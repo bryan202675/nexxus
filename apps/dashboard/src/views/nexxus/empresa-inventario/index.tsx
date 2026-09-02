@@ -36,11 +36,12 @@ import {
 import { formatoFecha, formatoFechaHora } from "services/saFormat";
 
 function mapActivoRow(row: any) {
+  if (!row) return null;
   return {
     id: row.id,
     nombre: row.nombre || "Activo sin nombre",
     categoria: row.categoria || "General",
-    codigo: row.datos?.codigo || row.codigo || `ACT-${row.id.slice(0, 6).toUpperCase()}`,
+    codigo: row.datos?.codigo || row.codigo || `ACT-${String(row.id || "").slice(0, 6).toUpperCase()}`,
     serie: row.datos?.serie || row.serie || "",
     ubicacion: row.datos?.ubicacion || row.ubicacion || "Oficina Central",
     notas: row.datos?.notas || row.notas || "",
@@ -52,6 +53,7 @@ function mapActivoRow(row: any) {
 }
 
 function mapIncidenciaRow(row: any) {
+  if (!row) return null;
   return {
     id: row.id,
     activoId: row.datos?.activoId || row.activo_id || "",
@@ -170,10 +172,15 @@ export default function GestionInventario() {
 
   useEffect(() => {
     if (!empresaId) return undefined;
-    const onErr = (err: any) => setError(err.message || "No se pudo conectar con Supabase.");
+    const onErr = (err: any) => {
+      setError(err?.message || "No se pudo conectar con Supabase.");
+      setActivos((prev) => prev ?? []);
+      setIncidencias((prev) => prev ?? []);
+      setEmpleados((prev) => prev ?? []);
+    };
     const unsubs = [
-      subscribeInventario(empresaId, (docs) => setActivos(docs.map((d) => mapActivoRow(d.data()))), onErr),
-      subscribeIncidencias(empresaId, (docs) => setIncidencias(docs.map((d) => mapIncidenciaRow(d.data()))), onErr),
+      subscribeInventario(empresaId, (docs) => setActivos(docs.map((d) => mapActivoRow(d.data())).filter(Boolean)), onErr),
+      subscribeIncidencias(empresaId, (docs) => setIncidencias(docs.map((d) => mapIncidenciaRow(d.data())).filter(Boolean)), onErr),
       subscribeEmpleados(empresaId, (docs) => setEmpleados(docs.map((d) => ({ id: d.id, ...d.data() }))), onErr),
       subscribeCargos(empresaId, (docs) => setCargos(docs.map((d) => ({ id: d.id, ...d.data() }))), () => {}),
       subscribeDepartamentos(empresaId, (docs) => setDepartamentos(docs.map((d) => ({ id: d.id, ...d.data() }))), () => {}),

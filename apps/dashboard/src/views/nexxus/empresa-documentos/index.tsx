@@ -26,6 +26,7 @@ import { subscribeDocumentos, subscribeEmpleados, subscribeDepartamentos } from 
 import { formatoFecha, formatoFechaHora } from "services/saFormat";
 
 function mapDocumentoRow(row: any) {
+  if (!row) return null;
   return {
     id: row.id,
     titulo: row.titulo || row.nombre || "Documento",
@@ -130,9 +131,13 @@ export default function GestionDocumentos() {
 
   useEffect(() => {
     if (!empresaId) return undefined;
-    const onErr = (err: any) => setError(err.message || "No se pudo conectar con Supabase.");
+    const onErr = (err: any) => {
+      setError(err?.message || "No se pudo conectar con Supabase.");
+      setDocumentos((prev) => prev ?? []);
+      setEmpleados((prev) => prev ?? []);
+    };
     const unsubs = [
-      subscribeDocumentos(empresaId, (docs) => setDocumentos(docs.map((d) => mapDocumentoRow(d.data()))), onErr),
+      subscribeDocumentos(empresaId, (docs) => setDocumentos(docs.map((d) => mapDocumentoRow(d.data())).filter(Boolean)), onErr),
       subscribeEmpleados(empresaId, (docs) => setEmpleados(docs.map((d) => ({ id: d.id, ...d.data() }))), onErr),
       subscribeDepartamentos(empresaId, (docs) => setDepartamentos(docs.map((d) => ({ id: d.id, ...d.data() }))), () => {}),
     ];

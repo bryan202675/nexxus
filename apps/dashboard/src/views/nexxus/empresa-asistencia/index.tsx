@@ -109,7 +109,11 @@ export default function GestionAsistencia() {
   // Carga reactiva de datos
   useEffect(() => {
     if (!empresaId) return undefined;
-    const onErr = (err: any) => setError(err.message || "No se pudo conectar con el servidor.");
+    const onErr = (err: any) => {
+      setError(err?.message || "No se pudo conectar con el servidor.");
+      setAsistencias((prev) => prev ?? []);
+      setEmpleados((prev) => prev ?? []);
+    };
 
     const unsubs = [
       subscribeAsistencias(empresaId, (docs) => setAsistencias(docs.map((d) => ({ id: d.id, ...d.data() }))), onErr),
@@ -122,7 +126,7 @@ export default function GestionAsistencia() {
           const data = snap.exists ? snap.data() : null;
           setConfig({ ...DEFAULT_CONFIG, ...(data?.asistencia || {}) });
         },
-        onErr
+        () => {}
       ),
     ];
     return () => unsubs.forEach((fn) => fn && fn());
@@ -157,7 +161,7 @@ export default function GestionAsistencia() {
     asistencias.forEach((a) => {
       const uId = a.usuario_id;
       if (!uId) return;
-      const fecha = a.fecha_jornada || (a.created_at ? a.created_at.slice(0, 10) : hoyISO());
+      const fecha = a.fecha_jornada || (a.created_at ? String(a.created_at).slice(0, 10) : hoyISO());
       const clave = `${uId}__${fecha}`;
       if (!porUsuarioFecha.has(clave)) porUsuarioFecha.set(clave, []);
       porUsuarioFecha.get(clave)!.push(a);
@@ -218,7 +222,7 @@ export default function GestionAsistencia() {
         id: ordenados[0]?.id || clave,
         usuarioId: userId,
         fechaJornada: fecha,
-        empleadoNombre: empleado?.nombre || empleado?.correo || `Colaborador (${userId.slice(0, 6)}...)`,
+        empleadoNombre: empleado?.nombre || empleado?.correo || `Colaborador (${String(userId || "").slice(0, 6)}...)`,
         fotoPerfil: empleado?.foto_perfil || empleado?.foto,
         cargoLabel: empleado?.cargoLabel || "Colaborador",
         departamentoLabel: empleado?.departamentoLabel || "General",

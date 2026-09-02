@@ -20,6 +20,8 @@ import {
   loadMoreCompanies,
   subscribeCompanyDetail,
   updateCompanyProfile,
+  getAvailablePlans,
+  changeCompanyPlan,
   applyCompanyAction,
   setCompanyBan,
   deleteCompany,
@@ -99,6 +101,8 @@ export default function Empresas() {
 
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [plans, setPlans] = useState([]);
+  const [selectedPlanId, setSelectedPlanId] = useState("");
 
   const [showCreatePanel, setShowCreatePanel] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -122,6 +126,16 @@ export default function Empresas() {
     getPlatformStats()
       .then((value) => active && setStats(value))
       .catch((err) => active && setStatsError(err.message || "No se pudieron cargar las estadísticas."));
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    getAvailablePlans()
+      .then((items) => active && setPlans(items))
+      .catch((err) => active && setActionError(err.message || "No se pudieron cargar los planes."));
     return () => {
       active = false;
     };
@@ -186,9 +200,11 @@ export default function Empresas() {
         tamanoEquipo: detail.empresa.tamanoEquipo || "",
         codigo: detail.empresa.codigo || "",
       });
+      const currentPlan = plans.find((plan) => plan.nombre === detail.empresa.plan);
+      setSelectedPlanId(currentPlan?.id || "");
       setEditMode(false);
     }
-  }, [detail.empresa]);
+  }, [detail.empresa, plans]);
 
   const planesDisponibles = useMemo(() => {
     const set = new Set<string>();
@@ -260,6 +276,22 @@ export default function Empresas() {
       await applyCompanyAction(detail.empresa.id, action);
     } catch (err) {
       setActionError(err.message || "No se pudo aplicar la acción.");
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const handleCambiarPlan = async () => {
+    if (!detail.empresa || !selectedPlanId) return;
+    const selectedPlan = plans.find((plan) => plan.id === selectedPlanId);
+    if (!selectedPlan || selectedPlan.nombre === detail.empresa.plan) return;
+    if (!window.confirm(`¿Cambiar el plan de "${detail.empresa.nombre}" a ${selectedPlan.nombre}?`)) return;
+    setActionBusy(true);
+    setActionError("");
+    try {
+      await changeCompanyPlan(detail.empresa.id, selectedPlan.id);
+    } catch (err) {
+      setActionError(err.message || "No se pudo cambiar el plan.");
     } finally {
       setActionBusy(false);
     }
@@ -703,6 +735,30 @@ export default function Empresas() {
                     {actionError}
                   </p>
                 ) : null}
+                <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end">
+                  <label className="flex min-w-52 flex-col gap-1 text-sm font-semibold text-navy-700 dark:text-white">
+                    Plan de la empresa
+                    <select
+                      value={selectedPlanId}
+                      onChange={(event) => setSelectedPlanId(event.target.value)}
+                      disabled={actionBusy || plans.length === 0}
+                      className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-navy-700 dark:border-white/10 dark:bg-charcoal-light dark:text-white"
+                    >
+                      <option value="">Selecciona un plan</option>
+                      {plans.map((plan) => (
+                        <option key={plan.id} value={plan.id}>{plan.nombre}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    disabled={actionBusy || !selectedPlanId || plans.find((plan) => plan.id === selectedPlanId)?.nombre === detail.empresa.plan}
+                    onClick={handleCambiarPlan}
+                    className="rounded-xl bg-brand-500 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {actionBusy ? "Actualizando..." : "Cambiar plan"}
+                  </button>
+                </div>
                 <div className="flex flex-wrap gap-3">
                   <button
                     type="button"

@@ -5,6 +5,10 @@
 # en el sitio: la ultima build valida seguia sirviendo, sin ningun error visible para el usuario).
 set -e
 
+export EXPO_NO_TELEMETRY=1
+export CI=1
+export DOT_EXPO_HOME="$(pwd)/.expo"
+
 npm --workspace dashboard run build
 cp apps/dashboard/dist/index.html apps/dashboard/dist/app.html
 cp apps/Landing/index.html apps/dashboard/dist/index.html

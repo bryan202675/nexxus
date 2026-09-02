@@ -291,6 +291,48 @@ export async function updateCompanyProfile(empresaId: string, patch: any) {
   if (error) throw error;
 }
 
+export async function getAvailablePlans() {
+  const { data, error } = await supabase.from("planes").select("id, nombre").order("precio");
+  if (error) throw error;
+  return data || [];
+}
+
+async function changeCompanyPlanWithRls(empresaId, planId) {
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError || !authData.user) throw new Error("Tu sesión venció. Inicia sesión nuevamente.");
+
+  const { error: subscriptionError } = await supabase.from("suscripciones").upsert({
+    empresa_id: empresaId,
+    plan_id: planId,
+    estado: "activa",
+    cancelacion_solicitada_at: null,
+  }, { onConflict: "empresa_id" });
+  if (subscriptionError) throw subscriptionError;
+
+  const { error: companyError } = await supabase.from("empresas").update({ plan_id: planId }).eq("id", empresaId);
+  if (companyError) throw companyError;
+
+  // La política de audit_logs exige sesión y mismo tenant; para un superadmin
+  // misma_empresa() autoriza cualquier empresa. El fallo de auditoría no debe
+  // deshacer un cambio ya aplicado, pero sí queda visible en consola para revisión.
+  const { error: auditError } = await supabase.from("audit_logs").insert({
+    empresa_id: empresaId,
+    actor_id: authData.user.id,
+    accion: "Plan de empresa actualizado",
+    modulo: "Super Admin",
+    detalles: "Actualización directa con política RLS",
+    target_id: planId,
+  });
+  if (auditError) console.warn("No se pudo registrar la auditoría del cambio de plan.", auditError);
+}
+
+export async function changeCompanyPlan(empresaId, planId) {
+  const { data, error } = await supabase.functions.invoke("sa-change-company-plan", { body: { empresaId, planId } });
+  if (!error) return data;
+  if (error.name === "FunctionsFetchError") return changeCompanyPlanWithRls(empresaId, planId);
+  throw new Error("No se pudo cambiar el plan. Inténtalo nuevamente.");
+}
+
 // suscripciones.estado: "activa" (default) / "cancelando" (ya existía, cancelación programada) /
 // "vencida" (ya existía, usado por planEnforcement.ts) / "suspendida" (nuevo, ver
 // planEnforcement.ts). Antes estas 3 acciones -- ya con botones reales en la UI -- tiraban
@@ -312,10 +354,7 @@ export async function applyCompanyAction(companyId, action) {
     const { data: plan, error: planError } = await supabase.from("planes").select("id").eq("nombre", "Business").maybeSingle();
     if (planError) throw planError;
     if (!plan) throw new Error("No se encontró el plan Business.");
-    const { error } = await supabase.from("suscripciones").update({ estado: "activa", plan_id: plan.id }).eq("empresa_id", companyId);
-    if (error) throw error;
-    await supabase.from("empresas").update({ plan_id: plan.id }).eq("id", companyId);
-    return;
+    return changeCompanyPlan(companyId, plan.id);
   }
   throw new Error(`Acción no soportada: ${action}`);
 }

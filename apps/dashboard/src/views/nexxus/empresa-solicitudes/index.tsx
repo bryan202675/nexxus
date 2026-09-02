@@ -51,53 +51,62 @@ const normalizeEstado = (estado: any) => {
   return ESTADOS.includes(value) ? value : "pendiente";
 };
 
-const normalizeAusencia = (id: string, data: any) => ({
-  id,
-  source: "solicitud_ausencia",
-  sourceCollection: "solicitudes_ausencia",
-  empresaId: textValue(data.empresa_id),
-  empleadoId: textValue(data.usuario_id || data.empleado_id),
-  empleadoNombreFallback: textValue(data.datos?.usuario_nombre || data.empleado_nombre, "Colaborador"),
-  tipo: textValue(data.tipo, "ausencia"),
-  titulo: textValue(data.datos?.asunto || data.asunto, textValue(data.tipo, "Solicitud de ausencia")),
-  descripcion: textValue(data.motivo || data.datos?.motivo, "Sin detalle especificado"),
-  estado: normalizeEstado(data.estado),
-  prioridad: priorityValue(data.datos?.prioridad || data.prioridad),
-  fechaCreacion: textValue(data.created_at, new Date().toISOString()),
-  datosRaw: data,
-});
+const normalizeAusencia = (id: string, data: any) => {
+  const d = data || {};
+  return {
+    id,
+    source: "solicitud_ausencia",
+    sourceCollection: "solicitudes_ausencia",
+    empresaId: textValue(d.empresa_id),
+    empleadoId: textValue(d.usuario_id || d.empleado_id),
+    empleadoNombreFallback: textValue(d.datos?.usuario_nombre || d.empleado_nombre, "Colaborador"),
+    tipo: textValue(d.tipo, "ausencia"),
+    titulo: textValue(d.datos?.asunto || d.asunto, textValue(d.tipo, "Solicitud de ausencia")),
+    descripcion: textValue(d.motivo || d.datos?.motivo, "Sin detalle especificado"),
+    estado: normalizeEstado(d.estado),
+    prioridad: priorityValue(d.datos?.prioridad || d.prioridad),
+    fechaCreacion: textValue(d.created_at, new Date().toISOString()),
+    datosRaw: d,
+  };
+};
 
-const normalizeInterna = (id: string, data: any) => ({
-  id,
-  source: "solicitud_interna",
-  sourceCollection: "solicitudes_internas",
-  empresaId: textValue(data.empresa_id),
-  empleadoId: textValue(data.usuario_id || data.empleado_id),
-  empleadoNombreFallback: textValue(data.datos?.usuario_nombre || data.empleado_nombre, "Colaborador"),
-  tipo: textValue(data.tipo, "solicitud"),
-  titulo: textValue(data.datos?.titulo || data.titulo, textValue(data.tipo, "Solicitud interna")),
-  descripcion: textValue(data.detalle || data.datos?.detalle, "Sin detalle especificado"),
-  estado: normalizeEstado(data.estado),
-  prioridad: priorityValue(data.datos?.prioridad || data.prioridad),
-  fechaCreacion: textValue(data.created_at, new Date().toISOString()),
-  datosRaw: data,
-});
+const normalizeInterna = (id: string, data: any) => {
+  const d = data || {};
+  return {
+    id,
+    source: "solicitud_interna",
+    sourceCollection: "solicitudes_internas",
+    empresaId: textValue(d.empresa_id),
+    empleadoId: textValue(d.usuario_id || d.empleado_id),
+    empleadoNombreFallback: textValue(d.datos?.usuario_nombre || d.empleado_nombre, "Colaborador"),
+    tipo: textValue(d.tipo, "solicitud"),
+    titulo: textValue(d.datos?.titulo || d.titulo, textValue(d.tipo, "Solicitud interna")),
+    descripcion: textValue(d.detalle || d.datos?.detalle, "Sin detalle especificado"),
+    estado: normalizeEstado(d.estado),
+    prioridad: priorityValue(d.datos?.prioridad || d.prioridad),
+    fechaCreacion: textValue(d.created_at, new Date().toISOString()),
+    datosRaw: d,
+  };
+};
 
-const normalizeReporte = (id: string, data: any) => ({
-  id,
-  source: "reporte",
-  sourceCollection: "reportes",
-  empresaId: textValue(data.empresa_id),
-  empleadoId: textValue(data.empleado_id || data.usuario_id),
-  empleadoNombreFallback: textValue(data.datos?.empleadoNombre || data.empleado_nombre, "Colaborador"),
-  tipo: textValue(data.datos?.tipo || data.tipo, "reporte"),
-  titulo: textValue(data.titulo, "Reporte disciplinario"),
-  descripcion: textValue(data.datos?.detalle || data.detalle, "Sin detalle especificado"),
-  estado: normalizeEstado(data.datos?.estado || data.estado || "registrado"),
-  prioridad: priorityValue(data.datos?.gravedad || data.gravedad),
-  fechaCreacion: textValue(data.created_at, new Date().toISOString()),
-  datosRaw: data,
-});
+const normalizeReporte = (id: string, data: any) => {
+  const d = data || {};
+  return {
+    id,
+    source: "reporte",
+    sourceCollection: "reportes",
+    empresaId: textValue(d.empresa_id),
+    empleadoId: textValue(d.empleado_id || d.usuario_id),
+    empleadoNombreFallback: textValue(d.datos?.empleadoNombre || d.empleado_nombre, "Colaborador"),
+    tipo: textValue(d.datos?.tipo || d.tipo, "reporte"),
+    titulo: textValue(d.titulo, "Reporte disciplinario"),
+    descripcion: textValue(d.datos?.detalle || d.detalle, "Sin detalle especificado"),
+    estado: normalizeEstado(d.datos?.estado || d.estado || "registrado"),
+    prioridad: priorityValue(d.datos?.gravedad || d.gravedad),
+    fechaCreacion: textValue(d.created_at, new Date().toISOString()),
+    datosRaw: d,
+  };
+};
 
 const TIPO_CONFIG: Record<string, { label: string; badge: string; icon: any }> = {
   adelanto: {
@@ -230,7 +239,13 @@ export default function CentroReportesSolicitudes() {
 
   useEffect(() => {
     if (!empresaId) return undefined;
-    const onErr = (err: any) => setError(err.message || "No se pudo conectar con Supabase.");
+    const onErr = (err: any) => {
+      setError(err?.message || "No se pudo conectar con Supabase.");
+      setAusencias((prev) => prev ?? []);
+      setInternas((prev) => prev ?? []);
+      setReportes((prev) => prev ?? []);
+      setEmpleados((prev) => prev ?? []);
+    };
     const unsubs = [
       subscribeSolicitudesAusencia(empresaId, (docs) => setAusencias(docs.map((d) => normalizeAusencia(d.id, d.data()))), onErr),
       subscribeSolicitudesInternas(empresaId, (docs) => setInternas(docs.map((d) => normalizeInterna(d.id, d.data()))), onErr),
