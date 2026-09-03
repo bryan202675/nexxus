@@ -76,7 +76,7 @@ export default function GestionAsistencia() {
   const tieneExportar = tieneFeature(planFeatures, "exports");
 
   // Filtros de fecha: "hoy", "7dias", "30dias", "todos", "personalizado"
-  const [modoFecha, setModoFecha] = useState<"hoy" | "7dias" | "30dias" | "todos" | "personalizado">("todos");
+  const [modoFecha, setModoFecha] = useState<"hoy" | "7dias" | "30dias" | "todos" | "personalizado">("hoy");
   const [fechaPersonalizada, setFechaPersonalizada] = useState(hoyISO);
 
   const [asistencias, setAsistencias] = useState<any[] | null>(null);
@@ -85,6 +85,7 @@ export default function GestionAsistencia() {
   const [departamentos, setDepartamentos] = useState<any[]>([]);
   const [config, setConfig] = useState(DEFAULT_CONFIG);
   const [error, setError] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
 
   // Búsqueda y filtros rápidos
   const [busqueda, setBusqueda] = useState("");
@@ -106,18 +107,16 @@ export default function GestionAsistencia() {
 
   const [selectedAsistencia, setSelectedAsistencia] = useState<any | null>(null);
 
-  // Carga reactiva de datos
+  // 1. Carga reactiva de metadatos organizacionales (empleados, cargos, departamentos, config)
   useEffect(() => {
     if (!empresaId) return undefined;
-    const onErr = (err: any) => {
-      setError(err?.message || "No se pudo conectar con el servidor.");
-      setAsistencias((prev) => prev ?? []);
+    const onMetaErr = (err: any) => {
+      console.warn("Error cargando empleados/metadatos:", err);
       setEmpleados((prev) => prev ?? []);
     };
 
     const unsubs = [
-      subscribeAsistencias(empresaId, (docs) => setAsistencias(docs.map((d) => ({ id: d.id, ...d.data() }))), onErr),
-      subscribeEmpleados(empresaId, (docs) => setEmpleados(docs.map((d) => ({ id: d.id, ...d.data() }))), onErr),
+      subscribeEmpleados(empresaId, (docs) => setEmpleados(docs.map((d) => ({ id: d.id, ...d.data() }))), onMetaErr),
       subscribeCargos(empresaId, (docs) => setCargos(docs.map((d) => ({ id: d.id, ...d.data() }))), () => {}),
       subscribeDepartamentos(empresaId, (docs) => setDepartamentos(docs.map((d) => ({ id: d.id, ...d.data() }))), () => {}),
       subscribeConfiguracionEmpresa(
@@ -131,6 +130,43 @@ export default function GestionAsistencia() {
     ];
     return () => unsubs.forEach((fn) => fn && fn());
   }, [empresaId]);
+
+  // 2. Carga reactiva de asistencias filtradas en base de datos para prevenir timeouts
+  useEffect(() => {
+    if (!empresaId) return undefined;
+    setError("");
+    setAsistencias(null); // feedback visual de carga al cambiar de rango
+
+    const onAsistenciaErr = (err: any) => {
+      const msg = String(err?.message || "");
+      if (msg.includes("timeout") || msg.includes("57014") || msg.includes("canceling statement")) {
+        setError(
+          "La consulta tardó más de lo esperado debido al volumen de registros históricos. Te sugerimos filtrar por 'Hoy' o por una fecha específica."
+        );
+      } else {
+        setError(msg || "No se pudo conectar con el servidor de asistencias.");
+      }
+      setAsistencias((prev) => prev ?? []);
+    };
+
+    const unsub = subscribeAsistencias(
+      empresaId,
+      (docs) => {
+        setError("");
+        setAsistencias(docs.map((d) => ({ id: d.id, ...d.data() })));
+      },
+      onAsistenciaErr,
+      {
+        modoFecha,
+        fechaPersonalizada,
+        limite: modoFecha === "todos" ? 500 : 1000,
+      }
+    );
+
+    return () => {
+      if (unsub) unsub();
+    };
+  }, [empresaId, modoFecha, fechaPersonalizada, retryCount]);
 
   const empleadosPorId = useMemo(() => {
     const map = new Map<string, any>();
@@ -416,14 +452,35 @@ export default function GestionAsistencia() {
     );
   }
 
-  const cargando = asistencias === null || empleados === null;
+  const cargando = (asistencias === null || empleados === null) && !error;
 
   return (
     <div className="flex flex-col gap-6 pb-6">
       {/* Banner de error */}
       {error && (
-        <div className="rounded-xl bg-red-50 p-4 text-xs font-bold text-red-600 dark:bg-red-500/10 dark:text-red-400">
-          {error}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-xl bg-red-50 p-4 text-xs font-bold text-red-600 dark:bg-red-500/10 dark:text-red-400">
+          <div className="flex items-center gap-2">
+            <MdOutlineWarningAmber className="h-5 w-5 shrink-0 text-red-500" />
+            <span>{error}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {modoFecha !== "hoy" && (
+              <button
+                type="button"
+                onClick={() => setModoFecha("hoy")}
+                className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-700 active:scale-95 transition"
+              >
+                Ver Hoy
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setRetryCount((prev) => prev + 1)}
+              className="rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-50 active:scale-95 transition dark:border-red-500/30 dark:bg-charcoal dark:text-red-300"
+            >
+              Reintentar
+            </button>
+          </div>
         </div>
       )}
 
@@ -551,17 +608,6 @@ export default function GestionAsistencia() {
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => setModoFecha("todos")}
-              className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
-                modoFecha === "todos"
-                  ? "bg-brand-500 text-white shadow-sm shadow-brand-500/20"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-white/10 dark:text-white/80 dark:hover:bg-white/20"
-              }`}
-            >
-              Todo el Historial ({registrosProcesados.length})
-            </button>
-            <button
-              type="button"
               onClick={() => setModoFecha("hoy")}
               className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
                 modoFecha === "hoy"
@@ -569,7 +615,7 @@ export default function GestionAsistencia() {
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-white/10 dark:text-white/80 dark:hover:bg-white/20"
               }`}
             >
-              Hoy ({hoyISO()})
+              Hoy ({hoyISO()}){modoFecha === "hoy" && !cargando ? ` (${registrosProcesados.length})` : ""}
             </button>
             <button
               type="button"
@@ -580,7 +626,7 @@ export default function GestionAsistencia() {
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-white/10 dark:text-white/80 dark:hover:bg-white/20"
               }`}
             >
-              Últimos 7 días
+              Últimos 7 días{modoFecha === "7dias" && !cargando ? ` (${registrosProcesados.length})` : ""}
             </button>
             <button
               type="button"
@@ -591,7 +637,18 @@ export default function GestionAsistencia() {
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-white/10 dark:text-white/80 dark:hover:bg-white/20"
               }`}
             >
-              Últimos 30 días
+              Últimos 30 días{modoFecha === "30dias" && !cargando ? ` (${registrosProcesados.length})` : ""}
+            </button>
+            <button
+              type="button"
+              onClick={() => setModoFecha("todos")}
+              className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
+                modoFecha === "todos"
+                  ? "bg-brand-500 text-white shadow-sm shadow-brand-500/20"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-white/10 dark:text-white/80 dark:hover:bg-white/20"
+              }`}
+            >
+              Todo el Historial{modoFecha === "todos" && !cargando ? ` (${registrosProcesados.length})` : ""}
             </button>
 
             {/* Fecha personalizada con estilo oscuro nítido */}

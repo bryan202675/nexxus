@@ -73,7 +73,11 @@ export default function Admin(props) {
     () => flatRoutes.find((r) => location.pathname.includes(routeSegment(r.layout, r.path))),
     [flatRoutes, location.pathname]
   );
-  const isIaView = !!activeFlatRoute?.path.includes("-ia");
+  const isFullHeightView = !!(
+    activeFlatRoute?.path.includes("-ia") ||
+    activeFlatRoute?.path.includes("mensajeria") ||
+    activeFlatRoute?.path.includes("chat")
+  );
 
   document.documentElement.dir = "ltr";
   return (
@@ -94,7 +98,7 @@ export default function Admin(props) {
                   brandText={currentRoute}
                   {...rest}
                 />
-                <div className={`pt-4 mx-auto mb-auto h-full p-2 md:pr-2 bg-lightPrimary dark:!bg-black ${isIaView ? "min-h-[calc(100vh-100px)]" : "min-h-[84vh]"}`}>
+                <div className={`pt-4 mx-auto mb-auto h-full p-2 md:pr-2 bg-lightPrimary dark:!bg-black ${isFullHeightView ? "min-h-[calc(100vh-100px)]" : "min-h-[84vh]"}`}>
                   <Routes>
                     {getRoutes(flatRoutes)}
 
@@ -102,7 +106,7 @@ export default function Admin(props) {
                   </Routes>
                 </div>
               </div>
-              {!isIaView && (
+              {!isFullHeightView && (
                 <div className="p-3 bg-lightPrimary dark:!bg-black">
                   <Footer />
                 </div>

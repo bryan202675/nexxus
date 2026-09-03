@@ -109,18 +109,58 @@ export function subscribeAlertasBienestar(empresaId, callback, onError, limite =
   })(callback, onError);
 }
 
-export function subscribeAsistencias(empresaId: string, callback: any, onError: any, limite = 1000) {
+export type SubscribeAsistenciasOptions = {
+  limite?: number;
+  modoFecha?: "hoy" | "7dias" | "30dias" | "todos" | "personalizado";
+  fechaPersonalizada?: string;
+  orderColumn?: string;
+  ascending?: boolean;
+};
+
+export function subscribeAsistencias(
+  empresaId: string,
+  callback: any,
+  onError: any,
+  optionsOrLimit: number | SubscribeAsistenciasOptions = 500
+) {
+  const options: SubscribeAsistenciasOptions =
+    typeof optionsOrLimit === "number" ? { limite: optionsOrLimit } : (optionsOrLimit || {});
+  const { modoFecha = "todos", fechaPersonalizada, limite = 500 } = options;
+
+  let extraFilter: ((q: any) => any) | undefined = undefined;
+  // Solo ordenar en BD si se especifica explícitamente. Evitamos created_at sin índice
+  // para prevenir "canceling statement due to statement timeout" en tablas con miles de registros.
+  const orderColumn: string | undefined = options.orderColumn;
+  const ascending = options.ascending ?? false;
+
+  const hoyISO = new Date().toISOString().slice(0, 10);
+
+  if (modoFecha === "hoy") {
+    extraFilter = (q: any) => q.eq("fecha_jornada", hoyISO);
+  } else if (modoFecha === "personalizado" && fechaPersonalizada) {
+    extraFilter = (q: any) => q.eq("fecha_jornada", fechaPersonalizada);
+  } else if (modoFecha === "7dias") {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    const limitDate = d.toISOString().slice(0, 10);
+    extraFilter = (q: any) => q.gte("fecha_jornada", limitDate);
+  } else if (modoFecha === "30dias") {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    const limitDate = d.toISOString().slice(0, 10);
+    extraFilter = (q: any) => q.gte("fecha_jornada", limitDate);
+  }
+
   return subscribeTable("asistencias", empresaId, {
-    orderColumn: "created_at",
-    ascending: false,
+    orderColumn,
+    ascending,
     limit: limite,
+    extraFilter,
   })(callback, onError);
 }
 
 export function subscribeAsistenciasHoy(empresaId: string, fechaJornada: string, callback: any, onError: any, limite = 1000) {
   return subscribeTable("asistencias", empresaId, {
-    orderColumn: "created_at",
-    ascending: true,
     limit: limite,
     extraFilter: (q) => q.eq("fecha_jornada", fechaJornada),
   })(callback, onError);

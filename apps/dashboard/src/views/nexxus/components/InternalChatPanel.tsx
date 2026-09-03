@@ -10,6 +10,7 @@ import {
   MdOutlineGroups,
   MdOutlinePerson,
   MdOutlineCheck,
+  MdArrowBack,
 } from "react-icons/md";
 import { supabase } from "supabaseClient/supabaseConfig";
 
@@ -144,7 +145,7 @@ function UnreadBadge({ conversacionId, uid }: { conversacionId: string; uid?: st
 
   if (!noLeido) return null;
   return (
-    <span className="rounded-full bg-brand-500 px-2 py-0.5 text-[9.5px] font-black text-white shadow-xs animate-pulse">
+    <span className="rounded-full bg-brand-500 px-2 py-0.5 text-[9.5px] font-black text-white shadow-sm animate-pulse">
       Nuevo
     </span>
   );
@@ -535,12 +536,12 @@ export default function InternalChatPanel({
   }, [empleados, busquedaModal]);
 
   return (
-    <div className="flex flex-col gap-5 pb-6">
+    <div className="flex flex-col gap-3.5 pb-2">
       {/* Cabecera de Sección */}
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+      <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">{title}</h2>
-          <p className="mt-1 text-sm font-medium text-gray-500 dark:text-white/60">{description}</p>
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-navy-700 dark:text-white">{title}</h2>
+          <p className="mt-0.5 text-xs sm:text-sm font-medium text-gray-500 dark:text-white/60">{description}</p>
         </div>
 
         <button
@@ -552,7 +553,7 @@ export default function InternalChatPanel({
             setBusquedaModal("");
             setShowNuevo(true);
           }}
-          className="flex items-center gap-1.5 rounded-xl bg-brand-500 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 active:scale-95 dark:bg-brand-400"
+          className="flex items-center gap-1.5 rounded-xl bg-brand-500 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 active:scale-[0.98] dark:bg-brand-400"
         >
           <MdAdd className="h-4 w-4" />
           <span>Nueva Conversación</span>
@@ -566,8 +567,8 @@ export default function InternalChatPanel({
       )}
 
       {/* Grid Principal: Sidebar de Conversaciones + Chat */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[360px_1fr]">
-        <NexxusCard extra="flex h-[calc(100vh-230px)] min-h-[580px] flex-col p-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[340px_1fr] xl:grid-cols-[360px_1fr]">
+        <NexxusCard extra={`flex h-[calc(100vh-195px)] min-h-[460px] flex-col p-3.5 ${selectedId ? "hidden lg:flex" : "flex"}`}>
           {/* Buscador de conversaciones */}
           <div className="relative mb-3">
             <MdOutlineSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-gray-400 dark:text-white/50" />
@@ -585,9 +586,9 @@ export default function InternalChatPanel({
             <button
               type="button"
               onClick={() => setFiltroTipoConv("todas")}
-              className={`flex-1 rounded-lg py-1.5 text-xs font-bold transition ${
+              className={`flex-1 rounded-lg py-1.5 text-xs font-bold transition duration-150 ${
                 filtroTipoConv === "todas"
-                  ? "bg-white text-navy-700 shadow-xs dark:bg-charcoal dark:text-white"
+                  ? "bg-white text-navy-700 shadow-sm dark:bg-charcoal dark:text-white"
                   : "text-gray-500 hover:text-navy-700 dark:text-white/60 dark:hover:text-white"
               }`}
             >
@@ -596,9 +597,9 @@ export default function InternalChatPanel({
             <button
               type="button"
               onClick={() => setFiltroTipoConv("directas")}
-              className={`flex-1 rounded-lg py-1.5 text-xs font-bold transition ${
+              className={`flex-1 rounded-lg py-1.5 text-xs font-bold transition duration-150 ${
                 filtroTipoConv === "directas"
-                  ? "bg-white text-navy-700 shadow-xs dark:bg-charcoal dark:text-white"
+                  ? "bg-white text-navy-700 shadow-sm dark:bg-charcoal dark:text-white"
                   : "text-gray-500 hover:text-navy-700 dark:text-white/60 dark:hover:text-white"
               }`}
             >
@@ -607,9 +608,9 @@ export default function InternalChatPanel({
             <button
               type="button"
               onClick={() => setFiltroTipoConv("grupos")}
-              className={`flex-1 rounded-lg py-1.5 text-xs font-bold transition ${
+              className={`flex-1 rounded-lg py-1.5 text-xs font-bold transition duration-150 ${
                 filtroTipoConv === "grupos"
-                  ? "bg-white text-navy-700 shadow-xs dark:bg-charcoal dark:text-white"
+                  ? "bg-white text-navy-700 shadow-sm dark:bg-charcoal dark:text-white"
                   : "text-gray-500 hover:text-navy-700 dark:text-white/60 dark:hover:text-white"
               }`}
             >
@@ -637,7 +638,7 @@ export default function InternalChatPanel({
                 </p>
               </div>
             ) : (
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1">
                 {conversacionesFiltradas.map((c) => {
                   const esGrupo = esGrupoConv(c);
                   const participantes = obtenerParticipantesDeConv(c);
@@ -649,17 +650,13 @@ export default function InternalChatPanel({
                   return (
                     <div
                       key={c.id}
-                      className={`group relative flex cursor-pointer items-center gap-3 rounded-2xl p-3 transition ${
+                      onClick={() => setSelectedId(c.id)}
+                      className={`group relative flex cursor-pointer items-center gap-3 rounded-2xl p-2.5 transition duration-150 active:scale-[0.99] ${
                         activa
-                          ? "bg-brand-500/10 dark:bg-brand-400/20 border border-brand-500/20 dark:border-brand-400/30"
+                          ? "bg-brand-500/10 dark:bg-brand-400/20 border border-brand-500/25 dark:border-brand-400/30"
                           : "hover:bg-gray-50/80 dark:hover:bg-white/[0.04] border border-transparent"
                       }`}
                     >
-                      <button
-                        type="button"
-                        onClick={() => setSelectedId(c.id)}
-                        className="flex min-w-0 flex-1 items-center gap-3 text-left"
-                      >
                       <div className="relative shrink-0">
                         {esGrupo ? (
                           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-500/15 text-indigo-600 dark:bg-indigo-400/25 dark:text-indigo-200">
@@ -671,23 +668,21 @@ export default function InternalChatPanel({
                         <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500 dark:border-charcoal" />
                       </div>
 
-                      </button>
-
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-1">
+                        <div className="flex items-center justify-between gap-1.5">
                           <p
                             className={`truncate text-xs font-bold ${
-                              activa ? "text-brand-500 dark:text-brand-300" : "text-navy-700 dark:text-white"
+                              activa ? "text-brand-600 dark:text-brand-300" : "text-navy-700 dark:text-white"
                             }`}
                           >
                             {titulo}
                           </p>
-                          <span className="shrink-0 text-[10.5px] font-semibold text-gray-400 dark:text-white/40">
+                          <span className="shrink-0 text-[10.5px] font-medium text-gray-400 dark:text-white/40">
                             {formatoFechaConversacion(c.ultimoMensajeAt)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between gap-1 mt-0.5">
-                          <p className="truncate text-[11.5px] font-medium text-gray-500 dark:text-white/60">
+                          <p className="truncate text-[11.5px] font-normal text-gray-500 dark:text-white/60">
                             {c.ultimoMensaje || "Conversación iniciada"}
                           </p>
                           <UnreadBadge conversacionId={c.id} uid={user?.id} />
@@ -702,7 +697,7 @@ export default function InternalChatPanel({
                           e.stopPropagation();
                           handleEliminarConversacion(c.id);
                         }}
-                        className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-gray-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 transition"
+                        className="opacity-0 group-hover:opacity-100 shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 transition"
                       >
                         <MdDeleteOutline className="h-4 w-4" />
                       </button>
@@ -714,7 +709,7 @@ export default function InternalChatPanel({
           </div>
         </NexxusCard>
 
-        <NexxusCard extra="flex h-[calc(100vh-230px)] min-h-[580px] flex-col p-0 overflow-hidden">
+        <NexxusCard extra={`flex h-[calc(100vh-195px)] min-h-[460px] flex-col p-0 overflow-hidden ${!selectedId ? "hidden lg:flex" : "flex"}`}>
           {!conversacionSeleccionada ? (
             <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-brand-500/10 text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
@@ -730,8 +725,17 @@ export default function InternalChatPanel({
           ) : (
             <>
               {/* Header de la conversación */}
-              <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50/70 px-5 py-3.5 dark:border-white/5 dark:bg-charcoal">
+              <div className="flex shrink-0 items-center justify-between border-b border-gray-100 bg-gray-50/70 px-4 py-3 sm:px-5 sm:py-3.5 dark:border-white/5 dark:bg-charcoal">
                 <div className="flex items-center gap-3 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedId(null)}
+                    className="flex items-center justify-center rounded-lg p-1 text-gray-500 hover:bg-gray-200/60 dark:text-white/70 dark:hover:bg-white/10 lg:hidden"
+                    title="Volver a la lista"
+                  >
+                    <MdArrowBack className="h-5 w-5" />
+                  </button>
+
                   <div className="relative shrink-0">
                     {esGrupoConv(conversacionSeleccionada) ? (
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-500/15 text-indigo-600 dark:bg-indigo-400/25 dark:text-indigo-200">
@@ -752,13 +756,20 @@ export default function InternalChatPanel({
                     <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500 dark:border-charcoal" />
                   </div>
                   <div className="min-w-0">
-                    <h4 className="truncate text-sm font-black text-navy-700 dark:text-white">
+                    <h4 className="truncate text-sm font-bold text-navy-700 dark:text-white">
                       {tituloConversacion(conversacionSeleccionada)}
                     </h4>
                     <p className="truncate text-[11px] font-medium text-gray-500 dark:text-white/60">
-                      {obtenerParticipantesDeConv(conversacionSeleccionada)
-                        .map((p: any) => p.nombre)
-                        .join(", ")}
+                      {(() => {
+                        const esGrupo = esGrupoConv(conversacionSeleccionada);
+                        const parts = obtenerParticipantesDeConv(conversacionSeleccionada);
+                        if (esGrupo) {
+                          return `${parts.length} participantes • ${parts.map((p: any) => p.nombre).join(", ")}`;
+                        }
+                        const otro = parts.find((p: any) => p.id !== user?.id);
+                        const emp = otro ? empleadoPorId.get(otro.id) : null;
+                        return emp?.cargo || "Colaborador • Activo";
+                      })()}
                     </p>
                   </div>
                 </div>
@@ -771,13 +782,13 @@ export default function InternalChatPanel({
               )}
 
               {/* Cuerpo del chat / Mensajes con Tipografía Ampliada y Legible */}
-              <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-3.5">
                 {cargandoMensajes ? (
                   <div className="flex h-full items-center justify-center">
-                    <div className="h-7 w-7 animate-spin rounded-full border-3 border-brand-500 border-t-transparent" />
+                    <div className="h-7 w-7 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
                   </div>
                 ) : mensajes.length === 0 ? (
-                  <div className="flex h-full flex-col items-center justify-center text-center">
+                  <div className="flex h-full flex-col items-center justify-center text-center p-4">
                     <p className="text-sm font-bold text-navy-700 dark:text-white">Inicio de la conversación</p>
                     <p className="text-xs text-gray-400 dark:text-white/50 mt-1">
                       Envía un mensaje para comenzar a chatear.
@@ -797,19 +808,23 @@ export default function InternalChatPanel({
                       if (showDateDivider) lastDateStr = fechaSeparador;
 
                       return (
-                        <div key={m.id} className="space-y-3">
+                        <div key={m.id} className="space-y-2.5">
                           {showDateDivider && (
                             <div className="flex items-center justify-center my-3">
-                              <span className="rounded-full bg-gray-100 px-3.5 py-1 text-xs font-bold text-gray-600 dark:bg-white/10 dark:text-white/70 shadow-2xs">
+                              <span className="rounded-full bg-gray-100/90 dark:bg-white/10 px-3.5 py-1 text-xs font-semibold text-gray-500 dark:text-white/70 shadow-sm border border-gray-200/50 dark:border-white/5">
                                 {fechaSeparador}
                               </span>
                             </div>
                           )}
 
-                          <div className={`flex items-end gap-2.5 ${esMio ? "justify-end" : "justify-start"}`}>
-                            {!esMio && <Avatar src={remitenteFoto} name={remitenteNombre} size={9} />}
+                          <div className={`flex items-end gap-2 ${esMio ? "justify-end" : "justify-start"}`}>
+                            {!esMio && (
+                              <div className="mb-0.5 shrink-0">
+                                <Avatar src={remitenteFoto} name={remitenteNombre} size={8} />
+                              </div>
+                            )}
 
-                            <div className={`max-w-[75%] flex flex-col ${esMio ? "items-end" : "items-start"}`}>
+                            <div className={`max-w-[78%] sm:max-w-[72%] flex flex-col ${esMio ? "items-end" : "items-start"}`}>
                               {!esMio && (
                                 <span className="mb-1 ml-1 text-xs font-bold text-gray-700 dark:text-white/80">
                                   {remitenteNombre}
@@ -817,10 +832,10 @@ export default function InternalChatPanel({
                               )}
 
                               <div
-                                className={`rounded-2xl px-4.5 py-3 text-[13.5px] font-medium leading-relaxed shadow-xs ${
+                                className={`rounded-2xl px-4 py-2.5 text-[13.5px] font-normal leading-relaxed shadow-sm break-words max-w-full ${
                                   esMio
-                                    ? "rounded-br-xs bg-brand-500 text-white"
-                                    : "rounded-bl-xs bg-gray-100 text-navy-700 dark:bg-white/10 dark:text-white"
+                                    ? "rounded-br-sm bg-brand-500 text-white"
+                                    : "rounded-bl-sm bg-gray-100 text-navy-700 dark:bg-white/10 dark:text-white"
                                 }`}
                               >
                                 {/* Adjuntos */}
@@ -848,7 +863,7 @@ export default function InternalChatPanel({
                                   ) : null;
                                 })()}
 
-                                {m.texto && <span className="whitespace-pre-wrap">{m.texto}</span>}
+                                {m.texto && <p className="whitespace-pre-wrap select-text">{m.texto}</p>}
                               </div>
 
                               <div className="flex items-center gap-1 mt-1 text-[10.5px] font-medium text-gray-400 dark:text-white/40 px-1">
@@ -866,8 +881,8 @@ export default function InternalChatPanel({
               </div>
 
               {/* Barra de Entrada de Mensajes */}
-              <div className="border-t border-gray-100 bg-white p-3 dark:border-white/5 dark:bg-charcoal">
-                <form onSubmit={handleEnviarMensaje} className="flex items-end gap-2">
+              <div className="shrink-0 border-t border-gray-100 bg-white p-3 dark:border-white/5 dark:bg-charcoal">
+                <form onSubmit={handleEnviarMensaje} className="flex items-center gap-2">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -881,7 +896,7 @@ export default function InternalChatPanel({
                     disabled={subiendoArchivo || enviando}
                     title="Adjuntar imagen o archivo"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-600 transition hover:bg-gray-100 active:scale-95 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-white/80"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-600 transition hover:bg-gray-100 active:scale-95 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-white/80"
                   >
                     {subiendoArchivo ? (
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
@@ -896,13 +911,13 @@ export default function InternalChatPanel({
                     onKeyDown={handleKeyDownTextarea}
                     rows={1}
                     placeholder="Escribe un mensaje... (Enter para enviar, Shift+Enter para salto de línea)"
-                    className="min-h-[44px] max-h-32 flex-1 resize-none rounded-xl border border-gray-200 bg-gray-50/70 py-2.5 px-3.5 text-[13.5px] font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white placeholder:text-xs"
+                    className="min-h-[42px] max-h-32 flex-1 resize-none rounded-xl border border-gray-200 bg-gray-50/70 py-2.5 px-3.5 text-xs sm:text-sm font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white placeholder:text-xs"
                   />
 
                   <button
                     type="submit"
                     disabled={!texto.trim() || enviando}
-                    className="flex h-11 shrink-0 items-center gap-1.5 rounded-xl bg-brand-500 px-4.5 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 active:scale-95 disabled:opacity-40 dark:bg-brand-400"
+                    className="flex h-10 shrink-0 items-center gap-1.5 rounded-xl bg-brand-500 px-4 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 active:scale-95 disabled:opacity-40 dark:bg-brand-400"
                   >
                     <MdSend className="h-4 w-4" />
                     <span className="hidden sm:inline">Enviar</span>
