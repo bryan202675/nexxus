@@ -325,7 +325,7 @@ const useAdminTextTranslation = (source: string) => {
 
 const TranslatedString = ({ value }: { value: string }) => {
   const translated = useAdminTextTranslation(value);
-  return <>{translated}</>;
+  return <NativeText>{translated}</NativeText>;
 };
 
 const translateChildren = (children: React.ReactNode): React.ReactNode => {
@@ -353,7 +353,15 @@ export function AdminTranslationProvider({
   return <AdminTranslationContext.Provider value={value}>{children}</AdminTranslationContext.Provider>;
 }
 
+function AdminTranslatedSingleText({ text, ...props }: { text: string } & TextProps) {
+  const translated = useAdminTextTranslation(text);
+  return <NativeText {...props}>{translated}</NativeText>;
+}
+
 export function AdminTranslatedText({ children, ...props }: TextProps) {
+  if (typeof children === 'string') {
+    return <AdminTranslatedSingleText text={children} {...props} />;
+  }
   return <NativeText {...props}>{translateChildren(children)}</NativeText>;
 }
 

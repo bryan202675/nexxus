@@ -11,6 +11,10 @@
       "path": "./packages/domain"
     }
   ],
-  "compilerOptions": {},
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./apps/mobile/src/*"]
+    }
+  },
   "extends": "expo/tsconfig.base"
 }

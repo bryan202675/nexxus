@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler';
 /**
  * Documentacion Nexxus - apps/mobile/App.tsx
  * Capa: app.
@@ -326,6 +327,7 @@ const linkingConfig = {
  * Componente App. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 export default function App() {
+  console.log('[NEXXUS] App root component rendered successfully!');
   const [fontsLoaded] = useFonts({
     DMSans_400Regular,
     DMSans_500Medium,

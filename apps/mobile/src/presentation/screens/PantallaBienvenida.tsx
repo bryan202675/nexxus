@@ -36,6 +36,7 @@ const ISO_CLARO = require('../../../assets/isoNexxusBlack.png');
 const { width } = Dimensions.get('window');
 
 export default function PantallaBienvenida() {
+  console.log('[NEXXUS] PantallaBienvenida mounted successfully!');
   const { t } = useTranslation();
   const navegacion = useNavigation<any>();
   const { colores, blurTint, intensidadBlur, esOscuro, alternarModo } = useTemaMobile();

@@ -1,0 +1,55 @@
+{
+  "expo": {
+    "name": "nexxus",
+    "slug": "nexxus",
+    "version": "1.0.0",
+    "entryPoint": "./App.js",
+    "orientation": "portrait",
+    "icon": "./apps/mobile/assets/logoNexxus2 (1) (1).png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bryan202675.nexxus",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.bryan202675.nexxus",
+      "adaptiveIcon": {
+        "foregroundImage": "./apps/mobile/assets/logoNexxus2 (1) (1).png",
+        "backgroundColor": "#ffffff"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./apps/mobile/assets/logoNexxus2 (1) (1).png"
+    },
+    "plugins": [
+      "expo-localization",
+      "expo-font",
+      "expo-audio",
+      [
+        "expo-notifications",
+        {
+          "icon": "./apps/mobile/assets/logoNexxus2 (1) (1).png",
+          "color": "#7C3AED"
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./apps/mobile/assets/logoNexxus2 (1) (1).png",
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "dbe743ab-dc02-4e26-9b3b-d227a2f4e99e"
+      }
+    },
+    "owner": "bryan202675"
+  }
+}
