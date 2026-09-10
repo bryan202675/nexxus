@@ -287,7 +287,6 @@ export default function GestionDocumentos() {
         usuario_id: user?.id,
         titulo: uploadForm.titulo.trim(),
         categoria: uploadForm.categoria,
-        departamento_id: uploadForm.departamentoId || null,
         tamano_bytes: fileSize,
         storage_path: fileUrl || "",
         leido: false,
@@ -295,6 +294,7 @@ export default function GestionDocumentos() {
           url: fileUrl || null,
           descripcion: uploadForm.descripcion.trim() || null,
           nombreArchivo: selectedFile ? selectedFile.name : `${uploadForm.titulo.trim()}.pdf`,
+          departamentoId: uploadForm.departamentoId || null,
           subidoPorNombre: perfil?.nombre || user?.email || "Admin",
         },
       };

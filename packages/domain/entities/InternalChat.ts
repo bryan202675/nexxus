@@ -1,4 +1,4 @@
-export type ConversationType = 'directa' | 'equipo' | 'departamento';
+export type ConversationType = 'directa' | 'equipo' | 'departamento' | 'grupo';
 
 export interface ChatParticipant {
   id: string;
@@ -24,7 +24,10 @@ export interface Conversation {
   ultimoMensajeRemitenteNombre?: string;
   creadoPor: string;
   fechaCreacion: string;
+  foto?: string;
   imagenUrl?: string;
+  nombresPersonalizados?: Record<string, string>;
+  fotosPersonalizadas?: Record<string, string>;
   eliminadoPor?: string[];
 }
 

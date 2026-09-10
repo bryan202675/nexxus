@@ -594,7 +594,7 @@ function crearEstilosSolicInt(c: any, esOscuro: boolean) {
 
   return StyleSheet.create({
     contenedor: { flex: 1, backgroundColor: c.fondo },
-    fondoAbsoluto: { ...StyleSheet.absoluteFillObject, zIndex: -1, overflow: 'hidden' },
+    fondoAbsoluto: { ...StyleSheet.absoluteFill, zIndex: -1, overflow: 'hidden' },
 
     lista: {
       paddingHorizontal: 16,

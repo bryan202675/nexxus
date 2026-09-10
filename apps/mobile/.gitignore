@@ -36,4 +36,3 @@ yarn-error.*
 # generated native folders
 /ios
 /android
-

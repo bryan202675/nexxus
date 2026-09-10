@@ -1112,7 +1112,7 @@ const crearEstilos = (theme: any, isPhone: boolean, isDark: boolean) => StyleShe
   illustrationWrapper: { opacity: 0.9, alignItems: 'center', justifyContent: 'center' },
 
   // WhatsApp-like Styles
-  scrimMenu: { ...StyleSheet.absoluteFillObject, backgroundColor: 'transparent', zIndex: 1000 },
+  scrimMenu: { ...StyleSheet.absoluteFill, backgroundColor: 'transparent', zIndex: 1000 },
   menuFlotante: { position: 'absolute', width: 220, borderRadius: 16, backgroundColor: theme.panelStrong, borderWidth: 1, borderColor: theme.borderStrong, padding: 6, ...sombraAdmin, zIndex: 1010 },
   menuItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10 },
   menuItemText: { color: theme.text, fontSize: 13, fontWeight: '700' },
@@ -1122,7 +1122,7 @@ const crearEstilos = (theme: any, isPhone: boolean, isDark: boolean) => StyleShe
   // 3-dots menu options style
   menuChatOpciones: { position: 'absolute', width: 220, borderRadius: 16, backgroundColor: theme.panelStrong, borderWidth: 1, borderColor: theme.borderStrong, padding: 6, ...sombraAdmin, zIndex: 1010 },
 
-  modalOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: 16 },
+  modalOverlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: 16 },
   modalCard: { width: '100%', maxWidth: 440, maxHeight: '80%', borderRadius: 20, backgroundColor: theme.panelStrong, borderWidth: 1, borderColor: theme.borderStrong, padding: 20, overflow: 'hidden' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   modalTitle: { color: theme.text, fontSize: 16, fontWeight: '900' },

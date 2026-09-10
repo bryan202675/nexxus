@@ -10,7 +10,7 @@ import GlobalSearch from "./GlobalSearch";
 import NotificationsBell from "./NotificationsBell";
 import { routeUrl } from "utils/routePath";
 
-const ROLES_CON_ALERTAS_BIENESTAR = ["admin", "admin_empresa", "jefe", "jefe_sector", "super_admin"];
+const ROLES_CON_ALERTAS_BIENESTAR = ["admin", "admin_empresa", "jefe", "jefe_sector"];
 
 const Navbar = (props) => {
   const { onOpenSidenav, brandText } = props;
@@ -79,7 +79,7 @@ const Navbar = (props) => {
         </button>
 
         {/* Timbre de alertas de bienestar (solo admin/jefe) */}
-        {ROLES_CON_ALERTAS_BIENESTAR.includes(rol) ? (
+        {!esSuperAdmin && ROLES_CON_ALERTAS_BIENESTAR.includes(rol) ? (
           <div className="shrink-0">
             <NotificationsBell />
           </div>

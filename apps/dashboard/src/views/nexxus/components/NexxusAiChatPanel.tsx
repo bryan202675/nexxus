@@ -12,6 +12,8 @@ import {
   MdAltRoute,
   MdFavorite,
   MdDoneAll,
+  MdTrendingUp,
+  MdOutlineAccessTime,
 } from "react-icons/md";
 import { FiTrash2 } from "react-icons/fi";
 
@@ -24,11 +26,36 @@ import { useEmpresaPlan, contarUsoMensualIA, limiteAlcanzado } from "services/pl
 const MASCOTA_URL = "/nexxusIA.png";
 
 const SUGERENCIAS_RAPIDAS = [
-  { label: "Resumen de mi día", Icon: MdAssignment, texto: "Dame un resumen de mi día y actividades prioritarias" },
-  { label: "Tareas urgentes", Icon: MdWarning, texto: "¿Cuáles son mis tareas urgentes o pendientes para hoy?" },
-  { label: "Mi rendimiento", Icon: MdInsights, texto: "¿Cómo va mi rendimiento y racha esta semana?" },
-  { label: "Priorizar tareas", Icon: MdAltRoute, texto: "Ayúdame a priorizar mis tareas pendientes por impacto" },
-  { label: "Mi bienestar", Icon: MdFavorite, texto: "¿Cómo están mis métricas de bienestar y qué me recomiendas?" },
+  {
+    label: "Métricas de mi empresa",
+    Icon: MdInsights,
+    texto: "Dame un resumen ejecutivo con las métricas clave de mi empresa (asistencia, plantilla, incidencias y tareas).",
+  },
+  {
+    label: "Rendimiento del equipo",
+    Icon: MdTrendingUp,
+    texto: "¿Cómo va el rendimiento, cumplimiento de metas y tareas de los departamentos esta semana?",
+  },
+  {
+    label: "Asistencia y ausencias",
+    Icon: MdOutlineAccessTime,
+    texto: "¿Cuál es el balance de asistencia de hoy y qué ausencias o permisos están pendientes de aprobación?",
+  },
+  {
+    label: "Alertas e incidencias",
+    Icon: MdWarning,
+    texto: "¿Cuáles son las incidencias activas, alertas urgentes y estado de equipos/activos en la empresa?",
+  },
+  {
+    label: "Bienestar y clima laboral",
+    Icon: MdFavorite,
+    texto: "¿Cómo están los registros de bienestar del equipo, estado anímico general y qué acciones recomiendas?",
+  },
+  {
+    label: "Prioridades estratégicas",
+    Icon: MdAltRoute,
+    texto: "Ayúdame a identificar y priorizar las metas y focos estratégicos de la organización para esta semana.",
+  },
 ];
 
 function IconoOndasVoz({ size = 18, className = "" }: { size?: number; className?: string }) {
@@ -90,12 +117,12 @@ export default function NexxusAiChatPanel({
     else momento = "esta noche";
 
     return [
-      { prefix: "¿Y ahora qué, ", highlight: primerNombre, suffix: "?" },
-      { prefix: "¿Qué optimizamos " + momento + ", ", highlight: primerNombre, suffix: "?" },
-      { prefix: "¿En qué te apoyo " + momento + ", ", highlight: primerNombre, suffix: "?" },
-      { prefix: "¿Qué plan tenemos, ", highlight: primerNombre, suffix: "?" },
-      { prefix: "¿Listo para avanzar, ", highlight: primerNombre, suffix: "?" },
-      { prefix: "¿Cómo impulsamos tus tareas, ", highlight: primerNombre, suffix: "?" },
+      { prefix: "¿Cómo impulsamos tu empresa, ", highlight: primerNombre, suffix: "?" },
+      { prefix: "¿Qué métricas analizamos " + momento + ", ", highlight: primerNombre, suffix: "?" },
+      { prefix: "¿Qué optimizamos en tu organización, ", highlight: primerNombre, suffix: "?" },
+      { prefix: "¿En qué te apoyo con la gestión " + momento + ", ", highlight: primerNombre, suffix: "?" },
+      { prefix: "¿Listo para liderar tu equipo, ", highlight: primerNombre, suffix: "?" },
+      { prefix: "¿Qué objetivos revisamos hoy, ", highlight: primerNombre, suffix: "?" },
     ];
   }, [primerNombre]);
 

@@ -25,17 +25,33 @@ function mapRow(row: Record<string, any>): Documento {
   };
 }
 
+async function mapRows(rows: Record<string, any>[]): Promise<Documento[]> {
+  return Promise.all(rows.map(async (row) => {
+    const documento = mapRow(row);
+    const url = documento.url;
+    if (!url || /^https?:\/\//i.test(url)) return documento;
+
+    // Older records may contain the storage path or an invalid local file URI.
+    // Resolve valid bucket paths to a temporary signed URL before the UI opens it.
+    const decoded = url.replace(/^file:\/+/i, '').replace(/^\/+/, '');
+    const marker = decoded.indexOf('wembas/');
+    const storagePath = marker >= 0 ? decoded.slice(marker) : decoded;
+    const { data } = await supabase.storage.from('documents').createSignedUrl(storagePath, 3600);
+    return data?.signedUrl ? { ...documento, url: data.signedUrl } : { ...documento, url: '' };
+  }));
+}
+
 export class SupabaseDocumentoRepository implements IDocumentoRepository {
   async getByUser(userId: string): Promise<Documento[]> {
     const { data, error } = await supabase.from('documentos').select('*').eq('usuario_id', userId).order('created_at', { ascending: false }).limit(QUERY_LIMIT);
     if (error) throw error;
-    return (data || []).map(mapRow);
+    return mapRows(data || []);
   }
 
   async getByCompany(empresaId: string): Promise<Documento[]> {
     const { data, error } = await supabase.from('documentos').select('*').eq('empresa_id', empresaId).order('created_at', { ascending: false }).limit(QUERY_LIMIT);
     if (error) throw error;
-    return (data || []).map(mapRow);
+    return mapRows(data || []);
   }
 
   subscribeByCompany(empresaId: string, callback: (documentos: Documento[]) => void): () => void {
@@ -103,7 +119,12 @@ export class SupabaseDocumentoRepository implements IDocumentoRepository {
   }
 
   async markAsRead(documentoId: string): Promise<void> {
-    const { error } = await supabase.from('documentos').update({ leido: true }).eq('id', documentoId);
+    // Los documentos corporativos pertenecen al usuario que los publicó y la
+    // política RLS no permite que un empleado actualice directamente esa fila.
+    // La función valida empresa y cambia exclusivamente `leido`.
+    const { error } = await supabase.functions.invoke('marcar-documento-leido', {
+      body: { documentoId },
+    });
     if (error) throw error;
   }
 

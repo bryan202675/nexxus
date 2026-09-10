@@ -237,7 +237,9 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
         useCases.appointments.getAppointments.execute(user.id),
         useCases.notifications.getNotifications.execute(user.id, empresaId),
         useCases.admin.getAllUsers.execute(empresaId),
-        useCases.documents.getDocumentos.execute(user.id),
+        // Documentos corporativos se comparten por empresa_id; getDocumentos solo
+        // filtra por usuario_id y dejaba fuera los archivos publicados para el equipo.
+        useCases.documents.getByCompany.execute(empresaId),
         useCases.wellness.getFocusSessions.execute(user.id),
         useCases.feedback.getFeedbacks.execute(user.id),
         useCases.requests.getByUser.execute(user.id),
@@ -434,8 +436,12 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
   const marcarAsistencia = async (tipo: 'entrada' | 'salida') => {
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
     if (!user) return;
+    const estadoActivo = tipo === 'entrada';
+    // Avoid issuing a no-op UPDATE. The legacy database trigger used by some
+    // environments cannot iterate a NULL array when no column actually changes.
+    if (user.estado_activo === estadoActivo) return;
     // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
-    await useCases.admin.updateUserProfile.execute(user.id, { estado_activo: tipo === 'entrada' });
+    await useCases.admin.updateUserProfile.execute(user.id, { estado_activo: estadoActivo });
     // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
     await fetchSaaSData();
   };

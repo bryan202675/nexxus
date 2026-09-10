@@ -17,6 +17,7 @@ export interface Objective {
   titulo: string;
   descripcion: string;
   ciclo: string;
+  fechaLimite?: string;
   estado: ObjectiveStatus;
   createdAt: string;
   keyResults: KeyResult[];
@@ -28,6 +29,7 @@ export interface NewObjective {
   creadoPor: string;
   titulo: string;
   descripcion: string;
-  ciclo: string;
+  ciclo?: string;
+  fechaLimite?: string;
   keyResults: Omit<KeyResult, 'id' | 'objectiveId'>[];
 }

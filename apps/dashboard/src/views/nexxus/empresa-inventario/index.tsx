@@ -409,29 +409,25 @@ export default function GestionInventario() {
   }
 
   return (
-    <div className="flex flex-col gap-6 pb-6">
+    <div className="flex flex-col gap-5 pb-6">
       {/* Banner de error */}
       {error && (
-        <div className="rounded-xl bg-red-50 p-4 text-xs font-bold text-red-600 dark:bg-red-500/10 dark:text-red-400">
+        <div className="rounded-xl bg-red-50 p-4 text-xs font-semibold text-red-600 dark:bg-red-500/10 dark:text-red-400">
           {error}
         </div>
       )}
 
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
-            Control de Inventario & Equipamiento
-          </h2>
-          <p className="mt-1 text-sm font-medium text-gray-500 dark:text-white/60">
-            Custodia de activos, asignación a colaboradores, trazabilidad y reporte de incidencias.
-          </p>
-        </div>
+      {/* Toolbar / Subtítulo Superior (sin duplicar el título del Navbar) */}
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+        <p className="text-xs font-medium text-gray-500 dark:text-white/60">
+          Custodia de activos, asignación a colaboradores, trazabilidad y reporte de incidencias.
+        </p>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           <button
             type="button"
             onClick={() => setShowReportarIncidencia(true)}
-            className="flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-bold text-rose-700 shadow-sm transition hover:bg-rose-100 active:scale-95 dark:border-rose-500/30 dark:bg-rose-500/20 dark:text-rose-300"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-semibold text-rose-700 shadow-sm transition hover:bg-rose-100 active:scale-95 dark:border-rose-500/30 dark:bg-rose-500/20 dark:text-rose-300"
           >
             <MdOutlineReportProblem className="h-4 w-4" />
             <span>Reportar Incidencia</span>
@@ -440,7 +436,7 @@ export default function GestionInventario() {
           <button
             type="button"
             onClick={() => setShowCrearActivo(true)}
-            className="flex items-center gap-1.5 rounded-xl bg-brand-500 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 active:scale-95 dark:bg-brand-400"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-500 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-600 active:scale-95"
           >
             <MdOutlineAdd className="h-4 w-4" />
             <span>Registrar Activo</span>
@@ -448,175 +444,214 @@ export default function GestionInventario() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {/* Total Activos */}
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                Total de Activos
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
-                {kpis.total}
-              </h3>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500/10 text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
-              <MdOutlineInventory2 className="h-6 w-6" />
+        <NexxusCard extra="p-5 flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
+              Total de Activos
+            </span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500/10 text-brand-600 dark:bg-brand-400/20 dark:text-brand-300">
+              <MdOutlineInventory2 className="h-5 w-5" />
             </div>
           </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>Bienes registrados</span>
-            <span className="font-bold text-brand-500">{categoriasDisponibles.length} categorías</span>
+          <div>
+            <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
+              {kpis.total}
+            </h3>
+            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5 text-xs text-gray-400 dark:border-white/10 dark:text-white/40">
+              <span>Bienes registrados</span>
+              <span className="inline-flex items-center rounded-md bg-brand-500/10 px-2 py-0.5 text-[11px] font-semibold text-brand-600 dark:bg-brand-500/20 dark:text-brand-400">
+                {categoriasDisponibles.length} categorías
+              </span>
+            </div>
           </div>
         </NexxusCard>
 
         {/* Asignados */}
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                Activos Asignados
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-blue-600 dark:text-blue-400">
-                {kpis.asignados}
-              </h3>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
-              <MdOutlineAssignmentInd className="h-6 w-6" />
+        <NexxusCard extra="p-5 flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
+              Activos Asignados
+            </span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
+              <MdOutlineAssignmentInd className="h-5 w-5" />
             </div>
           </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>En posesión del equipo</span>
-            <span className="font-bold text-blue-600">
-              {kpis.total > 0 ? `${Math.round((kpis.asignados / kpis.total) * 100)}% ocupación` : "0%"}
-            </span>
+          <div>
+            <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
+              {kpis.asignados}
+            </h3>
+            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5 text-xs text-gray-400 dark:border-white/10 dark:text-white/40">
+              <span>En posesión del equipo</span>
+              <span className="inline-flex items-center rounded-md bg-blue-500/10 px-2 py-0.5 text-[11px] font-semibold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+                {kpis.total > 0 ? `${Math.round((kpis.asignados / kpis.total) * 100)}% ocupación` : "0%"}
+              </span>
+            </div>
           </div>
         </NexxusCard>
 
         {/* Disponibles */}
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                Disponibles en Almacén
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">
-                {kpis.disponibles}
-              </h3>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
-              <MdOutlineCheckCircle className="h-6 w-6" />
+        <NexxusCard extra="p-5 flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
+              Disponibles en Almacén
+            </span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
+              <MdOutlineCheckCircle className="h-5 w-5" />
             </div>
           </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>Listos para entrega</span>
-            <span className="font-bold text-emerald-600">En stock</span>
+          <div>
+            <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
+              {kpis.disponibles}
+            </h3>
+            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5 text-xs text-gray-400 dark:border-white/10 dark:text-white/40">
+              <span>Listos para entrega</span>
+              <span className="inline-flex items-center rounded-md bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
+                En stock
+              </span>
+            </div>
           </div>
         </NexxusCard>
 
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                Incidencias Abiertas
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-rose-600 dark:text-rose-400">
-                {kpis.incidenciasAbiertas}
-              </h3>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-600 dark:bg-rose-400/20 dark:text-rose-300">
-              <MdOutlineReportProblem className="h-6 w-6" />
+        {/* Incidencias Abiertas */}
+        <NexxusCard extra="p-5 flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
+              Incidencias Abiertas
+            </span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:bg-rose-400/20 dark:text-rose-300">
+              <MdOutlineReportProblem className="h-5 w-5" />
             </div>
           </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>Fallas o reparaciones</span>
-            <span className={kpis.incidenciasAbiertas > 0 ? "font-bold text-rose-600" : "font-bold text-emerald-600"}>
-              {kpis.incidenciasAbiertas > 0 ? "Atención requerida" : "Sin averías"}
-            </span>
+          <div>
+            <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
+              {kpis.incidenciasAbiertas}
+            </h3>
+            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5 text-xs text-gray-400 dark:border-white/10 dark:text-white/40">
+              <span>Fallas o reparaciones</span>
+              <span
+                className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+                  kpis.incidenciasAbiertas > 0
+                    ? "bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400"
+                    : "bg-gray-100 text-gray-500 dark:bg-white/5 dark:text-white/40"
+                }`}
+              >
+                {kpis.incidenciasAbiertas > 0 ? "Atención requerida" : "Sin averías"}
+              </span>
+            </div>
           </div>
         </NexxusCard>
       </div>
 
-      <NexxusCard extra="p-6 flex flex-col gap-5" delay={100}>
-        {/* Barra superior de filtrado */}
-        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
-          <div>
-            <h4 className="text-xl font-bold tracking-tight text-navy-700 dark:text-white">
-              Catálogo de Activos & Bienes
-            </h4>
-            <p className="mt-0.5 text-xs font-medium text-gray-500 dark:text-white/60">
-              Mostrando {activosFiltrados.length} equipos registrados en el inventario.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="relative w-full sm:w-72">
-              <MdOutlineSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-gray-400 dark:text-white/40" />
-              <input
-                type="text"
-                placeholder="Buscar por nombre, serie, código o custodio..."
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2 pl-9 pr-3 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Pestañas de Estado Rápido */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-3 dark:border-white/10">
-          <div className="flex flex-wrap items-center gap-2">
+      <NexxusCard extra="p-5 sm:p-6 flex flex-col gap-5" delay={100}>
+        {/* Barra superior de filtrado y tabs segmentados */}
+        <div className="flex flex-col gap-3.5 lg:flex-row lg:items-center lg:justify-between">
+          {/* Segmented Filter Pills */}
+          <div className="flex flex-wrap items-center gap-1.5 rounded-xl bg-gray-100/80 p-1 dark:bg-charcoal">
             <button
               type="button"
               onClick={() => setFiltroEstado("todos")}
-              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${
                 filtroEstado === "todos"
-                  ? "bg-brand-500 text-white shadow-sm shadow-brand-500/20"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-white/70"
+                  ? "bg-navy-700 text-white shadow-sm dark:bg-white dark:text-navy-700"
+                  : "text-gray-600 hover:text-navy-700 hover:bg-white/60 dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10"
               }`}
             >
-              Todos ({activos?.length || 0})
+              <span>Todos</span>
+              <span
+                className={`rounded-md px-1.5 py-0.2 text-[10px] font-bold ${
+                  filtroEstado === "todos"
+                    ? "bg-white/20 text-white dark:bg-navy-700/20 dark:text-navy-700"
+                    : "bg-gray-200 text-gray-700 dark:bg-white/10 dark:text-white/70"
+                }`}
+              >
+                {activos?.length || 0}
+              </span>
             </button>
+
             <button
               type="button"
               onClick={() => setFiltroEstado("disponible")}
-              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${
                 filtroEstado === "disponible"
-                  ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/20"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-white/70"
+                  ? "bg-navy-700 text-white shadow-sm dark:bg-white dark:text-navy-700"
+                  : "text-gray-600 hover:text-navy-700 hover:bg-white/60 dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10"
               }`}
             >
-              Disponibles ({kpis.disponibles})
+              <span>Disponibles</span>
+              <span
+                className={`rounded-md px-1.5 py-0.2 text-[10px] font-bold ${
+                  filtroEstado === "disponible"
+                    ? "bg-white/20 text-white dark:bg-navy-700/20 dark:text-navy-700"
+                    : "bg-gray-200 text-gray-700 dark:bg-white/10 dark:text-white/70"
+                }`}
+              >
+                {kpis.disponibles}
+              </span>
             </button>
+
             <button
               type="button"
               onClick={() => setFiltroEstado("asignado")}
-              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${
                 filtroEstado === "asignado"
-                  ? "bg-blue-500 text-white shadow-sm shadow-blue-500/20"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-white/70"
+                  ? "bg-navy-700 text-white shadow-sm dark:bg-white dark:text-navy-700"
+                  : "text-gray-600 hover:text-navy-700 hover:bg-white/60 dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10"
               }`}
             >
-              Asignados ({kpis.asignados})
+              <span>Asignados</span>
+              <span
+                className={`rounded-md px-1.5 py-0.2 text-[10px] font-bold ${
+                  filtroEstado === "asignado"
+                    ? "bg-white/20 text-white dark:bg-navy-700/20 dark:text-navy-700"
+                    : "bg-gray-200 text-gray-700 dark:bg-white/10 dark:text-white/70"
+                }`}
+              >
+                {kpis.asignados}
+              </span>
             </button>
+
             <button
               type="button"
               onClick={() => setFiltroEstado("mantenimiento")}
-              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${
                 filtroEstado === "mantenimiento"
-                  ? "bg-amber-500 text-white shadow-sm shadow-amber-500/20"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-white/70"
+                  ? "bg-navy-700 text-white shadow-sm dark:bg-white dark:text-navy-700"
+                  : "text-gray-600 hover:text-navy-700 hover:bg-white/60 dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10"
               }`}
             >
-              En Mantenimiento
+              <span>En Mantenimiento</span>
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Buscador & Categoría */}
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+            <div className="relative w-full sm:w-64">
+              <MdOutlineSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-gray-400 dark:text-white/40" />
+              <input
+                type="text"
+                placeholder="Buscar activo, serie, código..."
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/50 pl-9 pr-8 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
+              />
+              {busqueda && (
+                <button
+                  type="button"
+                  onClick={() => setBusqueda("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-white"
+                  title="Limpiar búsqueda"
+                >
+                  <MdOutlineClose className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
             <select
               value={filtroCategoria}
               onChange={(e) => setFiltroCategoria(e.target.value)}
-              className="h-8 rounded-xl border border-gray-200 bg-gray-50/50 px-2.5 text-xs font-semibold text-navy-700 outline-none dark:border-white/10 dark:bg-charcoal dark:text-white"
+              className="h-10 rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
             >
               <option value="todas">Todas las categorías</option>
               {categoriasDisponibles.map((cat) => (
@@ -631,20 +666,20 @@ export default function GestionInventario() {
         {/* Tabla */}
         {cargando ? (
           <div className="flex h-64 w-full flex-col items-center justify-center gap-3">
-            <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-500 border-t-transparent" />
-            <p className="text-sm font-medium text-gray-500 dark:text-white/60">
+            <div className="h-9 w-9 animate-spin rounded-full border-3 border-brand-500 border-t-transparent" />
+            <p className="text-xs font-medium text-gray-500 dark:text-white/60">
               Cargando inventario...
             </p>
           </div>
         ) : activosFiltrados.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 py-16 text-center dark:border-white/10">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-gray-400 dark:bg-white/5 dark:text-white/40">
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 py-14 text-center dark:border-white/10">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gray-100 text-gray-400 dark:bg-white/5 dark:text-white/40">
               <MdOutlineInventory2 className="h-6 w-6" />
             </div>
             <p className="mt-3 text-sm font-bold text-navy-700 dark:text-white">
               No se encontraron activos
             </p>
-            <p className="mt-0.5 text-xs text-gray-400 dark:text-white/50">
+            <p className="mt-1 text-xs text-gray-400 dark:text-white/50 max-w-sm">
               {busqueda || filtroEstado !== "todos" || filtroCategoria !== "todas"
                 ? "Prueba con otros términos de búsqueda o filtros."
                 : "Comienza registrando tu primer activo con el botón 'Registrar Activo'."}
@@ -655,22 +690,22 @@ export default function GestionInventario() {
             <table className="w-full border-collapse text-left">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/70 dark:border-white/10 dark:bg-white/[0.02]">
-                  <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                  <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
                     Activo / Equipo
                   </th>
-                  <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                  <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
                     Categoría
                   </th>
-                  <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                  <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
                     Código & Serie
                   </th>
-                  <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                  <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
                     Estado
                   </th>
-                  <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                  <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
                     Custodio / Asignado
                   </th>
-                  <th className="px-4 py-3.5 text-right text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                  <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
                     Acciones
                   </th>
                 </tr>
@@ -686,19 +721,19 @@ export default function GestionInventario() {
                     <tr
                       key={activo.id}
                       onClick={() => setSelectedActivo(activo)}
-                      className="cursor-pointer transition hover:bg-gray-50/70 dark:hover:bg-white/[0.02]"
+                      className="group cursor-pointer transition hover:bg-gray-50/70 dark:hover:bg-white/[0.02]"
                     >
                       {/* Activo */}
                       <td className="min-w-[200px] px-4 py-3.5">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-600 dark:bg-brand-400/20 dark:text-brand-300">
                             <Icon className="h-4.5 w-4.5" />
                           </div>
                           <div className="min-w-0">
-                            <p className="truncate text-xs font-bold text-navy-700 dark:text-white">
+                            <p className="truncate text-xs font-bold text-navy-700 group-hover:text-brand-600 transition dark:text-white dark:group-hover:text-brand-300">
                               {activo.nombre}
                             </p>
-                            <p className="truncate text-[10.5px] text-gray-400 dark:text-white/50">
+                            <p className="truncate text-[11px] text-gray-400 dark:text-white/50">
                               {activo.ubicacion || "Oficina Central"}
                             </p>
                           </div>
@@ -707,7 +742,7 @@ export default function GestionInventario() {
 
                       {/* Categoría */}
                       <td className="whitespace-nowrap px-4 py-3.5">
-                        <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-bold text-gray-600 dark:bg-white/10 dark:text-white/70">
+                        <span className="inline-flex items-center rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 dark:bg-white/10 dark:text-white/80">
                           {activo.categoria}
                         </span>
                       </td>
@@ -728,7 +763,7 @@ export default function GestionInventario() {
 
                       {/* Estado */}
                       <td className="whitespace-nowrap px-4 py-3.5">
-                        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${estadoInfo.cls}`}>
+                        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${estadoInfo.cls}`}>
                           <span className={`h-1.5 w-1.5 rounded-full ${estadoInfo.dot}`} />
                           {estadoInfo.label}
                         </span>
@@ -745,7 +780,9 @@ export default function GestionInventario() {
                             </div>
                           </div>
                         ) : (
-                          <span className="text-xs text-gray-400 dark:text-white/40">En Almacén</span>
+                          <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500 dark:bg-white/5 dark:text-white/40">
+                            En Almacén
+                          </span>
                         )}
                       </td>
 
@@ -757,7 +794,7 @@ export default function GestionInventario() {
                               type="button"
                               disabled={isBusy}
                               onClick={() => handleDevolverActivo(activo.id)}
-                              className="inline-flex items-center gap-1 rounded-xl border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-bold text-blue-700 shadow-sm transition hover:bg-blue-100 active:scale-95 disabled:opacity-50 dark:border-blue-500/30 dark:bg-blue-500/20 dark:text-blue-300"
+                              className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 shadow-sm transition hover:bg-blue-100 active:scale-95 disabled:opacity-50 dark:border-blue-500/30 dark:bg-blue-500/20 dark:text-blue-300"
                             >
                               <MdOutlineSwapHoriz className="h-3.5 w-3.5" />
                               <span>Devolver</span>
@@ -766,7 +803,7 @@ export default function GestionInventario() {
                             <button
                               type="button"
                               onClick={() => setSelectedActivo(activo)}
-                              className="inline-flex items-center gap-1 rounded-xl bg-lightPrimary px-2.5 py-1.5 text-xs font-bold text-brand-500 shadow-sm transition hover:bg-brand-500/10 active:scale-95 dark:bg-white/5 dark:text-brand-300"
+                              className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-navy-700 shadow-sm transition hover:bg-gray-50 hover:border-gray-300 active:scale-95 dark:border-white/10 dark:bg-charcoal dark:text-white dark:hover:bg-white/5"
                             >
                               <MdOutlineVisibility className="h-3.5 w-3.5" />
                               <span>Gestionar</span>
@@ -794,7 +831,7 @@ export default function GestionInventario() {
                 type="button"
                 disabled={paginaActivos <= 1}
                 onClick={() => setPaginaActivos((p) => Math.max(1, p - 1))}
-                className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-navy-700 transition hover:bg-gray-50 disabled:opacity-40 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-navy-700 transition hover:bg-gray-50 disabled:opacity-40 dark:border-white/10 dark:bg-charcoal dark:text-white"
               >
                 Anterior
               </button>
@@ -802,7 +839,7 @@ export default function GestionInventario() {
                 type="button"
                 disabled={paginaActivos >= totalPaginasActivos}
                 onClick={() => setPaginaActivos((p) => Math.min(totalPaginasActivos, p + 1))}
-                className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-navy-700 transition hover:bg-gray-50 disabled:opacity-40 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-navy-700 transition hover:bg-gray-50 disabled:opacity-40 dark:border-white/10 dark:bg-charcoal dark:text-white"
               >
                 Siguiente
               </button>
@@ -904,10 +941,10 @@ export default function GestionInventario() {
         width="max-w-lg"
       >
         <div className="py-2">
-          <form onSubmit={handleCrearActivo} className="flex flex-col gap-3.5">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <form onSubmit={handleCrearActivo} className="flex flex-col gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="activo-nombre">
+                <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="activo-nombre">
                   Nombre del Activo *
                 </label>
                 <input
@@ -916,19 +953,19 @@ export default function GestionInventario() {
                   placeholder="Ej. MacBook Pro 16"
                   value={formActivo.nombre}
                   onChange={(e) => setFormActivo((prev) => ({ ...prev, nombre: e.target.value }))}
-                  className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                  className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3.5 text-xs font-semibold text-navy-700 outline-none transition placeholder:text-gray-400 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-white/10 dark:bg-charcoal dark:text-white dark:placeholder:text-white/30 dark:focus:border-brand-400 dark:focus:bg-[#1B254B]"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="activo-categoria">
+                <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="activo-categoria">
                   Categoría *
                 </label>
                 <select
                   id="activo-categoria"
                   value={formActivo.categoria}
                   onChange={(e) => setFormActivo((prev) => ({ ...prev, categoria: e.target.value }))}
-                  className="mt-1 flex h-9.5 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                  className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3.5 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400 dark:focus:bg-[#1B254B]"
                 >
                   <option value="Cómputo">Cómputo & Laptops</option>
                   <option value="Mobiliario">Mobiliario de Oficina</option>
@@ -939,9 +976,9 @@ export default function GestionInventario() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="activo-codigo">
+                <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="activo-codigo">
                   Código de Inventario *
                 </label>
                 <input
@@ -950,12 +987,12 @@ export default function GestionInventario() {
                   placeholder="Ej. INV-MB-001"
                   value={formActivo.codigo}
                   onChange={(e) => setFormActivo((prev) => ({ ...prev, codigo: e.target.value }))}
-                  className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                  className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3.5 text-xs font-semibold text-navy-700 outline-none transition placeholder:text-gray-400 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-white/10 dark:bg-charcoal dark:text-white dark:placeholder:text-white/30 dark:focus:border-brand-400 dark:focus:bg-[#1B254B]"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="activo-serie">
+                <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="activo-serie">
                   Número de Serie (opcional)
                 </label>
                 <input
@@ -964,14 +1001,14 @@ export default function GestionInventario() {
                   placeholder="Ej. C02G789XMD6T"
                   value={formActivo.serie}
                   onChange={(e) => setFormActivo((prev) => ({ ...prev, serie: e.target.value }))}
-                  className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                  className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3.5 text-xs font-semibold text-navy-700 outline-none transition placeholder:text-gray-400 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-white/10 dark:bg-charcoal dark:text-white dark:placeholder:text-white/30 dark:focus:border-brand-400 dark:focus:bg-[#1B254B]"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="activo-ubicacion">
+                <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="activo-ubicacion">
                   Ubicación / Sede
                 </label>
                 <input
@@ -980,19 +1017,19 @@ export default function GestionInventario() {
                   placeholder="Ej. Oficina Central / Almacén"
                   value={formActivo.ubicacion}
                   onChange={(e) => setFormActivo((prev) => ({ ...prev, ubicacion: e.target.value }))}
-                  className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                  className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3.5 text-xs font-semibold text-navy-700 outline-none transition placeholder:text-gray-400 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-white/10 dark:bg-charcoal dark:text-white dark:placeholder:text-white/30 dark:focus:border-brand-400 dark:focus:bg-[#1B254B]"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="activo-asignado">
-                  Asignar a Colaborador (opcional)
+                <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="activo-asignado">
+                  Asignar a Colaborador
                 </label>
                 <select
                   id="activo-asignado"
                   value={formActivo.asignadoA}
                   onChange={(e) => setFormActivo((prev) => ({ ...prev, asignadoA: e.target.value }))}
-                  className="mt-1 flex h-9.5 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                  className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3.5 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400 dark:focus:bg-[#1B254B]"
                 >
                   <option value="">Dejar en Almacén (Disponible)</option>
                   {empleados.map((emp) => (
@@ -1005,7 +1042,7 @@ export default function GestionInventario() {
             </div>
 
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="activo-notas">
+              <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="activo-notas">
                 Notas / Especificaciones (opcional)
               </label>
               <textarea
@@ -1014,24 +1051,28 @@ export default function GestionInventario() {
                 placeholder="Detalles sobre el estado del activo o garantía..."
                 value={formActivo.notas}
                 onChange={(e) => setFormActivo((prev) => ({ ...prev, notas: e.target.value }))}
-                className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50/50 p-2.5 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50/50 p-3 text-xs font-semibold text-navy-700 outline-none transition placeholder:text-gray-400 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-white/10 dark:bg-charcoal dark:text-white dark:placeholder:text-white/30 dark:focus:border-brand-400 dark:focus:bg-[#1B254B]"
               />
             </div>
 
-            {crearError && <p className="text-xs font-bold text-red-500">{crearError}</p>}
+            {crearError && (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-2.5 text-xs font-bold text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-400">
+                {crearError}
+              </div>
+            )}
 
-            <div className="flex justify-end gap-2 border-t border-gray-100 pt-3 dark:border-white/10">
+            <div className="flex justify-end gap-2.5 border-t border-gray-100 pt-3.5 dark:border-white/10">
               <button
                 type="button"
                 onClick={() => setShowCrearActivo(false)}
-                className="rounded-xl px-4 py-2 text-xs font-bold text-gray-700 dark:text-white"
+                className="rounded-xl border border-gray-200 px-4 py-2 text-xs font-bold text-gray-600 transition hover:bg-gray-100 active:scale-95 dark:border-white/10 dark:text-white/80 dark:hover:bg-white/5"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={creando}
-                className="rounded-xl bg-brand-500 px-5 py-2 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 disabled:opacity-50"
+                className="rounded-xl bg-brand-500 px-5 py-2 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 active:scale-95 disabled:opacity-50"
               >
                 {creando ? "Guardando..." : "Guardar Activo"}
               </button>
@@ -1047,16 +1088,16 @@ export default function GestionInventario() {
         width="max-w-lg"
       >
         <div className="py-2">
-          <form onSubmit={handleReportarIncidencia} className="flex flex-col gap-3.5">
+          <form onSubmit={handleReportarIncidencia} className="flex flex-col gap-4">
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="incidencia-activo">
+              <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="incidencia-activo">
                 Activo Afectado *
               </label>
               <select
                 id="incidencia-activo"
                 value={formIncidencia.activoId}
                 onChange={(e) => setFormIncidencia((prev) => ({ ...prev, activoId: e.target.value }))}
-                className="mt-1 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3.5 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400 dark:focus:bg-[#1B254B]"
               >
                 <option value="">Selecciona un activo...</option>
                 {(activos || []).map((a) => (
@@ -1068,14 +1109,14 @@ export default function GestionInventario() {
             </div>
 
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="incidencia-prioridad">
+              <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="incidencia-prioridad">
                 Gravedad / Prioridad
               </label>
               <select
                 id="incidencia-prioridad"
                 value={formIncidencia.prioridad}
                 onChange={(e) => setFormIncidencia((prev) => ({ ...prev, prioridad: e.target.value }))}
-                className="mt-1 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3.5 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400 dark:focus:bg-[#1B254B]"
               >
                 <option value="baja">Baja - Mantenimiento rutinario</option>
                 <option value="media">Media - Falla parcial o daño menor</option>
@@ -1085,7 +1126,7 @@ export default function GestionInventario() {
             </div>
 
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="incidencia-descripcion">
+              <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="incidencia-descripcion">
                 Descripción de la Falla o Daño *
               </label>
               <textarea
@@ -1094,24 +1135,28 @@ export default function GestionInventario() {
                 placeholder="Describe el problema presentado en el equipo..."
                 value={formIncidencia.descripcion}
                 onChange={(e) => setFormIncidencia((prev) => ({ ...prev, descripcion: e.target.value }))}
-                className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50/50 p-2.5 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50/50 p-3 text-xs font-semibold text-navy-700 outline-none transition placeholder:text-gray-400 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-white/10 dark:bg-charcoal dark:text-white dark:placeholder:text-white/30 dark:focus:border-brand-400 dark:focus:bg-[#1B254B]"
               />
             </div>
 
-            {reportarError && <p className="text-xs font-bold text-red-500">{reportarError}</p>}
+            {reportarError && (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-2.5 text-xs font-bold text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-400">
+                {reportarError}
+              </div>
+            )}
 
-            <div className="flex justify-end gap-2 border-t border-gray-100 pt-3 dark:border-white/10">
+            <div className="flex justify-end gap-2.5 border-t border-gray-100 pt-3.5 dark:border-white/10">
               <button
                 type="button"
                 onClick={() => setShowReportarIncidencia(false)}
-                className="rounded-xl px-4 py-2 text-xs font-bold text-gray-700 dark:text-white"
+                className="rounded-xl border border-gray-200 px-4 py-2 text-xs font-bold text-gray-600 transition hover:bg-gray-100 active:scale-95 dark:border-white/10 dark:text-white/80 dark:hover:bg-white/5"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={reportando}
-                className="rounded-xl bg-rose-500 px-5 py-2 text-xs font-bold text-white shadow-md shadow-rose-500/20 transition hover:bg-rose-600 disabled:opacity-50"
+                className="rounded-xl bg-rose-500 px-5 py-2 text-xs font-bold text-white shadow-md shadow-rose-500/20 transition hover:bg-rose-600 active:scale-95 disabled:opacity-50"
               >
                 {reportando ? "Enviando..." : "Reportar Incidencia"}
               </button>
@@ -1184,7 +1229,7 @@ export default function GestionInventario() {
                   <div className="flex items-center gap-2">
                     <select
                       id="asignar-modal-emp"
-                      className="flex-1 h-9 rounded-xl border border-gray-200 bg-white px-2.5 text-xs font-semibold text-navy-700 outline-none dark:border-white/10 dark:bg-charcoal dark:text-white"
+                      className="h-10 flex-1 rounded-xl border border-gray-200 bg-white px-3 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 dark:border-white/10 dark:bg-navy-900 dark:text-white"
                       defaultValue=""
                       onChange={(e) => {
                         if (e.target.value) handleAsignarActivo(selectedActivo.id, e.target.value);
@@ -1206,7 +1251,7 @@ export default function GestionInventario() {
               <button
                 type="button"
                 onClick={() => setSelectedActivo(null)}
-                className="rounded-xl bg-gray-100 px-5 py-2 text-xs font-bold text-gray-700 dark:bg-white/10 dark:text-white"
+                className="rounded-xl bg-gray-100 px-5 py-2 text-xs font-bold text-gray-700 transition hover:bg-gray-200 active:scale-95 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
               >
                 Cerrar
               </button>

@@ -11,6 +11,9 @@ import {
   MdOutlinePerson,
   MdOutlineCheck,
   MdArrowBack,
+  MdOutlineClose,
+  MdOutlineEdit,
+  MdOutlineCameraAlt,
 } from "react-icons/md";
 import { supabase } from "supabaseClient/supabaseConfig";
 
@@ -38,12 +41,16 @@ const mapEmpleado = (docSnap: any) => {
 const mapConversacion = (row: any) => ({
   id: row.id,
   titulo: row.datos?.titulo || "",
+  foto: row.datos?.foto || "",
   tipo: row.datos?.tipo || "directa",
   participanteIds: Array.isArray(row.participante_ids) ? row.participante_ids : [],
   participantes: Array.isArray(row.datos?.participantes) ? row.datos.participantes : [],
   eliminadoPor: Array.isArray(row.datos?.eliminadoPor) ? row.datos.eliminadoPor : [],
+  nombresPersonalizados: row.datos?.nombresPersonalizados || {},
+  fotosPersonalizadas: row.datos?.fotosPersonalizadas || {},
   ultimoMensaje: row.ultimo_mensaje,
   ultimoMensajeAt: row.ultimo_mensaje_at,
+  datosRaw: row.datos || {},
 });
 
 const mapMensaje = (row: any) => ({
@@ -145,7 +152,7 @@ function UnreadBadge({ conversacionId, uid }: { conversacionId: string; uid?: st
 
   if (!noLeido) return null;
   return (
-    <span className="rounded-full bg-brand-500 px-2 py-0.5 text-[9.5px] font-black text-white shadow-sm animate-pulse">
+    <span className="rounded-full bg-brand-500 px-2 py-0.5 text-[9.5px] font-black text-white shadow-xs animate-pulse">
       Nuevo
     </span>
   );
@@ -190,7 +197,21 @@ export default function InternalChatPanel({
   const [creandoError, setCreandoError] = useState("");
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
 
+  // Modal Editar Conversación / Grupo
+  const [showEditarConv, setShowEditarConv] = useState(false);
+  const [editTitulo, setEditTitulo] = useState("");
+  const [editFoto, setEditFoto] = useState("");
+  const [subiendoFotoEdit, setSubiendoFotoEdit] = useState(false);
+  const [guardandoEdit, setGuardandoEdit] = useState(false);
+  const [editError, setEditError] = useState("");
+  const editFileInputRef = useRef<HTMLInputElement | null>(null);
+
   const mensajesFinRef = useRef<HTMLDivElement | null>(null);
+
+  const selectedIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
 
   // --- Lista de conversaciones donde participa el usuario ---
   useEffect(() => {
@@ -212,7 +233,8 @@ export default function InternalChatPanel({
       setConversaciones(filas);
       setCargandoConversaciones(false);
 
-      if (filas.length > 0 && !selectedId) {
+      // Solo seleccionar la primera conversación en la carga inicial si no hay ninguna seleccionada
+      if (isInitial && filas.length > 0 && !selectedIdRef.current) {
         setSelectedId(filas[0].id);
       }
     };
@@ -352,11 +374,27 @@ export default function InternalChatPanel({
   };
 
   const tituloConversacion = (c: any) => {
+    if (!c) return "Conversación";
+    if (user?.id && c.nombresPersonalizados?.[user.id]) {
+      return c.nombresPersonalizados[user.id];
+    }
     if (textValue(c.titulo)) return c.titulo;
     const participantesCalculados = obtenerParticipantesDeConv(c);
     const otros = participantesCalculados.filter((p: any) => p.id !== user?.id);
     if (otros.length > 0) return otros.map((p: any) => p.nombre).join(", ");
     return "Conversación";
+  };
+
+  const fotoConversacion = (c: any) => {
+    if (!c) return "";
+    if (user?.id && c.fotosPersonalizadas?.[user.id]) {
+      return c.fotosPersonalizadas[user.id];
+    }
+    if (c.foto) return c.foto;
+    const esGrupo = esGrupoConv(c);
+    if (esGrupo) return "";
+    const otros = obtenerParticipantesDeConv(c).filter((p: any) => p.id !== user?.id);
+    return otros[0]?.foto || "";
   };
 
   // Filtrado de conversaciones: Directas excluye estrictamente los grupos
@@ -476,7 +514,7 @@ export default function InternalChatPanel({
         { id: user?.id, nombre: perfil?.nombre || user?.email || "Yo", foto: textValue(perfil?.foto_perfil) },
         ...participantesSeleccionados.map((emp) => ({ id: emp.id, nombre: emp.nombre, foto: emp.foto })),
       ];
-      const tipo = seleccionIds.length === 1 ? "directa" : "equipo";
+      const tipo = seleccionIds.length === 1 && !textValue(tituloNuevo) ? "directa" : "equipo";
       const payload = {
         empresa_id: empresaId,
         participante_ids: [user?.id, ...seleccionIds],
@@ -527,6 +565,112 @@ export default function InternalChatPanel({
     }
   };
 
+  const abrirModalEditar = (c: any) => {
+    if (!c) return;
+    const esGrupo = esGrupoConv(c);
+    setEditError("");
+    if (esGrupo) {
+      setEditTitulo(c.titulo || "");
+      setEditFoto(c.foto || "");
+    } else {
+      const customName = c.nombresPersonalizados?.[user?.id] || "";
+      const customPhoto = c.fotosPersonalizadas?.[user?.id] || "";
+      setEditTitulo(customName);
+      setEditFoto(customPhoto);
+    }
+    setShowEditarConv(true);
+  };
+
+  const handleSubirFotoEdit = async (event: any) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !empresaId) return;
+    const err = validarAdjuntoChat(file);
+    if (err) {
+      setEditError(err);
+      return;
+    }
+    setSubiendoFotoEdit(true);
+    setEditError("");
+    try {
+      const subido = await subirAdjuntoChat(file, empresaId);
+      setEditFoto(subido.url);
+    } catch (err: any) {
+      setEditError(err.message || "No se pudo subir la foto.");
+    } finally {
+      setSubiendoFotoEdit(false);
+    }
+  };
+
+  const handleGuardarEdicion = async (e: any) => {
+    e.preventDefault();
+    if (!selectedId || guardandoEdit) return;
+    setGuardandoEdit(true);
+    setEditError("");
+    try {
+      const conv = conversaciones.find((c) => c.id === selectedId);
+      const esGrupo = esGrupoConv(conv);
+      const { data: current } = await supabase
+        .from("conversaciones")
+        .select("datos")
+        .eq("id", selectedId)
+        .maybeSingle();
+
+      const datosActuales = current?.datos || {};
+      let nuevosDatos: any;
+
+      if (esGrupo) {
+        nuevosDatos = {
+          ...datosActuales,
+          titulo: editTitulo.trim(),
+          foto: editFoto.trim(),
+        };
+      } else {
+        const nombresPersonalizados = {
+          ...(datosActuales.nombresPersonalizados || {}),
+          [user?.id || ""]: editTitulo.trim(),
+        };
+        const fotosPersonalizadas = {
+          ...(datosActuales.fotosPersonalizadas || {}),
+          [user?.id || ""]: editFoto.trim(),
+        };
+        nuevosDatos = {
+          ...datosActuales,
+          nombresPersonalizados,
+          fotosPersonalizadas,
+        };
+      }
+
+      const { error: updateError } = await supabase
+        .from("conversaciones")
+        .update({ datos: nuevosDatos })
+        .eq("id", selectedId);
+
+      if (updateError) throw updateError;
+
+      setConversaciones((prev) =>
+        prev.map((c) => {
+          if (c.id !== selectedId) return c;
+          if (esGrupo) {
+            return { ...c, titulo: editTitulo.trim(), foto: editFoto.trim(), datosRaw: nuevosDatos };
+          }
+          return {
+            ...c,
+            nombresPersonalizados: nuevosDatos.nombresPersonalizados,
+            fotosPersonalizadas: nuevosDatos.fotosPersonalizadas,
+            datosRaw: nuevosDatos,
+          };
+        })
+      );
+
+      setShowEditarConv(false);
+    } catch (err: any) {
+      setEditError(err.message || "No se pudo guardar la información.");
+    } finally {
+      setGuardandoEdit(false);
+    }
+  };
+
   const empleadosModalFiltrados = useMemo(() => {
     const q = busquedaModal.toLowerCase().trim();
     if (!q) return empleados;
@@ -536,13 +680,10 @@ export default function InternalChatPanel({
   }, [empleados, busquedaModal]);
 
   return (
-    <div className="flex flex-col gap-3.5 pb-2">
-      {/* Cabecera de Sección */}
-      <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-navy-700 dark:text-white">{title}</h2>
-          <p className="mt-0.5 text-xs sm:text-sm font-medium text-gray-500 dark:text-white/60">{description}</p>
-        </div>
+    <div className="flex flex-col gap-5 pb-6">
+      {/* Cabecera / Toolbar Superior (sin duplicar el título del Navbar) */}
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+        <p className="text-xs font-medium text-gray-500 dark:text-white/60">{description}</p>
 
         <button
           type="button"
@@ -553,7 +694,7 @@ export default function InternalChatPanel({
             setBusquedaModal("");
             setShowNuevo(true);
           }}
-          className="flex items-center gap-1.5 rounded-xl bg-brand-500 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 active:scale-[0.98] dark:bg-brand-400"
+          className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-xl bg-brand-500 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-600 active:scale-95"
         >
           <MdAdd className="h-4 w-4" />
           <span>Nueva Conversación</span>
@@ -561,35 +702,45 @@ export default function InternalChatPanel({
       </div>
 
       {error && (
-        <div className="rounded-xl bg-red-50 p-4 text-xs font-bold text-red-600 dark:bg-red-500/10 dark:text-red-400">
+        <div className="rounded-xl bg-red-50 p-4 text-xs font-semibold text-red-600 dark:bg-red-500/10 dark:text-red-400">
           {error}
         </div>
       )}
 
       {/* Grid Principal: Sidebar de Conversaciones + Chat */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[340px_1fr] xl:grid-cols-[360px_1fr]">
-        <NexxusCard extra={`flex h-[calc(100vh-195px)] min-h-[460px] flex-col p-3.5 ${selectedId ? "hidden lg:flex" : "flex"}`}>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[340px_1fr]">
+        <NexxusCard extra={`flex h-[calc(100vh-200px)] min-h-[580px] flex-col p-4 ${selectedId ? "hidden lg:flex" : "flex"}`}>
           {/* Buscador de conversaciones */}
           <div className="relative mb-3">
-            <MdOutlineSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-gray-400 dark:text-white/50" />
+            <MdOutlineSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-gray-400 dark:text-white/40" />
             <input
               type="text"
               placeholder="Buscar conversación..."
               value={busquedaConv}
               onChange={(e) => setBusquedaConv(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 bg-gray-50/70 py-2 pl-9 pr-3 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white"
+              className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/50 pl-9 pr-8 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
             />
+            {busquedaConv && (
+              <button
+                type="button"
+                onClick={() => setBusquedaConv("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-white"
+                title="Limpiar búsqueda"
+              >
+                <MdOutlineClose className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
 
-          {/* Filtros: Todos / Directos / Grupos con exclusión estricta */}
-          <div className="mb-3 flex items-center gap-1 rounded-xl bg-gray-100/80 p-1 dark:bg-white/5">
+          {/* Filtros Segmentados */}
+          <div className="mb-3 flex items-center gap-1 rounded-xl bg-gray-100/80 p-1 dark:bg-charcoal">
             <button
               type="button"
               onClick={() => setFiltroTipoConv("todas")}
-              className={`flex-1 rounded-lg py-1.5 text-xs font-bold transition duration-150 ${
+              className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition active:scale-95 ${
                 filtroTipoConv === "todas"
-                  ? "bg-white text-navy-700 shadow-sm dark:bg-charcoal dark:text-white"
-                  : "text-gray-500 hover:text-navy-700 dark:text-white/60 dark:hover:text-white"
+                  ? "bg-navy-700 text-white shadow-sm dark:bg-white dark:text-navy-700"
+                  : "text-gray-500 hover:text-navy-700 hover:bg-white/60 dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10"
               }`}
             >
               Todas ({conteosFiltros.todas})
@@ -597,10 +748,10 @@ export default function InternalChatPanel({
             <button
               type="button"
               onClick={() => setFiltroTipoConv("directas")}
-              className={`flex-1 rounded-lg py-1.5 text-xs font-bold transition duration-150 ${
+              className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition active:scale-95 ${
                 filtroTipoConv === "directas"
-                  ? "bg-white text-navy-700 shadow-sm dark:bg-charcoal dark:text-white"
-                  : "text-gray-500 hover:text-navy-700 dark:text-white/60 dark:hover:text-white"
+                  ? "bg-navy-700 text-white shadow-sm dark:bg-white dark:text-navy-700"
+                  : "text-gray-500 hover:text-navy-700 hover:bg-white/60 dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10"
               }`}
             >
               Directas ({conteosFiltros.directas})
@@ -608,10 +759,10 @@ export default function InternalChatPanel({
             <button
               type="button"
               onClick={() => setFiltroTipoConv("grupos")}
-              className={`flex-1 rounded-lg py-1.5 text-xs font-bold transition duration-150 ${
+              className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition active:scale-95 ${
                 filtroTipoConv === "grupos"
-                  ? "bg-white text-navy-700 shadow-sm dark:bg-charcoal dark:text-white"
-                  : "text-gray-500 hover:text-navy-700 dark:text-white/60 dark:hover:text-white"
+                  ? "bg-navy-700 text-white shadow-sm dark:bg-white dark:text-navy-700"
+                  : "text-gray-500 hover:text-navy-700 hover:bg-white/60 dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10"
               }`}
             >
               Grupos ({conteosFiltros.grupos})
@@ -623,13 +774,15 @@ export default function InternalChatPanel({
             {cargandoConversaciones ? (
               <div className="flex h-40 flex-col items-center justify-center gap-2">
                 <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
-                <p className="text-xs text-gray-400 dark:text-white/40">Cargando bandeja...</p>
+                <p className="text-xs text-gray-400 dark:text-white/40">Cargando conversaciones...</p>
               </div>
             ) : conversacionesFiltradas.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <MdOutlineChatBubbleOutline className="h-8 w-8 text-gray-300 dark:text-white/30" />
-                <p className="mt-2 text-xs font-bold text-navy-700 dark:text-white">Sin conversaciones</p>
-                <p className="text-[11px] text-gray-400 dark:text-white/40">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-gray-400 dark:bg-white/5 dark:text-white/40">
+                  <MdOutlineChatBubbleOutline className="h-5 w-5" />
+                </div>
+                <p className="mt-2.5 text-xs font-bold text-navy-700 dark:text-white">Sin conversaciones</p>
+                <p className="mt-0.5 text-[11px] text-gray-400 dark:text-white/40 max-w-[200px]">
                   {filtroTipoConv === "grupos"
                     ? "No hay chats grupales iniciados."
                     : filtroTipoConv === "directas"
@@ -641,9 +794,7 @@ export default function InternalChatPanel({
               <div className="flex flex-col gap-1">
                 {conversacionesFiltradas.map((c) => {
                   const esGrupo = esGrupoConv(c);
-                  const participantes = obtenerParticipantesDeConv(c);
-                  const otros = participantes.filter((p: any) => p.id !== user?.id);
-                  const fotoPreview = otros[0]?.foto;
+                  const fotoPreview = fotoConversacion(c);
                   const titulo = tituloConversacion(c);
                   const activa = c.id === selectedId;
 
@@ -651,17 +802,21 @@ export default function InternalChatPanel({
                     <div
                       key={c.id}
                       onClick={() => setSelectedId(c.id)}
-                      className={`group relative flex cursor-pointer items-center gap-3 rounded-2xl p-2.5 transition duration-150 active:scale-[0.99] ${
+                      className={`group relative flex cursor-pointer items-center gap-3 rounded-xl p-2.5 transition active:scale-[0.99] border ${
                         activa
-                          ? "bg-brand-500/10 dark:bg-brand-400/20 border border-brand-500/25 dark:border-brand-400/30"
-                          : "hover:bg-gray-50/80 dark:hover:bg-white/[0.04] border border-transparent"
+                          ? "bg-brand-50/70 dark:bg-brand-900/20 border-brand-200 dark:border-brand-500/30"
+                          : "border-transparent hover:bg-gray-50 dark:hover:bg-white/[0.03]"
                       }`}
                     >
                       <div className="relative shrink-0">
                         {esGrupo ? (
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-500/15 text-indigo-600 dark:bg-indigo-400/25 dark:text-indigo-200">
-                            <MdOutlineGroups className="h-5 w-5" />
-                          </div>
+                          fotoPreview ? (
+                            <Avatar src={fotoPreview} name={titulo} size={10} />
+                          ) : (
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-500/10 text-brand-600 dark:bg-brand-400/20 dark:text-brand-300">
+                              <MdOutlineGroups className="h-5 w-5" />
+                            </div>
+                          )
                         ) : (
                           <Avatar src={fotoPreview} name={titulo} size={10} />
                         )}
@@ -669,7 +824,7 @@ export default function InternalChatPanel({
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-1.5">
+                        <div className="flex items-center justify-between gap-1">
                           <p
                             className={`truncate text-xs font-bold ${
                               activa ? "text-brand-600 dark:text-brand-300" : "text-navy-700 dark:text-white"
@@ -682,7 +837,7 @@ export default function InternalChatPanel({
                           </span>
                         </div>
                         <div className="flex items-center justify-between gap-1 mt-0.5">
-                          <p className="truncate text-[11.5px] font-normal text-gray-500 dark:text-white/60">
+                          <p className="truncate text-[11.5px] font-medium text-gray-500 dark:text-white/60">
                             {c.ultimoMensaje || "Conversación iniciada"}
                           </p>
                           <UnreadBadge conversacionId={c.id} uid={user?.id} />
@@ -697,7 +852,7 @@ export default function InternalChatPanel({
                           e.stopPropagation();
                           handleEliminarConversacion(c.id);
                         }}
-                        className="opacity-0 group-hover:opacity-100 shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 transition"
+                        className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-gray-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 transition active:scale-95"
                       >
                         <MdDeleteOutline className="h-4 w-4" />
                       </button>
@@ -709,46 +864,48 @@ export default function InternalChatPanel({
           </div>
         </NexxusCard>
 
-        <NexxusCard extra={`flex h-[calc(100vh-195px)] min-h-[460px] flex-col p-0 overflow-hidden ${!selectedId ? "hidden lg:flex" : "flex"}`}>
+        <NexxusCard extra={`flex h-[calc(100vh-200px)] min-h-[580px] flex-col p-0 overflow-hidden ${!selectedId ? "hidden lg:flex" : "flex"}`}>
           {!conversacionSeleccionada ? (
             <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-brand-500/10 text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
-                <MdOutlineChatBubbleOutline className="h-8 w-8" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-500/10 text-brand-600 dark:bg-brand-400/20 dark:text-brand-300">
+                <MdOutlineChatBubbleOutline className="h-7 w-7" />
               </div>
               <h4 className="mt-4 text-base font-bold text-navy-700 dark:text-white">
                 Bandeja de Mensajería Nexxus
               </h4>
-              <p className="mt-1 text-xs text-gray-400 dark:text-white/50 max-w-sm">
-                Selecciona una conversación del panel izquierdo o inicia un nuevo chat con cualquier colaborador.
+              <p className="mt-1 text-xs text-gray-400 dark:text-white/50 max-w-xs">
+                Selecciona una conversación del panel izquierdo o inicia un nuevo chat corporativo.
               </p>
             </div>
           ) : (
             <>
               {/* Header de la conversación */}
-              <div className="flex shrink-0 items-center justify-between border-b border-gray-100 bg-gray-50/70 px-4 py-3 sm:px-5 sm:py-3.5 dark:border-white/5 dark:bg-charcoal">
+              <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50/50 px-5 py-3 dark:border-white/5 dark:bg-charcoal">
                 <div className="flex items-center gap-3 min-w-0">
                   <button
                     type="button"
                     onClick={() => setSelectedId(null)}
-                    className="flex items-center justify-center rounded-lg p-1 text-gray-500 hover:bg-gray-200/60 dark:text-white/70 dark:hover:bg-white/10 lg:hidden"
+                    className="flex items-center justify-center rounded-lg p-1 text-gray-500 transition hover:bg-gray-200/60 dark:text-white/70 dark:hover:bg-white/10 lg:hidden"
                     title="Volver a la lista"
                   >
                     <MdArrowBack className="h-5 w-5" />
                   </button>
-
                   <div className="relative shrink-0">
                     {esGrupoConv(conversacionSeleccionada) ? (
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-500/15 text-indigo-600 dark:bg-indigo-400/25 dark:text-indigo-200">
-                        <MdOutlineGroups className="h-5 w-5" />
-                      </div>
+                      fotoConversacion(conversacionSeleccionada) ? (
+                        <Avatar
+                          src={fotoConversacion(conversacionSeleccionada)}
+                          name={tituloConversacion(conversacionSeleccionada)}
+                          size={10}
+                        />
+                      ) : (
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-500/10 text-brand-600 dark:bg-brand-400/20 dark:text-brand-300">
+                          <MdOutlineGroups className="h-5 w-5" />
+                        </div>
+                      )
                     ) : (
                       <Avatar
-                        src={(() => {
-                          const otros = obtenerParticipantesDeConv(conversacionSeleccionada).filter(
-                            (p: any) => p.id !== user?.id
-                          );
-                          return otros[0]?.foto;
-                        })()}
+                        src={fotoConversacion(conversacionSeleccionada)}
                         name={tituloConversacion(conversacionSeleccionada)}
                         size={10}
                       />
@@ -756,39 +913,46 @@ export default function InternalChatPanel({
                     <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500 dark:border-charcoal" />
                   </div>
                   <div className="min-w-0">
-                    <h4 className="truncate text-sm font-bold text-navy-700 dark:text-white">
-                      {tituloConversacion(conversacionSeleccionada)}
-                    </h4>
-                    <p className="truncate text-[11px] font-medium text-gray-500 dark:text-white/60">
-                      {(() => {
-                        const esGrupo = esGrupoConv(conversacionSeleccionada);
-                        const parts = obtenerParticipantesDeConv(conversacionSeleccionada);
-                        if (esGrupo) {
-                          return `${parts.length} participantes • ${parts.map((p: any) => p.nombre).join(", ")}`;
+                    <div className="flex items-center gap-2">
+                      <h4 className="truncate text-sm font-bold text-navy-700 dark:text-white">
+                        {tituloConversacion(conversacionSeleccionada)}
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() => abrirModalEditar(conversacionSeleccionada)}
+                        className="rounded-lg p-1 text-gray-400 hover:bg-gray-200/60 hover:text-navy-700 transition active:scale-95 dark:hover:bg-white/10 dark:hover:text-white"
+                        title={
+                          esGrupoConv(conversacionSeleccionada)
+                            ? "Editar nombre y foto del grupo"
+                            : "Personalizar nombre de este chat"
                         }
-                        const otro = parts.find((p: any) => p.id !== user?.id);
-                        const emp = otro ? empleadoPorId.get(otro.id) : null;
-                        return emp?.cargo || "Colaborador • Activo";
-                      })()}
+                      >
+                        <MdOutlineEdit className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <p className="truncate text-[11px] font-medium text-gray-400 dark:text-white/50">
+                      {obtenerParticipantesDeConv(conversacionSeleccionada)
+                        .map((p: any) => p.nombre)
+                        .join(", ")}
                     </p>
                   </div>
                 </div>
               </div>
 
               {mensajesError && (
-                <div className="m-3 rounded-xl bg-red-50 p-3 text-xs font-bold text-red-600 dark:bg-red-500/10 dark:text-red-400">
+                <div className="m-3 rounded-xl bg-red-50 p-3 text-xs font-semibold text-red-600 dark:bg-red-500/10 dark:text-red-400">
                   {mensajesError}
                 </div>
               )}
 
-              {/* Cuerpo del chat / Mensajes con Tipografía Ampliada y Legible */}
-              <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-3.5">
+              {/* Cuerpo del chat / Mensajes */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-3.5">
                 {cargandoMensajes ? (
                   <div className="flex h-full items-center justify-center">
-                    <div className="h-7 w-7 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+                    <div className="h-7 w-7 animate-spin rounded-full border-3 border-brand-500 border-t-transparent" />
                   </div>
                 ) : mensajes.length === 0 ? (
-                  <div className="flex h-full flex-col items-center justify-center text-center p-4">
+                  <div className="flex h-full flex-col items-center justify-center text-center">
                     <p className="text-sm font-bold text-navy-700 dark:text-white">Inicio de la conversación</p>
                     <p className="text-xs text-gray-400 dark:text-white/50 mt-1">
                       Envía un mensaje para comenzar a chatear.
@@ -808,34 +972,30 @@ export default function InternalChatPanel({
                       if (showDateDivider) lastDateStr = fechaSeparador;
 
                       return (
-                        <div key={m.id} className="space-y-2.5">
+                        <div key={m.id} className="space-y-2">
                           {showDateDivider && (
                             <div className="flex items-center justify-center my-3">
-                              <span className="rounded-full bg-gray-100/90 dark:bg-white/10 px-3.5 py-1 text-xs font-semibold text-gray-500 dark:text-white/70 shadow-sm border border-gray-200/50 dark:border-white/5">
+                              <span className="rounded-full bg-gray-100/90 px-3 py-0.5 text-[11px] font-semibold text-gray-500 dark:bg-white/10 dark:text-white/60">
                                 {fechaSeparador}
                               </span>
                             </div>
                           )}
 
-                          <div className={`flex items-end gap-2 ${esMio ? "justify-end" : "justify-start"}`}>
-                            {!esMio && (
-                              <div className="mb-0.5 shrink-0">
-                                <Avatar src={remitenteFoto} name={remitenteNombre} size={8} />
-                              </div>
-                            )}
+                          <div className={`flex items-end gap-2.5 ${esMio ? "justify-end" : "justify-start"}`}>
+                            {!esMio && <Avatar src={remitenteFoto} name={remitenteNombre} size={8} />}
 
-                            <div className={`max-w-[78%] sm:max-w-[72%] flex flex-col ${esMio ? "items-end" : "items-start"}`}>
+                            <div className={`max-w-[75%] flex flex-col ${esMio ? "items-end" : "items-start"}`}>
                               {!esMio && (
-                                <span className="mb-1 ml-1 text-xs font-bold text-gray-700 dark:text-white/80">
+                                <span className="mb-1 ml-1 text-[11px] font-bold text-gray-600 dark:text-white/70">
                                   {remitenteNombre}
                                 </span>
                               )}
 
                               <div
-                                className={`rounded-2xl px-4 py-2.5 text-[13.5px] font-normal leading-relaxed shadow-sm break-words max-w-full ${
+                                className={`rounded-2xl px-4 py-2.5 text-xs font-medium leading-relaxed ${
                                   esMio
-                                    ? "rounded-br-sm bg-brand-500 text-white"
-                                    : "rounded-bl-sm bg-gray-100 text-navy-700 dark:bg-white/10 dark:text-white"
+                                    ? "rounded-br-xs bg-brand-500 text-white shadow-sm"
+                                    : "rounded-bl-xs bg-gray-100 text-navy-700 dark:bg-white/10 dark:text-white"
                                 }`}
                               >
                                 {/* Adjuntos */}
@@ -863,12 +1023,39 @@ export default function InternalChatPanel({
                                   ) : null;
                                 })()}
 
-                                {m.texto && <p className="whitespace-pre-wrap select-text">{m.texto}</p>}
+                                {m.texto && <span className="whitespace-pre-wrap">{m.texto}</span>}
                               </div>
 
-                              <div className="flex items-center gap-1 mt-1 text-[10.5px] font-medium text-gray-400 dark:text-white/40 px-1">
+                              <div className="flex items-center gap-1 mt-1 text-[10px] font-medium text-gray-400 dark:text-white/40 px-1">
                                 <span>{formatoHoraMensaje(m.timestamp)}</span>
-                                {esMio && <MdOutlineDoneAll className="h-4 w-4 text-brand-500 dark:text-brand-300" />}
+                                {esMio && (() => {
+                                  const otrosParticipantes = (conversacionSeleccionada?.participanteIds || []).filter(
+                                    (id: string) => id !== user?.id
+                                  );
+                                  const esGrupo = esGrupoConv(conversacionSeleccionada);
+                                  const leido =
+                                    otrosParticipantes.length > 0 &&
+                                    (esGrupo
+                                      ? otrosParticipantes.every((id: string) => m.leidoPor.includes(id))
+                                      : otrosParticipantes.some((id: string) => m.leidoPor.includes(id)));
+
+                                  return (
+                                    <MdOutlineDoneAll
+                                      className={`h-3.5 w-3.5 transition-colors ${
+                                        leido
+                                          ? "text-brand-500 dark:text-brand-300"
+                                          : "text-gray-400 dark:text-white/40"
+                                      }`}
+                                      title={
+                                        leido
+                                          ? esGrupo
+                                            ? "Visto por todos los participantes"
+                                            : "Visto"
+                                          : "Enviado (sin leer)"
+                                      }
+                                    />
+                                  );
+                                })()}
                               </div>
                             </div>
                           </div>
@@ -880,8 +1067,8 @@ export default function InternalChatPanel({
                 <div ref={mensajesFinRef} />
               </div>
 
-              {/* Barra de Entrada de Mensajes */}
-              <div className="shrink-0 border-t border-gray-100 bg-white p-3 dark:border-white/5 dark:bg-charcoal">
+              {/* Barra de Entrada de Mensajes Integrada */}
+              <div className="border-t border-gray-100 bg-gray-50/50 p-3 dark:border-white/5 dark:bg-charcoal">
                 <form onSubmit={handleEnviarMensaje} className="flex items-center gap-2">
                   <input
                     ref={fileInputRef}
@@ -896,7 +1083,7 @@ export default function InternalChatPanel({
                     disabled={subiendoArchivo || enviando}
                     title="Adjuntar imagen o archivo"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-600 transition hover:bg-gray-100 active:scale-95 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-white/80"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-gray-400 transition hover:bg-gray-200/60 hover:text-navy-700 active:scale-95 disabled:opacity-50 dark:hover:bg-white/10 dark:hover:text-white"
                   >
                     {subiendoArchivo ? (
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
@@ -905,19 +1092,22 @@ export default function InternalChatPanel({
                     )}
                   </button>
 
-                  <textarea
-                    value={texto}
-                    onChange={(e) => setTexto(e.target.value)}
-                    onKeyDown={handleKeyDownTextarea}
-                    rows={1}
-                    placeholder="Escribe un mensaje... (Enter para enviar, Shift+Enter para salto de línea)"
-                    className="min-h-[42px] max-h-32 flex-1 resize-none rounded-xl border border-gray-200 bg-gray-50/70 py-2.5 px-3.5 text-xs sm:text-sm font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white placeholder:text-xs"
-                  />
+                  <div className="flex flex-1 items-center rounded-xl border border-gray-200 bg-white px-3.5 py-2 transition focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20 dark:border-white/10 dark:bg-white/[0.04] dark:focus-within:border-brand-400">
+                    <textarea
+                      value={texto}
+                      onChange={(e) => setTexto(e.target.value)}
+                      onKeyDown={handleKeyDownTextarea}
+                      rows={1}
+                      placeholder="Escribe un mensaje... (Enter para enviar, Shift+Enter para salto de línea)"
+                      style={{ backgroundColor: "transparent" }}
+                      className="max-h-28 w-full resize-none !bg-transparent text-xs font-medium text-navy-700 outline-none placeholder:text-gray-400 dark:text-white dark:placeholder:text-white/35"
+                    />
+                  </div>
 
                   <button
                     type="submit"
                     disabled={!texto.trim() || enviando}
-                    className="flex h-10 shrink-0 items-center gap-1.5 rounded-xl bg-brand-500 px-4 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 active:scale-95 disabled:opacity-40 dark:bg-brand-400"
+                    className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-brand-500 px-4 text-xs font-bold text-white shadow-sm shadow-brand-500/20 transition hover:bg-brand-600 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <MdSend className="h-4 w-4" />
                     <span className="hidden sm:inline">Enviar</span>
@@ -929,6 +1119,7 @@ export default function InternalChatPanel({
         </NexxusCard>
       </div>
 
+      {/* Modal: Iniciar Nueva Conversación */}
       <Modal
         isOpen={showNuevo}
         onClose={() => setShowNuevo(false)}
@@ -940,7 +1131,10 @@ export default function InternalChatPanel({
             {/* Nombre del Grupo si hay más de 1 participante seleccionado */}
             {seleccionIds.length > 1 && (
               <div>
-                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-600 dark:text-white/70" htmlFor="conv-titulo">
+                <label
+                  className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50"
+                  htmlFor="conv-titulo"
+                >
                   Nombre del Grupo (opcional)
                 </label>
                 <input
@@ -949,7 +1143,7 @@ export default function InternalChatPanel({
                   placeholder="Ej. Proyecto Innovación 2026"
                   value={tituloNuevo}
                   onChange={(e) => setTituloNuevo(e.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50/60 py-2.5 px-3.5 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
+                  className="mt-1 h-10 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
                 />
               </div>
             )}
@@ -957,10 +1151,10 @@ export default function InternalChatPanel({
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-gray-600 dark:text-white/70">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50">
                     Seleccionar Destinatarios
                   </p>
-                  <span className="rounded-full bg-brand-500/15 px-2 py-0.5 text-[10.5px] font-black text-brand-600 dark:text-brand-300">
+                  <span className="rounded-md bg-brand-500/10 px-2 py-0.5 text-[10.5px] font-bold text-brand-600 dark:text-brand-300">
                     {seleccionIds.length} seleccionados
                   </span>
                 </div>
@@ -972,7 +1166,7 @@ export default function InternalChatPanel({
                         seleccionIds.length === empleados.length ? [] : empleados.map((e) => e.id)
                       )
                     }
-                    className="text-[11px] font-bold text-brand-500 hover:text-brand-600 dark:text-brand-400 dark:hover:text-brand-300 transition"
+                    className="text-[11px] font-semibold text-brand-500 hover:text-brand-600 dark:text-brand-400 transition"
                   >
                     {seleccionIds.length === empleados.length ? "Desmarcar todos" : "Seleccionar todos"}
                   </button>
@@ -981,17 +1175,17 @@ export default function InternalChatPanel({
 
               {/* Buscador dentro del modal */}
               <div className="relative mb-2">
-                <MdOutlineSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-gray-400 dark:text-white/50" />
+                <MdOutlineSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-gray-400 dark:text-white/40" />
                 <input
                   type="text"
                   placeholder="Buscar colaborador por nombre o cargo..."
                   value={busquedaModal}
                   onChange={(e) => setBusquedaModal(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50/60 py-2 pl-9 pr-3.5 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
+                  className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/50 pl-9 pr-3.5 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
                 />
               </div>
 
-              <div className="max-h-60 overflow-y-auto rounded-2xl border border-gray-200 bg-gray-50/40 p-2.5 dark:border-white/10 dark:bg-charcoal">
+              <div className="max-h-60 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50/40 p-2 dark:border-white/10 dark:bg-charcoal">
                 {empleadosModalFiltrados.length === 0 ? (
                   <p className="p-4 text-xs text-gray-400 text-center">No se encontraron colaboradores.</p>
                 ) : (
@@ -1001,14 +1195,14 @@ export default function InternalChatPanel({
                       return (
                         <label
                           key={emp.id}
-                          className={`flex cursor-pointer items-center justify-between p-2.5 rounded-xl transition border ${
+                          className={`flex cursor-pointer items-center justify-between p-2 rounded-xl transition border ${
                             isChecked
                               ? "border-brand-500/30 bg-brand-500/10 dark:border-brand-400/30 dark:bg-brand-500/15"
                               : "border-transparent bg-white/60 hover:bg-white dark:bg-white/[0.02] dark:hover:bg-white/[0.06]"
                           }`}
                         >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <Avatar src={emp.foto} name={emp.nombre} size={9} />
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <Avatar src={emp.foto} name={emp.nombre} size={8} />
                             <div className="min-w-0">
                               <p className="truncate text-xs font-bold text-navy-700 dark:text-white">
                                 {emp.nombre}
@@ -1032,20 +1226,20 @@ export default function InternalChatPanel({
               </div>
             </div>
 
-            {creandoError && <p className="text-xs font-bold text-red-500">{creandoError}</p>}
+            {creandoError && <p className="text-xs font-semibold text-rose-500">{creandoError}</p>}
 
-            <div className="flex items-center justify-end gap-2.5 border-t border-gray-100 pt-3.5 dark:border-white/10 mt-1">
+            <div className="flex items-center justify-end gap-2 border-t border-gray-100 pt-3.5 dark:border-white/10">
               <button
                 type="button"
                 onClick={() => setShowNuevo(false)}
-                className="rounded-xl bg-gray-100 px-4 py-2.5 text-xs font-bold text-gray-700 transition hover:bg-gray-200 active:scale-95 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
+                className="rounded-xl px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 transition active:scale-95 dark:text-white/70 dark:hover:bg-white/10"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={seleccionIds.length === 0 || creando}
-                className="flex items-center gap-1.5 rounded-xl bg-brand-500 px-6 py-2.5 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 active:scale-95 disabled:opacity-50 dark:bg-brand-400"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-500 px-5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-600 active:scale-95 disabled:opacity-50"
               >
                 <MdOutlineCheck className="h-4 w-4" />
                 <span>{creando ? "Iniciando..." : "Comenzar Chat"}</span>
@@ -1062,6 +1256,139 @@ export default function InternalChatPanel({
             <img src={expandedImage} alt="Ampliada" className="max-h-[70vh] rounded-2xl object-contain shadow-lg" />
           </div>
         ) : null}
+      </Modal>
+
+      {/* Modal: Editar Grupo / Personalizar Chat */}
+      <Modal
+        isOpen={showEditarConv}
+        onClose={() => setShowEditarConv(false)}
+        title={
+          esGrupoConv(conversacionSeleccionada)
+            ? "Editar Información del Grupo"
+            : "Personalizar Nombre del Chat"
+        }
+        width="max-w-md"
+      >
+        <div className="py-2">
+          <form onSubmit={handleGuardarEdicion} className="flex flex-col gap-4">
+            <input
+              ref={editFileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={handleSubirFotoEdit}
+            />
+
+            {/* Selector de Foto */}
+            <div className="flex flex-col items-center justify-center gap-2.5 py-2">
+              <div className="relative group">
+                {editFoto ? (
+                  <Avatar src={editFoto} name={editTitulo || "Chat"} size={16} />
+                ) : esGrupoConv(conversacionSeleccionada) ? (
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-500/10 text-brand-600 dark:bg-brand-400/20 dark:text-brand-300 shadow-inner">
+                    <MdOutlineGroups className="h-8 w-8" />
+                  </div>
+                ) : (
+                  <Avatar
+                    src={fotoConversacion(conversacionSeleccionada)}
+                    name={tituloConversacion(conversacionSeleccionada)}
+                    size={16}
+                  />
+                )}
+
+                <button
+                  type="button"
+                  disabled={subiendoFotoEdit}
+                  onClick={() => editFileInputRef.current?.click()}
+                  className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-brand-500 text-white shadow-md hover:bg-brand-600 transition active:scale-95 disabled:opacity-50"
+                  title="Cambiar foto"
+                >
+                  {subiendoFotoEdit ? (
+                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  ) : (
+                    <MdOutlineCameraAlt className="h-3.5 w-3.5" />
+                  )}
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs">
+                <button
+                  type="button"
+                  disabled={subiendoFotoEdit}
+                  onClick={() => editFileInputRef.current?.click()}
+                  className="font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-400"
+                >
+                  {subiendoFotoEdit ? "Subiendo foto..." : "Cambiar foto"}
+                </button>
+                {editFoto && (
+                  <>
+                    <span className="text-gray-300 dark:text-white/20">·</span>
+                    <button
+                      type="button"
+                      onClick={() => setEditFoto("")}
+                      className="font-semibold text-rose-500 hover:text-rose-600"
+                    >
+                      Quitar
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Campo de Nombre / Alias */}
+            <div>
+              <label
+                className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50"
+                htmlFor="edit-conv-titulo"
+              >
+                {esGrupoConv(conversacionSeleccionada)
+                  ? "Nombre del Grupo"
+                  : "Nombre Personalizado (Alias)"}
+              </label>
+              <input
+                id="edit-conv-titulo"
+                type="text"
+                placeholder={
+                  esGrupoConv(conversacionSeleccionada)
+                    ? "Ej. Equipo de Marketing"
+                    : "Ej. Juan (Soporte Técnico)"
+                }
+                value={editTitulo}
+                onChange={(e) => setEditTitulo(e.target.value)}
+                className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3.5 text-xs font-semibold text-navy-700 outline-none transition placeholder:text-gray-400 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-white/10 dark:bg-charcoal dark:text-white dark:placeholder:text-white/30 dark:focus:border-brand-400 dark:focus:bg-[#1B254B]"
+              />
+              {!esGrupoConv(conversacionSeleccionada) && (
+                <p className="mt-1.5 text-[11px] text-gray-400 dark:text-white/40">
+                  Este alias personalizado solo será visible para ti en tu lista de chats.
+                </p>
+              )}
+            </div>
+
+            {editError && (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-2.5 text-xs font-bold text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-400">
+                {editError}
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2.5 border-t border-gray-100 pt-3.5 dark:border-white/10">
+              <button
+                type="button"
+                onClick={() => setShowEditarConv(false)}
+                className="rounded-xl border border-gray-200 px-4 py-2 text-xs font-bold text-gray-600 transition hover:bg-gray-100 active:scale-95 dark:border-white/10 dark:text-white/80 dark:hover:bg-white/5"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={guardandoEdit || subiendoFotoEdit}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-500 px-5 py-2 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 active:scale-95 disabled:opacity-50"
+              >
+                <MdOutlineCheck className="h-4 w-4" />
+                <span>{guardandoEdit ? "Guardando..." : "Guardar Cambios"}</span>
+              </button>
+            </div>
+          </form>
+        </div>
       </Modal>
     </div>
   );

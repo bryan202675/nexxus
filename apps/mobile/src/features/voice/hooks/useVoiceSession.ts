@@ -7,17 +7,7 @@ import { useCases } from '@/infrastructure/container';
 import { SensitiveAiAction } from 'domain/entities/AiAssistant';
 import { PayrollStatus } from 'domain/entities/Payroll';
 
-// Nivel mínimo para considerar que el usuario "empezó a hablar" (entrada al estado de voz).
-const UMBRAL_VOZ = 0.18;
-// El "silencio" para cerrar el turno se mide relativo al pico de volumen de ESTA
-// intervención, no contra un número fijo: el ruido ambiente/sensibilidad del mic varía
-// mucho entre dispositivos, y un umbral absoluto (p.ej. 0.18) casi nunca se cruza hacia
-// abajo en algunos teléfonos -- terminaba esperando siempre el salvavidas completo.
-const FRACCION_SILENCIO = 0.4;
-const SILENCIO_PARA_ENVIAR_MS = 700;
-// Salvavidas: si por lo que sea nunca se detecta silencio relativo, no queremos quedarnos
-// escuchando para siempre -- se cierra el turno igual después de este tiempo.
-const MAX_ESCUCHA_MS = 6000;
+import { createVoiceActivity, updateVoiceActivity } from '../services/voiceActivity';
 
 function logVoz(...args: unknown[]) {
   if (__DEV__) console.log('[VOICE]', ...args);
@@ -55,11 +45,7 @@ export function useVoiceSession() {
   const activoRef = useRef(false);
   const muteadoRef = useRef(false);
   const procesandoRef = useRef(false);
-  const silencioDesdeRef = useRef<number | null>(null);
-  const vozDetectadaRef = useRef(false);
-  const escuchandoDesdeRef = useRef<number | null>(null);
-  const ultimoLogNivelRef = useRef(0);
-  const picoNivelRef = useRef(0);
+  const actividadRef = useRef(createVoiceActivity(Date.now()));
 
   const cambiarEstado = useCallback((siguiente: VoiceSessionState) => {
     estadoRef.current = siguiente;
@@ -69,9 +55,7 @@ export function useVoiceSession() {
 
   const iniciarEscucha = useCallback(async () => {
     if (!activoRef.current || muteadoRef.current || procesandoRef.current) return;
-    silencioDesdeRef.current = null;
-    vozDetectadaRef.current = false;
-    picoNivelRef.current = 0;
+    actividadRef.current = createVoiceActivity(Date.now());
     logVoz('volviendo a escuchar, iniciando grabación');
     try {
       // Mismo salvavidas que en iniciarLlamada: volver a activar el modo de grabación justo
@@ -91,7 +75,7 @@ export function useVoiceSession() {
       await audio.detenerGrabacion();
       return;
     }
-    escuchandoDesdeRef.current = Date.now();
+    actividadRef.current = createVoiceActivity(Date.now());
     logVoz('micrófono iniciado, escuchando');
     cambiarEstado('listening');
   }, [audio.detenerGrabacion, audio.iniciarGrabacion, cambiarEstado]);
@@ -157,7 +141,7 @@ export function useVoiceSession() {
   const procesarTurno = useCallback(async () => {
     if (!activoRef.current || procesandoRef.current) return;
     procesandoRef.current = true;
-    escuchandoDesdeRef.current = null;
+
     cambiarEstado('thinking');
     logVoz('turno cerrado, transcribiendo y consultando a Nexxus');
 
@@ -176,8 +160,10 @@ export function useVoiceSession() {
         rol: entrada.rol,
         texto: entrada.texto,
       }));
+      const inicioSolicitud = Date.now();
       const turno = await enviarTurnoDeVoz(clip, historialReciente);
-      logVoz('respuesta recibida', turno.transcripcion ? `"${turno.transcripcion}"` : '(sin transcripción)');
+      logVoz('servidor respondió en ms', Date.now() - inicioSolicitud);
+
       if (!activoRef.current) return;
 
       const ahora = Date.now();
@@ -223,45 +209,23 @@ export function useVoiceSession() {
   useEffect(() => {
     if (estado !== 'listening' || muteado || !audio.grabando) return;
 
-    const ahora = Date.now();
-    if (ahora - ultimoLogNivelRef.current > 2000) {
-      ultimoLogNivelRef.current = ahora;
-      logVoz('nivel actual', audio.nivelEntrada.toFixed(3), '(umbral', UMBRAL_VOZ, ')');
-    }
-    if (escuchandoDesdeRef.current && ahora - escuchandoDesdeRef.current >= MAX_ESCUCHA_MS) {
-      logVoz('tiempo máximo de escucha alcanzado, cerrando turno de todas formas');
-      silencioDesdeRef.current = null;
-      void procesarTurno();
-      return;
-    }
-
-    if (audio.nivelEntrada > UMBRAL_VOZ) {
-      if (!vozDetectadaRef.current) logVoz('voz detectada, nivel', audio.nivelEntrada.toFixed(2));
-      vozDetectadaRef.current = true;
-      picoNivelRef.current = Math.max(picoNivelRef.current, audio.nivelEntrada);
-    }
-    if (!vozDetectadaRef.current) return;
-
-    // "Silencio" = el nivel bajó a una fracción del pico de esta intervención, no un
-    // número absoluto -- así se adapta a qué tan fuerte habla cada quien en cada ambiente.
-    const umbralSilencioRelativo = picoNivelRef.current * FRACCION_SILENCIO;
-    if (audio.nivelEntrada > umbralSilencioRelativo) {
-      silencioDesdeRef.current = null;
-      return;
-    }
-    if (!silencioDesdeRef.current) silencioDesdeRef.current = ahora;
-
-    if (ahora - silencioDesdeRef.current >= SILENCIO_PARA_ENVIAR_MS) {
-      silencioDesdeRef.current = null;
-      void procesarTurno();
-    }
+    const detectarFin = () => {
+      if (updateVoiceActivity(actividadRef.current, audio.nivelEntrada, Date.now())) {
+        logVoz('fin de intervención detectado');
+        void procesarTurno();
+      }
+    };
+    detectarFin();
+    // Silence can produce identical meter readings, with no React render.
+    const timer = setInterval(detectarFin, 100);
+    return () => clearInterval(timer);
   }, [audio.grabando, audio.nivelEntrada, estado, muteado, procesarTurno]);
 
   const alternarMute = useCallback(() => {
     setMuteado((previo) => {
       const siguiente = !previo;
       muteadoRef.current = siguiente;
-      silencioDesdeRef.current = null;
+      actividadRef.current = createVoiceActivity(Date.now());
       if (siguiente && estadoRef.current === 'listening') {
         void audio.detenerGrabacion();
       } else if (!siguiente && estadoRef.current === 'listening') {
@@ -310,8 +274,8 @@ export function useVoiceSession() {
     logVoz('llamada finalizada');
     activoRef.current = false;
     procesandoRef.current = false;
-    silencioDesdeRef.current = null;
-    escuchandoDesdeRef.current = null;
+    actividadRef.current = createVoiceActivity(Date.now());
+
     accionesPendientesRef.current = [];
     setAccionesPendientes([]);
     audio.liberar();

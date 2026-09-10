@@ -743,7 +743,7 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
       backgroundColor: 'transparent',
     },
     fondoAbsoluto: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       zIndex: -1,
       overflow: 'hidden',
     },

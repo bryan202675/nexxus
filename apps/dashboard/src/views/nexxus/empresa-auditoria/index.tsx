@@ -30,52 +30,85 @@ const hoyISO = () => new Date().toISOString().slice(0, 10);
 
 const MODULE_STYLES: Record<string, { label: string; badge: string; icon: any }> = {
   ia: {
-    label: "IA Nexxus",
-    badge: "bg-purple-500/10 text-purple-600 border border-purple-500/20 dark:bg-purple-400/20 dark:text-purple-300",
+    label: "IA",
+    badge: "bg-purple-500/10 text-purple-700 dark:bg-purple-400/20 dark:text-purple-300",
     icon: MdOutlineSmartToy,
   },
   documentos: {
     label: "Documentos",
-    badge: "bg-amber-500/10 text-amber-600 border border-amber-500/20 dark:bg-amber-400/20 dark:text-amber-300",
+    badge: "bg-amber-500/10 text-amber-700 dark:bg-amber-400/20 dark:text-amber-300",
     icon: MdOutlineDescription,
   },
   plantilla: {
     label: "Plantilla",
-    badge: "bg-brand-500/10 text-brand-600 border border-brand-500/20 dark:bg-brand-400/20 dark:text-brand-300",
+    badge: "bg-indigo-500/10 text-indigo-700 dark:bg-indigo-400/20 dark:text-indigo-300",
     icon: MdOutlinePeople,
   },
   estructura: {
     label: "Estructura",
-    badge: "bg-cyan-500/10 text-cyan-600 border border-cyan-500/20 dark:bg-cyan-400/20 dark:text-cyan-300",
+    badge: "bg-cyan-500/10 text-cyan-700 dark:bg-cyan-400/20 dark:text-cyan-300",
     icon: MdOutlineAccountTree,
   },
   nomina: {
     label: "Nómina",
-    badge: "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 dark:bg-emerald-400/20 dark:text-emerald-300",
+    badge: "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-400/20 dark:text-emerald-300",
     icon: MdOutlineAssignment,
   },
   seguridad: {
     label: "Seguridad",
-    badge: "bg-rose-500/10 text-rose-600 border border-rose-500/20 dark:bg-rose-400/20 dark:text-rose-300",
+    badge: "bg-rose-500/10 text-rose-700 dark:bg-rose-400/20 dark:text-rose-300",
+    icon: MdOutlineSecurity,
+  },
+  auth: {
+    label: "Auth",
+    badge: "bg-rose-500/10 text-rose-700 dark:bg-rose-400/20 dark:text-rose-300",
+    icon: MdOutlineSecurity,
+  },
+  comunicacion: {
+    label: "Comunicación",
+    badge: "bg-blue-500/10 text-blue-700 dark:bg-blue-400/20 dark:text-blue-300",
+    icon: MdOutlineFactCheck,
+  },
+  superadmin: {
+    label: "Super Admin",
+    badge: "bg-amber-500/10 text-amber-700 dark:bg-amber-400/20 dark:text-amber-300",
     icon: MdOutlineSecurity,
   },
 };
 
 function getModuleStyle(moduloRaw: string) {
-  const key = (moduloRaw || "").trim().toLowerCase();
+  const key = (moduloRaw || "").trim().toLowerCase().replace(/[\s_-]+/g, "");
   if (MODULE_STYLES[key]) return MODULE_STYLES[key];
   if (key.includes("ia") || key.includes("ai")) return MODULE_STYLES.ia;
   if (key.includes("doc")) return MODULE_STYLES.documentos;
   if (key.includes("plantilla") || key.includes("usuario") || key.includes("empleado")) return MODULE_STYLES.plantilla;
   if (key.includes("estructura") || key.includes("depto")) return MODULE_STYLES.estructura;
   if (key.includes("nom")) return MODULE_STYLES.nomina;
-  if (key.includes("seg") || key.includes("auth")) return MODULE_STYLES.seguridad;
+  if (key.includes("auth") || key.includes("login") || key.includes("sesion")) return MODULE_STYLES.auth;
+  if (key.includes("seg")) return MODULE_STYLES.seguridad;
+  if (key.includes("comunic") || key.includes("anuncio") || key.includes("mensaj")) return MODULE_STYLES.comunicacion;
+  if (key.includes("super")) return MODULE_STYLES.superadmin;
 
   return {
     label: moduloRaw || "General",
-    badge: "bg-gray-100 text-gray-700 border border-gray-200 dark:bg-white/10 dark:text-white/70 dark:border-white/10",
+    badge: "bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-white/70",
     icon: MdOutlineHistory,
   };
+}
+
+function formatAuditDetail(detalles: string) {
+  if (!detalles) return "";
+  const trimmed = detalles.trim();
+  if (/^\d+\s*caracteres$/i.test(trimmed)) {
+    return "Consulta procesada por Nexxus IA";
+  }
+  if (trimmed.startsWith("Usuario interno ")) {
+    return `Usuario: @${trimmed.replace("Usuario interno ", "")}`;
+  }
+  if (trimmed.startsWith("Anuncio enviado a ")) {
+    return trimmed.replace("colaborador(es) (todos)", "colaboradores");
+  }
+  return trimmed;
 }
 
 function csvEscape(value: any) {
@@ -200,7 +233,7 @@ export default function AuditoriaAdmin() {
   const cargando = registros === null;
 
   return (
-    <div className="flex flex-col gap-6 pb-6">
+    <div className="flex flex-col gap-5 pb-6">
       {/* Banner de error */}
       {error && (
         <div className="rounded-xl bg-red-50 p-4 text-sm font-semibold text-red-600 dark:bg-red-500/10 dark:text-red-400">
@@ -208,189 +241,190 @@ export default function AuditoriaAdmin() {
         </div>
       )}
 
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
-            Registro de Auditoría & Seguridad
-          </h2>
-          <p className="mt-1 text-sm font-medium text-gray-500 dark:text-white/60">
-            Trazabilidad de operaciones, consultas de IA, gestión de plantilla y eventos de seguridad.
-          </p>
-        </div>
+      {/* Toolbar / Subtítulo Superior (sin duplicar el título del Navbar) */}
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+        <p className="text-xs font-medium text-gray-500 dark:text-white/60">
+          Trazabilidad integral de operaciones, consultas a la IA, gestión de plantilla y eventos de seguridad.
+        </p>
 
         <button
           type="button"
           onClick={handleExportar}
           disabled={registrosFiltrados.length === 0 || !tieneExportar}
           title={!tieneExportar ? "La exportación de datos está disponible desde el plan Business." : undefined}
-          className="flex items-center gap-1.5 rounded-xl bg-brand-500 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40 active:scale-95"
+          className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-xl bg-brand-500 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40 active:scale-95"
         >
           <MdOutlineDownload className="h-4 w-4" />
           <span>{tieneExportar ? "Exportar CSV" : "Exportar CSV (Business+)"}</span>
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {/* Total Eventos */}
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                Total de Eventos
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
-                {kpis.total}
-              </h3>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500/10 text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
-              <MdOutlineFactCheck className="h-6 w-6" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>Historial indexado</span>
-            <span className="font-bold text-brand-500">100% trazabilidad</span>
-          </div>
-        </NexxusCard>
-
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                Eventos Hoy
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
-                {kpis.hoyCount}
-              </h3>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
-              <MdOutlineToday className="h-6 w-6" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              Últimas 24 horas
+        <NexxusCard extra="p-5 flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
+              Total de Eventos
             </span>
-            <span className="font-bold text-emerald-600">En tiempo real</span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500/10 text-brand-600 dark:bg-brand-400/20 dark:text-brand-300">
+              <MdOutlineFactCheck className="h-5 w-5" />
+            </div>
+          </div>
+          <div>
+            <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
+              {kpis.total}
+            </h3>
+            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5 text-xs text-gray-400 dark:border-white/10 dark:text-white/40">
+              <span>Historial indexado</span>
+              <span className="inline-flex items-center rounded-md bg-brand-500/10 px-2 py-0.5 text-[11px] font-semibold text-brand-600 dark:bg-brand-500/20 dark:text-brand-400">
+                100% trazabilidad
+              </span>
+            </div>
           </div>
         </NexxusCard>
 
-        {/* Módulos Activos */}
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                Módulos Auditados
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
-                {kpis.modulosCount}
-              </h3>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
-              <MdOutlineCategory className="h-6 w-6" />
+        {/* Eventos Hoy */}
+        <NexxusCard extra="p-5 flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
+              Eventos Hoy
+            </span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
+              <MdOutlineToday className="h-5 w-5" />
             </div>
           </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>Sistemas integrados</span>
-            <span className="font-bold text-blue-600 dark:text-blue-400">{modulosDisponibles.length} módulos</span>
+          <div>
+            <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
+              {kpis.hoyCount}
+            </h3>
+            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5 text-xs text-gray-400 dark:border-white/10 dark:text-white/40">
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                Últimas 24 horas
+              </span>
+              <span className="inline-flex items-center rounded-md bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
+                En tiempo real
+              </span>
+            </div>
           </div>
         </NexxusCard>
 
-        {/* Usuarios Activos */}
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                Actores Activos
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
-                {kpis.usuariosCount}
-              </h3>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-500/10 text-purple-600 dark:bg-purple-400/20 dark:text-purple-300">
-              <MdOutlinePeopleAlt className="h-6 w-6" />
+        {/* Módulos Auditados */}
+        <NexxusCard extra="p-5 flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
+              Módulos Auditados
+            </span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
+              <MdOutlineCategory className="h-5 w-5" />
             </div>
           </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>Operadores con actividad</span>
-            <span className="font-bold text-purple-600 dark:text-purple-400">Verificados</span>
+          <div>
+            <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
+              {kpis.modulosCount}
+            </h3>
+            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5 text-xs text-gray-400 dark:border-white/10 dark:text-white/40">
+              <span>Sistemas integrados</span>
+              <span className="inline-flex items-center rounded-md bg-blue-500/10 px-2 py-0.5 text-[11px] font-semibold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+                {modulosDisponibles.length} módulos
+              </span>
+            </div>
+          </div>
+        </NexxusCard>
+
+        {/* Actores Activos */}
+        <NexxusCard extra="p-5 flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
+              Actores Activos
+            </span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:bg-purple-400/20 dark:text-purple-300">
+              <MdOutlinePeopleAlt className="h-5 w-5" />
+            </div>
+          </div>
+          <div>
+            <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
+              {kpis.usuariosCount}
+            </h3>
+            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5 text-xs text-gray-400 dark:border-white/10 dark:text-white/40">
+              <span>Operadores con actividad</span>
+              <span className="inline-flex items-center rounded-md bg-purple-500/10 px-2 py-0.5 text-[11px] font-semibold text-purple-600 dark:bg-purple-500/20 dark:text-purple-400">
+                Verificados
+              </span>
+            </div>
           </div>
         </NexxusCard>
       </div>
 
-      <NexxusCard extra="p-6 flex flex-col gap-5" delay={100}>
-        {/* Barra superior de filtrado y búsqueda */}
-        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+      <NexxusCard extra="p-5 sm:p-6 flex flex-col gap-4" delay={100}>
+        {/* Header con Buscador */}
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div>
-            <h4 className="text-xl font-bold tracking-tight text-navy-700 dark:text-white">
+            <h4 className="text-lg font-bold tracking-tight text-navy-700 dark:text-white">
               Historial de Eventos
             </h4>
-            <p className="mt-0.5 text-xs font-medium text-gray-500 dark:text-white/60">
+            <p className="mt-0.5 text-xs text-gray-500 dark:text-white/60">
               Mostrando {registrosFiltrados.length} registros auditados.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Buscador */}
-            <div className="relative w-full sm:w-72">
-              <MdOutlineSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-gray-400 dark:text-white/40" />
-              <input
-                type="text"
-                placeholder="Buscar por acción, módulo, usuario o detalles..."
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2 pl-9 pr-3 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
-              />
-            </div>
-
-            {/* Select Módulo */}
-            <select
-              value={moduloFiltro}
-              onChange={(e) => setModuloFiltro(e.target.value)}
-              className="h-9 rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none transition dark:border-white/10 dark:bg-charcoal dark:text-white"
-            >
-              <option value="">Todos los módulos ({modulosDisponibles.length})</option>
-              {modulosDisponibles.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
+          {/* Buscador */}
+          <div className="relative w-full sm:w-72">
+            <MdOutlineSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-gray-400 dark:text-white/40" />
+            <input
+              type="text"
+              placeholder="Buscar por acción, usuario o detalles..."
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2 pl-9 pr-3 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
+            />
           </div>
         </div>
 
-        {/* Pestañas de Filtro Rápido */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 pb-3 dark:border-white/10">
+        {/* Pestañas de Filtro Segmentadas */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
           <button
             type="button"
             onClick={() => setModuloFiltro("")}
-            className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs transition-all active:scale-95 ${
               !moduloFiltro
-                ? "bg-brand-500 text-white shadow-sm shadow-brand-500/20"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200/80 dark:bg-white/5 dark:text-white/70"
+                ? "bg-navy-700 font-semibold text-white shadow-xs dark:bg-white dark:text-navy-900"
+                : "border border-gray-200 bg-white font-medium text-gray-600 hover:bg-gray-50 hover:text-navy-700 dark:border-white/10 dark:bg-charcoal dark:text-white/70 dark:hover:bg-white/5 dark:hover:text-white"
             }`}
           >
-            Todos ({kpis.total})
+            <span>Todos</span>
+            <span
+              className={`rounded-md px-1.5 py-0.2 text-[10px] font-semibold ${
+                !moduloFiltro
+                  ? "bg-white/20 text-white dark:bg-black/10 dark:text-navy-900"
+                  : "bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-white/60"
+              }`}
+            >
+              {kpis.total}
+            </span>
           </button>
           {modulosDisponibles.map((m) => {
             const count = (registros || []).filter((r) => r.modulo?.toLowerCase() === m.toLowerCase()).length;
             const isSelected = moduloFiltro.toLowerCase() === m.toLowerCase();
+            const modStyle = getModuleStyle(m);
 
             return (
               <button
                 key={m}
                 type="button"
                 onClick={() => setModuloFiltro(isSelected ? "" : m)}
-                className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs transition-all active:scale-95 ${
                   isSelected
-                    ? "bg-brand-500 text-white shadow-sm shadow-brand-500/20"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200/80 dark:bg-white/5 dark:text-white/70"
+                    ? "bg-navy-700 font-semibold text-white shadow-xs dark:bg-white dark:text-navy-900"
+                    : "border border-gray-200 bg-white font-medium text-gray-600 hover:bg-gray-50 hover:text-navy-700 dark:border-white/10 dark:bg-charcoal dark:text-white/70 dark:hover:bg-white/5 dark:hover:text-white"
                 }`}
               >
-                <span>{m}</span>
+                <span>{modStyle.label}</span>
                 <span
-                  className={`rounded-md px-1.5 py-0.2 text-[10px] ${
-                    isSelected ? "bg-white/20 text-white" : "bg-black/5 dark:bg-white/10 text-gray-500 dark:text-white/60"
+                  className={`rounded-md px-1.5 py-0.2 text-[10px] font-semibold ${
+                    isSelected
+                      ? "bg-white/20 text-white dark:bg-black/10 dark:text-navy-900"
+                      : "bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-white/60"
                   }`}
                 >
                   {count}
@@ -427,19 +461,19 @@ export default function AuditoriaAdmin() {
             <table className="w-full border-collapse text-left">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/70 dark:border-white/10 dark:bg-white/[0.02]">
-                  <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                  <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
                     Acción Realizada
                   </th>
-                  <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                  <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
                     Módulo
                   </th>
-                  <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                  <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
                     Usuario / Actor
                   </th>
-                  <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                  <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
                     Fecha & Hora
                   </th>
-                  <th className="px-4 py-3.5 text-right text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                  <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
                     Detalle
                   </th>
                 </tr>
@@ -450,26 +484,27 @@ export default function AuditoriaAdmin() {
                   const Icon = modStyle.icon;
                   const actor = usuariosPorId.get(r.actor_id);
                   const actorNombre = actor?.nombre || (r.actor_id ? `Usuario (${r.actor_id.slice(0, 6)}...)` : "Sistema");
+                  const detailText = formatAuditDetail(r.detalles);
 
                   return (
                     <tr
                       key={r.id}
-                      className="cursor-pointer transition hover:bg-gray-50/70 dark:hover:bg-white/[0.02]"
+                      className="group cursor-pointer transition hover:bg-gray-50/70 dark:hover:bg-white/[0.02]"
                       onClick={() => setSelectedRegistro(r)}
                     >
                       {/* Acción */}
-                      <td className="min-w-[220px] px-4 py-3.5">
+                      <td className="min-w-[220px] px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
+                          <div className="flex h-8.5 w-8.5 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-600 dark:bg-brand-400/20 dark:text-brand-300">
                             <Icon className="h-4.5 w-4.5" />
                           </div>
                           <div className="min-w-0">
-                            <p className="truncate text-xs font-bold text-navy-700 dark:text-white">
+                            <p className="truncate text-xs font-semibold text-navy-700 dark:text-white">
                               {r.accion || "Operación"}
                             </p>
-                            {r.detalles && (
+                            {detailText && (
                               <p className="truncate text-[11px] text-gray-400 dark:text-white/40 max-w-xs">
-                                {r.detalles}
+                                {detailText}
                               </p>
                             )}
                           </div>
@@ -477,18 +512,18 @@ export default function AuditoriaAdmin() {
                       </td>
 
                       {/* Módulo */}
-                      <td className="whitespace-nowrap px-4 py-3.5">
-                        <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold ${modStyle.badge}`}>
-                          {r.modulo || "General"}
+                      <td className="whitespace-nowrap px-4 py-3">
+                        <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold ${modStyle.badge}`}>
+                          {modStyle.label}
                         </span>
                       </td>
 
                       {/* Usuario */}
-                      <td className="min-w-[180px] px-4 py-3.5">
+                      <td className="min-w-[180px] px-4 py-3">
                         <div className="flex items-center gap-2.5">
                           <Avatar src={actor?.foto_perfil || actor?.foto} name={actorNombre} size={7} />
                           <div className="min-w-0">
-                            <p className="truncate text-xs font-bold text-navy-700 dark:text-white">
+                            <p className="truncate text-xs font-semibold text-navy-700 dark:text-white">
                               {actorNombre}
                             </p>
                             {actor?.usuario_interno && (
@@ -501,7 +536,7 @@ export default function AuditoriaAdmin() {
                       </td>
 
                       {/* Fecha */}
-                      <td className="whitespace-nowrap px-4 py-3.5 text-xs text-gray-500 dark:text-white/60">
+                      <td className="whitespace-nowrap px-4 py-3 text-xs text-gray-500 dark:text-white/60">
                         <div className="flex items-center gap-1.5">
                           <MdOutlineAccessTime className="h-3.5 w-3.5 text-gray-400" />
                           <span>{formatoFechaHora(r.created_at)}</span>
@@ -509,11 +544,11 @@ export default function AuditoriaAdmin() {
                       </td>
 
                       {/* Botón Ver */}
-                      <td className="whitespace-nowrap px-4 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
+                      <td className="whitespace-nowrap px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           onClick={() => setSelectedRegistro(r)}
-                          className="inline-flex items-center gap-1 rounded-xl bg-lightPrimary px-3 py-1.5 text-xs font-bold text-brand-500 shadow-sm transition hover:bg-brand-500/10 active:scale-95 dark:bg-white/5 dark:text-brand-300 dark:hover:bg-white/10"
+                          className="inline-flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-navy-700 shadow-2xs transition hover:bg-gray-50 hover:text-brand-600 active:scale-95 dark:border-white/10 dark:bg-charcoal dark:text-white dark:hover:bg-white/5 dark:hover:text-brand-300"
                         >
                           <MdOutlineVisibility className="h-3.5 w-3.5" />
                           <span>Detalle</span>
@@ -529,7 +564,7 @@ export default function AuditoriaAdmin() {
 
         {/* Paginador */}
         {registrosFiltrados.length > PAGE_SIZE && (
-          <div className="flex flex-col items-center justify-between gap-3 border-t border-gray-100 pt-4 sm:flex-row dark:border-white/10">
+          <div className="flex flex-col items-center justify-between gap-3 border-t border-gray-100 pt-3 sm:flex-row dark:border-white/10">
             <p className="text-xs font-medium text-gray-500 dark:text-white/60">
               Página {pagina} de {totalPaginas} · {registrosFiltrados.length} eventos en total
             </p>
@@ -539,7 +574,7 @@ export default function AuditoriaAdmin() {
                 type="button"
                 disabled={pagina <= 1}
                 onClick={() => setPagina((p) => Math.max(1, p - 1))}
-                className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-navy-700 transition hover:bg-gray-50 disabled:opacity-40 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-navy-700 shadow-2xs transition hover:bg-gray-50 active:scale-95 disabled:opacity-40 dark:border-white/10 dark:bg-charcoal dark:text-white dark:hover:bg-white/5"
               >
                 Anterior
               </button>
@@ -547,7 +582,7 @@ export default function AuditoriaAdmin() {
                 type="button"
                 disabled={pagina >= totalPaginas}
                 onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
-                className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-navy-700 transition hover:bg-gray-50 disabled:opacity-40 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-navy-700 shadow-2xs transition hover:bg-gray-50 active:scale-95 disabled:opacity-40 dark:border-white/10 dark:bg-charcoal dark:text-white dark:hover:bg-white/5"
               >
                 Siguiente
               </button>
@@ -560,18 +595,18 @@ export default function AuditoriaAdmin() {
         isOpen={!!selectedRegistro}
         onClose={() => setSelectedRegistro(null)}
         title="Detalle del Evento de Auditoría"
-        width="max-w-xl"
+        width="max-w-lg"
       >
         {selectedRegistro ? (
-          <div className="flex flex-col gap-4 py-2">
+          <div className="flex flex-col gap-3.5 py-1">
             {/* Header del evento */}
-            <div className="flex items-center justify-between rounded-2xl bg-brand-500/[0.06] p-4 dark:bg-brand-500/10">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-500 text-white shadow-md shadow-brand-500/20">
+            <div className="flex items-center justify-between rounded-2xl border border-gray-100 bg-gray-50/80 p-3.5 dark:border-white/5 dark:bg-white/[0.03]">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-600 dark:bg-brand-400/20 dark:text-brand-300">
                   <MdOutlineFactCheck className="h-5 w-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-base font-black text-navy-700 dark:text-white">
+                  <p className="truncate text-sm font-bold text-navy-700 dark:text-white">
                     {selectedRegistro.accion || "Operación"}
                   </p>
                   <p className="truncate text-xs font-medium text-gray-500 dark:text-white/60">
@@ -581,17 +616,17 @@ export default function AuditoriaAdmin() {
               </div>
 
               <span
-                className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                className={`inline-flex rounded-md px-2.5 py-0.5 text-xs font-semibold ${
                   getModuleStyle(selectedRegistro.modulo).badge
                 }`}
               >
-                {selectedRegistro.modulo || "General"}
+                {getModuleStyle(selectedRegistro.modulo).label}
               </span>
             </div>
 
             {/* Actor / Usuario */}
-            <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4 dark:border-white/5 dark:bg-charcoal">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40 mb-2">
+            <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-3.5 dark:border-white/5 dark:bg-charcoal">
+              <p className="mb-2 text-[10.5px] font-semibold text-gray-400 dark:text-white/40">
                 Usuario / Actor Responsable
               </p>
               {(() => {
@@ -599,11 +634,11 @@ export default function AuditoriaAdmin() {
                 const nombre = actor?.nombre || (selectedRegistro.actor_id ? `ID: ${selectedRegistro.actor_id}` : "Sistema Automático");
                 return (
                   <div className="flex items-center gap-3">
-                    <Avatar src={actor?.foto_perfil || actor?.foto} name={nombre} size={10} />
+                    <Avatar src={actor?.foto_perfil || actor?.foto} name={nombre} size={9} />
                     <div>
-                      <p className="text-sm font-bold text-navy-700 dark:text-white">{nombre}</p>
+                      <p className="text-xs font-bold text-navy-700 dark:text-white">{nombre}</p>
                       {actor?.correo && (
-                        <p className="text-xs text-gray-400 dark:text-white/50">{actor.correo}</p>
+                        <p className="text-[11px] text-gray-400 dark:text-white/50">{actor.correo}</p>
                       )}
                     </div>
                   </div>
@@ -613,30 +648,30 @@ export default function AuditoriaAdmin() {
 
             {/* Detalles de la Operación */}
             {selectedRegistro.detalles ? (
-              <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4 dark:border-white/5 dark:bg-charcoal">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40 mb-1.5">
+              <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-3.5 dark:border-white/5 dark:bg-charcoal">
+                <p className="mb-1.5 text-[10.5px] font-semibold text-gray-400 dark:text-white/40">
                   Detalles Registrados
                 </p>
-                <p className="text-xs leading-relaxed text-navy-700 dark:text-white/90 font-medium whitespace-pre-wrap">
+                <p className="text-xs font-medium leading-relaxed text-navy-700 whitespace-pre-wrap dark:text-white/90">
                   {selectedRegistro.detalles}
                 </p>
               </div>
             ) : null}
 
             {/* Identificador de Registro */}
-            <div className="flex items-center justify-between text-[11px] text-gray-400 dark:text-white/40 px-1">
-              <span>ID de Auditoría: <span className="font-mono">{selectedRegistro.id}</span></span>
+            <div className="flex items-center justify-between px-1 text-[11px] text-gray-400 dark:text-white/40">
+              <span>ID de Auditoría: <span className="font-mono text-gray-600 dark:text-white/60">{selectedRegistro.id}</span></span>
               {selectedRegistro.target_id && (
-                <span>Target: <span className="font-mono">{selectedRegistro.target_id}</span></span>
+                <span>Target: <span className="font-mono text-gray-600 dark:text-white/60">{selectedRegistro.target_id}</span></span>
               )}
             </div>
 
             {/* Botón Cerrar */}
-            <div className="mt-2 flex justify-end border-t border-gray-100 pt-3 dark:border-white/10">
+            <div className="mt-1 flex justify-end border-t border-gray-100 pt-3 dark:border-white/10">
               <button
                 type="button"
                 onClick={() => setSelectedRegistro(null)}
-                className="rounded-xl bg-gray-100 px-5 py-2 text-xs font-bold text-gray-700 transition hover:bg-gray-200 active:scale-95 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
+                className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-2xs transition hover:bg-gray-50 active:scale-95 dark:border-white/10 dark:bg-charcoal dark:text-white dark:hover:bg-white/5"
               >
                 Cerrar
               </button>

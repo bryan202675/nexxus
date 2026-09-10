@@ -1,13 +1,14 @@
 import { useState } from "react";
 
-// Avatar real: foto/logo si existe y es válida, iniciales con degradado vibrante como respaldo.
 const GRADIENTS = [
   "bg-gradient-to-br from-indigo-500 to-purple-600 text-white",
   "bg-gradient-to-br from-blue-500 to-cyan-600 text-white",
   "bg-gradient-to-br from-emerald-500 to-teal-600 text-white",
   "bg-gradient-to-br from-amber-500 to-orange-600 text-white",
   "bg-gradient-to-br from-rose-500 to-pink-600 text-white",
-  "bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white",
+  "bg-gradient-to-br from-purple-500 to-pink-600 text-white",
+  "bg-gradient-to-br from-brand-500 to-indigo-600 text-white",
+  "bg-gradient-to-br from-teal-500 to-emerald-600 text-white",
 ];
 
 const colorFor = (seed: string) => {

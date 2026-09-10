@@ -742,7 +742,7 @@ function crearEstilosAprendizaje(c: any, esOscuro: boolean) {
     // contenedor: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
     contenedor: { flex: 1, backgroundColor: c.fondo },
     // fondoAbsoluto: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-    fondoAbsoluto: { ...StyleSheet.absoluteFillObject, zIndex: -1, overflow: 'hidden' },
+    fondoAbsoluto: { ...StyleSheet.absoluteFill, zIndex: -1, overflow: 'hidden' },
     // header: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
     header: { paddingHorizontal: ESPACIADO.lg, paddingTop: Platform.OS === 'ios' ? ESPACIADO.sm : ESPACIADO.lg, paddingBottom: ESPACIADO.sm },
     // headerVidrio: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.

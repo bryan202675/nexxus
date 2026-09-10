@@ -22,7 +22,9 @@ import {
   SensitiveAiAction,
 } from "../_shared/nexxus.ts";
 
-const GEMINI_MODEL = DEFAULT_GEMINI_MODEL;
+// Text chat should feel conversational; allow an environment override while
+// using the low-latency Flash Lite model by default.
+const GEMINI_MODEL = Deno.env.get("CHAT_GEMINI_MODEL") || "gemini-3.5-flash-lite";
 const GEMINI_PRICING: Record<string, { input: number; output: number }> = {
   "gemini-3.6-flash": { input: 0.75, output: 3.75 },
   "gemini-2.5-pro": { input: 1.25, output: 10.0 },
@@ -128,7 +130,7 @@ async function callGemini(
   let response: Response;
   try {
     // `store: false` evita retener en Gemini el contexto interno de RR. HH. que enviamos por petición.
-    response = await fetchGeminiConRotacion(endpoint, { model: GEMINI_MODEL, input, store: false });
+    response = await fetchGeminiConRotacion(endpoint, { model: GEMINI_MODEL, input, store: false, generation_config: { thinking_level: 'minimal' } });
   } catch (cause) {
     console.error("Gemini no disponible (sin claves configuradas o todas sin cuota)", cause);
     return null;
@@ -183,13 +185,16 @@ function toPlainText(text: string): string {
 
 Deno.serve(
   withHandler(async (req, admin) => {
+    const requestStartedAt = Date.now();
     const caller = await getCaller(req, admin);
     const body = await req.json();
     const prompt = safeString(body?.prompt, 1200);
     if (!prompt) throw new HttpError(400, "Escribe una pregunta para la IA.");
     const history = Array.isArray(body?.history) ? body.history : [];
 
+    const contextStartedAt = Date.now();
     const context = await buildAiContext(admin, caller);
+    const contextMs = Date.now() - contextStartedAt;
     const startedAt = Date.now();
     const puedeAprobar = isCanonicalRole(caller.rol);
     // Nómina exige admin/admin_empresa/super_admin -- coincide con la política RLS real de la
@@ -207,7 +212,7 @@ Deno.serve(
       ? toPlainText(await applyActionTags(admin, caller, textoSinAprobaciones))
       : "El asistente de IA no está disponible en este momento.";
 
-    await admin.from("ai_usage").insert({
+    void admin.from("ai_usage").insert({
       empresa_id: caller.empresa_id,
       usuario_id: caller.id,
       modelo: gemini?.model || null,
@@ -215,7 +220,7 @@ Deno.serve(
       tokens_salida: gemini?.outputTokens || 0,
     });
 
-    await writeAuditLog(admin, {
+    void writeAuditLog(admin, {
       empresaId: caller.empresa_id,
       actorId: caller.id,
       accion: "Consulta IA Nexxus",
@@ -224,6 +229,7 @@ Deno.serve(
       targetId: caller.id,
     });
 
+    console.info("[ai-timing]", JSON.stringify({ channel: "text", contextMs, modelMs: latencyMs, totalMs: Date.now() - requestStartedAt }));
     return {
       respuesta,
       provider: gemini ? "gemini" : "unavailable",

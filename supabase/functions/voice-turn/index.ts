@@ -11,7 +11,9 @@ import {
   withHandler,
 } from '../_shared/nexxus.ts';
 
-const model = DEFAULT_GEMINI_MODEL;
+// Voice turns prioritize time-to-first-response over deep reasoning. Keep an
+// environment override for projects that choose a different Gemini model.
+const model = Deno.env.get('VOICE_GEMINI_MODEL') || 'gemini-3.5-flash-lite';
 const groqApiKey = Deno.env.get('GROQ_API_KEY') || '';
 const groqModel = Deno.env.get('GROQ_STT_MODEL') || 'whisper-large-v3';
 
@@ -56,6 +58,7 @@ async function transcribeWithGroq(audio: { data: string; mimeType: string }): Pr
       method: 'POST',
       headers: { Authorization: `Bearer ${groqApiKey}` },
       body: form,
+      signal: AbortSignal.timeout(4000),
     });
   } catch (cause) {
     console.error('Groq transcription network error, cayendo a Gemini', cause);
@@ -145,6 +148,7 @@ function buildVoiceSystemPrompt(
 }
 
 Deno.serve(withHandler(async (req, admin) => {
+  const requestStartedAt = Date.now();
   const caller = await getCaller(req, admin);
   const body = await req.json();
   const audio = body?.audio;
@@ -152,9 +156,14 @@ Deno.serve(withHandler(async (req, admin) => {
     throw new HttpError(400, 'El audio es inválido o demasiado largo.');
   }
 
-  const transcripcion = await transcribeWithGroq(audio);
+  const preparationStartedAt = Date.now();
+  const [transcripcion, context] = await Promise.all([
+    transcribeWithGroq(audio),
+    buildAiContext(admin, caller),
+  ]);
+  const preparationMs = Date.now() - preparationStartedAt;
   const mimeType = typeof audio.mimeType === 'string' && audio.mimeType ? audio.mimeType : 'audio/m4a';
-  const context = await buildAiContext(admin, caller);
+
   const puedeAprobar = isCanonicalRole(caller.rol);
   const puedeAprobarNomina = isAdminEmpresa(caller);
   const systemPrompt = buildVoiceSystemPrompt(caller.nombre, caller.rol, context, puedeAprobar, puedeAprobarNomina);
@@ -181,6 +190,7 @@ Deno.serve(withHandler(async (req, admin) => {
   }];
   if (!transcripcion) input.push({ type: 'audio', data: audio.data, mime_type: mimeType === 'audio/mp4' ? 'audio/m4a' : mimeType });
 
+  const modelStartedAt = Date.now();
   const response = await fetchGeminiConRotacion('https://generativelanguage.googleapis.com/v1beta/interactions', {
     model,
     store: false,
@@ -205,6 +215,7 @@ Deno.serve(withHandler(async (req, admin) => {
     throw new HttpError(502, 'No pudimos procesar el audio.');
   }
   const json = await response.json();
+  const modelMs = Date.now() - modelStartedAt;
   const raw = extractText(json);
   let parsed: { transcripcion: string; respuesta: string } | null = null;
   try {
@@ -231,7 +242,7 @@ Deno.serve(withHandler(async (req, admin) => {
   if (!parsed.respuesta.trim()) parsed.respuesta = 'Listo, ya quedó.';
 
   const usage = json?.usage_metadata || json?.usageMetadata || {};
-  await admin.from('ai_usage').insert({
+  void admin.from('ai_usage').insert({
     empresa_id: caller.empresa_id,
     usuario_id: caller.id,
     modelo: model,
@@ -239,5 +250,6 @@ Deno.serve(withHandler(async (req, admin) => {
     tokens_salida: usage.candidates_token_count ?? usage.candidatesTokenCount ?? 0,
   });
 
+  console.info("[ai-timing]", JSON.stringify({ channel: "voice", preparationMs, modelMs, totalMs: Date.now() - requestStartedAt }));
   return { ...parsed, accionesSensibles };
 }));

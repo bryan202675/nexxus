@@ -185,34 +185,37 @@ export default function ConfiguracionAdmin() {
 
   return (
     <div className="flex flex-col gap-6 pb-6">
-      <div>
+      {/* Header */}
+      <div className="flex flex-col gap-1">
         <h2 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
           Configuración & Preferencias Corporativas
         </h2>
-        <p className="mt-1 text-sm font-medium text-gray-500 dark:text-white/60">
+        <p className="text-sm font-medium text-gray-500 dark:text-white/60">
           Gestión del perfil del administrador, parámetros de asistencia, suscripción y apariencia de {empresaNombre || "la empresa"}.
         </p>
       </div>
 
+      {/* KPI Summary Cards */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
         {/* Plan Activo */}
         <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
                 Plan Contratado
               </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-brand-500 dark:text-brand-300">
+              <h3 className="mt-2 text-2xl font-extrabold text-brand-500 dark:text-brand-300">
                 {plan}
               </h3>
             </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500/10 text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-500/10 text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
               <MdOutlineWorkspacePremium className="h-6 w-6" />
             </div>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
             <span>Estado de suscripción</span>
-            <span className="font-bold capitalize text-emerald-600 dark:text-emerald-400">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
               {estadoPlan || "Activo"}
             </span>
           </div>
@@ -222,20 +225,22 @@ export default function ConfiguracionAdmin() {
         <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
                 Almacenamiento Cloud
               </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-blue-600 dark:text-blue-400">
+              <h3 className="mt-2 text-2xl font-extrabold text-blue-600 dark:text-blue-400">
                 {planLimits.storageGb || 500} GB
               </h3>
             </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
               <MdOutlineStorage className="h-6 w-6" />
             </div>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
             <span>Cuota de documentos</span>
-            <span className="font-bold text-blue-600">Espacio seguro</span>
+            <span className="inline-flex items-center rounded-full bg-blue-500/10 px-2.5 py-0.5 text-[11px] font-bold text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
+              Espacio seguro
+            </span>
           </div>
         </NexxusCard>
 
@@ -243,20 +248,22 @@ export default function ConfiguracionAdmin() {
         <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
                 Jornada Laboral
               </p>
               <h3 className="mt-2 text-2xl font-extrabold text-navy-700 dark:text-white">
                 {asistencia.horaEntrada} - {asistencia.horaSalida}
               </h3>
             </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
               <MdOutlineAccessTime className="h-6 w-6" />
             </div>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
             <span>Horas base por día</span>
-            <span className="font-bold text-emerald-600">{asistencia.horasEsperadas} hrs / jornada</span>
+            <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
+              {asistencia.horasEsperadas} hrs / jornada
+            </span>
           </div>
         </NexxusCard>
 
@@ -264,43 +271,47 @@ export default function ConfiguracionAdmin() {
         <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
                 Tolerancia de Entrada
               </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-amber-600 dark:text-amber-400">
+              <h3 className="mt-2 text-2xl font-extrabold text-amber-600 dark:text-amber-400">
                 {asistencia.toleranciaMinutos} min
               </h3>
             </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:bg-amber-400/20 dark:text-amber-300">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:bg-amber-400/20 dark:text-amber-300">
               <MdOutlineCheckCircle className="h-6 w-6" />
             </div>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
             <span>Margen antes de retardo</span>
-            <span className="font-bold text-amber-600">Configurado</span>
+            <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-bold text-amber-600 dark:bg-amber-400/20 dark:text-amber-300">
+              Configurado
+            </span>
           </div>
         </NexxusCard>
       </div>
 
+      {/* Grid Principal: 2 Columnas */}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        {/* Columna Izquierda: Perfil & Capacidades */}
         <div className="flex flex-col gap-6">
-          {/* Card 1: Perfil & Cuenta del Administrador */}
+          {/* Perfil & Cuenta del Administrador */}
           <NexxusCard extra="p-6 flex flex-col justify-between gap-5">
             <div>
-              <div className="flex items-center gap-4 border-b border-gray-100 pb-4 dark:border-white/5">
+              <div className="flex items-center gap-4 border-b border-gray-100 pb-4 dark:border-white/10">
                 <Avatar src={foto} name={nombreActual} size={14} />
                 <div className="min-w-0">
-                  <h4 className="truncate text-base font-black text-navy-700 dark:text-white">
+                  <h4 className="truncate text-base font-bold text-navy-700 dark:text-white">
                     {nombreActual}
                   </h4>
                   <p className="truncate text-xs font-medium text-gray-500 dark:text-white/60">
                     {user?.email}
                   </p>
-                  <div className="mt-1 flex items-center gap-1.5">
-                    <span className="rounded-full bg-brand-500/10 px-2.5 py-0.5 text-[10px] font-bold text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    <span className="rounded-full bg-brand-500/10 px-2.5 py-0.5 text-[10.5px] font-bold text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
                       Administrador
                     </span>
-                    <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
+                    <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[10.5px] font-bold text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
                       {empresaNombre}
                     </span>
                   </div>
@@ -308,8 +319,11 @@ export default function ConfiguracionAdmin() {
               </div>
 
               {/* Formulario de Edición de Nombre */}
-              <form onSubmit={guardarNombre} className="mt-4 flex flex-col gap-3">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="config-nombre-adm">
+              <form onSubmit={guardarNombre} className="mt-4 flex flex-col gap-2">
+                <label
+                  className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/50"
+                  htmlFor="config-nombre-adm"
+                >
                   Nombre Completo
                 </label>
                 <div className="flex gap-2">
@@ -318,38 +332,38 @@ export default function ConfiguracionAdmin() {
                     type="text"
                     value={nombre}
                     onChange={(e) => setNombre(e.target.value)}
-                    className="flex-1 rounded-xl border border-gray-200 bg-gray-50/50 py-2.5 px-3 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white"
+                    className="h-10 flex-1 rounded-xl border border-gray-200 bg-gray-50/60 px-3.5 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
                   />
                   <button
                     type="submit"
                     disabled={guardandoNombre}
-                    className="rounded-xl bg-brand-500 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 active:scale-95 disabled:opacity-50 dark:bg-brand-400"
+                    className="h-10 rounded-xl bg-brand-500 px-5 text-xs font-bold text-white shadow-sm shadow-brand-500/20 transition hover:bg-brand-600 active:scale-95 disabled:opacity-50 dark:bg-brand-400 dark:hover:bg-brand-500"
                   >
                     {guardandoNombre ? "Guardando..." : "Guardar"}
                   </button>
                 </div>
                 {nombreMsg && (
-                  <p className="text-xs font-bold text-brand-500 dark:text-brand-300">{nombreMsg}</p>
+                  <p className="mt-1 text-xs font-bold text-brand-500 dark:text-brand-300">{nombreMsg}</p>
                 )}
               </form>
             </div>
 
             {/* Datos de contacto de la cuenta */}
-            <div className="grid grid-cols-2 gap-2 border-t border-gray-100 pt-3.5 text-xs text-gray-500 dark:border-white/5 dark:text-white/60">
-              <div className="flex items-center gap-1.5 truncate">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 border-t border-gray-100 pt-3.5 text-xs text-gray-500 dark:border-white/10 dark:text-white/60">
+              <div className="flex items-center gap-2 truncate rounded-lg bg-gray-50/70 px-2.5 py-1.5 dark:bg-white/[0.02]">
                 <MdEmail className="h-4 w-4 text-brand-500 shrink-0" />
                 <span className="truncate">{user?.email || "Sin correo"}</span>
               </div>
-              <div className="flex items-center gap-1.5 truncate">
+              <div className="flex items-center gap-2 truncate rounded-lg bg-gray-50/70 px-2.5 py-1.5 dark:bg-white/[0.02]">
                 <MdPhone className="h-4 w-4 text-brand-500 shrink-0" />
                 <span className="truncate">{perfil?.telefono || "+503 Corporativo"}</span>
               </div>
             </div>
           </NexxusCard>
 
-          {/* Card 2: Plan & Capacidades Corporativas */}
+          {/* Plan & Capacidades Corporativas */}
           <NexxusCard extra="p-6 flex flex-col gap-4">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3 dark:border-white/5">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3 dark:border-white/10">
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
                   <MdOutlineWorkspacePremium className="h-5 w-5" />
@@ -367,31 +381,31 @@ export default function ConfiguracionAdmin() {
             </div>
 
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40 mb-2">
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
                 Capacidades & Límites
               </p>
               <div className="grid grid-cols-2 gap-2 text-xs font-medium text-navy-700 dark:text-white/80">
-                <div className="rounded-xl bg-gray-50/70 p-2.5 dark:bg-charcoal">
-                  <span className="text-gray-400 dark:text-white/40 block text-[10px] uppercase">Empleados</span>
-                  <strong>{planLimits.employees ?? "Ilimitado"}</strong>
+                <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-3 dark:border-white/5 dark:bg-white/[0.02]">
+                  <span className="block text-[10px] uppercase font-semibold text-gray-400 dark:text-white/40">Empleados</span>
+                  <strong className="text-sm text-navy-700 dark:text-white">{planLimits.employees ?? "Ilimitado"}</strong>
                 </div>
-                <div className="rounded-xl bg-gray-50/70 p-2.5 dark:bg-charcoal">
-                  <span className="text-gray-400 dark:text-white/40 block text-[10px] uppercase">Departamentos</span>
-                  <strong>{planLimits.departments ?? "Ilimitado"}</strong>
+                <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-3 dark:border-white/5 dark:bg-white/[0.02]">
+                  <span className="block text-[10px] uppercase font-semibold text-gray-400 dark:text-white/40">Departamentos</span>
+                  <strong className="text-sm text-navy-700 dark:text-white">{planLimits.departments ?? "Ilimitado"}</strong>
                 </div>
-                <div className="rounded-xl bg-gray-50/70 p-2.5 dark:bg-charcoal">
-                  <span className="text-gray-400 dark:text-white/40 block text-[10px] uppercase">Sedes</span>
-                  <strong>{planLimits.branches ?? "Ilimitado"}</strong>
+                <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-3 dark:border-white/5 dark:bg-white/[0.02]">
+                  <span className="block text-[10px] uppercase font-semibold text-gray-400 dark:text-white/40">Sedes</span>
+                  <strong className="text-sm text-navy-700 dark:text-white">{planLimits.branches ?? "Ilimitado"}</strong>
                 </div>
-                <div className="rounded-xl bg-gray-50/70 p-2.5 dark:bg-charcoal">
-                  <span className="text-gray-400 dark:text-white/40 block text-[10px] uppercase">Consultas IA</span>
-                  <strong>{planLimits.aiRequestsMonthly ?? "15,000"}/mes</strong>
+                <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-3 dark:border-white/5 dark:bg-white/[0.02]">
+                  <span className="block text-[10px] uppercase font-semibold text-gray-400 dark:text-white/40">Consultas IA</span>
+                  <strong className="text-sm text-navy-700 dark:text-white">{planLimits.aiRequestsMonthly ?? "15,000"}/mes</strong>
                 </div>
               </div>
             </div>
 
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40 mb-2">
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
                 Módulos Habilitados
               </p>
               <div className="flex flex-wrap gap-1.5">
@@ -400,7 +414,7 @@ export default function ConfiguracionAdmin() {
                     key={key}
                     className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10.5px] font-bold ${
                       planFeatures[key]
-                        ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 dark:bg-emerald-400/20 dark:text-emerald-300"
+                        ? "border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300"
                         : "bg-gray-100 text-gray-400 dark:bg-white/5 dark:text-white/30"
                     }`}
                   >
@@ -413,10 +427,11 @@ export default function ConfiguracionAdmin() {
           </NexxusCard>
         </div>
 
+        {/* Columna Derecha: Asistencia & Seguridad */}
         <div className="flex flex-col gap-6">
-          {/* Card 1: Horario de Asistencia de la Empresa */}
+          {/* Horario de Asistencia de la Empresa */}
           <NexxusCard extra="p-6 flex flex-col gap-4">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 border-b border-gray-100 pb-3 dark:border-white/10">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
                 <MdOutlineAccessTime className="h-5 w-5" />
               </div>
@@ -435,10 +450,10 @@ export default function ConfiguracionAdmin() {
                 <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
               </div>
             ) : (
-              <form onSubmit={guardarAsistencia} className="flex flex-col gap-3.5 pt-1">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <form onSubmit={guardarAsistencia} className="flex flex-col gap-4 pt-1">
+                <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                   <div>
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="hora-entrada">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/50" htmlFor="hora-entrada">
                       Hora de Entrada
                     </label>
                     <input
@@ -446,12 +461,12 @@ export default function ConfiguracionAdmin() {
                       type="time"
                       value={asistencia.horaEntrada}
                       onChange={(e) => setAsistencia((prev) => ({ ...prev, horaEntrada: e.target.value }))}
-                      className="mt-1 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                      className="mt-1 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/60 px-3.5 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="hora-salida">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/50" htmlFor="hora-salida">
                       Hora de Salida
                     </label>
                     <input
@@ -459,12 +474,12 @@ export default function ConfiguracionAdmin() {
                       type="time"
                       value={asistencia.horaSalida}
                       onChange={(e) => setAsistencia((prev) => ({ ...prev, horaSalida: e.target.value }))}
-                      className="mt-1 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                      className="mt-1 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/60 px-3.5 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="tolerancia-min">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/50" htmlFor="tolerancia-min">
                       Tolerancia (minutos)
                     </label>
                     <input
@@ -475,12 +490,12 @@ export default function ConfiguracionAdmin() {
                       onChange={(e) =>
                         setAsistencia((prev) => ({ ...prev, toleranciaMinutos: Number(e.target.value) }))
                       }
-                      className="mt-1 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                      className="mt-1 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/60 px-3.5 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="horas-esperadas">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/50" htmlFor="horas-esperadas">
                       Horas Esperadas
                     </label>
                     <input
@@ -491,7 +506,7 @@ export default function ConfiguracionAdmin() {
                       onChange={(e) =>
                         setAsistencia((prev) => ({ ...prev, horasEsperadas: Number(e.target.value) }))
                       }
-                      className="mt-1 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                      className="mt-1 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/60 px-3.5 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
                     />
                   </div>
                 </div>
@@ -504,7 +519,7 @@ export default function ConfiguracionAdmin() {
                 <button
                   type="submit"
                   disabled={guardandoAsistencia}
-                  className="w-fit rounded-xl bg-brand-500 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 active:scale-95 disabled:opacity-50 dark:bg-brand-400"
+                  className="h-10 w-fit rounded-xl bg-brand-500 px-5 text-xs font-bold text-white shadow-sm shadow-brand-500/20 transition hover:bg-brand-600 active:scale-95 disabled:opacity-50 dark:bg-brand-400 dark:hover:bg-brand-500"
                 >
                   {guardandoAsistencia ? "Guardando..." : "Guardar Horario"}
                 </button>
@@ -512,7 +527,7 @@ export default function ConfiguracionAdmin() {
             )}
           </NexxusCard>
 
-          {/* Card 2: Seguridad, Tema Visual & Sesión */}
+          {/* Seguridad, Tema Visual & Sesión */}
           <NexxusCard extra="p-6 flex flex-col gap-5">
             {/* Sección Contraseña */}
             <div>
@@ -527,7 +542,7 @@ export default function ConfiguracionAdmin() {
                 </div>
               </div>
 
-              <form onSubmit={cambiarPassword} className="flex flex-col gap-3">
+              <form onSubmit={cambiarPassword} className="flex flex-col gap-2.5">
                 {usaPassword ? (
                   <div>
                     <input
@@ -536,7 +551,7 @@ export default function ConfiguracionAdmin() {
                       placeholder="Contraseña actual"
                       value={passwordActual}
                       onChange={(e) => setPasswordActual(e.target.value)}
-                      className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                      className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/60 px-3.5 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
                     />
                   </div>
                 ) : (
@@ -552,12 +567,12 @@ export default function ConfiguracionAdmin() {
                     placeholder="Nueva contraseña (mín. 8 caracteres)"
                     value={passwordNueva}
                     onChange={(e) => setPasswordNueva(e.target.value)}
-                    className="flex-1 rounded-xl border border-gray-200 bg-gray-50/50 py-2 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                    className="h-10 flex-1 rounded-xl border border-gray-200 bg-gray-50/60 px-3.5 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
                   />
                   <button
                     type="submit"
                     disabled={guardandoPassword}
-                    className="rounded-xl bg-brand-500 px-4 py-2 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 active:scale-95 disabled:opacity-50 dark:bg-brand-400"
+                    className="h-10 rounded-xl bg-brand-500 px-4 text-xs font-bold text-white shadow-sm shadow-brand-500/20 transition hover:bg-brand-600 active:scale-95 disabled:opacity-50 dark:bg-brand-400 dark:hover:bg-brand-500"
                   >
                     {guardandoPassword ? "..." : "Actualizar"}
                   </button>
@@ -571,7 +586,7 @@ export default function ConfiguracionAdmin() {
             </div>
 
             {/* Sección Tema Visual */}
-            <div className="flex items-center justify-between border-t border-gray-100 pt-3 dark:border-white/5">
+            <div className="flex items-center justify-between border-t border-gray-100 pt-3.5 dark:border-white/10">
               <div className="flex items-center gap-2">
                 <MdOutlinePalette className="h-4.5 w-4.5 text-gray-400" />
                 <span className="text-xs font-bold text-navy-700 dark:text-white">Tema de Interfaz</span>
@@ -579,7 +594,7 @@ export default function ConfiguracionAdmin() {
               <button
                 type="button"
                 onClick={toggleDark}
-                className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-1.5 text-xs font-bold text-navy-700 transition hover:bg-gray-100 active:scale-95 dark:border-white/10 dark:bg-charcoal dark:text-white dark:hover:bg-white/10"
+                className="flex h-9 items-center gap-2 rounded-xl border border-gray-200 bg-gray-50/70 px-3 text-xs font-bold text-navy-700 transition hover:bg-gray-100 active:scale-95 dark:border-white/10 dark:bg-charcoal dark:text-white dark:hover:bg-white/10"
               >
                 {dark ? <RiSunFill className="h-4 w-4 text-amber-500" /> : <RiMoonFill className="h-4 w-4 text-indigo-500" />}
                 <span>Modo {dark ? "Oscuro" : "Claro"}</span>
@@ -587,11 +602,11 @@ export default function ConfiguracionAdmin() {
             </div>
 
             {/* Acciones de Sesión */}
-            <div className="flex flex-col gap-2 border-t border-gray-100 pt-3 dark:border-white/5">
+            <div className="flex flex-col gap-2 border-t border-gray-100 pt-3.5 dark:border-white/10">
               <button
                 type="button"
                 onClick={() => window.location.assign(LANDING_URL)}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-2.5 text-xs font-bold text-navy-700 shadow-xs transition hover:bg-gray-50 active:scale-95 dark:border-white/10 dark:bg-charcoal dark:text-white dark:hover:bg-white/5"
+                className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white text-xs font-bold text-navy-700 shadow-2xs transition hover:bg-gray-50 active:scale-95 dark:border-white/10 dark:bg-charcoal dark:text-white dark:hover:bg-white/5"
               >
                 <MdOutlineOpenInNew className="h-4 w-4 text-gray-500" />
                 <span>Volver a la Página Principal</span>
@@ -600,7 +615,7 @@ export default function ConfiguracionAdmin() {
               <button
                 type="button"
                 onClick={cerrarSesion}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-500 py-2.5 text-xs font-bold text-white shadow-md shadow-red-500/25 transition hover:bg-red-600 active:scale-95"
+                className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-red-500 text-xs font-bold text-white shadow-sm shadow-red-500/25 transition hover:bg-red-600 active:scale-95"
               >
                 <MdOutlineExitToApp className="h-4 w-4" />
                 <span>Cerrar Sesión y Salir a la Landing</span>

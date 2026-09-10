@@ -264,12 +264,12 @@ function crearEstilos(c: any, esOscuro: boolean) {
       backgroundColor: esOscuro ? '#000000' : '#FFFFFF',
     },
     imagenFondo: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       width: '100%',
       height: '100%',
     },
     degradadoOverlay: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
     },
     areaSegura: {
       flex: 1,

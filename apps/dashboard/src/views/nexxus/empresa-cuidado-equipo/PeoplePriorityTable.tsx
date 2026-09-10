@@ -20,7 +20,7 @@ import Modal from "components/nexxus/Modal";
 import Avatar from "components/nexxus/Avatar";
 import { useAuth } from "context/AuthContext";
 import { TeamCareAlert } from "context/TeamCareAlertsContext";
-import { TeamCheckInSummary, Stress, Energy, getGuide } from "services/checkInAnalytics";
+import { TeamCheckInSummary, Stress, Energy, getGuide, STRESS_LABELS, ENERGY_LABELS } from "services/checkInAnalytics";
 
 const STRESS_BADGE: Record<Stress, string> = {
   bajo: "bg-emerald-500/15 text-emerald-700 border border-emerald-500/30 dark:bg-emerald-500/25 dark:text-emerald-300 font-bold",
@@ -103,6 +103,64 @@ function fechaRelativa(iso: string) {
   if (dias <= 0) return `Hoy · ${hora}`;
   if (dias === 1) return `Ayer · ${hora}`;
   return `Hace ${dias} días`;
+}
+
+function cleanAlertDescription(alert: TeamCareAlert, summary: TeamCheckInSummary): string {
+  const rel = fechaRelativa(summary.checkIn.created_at).toLowerCase();
+  const fechaTexto = rel.startsWith("hoy") ? "de hoy" : `(${rel})`;
+  const motivo = typeof alert.datos?.motivo === "string" ? alert.datos.motivo : "";
+
+  if (motivo) {
+    return `Se registró ${motivo} en el check-in ${fechaTexto}. Requiere acompañamiento y seguimiento preventivo.`;
+  }
+  if (summary.normalized.stress === "critico") {
+    return `Se detectó nivel de estrés crítico en el check-in ${fechaTexto}. Requiere atención y acompañamiento de liderazgo.`;
+  }
+  if (summary.normalized.workload >= 5) {
+    return `Se identificó sobrecarga laboral máxima (5/5) en el check-in ${fechaTexto}. Se sugiere evaluar redistribución de tareas.`;
+  }
+  return `Se detectaron factores de atención en el check-in ${fechaTexto}. Requiere seguimiento del área.`;
+}
+
+function MetricBar({
+  value,
+  max,
+  color = "brand",
+}: {
+  value: number;
+  max: number;
+  color?: "rose" | "amber" | "emerald" | "brand" | "slate";
+}) {
+  const activeColor = {
+    rose: "bg-rose-500 dark:bg-rose-400",
+    amber: "bg-amber-500 dark:bg-amber-400",
+    emerald: "bg-emerald-500 dark:bg-emerald-400",
+    brand: "bg-brand-500 dark:bg-brand-400",
+    slate: "bg-slate-700 dark:bg-slate-300",
+  }[color];
+
+  return (
+    <div className="flex items-center gap-1 mt-2.5">
+      {Array.from({ length: max }).map((_, i) => (
+        <span
+          key={i}
+          className={`h-1.5 flex-1 rounded-full transition-all duration-200 ${
+            i < value ? activeColor : "bg-gray-200/80 dark:bg-white/10"
+          }`}
+        />
+      ))}
+    </div>
+  );
+}
+
+function getManagerGuidance(stress: Stress, workload: number): string {
+  if (stress === "critico" || workload >= 5) {
+    return "El colaborador presenta un umbral crítico de fatiga y sobrecarga. Se recomienda coordinar un espacio 1:1 de escucha activa, revisar entregables inmediatos y redistribuir tareas críticas para evitar agotamiento.";
+  }
+  if (stress === "alto" || workload >= 4) {
+    return "Nivel de exigencia y tensión por encima de lo habitual. Monitorear fechas límite de proyectos y validar si requiere apoyo o balance de asignaciones.";
+  }
+  return "El colaborador mantiene un balance saludable entre carga y energía. Mantener canales abiertos de retroalimentación y reconocer el desempeño sostenible.";
 }
 
 function WorkloadMeter({ value }: { value: number }) {
@@ -191,25 +249,13 @@ export default function PeoplePriorityTable({
   return (
     <NexxusCard extra="w-full p-6 flex flex-col gap-5" delay={delay}>
       {/* Cabecera con Buscador y Filtros */}
-      <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
-          <div className="flex items-center gap-2.5">
-            <h4 className="text-xl font-bold tracking-tight text-navy-700 dark:text-white">
-              Atención Inmediata y Estado del Equipo
-            </h4>
-            {conteos.critico > 0 && (
-              <span className="rounded-full bg-red-500 px-2.5 py-0.5 text-xs font-black text-white shadow-sm shadow-red-500/40 animate-pulse">
-                {conteos.critico} en estado crítico
-              </span>
-            )}
-            {conteos.alto > 0 && (
-              <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-xs font-bold text-amber-700 dark:text-amber-300">
-                {conteos.alto} nivel alto
-              </span>
-            )}
-          </div>
-          <p className="mt-1 text-xs font-medium text-gray-500 dark:text-white/60">
-            Los colaboradores en estado crítico se destacan en rojo, mientras que el nivel alto se clasifica en ámbar preventivo.
+          <h4 className="text-lg font-bold tracking-tight text-navy-700 dark:text-white">
+            Atención Inmediata y Estado del Equipo
+          </h4>
+          <p className="mt-0.5 text-xs text-gray-500 dark:text-white/60">
+            Seguimiento de bienestar, niveles de tensión y alertas preventivas del equipo.
           </p>
         </div>
 
@@ -229,38 +275,39 @@ export default function PeoplePriorityTable({
       {/* Tabs de Filtrado Rápido */}
       <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 pb-3 dark:border-white/10">
         {[
-          { id: "todos", label: "Todos", count: conteos.todos },
-          { id: "critico", label: "Crítico", count: conteos.critico },
-          { id: "alto", label: "Nivel Alto", count: conteos.alto },
-          { id: "ok", label: "Estables", count: conteos.ok },
-          { id: "alerta", label: "Alertas Activas", count: conteos.alerta },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setFiltroEstado(tab.id)}
-            className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all duration-150 ${
-              filtroEstado === tab.id
-                ? "bg-brand-500 text-white shadow-sm shadow-brand-500/20"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200/80 dark:bg-white/5 dark:text-white/80 dark:hover:bg-white/10"
-            }`}
-          >
-            <span>{tab.label}</span>
-            <span
-              className={`rounded-md px-1.5 py-0.5 text-[10px] font-black ${
-                filtroEstado === tab.id
-                  ? "bg-white/20 text-white"
-                  : tab.id === "critico" && tab.count > 0
-                  ? "bg-red-500 text-white"
-                  : tab.id === "alto" && tab.count > 0
-                  ? "bg-amber-500 text-white"
-                  : "bg-black/10 dark:bg-white/10 text-gray-700 dark:text-white/90"
+          { id: "todos", label: "Todos", count: conteos.todos, badgeColor: "" },
+          { id: "critico", label: "Crítico", count: conteos.critico, badgeColor: "bg-rose-500 text-white" },
+          { id: "alto", label: "Nivel Alto", count: conteos.alto, badgeColor: "bg-amber-500 text-white" },
+          { id: "ok", label: "Estables", count: conteos.ok, badgeColor: "" },
+          { id: "alerta", label: "Alertas Activas", count: conteos.alerta, badgeColor: "" },
+        ].map((tab) => {
+          const isActive = filtroEstado === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setFiltroEstado(tab.id)}
+              className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all duration-150 active:scale-95 ${
+                isActive
+                  ? "bg-brand-500 text-white shadow-xs"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200/80 dark:bg-white/5 dark:text-white/80 dark:hover:bg-white/10"
               }`}
             >
-              {tab.count}
-            </span>
-          </button>
-        ))}
+              <span>{tab.label}</span>
+              <span
+                className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
+                  isActive
+                    ? "bg-white/20 text-white"
+                    : tab.badgeColor && tab.count > 0
+                    ? tab.badgeColor
+                    : "bg-black/5 dark:bg-white/10 text-gray-600 dark:text-white/80"
+                }`}
+              >
+                {tab.count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Tabla */}
@@ -365,7 +412,7 @@ export default function PeoplePriorityTable({
                           STRESS_BADGE[s.normalized.stress]
                         }`}
                       >
-                        {s.normalized.stress}
+                        {STRESS_LABELS[s.normalized.stress] || s.normalized.stress}
                       </span>
                     </td>
 
@@ -381,7 +428,7 @@ export default function PeoplePriorityTable({
                           ENERGY_BADGE[s.normalized.energy]
                         }`}
                       >
-                        {s.normalized.energy}
+                        {ENERGY_LABELS[s.normalized.energy] || s.normalized.energy}
                       </span>
                     </td>
 
@@ -463,319 +510,389 @@ function PersonDetailBody({
 }) {
   const { normalized: n } = summary;
   const colors = getSeverityColor(summary);
-  const guideText = getGuide(n.stress, n.workload);
+  const [resolviendo, setResolviendo] = useState(false);
+
+  const handleResolve = async () => {
+    if (!alert || resolviendo) return;
+    setResolviendo(true);
+    try {
+      await onResolve(alert.id);
+    } finally {
+      setResolviendo(false);
+    }
+  };
 
   return (
-    <div className="flex flex-col gap-5 py-1">
-      {/* 1. Header Banner Profesional del Empleado */}
-      <div className={`flex items-center justify-between gap-4 rounded-2xl p-4.5 ${colors.headerGradient}`}>
+    <div className="flex flex-col gap-4 py-1 text-left">
+      {/* 1. Header de Identidad y Estado General */}
+      <div className="flex flex-col gap-3.5 sm:flex-row sm:items-center sm:justify-between rounded-2xl bg-gray-50/70 p-4 border border-gray-200/70 dark:bg-white/[0.02] dark:border-white/10">
         <div className="flex items-center gap-3.5 min-w-0">
           <div className="relative shrink-0">
             <Avatar name={summary.nombre} size={12} />
             <span
-              className={`absolute -right-0.5 -top-0.5 h-3.5 w-3.5 rounded-full ${colors.dot}`}
+              className={`absolute -right-0.5 -top-0.5 h-3.5 w-3.5 rounded-full ring-2 ring-white dark:ring-charcoal ${colors.dot}`}
               title={colors.isCritico ? "Estado Crítico" : colors.isAlto ? "Nivel Alto" : "Estado Estable"}
             />
           </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <p className="truncate text-lg font-black text-navy-700 dark:text-white">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="truncate text-base font-bold text-navy-700 dark:text-white">
                 {summary.nombre}
-              </p>
+              </h3>
               {colors.isCritico ? (
-                <span className="rounded-full bg-red-500 px-2.5 py-0.5 text-[10px] font-black text-white shadow-sm shadow-red-500/40">
-                  ESTADO CRÍTICO
+                <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 border border-rose-500/25 px-2 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
+                  Estado Crítico
                 </span>
-              ) : colors.isAlto && n.stress === "alto" ? (
-                <span className="rounded-full bg-amber-500 px-2.5 py-0.5 text-[10px] font-bold text-white shadow-sm">
-                  NIVEL ALTO
+              ) : colors.isAlto ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300">
+                  Atención Requerida
                 </span>
-              ) : null}
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                  Estable
+                </span>
+              )}
             </div>
-            <p className="truncate text-xs font-medium text-gray-500 dark:text-white/70">
-              {summary.departamento || "General"} · {fechaRelativa(summary.checkIn.created_at)}
+            <p className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-500 dark:text-white/60">
+              <span>{summary.departamento || "General"}</span>
+              <span>·</span>
+              <span>Último check-in: {fechaRelativa(summary.checkIn.created_at)}</span>
             </p>
           </div>
         </div>
-        <div className="text-right shrink-0">
-          <div className={`inline-flex flex-col items-end rounded-2xl px-3.5 py-1.5 ${colors.pulsePill}`}>
-            <p className="text-2xl font-black leading-none">{summary.pulse}%</p>
-            <p className="mt-1 text-[10px] font-extrabold uppercase tracking-wider">
+
+        {/* Pulse Widget */}
+        <div className="flex items-center self-start sm:self-auto shrink-0">
+          <div
+            className={`flex items-center gap-3 rounded-xl border px-3.5 py-2 ${
+              colors.isCritico
+                ? "border-rose-500/25 bg-rose-500/[0.05] text-rose-700 dark:border-rose-500/30 dark:bg-rose-950/30 dark:text-rose-300"
+                : colors.isAlto
+                ? "border-amber-500/25 bg-amber-500/[0.05] text-amber-700 dark:border-amber-500/30 dark:bg-amber-950/30 dark:text-amber-300"
+                : "border-emerald-500/25 bg-emerald-500/[0.05] text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-950/30 dark:text-emerald-300"
+            }`}
+          >
+            <div className="flex flex-col items-start">
+              <span className="text-[10px] font-semibold text-gray-400 dark:text-white/50 uppercase tracking-wider">
+                Índice Pulso
+              </span>
+              <span className="text-lg font-black tracking-tight leading-tight">
+                {summary.pulse}%
+              </span>
+            </div>
+            <div className="h-6 w-px bg-current opacity-20" />
+            <span className="text-xs font-bold whitespace-nowrap">
               {summary.pulseState}
-            </p>
+            </span>
           </div>
         </div>
       </div>
 
-      {/* 2. Alerta de bienestar destacada */}
-      {alert ? (
+      {/* 2. Alerta Activa de Bienestar */}
+      {alert && (
         <div
-          className={`rounded-2xl p-4.5 shadow-sm ${
+          className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3.5 rounded-2xl border p-4 transition-all ${
             alert.prioridad === "critica" || colors.isCritico
-              ? "border border-red-500/30 bg-red-500/[0.06] dark:border-red-500/35 dark:bg-red-950/30"
-              : "border border-amber-500/30 bg-amber-500/[0.06] dark:border-amber-500/35 dark:bg-amber-950/30"
+              ? "border-rose-500/30 bg-rose-500/[0.04] dark:border-rose-500/30 dark:bg-rose-950/25"
+              : "border-amber-500/30 bg-amber-500/[0.04] dark:border-amber-500/30 dark:bg-amber-950/25"
           }`}
         >
-          <div className="flex items-start gap-3.5">
+          <div className="flex items-start gap-3 min-w-0">
             <div
-              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-md ${
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
                 alert.prioridad === "critica" || colors.isCritico
-                  ? "bg-red-500 shadow-red-500/30"
-                  : "bg-amber-500 shadow-amber-500/30"
+                  ? "bg-rose-500/15 text-rose-600 dark:text-rose-400"
+                  : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
               }`}
             >
               <MdOutlineWarningAmber className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-black text-navy-700 dark:text-white">{alert.titulo}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-bold text-navy-800 dark:text-white">
+                  {alert.prioridad === "critica" || colors.isCritico
+                    ? "Atención Prioritaria de Bienestar"
+                    : "Alerta Preventiva de Bienestar"}
+                </p>
                 <span
-                  className={`rounded-full px-2.5 py-0.5 text-[10.5px] font-bold ${
+                  className={`rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
                     (PRIORIDAD_BADGE[alert.prioridad] || PRIORIDAD_BADGE.media).className
                   }`}
                 >
                   {(PRIORIDAD_BADGE[alert.prioridad] || PRIORIDAD_BADGE.media).label}
                 </span>
               </div>
-              <p className="mt-1.5 text-xs leading-relaxed text-gray-700 dark:text-white/80">
-                {alert.cuerpo}
+              <p className="mt-0.5 text-xs text-gray-600 dark:text-white/70 leading-relaxed">
+                {cleanAlertDescription(alert, summary)}
               </p>
-              {alert.resuelta ? (
-                <p className="mt-2.5 flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-300">
-                  <MdCheckCircle className="h-4 w-4" /> Alerta marcada como resuelta por la administración.
-                </p>
-              ) : (
-                <div className="mt-3">
-                  <button
-                    type="button"
-                    onClick={() => onResolve(alert.id)}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/25 transition hover:bg-emerald-700 active:scale-95 dark:bg-emerald-500 dark:hover:bg-emerald-600"
-                  >
-                    <MdCheckCircle className="h-4 w-4" /> Marcar como resuelta
-                  </button>
-                </div>
-              )}
             </div>
           </div>
+          <div className="shrink-0 self-end sm:self-center">
+            {alert.resuelta ? (
+              <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                <MdCheckCircle className="h-4 w-4 text-emerald-500" />
+                <span>Alerta resuelta</span>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={handleResolve}
+                disabled={resolviendo}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-navy-700 hover:bg-navy-800 text-white dark:bg-white dark:text-navy-900 dark:hover:bg-gray-100 px-3.5 py-1.5 text-xs font-semibold shadow-xs transition-all active:scale-95 disabled:opacity-50"
+              >
+                <MdCheckCircle className="h-4 w-4 text-emerald-400 dark:text-emerald-600" />
+                <span>{resolviendo ? "Guardando..." : "Marcar como resuelta"}</span>
+              </button>
+            )}
+          </div>
         </div>
-      ) : null}
+      )}
 
-      {/* 3. Grid de Indicadores Clave - Etiquetas Formales y Alto Contraste */}
+      {/* 3. Métricas del Check-in */}
       <div>
-        <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/60">
-          Indicadores Clave del Check-in
-        </p>
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-xs font-bold text-gray-500 dark:text-white/60">
+            Métricas del Check-in
+          </p>
+          <span className="text-[11px] text-gray-400 dark:text-white/40">
+            Escala normalizada
+          </span>
+        </div>
+
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-5">
           {/* Energía */}
-          <div className="flex flex-col justify-between rounded-2xl border border-gray-200/80 bg-gray-50/60 p-3.5 transition hover:shadow-sm dark:border-white/10 dark:bg-charcoal">
+          <div className="flex flex-col justify-between rounded-2xl border border-gray-200/70 bg-gray-50/50 p-3.5 dark:border-white/10 dark:bg-white/[0.02]">
             <div className="flex items-center justify-between">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 dark:bg-indigo-400/20 dark:text-indigo-300">
-                <MdOutlineBolt className="h-4.5 w-4.5" />
-              </div>
-              <span className="rounded-md bg-gray-200/60 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wider text-gray-600 dark:bg-white/10 dark:text-white/70">
-                Nivel
-              </span>
+              <span className="text-xs font-medium text-gray-500 dark:text-white/60">Energía</span>
+              <MdOutlineBolt className="h-4 w-4 text-indigo-500" />
             </div>
-            <div className="mt-2.5">
-              <p className="text-sm font-black capitalize text-navy-700 dark:text-white">
-                {n.energy}
+            <div className="mt-2">
+              <p className="text-sm font-bold text-navy-800 dark:text-white">
+                {ENERGY_LABELS[n.energy]}
               </p>
-              <p className="text-[11px] font-semibold text-gray-500 dark:text-white/60">Energía</p>
+              <p className="text-[11px] text-gray-400 dark:text-white/50">
+                {n.energy === "bajo" ? "Reserva baja" : n.energy === "alto" ? "Energía alta" : "Moderada"}
+              </p>
+              <MetricBar
+                value={n.energy === "alto" ? 3 : n.energy === "medio" ? 2 : 1}
+                max={3}
+                color={n.energy === "bajo" ? "rose" : n.energy === "alto" ? "emerald" : "brand"}
+              />
             </div>
           </div>
 
           {/* Estrés */}
           <div
-            className={`flex flex-col justify-between rounded-2xl p-3.5 transition hover:shadow-sm border ${
+            className={`flex flex-col justify-between rounded-2xl border p-3.5 transition ${
               n.stress === "critico"
-                ? "border-red-500/40 bg-red-500/10 dark:bg-red-950/30"
+                ? "border-rose-500/30 bg-rose-500/[0.04] dark:border-rose-500/40 dark:bg-rose-950/20"
                 : n.stress === "alto"
-                ? "border-amber-500/40 bg-amber-500/10 dark:bg-amber-950/30"
-                : "border-gray-200/80 bg-gray-50/60 dark:border-white/10 dark:bg-charcoal"
+                ? "border-amber-500/30 bg-amber-500/[0.04] dark:border-amber-500/40 dark:bg-amber-950/20"
+                : "border-gray-200/70 bg-gray-50/50 dark:border-white/10 dark:bg-white/[0.02]"
             }`}
           >
             <div className="flex items-center justify-between">
-              <div
-                className={`flex h-7 w-7 items-center justify-center rounded-lg ${
-                  n.stress === "critico"
-                    ? "bg-red-500/15 text-red-600 dark:text-red-400"
-                    : n.stress === "alto"
-                    ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                    : "bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300"
-                }`}
-              >
-                <MdOutlineMonitorHeart className="h-4.5 w-4.5" />
-              </div>
               <span
-                className={`rounded-md px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wider ${
+                className={`text-xs font-semibold ${
                   n.stress === "critico"
-                    ? "bg-red-500/20 text-red-600 dark:text-red-300"
-                    : n.stress === "alto"
-                    ? "bg-amber-500/20 text-amber-700 dark:text-amber-300"
-                    : "bg-gray-200/60 text-gray-600 dark:bg-white/10 dark:text-white/70"
-                }`}
-              >
-                {n.stress === "critico" ? "Crítico" : n.stress === "alto" ? "Alto" : "Estado"}
-              </span>
-            </div>
-            <div className="mt-2.5">
-              <p
-                className={`text-sm font-black capitalize ${
-                  n.stress === "critico"
-                    ? "text-red-600 dark:text-red-400"
+                    ? "text-rose-600 dark:text-rose-400"
                     : n.stress === "alto"
                     ? "text-amber-600 dark:text-amber-400"
-                    : "text-navy-700 dark:text-white"
+                    : "text-gray-500 dark:text-white/60"
                 }`}
               >
-                {n.stress}
+                Estrés
+              </span>
+              <MdOutlineMonitorHeart
+                className={`h-4 w-4 ${
+                  n.stress === "critico"
+                    ? "text-rose-500"
+                    : n.stress === "alto"
+                    ? "text-amber-500"
+                    : "text-gray-400"
+                }`}
+              />
+            </div>
+            <div className="mt-2">
+              <p
+                className={`text-sm font-bold ${
+                  n.stress === "critico"
+                    ? "text-rose-600 dark:text-rose-400"
+                    : n.stress === "alto"
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-navy-800 dark:text-white"
+                }`}
+              >
+                {STRESS_LABELS[n.stress]}
               </p>
-              <p className="text-[11px] font-semibold text-gray-500 dark:text-white/60">Estrés</p>
+              <p className="text-[11px] text-gray-400 dark:text-white/50">
+                {n.stress === "critico" ? "Riesgo crítico" : n.stress === "alto" ? "Tensión alta" : "Nivel normal"}
+              </p>
+              <MetricBar
+                value={n.stress === "critico" ? 4 : n.stress === "alto" ? 3 : n.stress === "moderado" ? 2 : 1}
+                max={4}
+                color={n.stress === "critico" ? "rose" : n.stress === "alto" ? "amber" : "emerald"}
+              />
             </div>
           </div>
 
-          {/* Sueño / Descanso */}
-          <div className="flex flex-col justify-between rounded-2xl border border-gray-200/80 bg-gray-50/60 p-3.5 transition hover:shadow-sm dark:border-white/10 dark:bg-charcoal">
+          {/* Descanso */}
+          <div className="flex flex-col justify-between rounded-2xl border border-gray-200/70 bg-gray-50/50 p-3.5 dark:border-white/10 dark:bg-white/[0.02]">
             <div className="flex items-center justify-between">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-600 dark:bg-cyan-400/20 dark:text-cyan-300">
-                <MdOutlineBedtime className="h-4.5 w-4.5" />
-              </div>
-              <span className="rounded-md bg-gray-200/60 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wider text-gray-600 dark:bg-white/10 dark:text-white/70">
-                Escala
-              </span>
+              <span className="text-xs font-medium text-gray-500 dark:text-white/60">Descanso</span>
+              <MdOutlineBedtime className="h-4 w-4 text-cyan-500" />
             </div>
-            <div className="mt-2.5">
-              <p className="text-sm font-black text-navy-700 dark:text-white">
+            <div className="mt-2">
+              <p className="text-sm font-bold text-navy-800 dark:text-white">
                 {n.sleep} / 5
               </p>
-              <p className="text-[11px] font-semibold text-gray-500 dark:text-white/60">Descanso</p>
+              <p className="text-[11px] text-gray-400 dark:text-white/50">
+                {n.sleep <= 2 ? "Insuficiente" : n.sleep === 3 ? "Regular" : "Reparador"}
+              </p>
+              <MetricBar
+                value={n.sleep}
+                max={5}
+                color={n.sleep <= 2 ? "rose" : n.sleep === 3 ? "amber" : "emerald"}
+              />
             </div>
           </div>
 
           {/* Carga */}
           <div
-            className={`flex flex-col justify-between rounded-2xl p-3.5 transition hover:shadow-sm border ${
+            className={`flex flex-col justify-between rounded-2xl border p-3.5 transition ${
               n.workload >= 5
-                ? "border-red-500/40 bg-red-500/10 dark:bg-red-950/30"
+                ? "border-rose-500/30 bg-rose-500/[0.04] dark:border-rose-500/40 dark:bg-rose-950/20"
                 : n.workload >= 4
-                ? "border-amber-500/40 bg-amber-500/10 dark:bg-amber-950/30"
-                : "border-gray-200/80 bg-gray-50/60 dark:border-white/10 dark:bg-charcoal"
+                ? "border-amber-500/30 bg-amber-500/[0.04] dark:border-amber-500/40 dark:bg-amber-950/20"
+                : "border-gray-200/70 bg-gray-50/50 dark:border-white/10 dark:bg-white/[0.02]"
             }`}
           >
             <div className="flex items-center justify-between">
-              <div
-                className={`flex h-7 w-7 items-center justify-center rounded-lg ${
-                  n.workload >= 5
-                    ? "bg-red-500/15 text-red-600 dark:text-red-400"
-                    : n.workload >= 4
-                    ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                    : "bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300"
-                }`}
-              >
-                <MdOutlineLayers className="h-4.5 w-4.5" />
-              </div>
               <span
-                className={`rounded-md px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wider ${
+                className={`text-xs font-semibold ${
                   n.workload >= 5
-                    ? "bg-red-500/20 text-red-600 dark:text-red-300"
-                    : n.workload >= 4
-                    ? "bg-amber-500/20 text-amber-700 dark:text-amber-300"
-                    : "bg-gray-200/60 text-gray-600 dark:bg-white/10 dark:text-white/70"
-                }`}
-              >
-                Volumen
-              </span>
-            </div>
-            <div className="mt-2.5">
-              <p
-                className={`text-sm font-black ${
-                  n.workload >= 5
-                    ? "text-red-600 dark:text-red-400"
+                    ? "text-rose-600 dark:text-rose-400"
                     : n.workload >= 4
                     ? "text-amber-600 dark:text-amber-400"
-                    : "text-navy-700 dark:text-white"
+                    : "text-gray-500 dark:text-white/60"
+                }`}
+              >
+                Carga
+              </span>
+              <MdOutlineLayers
+                className={`h-4 w-4 ${
+                  n.workload >= 5
+                    ? "text-rose-500"
+                    : n.workload >= 4
+                    ? "text-amber-500"
+                    : "text-gray-400"
+                }`}
+              />
+            </div>
+            <div className="mt-2">
+              <p
+                className={`text-sm font-bold ${
+                  n.workload >= 5
+                    ? "text-rose-600 dark:text-rose-400"
+                    : n.workload >= 4
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-navy-800 dark:text-white"
                 }`}
               >
                 {n.workload} / 5
               </p>
-              <p className="text-[11px] font-semibold text-gray-500 dark:text-white/60">Carga</p>
+              <p className="text-[11px] text-gray-400 dark:text-white/50">
+                {n.workload >= 5 ? "Sobrecarga" : n.workload >= 4 ? "Exigencia alta" : "Balanceada"}
+              </p>
+              <MetricBar
+                value={n.workload}
+                max={5}
+                color={n.workload >= 5 ? "rose" : n.workload >= 4 ? "amber" : "brand"}
+              />
             </div>
           </div>
 
-          {/* Racha */}
-          <div className="flex flex-col justify-between rounded-2xl border border-gray-200/80 bg-gray-50/60 p-3.5 transition hover:shadow-sm dark:border-white/10 dark:bg-charcoal">
+          {/* Hábito / Racha */}
+          <div className="flex flex-col justify-between rounded-2xl border border-gray-200/70 bg-gray-50/50 p-3.5 dark:border-white/10 dark:bg-white/[0.02]">
             <div className="flex items-center justify-between">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-500/10 text-orange-600 dark:bg-orange-400/20 dark:text-orange-300">
-                <MdOutlineLocalFireDepartment className="h-4.5 w-4.5" />
-              </div>
-              <span className="rounded-md bg-gray-200/60 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wider text-gray-600 dark:bg-white/10 dark:text-white/70">
-                Hábito
-              </span>
+              <span className="text-xs font-medium text-gray-500 dark:text-white/60">Hábito</span>
+              <MdOutlineLocalFireDepartment className="h-4 w-4 text-amber-500" />
             </div>
-            <div className="mt-2.5">
-              <p className="text-sm font-black text-navy-700 dark:text-white">{summary.streak}d</p>
-              <p className="text-[11px] font-semibold text-gray-500 dark:text-white/60">Racha</p>
+            <div className="mt-2">
+              <p className="text-sm font-bold text-navy-800 dark:text-white">
+                {summary.streak} {summary.streak === 1 ? "día" : "días"}
+              </p>
+              <p className="text-[11px] text-gray-400 dark:text-white/50">
+                Racha activa
+              </p>
+              <MetricBar
+                value={1}
+                max={1}
+                color="amber"
+              />
             </div>
           </div>
         </div>
       </div>
 
-      {/* 4. Recomendación de Gestión y Acompañamiento - Estilo Formal & Ejecutivo */}
-      <div className="flex items-start gap-3.5 rounded-2xl border border-gray-200 bg-gray-50/80 p-4 dark:border-white/10 dark:bg-charcoal">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-200/70 text-navy-700 dark:bg-white/10 dark:text-white">
-          <MdOutlineSupportAgent className="h-5 w-5" />
+      {/* 4. Recomendación para Gestión y Liderazgo */}
+      <div className="flex items-start gap-3 rounded-2xl border border-gray-200/80 bg-gray-50/60 p-4 dark:border-white/10 dark:bg-white/[0.02]">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-600 dark:bg-brand-400/20 dark:text-brand-300">
+          <MdOutlineSupportAgent className="h-4 w-4" />
         </div>
-        <div className="text-xs leading-relaxed min-w-0">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/60">
-            Recomendación de Gestión y Acompañamiento
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-bold text-navy-800 dark:text-white">
+            Recomendación de Acompañamiento para Líderes
           </p>
-          <p className="mt-1 text-xs font-semibold text-navy-700 dark:text-white/90">
-            {guideText}
+          <p className="mt-1 text-xs text-gray-600 dark:text-white/75 leading-relaxed">
+            {getManagerGuidance(n.stress, n.workload)}
           </p>
         </div>
       </div>
 
-      {/* 5. Factores señalados por el colaborador - Etiquetas Formales & Nítidas */}
-      {n.tags.length ? (
+      {/* 5. Factores adicionales señalados */}
+      {n.tags.length > 0 && (
         <div>
-          <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/60">
-            Factores Señalados por el Colaborador
+          <p className="mb-1.5 text-xs font-semibold text-gray-500 dark:text-white/60">
+            Factores señalados en el registro
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {n.tags.map((tag) => (
               <span
                 key={tag}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-navy-700 shadow-xs dark:border-white/15 dark:bg-charcoal dark:text-white"
+                className="inline-flex items-center gap-1 rounded-lg border border-gray-200/80 bg-gray-50/80 px-2.5 py-1 text-xs font-medium text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-white/80"
               >
-                <MdOutlineLabel className="h-3.5 w-3.5 text-brand-500 dark:text-brand-300" />
+                <MdOutlineLabel className="h-3 w-3 text-brand-500" />
                 <span>{tag}</span>
               </span>
             ))}
           </div>
         </div>
-      ) : null}
+      )}
 
-      {/* 6. Nota del colaborador */}
+      {/* 6. Nota del Colaborador (si existe) */}
       {n.note ? (
-        <div>
-          <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/60">
-            Mensaje / Nota del Colaborador
-          </p>
-          <div className="flex items-start gap-2.5 rounded-2xl border border-gray-200/80 bg-gray-50 p-4 dark:border-white/10 dark:bg-charcoal">
-            <MdOutlineChatBubbleOutline className="h-5 w-5 shrink-0 text-gray-400 dark:text-white/50 mt-0.5" />
-            <p className="text-xs italic font-medium leading-relaxed text-navy-700 dark:text-white/90">
-              "{n.note}"
-            </p>
+        <div className="rounded-2xl border border-gray-200/70 bg-white p-3.5 dark:border-white/10 dark:bg-charcoal">
+          <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-white/70">
+            <MdOutlineChatBubbleOutline className="h-3.5 w-3.5 text-brand-500" />
+            <span>Mensaje del Colaborador</span>
           </div>
+          <p className="border-l-2 border-brand-500/60 pl-3 text-xs italic text-gray-700 dark:text-white/90">
+            "{n.note}"
+          </p>
         </div>
       ) : null}
 
-      {/* 7. Botones de acción del modal */}
-      <div className="mt-2 flex items-center justify-end border-t border-gray-100 pt-4 dark:border-white/10">
+      {/* 7. Footer */}
+      <div className="flex items-center justify-between border-t border-gray-100 pt-3 dark:border-white/10">
+        <span className="text-xs text-gray-400 dark:text-white/40">
+          Nexxus Bienestar · Cuidado del Equipo
+        </span>
         <button
           type="button"
           onClick={onClose}
-          className="rounded-xl bg-gray-100 px-5 py-2 text-xs font-bold text-gray-700 transition hover:bg-gray-200 active:scale-95 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
+          className="rounded-xl border border-gray-200 bg-white px-4 py-1.5 text-xs font-semibold text-navy-700 shadow-2xs hover:bg-gray-50 active:scale-95 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/20 transition-all"
         >
           Cerrar
         </button>

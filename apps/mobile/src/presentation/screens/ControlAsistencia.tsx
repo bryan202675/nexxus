@@ -47,7 +47,7 @@ export default function ControlAsistencia({ navigation }: Props) {
   const [horaEntrada, setHoraEntrada] = useState<string | null>(null);
   const [registrando, setRegistrando] = useState(false);
 
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const escalaReloj = useSharedValue(1);
 
   // Restaurar estado del timer al cargar
@@ -392,7 +392,7 @@ function crearEstilos(c: any, esOscuro: boolean) {
 
   return StyleSheet.create({
     contenedor: { flex: 1, backgroundColor: c.fondo },
-    fondoAbsoluto: { ...StyleSheet.absoluteFillObject, zIndex: -1, overflow: 'hidden' },
+    fondoAbsoluto: { ...StyleSheet.absoluteFill, zIndex: -1, overflow: 'hidden' },
 
     scroll: {
       paddingHorizontal: 16,

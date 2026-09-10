@@ -16,13 +16,17 @@
   },
   "dependencies": {
     "colorjs.io": "^0.7.1",
-    "msedge-tts": "^2.0.7"
+    "expo": "~57.0.21",
+    "msedge-tts": "^2.0.7",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.3"
   },
   "devDependencies": {
     "javascript-obfuscator": "^5.5.0",
     "turbo": "^2.3.0"
   },
   "overrides": {
-    "react-native-worklets": "0.5.1"
+    "react-native-worklets": "0.10.1"
   }
 }

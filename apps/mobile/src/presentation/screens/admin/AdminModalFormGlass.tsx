@@ -52,9 +52,9 @@ export function AdminModalFormGlass({ children, style }: AdminModalFormGlassProp
 
   return (
     <View style={[estiloContenedor, estilos.shell]}>
-      <BlurView intensity={intensity} tint={theme.navTint} style={StyleSheet.absoluteFillObject} />
+      <BlurView intensity={intensity} tint={theme.navTint} style={StyleSheet.absoluteFill} />
       <View
-        style={[StyleSheet.absoluteFillObject, { backgroundColor: fondoFormulario }]}
+        style={[StyleSheet.absoluteFill, { backgroundColor: fondoFormulario }]}
         pointerEvents="none"
       />
       <View style={estilos.content}>{children}</View>

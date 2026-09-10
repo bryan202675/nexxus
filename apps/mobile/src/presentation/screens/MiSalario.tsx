@@ -591,7 +591,7 @@ function crearEstilosSalario(c: any, esOscuro: boolean) {
 
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: c.fondo },
-    background: { ...StyleSheet.absoluteFillObject, zIndex: -1, overflow: 'hidden' },
+    background: { ...StyleSheet.absoluteFill, zIndex: -1, overflow: 'hidden' },
 
     iconButton: {
       width: 38,

@@ -167,7 +167,7 @@ function crearEstilos(colores: ColoresTema, esOscuro: boolean) {
 
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colores.fondo },
-    background: { ...StyleSheet.absoluteFillObject },
+    background: { ...StyleSheet.absoluteFill },
     scroll: { padding: 16, paddingBottom: 110, gap: 14 },
     noticeBox: {
       flexDirection: 'row',

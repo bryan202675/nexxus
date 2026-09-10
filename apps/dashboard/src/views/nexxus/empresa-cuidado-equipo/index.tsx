@@ -52,10 +52,16 @@ export default function CuidadoEquipo() {
   const alertsByUser = useMemo(() => {
     const map = new Map<string, TeamCareAlert>();
     for (const alerta of alerts) {
-      if (!alerta.usuario_id) continue;
-      const actual = map.get(alerta.usuario_id);
-      if (!actual || (!alerta.resuelta && actual.resuelta) || alerta.created_at > actual.created_at) {
-        map.set(alerta.usuario_id, alerta);
+      const uids = new Set<string>();
+      if (alerta.usuario_id) uids.add(alerta.usuario_id);
+      const datosUid = (alerta.datos as any)?.usuario_id as string | undefined;
+      if (datosUid) uids.add(datosUid);
+
+      for (const uid of uids) {
+        const actual = map.get(uid);
+        if (!actual || (!alerta.resuelta && actual.resuelta) || alerta.created_at > actual.created_at) {
+          map.set(uid, alerta);
+        }
       }
     }
     return map;
@@ -136,47 +142,57 @@ export default function CuidadoEquipo() {
         </div>
       ) : (
         <>
-          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
-                Bienestar del Equipo
-              </h2>
-              <p className="mt-1 text-sm font-medium text-gray-500 dark:text-white/60">
-                Monitoreo del clima laboral a partir de los check-ins diarios, detección preventiva y seguimiento oportuno.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => navigate(routeUrl("/admin", "empresa-resumen"))}
-                className="flex items-center gap-1.5 rounded-xl bg-white px-3.5 py-2 text-xs font-bold text-navy-700 shadow-sm transition hover:bg-gray-50 dark:bg-charcoal dark:border dark:border-charcoal-border dark:text-white dark:hover:bg-white/5"
-              >
-                <span>Ver Resumen General</span>
-              </button>
-            </div>
+          {/* Toolbar / Subtítulo Superior (sin duplicar el título del Navbar) */}
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <p className="text-xs font-medium text-gray-500 dark:text-white/60">
+              Monitoreo del clima laboral a partir de los check-ins diarios, detección preventiva y seguimiento oportuno.
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate(routeUrl("/admin", "empresa-resumen"))}
+              className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-xl border border-gray-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-navy-700 shadow-2xs transition hover:bg-gray-50 active:scale-95 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
+            >
+              <span>Ver Resumen General</span>
+            </button>
           </div>
 
+          {/* Grid de 4 KPIs Principales */}
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
             {/* KPI 1: Pulso Promedio */}
-            <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                    Pulso Promedio
-                  </p>
-                  <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
-                    {stats.avgPulse > 0 ? `${stats.avgPulse}%` : "—"}
-                  </h3>
-                </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-500 dark:bg-rose-400/20 dark:text-rose-300">
-                  <MdOutlineFavorite className="h-6 w-6" />
+            <NexxusCard extra="p-5 flex flex-col justify-between gap-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
+                  Pulso Promedio
+                </span>
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/10 text-rose-500 dark:bg-rose-400/20 dark:text-rose-300">
+                  <MdOutlineFavorite className="h-5 w-5" />
                 </div>
               </div>
 
-              {/* Barra de progreso de pulso */}
-              <div className="mt-3">
-                <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+              <div>
+                <div className="flex items-baseline gap-2">
+                  <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
+                    {stats.avgPulse > 0 ? `${stats.avgPulse}%` : "—"}
+                  </h3>
+                  <span
+                    className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-bold ${
+                      stats.avgPulse >= 75
+                        ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20"
+                        : stats.avgPulse >= 50
+                        ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20"
+                        : "bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20"
+                    }`}
+                  >
+                    {stats.avgPulse >= 75
+                      ? "Óptimo"
+                      : stats.avgPulse >= 50
+                      ? "Atención"
+                      : "Riesgo"}
+                  </span>
+                </div>
+
+                {/* Barra de progreso */}
+                <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${
                       stats.avgPulse >= 75
@@ -190,117 +206,129 @@ export default function CuidadoEquipo() {
                 </div>
               </div>
 
-              <div className="mt-3 flex items-center justify-between text-xs font-medium text-gray-500 dark:text-white/60">
-                <span className="flex items-center gap-1">
-                  <span
-                    className={`h-2 w-2 rounded-full ${
-                      stats.avgPulse >= 75
-                        ? "bg-emerald-500"
-                        : stats.avgPulse >= 50
-                        ? "bg-amber-500"
-                        : "bg-rose-500"
-                    }`}
-                  />
-                  {stats.avgPulse >= 75
-                    ? "Estado Óptimo"
-                    : stats.avgPulse >= 50
-                    ? "Requiere Atención"
-                    : "Riesgo Detectado"}
-                </span>
-                <span>{summaries.length} evaluados</span>
-              </div>
+              <p className="text-xs text-gray-500 dark:text-white/60">
+                {summaries.length} colaboradores evaluados
+              </p>
             </NexxusCard>
 
             {/* KPI 2: En Riesgo */}
-            <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                    En Riesgo
-                  </p>
-                  <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
-                    {stats.atRiskCount}
-                    <span className="ml-1.5 text-sm font-semibold text-rose-500">
-                      ({stats.atRiskPercent}%)
-                    </span>
-                  </h3>
-                </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:bg-amber-400/20 dark:text-amber-300">
-                  <MdOutlineWarningAmber className="h-6 w-6" />
+            <NexxusCard extra="p-5 flex flex-col justify-between gap-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
+                  En Riesgo
+                </span>
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:bg-amber-400/20 dark:text-amber-300">
+                  <MdOutlineWarningAmber className="h-5 w-5" />
                 </div>
               </div>
 
-              <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-                <span>
-                  {stats.atRiskCount === 0
-                    ? "Sin colaboradores en riesgo"
-                    : "Requieren acompañamiento"}
-                </span>
-                <span className="font-bold text-rose-500">
-                  {stats.atRiskCount > 0 ? "Prioritario" : "Todo bien"}
-                </span>
+              <div>
+                <div className="flex items-baseline gap-2">
+                  <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
+                    {stats.atRiskCount}
+                  </h3>
+                  <span className="inline-flex items-center rounded-md bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 text-[11px] font-bold text-rose-600 dark:text-rose-400">
+                    {stats.atRiskPercent}% del equipo
+                  </span>
+                </div>
+
+                {/* Barra de proporción */}
+                <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+                  <div
+                    className="h-full rounded-full bg-rose-500 transition-all duration-500"
+                    style={{ width: `${Math.min(100, Math.max(0, stats.atRiskPercent))}%` }}
+                  />
+                </div>
               </div>
+
+              <p className="text-xs text-gray-500 dark:text-white/60">
+                {stats.atRiskCount === 0
+                  ? "Sin colaboradores en riesgo"
+                  : "Requieren acompañamiento 1:1"}
+              </p>
             </NexxusCard>
 
             {/* KPI 3: Carga Laboral Promedio */}
-            <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                    Carga Laboral
-                  </p>
-                  <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
-                    {stats.avgWorkload}
-                    <span className="text-sm font-semibold text-gray-400 dark:text-white/40">
-                      /5
-                    </span>
-                  </h3>
-                </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
-                  <MdOutlineFitnessCenter className="h-6 w-6" />
+            <NexxusCard extra="p-5 flex flex-col justify-between gap-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
+                  Carga Laboral
+                </span>
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
+                  <MdOutlineFitnessCenter className="h-5 w-5" />
                 </div>
               </div>
 
-              <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-                <span>
-                  {stats.avgWorkload >= 4
-                    ? "Carga elevada en el equipo"
-                    : stats.avgWorkload >= 2.5
-                    ? "Nivel de carga equilibrado"
-                    : "Carga laboral ligera"}
-                </span>
-                <span className="font-bold text-navy-700 dark:text-white">Escala 1-5</span>
+              <div>
+                <div className="flex items-baseline gap-2">
+                  <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
+                    {stats.avgWorkload}
+                    <span className="text-sm font-normal text-gray-400 dark:text-white/40 ml-1">/ 5</span>
+                  </h3>
+                  <span className="inline-flex items-center rounded-md bg-gray-100 dark:bg-white/10 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:text-white/70">
+                    {stats.avgWorkload >= 4 ? "Elevada" : stats.avgWorkload >= 2.5 ? "Equilibrada" : "Ligera"}
+                  </span>
+                </div>
+
+                {/* Barra de progreso */}
+                <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      stats.avgWorkload >= 4
+                        ? "bg-amber-500"
+                        : "bg-brand-500 dark:bg-brand-400"
+                    }`}
+                    style={{ width: `${Math.min(100, Math.max(0, (stats.avgWorkload / 5) * 100))}%` }}
+                  />
+                </div>
               </div>
+
+              <p className="text-xs text-gray-500 dark:text-white/60">
+                Promedio general del equipo
+              </p>
             </NexxusCard>
 
-            {/* KPI 4: Alertas de Bienestar */}
-            <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                    Alertas Activas
-                  </p>
-                  <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
-                    {unresolvedCount}
-                    <span className="ml-1 text-sm font-semibold text-gray-500 dark:text-white/60">
-                      pendientes
-                    </span>
-                  </h3>
-                </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-500/10 text-purple-600 dark:bg-purple-400/20 dark:text-purple-300">
-                  <MdOutlineNotificationsActive className="h-6 w-6" />
+            {/* KPI 4: Alertas Activas */}
+            <NexxusCard extra="p-5 flex flex-col justify-between gap-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
+                  Alertas Activas
+                </span>
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:bg-purple-400/20 dark:text-purple-300">
+                  <MdOutlineNotificationsActive className="h-5 w-5" />
                 </div>
               </div>
 
-              <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-                <span>
-                  {unresolvedCount === 0 ? "Todas resueltas" : "Acción requerida"}
-                </span>
-                <span className="flex items-center gap-1 font-bold text-brand-500">
-                  <MdCheckCircle className="h-3.5 w-3.5" />
-                  {unresolvedCount === 0 ? "Al día" : "Revisar tabla"}
-                </span>
+              <div>
+                <div className="flex items-baseline gap-2">
+                  <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
+                    {unresolvedCount}
+                  </h3>
+                  <span
+                    className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-bold ${
+                      unresolvedCount > 0
+                        ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20"
+                        : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20"
+                    }`}
+                  >
+                    {unresolvedCount > 0 ? "Pendientes" : "Al día"}
+                  </span>
+                </div>
+
+                {/* Barra de proporción */}
+                <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      unresolvedCount > 0 ? "bg-amber-500" : "bg-emerald-500"
+                    }`}
+                    style={{ width: unresolvedCount > 0 ? "100%" : "0%" }}
+                  />
+                </div>
               </div>
+
+              <p className="text-xs text-gray-500 dark:text-white/60">
+                {unresolvedCount === 0 ? "Todas las alertas resueltas" : "Seguimiento requerido en tabla"}
+              </p>
             </NexxusCard>
           </div>
 
@@ -310,10 +338,10 @@ export default function CuidadoEquipo() {
                 <button
                   type="button"
                   onClick={() => setTipoGrafico("estres")}
-                  className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition ${
+                  className={`rounded-xl px-3.5 py-1.5 text-xs font-semibold transition active:scale-95 ${
                     tipoGrafico === "estres"
-                      ? "bg-brand-500 text-white shadow-sm shadow-brand-500/20"
-                      : "bg-white text-gray-600 hover:bg-gray-100 dark:bg-charcoal dark:border dark:border-charcoal-border dark:text-white/70"
+                      ? "bg-brand-500 text-white shadow-xs"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200/80 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/10"
                   }`}
                 >
                   Nivel de Estrés (14 días)
@@ -321,13 +349,13 @@ export default function CuidadoEquipo() {
                 <button
                   type="button"
                   onClick={() => setTipoGrafico("pulso")}
-                  className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition ${
+                  className={`rounded-xl px-3.5 py-1.5 text-xs font-semibold transition active:scale-95 ${
                     tipoGrafico === "pulso"
-                      ? "bg-brand-500 text-white shadow-sm shadow-brand-500/20"
-                      : "bg-white text-gray-600 hover:bg-gray-100 dark:bg-charcoal dark:border dark:border-charcoal-border dark:text-white/70"
+                      ? "bg-brand-500 text-white shadow-xs"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200/80 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/10"
                   }`}
                 >
-                  Pulso de Bienestar (14 días)
+                  Pulso Promedio (14 días)
                 </button>
               </div>
             </div>

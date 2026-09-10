@@ -630,7 +630,7 @@ function crearEstilos(c: any, esOscuro: boolean) {
       flex: 1,
     },
     fondoAbsoluto: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       zIndex: -1,
       overflow: 'hidden',
     },

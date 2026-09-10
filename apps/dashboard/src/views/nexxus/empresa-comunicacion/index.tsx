@@ -8,13 +8,16 @@ import {
   MdOutlineAdd,
   MdOutlineVisibility,
   MdOutlineDelete,
-  MdOutlineCalendarMonth,
   MdOutlineHistory,
   MdOutlineNotificationImportant,
   MdOutlineSend,
   MdOutlineApartment,
   MdOutlineBadge,
   MdOutlinePerson,
+  MdOutlineClose,
+  MdOutlineContentCopy,
+  MdOutlineCheck,
+  MdOutlineSwapVert,
 } from "react-icons/md";
 
 import NexxusCard from "views/nexxus/components/NexxusCard";
@@ -62,15 +65,13 @@ const PRIORIDADES_CONFIG: Record<string, { label: string; cls: string; dot: stri
   },
   Urgente: {
     label: "Urgente",
-    cls: "bg-rose-500/10 text-rose-600 font-black border border-rose-500/20 dark:bg-rose-400/20 dark:text-rose-300",
+    cls: "bg-rose-500/10 text-rose-600 font-bold border border-rose-500/20 dark:bg-rose-400/20 dark:text-rose-300",
     dot: "bg-rose-500",
     icon: MdOutlinePriorityHigh,
   },
 };
 
-// Alcances que el dashboard sabe CREAR (cada uno tiene su propio selector condicional más abajo
-// en el formulario -- "cargo" no lo tiene, así que no se ofrece aquí para no dejar seleccionable
-// un alcance sin forma de elegir a qué cargo).
+// Alcances que el dashboard sabe CREAR
 const ALCANCES = [
   { value: "todos", label: "Toda la Empresa" },
   { value: "departamento", label: "Departamento" },
@@ -79,10 +80,23 @@ const ALCANCES = [
   { value: "privado", label: "Colaboradores Seleccionados" },
 ];
 
-// Superset solo para mostrar/filtrar (incluye "cargo", que mobile sí puede crear vía
-// ComunicacionAdmin.tsx) -- sin esto, un anuncio por cargo mostraba el string crudo "cargo" en
-// vez de una etiqueta legible, y no se podía filtrar por él.
 const ALCANCE_LABELS = [...ALCANCES, { value: "cargo", label: "Cargo" }];
+
+function formatAlcance(anuncio: any) {
+  if (anuncio.departamentoDestino) return `Depto: ${anuncio.departamentoDestino}`;
+  if (anuncio.sedeDestino) return `Sede: ${anuncio.sedeDestino}`;
+  if (anuncio.rolDestino) return `Rol: ${etiquetaRol(anuncio.rolDestino)}`;
+  const alc = (anuncio.alcance || "").toLowerCase().trim();
+  if (alc === "todos" || alc === "empresa" || alc === "all" || alc === "general" || alc === "toda la empresa") {
+    return "Toda la Empresa";
+  }
+  if (alc === "privado") return "Colaboradores Seleccionados";
+  if (alc === "departamento") return "Departamento";
+  if (alc === "sede") return "Sede de Trabajo";
+  if (alc === "rol") return "Rol Específico";
+  if (alc === "cargo") return "Cargo";
+  return anuncio.alcance || "Toda la Empresa";
+}
 
 const PAGE_SIZE = 8;
 
@@ -110,6 +124,7 @@ export default function ComunicacionAdmin() {
   const [busqueda, setBusqueda] = useState("");
   const [filtroPrioridad, setFiltroPrioridad] = useState("todos");
   const [filtroAlcance, setFiltroAlcance] = useState("todos");
+  const [ordenFecha, setOrdenFecha] = useState<"recientes" | "antiguos">("recientes");
   const [pagina, setPagina] = useState(1);
 
   // Modales
@@ -118,6 +133,7 @@ export default function ComunicacionAdmin() {
   const [publicando, setPublicando] = useState(false);
   const [crearError, setCrearError] = useState("");
   const [selectedAnuncio, setSelectedAnuncio] = useState<any | null>(null);
+  const [copiado, setCopiado] = useState(false);
 
   useEffect(() => {
     if (!empresaId) return;
@@ -169,21 +185,48 @@ export default function ComunicacionAdmin() {
     return { esteMes, total: lista.length, alcancePromedio, urgentes };
   }, [anuncios, empleadosActivos]);
 
-  // Filtrado
+  const conteosPrioridad = useMemo(() => {
+    const lista = anuncios || [];
+    return {
+      todos: lista.length,
+      Normal: lista.filter((a) => a.prioridad === "Normal").length,
+      Alta: lista.filter((a) => a.prioridad === "Alta").length,
+      Urgente: lista.filter((a) => a.prioridad === "Urgente").length,
+    };
+  }, [anuncios]);
+
+  // Filtrado y ordenamiento de más reciente a más viejo
   const anunciosFiltrados = useMemo(() => {
     const q = busqueda.toLowerCase().trim();
+    const getTimestamp = (val: any) => {
+      if (!val) return 0;
+      const t = new Date(val).getTime();
+      return Number.isNaN(t) ? 0 : t;
+    };
+
     return (anuncios || [])
       .slice()
-      .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+      .sort((a, b) => {
+        const timeA = getTimestamp(a.fecha);
+        const timeB = getTimestamp(b.fecha);
+        return ordenFecha === "recientes" ? timeB - timeA : timeA - timeB;
+      })
       .filter((a) => {
         if (filtroPrioridad !== "todos" && a.prioridad !== filtroPrioridad) return false;
-        if (filtroAlcance !== "todos" && a.alcance !== filtroAlcance) return false;
+        if (filtroAlcance !== "todos") {
+          const alcNorm = (a.alcance || "").toLowerCase();
+          if (filtroAlcance === "todos" || filtroAlcance === "empresa") {
+            if (alcNorm !== "todos" && alcNorm !== "empresa" && alcNorm !== "all") return false;
+          } else if (alcNorm !== filtroAlcance) {
+            return false;
+          }
+        }
 
         if (!q) return true;
         const campos = [a.mensaje, a.creadoPorNombre, a.alcance, a.prioridad, a.departamentoDestino, a.sedeDestino];
         return campos.some((c) => (c || "").toLowerCase().includes(q));
       });
-  }, [anuncios, busqueda, filtroPrioridad, filtroAlcance]);
+  }, [anuncios, busqueda, filtroPrioridad, filtroAlcance, ordenFecha]);
 
   const totalPaginas = Math.max(1, Math.ceil(anunciosFiltrados.length / PAGE_SIZE));
   const anunciosPaginados = useMemo(() => {
@@ -193,7 +236,7 @@ export default function ComunicacionAdmin() {
 
   useEffect(() => {
     setPagina(1);
-  }, [busqueda, filtroPrioridad, filtroAlcance]);
+  }, [busqueda, filtroPrioridad, filtroAlcance, ordenFecha]);
 
   const toggleEmpleado = (id: string) => {
     setForm((f) => {
@@ -299,7 +342,7 @@ export default function ComunicacionAdmin() {
   };
 
   const handleEliminarAnuncio = async (anuncio: any) => {
-    if (!window.confirm("¿Eliminar este anuncio del historial corporativo?")) return;
+    if (!window.confirm("¿Eliminar este comunicado del historial corporativo?")) return;
     setBusyId(anuncio.id);
     setError("");
     try {
@@ -307,10 +350,16 @@ export default function ComunicacionAdmin() {
       if (delError) throw delError;
       if (selectedAnuncio?.id === anuncio.id) setSelectedAnuncio(null);
     } catch (err: any) {
-      setError(err.message || "No se pudo eliminar el anuncio.");
+      setError(err.message || "No se pudo eliminar el comunicado.");
     } finally {
       setBusyId("");
     }
+  };
+
+  const handleCopiarMensaje = (texto: string) => {
+    navigator.clipboard.writeText(texto);
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 2000);
   };
 
   const cargando = anuncios === null;
@@ -326,23 +375,19 @@ export default function ComunicacionAdmin() {
   }
 
   return (
-    <div className="flex flex-col gap-6 pb-6">
+    <div className="flex flex-col gap-5 pb-6">
       {/* Banner de error */}
       {error && (
-        <div className="rounded-xl bg-red-50 p-4 text-xs font-bold text-red-600 dark:bg-red-500/10 dark:text-red-400">
+        <div className="rounded-xl bg-red-50 p-4 text-xs font-semibold text-red-600 dark:bg-red-500/10 dark:text-red-400">
           {error}
         </div>
       )}
 
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
-            Comunicación Interna & Novedades
-          </h2>
-          <p className="mt-1 text-sm font-medium text-gray-500 dark:text-white/60">
-            Emisión de comunicados oficiales, avisos urgentes y novedades para la organización.
-          </p>
-        </div>
+      {/* Toolbar / Subtítulo Superior (sin duplicar el título del Navbar) */}
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+        <p className="text-xs font-medium text-gray-500 dark:text-white/60">
+          Emisión de comunicados oficiales, avisos prioritarios y novedades para la organización.
+        </p>
 
         <button
           type="button"
@@ -351,177 +396,232 @@ export default function ComunicacionAdmin() {
             setForm(FORM_VACIO);
             setShowCrearAnuncio(true);
           }}
-          className="flex items-center gap-1.5 rounded-xl bg-brand-500 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 active:scale-95 dark:bg-brand-400"
+          className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-xl bg-brand-500 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-600 active:scale-95"
         >
           <MdOutlineAdd className="h-4 w-4" />
           <span>Nuevo Anuncio</span>
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                Anuncios este Mes
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">
-                {metricas.esteMes}
-              </h3>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
-              <MdOutlineCampaign className="h-6 w-6" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>Período actual</span>
-            <span className="font-bold text-emerald-600">Al día</span>
-          </div>
-        </NexxusCard>
-
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                Alcance Promedio
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-blue-600 dark:text-blue-400">
-                {metricas.alcancePromedio}
-              </h3>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
-              <MdOutlineGroups className="h-6 w-6" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>Colaboradores por emisión</span>
-            <span className="font-bold text-blue-600">Audiencia activa</span>
-          </div>
-        </NexxusCard>
-
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                Anuncios Urgentes
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-amber-600 dark:text-amber-400">
-                {metricas.urgentes}
-              </h3>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:bg-amber-400/20 dark:text-amber-300">
-              <MdOutlinePriorityHigh className="h-6 w-6" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>Alertas de máxima prioridad</span>
-            <span className={metricas.urgentes > 0 ? "font-bold text-amber-600" : "font-bold text-gray-400"}>
-              {metricas.urgentes > 0 ? "Atención activa" : "Sin alertas"}
+      {/* Tarjetas KPI */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {/* Anuncios este Mes */}
+        <NexxusCard extra="p-5 flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
+              Anuncios este Mes
             </span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
+              <MdOutlineCampaign className="h-5 w-5" />
+            </div>
+          </div>
+          <div>
+            <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
+              {metricas.esteMes}
+            </h3>
+            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5 text-xs text-gray-400 dark:border-white/10 dark:text-white/40">
+              <span>Período actual</span>
+              <span className="inline-flex items-center rounded-md bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
+                Al día
+              </span>
+            </div>
           </div>
         </NexxusCard>
 
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                Total Histórico
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
-                {metricas.total}
-              </h3>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-500/10 text-purple-600 dark:bg-purple-400/20 dark:text-purple-300">
-              <MdOutlineHistory className="h-6 w-6" />
+        {/* Alcance Promedio */}
+        <NexxusCard extra="p-5 flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
+              Alcance Promedio
+            </span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
+              <MdOutlineGroups className="h-5 w-5" />
             </div>
           </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>Historial indexado</span>
-            <span className="font-bold text-purple-600">Registro</span>
+          <div>
+            <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
+              {metricas.alcancePromedio}
+            </h3>
+            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5 text-xs text-gray-400 dark:border-white/10 dark:text-white/40">
+              <span>Por emisión</span>
+              <span className="inline-flex items-center rounded-md bg-blue-500/10 px-2 py-0.5 text-[11px] font-semibold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+                Audiencia activa
+              </span>
+            </div>
+          </div>
+        </NexxusCard>
+
+        {/* Anuncios Urgentes */}
+        <NexxusCard extra="p-5 flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
+              Anuncios Urgentes
+            </span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:bg-amber-400/20 dark:text-amber-300">
+              <MdOutlinePriorityHigh className="h-5 w-5" />
+            </div>
+          </div>
+          <div>
+            <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
+              {metricas.urgentes}
+            </h3>
+            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5 text-xs text-gray-400 dark:border-white/10 dark:text-white/40">
+              <span>Alertas críticas</span>
+              <span
+                className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+                  metricas.urgentes > 0
+                    ? "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400"
+                    : "bg-gray-100 text-gray-500 dark:bg-white/5 dark:text-white/40"
+                }`}
+              >
+                {metricas.urgentes > 0 ? "Atención activa" : "Sin alertas"}
+              </span>
+            </div>
+          </div>
+        </NexxusCard>
+
+        {/* Total Histórico */}
+        <NexxusCard extra="p-5 flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
+              Total Histórico
+            </span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:bg-purple-400/20 dark:text-purple-300">
+              <MdOutlineHistory className="h-5 w-5" />
+            </div>
+          </div>
+          <div>
+            <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
+              {metricas.total}
+            </h3>
+            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5 text-xs text-gray-400 dark:border-white/10 dark:text-white/40">
+              <span>Historial general</span>
+              <span className="inline-flex items-center rounded-md bg-purple-500/10 px-2 py-0.5 text-[11px] font-semibold text-purple-600 dark:bg-purple-500/20 dark:text-purple-400">
+                Registro
+              </span>
+            </div>
           </div>
         </NexxusCard>
       </div>
 
-      <NexxusCard extra="p-6 flex flex-col gap-5" delay={100}>
-        {/* Barra superior de filtrado */}
-        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
-          <div>
-            <h4 className="text-xl font-bold tracking-tight text-navy-700 dark:text-white">
-              Historial de Comunicados
-            </h4>
-            <p className="mt-0.5 text-xs font-medium text-gray-500 dark:text-white/60">
-              Mostrando {anunciosFiltrados.length} anuncios registrados.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="relative w-full sm:w-72">
-              <MdOutlineSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-gray-400 dark:text-white/40" />
-              <input
-                type="text"
-                placeholder="Buscar por mensaje, autor o alcance..."
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2 pl-9 pr-3 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Pestañas de Filtro Rápido */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-3 dark:border-white/10">
-          <div className="flex flex-wrap items-center gap-2">
+      {/* Card principal con Historial y Filtros */}
+      <NexxusCard extra="p-5 sm:p-6 flex flex-col gap-5" delay={100}>
+        {/* Barra de Filtros Segmentada y Búsqueda */}
+        <div className="flex flex-col gap-3.5 lg:flex-row lg:items-center lg:justify-between">
+          {/* Segmented Filter Pills */}
+          <div className="flex flex-wrap items-center gap-1.5 rounded-xl bg-gray-100/80 p-1 dark:bg-charcoal">
             <button
               type="button"
               onClick={() => setFiltroPrioridad("todos")}
-              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${
                 filtroPrioridad === "todos"
-                  ? "bg-brand-500 text-white shadow-sm shadow-brand-500/20"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-white/70"
+                  ? "bg-navy-700 text-white shadow-sm dark:bg-white dark:text-navy-700"
+                  : "text-gray-600 hover:text-navy-700 hover:bg-white/60 dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10"
               }`}
             >
-              Todos ({anuncios?.length || 0})
+              <span>Todos</span>
+              <span
+                className={`rounded-md px-1.5 py-0.2 text-[10px] font-bold ${
+                  filtroPrioridad === "todos"
+                    ? "bg-white/20 text-white dark:bg-navy-700/20 dark:text-navy-700"
+                    : "bg-gray-200 text-gray-700 dark:bg-white/10 dark:text-white/70"
+                }`}
+              >
+                {conteosPrioridad.todos}
+              </span>
             </button>
+
             <button
               type="button"
               onClick={() => setFiltroPrioridad("Normal")}
-              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${
                 filtroPrioridad === "Normal"
-                  ? "bg-blue-500 text-white shadow-sm shadow-blue-500/20"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-white/70"
+                  ? "bg-navy-700 text-white shadow-sm dark:bg-white dark:text-navy-700"
+                  : "text-gray-600 hover:text-navy-700 hover:bg-white/60 dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10"
               }`}
             >
-              Normal
+              <span>Normal</span>
+              <span
+                className={`rounded-md px-1.5 py-0.2 text-[10px] font-bold ${
+                  filtroPrioridad === "Normal"
+                    ? "bg-white/20 text-white dark:bg-navy-700/20 dark:text-navy-700"
+                    : "bg-gray-200 text-gray-700 dark:bg-white/10 dark:text-white/70"
+                }`}
+              >
+                {conteosPrioridad.Normal}
+              </span>
             </button>
+
             <button
               type="button"
               onClick={() => setFiltroPrioridad("Alta")}
-              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${
                 filtroPrioridad === "Alta"
-                  ? "bg-amber-500 text-white shadow-sm shadow-amber-500/20"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-white/70"
+                  ? "bg-navy-700 text-white shadow-sm dark:bg-white dark:text-navy-700"
+                  : "text-gray-600 hover:text-navy-700 hover:bg-white/60 dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10"
               }`}
             >
-              Alta Prioridad
+              <span>Alta Prioridad</span>
+              <span
+                className={`rounded-md px-1.5 py-0.2 text-[10px] font-bold ${
+                  filtroPrioridad === "Alta"
+                    ? "bg-white/20 text-white dark:bg-navy-700/20 dark:text-navy-700"
+                    : "bg-gray-200 text-gray-700 dark:bg-white/10 dark:text-white/70"
+                }`}
+              >
+                {conteosPrioridad.Alta}
+              </span>
             </button>
+
             <button
               type="button"
               onClick={() => setFiltroPrioridad("Urgente")}
-              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${
                 filtroPrioridad === "Urgente"
-                  ? "bg-rose-500 text-white shadow-sm shadow-rose-500/20"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-white/70"
+                  ? "bg-navy-700 text-white shadow-sm dark:bg-white dark:text-navy-700"
+                  : "text-gray-600 hover:text-navy-700 hover:bg-white/60 dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10"
               }`}
             >
-              Urgente ({metricas.urgentes})
+              <span>Urgente</span>
+              <span
+                className={`rounded-md px-1.5 py-0.2 text-[10px] font-bold ${
+                  filtroPrioridad === "Urgente"
+                    ? "bg-white/20 text-white dark:bg-navy-700/20 dark:text-navy-700"
+                    : "bg-gray-200 text-gray-700 dark:bg-white/10 dark:text-white/70"
+                }`}
+              >
+                {conteosPrioridad.Urgente}
+              </span>
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Buscador & Selector de Alcance */}
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+            <div className="relative w-full sm:w-64">
+              <MdOutlineSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-gray-400 dark:text-white/40" />
+              <input
+                type="text"
+                placeholder="Buscar por mensaje, autor..."
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/50 pl-9 pr-8 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
+              />
+              {busqueda && (
+                <button
+                  type="button"
+                  onClick={() => setBusqueda("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-white"
+                  title="Limpiar búsqueda"
+                >
+                  <MdOutlineClose className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
             <select
               value={filtroAlcance}
               onChange={(e) => setFiltroAlcance(e.target.value)}
-              className="h-8 rounded-xl border border-gray-200 bg-gray-50/50 px-2.5 text-xs font-semibold text-navy-700 outline-none dark:border-white/10 dark:bg-charcoal dark:text-white"
+              className="h-10 rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
             >
               <option value="todos">Todos los alcances</option>
               {ALCANCE_LABELS.map((alc) => (
@@ -530,29 +630,39 @@ export default function ComunicacionAdmin() {
                 </option>
               ))}
             </select>
+
+            <select
+              value={ordenFecha}
+              onChange={(e) => setOrdenFecha(e.target.value as "recientes" | "antiguos")}
+              className="h-10 rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+              title="Criterio de ordenamiento"
+            >
+              <option value="recientes">Más recientes primero</option>
+              <option value="antiguos">Más antiguos primero</option>
+            </select>
           </div>
         </div>
 
         {/* Tabla */}
         {cargando ? (
           <div className="flex h-64 w-full flex-col items-center justify-center gap-3">
-            <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-500 border-t-transparent" />
-            <p className="text-sm font-medium text-gray-500 dark:text-white/60">
+            <div className="h-9 w-9 animate-spin rounded-full border-3 border-brand-500 border-t-transparent" />
+            <p className="text-xs font-medium text-gray-500 dark:text-white/60">
               Cargando comunicados...
             </p>
           </div>
         ) : anunciosFiltrados.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 py-16 text-center dark:border-white/10">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-gray-400 dark:bg-white/5 dark:text-white/40">
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 py-14 text-center dark:border-white/10">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gray-100 text-gray-400 dark:bg-white/5 dark:text-white/40">
               <MdOutlineCampaign className="h-6 w-6" />
             </div>
             <p className="mt-3 text-sm font-bold text-navy-700 dark:text-white">
               No se encontraron comunicados
             </p>
-            <p className="mt-0.5 text-xs text-gray-400 dark:text-white/50">
+            <p className="mt-1 text-xs text-gray-400 dark:text-white/50 max-w-sm">
               {busqueda || filtroPrioridad !== "todos" || filtroAlcance !== "todos"
-                ? "Prueba a cambiar los filtros o el término de búsqueda."
-                : "Publica tu primer anuncio corporativo con el botón 'Nuevo Anuncio'."}
+                ? "Prueba a cambiar los filtros o el término de búsqueda para ver más resultados."
+                : "Publica tu primer comunicado corporativo haciendo clic en el botón 'Nuevo Anuncio'."}
             </p>
           </div>
         ) : (
@@ -560,22 +670,31 @@ export default function ComunicacionAdmin() {
             <table className="w-full border-collapse text-left">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/70 dark:border-white/10 dark:bg-white/[0.02]">
-                  <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                  <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
                     Mensaje / Comunicado
                   </th>
-                  <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                  <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
                     Alcance
                   </th>
-                  <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                  <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
                     Prioridad
                   </th>
-                  <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                  <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
                     Destinatarios
                   </th>
-                  <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
-                    Fecha de Emisión
+                  <th
+                    onClick={() => setOrdenFecha((prev) => (prev === "recientes" ? "antiguos" : "recientes"))}
+                    className="cursor-pointer select-none px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 transition hover:text-navy-700 dark:text-white/40 dark:hover:text-white"
+                    title="Alternar orden por fecha"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Fecha de Emisión</span>
+                      <span className="inline-flex items-center rounded bg-gray-200/80 px-1 py-0.5 text-[9px] font-bold text-gray-600 dark:bg-white/10 dark:text-white/70">
+                        {ordenFecha === "recientes" ? "Recientes ↓" : "Antiguos ↑"}
+                      </span>
+                    </div>
                   </th>
-                  <th className="px-4 py-3.5 text-right text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                  <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
                     Acciones
                   </th>
                 </tr>
@@ -585,27 +704,36 @@ export default function ComunicacionAdmin() {
                   const prioInfo = PRIORIDADES_CONFIG[anuncio.prioridad] || PRIORIDADES_CONFIG.Normal;
                   const Icon = prioInfo.icon;
                   const isBusy = busyId === anuncio.id;
-                  const alcanceLabel =
-                    ALCANCE_LABELS.find((al) => al.value === anuncio.alcance)?.label || anuncio.alcance || "Toda la Empresa";
+                  const alcanceTexto = formatAlcance(anuncio);
+                  const countDest =
+                    anuncio.destinatariosTotal || anuncio.destinatarioIds?.length || empleadosActivos.length;
 
                   return (
                     <tr
                       key={anuncio.id}
                       onClick={() => setSelectedAnuncio(anuncio)}
-                      className="cursor-pointer transition hover:bg-gray-50/70 dark:hover:bg-white/[0.02]"
+                      className="group cursor-pointer transition hover:bg-gray-50/70 dark:hover:bg-white/[0.02]"
                     >
                       {/* Mensaje */}
-                      <td className="min-w-[260px] max-w-md px-4 py-3.5">
+                      <td className="min-w-[280px] max-w-md px-4 py-3.5">
                         <div className="flex items-start gap-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
+                          <div
+                            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition ${
+                              anuncio.prioridad === "Urgente"
+                                ? "bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400"
+                                : anuncio.prioridad === "Alta"
+                                ? "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400"
+                                : "bg-brand-500/10 text-brand-600 dark:bg-brand-400/20 dark:text-brand-300"
+                            }`}
+                          >
                             <Icon className="h-5 w-5" />
                           </div>
                           <div className="min-w-0">
-                            <p className="line-clamp-2 text-xs font-bold text-navy-700 dark:text-white">
+                            <p className="line-clamp-2 text-xs font-bold text-navy-700 group-hover:text-brand-600 transition dark:text-white dark:group-hover:text-brand-300">
                               {anuncio.mensaje}
                             </p>
-                            <p className="mt-0.5 text-[10.5px] text-gray-400 dark:text-white/50">
-                              Por {anuncio.creadoPorNombre}
+                            <p className="mt-0.5 text-[11px] text-gray-400 dark:text-white/50">
+                              Por <span className="font-semibold text-gray-600 dark:text-white/70">{anuncio.creadoPorNombre}</span>
                             </p>
                           </div>
                         </div>
@@ -613,14 +741,14 @@ export default function ComunicacionAdmin() {
 
                       {/* Alcance */}
                       <td className="whitespace-nowrap px-4 py-3.5">
-                        <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-bold text-gray-700 dark:bg-white/10 dark:text-white/70">
-                          {anuncio.departamentoDestino || anuncio.sedeDestino || alcanceLabel}
+                        <span className="inline-flex items-center rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 dark:bg-white/10 dark:text-white/80">
+                          {alcanceTexto}
                         </span>
                       </td>
 
                       {/* Prioridad */}
                       <td className="whitespace-nowrap px-4 py-3.5">
-                        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${prioInfo.cls}`}>
+                        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${prioInfo.cls}`}>
                           <span className={`h-1.5 w-1.5 rounded-full ${prioInfo.dot}`} />
                           {prioInfo.label}
                         </span>
@@ -631,8 +759,7 @@ export default function ComunicacionAdmin() {
                         <div className="flex items-center gap-1.5">
                           <MdOutlineGroups className="h-4 w-4 text-gray-400" />
                           <span>
-                            {anuncio.destinatariosTotal || anuncio.destinatarioIds?.length || empleadosActivos.length}{" "}
-                            colaboradores
+                            {countDest} {countDest === 1 ? "colaborador" : "colaboradores"}
                           </span>
                         </div>
                       </td>
@@ -648,7 +775,7 @@ export default function ComunicacionAdmin() {
                           <button
                             type="button"
                             onClick={() => setSelectedAnuncio(anuncio)}
-                            className="inline-flex items-center gap-1 rounded-xl bg-lightPrimary px-2.5 py-1.5 text-xs font-bold text-brand-500 transition hover:bg-brand-500/10 dark:bg-white/5 dark:text-brand-300"
+                            className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-navy-700 shadow-sm transition hover:bg-gray-50 hover:border-gray-300 active:scale-95 dark:border-white/10 dark:bg-charcoal dark:text-white dark:hover:bg-white/5"
                           >
                             <MdOutlineVisibility className="h-3.5 w-3.5" />
                             <span>Ver</span>
@@ -657,8 +784,8 @@ export default function ComunicacionAdmin() {
                             type="button"
                             disabled={isBusy}
                             onClick={() => handleEliminarAnuncio(anuncio)}
-                            className="inline-flex items-center rounded-xl p-1.5 text-xs font-bold text-rose-600 transition hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10"
-                            title="Eliminar anuncio"
+                            className="inline-flex items-center rounded-lg p-1.5 text-xs font-semibold text-gray-400 transition hover:bg-rose-50 hover:text-rose-600 active:scale-95 disabled:opacity-40 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+                            title="Eliminar comunicado"
                           >
                             <MdOutlineDelete className="h-4 w-4" />
                           </button>
@@ -676,7 +803,7 @@ export default function ComunicacionAdmin() {
         {anunciosFiltrados.length > PAGE_SIZE && (
           <div className="flex flex-col items-center justify-between gap-3 border-t border-gray-100 pt-4 sm:flex-row dark:border-white/10">
             <p className="text-xs font-medium text-gray-500 dark:text-white/60">
-              Página {pagina} de {totalPaginas} · {anunciosFiltrados.length} anuncios en total
+              Página {pagina} de {totalPaginas} · {anunciosFiltrados.length} comunicados en total
             </p>
 
             <div className="flex items-center gap-2">
@@ -684,7 +811,7 @@ export default function ComunicacionAdmin() {
                 type="button"
                 disabled={pagina <= 1}
                 onClick={() => setPagina((p) => Math.max(1, p - 1))}
-                className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-navy-700 transition hover:bg-gray-50 disabled:opacity-40 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-navy-700 transition hover:bg-gray-50 disabled:opacity-40 dark:border-white/10 dark:bg-charcoal dark:text-white"
               >
                 Anterior
               </button>
@@ -692,7 +819,7 @@ export default function ComunicacionAdmin() {
                 type="button"
                 disabled={pagina >= totalPaginas}
                 onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
-                className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-navy-700 transition hover:bg-gray-50 disabled:opacity-40 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-navy-700 transition hover:bg-gray-50 disabled:opacity-40 dark:border-white/10 dark:bg-charcoal dark:text-white"
               >
                 Siguiente
               </button>
@@ -701,6 +828,7 @@ export default function ComunicacionAdmin() {
         )}
       </NexxusCard>
 
+      {/* Modal: Publicar Nuevo Comunicado */}
       <Modal
         isOpen={showCrearAnuncio}
         onClose={() => setShowCrearAnuncio(false)}
@@ -708,31 +836,37 @@ export default function ComunicacionAdmin() {
         width="max-w-lg"
       >
         <div className="py-2">
-          <form onSubmit={handlePublicar} className="flex flex-col gap-3.5">
+          <form onSubmit={handlePublicar} className="flex flex-col gap-4">
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="anuncio-mensaje">
-                Contenido del Anuncio *
+              <label
+                className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50"
+                htmlFor="anuncio-mensaje"
+              >
+                Contenido del Comunicado *
               </label>
               <textarea
                 id="anuncio-mensaje"
                 rows={4}
-                placeholder="Escribe el mensaje o circular para tu equipo de trabajo..."
+                placeholder="Escribe el mensaje o circular oficial para la organización..."
                 value={form.mensaje}
                 onChange={(e) => setForm((f) => ({ ...f, mensaje: e.target.value }))}
-                className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50/50 p-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50/50 p-3 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
               />
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="anuncio-prioridad">
+                <label
+                  className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50"
+                  htmlFor="anuncio-prioridad"
+                >
                   Nivel de Prioridad
                 </label>
                 <select
                   id="anuncio-prioridad"
                   value={form.prioridad}
                   onChange={(e) => setForm((f) => ({ ...f, prioridad: e.target.value }))}
-                  className="mt-1 flex h-9.5 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                  className="mt-1 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
                 >
                   <option value="Normal">Normal</option>
                   <option value="Alta">Alta Prioridad</option>
@@ -741,8 +875,11 @@ export default function ComunicacionAdmin() {
               </div>
 
               <div>
-                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="anuncio-alcance">
-                  Alcance / Destinatarios
+                <label
+                  className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50"
+                  htmlFor="anuncio-alcance"
+                >
+                  Alcance / Audiencia
                 </label>
                 <select
                   id="anuncio-alcance"
@@ -757,7 +894,7 @@ export default function ComunicacionAdmin() {
                       empleadoIds: [],
                     }))
                   }
-                  className="mt-1 flex h-9.5 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                  className="mt-1 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
                 >
                   {ALCANCES.map((a) => (
                     <option key={a.value} value={a.value}>
@@ -771,14 +908,17 @@ export default function ComunicacionAdmin() {
             {/* Condicionales por Alcance */}
             {form.alcance === "departamento" && (
               <div>
-                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="anuncio-depto">
+                <label
+                  className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50"
+                  htmlFor="anuncio-depto"
+                >
                   Seleccionar Departamento
                 </label>
                 <select
                   id="anuncio-depto"
                   value={form.departamentoId}
                   onChange={(e) => setForm((f) => ({ ...f, departamentoId: e.target.value }))}
-                  className="mt-1 flex h-9.5 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                  className="mt-1 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
                 >
                   <option value="">Selecciona un departamento...</option>
                   {departamentos.map((dep) => (
@@ -792,14 +932,17 @@ export default function ComunicacionAdmin() {
 
             {form.alcance === "sede" && (
               <div>
-                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="anuncio-sede">
+                <label
+                  className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50"
+                  htmlFor="anuncio-sede"
+                >
                   Seleccionar Sede de Trabajo
                 </label>
                 <select
                   id="anuncio-sede"
                   value={form.sedeId}
                   onChange={(e) => setForm((f) => ({ ...f, sedeId: e.target.value }))}
-                  className="mt-1 flex h-9.5 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                  className="mt-1 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
                 >
                   <option value="">Selecciona una sede...</option>
                   {sedes.map((sede) => (
@@ -813,14 +956,17 @@ export default function ComunicacionAdmin() {
 
             {form.alcance === "rol" && (
               <div>
-                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="anuncio-rol">
+                <label
+                  className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50"
+                  htmlFor="anuncio-rol"
+                >
                   Seleccionar Rol Destinatario
                 </label>
                 <select
                   id="anuncio-rol"
                   value={form.rol}
                   onChange={(e) => setForm((f) => ({ ...f, rol: e.target.value }))}
-                  className="mt-1 flex h-9.5 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                  className="mt-1 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
                 >
                   <option value="">Selecciona un rol...</option>
                   {ROLE_OPTIONS.map((r) => (
@@ -834,14 +980,14 @@ export default function ComunicacionAdmin() {
 
             {form.alcance === "privado" && (
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50 mb-1">
+                <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50">
                   Colaboradores Destinatarios ({form.empleadoIds.length} seleccionados)
                 </p>
-                <div className="max-h-36 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50/50 p-2 dark:border-white/10 dark:bg-charcoal">
+                <div className="max-h-40 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50/50 p-2 dark:border-white/10 dark:bg-charcoal">
                   {empleadosActivos.length === 0 ? (
-                    <p className="p-2 text-xs text-gray-400">No hay colaboradores activos.</p>
+                    <p className="p-2 text-xs text-gray-400">No hay colaboradores activos disponibles.</p>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                       {empleadosActivos.map((emp) => (
                         <label
                           key={emp.id}
@@ -864,29 +1010,30 @@ export default function ComunicacionAdmin() {
               </div>
             )}
 
-            {crearError && <p className="text-xs font-bold text-red-500">{crearError}</p>}
+            {crearError && <p className="text-xs font-semibold text-rose-500">{crearError}</p>}
 
-            <div className="flex justify-end gap-2 border-t border-gray-100 pt-3 dark:border-white/10">
+            <div className="flex justify-end gap-2 border-t border-gray-100 pt-3.5 dark:border-white/10">
               <button
                 type="button"
                 onClick={() => setShowCrearAnuncio(false)}
-                className="rounded-xl px-4 py-2 text-xs font-bold text-gray-700 dark:text-white"
+                className="rounded-xl px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 transition active:scale-95 dark:text-white/70 dark:hover:bg-white/10"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={publicando}
-                className="flex items-center gap-1.5 rounded-xl bg-brand-500 px-5 py-2 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-500 px-5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-600 disabled:opacity-50 active:scale-95"
               >
                 <MdOutlineSend className="h-3.5 w-3.5" />
-                <span>{publicando ? "Emitiendo..." : "Publicar Anuncio"}</span>
+                <span>{publicando ? "Publicando..." : "Publicar Anuncio"}</span>
               </button>
             </div>
           </form>
         </div>
       </Modal>
 
+      {/* Modal: Detalle del Comunicado */}
       <Modal
         isOpen={!!selectedAnuncio}
         onClose={() => setSelectedAnuncio(null)}
@@ -897,11 +1044,11 @@ export default function ComunicacionAdmin() {
           <div className="flex flex-col gap-4 py-2">
             <div className="flex items-center justify-between rounded-2xl bg-brand-500/[0.06] p-4 dark:bg-brand-500/10">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-500 text-white shadow-md shadow-brand-500/20">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-500 text-white shadow-sm">
                   <MdOutlineCampaign className="h-5 w-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-base font-black text-navy-700 dark:text-white">
+                  <p className="truncate text-sm font-bold text-navy-700 dark:text-white">
                     {selectedAnuncio.creadoPorNombre}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-white/60">
@@ -910,7 +1057,7 @@ export default function ComunicacionAdmin() {
                 </div>
               </div>
               <span
-                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                   (PRIORIDADES_CONFIG[selectedAnuncio.prioridad] || PRIORIDADES_CONFIG.Normal).cls
                 }`}
               >
@@ -919,39 +1066,63 @@ export default function ComunicacionAdmin() {
             </div>
 
             {/* Mensaje Completo */}
-            <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4 dark:border-white/5 dark:bg-charcoal">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40 mb-2">
-                Mensaje Oficial
-              </p>
+            <div className="relative rounded-2xl border border-gray-100 bg-gray-50/70 p-4 dark:border-white/5 dark:bg-charcoal">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
+                  Mensaje Oficial
+                </p>
+                <button
+                  type="button"
+                  onClick={() => handleCopiarMensaje(selectedAnuncio.mensaje)}
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-400"
+                >
+                  {copiado ? (
+                    <>
+                      <MdOutlineCheck className="h-3.5 w-3.5 text-emerald-600" />
+                      <span className="text-emerald-600">Copiado</span>
+                    </>
+                  ) : (
+                    <>
+                      <MdOutlineContentCopy className="h-3 w-3" />
+                      <span>Copiar</span>
+                    </>
+                  )}
+                </button>
+              </div>
               <p className="text-xs leading-relaxed text-navy-700 dark:text-white/90 font-medium whitespace-pre-wrap">
                 {selectedAnuncio.mensaje}
               </p>
             </div>
 
-            {/* Alcance y Destinatarios */}
-            <div className="flex items-center justify-between text-xs text-gray-500 dark:text-white/60 px-1">
-              <span>
-                Alcance:{" "}
-                <strong className="text-navy-700 dark:text-white">
-                  {selectedAnuncio.departamentoDestino ||
-                    selectedAnuncio.sedeDestino ||
-                    ALCANCE_LABELS.find((a) => a.value === selectedAnuncio.alcance)?.label ||
-                    "Toda la Empresa"}
-                </strong>
-              </span>
-              <span>
-                {selectedAnuncio.destinatariosTotal ||
-                  selectedAnuncio.destinatarioIds?.length ||
-                  empleadosActivos.length}{" "}
-                destinatarios
-              </span>
+            {/* Metadatos de Alcance y Destinatarios */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-3 dark:border-white/5 dark:bg-charcoal">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
+                  Alcance
+                </p>
+                <p className="mt-1 text-xs font-semibold text-navy-700 dark:text-white">
+                  {formatAlcance(selectedAnuncio)}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-3 dark:border-white/5 dark:bg-charcoal">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
+                  Audiencia
+                </p>
+                <p className="mt-1 text-xs font-semibold text-navy-700 dark:text-white">
+                  {selectedAnuncio.destinatariosTotal ||
+                    selectedAnuncio.destinatarioIds?.length ||
+                    empleadosActivos.length}{" "}
+                  destinatarios
+                </p>
+              </div>
             </div>
 
             <div className="flex justify-end border-t border-gray-100 pt-3 dark:border-white/10">
               <button
                 type="button"
                 onClick={() => setSelectedAnuncio(null)}
-                className="rounded-xl bg-gray-100 px-5 py-2 text-xs font-bold text-gray-700 dark:bg-white/10 dark:text-white"
+                className="rounded-xl bg-gray-100 px-5 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-200 transition active:scale-95 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
               >
                 Cerrar
               </button>

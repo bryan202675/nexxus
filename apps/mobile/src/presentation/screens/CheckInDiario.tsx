@@ -556,7 +556,7 @@ function crearEstilosCheckIn(c: any, esOscuro: boolean) {
   return StyleSheet.create({
     contenedor: { flex: 1, backgroundColor: c.fondo },
     flex: { flex: 1 },
-    fondoAbsoluto: { ...StyleSheet.absoluteFillObject, zIndex: -1, overflow: 'hidden' },
+    fondoAbsoluto: { ...StyleSheet.absoluteFill, zIndex: -1, overflow: 'hidden' },
     header: { paddingHorizontal: ESPACIADO.md, paddingTop: Platform.OS === 'ios' ? ESPACIADO.xs : ESPACIADO.sm, paddingBottom: ESPACIADO.xs },
     headerVidrio: {
       height: 60,

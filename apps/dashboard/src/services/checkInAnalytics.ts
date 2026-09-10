@@ -12,6 +12,19 @@ export type Energy = "bajo" | "medio" | "alto";
 export type Stress = "bajo" | "moderado" | "alto" | "critico";
 export type Severity = "ok" | "atencion" | "riesgo";
 
+export const STRESS_LABELS: Record<Stress, string> = {
+  bajo: "Bajo",
+  moderado: "Moderado",
+  alto: "Alto",
+  critico: "Crítico",
+};
+
+export const ENERGY_LABELS: Record<Energy, string> = {
+  bajo: "Bajo",
+  medio: "Medio",
+  alto: "Alto",
+};
+
 export type CheckInRow = {
   id: string;
   usuario_id?: string;

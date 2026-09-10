@@ -435,7 +435,7 @@ function crearEstilosApoyo(c: any, esOscuro: boolean) {
 
   return StyleSheet.create({
     contenedor: { flex: 1, backgroundColor: c.fondo },
-    fondoAbsoluto: { ...StyleSheet.absoluteFillObject, zIndex: -1, overflow: 'hidden' },
+    fondoAbsoluto: { ...StyleSheet.absoluteFill, zIndex: -1, overflow: 'hidden' },
 
     scroll: { padding: 16, paddingBottom: 110, gap: 16 },
 

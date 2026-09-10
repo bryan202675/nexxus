@@ -40,7 +40,7 @@ export default function Iridescence({ style }: IridescenceProps) {
         colors={['#4D3F91', '#4B72D6', '#9C6CF4']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
     </View>
   );

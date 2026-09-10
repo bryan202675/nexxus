@@ -202,7 +202,7 @@ function crearEstilos(c: ColoresTema, esOscuro: boolean) {
 
   return StyleSheet.create({
     contenedor: { flex: 1, backgroundColor: c.fondo },
-    fondoAbsoluto: { ...StyleSheet.absoluteFillObject },
+    fondoAbsoluto: { ...StyleSheet.absoluteFill },
     scroll: { padding: 16, paddingBottom: 110, gap: 16 },
 
     panelPuntosWrap: {

@@ -35,9 +35,11 @@ import {
 } from "services/adminRepository";
 import { etiquetaRol } from "services/saFormat";
 
+const inputFieldClasses =
+  "mt-1.5 flex h-10.5 w-full items-center rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400";
 const selectClasses =
-  "mt-1 flex h-10 w-full items-center justify-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400";
-const selectLabelClasses = "text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50";
+  "mt-1.5 flex h-10.5 w-full items-center rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400";
+const selectLabelClasses = "text-xs font-semibold text-gray-700 dark:text-gray-200";
 
 const ESTADO_BADGE = {
   sinJefe: { label: "Sin Jefe", cls: "bg-amber-500/10 text-amber-600 border border-amber-500/20 dark:bg-amber-400/20 dark:text-amber-300" },
@@ -399,10 +401,10 @@ export default function EstructuraOrganizativa() {
 
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
+          <h2 className="text-xl font-bold tracking-tight text-navy-700 dark:text-white">
             Estructura Organizacional
           </h2>
-          <p className="mt-1 text-sm font-medium text-gray-500 dark:text-white/60">
+          <p className="mt-0.5 text-xs font-medium text-gray-500 dark:text-white/60">
             Organigrama corporativo, gestión de departamentos, sedes operativas y jerarquías de liderazgo.
           </p>
         </div>
@@ -411,99 +413,104 @@ export default function EstructuraOrganizativa() {
           type="button"
           disabled={limiteDepartamentosAlcanzado}
           onClick={() => setShowCreateDept(true)}
-          className="flex items-center gap-1.5 rounded-xl bg-brand-500 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50 active:scale-95"
+          className="inline-flex items-center gap-1.5 rounded-xl bg-brand-500 px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50 active:scale-95"
         >
           <MdOutlineAdd className="h-4 w-4" />
           <span>Crear Departamento</span>
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {/* Departamentos */}
+        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
+              <p className="text-xs font-semibold text-gray-500 dark:text-white/50">
                 Departamentos
               </p>
               <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
                 {kpis.totalDepartamentos}
               </h3>
             </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500/10 text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
-              <MdOutlineAccountTree className="h-6 w-6" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-500/10 text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
+              <MdOutlineAccountTree className="h-5.5 w-5.5" />
             </div>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>Límite del plan: {planLimits.departments}</span>
-            <span className="font-bold text-brand-500">Plan {plan}</span>
+            <span>Límite del plan: {planLimits.departments === Infinity ? "Ilimitado" : planLimits.departments}</span>
+            <span className="font-semibold text-brand-600 dark:text-brand-400">Plan {plan}</span>
           </div>
         </NexxusCard>
 
         {/* Total Empleados */}
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
+        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
+              <p className="text-xs font-semibold text-gray-500 dark:text-white/50">
                 Total Plantilla
               </p>
               <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
                 {kpis.totalEmpleados}
               </h3>
             </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
-              <MdOutlinePeople className="h-6 w-6" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
+              <MdOutlinePeople className="h-5.5 w-5.5" />
             </div>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span className="flex items-center gap-1">
+            <span className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
               100% distribuidos
             </span>
-            <span>{kpis.totalCargos} cargos</span>
+            <span className="font-semibold text-gray-700 dark:text-white/80">{kpis.totalCargos} cargos</span>
           </div>
         </NexxusCard>
 
         {/* Líderes & Jefaturas */}
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
+        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
+              <p className="text-xs font-semibold text-gray-500 dark:text-white/50">
                 Liderazgo & Jefes
               </p>
               <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
                 {kpis.totalJefes}
               </h3>
             </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
-              <MdOutlineSupervisorAccount className="h-6 w-6" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
+              <MdOutlineSupervisorAccount className="h-5.5 w-5.5" />
             </div>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
             <span>{kpis.sinJefe > 0 ? `${kpis.sinJefe} sin jefe asignado` : "Cobertura completa"}</span>
-            <span className={kpis.sinJefe > 0 ? "font-bold text-amber-600" : "font-bold text-emerald-600"}>
+            <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+              kpis.sinJefe > 0 ? "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400" : "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400"
+            }`}>
               {kpis.sinJefe > 0 ? "Atención" : "Óptimo"}
             </span>
           </div>
         </NexxusCard>
 
         {/* Sedes & Ubicaciones */}
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
+        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
+              <p className="text-xs font-semibold text-gray-500 dark:text-white/50">
                 Sedes de Trabajo
               </p>
               <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
                 {kpis.totalSedes}
               </h3>
             </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-500/10 text-purple-600 dark:bg-purple-400/20 dark:text-purple-300">
-              <MdOutlineCorporateFare className="h-6 w-6" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-500/10 text-purple-600 dark:bg-purple-400/20 dark:text-purple-300">
+              <MdOutlineCorporateFare className="h-5.5 w-5.5" />
             </div>
           </div>
           <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
             <span>Puntos de operación</span>
-            <span className="font-bold text-purple-600 dark:text-purple-400">Activas</span>
+            <span className="inline-flex items-center rounded-md bg-purple-500/10 px-2 py-0.5 text-[11px] font-semibold text-purple-600 dark:bg-purple-500/20 dark:text-purple-400">
+              Activas
+            </span>
           </div>
         </NexxusCard>
       </div>
@@ -666,7 +673,7 @@ export default function EstructuraOrganizativa() {
                       <button
                         type="button"
                         onClick={() => setSelectedDeptId(dep.id)}
-                        className="inline-flex items-center gap-1 rounded-xl bg-lightPrimary px-3 py-1.5 text-xs font-bold text-brand-500 shadow-sm transition hover:bg-brand-500/10 active:scale-95 dark:bg-white/5 dark:text-brand-300 dark:hover:bg-white/10"
+                        className="inline-flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-navy-700 shadow-xs transition hover:bg-gray-50 hover:text-brand-600 active:scale-95 dark:border-white/10 dark:bg-charcoal dark:text-white dark:hover:bg-white/5 dark:hover:text-brand-300"
                       >
                         <MdOutlineEdit className="h-3.5 w-3.5" />
                         <span>Gestionar</span>
@@ -684,7 +691,7 @@ export default function EstructuraOrganizativa() {
         isOpen={showCreateDept}
         onClose={() => setShowCreateDept(false)}
         title="Crear Nuevo Departamento"
-        width="max-w-xl"
+        width="max-w-lg"
       >
         <div className="py-2">
           <form onSubmit={handleCrearDepartamento} className="flex flex-col gap-4">
@@ -698,7 +705,7 @@ export default function EstructuraOrganizativa() {
                 placeholder="Ej. Recursos Humanos, Innovación..."
                 value={createDeptForm.nombre}
                 onChange={(e) => setCreateDeptForm((f) => ({ ...f, nombre: e.target.value }))}
-                className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2.5 px-3.5 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
+                className={inputFieldClasses}
               />
             </div>
 
@@ -752,24 +759,24 @@ export default function EstructuraOrganizativa() {
             </div>
 
             {createDeptError && (
-              <div className="flex items-center gap-2 rounded-xl bg-red-50 p-3 text-xs font-bold text-red-600 dark:bg-red-500/10 dark:text-red-400">
+              <div className="flex items-center gap-2 rounded-xl bg-red-50 p-3 text-xs font-semibold text-red-600 dark:bg-red-500/10 dark:text-red-400">
                 <MdOutlineWarningAmber className="h-4 w-4 shrink-0 text-red-500" />
                 <span>{createDeptError}</span>
               </div>
             )}
 
-            <div className="mt-3 flex items-center justify-end gap-3 border-t border-gray-100 pt-4 dark:border-white/10">
+            <div className="mt-2 flex items-center justify-end gap-2.5 border-t border-gray-100 pt-4 dark:border-white/10">
               <button
                 type="button"
                 onClick={() => setShowCreateDept(false)}
-                className="rounded-xl px-4 py-2 text-xs font-bold text-gray-700 transition hover:bg-gray-100 dark:text-white dark:hover:bg-white/10"
+                className="rounded-xl px-4 py-2.5 text-xs font-semibold text-gray-600 transition hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-white/10 dark:hover:text-white"
               >
                 Cancelar
               </button>
               <ActionButton
                 type="submit"
                 busy={creatingDept}
-                className="bg-brand-500 shadow-md shadow-brand-500/20 hover:bg-brand-600 dark:bg-brand-400"
+                className="rounded-xl bg-brand-500 px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-600 active:scale-95"
               >
                 <MdOutlineAdd className="h-4 w-4" />
                 <span>Crear Departamento</span>
@@ -783,18 +790,18 @@ export default function EstructuraOrganizativa() {
         isOpen={!!selectedDept}
         onClose={() => setSelectedDeptId(null)}
         title={selectedDept?.nombre || "Detalle del Departamento"}
-        width="max-w-2xl"
+        width="max-w-xl"
       >
         {selectedDept ? (
-          <div className="flex flex-col gap-5 py-2">
+          <div className="flex flex-col gap-4 py-1">
             {/* Header del departamento */}
-            <div className="flex items-center justify-between rounded-2xl bg-brand-500/[0.06] p-4 dark:bg-brand-500/10">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-500 text-white shadow-md shadow-brand-500/20">
+            <div className="flex items-center justify-between rounded-2xl border border-gray-100 bg-gray-50/80 p-3.5 dark:border-white/5 dark:bg-white/[0.03]">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-600 dark:bg-brand-400/20 dark:text-brand-300">
                   <MdOutlineAccountTree className="h-5 w-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-base font-black text-navy-700 dark:text-white">
+                  <p className="truncate text-sm font-bold text-navy-700 dark:text-white">
                     {selectedDept.nombre}
                   </p>
                   <p className="truncate text-xs font-medium text-gray-500 dark:text-white/60">
@@ -807,39 +814,39 @@ export default function EstructuraOrganizativa() {
             </div>
 
             {/* Grid Bento de Métricas */}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-3 dark:border-white/5 dark:bg-charcoal">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+              <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-3 dark:border-white/5 dark:bg-charcoal">
+                <p className="text-[10.5px] font-semibold text-gray-500 dark:text-white/40">
                   Colaboradores
                 </p>
-                <p className="mt-1 text-base font-black text-navy-700 dark:text-white">
+                <p className="mt-1 text-base font-extrabold text-navy-700 dark:text-white">
                   {selectedDept.activosCount} / {selectedDept.plazas}
                 </p>
               </div>
 
-              <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-3 dark:border-white/5 dark:bg-charcoal">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
+              <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-3 dark:border-white/5 dark:bg-charcoal">
+                <p className="text-[10.5px] font-semibold text-gray-500 dark:text-white/40">
                   Cobertura
                 </p>
-                <p className="mt-1 text-base font-black text-navy-700 dark:text-white">
+                <p className="mt-1 text-base font-extrabold text-navy-700 dark:text-white">
                   {selectedDept.cobertura}%
                 </p>
               </div>
 
-              <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-3 dark:border-white/5 dark:bg-charcoal">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
+              <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-3 dark:border-white/5 dark:bg-charcoal">
+                <p className="text-[10.5px] font-semibold text-gray-500 dark:text-white/40">
                   Tareas Depto
                 </p>
-                <p className="mt-1 text-base font-black text-navy-700 dark:text-white">
+                <p className="mt-1 text-base font-extrabold text-navy-700 dark:text-white">
                   {selectedDept.pendientes} pend.
                 </p>
               </div>
 
-              <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-3 dark:border-white/5 dark:bg-charcoal">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
+              <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-3 dark:border-white/5 dark:bg-charcoal">
+                <p className="text-[10.5px] font-semibold text-gray-500 dark:text-white/40">
                   Productividad
                 </p>
-                <p className="mt-1 text-base font-black text-navy-700 dark:text-white">
+                <p className="mt-1 text-base font-extrabold text-navy-700 dark:text-white">
                   {selectedDept.productividad}%
                 </p>
               </div>
@@ -847,7 +854,7 @@ export default function EstructuraOrganizativa() {
 
             {/* Formulario de Edición o Acciones */}
             {deptEditMode ? (
-              <form onSubmit={handleGuardarDepartamento} className="flex flex-col gap-4 rounded-2xl border border-gray-200 p-4 dark:border-white/10">
+              <form onSubmit={handleGuardarDepartamento} className="flex flex-col gap-3.5 rounded-2xl border border-gray-200 p-4 dark:border-white/10">
                 <p className="text-xs font-bold text-navy-700 dark:text-white">Editar Departamento</p>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <div>
@@ -857,7 +864,7 @@ export default function EstructuraOrganizativa() {
                       type="text"
                       value={deptEditForm.nombre}
                       onChange={(e) => setDeptEditForm((f) => ({ ...f, nombre: e.target.value }))}
-                      className="mt-1 w-full rounded-xl border border-gray-200 bg-white py-2 px-3 text-xs font-semibold text-navy-700 outline-none dark:border-white/10 dark:bg-charcoal dark:text-white"
+                      className={inputFieldClasses}
                     />
                   </div>
                   <div>
@@ -891,39 +898,39 @@ export default function EstructuraOrganizativa() {
                 </div>
 
                 {saveDeptError && (
-                  <p className="text-xs font-bold text-red-500">{saveDeptError}</p>
+                  <p className="text-xs font-semibold text-red-500">{saveDeptError}</p>
                 )}
 
-                <div className="flex justify-end gap-2 pt-2">
+                <div className="flex justify-end gap-2 border-t border-gray-100 pt-3 dark:border-white/10">
                   <button
                     type="button"
                     onClick={() => setDeptEditMode(false)}
-                    className="rounded-xl px-4 py-2 text-xs font-bold text-gray-600 dark:text-white/70"
+                    className="rounded-xl px-3.5 py-2 text-xs font-semibold text-gray-600 transition hover:bg-gray-100 dark:text-white/70 dark:hover:bg-white/10"
                   >
                     Cancelar
                   </button>
-                  <ActionButton type="submit" busy={savingDept} className="bg-brand-500">
+                  <ActionButton type="submit" busy={savingDept} className="rounded-xl bg-brand-500 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-600 active:scale-95">
                     Guardar Cambios
                   </ActionButton>
                 </div>
               </form>
             ) : (
-              <div className="flex items-center justify-between border-t border-gray-100 pt-4 dark:border-white/10">
+              <div className="flex items-center justify-between border-t border-gray-100 pt-3 dark:border-white/10">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setDeptEditMode(true)}
-                    className="inline-flex items-center gap-1 rounded-xl bg-lightPrimary px-4 py-2 text-xs font-bold text-brand-500 transition hover:bg-brand-500/10 dark:bg-white/5 dark:text-brand-300"
+                    className="inline-flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-xs font-semibold text-navy-700 shadow-xs transition hover:bg-gray-50 active:scale-95 dark:border-white/10 dark:bg-charcoal dark:text-white dark:hover:bg-white/5"
                   >
-                    <MdOutlineEdit className="h-4 w-4" />
+                    <MdOutlineEdit className="h-3.5 w-3.5" />
                     <span>Editar</span>
                   </button>
                   <ActionButton
                     busy={deptBusy}
                     onClick={handleEliminarDepartamento}
-                    className="bg-rose-500 hover:bg-rose-600 shadow-rose-500/20"
+                    className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-100 active:scale-95 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20"
                   >
-                    <MdOutlineDelete className="h-4 w-4" />
+                    <MdOutlineDelete className="h-3.5 w-3.5" />
                     <span>Eliminar</span>
                   </ActionButton>
                 </div>
@@ -931,7 +938,7 @@ export default function EstructuraOrganizativa() {
                 <button
                   type="button"
                   onClick={() => setSelectedDeptId(null)}
-                  className="rounded-xl bg-gray-100 px-4 py-2 text-xs font-bold text-gray-700 transition hover:bg-gray-200 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
+                  className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-xs transition hover:bg-gray-50 dark:border-white/10 dark:bg-charcoal dark:text-white dark:hover:bg-white/5"
                 >
                   Cerrar
                 </button>
@@ -1147,17 +1154,17 @@ function CatalogCard({
   const filas = items.map(buildRow);
 
   return (
-    <NexxusCard extra="p-5 flex flex-col justify-between" delay={150}>
-      <div>
+    <NexxusCard extra="p-5 flex flex-col h-[340px] justify-between" delay={150}>
+      <div className="flex flex-col h-full overflow-hidden">
         {/* Cabecera de la Tarjeta */}
-        <div className="flex items-center justify-between border-b border-gray-100 pb-3.5 dark:border-white/10">
+        <div className="flex items-center justify-between border-b border-gray-100 pb-3 dark:border-white/10">
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
               <Icon className="h-4.5 w-4.5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-navy-700 dark:text-white">{title}</h3>
-              <p className="text-[11px] font-medium text-gray-400 dark:text-white/40">{filas.length} registrados</p>
+              <h3 className="text-xs font-bold text-navy-700 dark:text-white">{title}</h3>
+              <p className="text-[10.5px] font-medium text-gray-400 dark:text-white/40">{filas.length} registrados</p>
             </div>
           </div>
 
@@ -1165,7 +1172,7 @@ function CatalogCard({
             type="button"
             disabled={limiteAlcanzadoAqui}
             onClick={() => setShowCreate(true)}
-            className="inline-flex items-center gap-1 rounded-xl bg-lightPrimary px-3 py-1.5 text-xs font-bold text-brand-500 shadow-sm transition hover:bg-brand-500/10 active:scale-95 disabled:opacity-40 dark:bg-white/5 dark:text-brand-300 dark:hover:bg-white/10"
+            className="inline-flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-navy-700 shadow-xs transition hover:bg-gray-50 hover:text-brand-600 active:scale-95 disabled:opacity-40 dark:border-white/10 dark:bg-charcoal dark:text-white dark:hover:bg-white/5 dark:hover:text-brand-300"
           >
             <MdOutlineAdd className="h-3.5 w-3.5" />
             <span>Nuevo</span>
@@ -1173,24 +1180,26 @@ function CatalogCard({
         </div>
 
         {/* Lista de Elementos */}
-        <div className="mt-3 divide-y divide-gray-100 dark:divide-white/5 max-h-72 overflow-y-auto">
+        <div className="mt-2 divide-y divide-gray-100 dark:divide-white/5 flex-1 overflow-y-auto pr-1">
           {filas.length === 0 ? (
-            <div className="py-8 text-center text-xs text-gray-400 dark:text-white/40">{emptyMessage}</div>
+            <div className="flex h-full items-center justify-center py-8 text-center text-xs text-gray-400 dark:text-white/40">
+              {emptyMessage}
+            </div>
           ) : (
             filas.map((r: any) => (
               <button
                 type="button"
                 key={r.id}
                 onClick={() => setSelectedId(r.id)}
-                className="flex w-full cursor-pointer items-center justify-between rounded-xl px-1.5 py-2.5 text-left transition hover:bg-gray-50/80 dark:hover:bg-white/[0.03]"
+                className="flex w-full cursor-pointer items-center justify-between rounded-xl px-2 py-2.5 text-left transition hover:bg-gray-50/80 dark:hover:bg-white/[0.03]"
               >
                 <div className="min-w-0 flex-1 pr-2">
-                  <p className="truncate text-xs font-bold text-navy-700 dark:text-white">{r.nombreLabel}</p>
+                  <p className="truncate text-xs font-semibold text-navy-700 dark:text-white">{r.nombreLabel}</p>
                   <p className="truncate text-[10.5px] text-gray-400 dark:text-white/50">
                     {r.direccionLabel || r.departamentoLabel || r.descripcionLabel || "—"}
                   </p>
                 </div>
-                <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600 dark:bg-white/10 dark:text-white/60">
+                <span className="shrink-0 rounded-md bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-600 dark:bg-white/10 dark:text-white/60">
                   {r.empleadosLabel} emp.
                 </span>
               </button>
@@ -1203,7 +1212,7 @@ function CatalogCard({
       <Modal
         isOpen={showCreate}
         onClose={() => setShowCreate(false)}
-        title={`Nuevo registro: ${title}`}
+        title={`Nuevo: ${title}`}
         width="max-w-md"
       >
         <div className="py-2">
@@ -1231,23 +1240,23 @@ function CatalogCard({
                     type="text"
                     value={createForm[f.key]}
                     onChange={(e) => setCreateForm((form: any) => ({ ...form, [f.key]: e.target.value }))}
-                    className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2.5 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                    className={inputFieldClasses}
                   />
                 </div>
               )
             )}
 
-            {createError && <p className="text-xs font-bold text-red-500">{createError}</p>}
+            {createError && <p className="text-xs font-semibold text-red-500">{createError}</p>}
 
             <div className="mt-2 flex justify-end gap-2 border-t border-gray-100 pt-3 dark:border-white/10">
               <button
                 type="button"
                 onClick={() => setShowCreate(false)}
-                className="rounded-xl px-4 py-2 text-xs font-bold text-gray-700 dark:text-white"
+                className="rounded-xl px-4 py-2 text-xs font-semibold text-gray-600 transition hover:bg-gray-100 dark:text-white/70 dark:hover:bg-white/10"
               >
                 Cancelar
               </button>
-              <ActionButton type="submit" busy={creating} className="bg-brand-500">
+              <ActionButton type="submit" busy={creating} className="rounded-xl bg-brand-500 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-600 active:scale-95">
                 Guardar
               </ActionButton>
             </div>
@@ -1263,25 +1272,29 @@ function CatalogCard({
         width="max-w-md"
       >
         {selected ? (
-          <div className="py-2">
+          <div className="py-1">
             {!editMode ? (
-              <div className="flex flex-col gap-3">
-                <div className="rounded-xl bg-gray-50 p-3.5 dark:bg-white/[0.03]">
-                  <p className="text-xs font-bold uppercase text-gray-400 dark:text-white/40">Nombre</p>
-                  <p className="text-sm font-black text-navy-700 dark:text-white">{selected[nombreColumn]}</p>
+              <div className="flex flex-col gap-3.5">
+                <div className="rounded-xl border border-gray-100 bg-gray-50/80 p-3.5 dark:border-white/5 dark:bg-white/[0.03]">
+                  <p className="text-[10.5px] font-semibold text-gray-400 dark:text-white/40">Nombre</p>
+                  <p className="text-sm font-bold text-navy-700 dark:text-white">{selected[nombreColumn]}</p>
                 </div>
 
-                <div className="flex items-center justify-between border-t border-gray-100 pt-4 dark:border-white/10">
+                <div className="flex items-center justify-between border-t border-gray-100 pt-3 dark:border-white/10">
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => setEditMode(true)}
-                      className="inline-flex items-center gap-1 rounded-xl bg-lightPrimary px-3 py-1.5 text-xs font-bold text-brand-500 dark:bg-white/5 dark:text-brand-300"
+                      className="inline-flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-navy-700 shadow-xs transition hover:bg-gray-50 active:scale-95 dark:border-white/10 dark:bg-charcoal dark:text-white dark:hover:bg-white/5"
                     >
                       <MdOutlineEdit className="h-3.5 w-3.5" />
                       <span>Editar</span>
                     </button>
-                    <ActionButton busy={busy} onClick={handleEliminar} className="bg-rose-500 hover:bg-rose-600">
+                    <ActionButton
+                      busy={busy}
+                      onClick={handleEliminar}
+                      className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-100 active:scale-95 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20"
+                    >
                       <MdOutlineDelete className="h-3.5 w-3.5" />
                       <span>Eliminar</span>
                     </ActionButton>
@@ -1290,7 +1303,7 @@ function CatalogCard({
                   <button
                     type="button"
                     onClick={() => setSelectedId(null)}
-                    className="rounded-xl bg-gray-100 px-4 py-1.5 text-xs font-bold text-gray-700 dark:bg-white/10 dark:text-white"
+                    className="rounded-xl border border-gray-200 bg-white px-4 py-1.5 text-xs font-semibold text-gray-700 shadow-xs transition hover:bg-gray-50 dark:border-white/10 dark:bg-charcoal dark:text-white dark:hover:bg-white/5"
                   >
                     Cerrar
                   </button>
@@ -1321,23 +1334,23 @@ function CatalogCard({
                         type="text"
                         value={editForm[f.key]}
                         onChange={(e) => setEditForm((form: any) => ({ ...form, [f.key]: e.target.value }))}
-                        className="mt-1 w-full rounded-xl border border-gray-200 bg-white py-2 px-3 text-xs font-semibold text-navy-700 outline-none dark:border-white/10 dark:bg-charcoal dark:text-white"
+                        className={inputFieldClasses}
                       />
                     </div>
                   )
                 )}
 
-                {saveError && <p className="text-xs font-bold text-red-500">{saveError}</p>}
+                {saveError && <p className="text-xs font-semibold text-red-500">{saveError}</p>}
 
                 <div className="flex justify-end gap-2 border-t border-gray-100 pt-3 dark:border-white/10">
                   <button
                     type="button"
                     onClick={() => setEditMode(false)}
-                    className="rounded-xl px-4 py-1.5 text-xs font-bold text-gray-600 dark:text-white/70"
+                    className="rounded-xl px-4 py-2 text-xs font-semibold text-gray-600 transition hover:bg-gray-100 dark:text-white/70 dark:hover:bg-white/10"
                   >
                     Cancelar
                   </button>
-                  <ActionButton type="submit" busy={saving} className="bg-brand-500">
+                  <ActionButton type="submit" busy={saving} className="rounded-xl bg-brand-500 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-600 active:scale-95">
                     Guardar
                   </ActionButton>
                 </div>

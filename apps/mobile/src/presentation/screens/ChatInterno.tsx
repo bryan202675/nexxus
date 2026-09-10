@@ -40,8 +40,21 @@ const TextInput = AdminTranslatedTextInput;
 
 const obtenerEmpresaId = (perfil: { empresaId?: string } | null) => getTenantId(perfil);
 
+export const isGroupConv = (conv: Conversation | null | undefined): boolean => {
+  if (!conv) return false;
+  if (conv.tipo === 'equipo' || conv.tipo === 'grupo' || conv.tipo === 'departamento') return true;
+  if (Array.isArray(conv.participanteIds) && conv.participanteIds.length > 2) return true;
+  if (Array.isArray(conv.participantes) && conv.participantes.length > 2) return true;
+  if (conv.tipo !== 'directa' && typeof conv.titulo === 'string' && conv.titulo.trim().length > 0) return true;
+  return false;
+};
+
 const getTituloConversacion = (conv: Conversation, userId: string, usersList: ChatUser[] = []): string => {
-  if (conv.tipo === 'directa') {
+  if (conv.nombresPersonalizados && userId && conv.nombresPersonalizados[userId]) {
+    return conv.nombresPersonalizados[userId];
+  }
+  const isGroup = isGroupConv(conv);
+  if (!isGroup) {
     const otherId = conv.participanteIds?.find((id) => id !== userId);
     if (otherId) {
       const userFromList = usersList.find((u) => u.id === otherId);
@@ -49,8 +62,16 @@ const getTituloConversacion = (conv: Conversation, userId: string, usersList: Ch
     }
     const otherParticipant = conv.participantes?.find((p) => p.id !== userId);
     if (otherParticipant && otherParticipant.nombre) return otherParticipant.nombre;
+    return 'Chat Directo';
   }
-  return conv.titulo || 'Conversación';
+  if (conv.titulo && conv.titulo.trim().length > 0) {
+    return conv.titulo;
+  }
+  const otherParticipants = (conv.participantes || []).filter((p) => p.id !== userId);
+  if (otherParticipants.length > 0) {
+    return otherParticipants.map((p) => p.nombre || 'Colaborador').slice(0, 3).join(', ');
+  }
+  return 'Grupo de conversación';
 };
 
 const getNombreRemitente = (message: ChatMessage, usersList: ChatUser[] = []): string => {
@@ -66,20 +87,25 @@ const getFotoRemitente = (message: ChatMessage, usersList: ChatUser[] = []): str
 };
 
 const getFotoConversacion = (conv: Conversation, userId: string, usersList: ChatUser[] = []): string | undefined => {
-  if (conv.tipo === 'directa') {
-    const otherId = conv.participanteIds?.find((id) => id !== userId);
-    if (otherId) {
-      const userFromList = usersList.find((u) => u.id === otherId);
-      const photo = userFromList?.foto_perfil || userFromList?.fotoPerfil || userFromList?.photoURL || userFromList?.avatarUrl || userFromList?.foto;
-      if (photo) return photo;
-    }
-    const otherParticipant = conv.participantes?.find((p) => p.id !== userId);
-    if (otherParticipant) {
-      const photo = otherParticipant.foto_perfil || otherParticipant.fotoPerfil || otherParticipant.photoURL || otherParticipant.avatarUrl || otherParticipant.foto;
-      if (photo) return photo;
-    }
+  if (conv.fotosPersonalizadas && userId && conv.fotosPersonalizadas[userId]) {
+    return conv.fotosPersonalizadas[userId];
   }
-  return conv.imagenUrl;
+  const isGroup = isGroupConv(conv);
+  if (isGroup) {
+    return conv.foto || conv.imagenUrl || undefined;
+  }
+  const otherId = conv.participanteIds?.find((id) => id !== userId);
+  if (otherId) {
+    const userFromList = usersList.find((u) => u.id === otherId);
+    const photo = userFromList?.foto_perfil || userFromList?.fotoPerfil || userFromList?.photoURL || userFromList?.avatarUrl || userFromList?.foto;
+    if (photo) return photo;
+  }
+  const otherParticipant = conv.participantes?.find((p) => p.id !== userId);
+  if (otherParticipant) {
+    const photo = otherParticipant.foto_perfil || otherParticipant.fotoPerfil || otherParticipant.photoURL || otherParticipant.avatarUrl || otherParticipant.foto;
+    if (photo) return photo;
+  }
+  return undefined;
 };
 
 const uploadChatAttachmentAsset = async (
@@ -263,7 +289,7 @@ const formatearPreviewUltimoMensaje = (
   }
 
   // 4. Si es conversación directa con otra persona
-  if (conv.tipo === 'directa') {
+  if (!isGroupConv(conv)) {
     const otroId = conv.participanteIds?.find((id) => id !== perfilId);
     const otroUsuario = usersList.find((u) => u.id === otroId);
     const otroNombre = otroUsuario?.nombre || conv.participantes?.find((p) => p.id !== perfilId)?.nombre;
@@ -591,9 +617,19 @@ export default function ChatInterno() {
     if (!targetConvToRename || !renameInput.trim()) return;
     setSending(true);
     try {
-      await useCases.chat.internal.updateConversation(targetConvToRename.id, {
-        titulo: renameInput.trim(),
-      });
+      const isGroup = isGroupConv(targetConvToRename);
+      if (isGroup) {
+        await useCases.chat.internal.updateConversation(targetConvToRename.id, {
+          titulo: renameInput.trim(),
+        });
+      } else if (perfil?.id) {
+        await useCases.chat.internal.updateConversation(targetConvToRename.id, {
+          nombresPersonalizados: {
+            ...(targetConvToRename.nombresPersonalizados || {}),
+            [perfil.id]: renameInput.trim(),
+          },
+        });
+      }
       setShowRenameModal(false);
       setTargetConvToRename(null);
     } catch (err) {
@@ -715,6 +751,7 @@ export default function ChatInterno() {
         const fileName = asset.fileName || `Group_${conv.id}_${Date.now()}.jpg`;
         const uploaded = await uploadChatAttachmentAsset(asset, fileName, perfil.id, empresaId);
         await useCases.chat.internal.updateConversation(conv.id, {
+          foto: uploaded.url,
           imagenUrl: uploaded.url,
         });
       }
@@ -827,13 +864,24 @@ export default function ChatInterno() {
     );
   }, [conversations, perfil?.id]);
 
+  const directCount = useMemo(
+    () => userConversations.filter((c) => !isGroupConv(c)).length,
+    [userConversations]
+  );
+
+  const groupCount = useMemo(
+    () => userConversations.filter((c) => isGroupConv(c)).length,
+    [userConversations]
+  );
+
   const filteredConversations = useMemo(() => {
     const term = searchQuery.trim().toLowerCase();
     return userConversations.filter((c) => {
       const unreadCount = conteoNoLeidos[c.id] || 0;
+      const isGroup = isGroupConv(c);
       if (filtroTipo === 'no_leidos' && unreadCount === 0) return false;
-      if (filtroTipo === 'directos' && c.tipo !== 'directa') return false;
-      if (filtroTipo === 'grupos' && c.tipo !== 'equipo') return false;
+      if (filtroTipo === 'directos' && isGroup) return false;
+      if (filtroTipo === 'grupos' && !isGroup) return false;
 
       if (!term) return true;
       const title = getTituloConversacion(c, perfil?.id || '', users).toLowerCase();
@@ -1251,7 +1299,7 @@ export default function ChatInterno() {
                       {t('chatInterno.actionMenu.renameTitle')}
                     </Text>
                     <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
-                      {actionMenuConv.tipo === 'equipo' ? t('chatInterno.actionMenu.renameSubGroup') : t('chatInterno.actionMenu.renameSubContact')}
+                      {isGroupConv(actionMenuConv) ? t('chatInterno.actionMenu.renameSubGroup') : t('chatInterno.actionMenu.renameSubContact')}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -1285,7 +1333,7 @@ export default function ChatInterno() {
                 </TouchableOpacity>
 
                 {/* Option 3: Conditional (Grupo vs Directo) */}
-                {actionMenuConv.tipo === 'equipo' ? (
+                {isGroupConv(actionMenuConv) ? (
                   <>
                     <TouchableOpacity
                       style={styles.actionMenuItem}
@@ -1433,7 +1481,7 @@ export default function ChatInterno() {
               <TouchableOpacity activeOpacity={1} onPress={(e) => (e as any)?.stopPropagation?.()}>
                 <View style={styles.actionMenuHeader}>
                   <Text style={[styles.actionMenuTitle, { color: colores.texto, fontWeight: '900' }]}>
-                    {targetConvToRename.tipo === 'equipo' ? t('chatInterno.rename.titleGroup') : t('chatInterno.rename.titleContact')}
+                    {isGroupConv(targetConvToRename) ? t('chatInterno.rename.titleGroup') : t('chatInterno.rename.titleContact')}
                   </Text>
                   <TouchableOpacity onPress={() => cerrarRenameModalConAnimacion()}>
                     <MaterialIcons name="close" size={20} color={colores.textoSuave} />
@@ -1658,11 +1706,13 @@ export default function ChatInterno() {
 
   // ==================== VISTA 2: CONVERSACIÓN ACTIVA ====================
   if (selectedConversation) {
+    const isGroup = isGroupConv(selectedConversation);
     const activeTitle = getTituloConversacion(selectedConversation, perfil.id, users);
-    const otherId = selectedConversation.tipo === 'directa' ? selectedConversation.participanteIds?.find((id) => id !== perfil.id) : null;
+    const otherId = !isGroup ? selectedConversation.participanteIds?.find((id) => id !== perfil.id) : null;
     const userFromList = otherId ? (users.find((u) => u.id === otherId) as any) : null;
     const otherParticipant = selectedConversation.participantes?.find((p) => p.id !== perfil.id) as any;
-    const activePhoto = userFromList?.fotoPerfil || userFromList?.foto || userFromList?.avatarUrl || otherParticipant?.fotoPerfil || otherParticipant?.foto || otherParticipant?.avatarUrl;
+    const directPhoto = userFromList?.foto_perfil || userFromList?.fotoPerfil || userFromList?.foto || userFromList?.avatarUrl || otherParticipant?.foto_perfil || otherParticipant?.fotoPerfil || otherParticipant?.foto || otherParticipant?.avatarUrl;
+    const activePhoto = isGroup ? (selectedConversation.foto || selectedConversation.imagenUrl) : directPhoto;
 
     return (
       <SafeAreaView style={[styles.contenedor, { backgroundColor: colores.fondo, paddingBottom: 0 }]}>
@@ -1674,14 +1724,14 @@ export default function ChatInterno() {
         <Animated.View style={{ flex: 1, opacity: chatFadeAnim, transform: [{ translateY: chatSlideAnim }] }}>
           {/* Header de conversación activa utilizando el componente uniforme NavbarEnterprise */}
           <NavbarEnterprise
-          titulo={activeTitle}
-          subtitulo={selectedConversation.tipo === 'equipo' ? t('chatInterno.conversation.groupMembers', { count: selectedConversation.participantes?.length || 2 }) : t('chatInterno.conversation.directChat')}
-          mostrarAtras
-          onBackPress={handleCloseChat}
-          avatarUrl={activePhoto}
-          avatarLetra={(activeTitle || 'C').charAt(0).toUpperCase()}
-          ocultarAccionesDerechas
-          accionDerecha={
+            titulo={activeTitle}
+            subtitulo={isGroup ? t('chatInterno.conversation.groupMembers', { count: selectedConversation.participantes?.length || selectedConversation.participanteIds?.length || 2 }) : t('chatInterno.conversation.directChat')}
+            mostrarAtras
+            onBackPress={handleCloseChat}
+            avatarUrl={activePhoto}
+            avatarLetra={(activeTitle || (isGroup ? 'G' : 'C')).charAt(0).toUpperCase()}
+            ocultarAccionesDerechas
+            accionDerecha={
             <TouchableOpacity
               onPress={() => setActionMenuConv(selectedConversation)}
               style={[styles.headerOptionBtn, { backgroundColor: colores.vidrio, borderColor: colores.borde }]}
@@ -2084,8 +2134,8 @@ export default function ChatInterno() {
           {[
             { id: 'todos' as const, label: t('chatInterno.filters.all', { count: userConversations.length }), icono: 'forum' as const },
             { id: 'no_leidos' as const, label: t('chatInterno.filters.unread', { count: totalNoLeidos }), icono: 'mark-chat-unread' as const, badge: totalNoLeidos > 0 },
-            { id: 'directos' as const, label: t('chatInterno.filters.direct'), icono: 'person' as const },
-            { id: 'grupos' as const, label: t('chatInterno.filters.groups'), icono: 'group' as const },
+            { id: 'directos' as const, label: `Directos (${directCount})`, icono: 'person' as const },
+            { id: 'grupos' as const, label: `Grupos (${groupCount})`, icono: 'groups' as const },
           ].map((chip) => {
             const activo = filtroTipo === chip.id;
             return (
@@ -2336,7 +2386,7 @@ export default function ChatInterno() {
           </View>
         ) : (
           filteredConversations.map((conv) => {
-            const isGroup = conv.tipo === 'equipo';
+            const isGroup = isGroupConv(conv);
             const title = getTituloConversacion(conv, perfil.id, users);
             const photoUrl = getFotoConversacion(conv, perfil.id, users);
             const isMuted = mutedConvIds.includes(conv.id);
@@ -2367,24 +2417,41 @@ export default function ChatInterno() {
                 <View style={[styles.convAvatar, isGroup && styles.convAvatarGroup]}>
                   {photoUrl ? (
                     <Image source={{ uri: photoUrl }} style={styles.convAvatarImage} resizeMode="cover" />
+                  ) : isGroup ? (
+                    <View style={styles.groupAvatarFallback}>
+                      <MaterialIcons name="groups" size={24} color={esOscuro ? '#93C5FD' : '#2563EB'} />
+                    </View>
                   ) : (
                     <Text style={styles.avatarLetter}>{(title || 'C').charAt(0).toUpperCase()}</Text>
                   )}
-                  {hasUnread && <View style={styles.avatarOnlineDot} />}
+                  {isGroup && (
+                    <View style={styles.avatarGroupBadge}>
+                      <MaterialIcons name="groups" size={10} color="#FFFFFF" />
+                    </View>
+                  )}
+                  {hasUnread && !isGroup && <View style={styles.avatarOnlineDot} />}
                 </View>
 
                 <View style={styles.convCopy}>
                   <View style={styles.convTopRow}>
-                    <Text
-                      style={[
-                        styles.convTitle,
-                        { color: colores.texto },
-                        hasUnread && { fontWeight: '900' },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {title}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0, marginRight: 6 }}>
+                      {isGroup && (
+                        <View style={styles.groupPillTag}>
+                          <MaterialIcons name="groups" size={12} color={esOscuro ? '#93C5FD' : '#2563EB'} />
+                          <Text style={styles.groupPillText}>Grupo</Text>
+                        </View>
+                      )}
+                      <Text
+                        style={[
+                          styles.convTitle,
+                          { color: colores.texto, flex: 1 },
+                          hasUnread && { fontWeight: '900' },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {title}
+                      </Text>
+                    </View>
                     {isMuted ? (
                       <MaterialIcons name="notifications-off" size={14} color={colores.textoSuave} style={{ marginLeft: 4 }} />
                     ) : null}
@@ -2481,7 +2548,7 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 80 : 70,
   },
   fondoAbsoluto: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: -1,
     overflow: 'hidden',
   },
@@ -2784,6 +2851,40 @@ const styles = StyleSheet.create({
     borderWidth: 2.5,
     borderColor: '#0B0C1E',
   },
+  avatarGroupBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#3B82F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#0B0C1E',
+  },
+  groupAvatarFallback: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  groupPillTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+    backgroundColor: 'rgba(59,130,246,0.15)',
+    marginRight: 6,
+  },
+  groupPillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#3B82F6',
+  },
   convCopy: {
     flex: 1,
     minWidth: 0,
@@ -2976,7 +3077,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   previewImage: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderRadius: 12,
   },
   previewDocIcon: {

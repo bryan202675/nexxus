@@ -1,25 +1,52 @@
 import { supabase } from './supabaseClient';
 import { IInternalChatRepository } from 'domain/repositories/IInternalChatRepository';
 import {
-  Conversation, ChatMessage, ChatUser, CreateConversationInput, SendMessageInput,
+  Conversation, ConversationType, ChatMessage, ChatUser, CreateConversationInput, SendMessageInput,
 } from 'domain/entities/InternalChat';
 import { subscribeQuery } from './realtime';
 
 function mapConversationRow(row: Record<string, any>): Conversation {
+  const datos = row.datos || {};
+  const participanteIds = Array.isArray(row.participante_ids)
+    ? row.participante_ids
+    : Array.isArray(datos.participanteIds)
+    ? datos.participanteIds
+    : [];
+  const participantes = Array.isArray(datos.participantes)
+    ? datos.participantes
+    : Array.isArray(row.participantes)
+    ? row.participantes
+    : [];
+
+  const rawTipo = datos.tipo || row.tipo || (participanteIds.length > 2 || participantes.length > 2 ? 'equipo' : 'directa');
+  const isGroup =
+    rawTipo === 'equipo' ||
+    rawTipo === 'grupo' ||
+    rawTipo === 'departamento' ||
+    participanteIds.length > 2 ||
+    participantes.length > 2 ||
+    (Boolean(datos.titulo) && rawTipo !== 'directa');
+  const tipo = (isGroup ? 'equipo' : 'directa') as ConversationType;
+
   return {
-    ...(row.datos || {}),
+    ...datos,
     id: row.id,
     empresaId: row.empresa_id,
-    tipo: row.datos?.tipo ?? 'directa',
-    titulo: row.datos?.titulo ?? '',
-    participanteIds: row.participante_ids ?? [],
-    participantes: row.datos?.participantes ?? [],
-    ultimoMensaje: row.ultimo_mensaje ?? undefined,
-    ultimoMensajeAt: row.ultimo_mensaje_at ?? undefined,
-    ultimoMensajeRemitenteId: row.ultimo_mensaje_remitente_id ?? row.datos?.ultimoMensajeRemitenteId ?? undefined,
-    ultimoMensajeRemitenteNombre: row.ultimo_mensaje_remitente_nombre ?? row.datos?.ultimoMensajeRemitenteNombre ?? undefined,
-    creadoPor: row.creado_por ?? '',
-    fechaCreacion: row.created_at,
+    tipo,
+    titulo: datos.titulo || row.titulo || '',
+    foto: datos.foto || row.foto || '',
+    imagenUrl: datos.imagenUrl || datos.foto || row.imagenUrl || row.foto || undefined,
+    participanteIds,
+    participantes,
+    nombresPersonalizados: datos.nombresPersonalizados || {},
+    fotosPersonalizadas: datos.fotosPersonalizadas || {},
+    ultimoMensaje: row.ultimo_mensaje ?? datos.ultimoMensaje ?? undefined,
+    ultimoMensajeAt: row.ultimo_mensaje_at ?? datos.ultimoMensajeAt ?? undefined,
+    ultimoMensajeRemitenteId: row.ultimo_mensaje_remitente_id ?? datos.ultimoMensajeRemitenteId ?? undefined,
+    ultimoMensajeRemitenteNombre: row.ultimo_mensaje_remitente_nombre ?? datos.ultimoMensajeRemitenteNombre ?? undefined,
+    creadoPor: row.creado_por ?? datos.creadoPor ?? '',
+    fechaCreacion: row.created_at ?? datos.fechaCreacion,
+    eliminadoPor: datos.eliminadoPor || [],
   };
 }
 
@@ -157,12 +184,28 @@ export class SupabaseInternalChatRepository implements IInternalChatRepository {
 
   async updateConversation(conversationId: string, data: Partial<Conversation>): Promise<void> {
     const { data: current } = await supabase.from('conversaciones').select('*').eq('id', conversationId).maybeSingle();
-    const { titulo, participantes, tipo, ...core } = data as any;
-    const row: Record<string, any> = {};
-    if (current && 'datos' in current) {
-      row.datos = { ...(current.datos || {}), titulo, participantes, tipo };
-    }
+    const currentDatos = current?.datos || {};
+    const { titulo, foto, imagenUrl, participantes, tipo, nombresPersonalizados, fotosPersonalizadas, eliminadoPor, ...core } = data as any;
+
+    const nextDatos = {
+      ...currentDatos,
+      ...(titulo !== undefined ? { titulo } : {}),
+      ...(foto !== undefined ? { foto, imagenUrl: foto } : {}),
+      ...(imagenUrl !== undefined ? { imagenUrl, foto: imagenUrl } : {}),
+      ...(participantes !== undefined ? { participantes } : {}),
+      ...(tipo !== undefined ? { tipo } : {}),
+      ...(nombresPersonalizados !== undefined ? { nombresPersonalizados } : {}),
+      ...(fotosPersonalizadas !== undefined ? { fotosPersonalizadas } : {}),
+      ...(eliminadoPor !== undefined ? { eliminadoPor } : {}),
+    };
+
+    const row: Record<string, any> = {
+      datos: nextDatos,
+    };
     if (core.participanteIds) row.participante_ids = core.participanteIds;
+    if (titulo !== undefined && 'titulo' in (current || {})) row.titulo = titulo;
+    if (foto !== undefined && 'foto' in (current || {})) row.foto = foto;
+
     const { error } = await supabase.from('conversaciones').update(row).eq('id', conversationId);
     if (error && !error.message?.includes("'datos'")) throw error;
   }

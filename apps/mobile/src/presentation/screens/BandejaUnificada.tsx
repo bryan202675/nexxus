@@ -194,7 +194,7 @@ function crearEstilos(c: ColoresTema) {
   // contenedor: estilo del contenedor principal; define espacio base, fondo y estructura general del bloque.
   contenedor: { flex: 1, backgroundColor: c.fondo },
   // fondoAbsoluto: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
-  fondoAbsoluto: { ...StyleSheet.absoluteFillObject, zIndex: -1 },
+  fondoAbsoluto: { ...StyleSheet.absoluteFill, zIndex: -1 },
   // lista: estilo de lista o item; mantiene espaciado y lectura consistente en elementos repetidos.
   lista: { paddingBottom: 100 },
   // filaInbox: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.

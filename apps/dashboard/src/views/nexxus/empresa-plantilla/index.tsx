@@ -478,8 +478,8 @@ export default function GestionPlantilla() {
 
   const handleCambiarContrasena = async () => {
     if (!selectedEmpleado) return;
-    if (nuevaContrasena.trim().length < 6) {
-      setActionMsg("La nueva contraseña debe tener al menos 6 caracteres.");
+    if (nuevaContrasena.trim().length < 8) {
+      setActionMsg("La nueva contraseña debe tener al menos 8 caracteres.");
       return;
     }
     setBusyAction("password");
@@ -608,8 +608,8 @@ export default function GestionPlantilla() {
       );
       return;
     }
-    if (!createForm.nombre.trim() || !createForm.correo.trim() || createForm.contrasena.length < 6) {
-      setCreateError("Nombre, correo y una contraseña de mínimo 6 caracteres son obligatorios.");
+    if (!createForm.nombre.trim() || !createForm.correo.trim() || createForm.contrasena.length < 8) {
+      setCreateError("Nombre, correo y una contraseña de mínimo 8 caracteres son obligatorios.");
       return;
     }
     setCreatingEmpleado(true);
@@ -795,130 +795,179 @@ export default function GestionPlantilla() {
         </div>
       )}
 
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
-            Plantilla de Colaboradores
-          </h2>
-          <p className="mt-1 text-sm font-medium text-gray-500 dark:text-white/60">
-            Directorio organizacional, asignación de cargos, departamentos y control de accesos.
-          </p>
-        </div>
+      {/* Toolbar Superior (sin repetir el título del Navbar) */}
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+        <p className="text-xs font-medium text-gray-500 dark:text-white/60">
+          Directorio organizacional, asignación de cargos, departamentos y control de accesos.
+        </p>
 
-        {/* Tarjeta de Código de Registro */}
-        <div className="flex items-center gap-3 rounded-2xl border border-brand-500/20 bg-brand-500/[0.04] p-3.5 shadow-sm dark:border-brand-400/20 dark:bg-brand-500/10">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-500 text-white shadow-md shadow-brand-500/20">
-            <MdOutlineCorporateFare className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50">
-              Código de Registro
-            </p>
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-sm font-black text-navy-700 dark:text-white">
-                <CodigoEmpresaDisplay code={codigoEmpresa} />
-              </span>
-              <button
-                type="button"
-                onClick={handleCopiarCodigo}
-                className="flex items-center gap-1 rounded-lg bg-white px-2 py-0.5 text-[11px] font-bold text-brand-600 shadow-sm transition hover:bg-gray-50 active:scale-95 dark:bg-charcoal dark:text-brand-300"
-                title="Copiar código"
-              >
-                {copiado ? <MdCheck className="h-3.5 w-3.5 text-emerald-600" /> : <MdOutlineContentCopy className="h-3.5 w-3.5" />}
-                <span>{copiado ? "Copiado" : "Copiar"}</span>
-              </button>
-            </div>
-          </div>
+        {/* Tarjeta compacta de Código de Registro */}
+        <div className="flex items-center gap-2.5 self-start sm:self-auto rounded-xl border border-brand-500/20 bg-brand-500/[0.04] px-3.5 py-1.5 shadow-2xs dark:border-brand-400/20 dark:bg-brand-500/10">
+          <MdOutlineCorporateFare className="h-4 w-4 text-brand-500" />
+          <span className="text-xs font-medium text-gray-500 dark:text-white/60">Código:</span>
+          <span className="font-mono text-xs font-bold text-navy-700 dark:text-white">
+            <CodigoEmpresaDisplay code={codigoEmpresa} />
+          </span>
+          <button
+            type="button"
+            onClick={handleCopiarCodigo}
+            className="flex items-center gap-1 rounded-lg bg-white px-2 py-0.5 text-[11px] font-bold text-brand-600 shadow-2xs transition hover:bg-gray-50 active:scale-95 dark:bg-charcoal dark:text-brand-300"
+            title="Copiar código"
+          >
+            {copiado ? <MdCheck className="h-3 w-3 text-emerald-600" /> : <MdOutlineContentCopy className="h-3 w-3" />}
+            <span>{copiado ? "Copiado" : "Copiar"}</span>
+          </button>
         </div>
       </div>
 
+      {/* Grid de 4 KPIs Principales */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                Total Plantilla
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
+        {/* KPI 1: Total Colaboradores */}
+        <NexxusCard extra="p-5 flex flex-col justify-between gap-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
+              Total Colaboradores
+            </span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
+              <MdOutlinePeople className="h-5 w-5" />
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-baseline gap-2">
+              <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
                 {metricas.total}
               </h3>
+              <span className="inline-flex items-center rounded-md bg-brand-500/10 border border-brand-500/20 px-2 py-0.5 text-[11px] font-bold text-brand-600 dark:text-brand-300">
+                Plan {plan}
+              </span>
             </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500/10 text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
-              <MdOutlinePeople className="h-6 w-6" />
+
+            {/* Barra de progreso */}
+            <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+              <div
+                className="h-full rounded-full bg-brand-500 transition-all duration-500"
+                style={{
+                  width: `${Math.min(100, Math.max(0, (metricas.total / (planLimits.employees || 1)) * 100))}%`,
+                }}
+              />
             </div>
           </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>Capacidad máx: {planLimits.employees}</span>
-            <span className="font-bold text-brand-500">Plan {plan}</span>
-          </div>
+
+          <p className="text-xs text-gray-500 dark:text-white/60">
+            Capacidad máxima: {planLimits.employees} plazas
+          </p>
         </NexxusCard>
 
-        {/* Activos vs Inactivos */}
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                Colaboradores Activos
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
-                {metricas.activos}
-                <span className="ml-1.5 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                  ({metricas.total > 0 ? Math.round((metricas.activos / metricas.total) * 100) : 0}%)
-                </span>
-              </h3>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
-              <MdOutlineCheckCircle className="h-6 w-6" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              Operativos con acceso
+        {/* KPI 2: Activos vs Inactivos */}
+        <NexxusCard extra="p-5 flex flex-col justify-between gap-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
+              Colaboradores Activos
             </span>
-            <span>{metricas.inactivos} inactivos</span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
+              <MdOutlineCheckCircle className="h-5 w-5" />
+            </div>
           </div>
+
+          <div>
+            <div className="flex items-baseline gap-2">
+              <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
+                {metricas.activos}
+              </h3>
+              <span className="inline-flex items-center rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+                {metricas.total > 0 ? Math.round((metricas.activos / metricas.total) * 100) : 0}% activo
+              </span>
+            </div>
+
+            {/* Barra de progreso */}
+            <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+              <div
+                className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                style={{
+                  width: `${metricas.total > 0 ? (metricas.activos / metricas.total) * 100 : 0}%`,
+                }}
+              />
+            </div>
+          </div>
+
+          <p className="text-xs text-gray-500 dark:text-white/60">
+            {metricas.inactivos === 0 ? "100% operativos con acceso" : `${metricas.inactivos} inactivos`}
+          </p>
         </NexxusCard>
 
-        {/* Líderes & Jefes */}
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                Jefes & Supervisores
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
+        {/* KPI 3: Líderes & Jefes */}
+        <NexxusCard extra="p-5 flex flex-col justify-between gap-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
+              Líderes y Supervisores
+            </span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
+              <MdOutlineSupervisorAccount className="h-5 w-5" />
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-baseline gap-2">
+              <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
                 {metricas.jefes}
               </h3>
+              <span className="inline-flex items-center rounded-md bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 text-[11px] font-bold text-blue-700 dark:text-blue-300">
+                {departamentosDistintos.length} áreas
+              </span>
             </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
-              <MdOutlineSupervisorAccount className="h-6 w-6" />
+
+            {/* Barra de progreso */}
+            <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+              <div
+                className="h-full rounded-full bg-blue-500 transition-all duration-500"
+                style={{
+                  width: `${metricas.total > 0 ? Math.min(100, (metricas.jefes / metricas.total) * 100) : 0}%`,
+                }}
+              />
             </div>
           </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>Líderes de departamento</span>
-            <span className="font-bold text-navy-700 dark:text-white">{departamentosDistintos.length} áreas</span>
-          </div>
+
+          <p className="text-xs text-gray-500 dark:text-white/60">
+            Jefes y líderes de departamento
+          </p>
         </NexxusCard>
 
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                Equipo Operativo
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
+        {/* KPI 4: Equipo Operativo */}
+        <NexxusCard extra="p-5 flex flex-col justify-between gap-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
+              Equipo Operativo
+            </span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:bg-purple-400/20 dark:text-purple-300">
+              <MdOutlineBadge className="h-5 w-5" />
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-baseline gap-2">
+              <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
                 {metricas.operativos}
               </h3>
+              <span className="inline-flex items-center rounded-md bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 text-[11px] font-bold text-purple-700 dark:text-purple-300">
+                {sedesDistintas.length} sedes
+              </span>
             </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-500/10 text-purple-600 dark:bg-purple-400/20 dark:text-purple-300">
-              <MdOutlineBadge className="h-6 w-6" />
+
+            {/* Barra de progreso */}
+            <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+              <div
+                className="h-full rounded-full bg-purple-500 transition-all duration-500"
+                style={{
+                  width: `${metricas.total > 0 ? (metricas.operativos / metricas.total) * 100 : 0}%`,
+                }}
+              />
             </div>
           </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>Personal asignado</span>
-            <span className="font-bold text-purple-600 dark:text-purple-400">{sedesDistintas.length} sedes</span>
-          </div>
+
+          <p className="text-xs text-gray-500 dark:text-white/60">
+            Personal operativo distribuido
+          </p>
         </NexxusCard>
       </div>
 
@@ -926,10 +975,10 @@ export default function GestionPlantilla() {
         {/* Fila Superior: Buscador y Botones de Acción */}
         <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
           <div>
-            <h4 className="text-xl font-bold tracking-tight text-navy-700 dark:text-white">
-              Directorio de la Plantilla
+            <h4 className="text-lg font-bold tracking-tight text-navy-700 dark:text-white">
+              Directorio de Colaboradores
             </h4>
-            <p className="mt-0.5 text-xs font-medium text-gray-500 dark:text-white/60">
+            <p className="mt-0.5 text-xs text-gray-500 dark:text-white/60">
               Gestión de expedientes, cargos reales y asignación departamental.
             </p>
           </div>
@@ -1189,6 +1238,7 @@ export default function GestionPlantilla() {
         )}
       </NexxusCard>
 
+      {/* Modal Ficha del Colaborador */}
       <Modal
         isOpen={!!selectedEmpleado}
         onClose={() => setSelectedEmpleado(null)}
@@ -1196,40 +1246,40 @@ export default function GestionPlantilla() {
         width="max-w-3xl"
       >
         {selectedEmpleado && editForm ? (
-          <div className="flex flex-col gap-6 py-2">
+          <div className="flex flex-col gap-5 py-1 text-left">
             {/* Header del colaborador */}
-            <div className="flex items-center justify-between gap-4 rounded-2xl bg-gray-50 p-4.5 dark:bg-white/[0.03]">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl bg-gray-50/70 p-4 border border-gray-200/70 dark:bg-white/[0.02] dark:border-white/10">
               <div className="flex items-center gap-3.5 min-w-0">
                 <Avatar src={selectedEmpleado.foto} name={selectedEmpleado.nombre} size={12} />
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="truncate text-lg font-black text-navy-700 dark:text-white">
+                    <p className="truncate text-base font-bold text-navy-700 dark:text-white">
                       {selectedEmpleado.nombre}
                     </p>
                     <span
-                      className={`inline-flex rounded-full px-2 py-0.5 text-[10.5px] font-bold ${
+                      className={`inline-flex rounded-md px-2 py-0.5 text-[10.5px] font-bold ${
                         ROLE_BADGE[selectedEmpleado.rol] || ROLE_BADGE.empleado
                       }`}
                     >
                       {etiquetaRol(selectedEmpleado.rol)}
                     </span>
                   </div>
-                  <p className="truncate text-xs font-medium text-gray-500 dark:text-white/60">
+                  <p className="truncate text-xs text-gray-500 dark:text-white/60 mt-0.5">
                     @{selectedEmpleado.usuario || "sin_usuario"} · {selectedEmpleado.correo || "Sin correo"}
                   </p>
                 </div>
               </div>
 
-              <div className="text-right shrink-0">
+              <div className="shrink-0 self-start sm:self-auto">
                 <span
-                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
                     selectedEmpleado.activo
-                      ? "bg-emerald-500/15 text-emerald-700 dark:bg-emerald-400/20 dark:text-emerald-300"
-                      : "bg-gray-200 text-gray-600 dark:bg-white/10 dark:text-white/60"
+                      ? "bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 dark:bg-emerald-400/20 dark:text-emerald-300"
+                      : "bg-gray-100 text-gray-600 border border-gray-200 dark:bg-white/10 dark:text-white/60"
                   }`}
                 >
                   <span
-                    className={`h-2 w-2 rounded-full ${
+                    className={`h-1.5 w-1.5 rounded-full ${
                       selectedEmpleado.activo ? "bg-emerald-500" : "bg-gray-400"
                     }`}
                   />
@@ -1240,97 +1290,157 @@ export default function GestionPlantilla() {
 
             {/* Mensaje de acción */}
             {actionMsg && (
-              <div className="rounded-xl bg-brand-500/10 p-3 text-xs font-bold text-brand-600 dark:bg-brand-400/20 dark:text-brand-300">
+              <div className="rounded-xl border border-brand-500/20 bg-brand-500/10 p-3 text-xs font-semibold text-brand-600 dark:bg-brand-400/20 dark:text-brand-300">
                 {actionMsg}
               </div>
             )}
 
             {/* Bloque 1: Datos Personales y Laborales */}
             <div>
-              <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
-                Información Laboral & Perfil
+              <p className="mb-2.5 text-xs font-bold text-gray-500 dark:text-white/60">
+                Información Laboral y de Perfil
               </p>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <InputField
-                  label="Nombre Completo"
-                  id="editar-nombre"
-                  value={editForm.nombre}
-                  onChange={(e) => setEditForm((f: any) => ({ ...f, nombre: e.target.value }))}
-                />
-                <InputField
-                  label="Correo Electrónico (Login)"
-                  id="editar-correo"
-                  value={editForm.correo}
-                  onChange={(e) => setEditForm((f: any) => ({ ...f, correo: e.target.value }))}
-                />
-                <InputField
-                  label="Usuario Interno"
-                  id="editar-usuario"
-                  value={editForm.usuario}
-                  onChange={(e) => setEditForm((f: any) => ({ ...f, usuario: e.target.value }))}
-                />
-                <InputField
-                  label="Teléfono"
-                  id="editar-telefono"
-                  value={editForm.telefono}
-                  onChange={(e) => setEditForm((f: any) => ({ ...f, telefono: e.target.value }))}
-                />
-                <SelectListaField
-                  label="Cargo"
-                  id="editar-cargo"
-                  value={editForm.cargo}
-                  onChange={(v: string) => setEditForm((f: any) => ({ ...f, cargo: v }))}
-                  opciones={cargosDistintos}
-                />
-                <SelectListaField
-                  label="Departamento"
-                  id="editar-departamento"
-                  value={editForm.departamento}
-                  onChange={(v: string) => setEditForm((f: any) => ({ ...f, departamento: v }))}
-                  opciones={departamentosDistintos}
-                />
-                <SelectListaField
-                  label="Sede Asignada"
-                  id="editar-sede"
-                  value={editForm.sede}
-                  onChange={(v: string) => setEditForm((f: any) => ({ ...f, sede: v }))}
-                  opciones={sedesDistintas}
-                />
-                <InputField
-                  label="Salario Base ($)"
-                  id="editar-salario"
-                  type="number"
-                  value={editForm.salarioBase}
-                  onChange={(e) => setEditForm((f: any) => ({ ...f, salarioBase: e.target.value }))}
-                />
-              </div>
+              <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 dark:text-white/80" htmlFor="editar-nombre">
+                    Nombre Completo
+                  </label>
+                  <input
+                    id="editar-nombre"
+                    type="text"
+                    value={editForm.nombre}
+                    onChange={(e) => setEditForm((f: any) => ({ ...f, nombre: e.target.value }))}
+                    className="mt-1.5 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
+                  />
+                </div>
 
-              <div className="mt-4 flex justify-end">
-                <ActionButton
-                  busy={busyAction === "guardar"}
-                  onClick={handleGuardarCambios}
-                  className="bg-brand-500 shadow-md shadow-brand-500/20 hover:bg-brand-600 dark:bg-brand-400"
-                >
-                  Guardar Datos Laborales
-                </ActionButton>
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 dark:text-white/80" htmlFor="editar-correo">
+                    Correo Electrónico (Login)
+                  </label>
+                  <input
+                    id="editar-correo"
+                    type="email"
+                    value={editForm.correo}
+                    onChange={(e) => setEditForm((f: any) => ({ ...f, correo: e.target.value }))}
+                    className="mt-1.5 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 dark:text-white/80" htmlFor="editar-usuario">
+                    Usuario Interno
+                  </label>
+                  <input
+                    id="editar-usuario"
+                    type="text"
+                    value={editForm.usuario}
+                    onChange={(e) => setEditForm((f: any) => ({ ...f, usuario: e.target.value }))}
+                    className="mt-1.5 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 dark:text-white/80" htmlFor="editar-telefono">
+                    Teléfono
+                  </label>
+                  <input
+                    id="editar-telefono"
+                    type="tel"
+                    placeholder="Sin teléfono registrado"
+                    value={editForm.telefono}
+                    onChange={(e) => setEditForm((f: any) => ({ ...f, telefono: e.target.value }))}
+                    className="mt-1.5 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 dark:text-white/80" htmlFor="editar-cargo">
+                    Cargo / Puesto
+                  </label>
+                  <select
+                    id="editar-cargo"
+                    className="mt-1.5 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
+                    value={editForm.cargo || CAMPO_VACIO}
+                    onChange={(e) => setEditForm((f: any) => ({ ...f, cargo: e.target.value === CAMPO_VACIO ? "" : e.target.value }))}
+                  >
+                    <option value={CAMPO_VACIO}>Sin asignar</option>
+                    {cargosDistintos.map((opt: string) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 dark:text-white/80" htmlFor="editar-departamento">
+                    Departamento
+                  </label>
+                  <select
+                    id="editar-departamento"
+                    className="mt-1.5 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
+                    value={editForm.departamento || CAMPO_VACIO}
+                    onChange={(e) => setEditForm((f: any) => ({ ...f, departamento: e.target.value === CAMPO_VACIO ? "" : e.target.value }))}
+                  >
+                    <option value={CAMPO_VACIO}>Sin asignar</option>
+                    {departamentosDistintos.map((opt: string) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 dark:text-white/80" htmlFor="editar-sede">
+                    Sede Asignada
+                  </label>
+                  <select
+                    id="editar-sede"
+                    className="mt-1.5 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
+                    value={editForm.sede || CAMPO_VACIO}
+                    onChange={(e) => setEditForm((f: any) => ({ ...f, sede: e.target.value === CAMPO_VACIO ? "" : e.target.value }))}
+                  >
+                    <option value={CAMPO_VACIO}>Sin asignar</option>
+                    {sedesDistintas.map((opt: string) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 dark:text-white/80" htmlFor="editar-salario">
+                    Salario Base ($)
+                  </label>
+                  <input
+                    id="editar-salario"
+                    type="number"
+                    value={editForm.salarioBase}
+                    onChange={(e) => setEditForm((f: any) => ({ ...f, salarioBase: e.target.value }))}
+                    className="mt-1.5 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
+                  />
+                </div>
               </div>
             </div>
 
             {/* Bloque 2: Credenciales & Seguridad */}
-            <div className="border-t border-gray-100 pt-5 dark:border-white/10">
-              <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
-                Seguridad & Acceso
+            <div className="rounded-2xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-white/[0.02]">
+              <p className="mb-3 text-xs font-bold text-navy-700 dark:text-white">
+                Seguridad y Permisos de Acceso
               </p>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {/* Cambiar Rol */}
-                <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-4 dark:border-white/5 dark:bg-white/[0.02]">
-                  <label className={selectLabelClasses} htmlFor="editar-rol">
-                    Cambiar Rol Jerárquico
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 dark:text-white/80" htmlFor="editar-rol">
+                    Rol Jerárquico en la Plataforma
                   </label>
-                  <div className="mt-2 flex items-center gap-2">
+                  <div className="mt-1.5 flex items-center gap-2">
                     <select
                       id="editar-rol"
-                      className={selectClasses}
+                      className="flex h-10 w-full items-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
                       value={rolSeleccionado}
                       onChange={(e) => setRolSeleccionado(e.target.value)}
                     >
@@ -1340,69 +1450,89 @@ export default function GestionPlantilla() {
                         </option>
                       ))}
                     </select>
-                    <ActionButton
-                      busy={busyAction === "rol"}
+                    <button
+                      type="button"
+                      disabled={busyAction === "rol" || rolSeleccionado === selectedEmpleado.rol}
                       onClick={handleCambiarRol}
-                      className="mt-1 shrink-0 bg-blueSecondary hover:bg-blueSecondary/80"
+                      className="shrink-0 rounded-xl bg-navy-700 hover:bg-navy-800 text-white dark:bg-white dark:text-navy-900 px-3.5 h-10 text-xs font-semibold shadow-xs transition active:scale-95 disabled:opacity-40"
                     >
-                      Actualizar
-                    </ActionButton>
+                      {busyAction === "rol" ? "..." : "Actualizar"}
+                    </button>
                   </div>
                 </div>
 
                 {/* Resetear Contraseña */}
-                <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-4 dark:border-white/5 dark:bg-white/[0.02]">
-                  <label className={selectLabelClasses} htmlFor="editar-nueva-contrasena">
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 dark:text-white/80" htmlFor="editar-nueva-contrasena">
                     Restablecer Contraseña
                   </label>
-                  <div className="mt-2 flex items-center gap-2">
+                  <div className="mt-1.5 flex items-center gap-2">
                     <input
                       id="editar-nueva-contrasena"
                       type="password"
-                      placeholder="Mínimo 6 caracteres"
+                      placeholder="Mínimo 8 caracteres"
                       value={nuevaContrasena}
                       onChange={(e) => setNuevaContrasena(e.target.value)}
-                      className={selectClasses}
+                      className="flex h-10 w-full items-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
                     />
-                    <ActionButton
-                      busy={busyAction === "password"}
+                    <button
+                      type="button"
+                      disabled={busyAction === "password" || nuevaContrasena.trim().length < 8}
                       onClick={handleCambiarContrasena}
-                      className="mt-1 shrink-0 bg-amber-500 hover:bg-amber-600 shadow-amber-500/20"
+                      className="shrink-0 rounded-xl bg-navy-700 hover:bg-navy-800 text-white dark:bg-white dark:text-navy-900 px-3.5 h-10 text-xs font-semibold shadow-xs transition active:scale-95 disabled:opacity-40"
                     >
-                      Restablecer
-                    </ActionButton>
+                      {busyAction === "password" ? "..." : "Guardar"}
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Bloque 3: Acciones Críticas de la Cuenta */}
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-5 dark:border-white/10">
+            {/* Bloque 3: Footer de Acciones */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4 dark:border-white/10">
               <div className="flex items-center gap-2">
-                <ActionButton
-                  busy={busyAction === "estado"}
+                <button
+                  type="button"
+                  disabled={busyAction === "estado"}
                   onClick={handleToggleActivo}
-                  className={selectedEmpleado.activo ? "bg-amber-600 hover:bg-amber-700" : "bg-emerald-600 hover:bg-emerald-700"}
+                  className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition active:scale-95 disabled:opacity-50 ${
+                    selectedEmpleado.activo
+                      ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:border-amber-400/30 dark:bg-amber-500/20 dark:text-amber-300 hover:bg-amber-500/20"
+                      : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-500/20 dark:text-emerald-300 hover:bg-emerald-500/20"
+                  }`}
                 >
-                  {selectedEmpleado.activo ? "Pausar Acceso" : "Reactivar Acceso"}
-                </ActionButton>
-                <ActionButton
-                  busy={busyAction === "eliminar"}
+                  <span>{selectedEmpleado.activo ? "Pausar Acceso" : "Reactivar Acceso"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={busyAction === "eliminar"}
                   onClick={handleEliminar}
-                  className="bg-rose-500 hover:bg-rose-600 shadow-rose-500/20"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-500/20 active:scale-95 disabled:opacity-50 dark:border-rose-400/30 dark:bg-rose-500/20 dark:text-rose-300"
                 >
                   <MdOutlineDelete className="h-4 w-4" />
                   <span>Dar de Baja</span>
-                </ActionButton>
+                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setSelectedEmpleado(null)}
-                className="rounded-xl bg-gray-100 px-4 py-2 text-xs font-bold text-gray-700 transition hover:bg-gray-200 active:scale-95 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
-              >
-                Cerrar
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedEmpleado(null)}
+                  className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-navy-700 shadow-2xs hover:bg-gray-50 active:scale-95 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/20 transition-all"
+                >
+                  Cerrar
+                </button>
+
+                <button
+                  type="button"
+                  disabled={busyAction === "guardar"}
+                  onClick={handleGuardarCambios}
+                  className="inline-flex items-center justify-center rounded-xl bg-brand-500 hover:bg-brand-600 text-white px-5 py-2 text-xs font-bold shadow-xs transition-all active:scale-95 disabled:opacity-50"
+                >
+                  {busyAction === "guardar" ? "Guardando..." : "Guardar Cambios"}
+                </button>
+              </div>
             </div>
           </div>
         ) : null}
@@ -1515,7 +1645,7 @@ export default function GestionPlantilla() {
                     <input
                       id="crear-contrasena"
                       type={showPassword ? "text" : "password"}
-                      placeholder="Mínimo 6 caracteres"
+                      placeholder="Mínimo 8 caracteres"
                       value={createForm.contrasena}
                       onChange={(e) => setCreateForm((prev) => ({ ...prev, contrasena: e.target.value }))}
                       className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2.5 pl-10 pr-10 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"

@@ -338,7 +338,7 @@ export default function ChatIAAdmin({ navigation }: Props) {
       
       {/* Dynamic Background: Solid Base with Animated Radial Glow */}
       <View style={StyleSheet.absoluteFill}>
-        <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: theme.bg }} />
+        <View style={{ ...StyleSheet.absoluteFill, backgroundColor: theme.bg }} />
         <Animated.View style={[StyleSheet.absoluteFill, { opacity: opacidadGlow }]}>
           <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
             <Defs>

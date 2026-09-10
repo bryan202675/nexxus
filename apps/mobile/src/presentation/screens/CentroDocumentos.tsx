@@ -9,6 +9,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   Linking,
+  Alert,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -20,6 +21,7 @@ import {
 } from 'react-native';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import { WebView } from 'react-native-webview';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import Markdown from 'react-native-markdown-display';
 import { useTranslation } from 'react-i18next';
@@ -67,6 +69,25 @@ export default function CentroDocumentos({ navigation }: Props) {
   const [categoria, setCategoria] = useState<CategoriaDoc>('todos');
   const [refrescando, setRefrescando] = useState(false);
   const [docLecturaActivo, setDocLecturaActivo] = useState<Documento | null>(null);
+
+  const abrirDocumento = useCallback(async (url: string) => {
+    if (!/^https?:\/\//i.test(url)) {
+      Alert.alert(
+        t('centroDocumentos.open_link'),
+        'Este documento no tiene un archivo remoto disponible. Pide al administrador que lo vuelva a cargar.',
+      );
+      return;
+    }
+    try {
+      if (await Linking.canOpenURL(url)) await Linking.openURL(url);
+      else throw new Error('unsupported_url');
+    } catch {
+      Alert.alert(
+        t('centroDocumentos.open_link'),
+        'No se pudo abrir este documento. Intenta descargarlo de nuevo.',
+      );
+    }
+  }, [t]);
 
   const manejarRefrescar = async () => {
     setRefrescando(true);
@@ -403,7 +424,16 @@ export default function CentroDocumentos({ navigation }: Props) {
 
             {/* Contenido Markdown del Documento */}
             <ScrollView style={estilos.scrollModal} showsVerticalScrollIndicator={false}>
-              <View style={estilos.markdownWrapper}>
+              {docLecturaActivo.url && (
+                docLecturaActivo.mime === 'application/pdf' || docLecturaActivo.mime?.startsWith('image/')
+              ) ? (
+                <WebView
+                  source={{ uri: docLecturaActivo.url }}
+                  style={estilos.visorDocumento}
+                  originWhitelist={['*']}
+                  startInLoadingState
+                />
+              ) : <View style={estilos.markdownWrapper}>
                 <Markdown
                   style={{
                     body: { fontSize: 14, color: colores.texto, lineHeight: 22, fontWeight: '400' },
@@ -432,7 +462,7 @@ export default function CentroDocumentos({ navigation }: Props) {
                 >
                   {docLecturaActivo.contenido_completo || t('centroDocumentos.default_content')}
                 </Markdown>
-              </View>
+              </View>}
 
               {/* Historial de Versiones */}
               {docLecturaActivo.historialVersiones && docLecturaActivo.historialVersiones.length > 0 && (
@@ -441,7 +471,7 @@ export default function CentroDocumentos({ navigation }: Props) {
                   {docLecturaActivo.historialVersiones.map((v) => (
                     <BotonAnimado
                       key={`${v.version}-${v.fecha}`}
-                      onPress={() => Linking.openURL(v.url)}
+                      onPress={() => void abrirDocumento(v.url)}
                       scaleTo={0.97}
                       style={estilos.filaVersionItem}
                     >
@@ -462,7 +492,7 @@ export default function CentroDocumentos({ navigation }: Props) {
               <View style={estilos.footerModalAcciones}>
                 {docLecturaActivo.url ? (
                   <BotonAnimado
-                    onPress={() => Linking.openURL(docLecturaActivo.url)}
+                    onPress={() => void abrirDocumento(docLecturaActivo.url)}
                     scaleTo={0.96}
                     style={estilos.botonUrlExterna}
                   >
@@ -511,7 +541,7 @@ function crearEstilosDocumentos(c: any, esOscuro: boolean) {
 
   return StyleSheet.create({
     contenedor: { flex: 1, backgroundColor: c.fondo },
-    fondoAbsoluto: { ...StyleSheet.absoluteFillObject, zIndex: -1, overflow: 'hidden' },
+    fondoAbsoluto: { ...StyleSheet.absoluteFill, zIndex: -1, overflow: 'hidden' },
 
     iconButtonHeader: {
       width: 38,
@@ -738,6 +768,7 @@ function crearEstilosDocumentos(c: any, esOscuro: boolean) {
       justifyContent: 'center',
     },
     scrollModal: { paddingHorizontal: 20, paddingVertical: 14 },
+    visorDocumento: { height: 520, width: '100%', borderRadius: 18, overflow: 'hidden' },
     markdownWrapper: {
       backgroundColor: inputBg,
       borderRadius: 18,
@@ -812,5 +843,3 @@ function crearEstilosDocumentos(c: any, esOscuro: boolean) {
     textoBotonCerrarLectura: { fontSize: 13, fontWeight: '700', color: c.textoSuave },
   });
 }
-
-

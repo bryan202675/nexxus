@@ -421,7 +421,7 @@ function crearEstilosPerfil(c: any, esOscuro: boolean) {
 
   return StyleSheet.create({
     contenedor: { flex: 1, backgroundColor: c.fondo },
-    fondoAbsoluto: { ...StyleSheet.absoluteFillObject, zIndex: -1, overflow: 'hidden' },
+    fondoAbsoluto: { ...StyleSheet.absoluteFill, zIndex: -1, overflow: 'hidden' },
 
     scroll: {
       paddingHorizontal: 16,
@@ -494,7 +494,7 @@ function crearEstilosPerfil(c: any, esOscuro: boolean) {
       color: esOscuro ? '#93C5FD' : '#2563EB',
     },
     avatarCargandoOverlay: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       backgroundColor: 'rgba(0,0,0,0.5)',
       borderRadius: 38,
       alignItems: 'center',

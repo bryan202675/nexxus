@@ -80,7 +80,7 @@ export const crearEstilos = (theme: AdminPalette, width: number) => {
     // gridOverlay: estilo de grilla; organiza elementos en filas o columnas con separacion controlada.
     gridOverlay: {
       // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       // opacity controla la transparencia del elemento.
       opacity: theme.isDark ? 0.18 : 0.34,
       // backgroundColor define el fondo del bloque.
@@ -950,7 +950,7 @@ export const crearEstilos = (theme: AdminPalette, width: number) => {
     zIndex: 10000,
   },
   notificationsScrim: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 40,
   },
   // notificationsHeader: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
@@ -1287,7 +1287,7 @@ export const crearEstilos = (theme: AdminPalette, width: number) => {
   // bannerFrameGlow: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
   bannerFrameGlow: {
     // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     // opacity controla la transparencia del elemento.
     opacity: 0.42,
   },
@@ -1328,7 +1328,7 @@ export const crearEstilos = (theme: AdminPalette, width: number) => {
   // bannerGrid: estilo de grilla; organiza elementos en filas o columnas con separacion controlada.
   bannerGrid: {
     // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     // opacity controla la transparencia del elemento.
     opacity: 0.18,
     // Reutiliza propiedades de otro objeto de estilo para mantener consistencia visual.
