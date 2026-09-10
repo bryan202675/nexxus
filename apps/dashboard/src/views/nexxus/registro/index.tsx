@@ -35,6 +35,8 @@ import {
 } from "services/registro";
 import { validarLogoEmpresa } from "services/companyLogoUpload";
 import { routeUrl } from "utils/routePath";
+import { registrationErrorMessage } from "services/registroSession";
+import ConfirmarCorreo from "./ConfirmarCorreo";
 
 const estadoEmpresaInicial = {
   nombre: "",
@@ -76,6 +78,7 @@ export default function Registro() {
   const [paso, setPaso] = useState(1);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
+  const [requiereConfirmacion, setRequiereConfirmacion] = useState(false);
 
   const [cuenta, setCuenta] = useState({ nombre: "", correo: "", password: "", confirmar: "" });
   const [usuarioPendiente, setUsuarioPendiente] = useState(null);
@@ -123,6 +126,7 @@ export default function Registro() {
       const nombre =
         user.user_metadata?.full_name ||
         user.user_metadata?.name ||
+        user.user_metadata?.displayName ||
         (correo ? correo.split("@")[0] : "") ||
         "Usuario";
       const fotoPerfil =
@@ -169,9 +173,18 @@ export default function Registro() {
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: cuenta.correo.trim().toLowerCase(),
         password: cuenta.password,
-        options: { data: { displayName: limpiarTexto(cuenta.nombre) } },
+        options: {
+          data: { displayName: limpiarTexto(cuenta.nombre) },
+          emailRedirectTo: `${window.location.origin}/auth/registro`,
+        },
       });
       if (signUpError) throw signUpError;
+      if (!data.session || !data.user) {
+        setUsuarioPendiente(null);
+        setCuenta((prev) => ({ ...prev, password: "", confirmar: "" }));
+        setRequiereConfirmacion(true);
+        return;
+      }
       // Fire-and-forget: un correo de bienvenida lento o caído no debe bloquear el registro.
       void supabase.functions.invoke("send-welcome-email").catch(() => {});
       setUsuarioPendiente({
@@ -277,7 +290,7 @@ export default function Registro() {
   const enviarEmpresa = async (event) => {
     event.preventDefault();
     if (!usuarioPendiente || !checkoutInfo) {
-      setError("Tu sesión expiró. Vuelve a crear la cuenta.");
+      setError("Tu sesión expiró. Inicia sesión para continuar.");
       setPaso(1);
       return;
     }
@@ -285,7 +298,7 @@ export default function Registro() {
     setCargando(true);
     setError("");
     try {
-      const duplicado = await nombreEmpresaDuplicado(empresa.nombre);
+      const duplicado = await nombreEmpresaDuplicado(empresa.nombre, usuarioPendiente.uid);
       if (duplicado) {
         setErrores({ nombre: "Ya existe una empresa registrada con ese nombre." });
         return;
@@ -305,7 +318,7 @@ export default function Registro() {
       void supabase.functions.invoke("send-company-created-email").catch(() => {});
       navigate(routeUrl("/admin", "empresa-resumen"), { replace: true });
     } catch (err) {
-      setError(err.message || "No se pudo crear la empresa.");
+      setError(registrationErrorMessage(err));
     } finally {
       setCargando(false);
     }
@@ -748,6 +761,8 @@ export default function Registro() {
       </div>
     );
   }
+
+  if (requiereConfirmacion) return <ConfirmarCorreo />;
 
   return (
     <div className="mt-16 mb-16 flex h-full w-full items-center justify-center px-2 md:mx-0 md:px-0 lg:mb-10 lg:items-center lg:justify-start">

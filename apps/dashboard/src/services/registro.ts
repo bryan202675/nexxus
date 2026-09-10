@@ -1,6 +1,7 @@
 import { supabase } from "supabaseClient/supabaseConfig";
 import { subscriptionExpiration, purchaseId as generarPurchaseId } from "services/checkout";
 import { subirLogoEmpresa } from "services/companyLogoUpload";
+import { requireRegistrationSession } from "services/registroSession";
 
 // Reglas y textos portados de nexxus/app/src/Landing/LandingAuth.tsx, adaptados a JS/Horizon.
 // El alta de empresa (empresa + usuario admin + sede + departamento + configuraciones_empresa +
@@ -111,7 +112,8 @@ export function traducirErrorAuth(mensajeOCodigo) {
   return "Ocurrió un error. Intenta de nuevo.";
 }
 
-export async function nombreEmpresaDuplicado(nombre) {
+export async function nombreEmpresaDuplicado(nombre: string, expectedUid?: string) {
+  await requireRegistrationSession(expectedUid);
   const { data, error } = await supabase
     .from("empresas")
     .select("id")
@@ -150,6 +152,7 @@ async function generarCodigoEmpresa(nombreEmpresa) {
 // el plan NO se denormaliza en cada fila (usuarios/empresas): vive solo en
 // "suscripciones", una fila por empresa.
 export async function crearCuentaYEmpresa({ uid, correo, nombreAdmin, fotoPerfil, empresa, prefijoSeleccionado, checkout, logo }) {
+  await requireRegistrationSession(uid);
   const emailSeguro = correo || "";
   const telefonoCompleto = `${prefijoSeleccionado.trim()} ${limpiarTexto(empresa.telefono)}`.trim();
   const codigo = await generarCodigoEmpresa(empresa.nombre);
