@@ -373,6 +373,7 @@ export default function App() {
     return (
       <View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color="#7C3AED" />
+        <Text style={{ color: '#fff', marginTop: 10 }}>Cargando fuentes...</Text>
       </View>
     );
   }

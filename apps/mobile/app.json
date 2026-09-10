@@ -3,6 +3,7 @@
     "name": "nexxus",
     "slug": "nexxus",
     "version": "1.0.0",
+    "entryPoint": "./index.ts",
     "orientation": "portrait",
     "icon": "./assets/logoNexxus2 (1) (1).png",
     "userInterfaceStyle": "light",
@@ -20,6 +21,7 @@
       }
     },
     "android": {
+      "package": "com.bryan202675.nexxus",
       "adaptiveIcon": {
         "foregroundImage": "./assets/logoNexxus2 (1) (1).png",
         "backgroundColor": "#ffffff"
