@@ -101,12 +101,28 @@ export const FALLBACK_COUNTRIES = [
   { name: "Venezuela", code: "VE", dialCode: "+58" },
 ];
 
-export function traducirErrorAuth(mensajeOCodigo) {
-  const texto = String(mensajeOCodigo || "").toLowerCase();
+export function traducirErrorAuth(error: unknown) {
+  const details = typeof error === "object" && error !== null ? error : {};
+  const code = "code" in details ? String(details.code) : "";
+  const status = "status" in details ? details.status : undefined;
+  const message = "message" in details ? details.message : error;
+  const texto = `${code} ${String(message || "")}`.toLowerCase();
+  if (texto.includes("over_email_send_rate_limit") || texto.includes("email rate limit")) {
+    return "Se alcanzó el límite de envío de correos de confirmación. Revisa si ya recibiste el enlace (también en spam). Si no llegó, espera antes de volver a intentarlo o continúa con Google.";
+  }
+  if (status === 429 || texto.includes("over_request_rate_limit") || texto.includes("too many requests") || texto.includes("rate limit")) {
+    return "Demasiados intentos. Espera unos minutos antes de volver a intentarlo.";
+  }
+  if (texto.includes("email_not_confirmed") || texto.includes("email not confirmed")) {
+    return "Confirma tu correo antes de iniciar sesión. Busca el enlace de confirmación en tu bandeja de entrada o en spam; no necesitas crear otra cuenta.";
+  }
+  if (texto.includes("email_address_not_authorized") || texto.includes("email address not authorized")) {
+    return "El envío de correos de confirmación aún no está habilitado para este destinatario. Continúa con Google o contacta con soporte.";
+  }
   if (texto.includes("already registered") || texto.includes("already-in-use") || texto.includes("already exists")) {
     return "Ese correo ya tiene una cuenta. Inicia sesión en su lugar.";
   }
-  if (texto.includes("invalid login credentials") || texto.includes("invalid-credential")) return "Correo o contraseña incorrectos.";
+  if (texto.includes("invalid_credentials") || texto.includes("invalid login credentials") || texto.includes("invalid-credential")) return "Correo o contraseña incorrectos.";
   if (texto.includes("popup closed")) return "Ventana de Google cerrada antes de terminar.";
   if (texto.includes("password") && texto.includes("weak")) return "La contraseña es demasiado débil.";
   return "Ocurrió un error. Intenta de nuevo.";

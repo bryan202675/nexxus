@@ -7,7 +7,28 @@ import {
   seguridadPassword,
   validarTelefono,
   validarEmpresaForm,
+  traducirErrorAuth,
 } from '../registro';
+
+describe('traducirErrorAuth', () => {
+  it('explica el límite de correo usando el código del servidor', () => {
+    expect(traducirErrorAuth({ status: 429, code: 'over_email_send_rate_limit', message: 'limited' })).toMatch(/límite de envío de correos/);
+  });
+  it('distingue el límite general de solicitudes', () => {
+    expect(traducirErrorAuth({ status: 429, code: 'over_request_rate_limit' })).toMatch(/Demasiados intentos/);
+  });
+  it('explica cómo continuar con una cuenta pendiente de confirmar', () => {
+    expect(traducirErrorAuth({ status: 400, code: 'email_not_confirmed' })).toMatch(/no necesitas crear otra cuenta/);
+  });
+  it('explica la restricción del proveedor de correo de prueba', () => {
+    expect(traducirErrorAuth({ code: 'email_address_not_authorized' })).toMatch(/Continúa con Google/);
+  });
+  it('mantiene la traducción de credenciales y oculta detalles desconocidos', () => {
+    expect(traducirErrorAuth('Invalid login credentials')).toBe('Correo o contraseña incorrectos.');
+    expect(traducirErrorAuth({ code: 'invalid_credentials' })).toBe('Correo o contraseña incorrectos.');
+    expect(traducirErrorAuth(new Error('internal details'))).not.toContain('internal details');
+  });
+});
 
 describe('limpiarTexto / normalizar', () => {
   it('colapsa espacios repetidos y recorta los extremos', () => {

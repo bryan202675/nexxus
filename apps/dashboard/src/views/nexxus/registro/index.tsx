@@ -166,6 +166,7 @@ export default function Registro() {
 
   const crearCuenta = async (event) => {
     event.preventDefault();
+    if (cargando) return;
     if (!validarPaso1()) return;
     setCargando(true);
     setError("");
@@ -195,7 +196,7 @@ export default function Registro() {
       setCheckoutForm((a) => ({ ...a, email: data.user.email || "" }));
       setPaso(2);
     } catch (err) {
-      setError(traducirErrorAuth(err.message));
+      setError(traducirErrorAuth(err));
     } finally {
       setCargando(false);
     }
@@ -215,7 +216,7 @@ export default function Registro() {
       });
       if (oauthError) throw oauthError;
     } catch (err) {
-      setError(traducirErrorAuth(err.message));
+      setError(traducirErrorAuth(err));
       setCargando(false);
     }
   };

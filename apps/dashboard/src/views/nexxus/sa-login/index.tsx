@@ -5,13 +5,7 @@ import InputField from "components/fields/InputField";
 import { supabase } from "supabaseClient/supabaseConfig";
 import { useAuth } from "context/AuthContext";
 import { routeUrl } from "utils/routePath";
-
-const traducirError = (message) => {
-  const msg = String(message || "").toLowerCase();
-  if (msg.includes("invalid login credentials")) return "Correo o contraseña incorrectos.";
-  if (msg.includes("too many requests") || msg.includes("rate limit")) return "Demasiados intentos. Intenta de nuevo más tarde.";
-  return "No se pudo iniciar sesión. Intenta de nuevo.";
-};
+import { traducirErrorAuth } from "services/registro";
 
 export default function SaLogin() {
   const navigate = useNavigate();
@@ -52,6 +46,7 @@ export default function SaLogin() {
 
   const entrarConCorreo = async (event) => {
     event.preventDefault();
+    if (cargando) return;
     if (!correo || !password) {
       setError("Ingresa tu correo y contraseña.");
       return;
@@ -65,7 +60,7 @@ export default function SaLogin() {
       });
       if (signInError) throw signInError;
     } catch (err) {
-      setError(traducirError(err.message));
+      setError(traducirErrorAuth(err));
     } finally {
       setCargando(false);
     }
@@ -86,7 +81,7 @@ export default function SaLogin() {
       });
       if (oauthError) throw oauthError;
     } catch (err) {
-      setError(traducirError(err.message));
+      setError(traducirErrorAuth(err));
       setCargando(false);
     }
   };
