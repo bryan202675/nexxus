@@ -299,14 +299,33 @@ export default function CentroReportesSolicitudes() {
       .sort((a, b) => Date.parse(b.fechaCreacion) - Date.parse(a.fechaCreacion));
   }, [ausencias, internas, reportes, cargando, tieneReportes, empleadosPorId]);
 
-  // KPIs
+  // KPIs y conteos de categorías
   const metricas = useMemo(() => {
     const pendientes = items.filter((i) => i.estado === "pendiente").length;
     const aprobadas = items.filter((i) => i.estado === "aprobada").length;
     const urgentes = items.filter((i) => i.prioridad === "urgente").length;
     const reportesCount = items.filter((i) => i.source === "reporte").length;
 
-    return { pendientes, aprobadas, urgentes, reportesCount };
+    let adelantos = 0;
+    let vacaciones = 0;
+    let compras = 0;
+
+    items.forEach((i) => {
+      const t = (i.tipo || "").toLowerCase();
+      if (t.includes("adelanto")) adelantos++;
+      if (t.includes("vaca") || t.includes("perm")) vacaciones++;
+      if (t.includes("comp") || t.includes("equip")) compras++;
+    });
+
+    return {
+      pendientes,
+      aprobadas,
+      urgentes,
+      reportesCount,
+      adelantos,
+      vacaciones,
+      compras,
+    };
   }, [items]);
 
   // Filtrado
@@ -342,7 +361,13 @@ export default function CentroReportesSolicitudes() {
 
   // Resolver Solicitud
   const handleResolve = async (item: any, nuevoEstado: string, customNotas?: string) => {
-    const notas = customNotas !== undefined ? customNotas : (window.prompt(`Notas de resolución (opcional) al ${nuevoEstado === "aprobada" ? "aprobar" : "rechazar"} "${item.titulo}":`, "") ?? null);
+    const notas =
+      customNotas !== undefined
+        ? customNotas
+        : (window.prompt(
+            `Notas de resolución (opcional) al ${nuevoEstado === "aprobada" ? "aprobar" : "rechazar"} "${item.titulo}":`,
+            ""
+          ) ?? null);
     if (notas === null) return;
 
     setAccionandoId(item.id);
@@ -458,133 +483,323 @@ export default function CentroReportesSolicitudes() {
         </div>
       )}
 
+      {/* Header */}
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
-            Bandeja Unificada de Solicitudes & Reportes
-          </h2>
-          <p className="mt-1 text-sm font-medium text-gray-500 dark:text-white/60">
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-xl font-bold tracking-tight text-navy-700 dark:text-white">
+              Bandeja Unificada de Solicitudes & Reportes
+            </h2>
+            <span className="rounded-full bg-brand-500/10 px-3 py-1 text-xs font-bold text-brand-600 dark:bg-brand-400/20 dark:text-brand-300">
+              {items.length} registros
+            </span>
+          </div>
+          <p className="mt-0.5 text-xs font-medium text-gray-500 dark:text-white/60">
             Aprobación ágil de adelantos, permisos, vacaciones, compras y reportes disciplinarios.
           </p>
         </div>
 
-        {tieneReportes ? (
-          <button
-            type="button"
-            onClick={() => setShowCreateReporte(true)}
-            className="flex items-center gap-1.5 rounded-xl bg-brand-500 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 active:scale-95 dark:bg-brand-400"
-          >
-            <MdOutlineAdd className="h-4 w-4" />
-            <span>Crear Reporte Disciplinario</span>
-          </button>
-        ) : (
-          <span
-            title="Los reportes disciplinarios están disponibles desde el plan Business."
-            className="flex items-center gap-1.5 rounded-xl bg-gray-100 px-4 py-2.5 text-xs font-bold text-gray-400 dark:bg-white/5 dark:text-white/30"
-          >
-            <span>Crear Reporte (Business+)</span>
-          </span>
-        )}
+        <div className="flex items-center gap-3">
+          {tieneReportes ? (
+            <button
+              type="button"
+              onClick={() => setShowCreateReporte(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-brand-500 px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-600 active:scale-95 dark:bg-brand-400"
+            >
+              <MdOutlineAdd className="h-4 w-4" />
+              <span>Crear Reporte Disciplinario</span>
+            </button>
+          ) : (
+            <span
+              title="Los reportes disciplinarios están disponibles desde el plan Business."
+              className="inline-flex items-center gap-1.5 rounded-xl bg-gray-100 px-4 py-2.5 text-xs font-semibold text-gray-400 dark:bg-white/5 dark:text-white/30"
+            >
+              <span>Crear Reporte (Business+)</span>
+            </span>
+          )}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        {/* Solicitudes Pendientes */}
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                Pendientes de Revisión
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-amber-600 dark:text-amber-400">
-                {metricas.pendientes}
-              </h3>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:bg-amber-400/20 dark:text-amber-300">
-              <MdOutlinePendingActions className="h-6 w-6" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>Requieren tu acción</span>
-            <span className={metricas.pendientes > 0 ? "font-bold text-amber-600" : "font-bold text-emerald-600"}>
-              {metricas.pendientes > 0 ? "Atención requerida" : "Bandeja al día"}
-            </span>
-          </div>
-        </NexxusCard>
+      {/* Grid Asimétrico: Hero Card (7 cols) + Right Stack (5 cols) */}
+      {(() => {
+        const total = Math.max(items.length, 1);
+        const hayRegistros = items.length > 0;
+        const pendientesPct = Math.round((metricas.pendientes / total) * 100);
+        const aprobadasPct = Math.round((metricas.aprobadas / total) * 100);
+        const urgentesPct = Math.round((metricas.urgentes / total) * 100);
+        const reportesPct = Math.round((metricas.reportesCount / total) * 100);
 
-        {/* Aprobadas */}
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                Solicitudes Aprobadas
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">
-                {metricas.aprobadas}
-              </h3>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
-              <MdOutlineCheckCircle className="h-6 w-6" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>Tramitadas con éxito</span>
-            <span className="font-bold text-emerald-600">Procesadas</span>
-          </div>
-        </NexxusCard>
+        return (
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+            {/* Hero Card Principal (7 cols) */}
+            <div className="lg:col-span-7">
+              <NexxusCard extra="p-6 h-full flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-sm font-bold text-navy-700 dark:text-white">
+                        Pendientes de Revisión
+                      </span>
+                      <span className="ml-2 text-xs font-medium text-gray-400 dark:text-white/40">
+                        · Gestión de Novedades
+                      </span>
+                    </div>
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-bold ${
+                        metricas.pendientes > 0
+                          ? "bg-amber-500/10 text-amber-600 dark:bg-amber-400/20 dark:text-amber-300"
+                          : "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300"
+                      }`}
+                    >
+                      {metricas.pendientes > 0
+                        ? `${metricas.pendientes} por atender`
+                        : "Bandeja al día"}
+                    </span>
+                  </div>
 
-        {/* Urgentes */}
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                Alta Prioridad / Urgentes
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-rose-600 dark:text-rose-400">
-                {metricas.urgentes}
-              </h3>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-600 dark:bg-rose-400/20 dark:text-rose-300">
-              <MdOutlinePriorityHigh className="h-6 w-6" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>Prioridad crítica</span>
-            <span className={metricas.urgentes > 0 ? "font-bold text-rose-600" : "font-bold text-gray-400"}>
-              {metricas.urgentes > 0 ? "Prioritario" : "Sin urgencias"}
-            </span>
-          </div>
-        </NexxusCard>
+                  {/* Número Principal */}
+                  <div className="mt-4">
+                    {metricas.pendientes > 0 ? (
+                      <div>
+                        <p className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-navy-700 dark:text-white truncate">
+                          {metricas.pendientes}
+                        </p>
+                        <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                          <span>{pendientesPct}% del total de solicitudes</span>
+                          <span className="font-normal text-gray-400 dark:text-white/40">
+                            · Requieren atención de administración
+                          </span>
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="py-2">
+                        <p className="text-2xl sm:text-3xl font-black tracking-tight text-navy-700 dark:text-white">
+                          Bandeja de solicitudes al día
+                        </p>
+                        <p className="mt-1 text-xs font-medium text-gray-400 dark:text-white/50">
+                          No tienes solicitudes pendientes de resolución en este momento.
+                        </p>
+                      </div>
+                    )}
 
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                Reportes Disciplinarios
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
-                {metricas.reportesCount}
-              </h3>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-500/10 text-purple-600 dark:bg-purple-400/20 dark:text-purple-300">
-              <MdOutlineFactCheck className="h-6 w-6" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>Incidencias registradas</span>
-            <span className="font-bold text-purple-600 dark:text-purple-400">Expedientes</span>
-          </div>
-        </NexxusCard>
-      </div>
+                    <p className="mt-2 text-xs font-medium text-gray-500 dark:text-white/60">
+                      {metricas.aprobadas} solicitudes aprobadas · {metricas.urgentes} de prioridad urgente
+                    </p>
+                  </div>
+                </div>
 
-      <NexxusCard extra="p-6 flex flex-col gap-5" delay={100}>
+                <div className="mt-6">
+                  {/* Barra de Distribución Proporcional */}
+                  <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+                    {hayRegistros ? (
+                      <>
+                        <div
+                          style={{ width: `${Math.max(pendientesPct, 5)}%` }}
+                          className="h-full bg-amber-500 transition-all duration-500"
+                          title={`Pendientes: ${metricas.pendientes}`}
+                        />
+                        <div
+                          style={{ width: `${aprobadasPct}%` }}
+                          className="h-full bg-emerald-500 transition-all duration-500"
+                          title={`Aprobadas: ${metricas.aprobadas}`}
+                        />
+                        <div
+                          style={{ width: `${urgentesPct}%` }}
+                          className="h-full bg-rose-500 transition-all duration-500"
+                          title={`Urgentes: ${metricas.urgentes}`}
+                        />
+                        <div
+                          style={{ width: `${reportesPct}%` }}
+                          className="h-full bg-purple-500 transition-all duration-500"
+                          title={`Reportes: ${metricas.reportesCount}`}
+                        />
+                      </>
+                    ) : (
+                      <div className="h-full w-full bg-gray-200/50 dark:bg-white/5" />
+                    )}
+                  </div>
+
+                  {/* Leyenda con Métricas */}
+                  {hayRegistros ? (
+                    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500" />
+                        <div className="min-w-0">
+                          <p className="truncate text-[11px] font-bold text-navy-700 dark:text-white">
+                            {metricas.pendientes}
+                          </p>
+                          <p className="truncate text-[10px] text-gray-400 dark:text-white/40">
+                            Pendientes ({pendientesPct}%)
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500" />
+                        <div className="min-w-0">
+                          <p className="truncate text-[11px] font-bold text-navy-700 dark:text-white">
+                            {metricas.aprobadas}
+                          </p>
+                          <p className="truncate text-[10px] text-gray-400 dark:text-white/40">
+                            Aprobadas ({aprobadasPct}%)
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-rose-500" />
+                        <div className="min-w-0">
+                          <p className="truncate text-[11px] font-bold text-navy-700 dark:text-white">
+                            {metricas.urgentes}
+                          </p>
+                          <p className="truncate text-[10px] text-gray-400 dark:text-white/40">
+                            Urgentes ({urgentesPct}%)
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-purple-500" />
+                        <div className="min-w-0">
+                          <p className="truncate text-[11px] font-bold text-navy-700 dark:text-white">
+                            {metricas.reportesCount}
+                          </p>
+                          <p className="truncate text-[10px] text-gray-400 dark:text-white/40">
+                            Reportes ({reportesPct}%)
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-[11px] font-medium text-gray-400 dark:text-white/40">
+                      0 solicitudes registradas en total
+                    </p>
+                  )}
+                </div>
+              </NexxusCard>
+            </div>
+
+            {/* Right Stack of 3 Cards (5 cols) - Alineadas a la izquierda */}
+            <div className="flex flex-col gap-4 lg:col-span-5">
+              {/* Card 1: Solicitudes Aprobadas */}
+              <NexxusCard extra="p-5 flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-gray-500 dark:text-white/50">
+                    Solicitudes Aprobadas
+                  </span>
+                  <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
+                    Procesadas
+                  </span>
+                </div>
+                <div className="mt-2 text-left">
+                  {metricas.aprobadas > 0 ? (
+                    <>
+                      <p className="text-2xl sm:text-3xl font-black tracking-tight text-navy-700 dark:text-white">
+                        {metricas.aprobadas}
+                      </p>
+                      <p className="mt-1 text-[11px] text-gray-400 dark:text-white/40">
+                        Tramitadas con éxito por administración
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-base sm:text-lg font-bold tracking-tight text-navy-700 dark:text-white">
+                        Sin solicitudes aprobadas aún
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-gray-400 dark:text-white/40">
+                        Las aprobaciones aparecerán aquí
+                      </p>
+                    </>
+                  )}
+                </div>
+              </NexxusCard>
+
+              {/* Card 2: Alta Prioridad / Urgentes */}
+              <NexxusCard extra="p-5 flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-gray-500 dark:text-white/50">
+                    Alta Prioridad / Urgentes
+                  </span>
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                      metricas.urgentes > 0
+                        ? "bg-rose-500/10 text-rose-600 dark:bg-rose-400/20 dark:text-rose-300"
+                        : "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300"
+                    }`}
+                  >
+                    {metricas.urgentes > 0 ? "Prioritario" : "Sin urgencias"}
+                  </span>
+                </div>
+                <div className="mt-2 text-left">
+                  {metricas.urgentes > 0 ? (
+                    <>
+                      <p className="text-2xl sm:text-3xl font-black tracking-tight text-navy-700 dark:text-white">
+                        {metricas.urgentes}
+                      </p>
+                      <p className="mt-1 text-[11px] text-gray-400 dark:text-white/40">
+                        Casos con impacto operativo crítico
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-base sm:text-lg font-bold tracking-tight text-navy-700 dark:text-white">
+                        Sin solicitudes urgentes
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-gray-400 dark:text-white/40">
+                        No hay casos críticos pendientes
+                      </p>
+                    </>
+                  )}
+                </div>
+              </NexxusCard>
+
+              {/* Card 3: Reportes Disciplinarios */}
+              <NexxusCard extra="p-5 flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-gray-500 dark:text-white/50">
+                    Reportes Disciplinarios
+                  </span>
+                  <span className="rounded-full bg-purple-500/10 px-2.5 py-0.5 text-[11px] font-bold text-purple-600 dark:bg-purple-400/20 dark:text-purple-300">
+                    Expedientes
+                  </span>
+                </div>
+                <div className="mt-2 text-left">
+                  {metricas.reportesCount > 0 ? (
+                    <>
+                      <p className="text-2xl sm:text-3xl font-black tracking-tight text-navy-700 dark:text-white">
+                        {metricas.reportesCount}
+                      </p>
+                      <p className="mt-1 text-[11px] text-gray-400 dark:text-white/40">
+                        Incidencias registradas en el sistema
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-base sm:text-lg font-bold tracking-tight text-navy-700 dark:text-white">
+                        Sin reportes disciplinarios
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-gray-400 dark:text-white/40">
+                        Expediente de incidencias limpio
+                      </p>
+                    </>
+                  )}
+                </div>
+              </NexxusCard>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Contenedor Principal: Filtros y Tabla */}
+      <NexxusCard extra="p-6 flex flex-col gap-5">
         {/* Barra superior de filtrado y búsqueda */}
         <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
           <div>
-            <h4 className="text-xl font-bold tracking-tight text-navy-700 dark:text-white">
+            <h4 className="text-lg font-bold tracking-tight text-navy-700 dark:text-white">
               Bandeja de Solicitudes y Novedades
             </h4>
             <p className="mt-0.5 text-xs font-medium text-gray-500 dark:text-white/60">
-              Mostrando {itemsFiltrados.length} solicitudes registradas.
+              Mostrando {itemsFiltrados.length} de {items.length} solicitudes registradas.
             </p>
           </div>
 
@@ -596,8 +811,17 @@ export default function CentroReportesSolicitudes() {
                 placeholder="Buscar por colaborador, título o tipo..."
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2 pl-9 pr-3 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2 pl-9 pr-8 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
               />
+              {busqueda && (
+                <button
+                  type="button"
+                  onClick={() => setBusqueda("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-white"
+                >
+                  <MdOutlineClose className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -608,7 +832,7 @@ export default function CentroReportesSolicitudes() {
             <button
               type="button"
               onClick={() => setFiltroTipo("todos")}
-              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all active:scale-95 ${
                 filtroTipo === "todos"
                   ? "bg-brand-500 text-white shadow-sm shadow-brand-500/20"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-white/70"
@@ -619,47 +843,47 @@ export default function CentroReportesSolicitudes() {
             <button
               type="button"
               onClick={() => setFiltroTipo("adelanto")}
-              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all active:scale-95 ${
                 filtroTipo === "adelanto"
                   ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/20"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-white/70"
               }`}
             >
-              Adelantos
+              Adelantos ({metricas.adelantos})
             </button>
             <button
               type="button"
               onClick={() => setFiltroTipo("vacaciones")}
-              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all active:scale-95 ${
                 filtroTipo === "vacaciones"
                   ? "bg-cyan-500 text-white shadow-sm shadow-cyan-500/20"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-white/70"
               }`}
             >
-              Vacaciones & Permisos
+              Vacaciones & Permisos ({metricas.vacaciones})
             </button>
             <button
               type="button"
               onClick={() => setFiltroTipo("compra")}
-              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all active:scale-95 ${
                 filtroTipo === "compra"
                   ? "bg-amber-500 text-white shadow-sm shadow-amber-500/20"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-white/70"
               }`}
             >
-              Compras & Equipo
+              Compras & Equipo ({metricas.compras})
             </button>
             {tieneReportes && (
               <button
                 type="button"
                 onClick={() => setFiltroTipo("reporte")}
-                className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+                className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all active:scale-95 ${
                   filtroTipo === "reporte"
                     ? "bg-purple-500 text-white shadow-sm shadow-purple-500/20"
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-white/70"
                 }`}
               >
-                Reportes Disciplinarios
+                Reportes Disciplinarios ({metricas.reportesCount})
               </button>
             )}
           </div>
@@ -668,7 +892,7 @@ export default function CentroReportesSolicitudes() {
             <select
               value={filtroEstado}
               onChange={(e) => setFiltroEstado(e.target.value)}
-              className="h-8 rounded-xl border border-gray-200 bg-gray-50/50 px-2.5 text-xs font-semibold text-navy-700 outline-none dark:border-white/10 dark:bg-charcoal dark:text-white"
+              className="h-8 rounded-xl border border-gray-200 bg-gray-50/50 px-2.5 text-xs font-semibold text-navy-700 outline-none dark:border-white/10 dark:bg-charcoal dark:text-white cursor-pointer"
             >
               <option value="todos">Todos los estados</option>
               <option value="pendiente">Pendientes</option>
@@ -869,6 +1093,7 @@ export default function CentroReportesSolicitudes() {
         )}
       </NexxusCard>
 
+      {/* Modal: Detalle de Solicitud */}
       <Modal
         isOpen={!!selectedItem}
         onClose={() => setSelectedItem(null)}
@@ -969,6 +1194,7 @@ export default function CentroReportesSolicitudes() {
         ) : null}
       </Modal>
 
+      {/* Modal: Crear Reporte Disciplinario */}
       <Modal
         isOpen={showCreateReporte}
         onClose={() => setShowCreateReporte(false)}

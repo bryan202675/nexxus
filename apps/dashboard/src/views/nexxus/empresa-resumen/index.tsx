@@ -1,20 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  MdOutlinePeople,
-  MdOutlineTrendingUp,
-  MdOutlineFavorite,
-  MdOutlineNotificationsActive,
-  MdOutlineAccessTime,
-  MdOutlineDescription,
-  MdOutlineHistory,
   MdOutlineArrowForward,
   MdOutlineCheckCircle,
-  MdOutlineHourglassEmpty,
   MdOutlineWarningAmber,
-  MdOutlineFactCheck,
-  MdOutlineForum,
-  MdOutlineShield,
 } from "react-icons/md";
 
 import NexxusCard from "views/nexxus/components/NexxusCard";
@@ -91,6 +80,139 @@ const esSolicitudPendiente = (s: any) => {
     st === "pending"
   );
 };
+
+const ACTION_TITLES: Record<string, string> = {
+  // Solicitudes
+  resolucion_solicitud_ausencia: "Resolución de solicitud de ausencia",
+  resolucion_de_solicitud_ausencia: "Resolución de solicitud de ausencia",
+  resolucion_solicitud_interna: "Resolución de solicitud interna",
+  resolucion_de_solicitud_interna: "Resolución de solicitud interna",
+  resolucion_solicitud_extension: "Resolución de extensión de tarea",
+  resolucion_de_solicitud_extension: "Resolución de extensión de tarea",
+  solicitud_ausencia_creada: "Nueva solicitud de ausencia",
+  solicitud_interna_creada: "Nueva solicitud interna",
+  solicitud_extension_creada: "Nueva solicitud de extensión",
+  solicitud_ausencia: "Solicitud de ausencia",
+  solicitud_interna: "Solicitud interna",
+  solicitud_extension: "Solicitud de extensión",
+
+  // IA
+  consulta_ia: "Consulta IA Nexxus",
+  consulta_ia_nexxus: "Consulta IA Nexxus",
+  consulta_nexxus_ia: "Consulta IA Nexxus",
+  interaccion_asistente: "Interacción con Nexxus IA",
+  asistente_ia: "Consulta en Asistente IA",
+
+  // Documentos
+  subida_documento: "Subida de documento corporativo",
+  documento_subido: "Documento corporativo subido",
+  eliminacion_documento: "Eliminación de documento",
+  descarga_documento: "Descarga de documento",
+  documento_compartido: "Documento compartido",
+
+  // Plantilla / Usuarios
+  creacion_usuario: "Registro de nuevo colaborador",
+  usuario_creado: "Colaborador registrado",
+  edicion_usuario: "Actualización de colaborador",
+  usuario_actualizado: "Colaborador actualizado",
+  baja_usuario: "Baja de colaborador",
+  usuario_eliminado: "Colaborador eliminado",
+
+  // Asistencia & Check-in
+  checkin: "Registro de check-in emocional",
+  check_in: "Registro de check-in emocional",
+  entrada_marcada: "Marcación de entrada",
+  salida_marcada: "Marcación de salida",
+  asistencia_registrada: "Marcación de jornada",
+
+  // Tareas
+  tarea_creada: "Creación de tarea",
+  tarea_completada: "Tarea completada",
+  tarea_actualizada: "Actualización de tarea",
+
+  // Auth & Configuración
+  login: "Inicio de sesión",
+  logout: "Cierre de sesión",
+  cambio_password: "Cambio de contraseña",
+  actualizacion_perfil: "Actualización de perfil",
+  configuracion_actualizada: "Configuración actualizada",
+};
+
+const MODULE_STYLES: Record<string, { label: string; badge: string }> = {
+  ia: {
+    label: "IA Nexxus",
+    badge: "bg-purple-500/10 text-purple-600 dark:bg-purple-400/20 dark:text-purple-300 border border-purple-500/15",
+  },
+  solicitudes: {
+    label: "Solicitudes",
+    badge: "bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300 border border-blue-500/15",
+  },
+  documentos: {
+    label: "Documentos",
+    badge: "bg-amber-500/10 text-amber-600 dark:bg-amber-400/20 dark:text-amber-300 border border-amber-500/15",
+  },
+  usuarios: {
+    label: "Usuarios",
+    badge: "bg-indigo-500/10 text-indigo-600 dark:bg-indigo-400/20 dark:text-indigo-300 border border-indigo-500/15",
+  },
+  plantilla: {
+    label: "Plantilla",
+    badge: "bg-indigo-500/10 text-indigo-600 dark:bg-indigo-400/20 dark:text-indigo-300 border border-indigo-500/15",
+  },
+  asistencia: {
+    label: "Asistencia",
+    badge: "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300 border border-emerald-500/15",
+  },
+  nomina: {
+    label: "Nómina",
+    badge: "bg-teal-500/10 text-teal-600 dark:bg-teal-400/20 dark:text-teal-300 border border-teal-500/15",
+  },
+  seguridad: {
+    label: "Seguridad",
+    badge: "bg-rose-500/10 text-rose-600 dark:bg-rose-400/20 dark:text-rose-300 border border-rose-500/15",
+  },
+  auth: {
+    label: "Seguridad",
+    badge: "bg-rose-500/10 text-rose-600 dark:bg-rose-400/20 dark:text-rose-300 border border-rose-500/15",
+  },
+};
+
+function resolveModuleStyle(moduloRaw: string) {
+  const key = (moduloRaw || "").trim().toLowerCase().replace(/[\s_-]+/g, "");
+  if (MODULE_STYLES[key]) return MODULE_STYLES[key];
+  if (key.includes("ia") || key.includes("ai")) return MODULE_STYLES.ia;
+  if (key.includes("solicitud")) return MODULE_STYLES.solicitudes;
+  if (key.includes("doc")) return MODULE_STYLES.documentos;
+  if (key.includes("plantilla") || key.includes("usuario") || key.includes("empleado")) return MODULE_STYLES.usuarios;
+  if (key.includes("asistencia") || key.includes("jornada")) return MODULE_STYLES.asistencia;
+  if (key.includes("nom")) return MODULE_STYLES.nomina;
+  if (key.includes("seg") || key.includes("auth") || key.includes("login")) return MODULE_STYLES.seguridad;
+
+  return {
+    label: moduloRaw || "Sistema",
+    badge: "bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-white/70 border border-gray-200/50 dark:border-white/10",
+  };
+}
+
+function formatearAccionAudit(str: string): string {
+  if (!str) return "Operación registrada";
+  const normalizedKey = str.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (ACTION_TITLES[normalizedKey]) return ACTION_TITLES[normalizedKey];
+
+  // Clean underscores & dashes
+  let cleaned = str.replace(/[_-]+/g, " ").trim();
+  // Sentence case: Capitalize first letter, keep rest lowercase
+  cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase();
+  // Restore acronyms / proper nouns
+  cleaned = cleaned
+    .replace(/\bia\b/gi, "IA")
+    .replace(/\bnexxus\b/gi, "Nexxus")
+    .replace(/\brrhh\b/gi, "RRHH")
+    .replace(/\bpdf\b/gi, "PDF")
+    .replace(/\bdni\b/gi, "DNI")
+    .replace(/\bapi\b/gi, "API");
+  return cleaned;
+}
 
 export default function DashboardAdmin() {
   const navigate = useNavigate();
@@ -337,20 +459,35 @@ export default function DashboardAdmin() {
       .slice(0, 6);
   }, [empleados, checkIns]);
 
-  // Feed de auditoría filtrable con información enriquecida
+  // Feed de auditoría filtrable con información enriquecida y limpia
   const actividadReciente = useMemo(() => {
     return auditoria
       .filter((a) => {
         if (moduloFiltro === "todos") return true;
-        return (a.modulo || "").toLowerCase().includes(moduloFiltro);
+        const mod = (a.modulo || "").toLowerCase();
+        if (moduloFiltro === "usuarios") {
+          return mod.includes("usuario") || mod.includes("plantilla") || mod.includes("empleado");
+        }
+        if (moduloFiltro === "ia") {
+          return mod.includes("ia") || mod.includes("ai");
+        }
+        if (moduloFiltro === "solicitudes") {
+          return mod.includes("solicitud");
+        }
+        if (moduloFiltro === "documentos") {
+          return mod.includes("doc");
+        }
+        return mod.includes(moduloFiltro);
       })
       .slice(0, 7)
       .map((a) => {
         const actor = empleadosPorId.get(a.actor_id);
+        const modStyle = resolveModuleStyle(a.modulo);
         return {
           id: a.id || `${a.created_at}-${a.accion}`,
-          accion: a.accion || "Operación registrada",
-          modulo: a.modulo || "Sistema",
+          accion: formatearAccionAudit(a.accion),
+          modulo: modStyle.label,
+          badgeClass: modStyle.badge,
           actorNombre: actor?.nombre || a.actor_email || "Usuario del sistema",
           actorFoto: actor?.foto_url || actor?.avatar_url || null,
           fecha: formatoFecha(a.created_at),
@@ -396,227 +533,313 @@ export default function DashboardAdmin() {
         </div>
       ) : (
         <>
-          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+          {/* Header Superior completamente limpio */}
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
             <div>
-              <h2 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
+              <h2 className="text-2xl font-bold tracking-tight text-navy-700 sm:text-3xl dark:text-white">
                 Panorama General
               </h2>
-              <p className="mt-1 text-sm font-medium text-gray-500 dark:text-white/60">
-                Métricas operativas, cumplimiento de equipo y bienestar de {empresaNombre || "la empresa"}.
+              <p className="mt-1 text-xs sm:text-sm font-medium text-gray-400 dark:text-white/50">
+                Resumen operativo · {empresaNombre || "Empresa"}
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <button
                 type="button"
                 onClick={() => navigate(routeUrl("/admin", "empresa-plantilla"))}
-                className="flex items-center gap-1.5 rounded-xl bg-white px-3.5 py-2 text-xs font-bold text-navy-700 shadow-sm transition hover:bg-gray-50 dark:bg-charcoal dark:border dark:border-charcoal-border dark:text-white dark:hover:bg-white/5"
+                className="inline-flex items-center gap-2 rounded-xl border border-gray-200/80 bg-white px-4 py-2 text-xs font-bold text-navy-700 shadow-xs transition duration-150 hover:bg-gray-50 hover:border-gray-300 active:scale-[0.98] dark:border-white/10 dark:bg-charcoal dark:text-white dark:hover:bg-white/5"
               >
-                <MdOutlinePeople className="h-4 w-4 text-brand-500" />
                 <span>Gestionar Plantilla</span>
               </button>
               <button
                 type="button"
                 onClick={() => navigate(routeUrl("/admin", "empresa-cuidado-equipo"))}
-                className="flex items-center gap-1.5 rounded-xl bg-brand-500 px-3.5 py-2 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 active:scale-95"
+                className="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-4 py-2 text-xs font-bold text-white shadow-sm shadow-brand-500/25 transition duration-150 hover:bg-brand-600 active:scale-[0.98]"
               >
-                <MdOutlineFavorite className="h-4 w-4" />
                 <span>Panel Bienestar</span>
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-            {/* KPI 1: Capital Humano */}
-            <NexxusCard
-              extra="p-5 cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
-              onClick={() => navigate(routeUrl("/admin", "empresa-plantilla"))}
-            >
-              <div className="flex items-start justify-between">
+          {/* Bloque Hero & Stack Lateral de 3 Cards (Estructura de Referencia) */}
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 items-stretch">
+            {/* Left Hero Card: Productividad & Tareas (7 columnas en desktop) */}
+            <div className="lg:col-span-7 flex flex-col">
+              <NexxusCard
+                extra="p-6 h-full flex flex-col justify-between transition-all duration-200 hover:shadow-md"
+                delay={50}
+              >
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-gray-400 dark:text-white/50">
+                      Productividad
+                    </p>
+                    <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
+                      {metricas.productividad}% completitud
+                    </span>
+                  </div>
+
+                  {/* Número Principal Gigante */}
+                  <div className="mt-3">
+                    <h3 className="text-4xl sm:text-5xl font-black tracking-tight text-navy-700 dark:text-white">
+                      {metricas.productividad}%
+                    </h3>
+                    <p className="mt-1 text-xs sm:text-sm font-medium text-gray-500 dark:text-white/60">
+                      {metricas.tareasCompletadas} tareas hechas de {metricas.totalTareas} totales
+                    </p>
+                  </div>
+
+                  {/* Barra de progreso de distribución proporcional */}
+                  <div className="mt-5">
+                    <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+                      {metricas.totalTareas > 0 ? (
+                        <>
+                          <div
+                            title={`Completadas: ${metricas.tareasCompletadas} (${Math.round((metricas.tareasCompletadas / metricas.totalTareas) * 100)}%)`}
+                            className="bg-emerald-500 transition-all duration-500"
+                            style={{ width: `${(metricas.tareasCompletadas / metricas.totalTareas) * 100}%` }}
+                          />
+                          <div
+                            title={`En curso: ${metricas.tareasProgreso} (${Math.round((metricas.tareasProgreso / metricas.totalTareas) * 100)}%)`}
+                            className="bg-brand-500 transition-all duration-500"
+                            style={{ width: `${(metricas.tareasProgreso / metricas.totalTareas) * 100}%` }}
+                          />
+                          <div
+                            title={`Pendientes: ${metricas.tareasPendientes} (${Math.round((metricas.tareasPendientes / metricas.totalTareas) * 100)}%)`}
+                            className="bg-amber-400 transition-all duration-500"
+                            style={{ width: `${(metricas.tareasPendientes / metricas.totalTareas) * 100}%` }}
+                          />
+                          <div
+                            title={`Vencidas: ${metricas.tareasVencidas} (${Math.round((metricas.tareasVencidas / metricas.totalTareas) * 100)}%)`}
+                            className="bg-rose-500 transition-all duration-500"
+                            style={{ width: `${(metricas.tareasVencidas / metricas.totalTareas) * 100}%` }}
+                          />
+                        </>
+                      ) : (
+                        <div className="w-full bg-gray-200 dark:bg-white/10" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Desglose con identificación exacta de cada color y su dato */}
+                <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3 border-t border-gray-100 pt-4 dark:border-white/10">
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+                      <p className="text-xs font-semibold text-gray-400 dark:text-white/50">Completadas</p>
+                    </div>
+                    <div className="mt-1 flex items-baseline gap-1.5">
+                      <span className="text-lg sm:text-xl font-black text-navy-700 dark:text-white">
+                        {metricas.tareasCompletadas}
+                      </span>
+                      <span className="text-[11px] font-medium text-gray-400 dark:text-white/40">
+                        ({metricas.totalTareas > 0 ? Math.round((metricas.tareasCompletadas / metricas.totalTareas) * 100) : 0}%)
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-brand-500 shrink-0" />
+                      <p className="text-xs font-semibold text-gray-400 dark:text-white/50">En curso</p>
+                    </div>
+                    <div className="mt-1 flex items-baseline gap-1.5">
+                      <span className="text-lg sm:text-xl font-black text-navy-700 dark:text-white">
+                        {metricas.tareasProgreso}
+                      </span>
+                      <span className="text-[11px] font-medium text-gray-400 dark:text-white/40">
+                        ({metricas.totalTareas > 0 ? Math.round((metricas.tareasProgreso / metricas.totalTareas) * 100) : 0}%)
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-amber-400 shrink-0" />
+                      <p className="text-xs font-semibold text-gray-400 dark:text-white/50">Pendientes</p>
+                    </div>
+                    <div className="mt-1 flex items-baseline gap-1.5">
+                      <span className="text-lg sm:text-xl font-black text-navy-700 dark:text-white">
+                        {metricas.tareasPendientes}
+                      </span>
+                      <span className="text-[11px] font-medium text-gray-400 dark:text-white/40">
+                        ({metricas.totalTareas > 0 ? Math.round((metricas.tareasPendientes / metricas.totalTareas) * 100) : 0}%)
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-rose-500 shrink-0" />
+                      <p className="text-xs font-semibold text-gray-400 dark:text-white/50">Vencidas</p>
+                    </div>
+                    <div className="mt-1 flex items-baseline gap-1.5">
+                      <span className={`text-lg sm:text-xl font-black ${metricas.tareasVencidas > 0 ? "text-rose-600 dark:text-rose-400" : "text-navy-700 dark:text-white"}`}>
+                        {metricas.tareasVencidas}
+                      </span>
+                      <span className="text-[11px] font-medium text-gray-400 dark:text-white/40">
+                        ({metricas.totalTareas > 0 ? Math.round((metricas.tareasVencidas / metricas.totalTareas) * 100) : 0}%)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </NexxusCard>
+            </div>
+
+            {/* Right Column: Stack de 3 Cards Métricas Limpias (5 columnas en desktop) */}
+            <div className="lg:col-span-5 flex flex-col gap-4">
+              {/* Stat Card 1: Equipo & Plantilla */}
+              <NexxusCard
+                extra="p-5 flex-1 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+                delay={100}
+                onClick={() => navigate(routeUrl("/admin", "empresa-plantilla"))}
+              >
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-gray-400 dark:text-white/50">
                     Equipo & Plantilla
                   </p>
-                  <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
+                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                    {metricas.entradasHoy} presentes
+                  </span>
+                </div>
+                <div className="mt-2 flex items-baseline justify-between">
+                  <h4 className="text-2xl sm:text-3xl font-black tracking-tight text-navy-700 dark:text-white">
                     {metricas.activos}
-                    <span className="ml-1 text-sm font-semibold text-gray-500 dark:text-white/60">
-                      activos
-                    </span>
-                  </h3>
+                  </h4>
+                  <span className="text-xs text-gray-400 dark:text-white/40">
+                    {metricas.inactivos} inactivos
+                  </span>
                 </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500/10 text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
-                  <MdOutlinePeople className="h-6 w-6" />
-                </div>
-              </div>
+              </NexxusCard>
 
-              <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-                <span className="flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                  {metricas.entradasHoy} presentes hoy
-                </span>
-                <span>{metricas.inactivos} inactivos</span>
-              </div>
-            </NexxusCard>
-
-            {/* KPI 2: Productividad */}
-            <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                    Productividad
-                  </p>
-                  <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
-                    {metricas.productividad}%
-                  </h3>
-                </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
-                  <MdOutlineTrendingUp className="h-6 w-6" />
-                </div>
-              </div>
-
-              {/* Barra de progreso de productividad */}
-              <div className="mt-3">
-                <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
-                  <div
-                    className="h-full rounded-full bg-emerald-500 transition-all duration-500"
-                    style={{ width: `${Math.min(100, Math.max(0, metricas.productividad))}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className="mt-2 flex items-center justify-between text-xs font-medium text-gray-500 dark:text-white/60">
-                <span>{metricas.tareasCompletadas} de {metricas.totalTareas} hechas</span>
-                <span>{metricas.tareasPendientes + metricas.tareasProgreso} pendientes</span>
-              </div>
-            </NexxusCard>
-
-            {/* KPI 3: Bienestar del Equipo (Métrica Real) */}
-            <NexxusCard
-              extra="p-5 cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
-              onClick={() => navigate(routeUrl("/admin", "empresa-cuidado-equipo"))}
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
+              {/* Stat Card 2: Índice de Bienestar */}
+              <NexxusCard
+                extra="p-5 flex-1 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+                delay={130}
+                onClick={() => navigate(routeUrl("/admin", "empresa-cuidado-equipo"))}
+              >
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-gray-400 dark:text-white/50">
                     Índice de Bienestar
                   </p>
-                  <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
-                    {metricas.bienestar > 0 ? `${metricas.bienestar}%` : "—"}
-                  </h3>
-                </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-500 dark:bg-rose-400/20 dark:text-rose-300">
-                  <MdOutlineFavorite className="h-6 w-6" />
-                </div>
-              </div>
-
-              <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-                <span className="flex items-center gap-1">
                   <span
-                    className={`h-2 w-2 rounded-full ${
-                      metricas.bienestar >= 75
-                        ? "bg-emerald-500"
-                        : metricas.bienestar >= 50
-                        ? "bg-amber-500"
-                        : "bg-rose-500"
+                    className={`text-xs font-bold ${
+                      metricas.enRiesgo > 0
+                        ? "text-amber-600 dark:text-amber-400"
+                        : "text-emerald-600 dark:text-emerald-400"
                     }`}
-                  />
-                  {metricas.enRiesgo > 0 ? `${metricas.enRiesgo} en riesgo` : "Clima óptimo"}
-                </span>
-                <span>{metricas.checkInsHoy} check-ins hoy</span>
-              </div>
-            </NexxusCard>
+                  >
+                    {metricas.enRiesgo > 0 ? `${metricas.enRiesgo} en riesgo` : "Clima óptimo"}
+                  </span>
+                </div>
+                <div className="mt-2 flex items-baseline justify-between">
+                  <h4 className="text-2xl sm:text-3xl font-black tracking-tight text-navy-700 dark:text-white">
+                    {metricas.bienestar > 0 ? `${metricas.bienestar}%` : "—"}
+                  </h4>
+                  <span className="text-xs text-gray-400 dark:text-white/40">
+                    {metricas.checkInsHoy} check-ins hoy
+                  </span>
+                </div>
+              </NexxusCard>
 
-            {/* KPI 4: Aprobaciones Pendientes */}
-            <NexxusCard
-              extra="p-5 cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
-              onClick={() => navigate(routeUrl("/admin", "empresa-solicitudes"))}
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
+              {/* Stat Card 3: Aprobaciones Pendientes */}
+              <NexxusCard
+                extra="p-5 flex-1 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+                delay={160}
+                onClick={() => navigate(routeUrl("/admin", "empresa-solicitudes"))}
+              >
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-gray-400 dark:text-white/50">
                     Aprobaciones Pendientes
                   </p>
-                  <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
+                  <span className="text-xs font-bold text-brand-500 hover:underline flex items-center gap-1">
+                    Resolver <MdOutlineArrowForward className="h-3 w-3" />
+                  </span>
+                </div>
+                <div className="mt-2 flex items-baseline justify-between">
+                  <h4 className="text-2xl sm:text-3xl font-black tracking-tight text-navy-700 dark:text-white">
                     {metricas.aprobacionesPendientes}
-                    <span className="ml-1 text-sm font-semibold text-gray-500 dark:text-white/60">
-                      solicitudes
-                    </span>
-                  </h3>
+                  </h4>
+                  <span className="text-xs text-gray-400 dark:text-white/40">
+                    {metricas.ausenciasPendientes} ausencias
+                  </span>
                 </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:bg-amber-400/20 dark:text-amber-300">
-                  <MdOutlineNotificationsActive className="h-6 w-6" />
-                </div>
-              </div>
-
-              <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-                <span>{metricas.ausenciasPendientes} ausencias</span>
-                <span className="flex items-center gap-1 text-brand-500 font-bold hover:underline">
-                  Resolver <MdOutlineArrowForward className="h-3.5 w-3.5" />
-                </span>
-              </div>
-            </NexxusCard>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <div className="flex items-center gap-3.5 rounded-2xl bg-white p-4 shadow-sm transition dark:bg-charcoal dark:border dark:border-charcoal-border">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
-                <MdOutlineAccessTime className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-xs font-medium text-gray-500 dark:text-white/60">
-                  Jornada de hoy
-                </p>
-                <p className="text-base font-bold text-navy-700 dark:text-white">
-                  {metricas.entradasHoy} entradas <span className="font-normal text-xs text-gray-400">/ {metricas.salidasHoy} salidas</span>
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3.5 rounded-2xl bg-white p-4 shadow-sm transition dark:bg-charcoal dark:border dark:border-charcoal-border">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:bg-purple-400/20 dark:text-purple-300">
-                <MdOutlineDescription className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-xs font-medium text-gray-500 dark:text-white/60">
-                  Documentos por revisar
-                </p>
-                <p className="text-base font-bold text-navy-700 dark:text-white">
-                  {metricas.documentosPendientes}{" "}
-                  <span className="font-normal text-xs text-gray-400">pendientes</span>
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3.5 rounded-2xl bg-white p-4 shadow-sm transition dark:bg-charcoal dark:border dark:border-charcoal-border">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
-                <MdOutlineShield className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-xs font-medium text-gray-500 dark:text-white/60">
-                  Eventos de auditoría
-                </p>
-                <p className="text-base font-bold text-navy-700 dark:text-white">
-                  {metricas.alertas} <span className="font-normal text-xs text-gray-400">hoy</span>
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3.5 rounded-2xl bg-white p-4 shadow-sm transition dark:bg-charcoal dark:border dark:border-charcoal-border">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:bg-rose-400/20 dark:text-rose-300">
-                <MdOutlineForum className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-xs font-medium text-gray-500 dark:text-white/60">
-                  Incidencias / Mensajes
-                </p>
-                <p className="text-base font-bold text-navy-700 dark:text-white">
-                  {metricas.incidenciasAbiertas}{" "}
-                  <span className="font-normal text-xs text-gray-400">incidencias</span>
-                </p>
-              </div>
+              </NexxusCard>
             </div>
           </div>
 
+          {/* Barra de Telemetría Operativa Continua (Sin iconos, números destacados) */}
+          <NexxusCard extra="p-0 overflow-hidden shadow-xs" delay={180}>
+            <div className="grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-gray-100 dark:divide-white/[0.08]">
+              {/* Telemetría 1: Jornada */}
+              <div className="p-4 sm:p-5">
+                <p className="text-xs font-semibold text-gray-400 dark:text-white/50">Jornada de Hoy</p>
+                <div className="mt-1 flex items-baseline gap-1.5">
+                  <span className="text-2xl sm:text-3xl font-black tracking-tight text-navy-700 dark:text-white">
+                    {metricas.entradasHoy}
+                  </span>
+                  <span className="text-xs font-medium text-gray-500 dark:text-white/60">
+                    entradas / {metricas.salidasHoy} salidas
+                  </span>
+                </div>
+                <p className="mt-1 text-[11px] text-gray-400 dark:text-white/40">
+                  {metricas.retrasos > 0 ? `${metricas.retrasos} retrasos registrados` : "Sin retrasos"}
+                </p>
+              </div>
+
+              {/* Telemetría 2: Documentos */}
+              <div className="p-4 sm:p-5">
+                <p className="text-xs font-semibold text-gray-400 dark:text-white/50">Documentación</p>
+                <div className="mt-1 flex items-baseline gap-1.5">
+                  <span className="text-2xl sm:text-3xl font-black tracking-tight text-navy-700 dark:text-white">
+                    {metricas.documentosPendientes}
+                  </span>
+                  <span className="text-xs font-medium text-gray-500 dark:text-white/60">
+                    pendientes
+                  </span>
+                </div>
+                <p className="mt-1 text-[11px] text-gray-400 dark:text-white/40">
+                  {metricas.notificacionesNoLeidas} avisos sin leer
+                </p>
+              </div>
+
+              {/* Telemetría 3: Auditoría */}
+              <div className="p-4 sm:p-5">
+                <p className="text-xs font-semibold text-gray-400 dark:text-white/50">Auditoría & Logs</p>
+                <div className="mt-1 flex items-baseline gap-1.5">
+                  <span className="text-2xl sm:text-3xl font-black tracking-tight text-navy-700 dark:text-white">
+                    {metricas.alertas}
+                  </span>
+                  <span className="text-xs font-medium text-gray-500 dark:text-white/60">
+                    eventos hoy
+                  </span>
+                </div>
+                <p className="mt-1 text-[11px] text-gray-400 dark:text-white/40">
+                  Trazabilidad del sistema
+                </p>
+              </div>
+
+              {/* Telemetría 4: Incidencias */}
+              <div className="p-4 sm:p-5">
+                <p className="text-xs font-semibold text-gray-400 dark:text-white/50">Incidencias</p>
+                <div className="mt-1 flex items-baseline gap-1.5">
+                  <span className="text-2xl sm:text-3xl font-black tracking-tight text-navy-700 dark:text-white">
+                    {metricas.incidenciasAbiertas}
+                  </span>
+                  <span className="text-xs font-medium text-gray-500 dark:text-white/60">
+                    abiertas
+                  </span>
+                </div>
+                <p className="mt-1 text-[11px] text-gray-400 dark:text-white/40">
+                  {metricas.inboxCritico > 0 ? `${metricas.inboxCritico} críticas` : "Sin incidencias críticas"}
+                </p>
+              </div>
+            </div>
+          </NexxusCard>
+
+          {/* Sección Media: Gráfico de Tendencias (2/3) + Solicitudes Prioritarias (1/3) */}
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-3 items-stretch">
             {/* Gráfico de rendimiento semanal (2 columnas de 3) */}
             <div className="xl:col-span-2 flex flex-col h-full">
@@ -632,28 +855,25 @@ export default function DashboardAdmin() {
                   },
                 ]}
                 categories={serieDiaria.categorias}
-                delay={100}
+                delay={200}
               />
             </div>
 
-            {/* Bandeja de Solicitudes Pendientes (1 columna de 3) */}
+            {/* Bandeja de Solicitudes Prioritarias (1 columna de 3) */}
             <div className="xl:col-span-1 flex flex-col h-full">
-              <NexxusCard extra="p-6 flex flex-col justify-between h-full" delay={150}>
+              <NexxusCard extra="p-6 flex flex-col justify-between h-full" delay={220}>
                 <div>
-                  <div className="flex items-center justify-between border-b border-gray-100 pb-3 dark:border-white/10">
-                    <div className="flex items-center gap-2">
-                      <MdOutlineFactCheck className="h-5 w-5 text-brand-500" />
-                      <h4 className="text-base font-bold text-navy-700 dark:text-white">
-                        Solicitudes Prioritarias
-                      </h4>
-                    </div>
-                    <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-bold text-amber-600 dark:bg-amber-400/20 dark:text-amber-400">
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-3.5 dark:border-white/10">
+                    <h4 className="text-sm sm:text-base font-bold text-navy-700 dark:text-white">
+                      Solicitudes Prioritarias
+                    </h4>
+                    <span className="rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-bold text-amber-600 dark:bg-amber-400/20 dark:text-amber-400">
                       {solicitudesPendientes.length}
                     </span>
                   </div>
 
                   {solicitudesPendientes.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
                       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500 dark:bg-emerald-400/20 dark:text-emerald-400">
                         <MdOutlineCheckCircle className="h-6 w-6" />
                       </div>
@@ -665,7 +885,7 @@ export default function DashboardAdmin() {
                       </p>
                     </div>
                   ) : (
-                    <div className="mt-4 flex flex-col gap-3">
+                    <div className="mt-2 flex flex-col divide-y divide-gray-100 dark:divide-white/5">
                       {solicitudesPendientes.map((s) => {
                         const emp = empleadosPorId.get(s.usuario_id || s.userId);
                         const esResolviendo = resolviendoId === s.id;
@@ -673,49 +893,50 @@ export default function DashboardAdmin() {
                         return (
                           <div
                             key={s.id}
-                            className="flex flex-col gap-2 rounded-xl border border-gray-100 p-3 transition hover:bg-gray-50/70 dark:border-white/5 dark:hover:bg-white/5"
+                            className="flex items-center justify-between py-3 px-1 rounded-xl transition duration-150 hover:bg-gray-50/70 dark:hover:bg-white/5"
                           >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <Avatar
-                                  src={emp?.foto_url}
-                                  name={emp?.nombre || "Empleado"}
-                                  size={8}
-                                />
-                                <div className="min-w-0">
-                                  <p className="truncate text-xs font-bold text-navy-700 dark:text-white">
-                                    {emp?.nombre || "Colaborador"}
-                                  </p>
-                                  <p className="truncate text-[11px] text-gray-400 dark:text-white/50">
-                                    {s.tipoItem} • {s.detalle}
-                                  </p>
-                                </div>
+                            <div className="flex items-center gap-3 min-w-0">
+                              <Avatar
+                                src={emp?.foto_url}
+                                name={emp?.nombre || "Empleado"}
+                                size={8}
+                              />
+                              <div className="min-w-0">
+                                <p className="truncate text-xs sm:text-sm font-semibold text-navy-700 dark:text-white">
+                                  {emp?.nombre || "Colaborador"}
+                                </p>
+                                <p className="truncate text-[11px] text-gray-400 dark:text-white/50">
+                                  {s.tipoItem} • {s.detalle}
+                                </p>
                               </div>
-                              <span className="shrink-0 rounded-md bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:bg-amber-400/20 dark:text-amber-400">
-                                Pendiente
-                              </span>
                             </div>
 
-                            {s.tipoItem === "Extensión de Tarea" && (
-                              <div className="mt-1 flex items-center justify-end gap-2 pt-1 border-t border-gray-100 dark:border-white/5">
-                                <button
-                                  type="button"
-                                  disabled={esResolviendo}
-                                  onClick={() => resolverExtension(s, false)}
-                                  className="rounded-lg bg-red-500/10 px-2.5 py-1 text-[11px] font-bold text-red-600 hover:bg-red-500/20 dark:text-red-300"
-                                >
-                                  Rechazar
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={esResolviendo}
-                                  onClick={() => resolverExtension(s, true)}
-                                  className="rounded-lg bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-300"
-                                >
-                                  {esResolviendo ? "Procesando..." : "Aprobar"}
-                                </button>
-                              </div>
-                            )}
+                            <div className="flex items-center gap-2 shrink-0 pl-2">
+                              {s.tipoItem === "Extensión de Tarea" ? (
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    disabled={esResolviendo}
+                                    onClick={() => resolverExtension(s, false)}
+                                    className="rounded-lg bg-red-500/10 px-2 py-1 text-[11px] font-bold text-red-600 transition hover:bg-red-500/20 active:scale-95 dark:text-red-300"
+                                  >
+                                    Rechazar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={esResolviendo}
+                                    onClick={() => resolverExtension(s, true)}
+                                    className="rounded-lg bg-emerald-500/10 px-2 py-1 text-[11px] font-bold text-emerald-600 transition hover:bg-emerald-500/20 active:scale-95 dark:text-emerald-300"
+                                  >
+                                    {esResolviendo ? "..." : "Aprobar"}
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-bold text-amber-600 dark:bg-amber-400/20 dark:text-amber-400">
+                                  Pendiente
+                                </span>
+                              )}
+                            </div>
                           </div>
                         );
                       })}
@@ -726,32 +947,32 @@ export default function DashboardAdmin() {
                 <div className="mt-4 pt-3 border-t border-gray-100 dark:border-white/10">
                   <Link
                     to={routeUrl("/admin", "empresa-solicitudes")}
-                    className="flex items-center justify-center gap-1 text-xs font-bold text-brand-500 hover:text-brand-600 dark:text-brand-400"
+                    className="flex items-center justify-center gap-1.5 text-xs font-bold text-brand-500 hover:text-brand-600 dark:text-brand-400"
                   >
-                    Ver centro completo de solicitudes <MdOutlineArrowForward className="h-4 w-4" />
+                    <span>Ver centro completo de solicitudes</span>
+                    <MdOutlineArrowForward className="h-3.5 w-3.5" />
                   </Link>
                 </div>
               </NexxusCard>
             </div>
           </div>
 
+          {/* Sección Inferior: Feed de Actividad (2/3) + Sin Check-in Hoy (1/3) */}
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-3 items-stretch">
             {/* Feed de Actividad Reciente (2 columnas de 3) */}
             <div className="xl:col-span-2 flex flex-col h-full">
-              <NexxusCard extra="p-6 flex flex-col justify-between h-full" delay={200}>
+              <NexxusCard extra="p-6 flex flex-col justify-between h-full" delay={240}>
                 <div>
                   <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center border-b border-gray-100 pb-4 dark:border-white/10">
-                    <div className="flex items-center gap-2">
-                      <MdOutlineHistory className="h-5 w-5 text-brand-500" />
-                      <h4 className="text-base font-bold text-navy-700 dark:text-white">
-                        Actividad Reciente del Sistema
-                      </h4>
-                    </div>
+                    <h4 className="text-sm sm:text-base font-bold text-navy-700 dark:text-white">
+                      Actividad Reciente del Sistema
+                    </h4>
 
-                    {/* Filtro rápido por módulo */}
-                    <div className="flex flex-wrap items-center gap-1.5">
+                    {/* Segmented Pill Filter Controls */}
+                    <div className="flex flex-wrap items-center gap-1 rounded-xl bg-gray-100/80 p-1 dark:bg-white/5">
                       {[
                         { id: "todos", label: "Todos" },
+                        { id: "solicitudes", label: "Solicitudes" },
                         { id: "ia", label: "IA Nexxus" },
                         { id: "documentos", label: "Documentos" },
                         { id: "usuarios", label: "Usuarios" },
@@ -760,10 +981,10 @@ export default function DashboardAdmin() {
                           key={tab.id}
                           type="button"
                           onClick={() => setModuloFiltro(tab.id)}
-                          className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                          className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all duration-150 ${
                             moduloFiltro === tab.id
-                              ? "bg-brand-500 text-white"
-                              : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/10"
+                              ? "bg-white text-brand-500 shadow-xs font-bold dark:bg-charcoal dark:text-white"
+                              : "text-gray-500 hover:text-navy-700 dark:text-white/60 dark:hover:text-white"
                           }`}
                         >
                           {tab.label}
@@ -777,33 +998,33 @@ export default function DashboardAdmin() {
                       <p className="text-sm font-medium">No se registraron actividades en este filtro.</p>
                     </div>
                   ) : (
-                    <div className="mt-4 flex flex-col divide-y divide-gray-100 dark:divide-white/5">
+                    <div className="mt-3 flex flex-col gap-2.5">
                       {actividadReciente.map((item) => (
                         <div
                           key={item.id}
-                          className="flex items-center justify-between py-3.5 first:pt-0 last:pb-0 hover:bg-gray-50/50 px-2 rounded-lg transition dark:hover:bg-white/5"
+                          className="group flex items-center justify-between gap-3 rounded-2xl border border-gray-100/80 bg-white/70 p-3 shadow-xs transition-all duration-200 hover:border-gray-200 hover:bg-white hover:shadow-sm dark:border-white/5 dark:bg-white/[0.02] dark:hover:border-white/10 dark:hover:bg-white/[0.04]"
                         >
-                          <div className="flex items-center gap-3 min-w-0">
+                          <div className="flex items-center gap-3.5 min-w-0">
                             <Avatar
                               src={item.actorFoto}
                               name={item.actorNombre}
-                              size={9}
+                              size={8}
                             />
                             <div className="min-w-0">
-                              <p className="truncate text-xs font-bold text-navy-700 dark:text-white">
+                              <p className="truncate text-xs sm:text-sm font-bold text-navy-700 dark:text-white">
                                 {item.accion}
                               </p>
-                              <p className="truncate text-[11px] text-gray-500 dark:text-white/60">
-                                Por <span className="font-semibold text-gray-700 dark:text-gray-300">{item.actorNombre}</span>
+                              <p className="truncate text-[11px] font-medium text-gray-400 dark:text-white/50">
+                                Por <span className="font-semibold text-gray-600 dark:text-gray-300">{item.actorNombre}</span>
                               </p>
                             </div>
                           </div>
 
-                          <div className="flex flex-col items-end shrink-0 pl-3">
-                            <span className="rounded-md bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600 dark:bg-white/10 dark:text-white/70 uppercase">
+                          <div className="flex flex-col items-end shrink-0 pl-2">
+                            <span className={`inline-flex items-center rounded-lg px-2.5 py-0.5 text-[10px] font-bold tracking-wide uppercase ${item.badgeClass}`}>
                               {item.modulo}
                             </span>
-                            <span className="mt-1 text-[11px] text-gray-400 dark:text-white/40">
+                            <span className="mt-1 text-[11px] font-medium text-gray-400 dark:text-white/40">
                               {item.fecha}
                             </span>
                           </div>
@@ -817,22 +1038,19 @@ export default function DashboardAdmin() {
 
             {/* Monitoreo de Personal sin Check-in Hoy (1 columna de 3) */}
             <div className="xl:col-span-1 flex flex-col h-full">
-              <NexxusCard extra="p-6 flex flex-col justify-between h-full" delay={250}>
+              <NexxusCard extra="p-6 flex flex-col justify-between h-full" delay={260}>
                 <div>
-                  <div className="flex items-center justify-between border-b border-gray-100 pb-3 dark:border-white/10">
-                    <div className="flex items-center gap-2">
-                      <MdOutlineHourglassEmpty className="h-5 w-5 text-rose-500" />
-                      <h4 className="text-base font-bold text-navy-700 dark:text-white">
-                        Sin Check-in Hoy
-                      </h4>
-                    </div>
-                    <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-xs font-bold text-rose-600 dark:bg-rose-400/20 dark:text-rose-400">
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-3.5 dark:border-white/10">
+                    <h4 className="text-sm sm:text-base font-bold text-navy-700 dark:text-white">
+                      Sin Check-in Hoy
+                    </h4>
+                    <span className="rounded-full bg-rose-500/10 px-2.5 py-0.5 text-xs font-bold text-rose-600 dark:bg-rose-400/20 dark:text-rose-400">
                       {empleadosSinCheckIn.length}
                     </span>
                   </div>
 
                   {empleadosSinCheckIn.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
                       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500 dark:bg-emerald-400/20 dark:text-emerald-400">
                         <MdOutlineCheckCircle className="h-6 w-6" />
                       </div>
@@ -844,16 +1062,16 @@ export default function DashboardAdmin() {
                       </p>
                     </div>
                   ) : (
-                    <div className="mt-4 flex flex-col gap-2.5">
+                    <div className="mt-2 flex flex-col divide-y divide-gray-100 dark:divide-white/5">
                       {empleadosSinCheckIn.map((u) => (
                         <div
                           key={u.id}
-                          className="flex items-center justify-between rounded-xl border border-gray-100 p-2.5 transition hover:bg-gray-50 dark:border-white/5 dark:hover:bg-white/5"
+                          className="flex items-center justify-between py-3 px-1 rounded-xl transition duration-150 hover:bg-gray-50 dark:hover:bg-white/5"
                         >
-                          <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="flex items-center gap-3 min-w-0">
                             <Avatar src={u.foto_url} name={u.nombre || "Empleado"} size={8} />
                             <div className="min-w-0">
-                              <p className="truncate text-xs font-bold text-navy-700 dark:text-white">
+                              <p className="truncate text-xs sm:text-sm font-semibold text-navy-700 dark:text-white">
                                 {u.nombre}
                               </p>
                               <p className="truncate text-[11px] text-gray-400 dark:text-white/50">
@@ -861,7 +1079,7 @@ export default function DashboardAdmin() {
                               </p>
                             </div>
                           </div>
-                          <span className="h-2 w-2 rounded-full bg-rose-500" title="Pendiente" />
+                          <span className="h-2 w-2 rounded-full bg-rose-500 shrink-0" title="Check-in pendiente hoy" />
                         </div>
                       ))}
                     </div>
@@ -871,9 +1089,10 @@ export default function DashboardAdmin() {
                 <div className="mt-4 pt-3 border-t border-gray-100 dark:border-white/10">
                   <Link
                     to={routeUrl("/admin", "empresa-cuidado-equipo")}
-                    className="flex items-center justify-center gap-1 text-xs font-bold text-brand-500 hover:text-brand-600 dark:text-brand-400"
+                    className="flex items-center justify-center gap-1.5 text-xs font-bold text-brand-500 hover:text-brand-600 dark:text-brand-400"
                   >
-                    Ver seguimiento en Bienestar <MdOutlineArrowForward className="h-4 w-4" />
+                    <span>Ver seguimiento en Bienestar</span>
+                    <MdOutlineArrowForward className="h-3.5 w-3.5" />
                   </Link>
                 </div>
               </NexxusCard>

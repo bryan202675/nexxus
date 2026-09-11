@@ -241,116 +241,159 @@ export default function AuditoriaAdmin() {
         </div>
       )}
 
-      {/* Toolbar / Subtítulo Superior (sin duplicar el título del Navbar) */}
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <p className="text-xs font-medium text-gray-500 dark:text-white/60">
-          Trazabilidad integral de operaciones, consultas a la IA, gestión de plantilla y eventos de seguridad.
-        </p>
+      {/* Header */}
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+        <div>
+          <h2 className="text-xl font-bold tracking-tight text-navy-700 dark:text-white">
+            Auditoría y Trazabilidad
+          </h2>
+          <p className="mt-0.5 text-xs font-medium text-gray-500 dark:text-white/60">
+            Trazabilidad integral de operaciones, consultas a la IA, gestión de plantilla y eventos de seguridad.
+          </p>
+        </div>
 
         <button
           type="button"
           onClick={handleExportar}
           disabled={registrosFiltrados.length === 0 || !tieneExportar}
           title={!tieneExportar ? "La exportación de datos está disponible desde el plan Business." : undefined}
-          className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-xl bg-brand-500 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40 active:scale-95"
+          className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-xl bg-brand-500 px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40 active:scale-95"
         >
           <MdOutlineDownload className="h-4 w-4" />
           <span>{tieneExportar ? "Exportar CSV" : "Exportar CSV (Business+)"}</span>
         </button>
       </div>
 
+      {/* Grid de 4 Cards de Métricas Refinadas */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {/* Total Eventos */}
-        <NexxusCard extra="p-5 flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
-              Total de Eventos
-            </span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500/10 text-brand-600 dark:bg-brand-400/20 dark:text-brand-300">
-              <MdOutlineFactCheck className="h-5 w-5" />
-            </div>
-          </div>
+        {/* Card 1: Total de Eventos */}
+        <NexxusCard extra="p-5 flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
           <div>
-            <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
-              {kpis.total}
-            </h3>
-            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5 text-xs text-gray-400 dark:border-white/10 dark:text-white/40">
-              <span>Historial indexado</span>
-              <span className="inline-flex items-center rounded-md bg-brand-500/10 px-2 py-0.5 text-[11px] font-semibold text-brand-600 dark:bg-brand-500/20 dark:text-brand-400">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
+                Total de Eventos
+              </span>
+              <span className="rounded-full bg-brand-500/10 px-2.5 py-0.5 text-[11px] font-bold text-brand-600 dark:bg-brand-400/20 dark:text-brand-300">
                 100% trazabilidad
               </span>
             </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-3xl sm:text-4xl font-black tracking-tight text-navy-700 dark:text-white">
+                {kpis.total}
+              </span>
+              <span className="text-xs font-medium text-gray-400 dark:text-white/40">
+                registros
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+              <div className="h-full w-full bg-brand-500" />
+            </div>
+            <div className="mt-2.5 flex items-center justify-between text-[11px] font-medium text-gray-500 dark:text-white/60">
+              <span>Historial indexado</span>
+              <span className="font-bold text-navy-700 dark:text-white">{kpis.total} eventos</span>
+            </div>
           </div>
         </NexxusCard>
 
-        {/* Eventos Hoy */}
-        <NexxusCard extra="p-5 flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
-              Eventos Hoy
-            </span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
-              <MdOutlineToday className="h-5 w-5" />
-            </div>
-          </div>
+        {/* Card 2: Eventos Hoy */}
+        <NexxusCard extra="p-5 flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
           <div>
-            <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
-              {kpis.hoyCount}
-            </h3>
-            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5 text-xs text-gray-400 dark:border-white/10 dark:text-white/40">
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                Últimas 24 horas
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
+                Eventos Hoy
               </span>
-              <span className="inline-flex items-center rounded-md bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 En tiempo real
               </span>
             </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-3xl sm:text-4xl font-black tracking-tight text-navy-700 dark:text-white">
+                {kpis.hoyCount}
+              </span>
+              <span className="text-xs font-medium text-gray-400 dark:text-white/40">
+                últimas 24h
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+              <div
+                style={{ width: `${Math.min((kpis.hoyCount / Math.max(kpis.total, 1)) * 100 * 3, 100)}%` }}
+                className="h-full bg-emerald-500 transition-all duration-500"
+              />
+            </div>
+            <div className="mt-2.5 flex items-center justify-between text-[11px] font-medium text-gray-500 dark:text-white/60">
+              <span>Actividad de hoy</span>
+              <span className="font-bold text-navy-700 dark:text-white">{kpis.hoyCount} operaciones</span>
+            </div>
           </div>
         </NexxusCard>
 
-        {/* Módulos Auditados */}
-        <NexxusCard extra="p-5 flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
-              Módulos Auditados
-            </span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
-              <MdOutlineCategory className="h-5 w-5" />
-            </div>
-          </div>
+        {/* Card 3: Módulos Auditados */}
+        <NexxusCard extra="p-5 flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
           <div>
-            <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
-              {kpis.modulosCount}
-            </h3>
-            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5 text-xs text-gray-400 dark:border-white/10 dark:text-white/40">
-              <span>Sistemas integrados</span>
-              <span className="inline-flex items-center rounded-md bg-blue-500/10 px-2 py-0.5 text-[11px] font-semibold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
+                Módulos Auditados
+              </span>
+              <span className="rounded-full bg-blue-500/10 px-2.5 py-0.5 text-[11px] font-bold text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
                 {modulosDisponibles.length} módulos
               </span>
             </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-3xl sm:text-4xl font-black tracking-tight text-navy-700 dark:text-white">
+                {kpis.modulosCount}
+              </span>
+              <span className="text-xs font-medium text-gray-400 dark:text-white/40">
+                sistemas
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+              <div className="h-full w-full bg-blue-500" />
+            </div>
+            <div className="mt-2.5 flex items-center justify-between text-[11px] font-medium text-gray-500 dark:text-white/60">
+              <span>Sistemas integrados</span>
+              <span className="font-bold text-navy-700 dark:text-white">100% monitoreo</span>
+            </div>
           </div>
         </NexxusCard>
 
-        {/* Actores Activos */}
-        <NexxusCard extra="p-5 flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
-              Actores Activos
-            </span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:bg-purple-400/20 dark:text-purple-300">
-              <MdOutlinePeopleAlt className="h-5 w-5" />
-            </div>
-          </div>
+        {/* Card 4: Actores Activos */}
+        <NexxusCard extra="p-5 flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
           <div>
-            <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
-              {kpis.usuariosCount}
-            </h3>
-            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5 text-xs text-gray-400 dark:border-white/10 dark:text-white/40">
-              <span>Operadores con actividad</span>
-              <span className="inline-flex items-center rounded-md bg-purple-500/10 px-2 py-0.5 text-[11px] font-semibold text-purple-600 dark:bg-purple-500/20 dark:text-purple-400">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
+                Actores Activos
+              </span>
+              <span className="rounded-full bg-purple-500/10 px-2.5 py-0.5 text-[11px] font-bold text-purple-600 dark:bg-purple-400/20 dark:text-purple-300">
                 Verificados
               </span>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-3xl sm:text-4xl font-black tracking-tight text-navy-700 dark:text-white">
+                {kpis.usuariosCount}
+              </span>
+              <span className="text-xs font-medium text-gray-400 dark:text-white/40">
+                operadores
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+              <div className="h-full w-full bg-purple-500" />
+            </div>
+            <div className="mt-2.5 flex items-center justify-between text-[11px] font-medium text-gray-500 dark:text-white/60">
+              <span>Operadores con actividad</span>
+              <span className="font-bold text-navy-700 dark:text-white">{kpis.usuariosCount} usuarios</span>
             </div>
           </div>
         </NexxusCard>
@@ -493,17 +536,17 @@ export default function AuditoriaAdmin() {
                       onClick={() => setSelectedRegistro(r)}
                     >
                       {/* Acción */}
-                      <td className="min-w-[220px] px-4 py-3">
+                      <td className="min-w-[220px] px-4 py-3.5">
                         <div className="flex items-center gap-3">
                           <div className="flex h-8.5 w-8.5 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-600 dark:bg-brand-400/20 dark:text-brand-300">
                             <Icon className="h-4.5 w-4.5" />
                           </div>
                           <div className="min-w-0">
-                            <p className="truncate text-xs font-semibold text-navy-700 dark:text-white">
+                            <p className="truncate text-xs font-bold text-navy-700 dark:text-white">
                               {r.accion || "Operación"}
                             </p>
                             {detailText && (
-                              <p className="truncate text-[11px] text-gray-400 dark:text-white/40 max-w-xs">
+                              <p className="truncate text-[11px] font-medium text-gray-400 dark:text-white/40 max-w-xs">
                                 {detailText}
                               </p>
                             )}
@@ -512,22 +555,22 @@ export default function AuditoriaAdmin() {
                       </td>
 
                       {/* Módulo */}
-                      <td className="whitespace-nowrap px-4 py-3">
-                        <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold ${modStyle.badge}`}>
+                      <td className="whitespace-nowrap px-4 py-3.5">
+                        <span className={`inline-flex rounded-md px-2.5 py-0.5 text-[11px] font-bold ${modStyle.badge}`}>
                           {modStyle.label}
                         </span>
                       </td>
 
                       {/* Usuario */}
-                      <td className="min-w-[180px] px-4 py-3">
+                      <td className="min-w-[180px] px-4 py-3.5">
                         <div className="flex items-center gap-2.5">
                           <Avatar src={actor?.foto_perfil || actor?.foto} name={actorNombre} size={7} />
                           <div className="min-w-0">
-                            <p className="truncate text-xs font-semibold text-navy-700 dark:text-white">
+                            <p className="truncate text-xs font-bold text-navy-700 dark:text-white">
                               {actorNombre}
                             </p>
                             {actor?.usuario_interno && (
-                              <p className="truncate text-[10.5px] text-gray-400 dark:text-white/40">
+                              <p className="truncate text-[10.5px] font-medium text-gray-400 dark:text-white/40">
                                 @{actor.usuario_interno}
                               </p>
                             )}
@@ -536,7 +579,7 @@ export default function AuditoriaAdmin() {
                       </td>
 
                       {/* Fecha */}
-                      <td className="whitespace-nowrap px-4 py-3 text-xs text-gray-500 dark:text-white/60">
+                      <td className="whitespace-nowrap px-4 py-3.5 text-xs font-medium text-gray-500 dark:text-white/60">
                         <div className="flex items-center gap-1.5">
                           <MdOutlineAccessTime className="h-3.5 w-3.5 text-gray-400" />
                           <span>{formatoFechaHora(r.created_at)}</span>
@@ -544,11 +587,11 @@ export default function AuditoriaAdmin() {
                       </td>
 
                       {/* Botón Ver */}
-                      <td className="whitespace-nowrap px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      <td className="whitespace-nowrap px-4 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           onClick={() => setSelectedRegistro(r)}
-                          className="inline-flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-navy-700 shadow-2xs transition hover:bg-gray-50 hover:text-brand-600 active:scale-95 dark:border-white/10 dark:bg-charcoal dark:text-white dark:hover:bg-white/5 dark:hover:text-brand-300"
+                          className="inline-flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-navy-700 shadow-xs transition hover:bg-gray-50 hover:text-brand-600 active:scale-95 dark:border-white/10 dark:bg-charcoal dark:text-white dark:hover:bg-white/5 dark:hover:text-brand-300"
                         >
                           <MdOutlineVisibility className="h-3.5 w-3.5" />
                           <span>Detalle</span>

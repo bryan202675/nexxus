@@ -50,24 +50,27 @@ function mapAnuncioRow(row: any) {
   };
 }
 
-const PRIORIDADES_CONFIG: Record<string, { label: string; cls: string; dot: string; icon: any }> = {
+const PRIORIDADES_CONFIG: Record<string, { label: string; cls: string; dot: string; icon: any; barBg: string }> = {
   Normal: {
     label: "Normal",
     cls: "bg-blue-500/10 text-blue-600 border border-blue-500/20 dark:bg-blue-400/20 dark:text-blue-300",
     dot: "bg-blue-500",
     icon: MdOutlineCampaign,
+    barBg: "bg-blue-500",
   },
   Alta: {
     label: "Alta Prioridad",
     cls: "bg-amber-500/10 text-amber-600 border border-amber-500/20 dark:bg-amber-400/20 dark:text-amber-300",
     dot: "bg-amber-500",
     icon: MdOutlineNotificationImportant,
+    barBg: "bg-amber-500",
   },
   Urgente: {
     label: "Urgente",
     cls: "bg-rose-500/10 text-rose-600 font-bold border border-rose-500/20 dark:bg-rose-400/20 dark:text-rose-300",
     dot: "bg-rose-500",
     icon: MdOutlinePriorityHigh,
+    barBg: "bg-rose-500",
   },
 };
 
@@ -378,16 +381,26 @@ export default function ComunicacionAdmin() {
     <div className="flex flex-col gap-5 pb-6">
       {/* Banner de error */}
       {error && (
-        <div className="rounded-xl bg-red-50 p-4 text-xs font-semibold text-red-600 dark:bg-red-500/10 dark:text-red-400">
+        <div className="rounded-xl bg-red-50 p-4 text-xs font-bold text-red-600 dark:bg-red-500/10 dark:text-red-400">
           {error}
         </div>
       )}
 
-      {/* Toolbar / Subtítulo Superior (sin duplicar el título del Navbar) */}
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <p className="text-xs font-medium text-gray-500 dark:text-white/60">
-          Emisión de comunicados oficiales, avisos prioritarios y novedades para la organización.
-        </p>
+      {/* Header & Acciones Rápidas */}
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-xl font-bold tracking-tight text-navy-700 dark:text-white">
+              Comunicación & Difusión Corporativa
+            </h2>
+            <span className="rounded-full bg-brand-500/10 px-3 py-1 text-xs font-bold text-brand-600 dark:bg-brand-400/20 dark:text-brand-300">
+              {metricas.total} comunicados emitidos
+            </span>
+          </div>
+          <p className="mt-0.5 text-xs font-medium text-gray-500 dark:text-white/60">
+            Emisión de comunicados oficiales, avisos prioritarios y novedades para la organización.
+          </p>
+        </div>
 
         <button
           type="button"
@@ -396,113 +409,253 @@ export default function ComunicacionAdmin() {
             setForm(FORM_VACIO);
             setShowCrearAnuncio(true);
           }}
-          className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-xl bg-brand-500 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-600 active:scale-95"
+          className="inline-flex items-center gap-1.5 rounded-xl bg-brand-500 px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-600 active:scale-95 dark:bg-brand-400"
         >
           <MdOutlineAdd className="h-4 w-4" />
           <span>Nuevo Anuncio</span>
         </button>
       </div>
 
-      {/* Tarjetas KPI */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {/* Anuncios este Mes */}
-        <NexxusCard extra="p-5 flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
-              Anuncios este Mes
-            </span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
-              <MdOutlineCampaign className="h-5 w-5" />
-            </div>
-          </div>
-          <div>
-            <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
-              {metricas.esteMes}
-            </h3>
-            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5 text-xs text-gray-400 dark:border-white/10 dark:text-white/40">
-              <span>Período actual</span>
-              <span className="inline-flex items-center rounded-md bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
-                Al día
-              </span>
-            </div>
-          </div>
-        </NexxusCard>
+      {/* Grid Asimétrico: Hero Card (7 cols) + Right Stack (5 cols) */}
+      {(() => {
+        const total = Math.max(metricas.total, 1);
+        const hayAnuncios = metricas.total > 0;
+        const normalPct = Math.round((conteosPrioridad.Normal / total) * 100);
+        const altaPct = Math.round((conteosPrioridad.Alta / total) * 100);
+        const urgentePct = Math.round((conteosPrioridad.Urgente / total) * 100);
 
-        {/* Alcance Promedio */}
-        <NexxusCard extra="p-5 flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
-              Alcance Promedio
-            </span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
-              <MdOutlineGroups className="h-5 w-5" />
-            </div>
-          </div>
-          <div>
-            <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
-              {metricas.alcancePromedio}
-            </h3>
-            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5 text-xs text-gray-400 dark:border-white/10 dark:text-white/40">
-              <span>Por emisión</span>
-              <span className="inline-flex items-center rounded-md bg-blue-500/10 px-2 py-0.5 text-[11px] font-semibold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
-                Audiencia activa
-              </span>
-            </div>
-          </div>
-        </NexxusCard>
+        return (
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+            {/* Hero Card Principal (7 cols) */}
+            <div className="lg:col-span-7">
+              <NexxusCard extra="p-6 h-full flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-sm font-bold text-navy-700 dark:text-white">
+                        Emisión & Circulares Corporativas
+                      </span>
+                      <span className="ml-2 text-xs font-medium text-gray-400 dark:text-white/40">
+                        · Difusión de Información
+                      </span>
+                    </div>
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-bold ${
+                        metricas.urgentes > 0
+                          ? "bg-rose-500/10 text-rose-600 dark:bg-rose-400/20 dark:text-rose-300"
+                          : "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300"
+                      }`}
+                    >
+                      {metricas.urgentes > 0 ? `${metricas.urgentes} urgentes activos` : "Canal al día"}
+                    </span>
+                  </div>
 
-        {/* Anuncios Urgentes */}
-        <NexxusCard extra="p-5 flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
-              Anuncios Urgentes
-            </span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:bg-amber-400/20 dark:text-amber-300">
-              <MdOutlinePriorityHigh className="h-5 w-5" />
-            </div>
-          </div>
-          <div>
-            <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
-              {metricas.urgentes}
-            </h3>
-            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5 text-xs text-gray-400 dark:border-white/10 dark:text-white/40">
-              <span>Alertas críticas</span>
-              <span
-                className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${
-                  metricas.urgentes > 0
-                    ? "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400"
-                    : "bg-gray-100 text-gray-500 dark:bg-white/5 dark:text-white/40"
-                }`}
-              >
-                {metricas.urgentes > 0 ? "Atención activa" : "Sin alertas"}
-              </span>
-            </div>
-          </div>
-        </NexxusCard>
+                  {/* Número Principal */}
+                  <div className="mt-4">
+                    {metricas.esteMes > 0 ? (
+                      <div>
+                        <p className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-navy-700 dark:text-white truncate">
+                          {metricas.esteMes}
+                        </p>
+                        <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                          <span>Comunicados emitidos este mes</span>
+                          <span className="font-normal text-gray-400 dark:text-white/40">
+                            · {metricas.alcancePromedio} colaboradores alcanzados en promedio
+                          </span>
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="py-2">
+                        <p className="text-2xl sm:text-3xl font-black tracking-tight text-navy-700 dark:text-white">
+                          Sin comunicados este mes
+                        </p>
+                        <p className="mt-1 text-xs font-medium text-gray-400 dark:text-white/50">
+                          Puedes emitir avisos oficiales y circulares a toda la organización o departamentos específicos.
+                        </p>
+                      </div>
+                    )}
 
-        {/* Total Histórico */}
-        <NexxusCard extra="p-5 flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
-              Total Histórico
-            </span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:bg-purple-400/20 dark:text-purple-300">
-              <MdOutlineHistory className="h-5 w-5" />
+                    <p className="mt-2 text-xs font-medium text-gray-500 dark:text-white/60">
+                      {conteosPrioridad.Normal} informativos · {conteosPrioridad.Alta} de alta prioridad · {conteosPrioridad.Urgente} urgentes
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  {/* Barra de Distribución Proporcional */}
+                  <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+                    {hayAnuncios ? (
+                      <>
+                        <div
+                          style={{ width: `${Math.max(normalPct, 5)}%` }}
+                          className="h-full bg-blue-500 transition-all duration-500"
+                          title={`Normal: ${conteosPrioridad.Normal}`}
+                        />
+                        <div
+                          style={{ width: `${altaPct}%` }}
+                          className="h-full bg-amber-500 transition-all duration-500"
+                          title={`Alta Prioridad: ${conteosPrioridad.Alta}`}
+                        />
+                        <div
+                          style={{ width: `${urgentePct}%` }}
+                          className="h-full bg-rose-500 transition-all duration-500"
+                          title={`Urgentes: ${conteosPrioridad.Urgente}`}
+                        />
+                      </>
+                    ) : (
+                      <div className="h-full w-full bg-gray-200/50 dark:bg-white/5" />
+                    )}
+                  </div>
+
+                  {/* Leyenda con Métricas */}
+                  {hayAnuncios ? (
+                    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-blue-500" />
+                        <div className="min-w-0">
+                          <p className="truncate text-[11px] font-bold text-navy-700 dark:text-white">
+                            {conteosPrioridad.Normal}
+                          </p>
+                          <p className="truncate text-[10px] text-gray-400 dark:text-white/40">
+                            Normal ({normalPct}%)
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500" />
+                        <div className="min-w-0">
+                          <p className="truncate text-[11px] font-bold text-navy-700 dark:text-white">
+                            {conteosPrioridad.Alta}
+                          </p>
+                          <p className="truncate text-[10px] text-gray-400 dark:text-white/40">
+                            Alta Prioridad ({altaPct}%)
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-rose-500" />
+                        <div className="min-w-0">
+                          <p className="truncate text-[11px] font-bold text-navy-700 dark:text-white">
+                            {conteosPrioridad.Urgente}
+                          </p>
+                          <p className="truncate text-[10px] text-gray-400 dark:text-white/40">
+                            Urgente ({urgentePct}%)
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-brand-500" />
+                        <div className="min-w-0">
+                          <p className="truncate text-[11px] font-bold text-navy-700 dark:text-white">
+                            ~{metricas.alcancePromedio}
+                          </p>
+                          <p className="truncate text-[10px] text-gray-400 dark:text-white/40">
+                            Alcance Promedio
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-[11px] font-medium text-gray-400 dark:text-white/40">
+                      Sin comunicados emitidos en el sistema
+                    </p>
+                  )}
+                </div>
+              </NexxusCard>
+            </div>
+
+            {/* Right Stack of 3 Cards (5 cols) - Alineadas a la izquierda */}
+            <div className="flex flex-col gap-4 lg:col-span-5">
+              {/* Card 1: Alcance Promedio */}
+              <NexxusCard extra="p-5 flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-gray-500 dark:text-white/50">
+                    Alcance Promedio
+                  </span>
+                  <span className="rounded-full bg-blue-500/10 px-2.5 py-0.5 text-[11px] font-bold text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
+                    Audiencia activa
+                  </span>
+                </div>
+                <div className="mt-3">
+                  {metricas.alcancePromedio > 0 ? (
+                    <p className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
+                      {metricas.alcancePromedio} <span className="text-xs font-medium text-gray-400">colaboradores</span>
+                    </p>
+                  ) : (
+                    <p className="text-sm font-bold text-gray-400 dark:text-white/50">
+                      Sin alcance promedio registrado
+                    </p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-400 dark:text-white/40">
+                    Promedio de destinatarios notificados en cada emisión.
+                  </p>
+                </div>
+              </NexxusCard>
+
+              {/* Card 2: Anuncios Urgentes */}
+              <NexxusCard extra="p-5 flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-gray-500 dark:text-white/50">
+                    Alertas Críticas & Urgentes
+                  </span>
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                      metricas.urgentes > 0
+                        ? "bg-rose-500/10 text-rose-600 dark:bg-rose-400/20 dark:text-rose-300"
+                        : "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300"
+                    }`}
+                  >
+                    {metricas.urgentes > 0 ? "Atención activa" : "Sin alertas"}
+                  </span>
+                </div>
+                <div className="mt-3">
+                  {metricas.urgentes > 0 ? (
+                    <p className="text-2xl font-bold tracking-tight text-rose-600 dark:text-rose-400">
+                      {metricas.urgentes} <span className="text-xs font-medium text-gray-400">alertas críticas</span>
+                    </p>
+                  ) : (
+                    <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                      Sin comunicados urgentes activos
+                    </p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-400 dark:text-white/40">
+                    Avisos de máxima prioridad que requieren lectura inmediata.
+                  </p>
+                </div>
+              </NexxusCard>
+
+              {/* Card 3: Total Histórico */}
+              <NexxusCard extra="p-5 flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-gray-500 dark:text-white/50">
+                    Total Histórico
+                  </span>
+                  <span className="rounded-full bg-purple-500/10 px-2.5 py-0.5 text-[11px] font-bold text-purple-600 dark:bg-purple-400/20 dark:text-purple-300">
+                    Registro corporativo
+                  </span>
+                </div>
+                <div className="mt-3">
+                  {metricas.total > 0 ? (
+                    <p className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
+                      {metricas.total} <span className="text-xs font-medium text-gray-400">circulares</span>
+                    </p>
+                  ) : (
+                    <p className="text-sm font-bold text-gray-400 dark:text-white/50">
+                      Sin comunicados en el registro
+                    </p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-400 dark:text-white/40">
+                    Acervo completo de anuncios corporativos emitidos.
+                  </p>
+                </div>
+              </NexxusCard>
             </div>
           </div>
-          <div>
-            <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
-              {metricas.total}
-            </h3>
-            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5 text-xs text-gray-400 dark:border-white/10 dark:text-white/40">
-              <span>Historial general</span>
-              <span className="inline-flex items-center rounded-md bg-purple-500/10 px-2 py-0.5 text-[11px] font-semibold text-purple-600 dark:bg-purple-500/20 dark:text-purple-400">
-                Registro
-              </span>
-            </div>
-          </div>
-        </NexxusCard>
-      </div>
+        );
+      })()}
 
       {/* Card principal con Historial y Filtros */}
       <NexxusCard extra="p-5 sm:p-6 flex flex-col gap-5" delay={100}>
@@ -562,15 +715,17 @@ export default function ComunicacionAdmin() {
               }`}
             >
               <span>Alta Prioridad</span>
-              <span
-                className={`rounded-md px-1.5 py-0.2 text-[10px] font-bold ${
-                  filtroPrioridad === "Alta"
-                    ? "bg-white/20 text-white dark:bg-navy-700/20 dark:text-navy-700"
-                    : "bg-gray-200 text-gray-700 dark:bg-white/10 dark:text-white/70"
-                }`}
-              >
-                {conteosPrioridad.Alta}
-              </span>
+              {conteosPrioridad.Alta > 0 && (
+                <span
+                  className={`rounded-md px-1.5 py-0.2 text-[10px] font-bold ${
+                    filtroPrioridad === "Alta"
+                      ? "bg-white/20 text-white dark:bg-navy-700/20 dark:text-navy-700"
+                      : "bg-gray-200 text-gray-700 dark:bg-white/10 dark:text-white/70"
+                  }`}
+                >
+                  {conteosPrioridad.Alta}
+                </span>
+              )}
             </button>
 
             <button
@@ -583,19 +738,21 @@ export default function ComunicacionAdmin() {
               }`}
             >
               <span>Urgente</span>
-              <span
-                className={`rounded-md px-1.5 py-0.2 text-[10px] font-bold ${
-                  filtroPrioridad === "Urgente"
-                    ? "bg-white/20 text-white dark:bg-navy-700/20 dark:text-navy-700"
-                    : "bg-gray-200 text-gray-700 dark:bg-white/10 dark:text-white/70"
-                }`}
-              >
-                {conteosPrioridad.Urgente}
-              </span>
+              {conteosPrioridad.Urgente > 0 && (
+                <span
+                  className={`rounded-md px-1.5 py-0.2 text-[10px] font-bold ${
+                    filtroPrioridad === "Urgente"
+                      ? "bg-white/20 text-white dark:bg-navy-700/20 dark:text-navy-700"
+                      : "bg-gray-200 text-gray-700 dark:bg-white/10 dark:text-white/70"
+                  }`}
+                >
+                  {conteosPrioridad.Urgente}
+                </span>
+              )}
             </button>
           </div>
 
-          {/* Buscador & Selector de Alcance */}
+          {/* Buscador, Alcance & Orden */}
           <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
             <div className="relative w-full sm:w-64">
               <MdOutlineSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-gray-400 dark:text-white/40" />
@@ -726,7 +883,7 @@ export default function ComunicacionAdmin() {
                                 : "bg-brand-500/10 text-brand-600 dark:bg-brand-400/20 dark:text-brand-300"
                             }`}
                           >
-                            <Icon className="h-5 w-5" />
+                            <Icon className="h-4.5 w-4.5" />
                           </div>
                           <div className="min-w-0">
                             <p className="line-clamp-2 text-xs font-bold text-navy-700 group-hover:text-brand-600 transition dark:text-white dark:group-hover:text-brand-300">
@@ -839,7 +996,7 @@ export default function ComunicacionAdmin() {
           <form onSubmit={handlePublicar} className="flex flex-col gap-4">
             <div>
               <label
-                className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50"
+                className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50"
                 htmlFor="anuncio-mensaje"
               >
                 Contenido del Comunicado *
@@ -850,14 +1007,14 @@ export default function ComunicacionAdmin() {
                 placeholder="Escribe el mensaje o circular oficial para la organización..."
                 value={form.mensaje}
                 onChange={(e) => setForm((f) => ({ ...f, mensaje: e.target.value }))}
-                className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50/50 p-3 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50/50 p-3 text-xs font-medium text-navy-700 outline-none transition placeholder:text-gray-400 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-white/10 dark:bg-charcoal dark:text-white dark:placeholder:text-white/30 dark:focus:border-brand-400 dark:focus:bg-[#1B254B] resize-none"
               />
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label
-                  className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50"
+                  className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50"
                   htmlFor="anuncio-prioridad"
                 >
                   Nivel de Prioridad
@@ -866,7 +1023,7 @@ export default function ComunicacionAdmin() {
                   id="anuncio-prioridad"
                   value={form.prioridad}
                   onChange={(e) => setForm((f) => ({ ...f, prioridad: e.target.value }))}
-                  className="mt-1 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                  className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3.5 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400 dark:focus:bg-[#1B254B]"
                 >
                   <option value="Normal">Normal</option>
                   <option value="Alta">Alta Prioridad</option>
@@ -876,7 +1033,7 @@ export default function ComunicacionAdmin() {
 
               <div>
                 <label
-                  className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50"
+                  className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50"
                   htmlFor="anuncio-alcance"
                 >
                   Alcance / Audiencia
@@ -894,7 +1051,7 @@ export default function ComunicacionAdmin() {
                       empleadoIds: [],
                     }))
                   }
-                  className="mt-1 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                  className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3.5 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400 dark:focus:bg-[#1B254B]"
                 >
                   {ALCANCES.map((a) => (
                     <option key={a.value} value={a.value}>
@@ -909,7 +1066,7 @@ export default function ComunicacionAdmin() {
             {form.alcance === "departamento" && (
               <div>
                 <label
-                  className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50"
+                  className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50"
                   htmlFor="anuncio-depto"
                 >
                   Seleccionar Departamento
@@ -918,7 +1075,7 @@ export default function ComunicacionAdmin() {
                   id="anuncio-depto"
                   value={form.departamentoId}
                   onChange={(e) => setForm((f) => ({ ...f, departamentoId: e.target.value }))}
-                  className="mt-1 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                  className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3.5 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400 dark:focus:bg-[#1B254B]"
                 >
                   <option value="">Selecciona un departamento...</option>
                   {departamentos.map((dep) => (
@@ -933,7 +1090,7 @@ export default function ComunicacionAdmin() {
             {form.alcance === "sede" && (
               <div>
                 <label
-                  className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50"
+                  className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50"
                   htmlFor="anuncio-sede"
                 >
                   Seleccionar Sede de Trabajo
@@ -942,7 +1099,7 @@ export default function ComunicacionAdmin() {
                   id="anuncio-sede"
                   value={form.sedeId}
                   onChange={(e) => setForm((f) => ({ ...f, sedeId: e.target.value }))}
-                  className="mt-1 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                  className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3.5 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400 dark:focus:bg-[#1B254B]"
                 >
                   <option value="">Selecciona una sede...</option>
                   {sedes.map((sede) => (
@@ -957,7 +1114,7 @@ export default function ComunicacionAdmin() {
             {form.alcance === "rol" && (
               <div>
                 <label
-                  className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50"
+                  className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50"
                   htmlFor="anuncio-rol"
                 >
                   Seleccionar Rol Destinatario
@@ -966,7 +1123,7 @@ export default function ComunicacionAdmin() {
                   id="anuncio-rol"
                   value={form.rol}
                   onChange={(e) => setForm((f) => ({ ...f, rol: e.target.value }))}
-                  className="mt-1 flex h-10 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                  className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3.5 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400 dark:focus:bg-[#1B254B]"
                 >
                   <option value="">Selecciona un rol...</option>
                   {ROLE_OPTIONS.map((r) => (
@@ -980,10 +1137,10 @@ export default function ComunicacionAdmin() {
 
             {form.alcance === "privado" && (
               <div>
-                <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50">
+                <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50">
                   Colaboradores Destinatarios ({form.empleadoIds.length} seleccionados)
                 </p>
-                <div className="max-h-40 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50/50 p-2 dark:border-white/10 dark:bg-charcoal">
+                <div className="max-h-40 overflow-y-auto rounded-2xl border border-gray-200 bg-gray-50/50 p-2.5 dark:border-white/10 dark:bg-charcoal">
                   {empleadosActivos.length === 0 ? (
                     <p className="p-2 text-xs text-gray-400">No hay colaboradores activos disponibles.</p>
                   ) : (
@@ -991,14 +1148,15 @@ export default function ComunicacionAdmin() {
                       {empleadosActivos.map((emp) => (
                         <label
                           key={emp.id}
-                          className="flex items-center gap-2 rounded-lg p-1.5 transition hover:bg-white cursor-pointer dark:hover:bg-white/5"
+                          className="flex items-center gap-2 rounded-xl p-2 transition hover:bg-white cursor-pointer dark:hover:bg-white/5"
                         >
                           <input
                             type="checkbox"
                             checked={form.empleadoIds.includes(emp.id)}
                             onChange={() => toggleEmpleado(emp.id)}
-                            className="h-3.5 w-3.5 rounded border-gray-300 text-brand-500 focus:ring-brand-400"
+                            className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-400"
                           />
+                          <Avatar name={emp.nombre} size={7} />
                           <span className="truncate text-xs font-semibold text-navy-700 dark:text-white">
                             {emp.nombre}
                           </span>
@@ -1010,20 +1168,20 @@ export default function ComunicacionAdmin() {
               </div>
             )}
 
-            {crearError && <p className="text-xs font-semibold text-rose-500">{crearError}</p>}
+            {crearError && <p className="text-xs font-bold text-rose-500">{crearError}</p>}
 
-            <div className="flex justify-end gap-2 border-t border-gray-100 pt-3.5 dark:border-white/10">
+            <div className="flex justify-end gap-2.5 border-t border-gray-100 pt-3.5 dark:border-white/10">
               <button
                 type="button"
                 onClick={() => setShowCrearAnuncio(false)}
-                className="rounded-xl px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 transition active:scale-95 dark:text-white/70 dark:hover:bg-white/10"
+                className="rounded-xl border border-gray-200 px-4 py-2 text-xs font-bold text-gray-600 transition hover:bg-gray-100 active:scale-95 dark:border-white/10 dark:text-white/80 dark:hover:bg-white/5"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={publicando}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-500 px-5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-600 disabled:opacity-50 active:scale-95"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-500 px-5 py-2 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 disabled:opacity-50 active:scale-95"
               >
                 <MdOutlineSend className="h-3.5 w-3.5" />
                 <span>{publicando ? "Publicando..." : "Publicar Anuncio"}</span>
@@ -1044,11 +1202,11 @@ export default function ComunicacionAdmin() {
           <div className="flex flex-col gap-4 py-2">
             <div className="flex items-center justify-between rounded-2xl bg-brand-500/[0.06] p-4 dark:bg-brand-500/10">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-500 text-white shadow-sm">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-500 text-white shadow-md shadow-brand-500/20">
                   <MdOutlineCampaign className="h-5 w-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-bold text-navy-700 dark:text-white">
+                  <p className="truncate text-base font-black text-navy-700 dark:text-white">
                     {selectedAnuncio.creadoPorNombre}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-white/60">
@@ -1057,7 +1215,7 @@ export default function ComunicacionAdmin() {
                 </div>
               </div>
               <span
-                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold ${
                   (PRIORIDADES_CONFIG[selectedAnuncio.prioridad] || PRIORIDADES_CONFIG.Normal).cls
                 }`}
               >
@@ -1074,7 +1232,7 @@ export default function ComunicacionAdmin() {
                 <button
                   type="button"
                   onClick={() => handleCopiarMensaje(selectedAnuncio.mensaje)}
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-400"
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-600 hover:text-brand-700 dark:text-brand-400"
                 >
                   {copiado ? (
                     <>
@@ -1100,7 +1258,7 @@ export default function ComunicacionAdmin() {
                 <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
                   Alcance
                 </p>
-                <p className="mt-1 text-xs font-semibold text-navy-700 dark:text-white">
+                <p className="mt-1 text-xs font-bold text-navy-700 dark:text-white">
                   {formatAlcance(selectedAnuncio)}
                 </p>
               </div>
@@ -1109,7 +1267,7 @@ export default function ComunicacionAdmin() {
                 <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
                   Audiencia
                 </p>
-                <p className="mt-1 text-xs font-semibold text-navy-700 dark:text-white">
+                <p className="mt-1 text-xs font-bold text-navy-700 dark:text-white">
                   {selectedAnuncio.destinatariosTotal ||
                     selectedAnuncio.destinatarioIds?.length ||
                     empleadosActivos.length}{" "}
@@ -1122,7 +1280,7 @@ export default function ComunicacionAdmin() {
               <button
                 type="button"
                 onClick={() => setSelectedAnuncio(null)}
-                className="rounded-xl bg-gray-100 px-5 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-200 transition active:scale-95 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
+                className="rounded-xl bg-gray-100 px-5 py-2 text-xs font-bold text-gray-700 hover:bg-gray-200 transition active:scale-95 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
               >
                 Cerrar
               </button>

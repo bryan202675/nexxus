@@ -20,6 +20,9 @@ import {
   MdOutlineDelete,
   MdOutlineLocationOn,
   MdOutlineQrCode,
+  MdOutlineDevices,
+  MdOutlineBuild,
+  MdOutlineWarning,
 } from "react-icons/md";
 
 import NexxusCard from "views/nexxus/components/NexxusCard";
@@ -80,6 +83,10 @@ const CATEGORIA_ICONS: Record<string, any> = {
   transporte: MdOutlineDirectionsCar,
   herramienta: MdOutlineConstruction,
   herramientas: MdOutlineConstruction,
+  periferico: MdOutlineDevices,
+  perifericos: MdOutlineDevices,
+  accesorio: MdOutlineDevices,
+  accesorios: MdOutlineDevices,
 };
 
 function getCategoriaIcon(categoria: string) {
@@ -168,7 +175,6 @@ export default function GestionInventario() {
   const [reportarError, setReportarError] = useState("");
 
   const [selectedActivo, setSelectedActivo] = useState<any | null>(null);
-  const [selectedIncidencia, setSelectedIncidencia] = useState<any | null>(null);
 
   useEffect(() => {
     if (!empresaId) return undefined;
@@ -210,11 +216,22 @@ export default function GestionInventario() {
 
   const kpis = useMemo(() => {
     const lista = activos || [];
+    const total = lista.length;
+    const asignados = lista.filter((a) => a.estado === "asignado").length;
+    const disponibles = lista.filter((a) => a.estado === "disponible").length;
+    const mantenimiento = lista.filter((a) => a.estado === "mantenimiento").length;
+    const bajas = lista.filter((a) => a.estado === "retirado").length;
+    const incidenciasAbiertas = (incidencias || []).filter((i) => i.estado === "abierta").length;
+    const tasaAsignacion = total > 0 ? Math.round((asignados / total) * 100) : 0;
+
     return {
-      total: lista.length,
-      asignados: lista.filter((a) => a.estado === "asignado").length,
-      disponibles: lista.filter((a) => a.estado === "disponible").length,
-      incidenciasAbiertas: (incidencias || []).filter((i) => i.estado === "abierta").length,
+      total,
+      asignados,
+      disponibles,
+      mantenimiento,
+      bajas,
+      incidenciasAbiertas,
+      tasaAsignacion,
     };
   }, [activos, incidencias]);
 
@@ -412,22 +429,32 @@ export default function GestionInventario() {
     <div className="flex flex-col gap-5 pb-6">
       {/* Banner de error */}
       {error && (
-        <div className="rounded-xl bg-red-50 p-4 text-xs font-semibold text-red-600 dark:bg-red-500/10 dark:text-red-400">
+        <div className="rounded-xl bg-red-50 p-4 text-xs font-bold text-red-600 dark:bg-red-500/10 dark:text-red-400">
           {error}
         </div>
       )}
 
-      {/* Toolbar / Subtítulo Superior (sin duplicar el título del Navbar) */}
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <p className="text-xs font-medium text-gray-500 dark:text-white/60">
-          Custodia de activos, asignación a colaboradores, trazabilidad y reporte de incidencias.
-        </p>
+      {/* Header & Acciones Rápidas */}
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-xl font-bold tracking-tight text-navy-700 dark:text-white">
+              Custodia & Gestión de Inventario
+            </h2>
+            <span className="rounded-full bg-brand-500/10 px-3 py-1 text-xs font-bold text-brand-600 dark:bg-brand-400/20 dark:text-brand-300">
+              {kpis.total} bienes registrados
+            </span>
+          </div>
+          <p className="mt-0.5 text-xs font-medium text-gray-500 dark:text-white/60">
+            Custodia de activos, asignación a colaboradores, trazabilidad y reporte de incidencias.
+          </p>
+        </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex items-center gap-2.5">
           <button
             type="button"
             onClick={() => setShowReportarIncidencia(true)}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-semibold text-rose-700 shadow-sm transition hover:bg-rose-100 active:scale-95 dark:border-rose-500/30 dark:bg-rose-500/20 dark:text-rose-300"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-semibold text-rose-700 shadow-sm transition hover:bg-rose-100 active:scale-95 dark:border-rose-500/30 dark:bg-rose-500/20 dark:text-rose-300"
           >
             <MdOutlineReportProblem className="h-4 w-4" />
             <span>Reportar Incidencia</span>
@@ -436,7 +463,7 @@ export default function GestionInventario() {
           <button
             type="button"
             onClick={() => setShowCrearActivo(true)}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-500 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-600 active:scale-95"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-500 px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-600 active:scale-95 dark:bg-brand-400"
           >
             <MdOutlineAdd className="h-4 w-4" />
             <span>Registrar Activo</span>
@@ -444,106 +471,260 @@ export default function GestionInventario() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {/* Total Activos */}
-        <NexxusCard extra="p-5 flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
-              Total de Activos
-            </span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500/10 text-brand-600 dark:bg-brand-400/20 dark:text-brand-300">
-              <MdOutlineInventory2 className="h-5 w-5" />
-            </div>
-          </div>
-          <div>
-            <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
-              {kpis.total}
-            </h3>
-            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5 text-xs text-gray-400 dark:border-white/10 dark:text-white/40">
-              <span>Bienes registrados</span>
-              <span className="inline-flex items-center rounded-md bg-brand-500/10 px-2 py-0.5 text-[11px] font-semibold text-brand-600 dark:bg-brand-500/20 dark:text-brand-400">
-                {categoriasDisponibles.length} categorías
-              </span>
-            </div>
-          </div>
-        </NexxusCard>
+      {/* Grid Asimétrico: Hero Card (7 cols) + Right Stack (5 cols) */}
+      {(() => {
+        const total = Math.max(kpis.total, 1);
+        const hayActivos = kpis.total > 0;
+        const asignadosPct = Math.round((kpis.asignados / total) * 100);
+        const disponiblesPct = Math.round((kpis.disponibles / total) * 100);
+        const mantenimientoPct = Math.round((kpis.mantenimiento / total) * 100);
+        const incidenciasPct = Math.round((kpis.incidenciasAbiertas / total) * 100);
 
-        {/* Asignados */}
-        <NexxusCard extra="p-5 flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
-              Activos Asignados
-            </span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
-              <MdOutlineAssignmentInd className="h-5 w-5" />
-            </div>
-          </div>
-          <div>
-            <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
-              {kpis.asignados}
-            </h3>
-            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5 text-xs text-gray-400 dark:border-white/10 dark:text-white/40">
-              <span>En posesión del equipo</span>
-              <span className="inline-flex items-center rounded-md bg-blue-500/10 px-2 py-0.5 text-[11px] font-semibold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
-                {kpis.total > 0 ? `${Math.round((kpis.asignados / kpis.total) * 100)}% ocupación` : "0%"}
-              </span>
-            </div>
-          </div>
-        </NexxusCard>
+        return (
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+            {/* Hero Card Principal (7 cols) */}
+            <div className="lg:col-span-7">
+              <NexxusCard extra="p-6 h-full flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-sm font-bold text-navy-700 dark:text-white">
+                        Parque de Activos & Custodia
+                      </span>
+                      <span className="ml-2 text-xs font-medium text-gray-400 dark:text-white/40">
+                        · Equipamiento Empresarial
+                      </span>
+                    </div>
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-bold ${
+                        kpis.total > 0
+                          ? "bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300"
+                          : "bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-white/60"
+                      }`}
+                    >
+                      {kpis.total > 0 ? `${kpis.tasaAsignacion}% en asignación activa` : "Sin inventario"}
+                    </span>
+                  </div>
 
-        {/* Disponibles */}
-        <NexxusCard extra="p-5 flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
-              Disponibles en Almacén
-            </span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
-              <MdOutlineCheckCircle className="h-5 w-5" />
-            </div>
-          </div>
-          <div>
-            <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
-              {kpis.disponibles}
-            </h3>
-            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5 text-xs text-gray-400 dark:border-white/10 dark:text-white/40">
-              <span>Listos para entrega</span>
-              <span className="inline-flex items-center rounded-md bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
-                En stock
-              </span>
-            </div>
-          </div>
-        </NexxusCard>
+                  {/* Número Principal */}
+                  <div className="mt-4">
+                    {kpis.total > 0 ? (
+                      <div>
+                        <p className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-navy-700 dark:text-white truncate">
+                          {kpis.total}
+                        </p>
+                        <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400">
+                          <span>{kpis.asignados} activos asignados al equipo</span>
+                          <span className="font-normal text-gray-400 dark:text-white/40">
+                            · {kpis.disponibles} disponibles en almacén
+                          </span>
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="py-2">
+                        <p className="text-2xl sm:text-3xl font-black tracking-tight text-navy-700 dark:text-white">
+                          Sin activos registrados
+                        </p>
+                        <p className="mt-1 text-xs font-medium text-gray-400 dark:text-white/50">
+                          Comienza registrando equipos para controlar asignaciones y custodias.
+                        </p>
+                      </div>
+                    )}
 
-        {/* Incidencias Abiertas */}
-        <NexxusCard extra="p-5 flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 dark:text-white/60">
-              Incidencias Abiertas
-            </span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:bg-rose-400/20 dark:text-rose-300">
-              <MdOutlineReportProblem className="h-5 w-5" />
-            </div>
-          </div>
-          <div>
-            <h3 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
-              {kpis.incidenciasAbiertas}
-            </h3>
-            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5 text-xs text-gray-400 dark:border-white/10 dark:text-white/40">
-              <span>Fallas o reparaciones</span>
-              <span
-                className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${
-                  kpis.incidenciasAbiertas > 0
-                    ? "bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400"
-                    : "bg-gray-100 text-gray-500 dark:bg-white/5 dark:text-white/40"
-                }`}
-              >
-                {kpis.incidenciasAbiertas > 0 ? "Atención requerida" : "Sin averías"}
-              </span>
-            </div>
-          </div>
-        </NexxusCard>
-      </div>
+                    <p className="mt-2 text-xs font-medium text-gray-500 dark:text-white/60">
+                      {categoriasDisponibles.length} categorías operativas · {kpis.incidenciasAbiertas} incidencias abiertas
+                    </p>
+                  </div>
+                </div>
 
+                <div className="mt-6">
+                  {/* Barra de Distribución Proporcional */}
+                  <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+                    {hayActivos ? (
+                      <>
+                        <div
+                          style={{ width: `${Math.max(asignadosPct, 4)}%` }}
+                          className="h-full bg-blue-500 transition-all duration-500"
+                          title={`Asignados: ${kpis.asignados}`}
+                        />
+                        <div
+                          style={{ width: `${disponiblesPct}%` }}
+                          className="h-full bg-emerald-500 transition-all duration-500"
+                          title={`Disponibles: ${kpis.disponibles}`}
+                        />
+                        <div
+                          style={{ width: `${mantenimientoPct}%` }}
+                          className="h-full bg-amber-500 transition-all duration-500"
+                          title={`En Mantenimiento: ${kpis.mantenimiento}`}
+                        />
+                        <div
+                          style={{ width: `${incidenciasPct}%` }}
+                          className="h-full bg-rose-500 transition-all duration-500"
+                          title={`Incidencias: ${kpis.incidenciasAbiertas}`}
+                        />
+                      </>
+                    ) : (
+                      <div className="h-full w-full bg-gray-200/50 dark:bg-white/5" />
+                    )}
+                  </div>
+
+                  {/* Leyenda con Métricas */}
+                  {hayActivos ? (
+                    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-blue-500" />
+                        <div className="min-w-0">
+                          <p className="truncate text-[11px] font-bold text-navy-700 dark:text-white">
+                            {kpis.asignados}
+                          </p>
+                          <p className="truncate text-[10px] text-gray-400 dark:text-white/40">
+                            Asignados ({asignadosPct}%)
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500" />
+                        <div className="min-w-0">
+                          <p className="truncate text-[11px] font-bold text-navy-700 dark:text-white">
+                            {kpis.disponibles}
+                          </p>
+                          <p className="truncate text-[10px] text-gray-400 dark:text-white/40">
+                            En Stock ({disponiblesPct}%)
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500" />
+                        <div className="min-w-0">
+                          <p className="truncate text-[11px] font-bold text-navy-700 dark:text-white">
+                            {kpis.mantenimiento}
+                          </p>
+                          <p className="truncate text-[10px] text-gray-400 dark:text-white/40">
+                            Mantenimiento ({mantenimientoPct}%)
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-rose-500" />
+                        <div className="min-w-0">
+                          <p className="truncate text-[11px] font-bold text-navy-700 dark:text-white">
+                            {kpis.incidenciasAbiertas}
+                          </p>
+                          <p className="truncate text-[10px] text-gray-400 dark:text-white/40">
+                            Incidencias ({incidenciasPct}%)
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-[11px] font-medium text-gray-400 dark:text-white/40">
+                      Sin activos registrados en inventario
+                    </p>
+                  )}
+                </div>
+              </NexxusCard>
+            </div>
+
+            {/* Right Stack of 3 Cards (5 cols) - Alineadas a la izquierda */}
+            <div className="flex flex-col gap-4 lg:col-span-5">
+              {/* Card 1: Activos Asignados */}
+              <NexxusCard extra="p-5 flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-gray-500 dark:text-white/50">
+                    Activos Asignados
+                  </span>
+                  <span className="rounded-full bg-blue-500/10 px-2.5 py-0.5 text-[11px] font-bold text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
+                    {kpis.total > 0 ? `${kpis.tasaAsignacion}% en custodia` : "0%"}
+                  </span>
+                </div>
+                <div className="mt-3">
+                  {kpis.asignados > 0 ? (
+                    <p className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
+                      {kpis.asignados} <span className="text-xs font-medium text-gray-400">equipos</span>
+                    </p>
+                  ) : (
+                    <p className="text-sm font-bold text-gray-400 dark:text-white/50">
+                      Sin activos en posesión de colaboradores
+                    </p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-400 dark:text-white/40">
+                    Equipos entregados y bajo resguardo del personal.
+                  </p>
+                </div>
+              </NexxusCard>
+
+              {/* Card 2: Disponibles en Almacén */}
+              <NexxusCard extra="p-5 flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-gray-500 dark:text-white/50">
+                    Disponibles en Almacén
+                  </span>
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                      kpis.disponibles > 0
+                        ? "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300"
+                        : "bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-white/40"
+                    }`}
+                  >
+                    {kpis.disponibles > 0 ? "En stock" : "Almacén vacío"}
+                  </span>
+                </div>
+                <div className="mt-3">
+                  {kpis.disponibles > 0 ? (
+                    <p className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
+                      {kpis.disponibles} <span className="text-xs font-medium text-gray-400">listos</span>
+                    </p>
+                  ) : (
+                    <p className="text-sm font-bold text-gray-400 dark:text-white/50">
+                      Sin unidades disponibles para entrega
+                    </p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-400 dark:text-white/40">
+                    Equipos verificados listos para nueva asignación.
+                  </p>
+                </div>
+              </NexxusCard>
+
+              {/* Card 3: Incidencias & Mantenimiento */}
+              <NexxusCard extra="p-5 flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-gray-500 dark:text-white/50">
+                    Incidencias & Averías
+                  </span>
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                      kpis.incidenciasAbiertas > 0
+                        ? "bg-rose-500/10 text-rose-600 dark:bg-rose-400/20 dark:text-rose-300"
+                        : "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300"
+                    }`}
+                  >
+                    {kpis.incidenciasAbiertas > 0 ? "Atención requerida" : "Operación óptima"}
+                  </span>
+                </div>
+                <div className="mt-3">
+                  {kpis.incidenciasAbiertas > 0 ? (
+                    <p className="text-2xl font-bold tracking-tight text-rose-600 dark:text-rose-400">
+                      {kpis.incidenciasAbiertas} <span className="text-xs font-medium text-gray-400">abiertas</span>
+                    </p>
+                  ) : (
+                    <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                      Sin fallas ni averías activas
+                    </p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-400 dark:text-white/40">
+                    Reportes de daño, mantenimiento o reparación técnica.
+                  </p>
+                </div>
+              </NexxusCard>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Tarjeta Principal de Inventario */}
       <NexxusCard extra="p-5 sm:p-6 flex flex-col gap-5" delay={100}>
         {/* Barra superior de filtrado y tabs segmentados */}
         <div className="flex flex-col gap-3.5 lg:flex-row lg:items-center lg:justify-between">
@@ -566,7 +747,7 @@ export default function GestionInventario() {
                     : "bg-gray-200 text-gray-700 dark:bg-white/10 dark:text-white/70"
                 }`}
               >
-                {activos?.length || 0}
+                {kpis.total}
               </span>
             </button>
 
@@ -622,6 +803,17 @@ export default function GestionInventario() {
               }`}
             >
               <span>En Mantenimiento</span>
+              {kpis.mantenimiento > 0 && (
+                <span
+                  className={`rounded-md px-1.5 py-0.2 text-[10px] font-bold ${
+                    filtroEstado === "mantenimiento"
+                      ? "bg-white/20 text-white dark:bg-navy-700/20 dark:text-navy-700"
+                      : "bg-gray-200 text-gray-700 dark:bg-white/10 dark:text-white/70"
+                  }`}
+                >
+                  {kpis.mantenimiento}
+                </span>
+              )}
             </button>
           </div>
 
@@ -663,7 +855,7 @@ export default function GestionInventario() {
           </div>
         </div>
 
-        {/* Tabla */}
+        {/* Tabla de Activos */}
         {cargando ? (
           <div className="flex h-64 w-full flex-col items-center justify-center gap-3">
             <div className="h-9 w-9 animate-spin rounded-full border-3 border-brand-500 border-t-transparent" />
@@ -848,12 +1040,26 @@ export default function GestionInventario() {
         )}
       </NexxusCard>
 
+      {/* Incidencias & Mantenimiento Card */}
       <NexxusCard extra="p-6 flex flex-col gap-4" delay={150}>
         <div className="flex items-center justify-between">
           <div>
-            <h4 className="text-lg font-bold tracking-tight text-navy-700 dark:text-white">
-              Incidencias & Mantenimiento
-            </h4>
+            <div className="flex items-center gap-2.5">
+              <h4 className="text-lg font-bold tracking-tight text-navy-700 dark:text-white">
+                Incidencias & Mantenimiento
+              </h4>
+              <span
+                className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                  kpis.incidenciasAbiertas > 0
+                    ? "bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-300"
+                    : "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300"
+                }`}
+              >
+                {kpis.incidenciasAbiertas > 0
+                  ? `${kpis.incidenciasAbiertas} pendientes de reparación`
+                  : "Todos los equipos operativos"}
+              </span>
+            </div>
             <p className="mt-0.5 text-xs font-medium text-gray-500 dark:text-white/60">
               Reportes de fallas, daños y solicitudes de reparación de equipamiento.
             </p>
@@ -934,6 +1140,7 @@ export default function GestionInventario() {
         )}
       </NexxusCard>
 
+      {/* Modal Registrar Nuevo Activo */}
       <Modal
         isOpen={showCrearActivo}
         onClose={() => setShowCrearActivo(false)}
@@ -1081,6 +1288,7 @@ export default function GestionInventario() {
         </div>
       </Modal>
 
+      {/* Modal Reportar Incidencia */}
       <Modal
         isOpen={showReportarIncidencia}
         onClose={() => setShowReportarIncidencia(false)}
@@ -1165,6 +1373,7 @@ export default function GestionInventario() {
         </div>
       </Modal>
 
+      {/* Modal Ficha del Activo */}
       <Modal
         isOpen={!!selectedActivo}
         onClose={() => setSelectedActivo(null)}

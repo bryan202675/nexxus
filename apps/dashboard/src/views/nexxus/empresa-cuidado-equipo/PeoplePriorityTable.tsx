@@ -1,8 +1,6 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   MdCheckCircle,
-  MdOutlineVisibility,
   MdOutlineBolt,
   MdOutlineMonitorHeart,
   MdOutlineBedtime,
@@ -14,29 +12,29 @@ import {
   MdOutlineSupportAgent,
   MdOutlineLabel,
   MdOutlineChatBubbleOutline,
+  MdOutlineVisibility,
 } from "react-icons/md";
 import NexxusCard from "views/nexxus/components/NexxusCard";
 import Modal from "components/nexxus/Modal";
 import Avatar from "components/nexxus/Avatar";
-import { useAuth } from "context/AuthContext";
 import { TeamCareAlert } from "context/TeamCareAlertsContext";
-import { TeamCheckInSummary, Stress, Energy, getGuide, STRESS_LABELS, ENERGY_LABELS } from "services/checkInAnalytics";
+import { TeamCheckInSummary, Stress, Energy, STRESS_LABELS, ENERGY_LABELS } from "services/checkInAnalytics";
 
 const STRESS_BADGE: Record<Stress, string> = {
-  bajo: "bg-emerald-500/15 text-emerald-700 border border-emerald-500/30 dark:bg-emerald-500/25 dark:text-emerald-300 font-bold",
-  moderado: "bg-blue-500/15 text-blue-700 border border-blue-500/30 dark:bg-blue-500/25 dark:text-blue-300 font-bold",
-  alto: "bg-amber-500/15 text-amber-800 border border-amber-500/30 dark:bg-amber-500/25 dark:text-amber-300 font-bold",
-  critico: "bg-red-500 text-white font-black shadow-sm shadow-red-500/30 dark:bg-red-500 dark:text-white",
+  bajo: "bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300 font-bold",
+  moderado: "bg-blue-500/10 text-blue-700 border border-blue-500/20 dark:bg-blue-500/20 dark:text-blue-300 font-bold",
+  alto: "bg-amber-500/10 text-amber-800 border border-amber-500/20 dark:bg-amber-500/20 dark:text-amber-300 font-bold",
+  critico: "bg-rose-500 text-white font-black shadow-xs shadow-rose-500/30",
 };
 
 const ENERGY_BADGE: Record<Energy, string> = {
-  bajo: "bg-rose-500/15 text-rose-700 border border-rose-500/30 dark:bg-rose-500/25 dark:text-rose-200 font-bold",
-  medio: "bg-blue-500/15 text-blue-700 border border-blue-500/30 dark:bg-blue-500/25 dark:text-blue-200 font-semibold",
-  alto: "bg-emerald-500/15 text-emerald-700 border border-emerald-500/30 dark:bg-emerald-500/25 dark:text-emerald-300 font-bold",
+  bajo: "bg-rose-500/10 text-rose-700 border border-rose-500/20 dark:bg-rose-500/20 dark:text-rose-300 font-bold",
+  medio: "bg-blue-500/10 text-blue-700 border border-blue-500/20 dark:bg-blue-500/20 dark:text-blue-300 font-bold",
+  alto: "bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300 font-bold",
 };
 
 const PRIORIDAD_BADGE: Record<string, { label: string; className: string }> = {
-  critica: { label: "Crítica", className: "bg-red-500 text-white font-black shadow-sm shadow-red-500/30" },
+  critica: { label: "Crítica", className: "bg-rose-500 text-white font-black shadow-xs shadow-rose-500/30" },
   alta: { label: "Alta", className: "bg-amber-500 text-white font-bold" },
   media: { label: "Media", className: "bg-blue-500 text-white font-semibold" },
   baja: { label: "Baja", className: "bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-white/70" },
@@ -49,14 +47,12 @@ function getSeverityColor(summary: TeamCheckInSummary) {
     return {
       isCritico: true,
       isAlto: false,
-      dot: "bg-red-500 shadow-md shadow-red-500/60 ring-2 ring-white dark:ring-charcoal animate-pulse",
-      badge: "bg-red-500 text-white font-black shadow-sm shadow-red-500/30",
-      text: "text-red-600 dark:text-red-400 font-black",
+      dot: "bg-rose-500 ring-2 ring-white dark:ring-charcoal animate-pulse",
+      badge: "bg-rose-500 text-white font-black shadow-xs shadow-rose-500/30",
+      text: "text-rose-600 dark:text-rose-400 font-black",
       rowClass:
-        "border-l-4 border-l-red-500 bg-red-500/[0.04] hover:bg-red-500/[0.08] dark:bg-red-950/30 dark:hover:bg-red-950/50 transition-colors",
-      headerGradient:
-        "bg-gradient-to-r from-red-500/15 via-red-500/5 to-transparent border border-red-500/30 dark:from-red-950/60 dark:via-red-900/30 dark:to-transparent",
-      pulsePill: "bg-red-500/15 text-red-600 border border-red-500/30 dark:bg-red-500/25 dark:text-red-300",
+        "border-l-4 border-l-rose-500 bg-rose-500/[0.03] hover:bg-rose-500/[0.07] dark:bg-rose-950/20 dark:hover:bg-rose-950/35 transition-colors",
+      pulsePill: "bg-rose-500/10 text-rose-600 border border-rose-500/20 dark:bg-rose-500/20 dark:text-rose-300",
     };
   }
 
@@ -70,28 +66,24 @@ function getSeverityColor(summary: TeamCheckInSummary) {
     return {
       isCritico: false,
       isAlto: true,
-      dot: "bg-amber-500 shadow-sm shadow-amber-500/50 ring-2 ring-white dark:ring-charcoal",
+      dot: "bg-amber-500 ring-2 ring-white dark:ring-charcoal",
       badge: "bg-amber-500 text-white font-bold",
       text: "text-amber-600 dark:text-amber-400 font-bold",
       rowClass:
-        "border-l-4 border-l-amber-500 bg-amber-500/[0.03] hover:bg-amber-500/[0.06] dark:bg-amber-950/20 dark:hover:bg-amber-950/40 transition-colors",
-      headerGradient:
-        "bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent border border-amber-500/20 dark:from-amber-950/50 dark:via-amber-900/20 dark:to-transparent",
-      pulsePill: "bg-amber-500/15 text-amber-600 border border-amber-500/30 dark:bg-amber-500/20 dark:text-amber-300",
+        "border-l-4 border-l-amber-500 bg-amber-500/[0.02] hover:bg-amber-500/[0.06] dark:bg-amber-950/15 dark:hover:bg-amber-950/30 transition-colors",
+      pulsePill: "bg-amber-500/10 text-amber-600 border border-amber-500/20 dark:bg-amber-500/20 dark:text-amber-300",
     };
   }
 
   return {
     isCritico: false,
     isAlto: false,
-    dot: "bg-emerald-500 shadow-sm shadow-emerald-500/50 ring-2 ring-white dark:ring-charcoal",
+    dot: "bg-emerald-500 ring-2 ring-white dark:ring-charcoal",
     badge: "bg-emerald-500 text-white font-bold",
     text: "text-emerald-600 dark:text-emerald-400 font-bold",
     rowClass:
-      "border-l-4 border-l-transparent hover:bg-gray-50/80 dark:hover:bg-white/[0.03] transition-colors",
-    headerGradient:
-      "bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/20 dark:from-emerald-950/40 dark:via-emerald-900/10 dark:to-transparent",
-    pulsePill: "bg-emerald-500/15 text-emerald-600 border border-emerald-500/30 dark:bg-emerald-500/20 dark:text-emerald-300",
+      "border-l-4 border-l-transparent hover:bg-gray-50/70 dark:hover:bg-white/[0.02] transition-colors",
+    pulsePill: "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300",
   };
 }
 
@@ -170,25 +162,25 @@ function WorkloadMeter({ value }: { value: number }) {
         {[1, 2, 3, 4, 5].map((n) => (
           <span
             key={n}
-            className={`h-2 w-3.5 rounded-full transition-colors ${
+            className={`h-1.5 w-3 rounded-full transition-colors ${
               n <= value
                 ? value >= 5
-                  ? "bg-red-500 shadow-sm shadow-red-500/40"
+                  ? "bg-rose-500"
                   : value >= 4
-                  ? "bg-amber-500 shadow-sm shadow-amber-500/30"
+                  ? "bg-amber-500"
                   : "bg-brand-500 dark:bg-brand-400"
-                : "bg-gray-200 dark:bg-white/20"
+                : "bg-gray-200 dark:bg-white/10"
             }`}
           />
         ))}
       </div>
       <span
-        className={`text-xs font-extrabold ${
+        className={`text-xs font-bold ${
           value >= 5
-            ? "text-red-600 dark:text-red-400"
+            ? "text-rose-600 dark:text-rose-400"
             : value >= 4
             ? "text-amber-600 dark:text-amber-400"
-            : "text-gray-600 dark:text-white/80"
+            : "text-gray-600 dark:text-white/70"
         }`}
       >
         {value}/5
@@ -251,23 +243,23 @@ export default function PeoplePriorityTable({
       {/* Cabecera con Buscador y Filtros */}
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
-          <h4 className="text-lg font-bold tracking-tight text-navy-700 dark:text-white">
+          <h3 className="text-lg font-bold tracking-tight text-navy-700 dark:text-white">
             Atención Inmediata y Estado del Equipo
-          </h4>
-          <p className="mt-0.5 text-xs text-gray-500 dark:text-white/60">
-            Seguimiento de bienestar, niveles de tensión y alertas preventivas del equipo.
+          </h3>
+          <p className="mt-0.5 text-xs text-gray-400 dark:text-white/50">
+            Seguimiento de bienestar, factores de tensión y alertas preventivas del equipo.
           </p>
         </div>
 
         {/* Buscador rápido */}
         <div className="relative w-full sm:w-72">
-          <MdOutlineSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-gray-400 dark:text-white/50" />
+          <MdOutlineSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-gray-400 dark:text-white/40" />
           <input
             type="text"
-            placeholder="Buscar por nombre o área..."
+            placeholder="Buscar por colaborador o área..."
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2 pl-10 pr-3.5 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
+            className="w-full rounded-xl border border-gray-200/80 bg-gray-50/50 py-2 pl-10 pr-3.5 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
           />
         </div>
       </div>
@@ -310,7 +302,7 @@ export default function PeoplePriorityTable({
         })}
       </div>
 
-      {/* Tabla */}
+      {/* Tabla Continua */}
       {filtrados.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 py-14 text-center dark:border-white/10">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-gray-400 dark:bg-white/5 dark:text-white/40">
@@ -326,29 +318,29 @@ export default function PeoplePriorityTable({
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-gray-100 shadow-sm dark:border-white/10">
+        <div className="overflow-x-auto rounded-2xl border border-gray-100 dark:border-white/10">
           <table className="w-full border-collapse text-left">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/70 dark:border-white/10 dark:bg-white/[0.04]">
-                <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-600 dark:text-white/70">
-                  Empleado & Departamento
+              <tr className="border-b border-gray-100 bg-gray-50/70 dark:border-white/10 dark:bg-white/[0.02]">
+                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
+                  Colaborador
                 </th>
-                <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-600 dark:text-white/70">
+                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
                   Último Check-In
                 </th>
-                <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-600 dark:text-white/70">
+                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
                   Nivel de Estrés
                 </th>
-                <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-600 dark:text-white/70">
+                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
                   Carga Laboral
                 </th>
-                <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-600 dark:text-white/70">
+                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
                   Energía
                 </th>
-                <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-600 dark:text-white/70">
+                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
                   Pulso
                 </th>
-                <th className="px-4 py-3.5 text-right text-[11px] font-bold uppercase tracking-wider text-gray-600 dark:text-white/70">
+                <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
                   Acciones
                 </th>
               </tr>
@@ -381,7 +373,7 @@ export default function PeoplePriorityTable({
                               {s.nombre}
                             </p>
                             {colors.isCritico ? (
-                              <span className="rounded-md bg-red-500 px-1.5 py-0.5 text-[9px] font-black text-white uppercase tracking-wider">
+                              <span className="rounded-md bg-rose-500 px-1.5 py-0.5 text-[9px] font-black text-white uppercase tracking-wider">
                                 Crítico
                               </span>
                             ) : colors.isAlto && s.normalized.stress === "alto" ? (
@@ -393,7 +385,7 @@ export default function PeoplePriorityTable({
                               <span className="flex h-2 w-2 rounded-full bg-amber-500" title="Alerta sin resolver" />
                             )}
                           </div>
-                          <p className="truncate text-xs text-gray-500 dark:text-white/70">
+                          <p className="truncate text-xs text-gray-400 dark:text-white/50">
                             {s.departamento || "General"}
                           </p>
                         </div>
@@ -401,7 +393,7 @@ export default function PeoplePriorityTable({
                     </td>
 
                     {/* Último Check-in */}
-                    <td className="whitespace-nowrap px-4 py-3.5 text-xs font-medium text-gray-600 dark:text-white/80">
+                    <td className="whitespace-nowrap px-4 py-3.5 text-xs font-medium text-gray-500 dark:text-white/70">
                       {fechaRelativa(s.checkIn.created_at)}
                     </td>
 
@@ -451,16 +443,16 @@ export default function PeoplePriorityTable({
                         <button
                           type="button"
                           onClick={() => setDetalle(s)}
-                          className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-navy-700 shadow-sm transition hover:bg-gray-50 active:scale-95 dark:border-white/15 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200/80 bg-white px-3 py-1.5 text-xs font-bold text-navy-700 shadow-2xs transition hover:bg-gray-50 active:scale-95 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
                         >
-                          <MdOutlineVisibility className="h-4 w-4 text-gray-500 dark:text-white/80" />
+                          <MdOutlineVisibility className="h-4 w-4 text-gray-400 dark:text-white/60" />
                           <span>Detalle</span>
                         </button>
                         {tieneAlertaActiva ? (
                           <button
                             type="button"
                             onClick={() => onResolve(alertaFila.id)}
-                            className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-700 shadow-sm transition hover:bg-emerald-500/20 active:scale-95 dark:border-emerald-400/40 dark:bg-emerald-500/20 dark:text-emerald-300"
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-700 shadow-2xs transition hover:bg-emerald-500/20 active:scale-95 dark:border-emerald-400/30 dark:bg-emerald-500/20 dark:text-emerald-300"
                             title="Marcar alerta como resuelta"
                           >
                             <MdCheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
@@ -554,7 +546,7 @@ function PersonDetailBody({
                 </span>
               )}
             </div>
-            <p className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-500 dark:text-white/60">
+            <p className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-400 dark:text-white/50">
               <span>{summary.departamento || "General"}</span>
               <span>·</span>
               <span>Último check-in: {fechaRelativa(summary.checkIn.created_at)}</span>
@@ -652,7 +644,7 @@ function PersonDetailBody({
       {/* 3. Métricas del Check-in */}
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-xs font-bold text-gray-500 dark:text-white/60">
+          <p className="text-xs font-bold text-gray-400 dark:text-white/50 uppercase tracking-wider">
             Métricas del Check-in
           </p>
           <span className="text-[11px] text-gray-400 dark:text-white/40">
@@ -854,7 +846,7 @@ function PersonDetailBody({
       {/* 5. Factores adicionales señalados */}
       {n.tags.length > 0 && (
         <div>
-          <p className="mb-1.5 text-xs font-semibold text-gray-500 dark:text-white/60">
+          <p className="mb-1.5 text-xs font-semibold text-gray-400 dark:text-white/50 uppercase tracking-wider">
             Factores señalados en el registro
           </p>
           <div className="flex flex-wrap gap-1.5">

@@ -80,14 +80,14 @@ const TrendChart = ({ title, total, change, series, categories, delay = 0, min =
     <NexxusCard extra="flex flex-col justify-between w-full h-full rounded-[20px] p-6" delay={delay}>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-2">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
+          <p className="text-xs font-semibold text-gray-400 dark:text-white/50">
             {title}
           </p>
-          <h3 className="mt-1 text-2xl font-black text-navy-700 dark:text-white">
+          <h3 className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-navy-700 dark:text-white">
             {total}
           </h3>
         </div>
-        <div className="self-start sm:self-auto rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600 dark:bg-white/5 dark:text-white/60">
+        <div className="self-start sm:self-auto rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600 dark:bg-white/10 dark:text-white/70">
           {change}
         </div>
       </div>

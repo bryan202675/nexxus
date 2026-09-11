@@ -16,6 +16,9 @@ import {
   MdOutlineCheck,
   MdOutlineAdd,
   MdOutlineVisibility,
+  MdOutlineClose,
+  MdOutlineCheckCircle,
+  MdOutlineInsertDriveFile,
 } from "react-icons/md";
 
 import NexxusCard from "views/nexxus/components/NexxusCard";
@@ -42,43 +45,55 @@ function mapDocumentoRow(row: any) {
   };
 }
 
-const TIPO_CONFIG: Record<string, { label: string; badge: string; icon: any }> = {
+const TIPO_CONFIG: Record<string, { label: string; badge: string; icon: any; color: string; barBg: string }> = {
   nomina: {
     label: "Nómina & Recibos",
     badge: "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 dark:bg-emerald-400/20 dark:text-emerald-300",
     icon: MdOutlineTableChart,
+    color: "text-emerald-500 bg-emerald-500/10 dark:bg-emerald-400/20 dark:text-emerald-300",
+    barBg: "bg-emerald-500",
   },
   contrato: {
     label: "Contratos & Legal",
     badge: "bg-blue-500/10 text-blue-600 border border-blue-500/20 dark:bg-blue-400/20 dark:text-blue-300",
     icon: MdOutlineDescription,
+    color: "text-blue-500 bg-blue-500/10 dark:bg-blue-400/20 dark:text-blue-300",
+    barBg: "bg-blue-500",
   },
   rrhh: {
     label: "Políticas & RRHH",
     badge: "bg-purple-500/10 text-purple-600 border border-purple-500/20 dark:bg-purple-400/20 dark:text-purple-300",
     icon: MdOutlineFolder,
+    color: "text-purple-500 bg-purple-500/10 dark:bg-purple-400/20 dark:text-purple-300",
+    barBg: "bg-purple-500",
   },
   certificado: {
     label: "Certificados",
     badge: "bg-cyan-500/10 text-cyan-600 border border-cyan-500/20 dark:bg-cyan-400/20 dark:text-cyan-300",
     icon: MdOutlinePictureAsPdf,
+    color: "text-cyan-500 bg-cyan-500/10 dark:bg-cyan-400/20 dark:text-cyan-300",
+    barBg: "bg-cyan-500",
   },
   evaluacion: {
     label: "Evaluaciones",
     badge: "bg-amber-500/10 text-amber-600 border border-amber-500/20 dark:bg-amber-400/20 dark:text-amber-300",
     icon: MdOutlineDescription,
+    color: "text-amber-500 bg-amber-500/10 dark:bg-amber-400/20 dark:text-amber-300",
+    barBg: "bg-amber-500",
   },
   general: {
     label: "General / Varios",
     badge: "bg-gray-100 text-gray-600 border border-gray-200 dark:bg-white/10 dark:text-white/70 dark:border-white/10",
     icon: MdOutlineFolder,
+    color: "text-gray-500 bg-gray-100 dark:bg-white/10 dark:text-white/60",
+    barBg: "bg-gray-400",
   },
 };
 
 function getTipoStyle(tipoRaw: string) {
   const key = (tipoRaw || "").trim().toLowerCase();
   if (TIPO_CONFIG[key]) return TIPO_CONFIG[key];
-  if (key.includes("nom")) return TIPO_CONFIG.nomina;
+  if (key.includes("nom") || key.includes("recib")) return TIPO_CONFIG.nomina;
   if (key.includes("cont") || key.includes("leg")) return TIPO_CONFIG.contrato;
   if (key.includes("rrh") || key.includes("pol")) return TIPO_CONFIG.rrhh;
   if (key.includes("cert")) return TIPO_CONFIG.certificado;
@@ -161,6 +176,7 @@ export default function GestionDocumentos() {
     const totalBytes = lista.reduce((sum, d) => sum + (Number(d.size) || 0), 0);
     const uploadCount = lista.length;
     const sinLeer = lista.filter((d) => !d.leido).length;
+    const leidos = lista.filter((d) => d.leido).length;
 
     const ahora = new Date();
     const esteMes = lista.filter((d) => {
@@ -169,7 +185,28 @@ export default function GestionDocumentos() {
       return fecha.getFullYear() === ahora.getFullYear() && fecha.getMonth() === ahora.getMonth();
     }).length;
 
-    return { totalBytes, uploadCount, sinLeer, esteMes };
+    return { totalBytes, uploadCount, sinLeer, leidos, esteMes };
+  }, [documentos]);
+
+  // Conteos por categoría
+  const categoryCounts = useMemo(() => {
+    const lista = documentos || [];
+    let rrhh = 0;
+    let contratos = 0;
+    let nomina = 0;
+    let certificados = 0;
+    let otros = 0;
+
+    lista.forEach((d) => {
+      const t = (d.tipo || "").toLowerCase();
+      if (t.includes("rrh") || t.includes("pol")) rrhh++;
+      else if (t.includes("cont") || t.includes("leg")) contratos++;
+      else if (t.includes("nom") || t.includes("recib")) nomina++;
+      else if (t.includes("cert")) certificados++;
+      else otros++;
+    });
+
+    return { rrhh, contratos, nomina, certificados, otros };
   }, [documentos]);
 
   // Filtrado de documentos
@@ -178,7 +215,10 @@ export default function GestionDocumentos() {
     return (documentos || []).filter((doc) => {
       if (filtroTipo !== "todos") {
         const t = (doc.tipo || "").toLowerCase();
-        if (!t.includes(filtroTipo)) return false;
+        if (filtroTipo === "rrhh" && !t.includes("rrh") && !t.includes("pol")) return false;
+        if (filtroTipo === "contrato" && !t.includes("cont") && !t.includes("leg")) return false;
+        if (filtroTipo === "nomina" && !t.includes("nom") && !t.includes("recib")) return false;
+        if (filtroTipo === "certificado" && !t.includes("cert")) return false;
       }
       if (filtroLectura === "leidos" && !doc.leido) return false;
       if (filtroLectura === "sinLeer" && doc.leido) return false;
@@ -245,27 +285,15 @@ export default function GestionDocumentos() {
 
     try {
       let fileUrl = uploadForm.url.trim();
-      const fileSize = selectedFile ? selectedFile.size : 1024 * 150; // fallback simulado 150KB
+      const fileSize = selectedFile ? selectedFile.size : 1024 * 150; // fallback 150KB
 
-      // Si seleccionó un archivo físico, intentar subirlo al bucket de Supabase Storage
       if (selectedFile) {
-        const fileExt = selectedFile.name.split(".").pop();
         const fileName = `${empresaId}/${Date.now()}_${selectedFile.name}`;
         try {
-          // El bucket real se llama "documents" (inglés) -- con "documentos" (como estaba antes)
-          // el upload fallaba siempre en silencio (bucket inexistente), así que ningún archivo
-          // subido desde esta pantalla llegaba de verdad a Supabase Storage.
           const { data: uploadData, error: uploadErr } = await supabase.storage
             .from("documents")
             .upload(fileName, selectedFile, { upsert: true });
 
-          // El bucket es privado a propósito (documentos de RRHH: nómina, contratos,
-          // evaluaciones) -- getPublicUrl() nunca sirve un objeto de un bucket privado, la URL
-          // que devolvía jamás funcionaba. Con un bucket privado hay que generar una URL firmada;
-          // como el resto del código (dashboard y mobile) espera una sola URL ya lista guardada
-          // en datos.url, se firma con una vigencia muy larga (10 años) en vez de regenerarla en
-          // cada lectura -- la protección real la dan las políticas RLS de storage.objects
-          // (aisladas por empresa_id vía misma_empresa()), no que la URL sea "secreta".
           if (!uploadErr && uploadData) {
             const DIEZ_ANIOS_EN_SEGUNDOS = 10 * 365 * 24 * 60 * 60;
             const { data: firmada, error: firmaErr } = await supabase.storage
@@ -274,14 +302,10 @@ export default function GestionDocumentos() {
             if (!firmaErr && firmada) fileUrl = firmada.signedUrl;
           }
         } catch {
-          // Si el bucket no está creado aún, continuamos guardando el registro
+          // Si storage falla, continuamos con el registro
         }
       }
 
-      // "documentos" no tiene columna "url" -- la ubicación real vive en storage_path (NOT NULL)
-      // + se espeja en datos.url, igual que SupabaseDocumentoRepository.ts del lado mobile. Sin
-      // storage_path el insert siempre fallaba (columna inexistente + NOT NULL sin valor): subir
-      // un documento desde el dashboard nunca funcionaba.
       const payload = {
         empresa_id: empresaId,
         usuario_id: user?.id,
@@ -310,10 +334,6 @@ export default function GestionDocumentos() {
         detalles: uploadForm.titulo.trim(),
       });
 
-      // Compartir un documento desde el dashboard nunca avisaba a nadie (mobile sí manda inbox +
-      // push al subir uno). El dashboard no tiene un selector de "para quién" -- solo un
-      // departamento opcional -- así que se notifica a ese departamento cuando se elige uno; sin
-      // departamento (documento de toda la empresa) no se dispara un push masivo a todos.
       if (uploadForm.departamentoId) {
         const mensaje = `${perfil?.nombre || "Administración"} compartió un documento nuevo con tu departamento.`;
         const tituloDoc = uploadForm.titulo.trim();
@@ -343,7 +363,7 @@ export default function GestionDocumentos() {
               )
             );
           } catch {
-            // Best-effort: el documento ya quedó subido, una notificación fallida no debe romper el flujo.
+            // Best-effort
           }
         })();
       }
@@ -371,7 +391,7 @@ export default function GestionDocumentos() {
   }
 
   return (
-    <div className="flex flex-col gap-6 pb-6">
+    <div className="flex flex-col gap-5 pb-6">
       {/* Banner de error */}
       {error && (
         <div className="rounded-xl bg-red-50 p-4 text-xs font-bold text-red-600 dark:bg-red-500/10 dark:text-red-400">
@@ -379,12 +399,18 @@ export default function GestionDocumentos() {
         </div>
       )}
 
+      {/* Header & Acción Principal */}
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
-            Gestión Documental & Archivo
-          </h2>
-          <p className="mt-1 text-sm font-medium text-gray-500 dark:text-white/60">
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-xl font-bold tracking-tight text-navy-700 dark:text-white">
+              Gestión Documental & Archivo
+            </h2>
+            <span className="rounded-full bg-brand-500/10 px-3 py-1 text-xs font-bold text-brand-600 dark:bg-brand-400/20 dark:text-brand-300">
+              {stats.uploadCount} archivos indexados
+            </span>
+          </div>
+          <p className="mt-0.5 text-xs font-medium text-gray-500 dark:text-white/60">
             Repositorio corporativo de políticas, contratos, constancias y comunicados de la empresa.
           </p>
         </div>
@@ -392,191 +418,413 @@ export default function GestionDocumentos() {
         <button
           type="button"
           onClick={() => setShowUploadModal(true)}
-          className="flex items-center gap-1.5 rounded-xl bg-brand-500 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 active:scale-95 dark:bg-brand-400"
+          className="inline-flex items-center gap-1.5 rounded-xl bg-brand-500 px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-600 active:scale-95 dark:bg-brand-400"
         >
           <MdOutlineCloudUpload className="h-4 w-4" />
           <span>Subir Documento</span>
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                Total Documentos
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
-                {stats.uploadCount}
-              </h3>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500/10 text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
-              <MdOutlineDescription className="h-6 w-6" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>Archivos indexados</span>
-            <span className="font-bold text-brand-500">100% activo</span>
-          </div>
-        </NexxusCard>
+      {/* Grid Asimétrico: Hero Card (7 cols) + Right Stack (5 cols) */}
+      {(() => {
+        const total = Math.max(stats.uploadCount, 1);
+        const hayDocumentos = stats.uploadCount > 0;
+        const rrhhPct = Math.round((categoryCounts.rrhh / total) * 100);
+        const contratosPct = Math.round((categoryCounts.contratos / total) * 100);
+        const nominaPct = Math.round((categoryCounts.nomina / total) * 100);
+        const certificadosPct = Math.round((categoryCounts.certificados / total) * 100);
+        const otrosPct = Math.round((categoryCounts.otros / total) * 100);
 
-        {/* Espacio Usado */}
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                Espacio en la Nube
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-blue-600 dark:text-blue-400">
-                {formatBytes(stats.totalBytes)}
-              </h3>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
-              <MdOutlineStorage className="h-6 w-6" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>Almacenamiento seguro</span>
-            <span className="font-bold text-blue-600">Ilimitado</span>
-          </div>
-        </NexxusCard>
+        return (
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+            {/* Hero Card Principal (7 cols) */}
+            <div className="lg:col-span-7">
+              <NexxusCard extra="p-6 h-full flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-sm font-bold text-navy-700 dark:text-white">
+                        Acervo Documental & Archivo
+                      </span>
+                      <span className="ml-2 text-xs font-medium text-gray-400 dark:text-white/40">
+                        · Repositorio Central
+                      </span>
+                    </div>
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-bold ${
+                        stats.sinLeer > 0
+                          ? "bg-amber-500/10 text-amber-600 dark:bg-amber-400/20 dark:text-amber-300"
+                          : "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300"
+                      }`}
+                    >
+                      {stats.sinLeer > 0 ? `${stats.sinLeer} por revisar` : "Bandeja al día"}
+                    </span>
+                  </div>
 
-        {/* Sin Leer */}
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                Documentos sin Leer
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-amber-600 dark:text-amber-400">
-                {stats.sinLeer}
-              </h3>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:bg-amber-400/20 dark:text-amber-300">
-              <MdOutlineMarkEmailUnread className="h-6 w-6" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>Pendientes de apertura</span>
-            <span className={stats.sinLeer > 0 ? "font-bold text-amber-600" : "font-bold text-emerald-600"}>
-              {stats.sinLeer > 0 ? "Por revisar" : "Al día"}
-            </span>
-          </div>
-        </NexxusCard>
+                  {/* Número Principal */}
+                  <div className="mt-4">
+                    {stats.uploadCount > 0 ? (
+                      <div>
+                        <p className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-navy-700 dark:text-white truncate">
+                          {stats.uploadCount}
+                        </p>
+                        <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-brand-600 dark:text-brand-400">
+                          <span>{formatBytes(stats.totalBytes)} en almacenamiento seguro</span>
+                          <span className="font-normal text-gray-400 dark:text-white/40">
+                            · {stats.esteMes} incorporados este mes
+                          </span>
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="py-2">
+                        <p className="text-2xl sm:text-3xl font-black tracking-tight text-navy-700 dark:text-white">
+                          Sin documentos indexados
+                        </p>
+                        <p className="mt-1 text-xs font-medium text-gray-400 dark:text-white/50">
+                          Comienza publicando políticas, contratos o comunicados institucionales.
+                        </p>
+                      </div>
+                    )}
 
-        {/* Documentos Este Mes */}
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                Publicados este Mes
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">
-                {stats.esteMes}
-              </h3>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
-              <MdOutlineCalendarMonth className="h-6 w-6" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>Nuevas incorporaciones</span>
-            <span className="font-bold text-emerald-600">Este período</span>
-          </div>
-        </NexxusCard>
-      </div>
+                    <p className="mt-2 text-xs font-medium text-gray-500 dark:text-white/60">
+                      {stats.leidos} documentos verificados · {stats.sinLeer} pendientes de apertura
+                    </p>
+                  </div>
+                </div>
 
-      <NexxusCard extra="p-6 flex flex-col gap-5" delay={100}>
-        {/* Barra superior de filtrado */}
-        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
-          <div>
-            <h4 className="text-xl font-bold tracking-tight text-navy-700 dark:text-white">
-              Repositorio de Documentos
-            </h4>
-            <p className="mt-0.5 text-xs font-medium text-gray-500 dark:text-white/60">
-              Mostrando {documentosFiltrados.length} archivos disponibles en la organización.
-            </p>
-          </div>
+                <div className="mt-6">
+                  {/* Barra de Distribución Proporcional */}
+                  <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+                    {hayDocumentos ? (
+                      <>
+                        <div
+                          style={{ width: `${Math.max(rrhhPct, 4)}%` }}
+                          className="h-full bg-purple-500 transition-all duration-500"
+                          title={`Políticas & RRHH: ${categoryCounts.rrhh}`}
+                        />
+                        <div
+                          style={{ width: `${contratosPct}%` }}
+                          className="h-full bg-blue-500 transition-all duration-500"
+                          title={`Contratos & Legal: ${categoryCounts.contratos}`}
+                        />
+                        <div
+                          style={{ width: `${nominaPct}%` }}
+                          className="h-full bg-emerald-500 transition-all duration-500"
+                          title={`Nómina & Recibos: ${categoryCounts.nomina}`}
+                        />
+                        <div
+                          style={{ width: `${certificadosPct}%` }}
+                          className="h-full bg-cyan-500 transition-all duration-500"
+                          title={`Certificados: ${categoryCounts.certificados}`}
+                        />
+                        <div
+                          style={{ width: `${otrosPct}%` }}
+                          className="h-full bg-gray-400 transition-all duration-500"
+                          title={`Otros: ${categoryCounts.otros}`}
+                        />
+                      </>
+                    ) : (
+                      <div className="h-full w-full bg-gray-200/50 dark:bg-white/5" />
+                    )}
+                  </div>
 
-          <div className="flex items-center gap-3">
-            <div className="relative w-full sm:w-72">
-              <MdOutlineSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-gray-400 dark:text-white/40" />
-              <input
-                type="text"
-                placeholder="Buscar por título, categoría o depto..."
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2 pl-9 pr-3 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
-              />
+                  {/* Leyenda con Métricas */}
+                  {hayDocumentos ? (
+                    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-purple-500" />
+                        <div className="min-w-0">
+                          <p className="truncate text-[11px] font-bold text-navy-700 dark:text-white">
+                            {categoryCounts.rrhh}
+                          </p>
+                          <p className="truncate text-[10px] text-gray-400 dark:text-white/40">
+                            Políticas ({rrhhPct}%)
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-blue-500" />
+                        <div className="min-w-0">
+                          <p className="truncate text-[11px] font-bold text-navy-700 dark:text-white">
+                            {categoryCounts.contratos}
+                          </p>
+                          <p className="truncate text-[10px] text-gray-400 dark:text-white/40">
+                            Legal ({contratosPct}%)
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500" />
+                        <div className="min-w-0">
+                          <p className="truncate text-[11px] font-bold text-navy-700 dark:text-white">
+                            {categoryCounts.nomina}
+                          </p>
+                          <p className="truncate text-[10px] text-gray-400 dark:text-white/40">
+                            Nómina ({nominaPct}%)
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-cyan-500" />
+                        <div className="min-w-0">
+                          <p className="truncate text-[11px] font-bold text-navy-700 dark:text-white">
+                            {categoryCounts.certificados}
+                          </p>
+                          <p className="truncate text-[10px] text-gray-400 dark:text-white/40">
+                            Certificados ({certificadosPct}%)
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-[11px] font-medium text-gray-400 dark:text-white/40">
+                      Sin documentos clasificados en el sistema
+                    </p>
+                  )}
+                </div>
+              </NexxusCard>
+            </div>
+
+            {/* Right Stack of 3 Cards (5 cols) - Alineadas a la izquierda */}
+            <div className="flex flex-col gap-4 lg:col-span-5">
+              {/* Card 1: Espacio en la Nube */}
+              <NexxusCard extra="p-5 flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-gray-500 dark:text-white/50">
+                    Espacio en la Nube
+                  </span>
+                  <span className="rounded-full bg-blue-500/10 px-2.5 py-0.5 text-[11px] font-bold text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
+                    Almacenamiento Ilimitado
+                  </span>
+                </div>
+                <div className="mt-3">
+                  <p className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
+                    {formatBytes(stats.totalBytes)}
+                  </p>
+                  <p className="mt-1 text-xs text-gray-400 dark:text-white/40">
+                    Almacenamiento cifrado y respaldado en la nube corporativa.
+                  </p>
+                </div>
+              </NexxusCard>
+
+              {/* Card 2: Documentos sin Leer */}
+              <NexxusCard extra="p-5 flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-gray-500 dark:text-white/50">
+                    Documentos sin Leer
+                  </span>
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                      stats.sinLeer > 0
+                        ? "bg-amber-500/10 text-amber-600 dark:bg-amber-400/20 dark:text-amber-300"
+                        : "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300"
+                    }`}
+                  >
+                    {stats.sinLeer > 0 ? "Por revisar" : "Al día"}
+                  </span>
+                </div>
+                <div className="mt-3">
+                  {stats.sinLeer > 0 ? (
+                    <p className="text-2xl font-bold tracking-tight text-amber-600 dark:text-amber-400">
+                      {stats.sinLeer} <span className="text-xs font-medium text-gray-400">pendientes</span>
+                    </p>
+                  ) : (
+                    <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                      Todos los documentos han sido leídos
+                    </p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-400 dark:text-white/40">
+                    Archivos compartidos pendientes de apertura o confirmación.
+                  </p>
+                </div>
+              </NexxusCard>
+
+              {/* Card 3: Publicados Este Mes */}
+              <NexxusCard extra="p-5 flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-gray-500 dark:text-white/50">
+                    Publicados este Mes
+                  </span>
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                      stats.esteMes > 0
+                        ? "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300"
+                        : "bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-white/40"
+                    }`}
+                  >
+                    {stats.esteMes > 0 ? "Este período" : "Sin publicaciones"}
+                  </span>
+                </div>
+                <div className="mt-3">
+                  {stats.esteMes > 0 ? (
+                    <p className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
+                      {stats.esteMes} <span className="text-xs font-medium text-gray-400">incorporaciones</span>
+                    </p>
+                  ) : (
+                    <p className="text-sm font-bold text-gray-400 dark:text-white/50">
+                      Sin nuevas publicaciones este mes
+                    </p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-400 dark:text-white/40">
+                    Nuevos archivos añadidos durante el mes actual.
+                  </p>
+                </div>
+              </NexxusCard>
             </div>
           </div>
-        </div>
+        );
+      })()}
 
-        {/* Pestañas de Filtro Rápido */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-3 dark:border-white/10">
-          <div className="flex flex-wrap items-center gap-2">
+      {/* Tarjeta de Repositorio de Documentos */}
+      <NexxusCard extra="p-5 sm:p-6 flex flex-col gap-5" delay={100}>
+        {/* Barra superior de filtrado y tabs segmentados */}
+        <div className="flex flex-col gap-3.5 lg:flex-row lg:items-center lg:justify-between">
+          {/* Segmented Filter Pills */}
+          <div className="flex flex-wrap items-center gap-1.5 rounded-xl bg-gray-100/80 p-1 dark:bg-charcoal">
             <button
               type="button"
               onClick={() => setFiltroTipo("todos")}
-              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${
                 filtroTipo === "todos"
-                  ? "bg-brand-500 text-white shadow-sm shadow-brand-500/20"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-white/70"
+                  ? "bg-navy-700 text-white shadow-sm dark:bg-white dark:text-navy-700"
+                  : "text-gray-600 hover:text-navy-700 hover:bg-white/60 dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10"
               }`}
             >
-              Todos ({documentos?.length || 0})
+              <span>Todos</span>
+              <span
+                className={`rounded-md px-1.5 py-0.2 text-[10px] font-bold ${
+                  filtroTipo === "todos"
+                    ? "bg-white/20 text-white dark:bg-navy-700/20 dark:text-navy-700"
+                    : "bg-gray-200 text-gray-700 dark:bg-white/10 dark:text-white/70"
+                }`}
+              >
+                {stats.uploadCount}
+              </span>
             </button>
+
             <button
               type="button"
               onClick={() => setFiltroTipo("rrhh")}
-              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${
                 filtroTipo === "rrhh"
-                  ? "bg-purple-500 text-white shadow-sm shadow-purple-500/20"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-white/70"
+                  ? "bg-navy-700 text-white shadow-sm dark:bg-white dark:text-navy-700"
+                  : "text-gray-600 hover:text-navy-700 hover:bg-white/60 dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10"
               }`}
             >
-              Políticas & RRHH
+              <span>Políticas & RRHH</span>
+              {categoryCounts.rrhh > 0 && (
+                <span
+                  className={`rounded-md px-1.5 py-0.2 text-[10px] font-bold ${
+                    filtroTipo === "rrhh"
+                      ? "bg-white/20 text-white dark:bg-navy-700/20 dark:text-navy-700"
+                      : "bg-gray-200 text-gray-700 dark:bg-white/10 dark:text-white/70"
+                  }`}
+                >
+                  {categoryCounts.rrhh}
+                </span>
+              )}
             </button>
+
             <button
               type="button"
               onClick={() => setFiltroTipo("contrato")}
-              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${
                 filtroTipo === "contrato"
-                  ? "bg-blue-500 text-white shadow-sm shadow-blue-500/20"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-white/70"
+                  ? "bg-navy-700 text-white shadow-sm dark:bg-white dark:text-navy-700"
+                  : "text-gray-600 hover:text-navy-700 hover:bg-white/60 dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10"
               }`}
             >
-              Contratos & Legal
+              <span>Contratos & Legal</span>
+              {categoryCounts.contratos > 0 && (
+                <span
+                  className={`rounded-md px-1.5 py-0.2 text-[10px] font-bold ${
+                    filtroTipo === "contrato"
+                      ? "bg-white/20 text-white dark:bg-navy-700/20 dark:text-navy-700"
+                      : "bg-gray-200 text-gray-700 dark:bg-white/10 dark:text-white/70"
+                  }`}
+                >
+                  {categoryCounts.contratos}
+                </span>
+              )}
             </button>
+
             <button
               type="button"
               onClick={() => setFiltroTipo("nomina")}
-              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${
                 filtroTipo === "nomina"
-                  ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/20"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-white/70"
+                  ? "bg-navy-700 text-white shadow-sm dark:bg-white dark:text-navy-700"
+                  : "text-gray-600 hover:text-navy-700 hover:bg-white/60 dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10"
               }`}
             >
-              Nómina & Recibos
+              <span>Nómina & Recibos</span>
+              {categoryCounts.nomina > 0 && (
+                <span
+                  className={`rounded-md px-1.5 py-0.2 text-[10px] font-bold ${
+                    filtroTipo === "nomina"
+                      ? "bg-white/20 text-white dark:bg-navy-700/20 dark:text-navy-700"
+                      : "bg-gray-200 text-gray-700 dark:bg-white/10 dark:text-white/70"
+                  }`}
+                >
+                  {categoryCounts.nomina}
+                </span>
+              )}
             </button>
+
             <button
               type="button"
               onClick={() => setFiltroTipo("certificado")}
-              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${
                 filtroTipo === "certificado"
-                  ? "bg-cyan-500 text-white shadow-sm shadow-cyan-500/20"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-white/70"
+                  ? "bg-navy-700 text-white shadow-sm dark:bg-white dark:text-navy-700"
+                  : "text-gray-600 hover:text-navy-700 hover:bg-white/60 dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10"
               }`}
             >
-              Certificados
+              <span>Certificados</span>
+              {categoryCounts.certificados > 0 && (
+                <span
+                  className={`rounded-md px-1.5 py-0.2 text-[10px] font-bold ${
+                    filtroTipo === "certificado"
+                      ? "bg-white/20 text-white dark:bg-navy-700/20 dark:text-navy-700"
+                      : "bg-gray-200 text-gray-700 dark:bg-white/10 dark:text-white/70"
+                  }`}
+                >
+                  {categoryCounts.certificados}
+                </span>
+              )}
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Buscador & Selector de Estado */}
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+            <div className="relative w-full sm:w-64">
+              <MdOutlineSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-gray-400 dark:text-white/40" />
+              <input
+                type="text"
+                placeholder="Buscar documento, categoría o depto..."
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/50 pl-9 pr-8 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
+              />
+              {busqueda && (
+                <button
+                  type="button"
+                  onClick={() => setBusqueda("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-white"
+                  title="Limpiar búsqueda"
+                >
+                  <MdOutlineClose className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
             <select
               value={filtroLectura}
               onChange={(e) => setFiltroLectura(e.target.value)}
-              className="h-8 rounded-xl border border-gray-200 bg-gray-50/50 px-2.5 text-xs font-semibold text-navy-700 outline-none dark:border-white/10 dark:bg-charcoal dark:text-white"
+              className="h-10 rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
             >
               <option value="todos">Todos los estados</option>
               <option value="sinLeer">Sin leer</option>
@@ -585,26 +833,26 @@ export default function GestionDocumentos() {
           </div>
         </div>
 
-        {/* Tabla */}
+        {/* Tabla de Documentos */}
         {cargando ? (
           <div className="flex h-64 w-full flex-col items-center justify-center gap-3">
-            <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-500 border-t-transparent" />
-            <p className="text-sm font-medium text-gray-500 dark:text-white/60">
+            <div className="h-9 w-9 animate-spin rounded-full border-3 border-brand-500 border-t-transparent" />
+            <p className="text-xs font-medium text-gray-500 dark:text-white/60">
               Cargando documentos...
             </p>
           </div>
         ) : documentosFiltrados.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 py-16 text-center dark:border-white/10">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-gray-400 dark:bg-white/5 dark:text-white/40">
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 py-14 text-center dark:border-white/10">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gray-100 text-gray-400 dark:bg-white/5 dark:text-white/40">
               <MdOutlineDescription className="h-6 w-6" />
             </div>
             <p className="mt-3 text-sm font-bold text-navy-700 dark:text-white">
-              No hay documentos para mostrar
+              No se encontraron documentos
             </p>
-            <p className="mt-0.5 text-xs text-gray-400 dark:text-white/50">
-              {busqueda || filtroTipo !== "todos"
-                ? "Prueba a cambiar los filtros o el término de búsqueda."
-                : "Sube tu primer documento corporativo con el botón 'Subir Documento'."}
+            <p className="mt-1 text-xs text-gray-400 dark:text-white/50 max-w-sm">
+              {busqueda || filtroTipo !== "todos" || filtroLectura !== "todos"
+                ? "Prueba con otros términos de búsqueda o filtros."
+                : "Comienza publicando tu primer documento con el botón 'Subir Documento'."}
             </p>
           </div>
         ) : (
@@ -612,25 +860,25 @@ export default function GestionDocumentos() {
             <table className="w-full border-collapse text-left">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/70 dark:border-white/10 dark:bg-white/[0.02]">
-                  <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                  <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
                     Documento
                   </th>
-                  <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                  <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
                     Categoría
                   </th>
-                  <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                  <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
                     Tamaño
                   </th>
-                  <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                  <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
                     Alcance / Destino
                   </th>
-                  <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                  <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
                     Fecha Subida
                   </th>
-                  <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                  <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
                     Estado
                   </th>
-                  <th className="px-4 py-3.5 text-right text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
+                  <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/40">
                     Acciones
                   </th>
                 </tr>
@@ -646,20 +894,20 @@ export default function GestionDocumentos() {
                     <tr
                       key={doc.id}
                       onClick={() => setSelectedDoc(doc)}
-                      className="cursor-pointer transition hover:bg-gray-50/70 dark:hover:bg-white/[0.02]"
+                      className="group cursor-pointer transition hover:bg-gray-50/70 dark:hover:bg-white/[0.02]"
                     >
                       {/* Documento */}
                       <td className="min-w-[220px] px-4 py-3.5">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
-                            <TipoIcon className="h-5 w-5" />
+                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${tipoStyle.color}`}>
+                            <TipoIcon className="h-4.5 w-4.5" />
                           </div>
                           <div className="min-w-0">
-                            <p className="truncate text-xs font-bold text-navy-700 dark:text-white">
+                            <p className="truncate text-xs font-bold text-navy-700 group-hover:text-brand-600 transition dark:text-white dark:group-hover:text-brand-300">
                               {doc.titulo}
                             </p>
                             {doc.descripcion && (
-                              <p className="truncate text-[10.5px] text-gray-400 dark:text-white/50 max-w-xs">
+                              <p className="truncate text-[11px] text-gray-400 dark:text-white/50 max-w-xs">
                                 {doc.descripcion}
                               </p>
                             )}
@@ -669,19 +917,19 @@ export default function GestionDocumentos() {
 
                       {/* Categoría */}
                       <td className="whitespace-nowrap px-4 py-3.5">
-                        <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold ${tipoStyle.badge}`}>
+                        <span className={`inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold ${tipoStyle.badge}`}>
                           {tipoStyle.label}
                         </span>
                       </td>
 
                       {/* Tamaño */}
-                      <td className="whitespace-nowrap px-4 py-3.5 text-xs font-mono font-semibold text-gray-600 dark:text-white/70">
+                      <td className="whitespace-nowrap px-4 py-3.5 text-xs font-mono font-bold text-navy-700 dark:text-white">
                         {formatBytes(doc.size)}
                       </td>
 
                       {/* Alcance */}
                       <td className="whitespace-nowrap px-4 py-3.5">
-                        <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-bold text-gray-700 dark:bg-white/10 dark:text-white/70">
+                        <span className="inline-flex items-center rounded-md bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 dark:bg-white/10 dark:text-white/70">
                           {deptoNombre}
                         </span>
                       </td>
@@ -691,13 +939,13 @@ export default function GestionDocumentos() {
                         {formatoFecha(doc.fechaSubida)}
                       </td>
 
-                      {/* Estado / Leído */}
+                      {/* Estado */}
                       <td className="whitespace-nowrap px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           disabled={isBusy}
                           onClick={() => handleToggleLeido(doc)}
-                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold transition ${
+                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition ${
                             doc.leido
                               ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 dark:bg-emerald-400/20 dark:text-emerald-300"
                               : "bg-amber-500/10 text-amber-600 border border-amber-500/20 dark:bg-amber-400/20 dark:text-amber-300"
@@ -716,7 +964,7 @@ export default function GestionDocumentos() {
                               href={doc.url}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex items-center gap-1 rounded-xl border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-bold text-blue-700 shadow-sm transition hover:bg-blue-100 active:scale-95 dark:border-blue-500/30 dark:bg-blue-500/20 dark:text-blue-300"
+                              className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 shadow-sm transition hover:bg-blue-100 active:scale-95 dark:border-blue-500/30 dark:bg-blue-500/20 dark:text-blue-300"
                             >
                               <MdOutlineOpenInNew className="h-3.5 w-3.5" />
                               <span>Abrir</span>
@@ -725,7 +973,7 @@ export default function GestionDocumentos() {
                             <button
                               type="button"
                               onClick={() => setSelectedDoc(doc)}
-                              className="inline-flex items-center gap-1 rounded-xl bg-lightPrimary px-2.5 py-1.5 text-xs font-bold text-brand-500 transition hover:bg-brand-500/10 dark:bg-white/5 dark:text-brand-300"
+                              className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-navy-700 shadow-sm transition hover:bg-gray-50 hover:border-gray-300 active:scale-95 dark:border-white/10 dark:bg-charcoal dark:text-white dark:hover:bg-white/5"
                             >
                               <MdOutlineVisibility className="h-3.5 w-3.5" />
                               <span>Detalle</span>
@@ -736,7 +984,7 @@ export default function GestionDocumentos() {
                             type="button"
                             disabled={isBusy}
                             onClick={() => handleEliminar(doc)}
-                            className="inline-flex items-center rounded-xl p-1.5 text-xs font-bold text-rose-600 transition hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10"
+                            className="inline-flex items-center rounded-lg p-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10"
                             title="Eliminar documento"
                           >
                             <MdOutlineDelete className="h-4 w-4" />
@@ -763,7 +1011,7 @@ export default function GestionDocumentos() {
                 type="button"
                 disabled={pagina <= 1}
                 onClick={() => setPagina((p) => Math.max(1, p - 1))}
-                className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-navy-700 transition hover:bg-gray-50 disabled:opacity-40 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-navy-700 transition hover:bg-gray-50 disabled:opacity-40 dark:border-white/10 dark:bg-charcoal dark:text-white"
               >
                 Anterior
               </button>
@@ -771,7 +1019,7 @@ export default function GestionDocumentos() {
                 type="button"
                 disabled={pagina >= totalPaginas}
                 onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
-                className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-navy-700 transition hover:bg-gray-50 disabled:opacity-40 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-navy-700 transition hover:bg-gray-50 disabled:opacity-40 dark:border-white/10 dark:bg-charcoal dark:text-white"
               >
                 Siguiente
               </button>
@@ -780,6 +1028,7 @@ export default function GestionDocumentos() {
         )}
       </NexxusCard>
 
+      {/* Modal Subir Documento */}
       <Modal
         isOpen={showUploadModal}
         onClose={() => setShowUploadModal(false)}
@@ -787,7 +1036,7 @@ export default function GestionDocumentos() {
         width="max-w-lg"
       >
         <div className="py-2">
-          <form onSubmit={handleSubirDocumento} className="flex flex-col gap-3.5">
+          <form onSubmit={handleSubirDocumento} className="flex flex-col gap-4">
             {/* Selector de Archivo */}
             <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/50 p-5 text-center transition hover:border-brand-500 dark:border-white/10 dark:bg-charcoal">
               <MdOutlineCloudUpload className="h-8 w-8 text-brand-500 mb-2" />
@@ -797,7 +1046,7 @@ export default function GestionDocumentos() {
               <p className="text-[11px] text-gray-400 dark:text-white/40 mt-0.5">
                 {selectedFile ? `${formatBytes(selectedFile.size)}` : "Haz clic para examinar desde tu equipo"}
               </p>
-              <label className="mt-3 cursor-pointer rounded-xl bg-lightPrimary px-4 py-1.5 text-xs font-bold text-brand-500 shadow-sm transition hover:bg-brand-500/10 dark:bg-white/5 dark:text-brand-300">
+              <label className="mt-3 cursor-pointer rounded-xl bg-brand-500/10 px-4 py-1.5 text-xs font-semibold text-brand-600 shadow-sm transition hover:bg-brand-500/20 active:scale-95 dark:bg-brand-400/20 dark:text-brand-300">
                 <span>Examinar archivo</span>
                 <input
                   type="file"
@@ -819,7 +1068,7 @@ export default function GestionDocumentos() {
             </div>
 
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="doc-titulo">
+              <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="doc-titulo">
                 Título del Documento *
               </label>
               <input
@@ -828,20 +1077,20 @@ export default function GestionDocumentos() {
                 placeholder="Ej. Política de Seguridad de la Información 2026"
                 value={uploadForm.titulo}
                 onChange={(e) => setUploadForm((prev) => ({ ...prev, titulo: e.target.value }))}
-                className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3.5 text-xs font-semibold text-navy-700 outline-none transition placeholder:text-gray-400 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-white/10 dark:bg-charcoal dark:text-white dark:placeholder:text-white/30 dark:focus:border-brand-400 dark:focus:bg-[#1B254B]"
               />
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="doc-categoria">
+                <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="doc-categoria">
                   Categoría
                 </label>
                 <select
                   id="doc-categoria"
                   value={uploadForm.categoria}
                   onChange={(e) => setUploadForm((prev) => ({ ...prev, categoria: e.target.value }))}
-                  className="mt-1 flex h-9.5 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                  className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3.5 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400 dark:focus:bg-[#1B254B]"
                 >
                   <option value="rrhh">Políticas & RRHH</option>
                   <option value="contrato">Contratos & Legal</option>
@@ -853,14 +1102,14 @@ export default function GestionDocumentos() {
               </div>
 
               <div>
-                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="doc-depto">
+                <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="doc-depto">
                   Alcance / Departamento
                 </label>
                 <select
                   id="doc-depto"
                   value={uploadForm.departamentoId}
                   onChange={(e) => setUploadForm((prev) => ({ ...prev, departamentoId: e.target.value }))}
-                  className="mt-1 flex h-9.5 w-full items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                  className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3.5 text-xs font-semibold text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400 dark:focus:bg-[#1B254B]"
                 >
                   <option value="">Toda la Empresa</option>
                   {departamentos.map((d) => (
@@ -873,7 +1122,7 @@ export default function GestionDocumentos() {
             </div>
 
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="doc-descripcion">
+              <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="doc-descripcion">
                 Descripción o Notas (opcional)
               </label>
               <textarea
@@ -882,24 +1131,28 @@ export default function GestionDocumentos() {
                 placeholder="Breve resumen de vigencia o aplicación..."
                 value={uploadForm.descripcion}
                 onChange={(e) => setUploadForm((prev) => ({ ...prev, descripcion: e.target.value }))}
-                className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50/50 p-2.5 text-xs font-semibold text-navy-700 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-charcoal dark:text-white"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50/50 p-3 text-xs font-semibold text-navy-700 outline-none transition placeholder:text-gray-400 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-white/10 dark:bg-charcoal dark:text-white dark:placeholder:text-white/30 dark:focus:border-brand-400 dark:focus:bg-[#1B254B]"
               />
             </div>
 
-            {uploadError && <p className="text-xs font-bold text-red-500">{uploadError}</p>}
+            {uploadError && (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-2.5 text-xs font-bold text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-400">
+                {uploadError}
+              </div>
+            )}
 
-            <div className="flex justify-end gap-2 border-t border-gray-100 pt-3 dark:border-white/10">
+            <div className="flex justify-end gap-2.5 border-t border-gray-100 pt-3.5 dark:border-white/10">
               <button
                 type="button"
                 onClick={() => setShowUploadModal(false)}
-                className="rounded-xl px-4 py-2 text-xs font-bold text-gray-700 dark:text-white"
+                className="rounded-xl border border-gray-200 px-4 py-2 text-xs font-bold text-gray-600 transition hover:bg-gray-100 active:scale-95 dark:border-white/10 dark:text-white/80 dark:hover:bg-white/5"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={subiendo}
-                className="rounded-xl bg-brand-500 px-5 py-2 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 disabled:opacity-50"
+                className="rounded-xl bg-brand-500 px-5 py-2 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 active:scale-95 disabled:opacity-50"
               >
                 {subiendo ? "Subiendo..." : "Publicar Documento"}
               </button>
@@ -908,6 +1161,7 @@ export default function GestionDocumentos() {
         </div>
       </Modal>
 
+      {/* Modal Ficha del Documento */}
       <Modal
         isOpen={!!selectedDoc}
         onClose={() => setSelectedDoc(null)}
@@ -950,7 +1204,7 @@ export default function GestionDocumentos() {
               <button
                 type="button"
                 onClick={() => handleToggleLeido(selectedDoc)}
-                className={`rounded-xl px-3 py-1.5 text-xs font-bold transition ${
+                className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
                   selectedDoc.leido
                     ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300"
                     : "bg-amber-50 text-amber-600 dark:bg-amber-400/20 dark:text-amber-300"
@@ -965,7 +1219,7 @@ export default function GestionDocumentos() {
                     href={selectedDoc.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1 rounded-xl bg-brand-500 px-4 py-1.5 text-xs font-bold text-white shadow-md shadow-brand-500/20 hover:bg-brand-600"
+                    className="inline-flex items-center gap-1 rounded-xl bg-brand-500 px-4 py-1.5 text-xs font-semibold text-white shadow-md shadow-brand-500/20 hover:bg-brand-600"
                   >
                     <MdOutlineOpenInNew className="h-3.5 w-3.5" />
                     <span>Abrir</span>
@@ -974,7 +1228,7 @@ export default function GestionDocumentos() {
                 <button
                   type="button"
                   onClick={() => setSelectedDoc(null)}
-                  className="rounded-xl bg-gray-100 px-4 py-1.5 text-xs font-bold text-gray-700 dark:bg-white/10 dark:text-white"
+                  className="rounded-xl bg-gray-100 px-4 py-1.5 text-xs font-semibold text-gray-700 dark:bg-white/10 dark:text-white"
                 >
                   Cerrar
                 </button>

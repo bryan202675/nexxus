@@ -19,6 +19,7 @@ import { subscribeConfiguracionEmpresa } from "services/adminRepository";
 import { useAuth } from "context/AuthContext";
 import { useTheme } from "context/ThemeContext";
 import { useEmpresaPlan, FEATURE_LABELS } from "services/planEnforcement";
+import { Link } from "react-router-dom";
 import { LANDING_URL } from "services/nexxusLinks";
 import NexxusCard from "views/nexxus/components/NexxusCard";
 import Avatar from "components/nexxus/Avatar";
@@ -186,109 +187,189 @@ export default function ConfiguracionAdmin() {
   return (
     <div className="flex flex-col gap-6 pb-6">
       {/* Header */}
-      <div className="flex flex-col gap-1">
-        <h2 className="text-2xl font-bold tracking-tight text-navy-700 dark:text-white">
-          Configuración & Preferencias Corporativas
-        </h2>
-        <p className="text-sm font-medium text-gray-500 dark:text-white/60">
-          Gestión del perfil del administrador, parámetros de asistencia, suscripción y apariencia de {empresaNombre || "la empresa"}.
-        </p>
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+        <div className="flex items-start gap-3">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-500/10 text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
+            <MdOutlineWorkspacePremium className="h-7 w-7" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-xl font-bold tracking-tight text-navy-700 dark:text-white">
+                Configuración & Preferencias Corporativas
+              </h2>
+              <span className="rounded-full bg-brand-500/10 px-3 py-1 text-xs font-bold text-brand-600 dark:bg-brand-400/20 dark:text-brand-300">
+                Plan {plan}
+              </span>
+            </div>
+            <p className="mt-0.5 text-xs font-medium text-gray-500 dark:text-white/60">
+              Gestión del perfil del administrador, parámetros de asistencia, suscripción y apariencia de {empresaNombre || "la empresa"}.
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* KPI Summary Cards */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        {/* Plan Activo */}
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-          <div className="flex items-start justify-between">
+      {/* Grid Asimétrico: Hero Card (7 cols) + Right Stack (5 cols) */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+        {/* Hero Card Principal (7 cols) */}
+        <div className="lg:col-span-7">
+          <NexxusCard extra="p-6 h-full flex flex-col justify-between">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm font-bold text-navy-700 dark:text-white">
+                    Parámetros Globales & Entorno
+                  </span>
+                  <span className="ml-2 text-xs font-medium text-gray-400 dark:text-white/40">
+                    · Configuración Corporativa
+                  </span>
+                </div>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  {estadoPlan || "Suscripción Activa"}
+                </span>
+              </div>
+
+              {/* Número / Métrica Principal */}
+              <div className="mt-4">
+                <p className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-navy-700 dark:text-white truncate">
+                  {asistencia.horaEntrada} – {asistencia.horaSalida}
+                </p>
+                <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                  <span>Jornada base de {asistencia.horasEsperadas} hrs diarias</span>
+                  <span className="font-normal text-gray-400 dark:text-white/40">
+                    · {asistencia.toleranciaMinutos} min de tolerancia antes de retardo
+                  </span>
+                </p>
+                <p className="mt-2 text-xs font-medium text-gray-500 dark:text-white/60">
+                  Plan {plan} · {planLimits.storageGb || 500} GB almacenamiento seguro en la nube para {empresaNombre || "tu organización"}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              {/* Barra de Distribución Proporcional */}
+              <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+                <div
+                  style={{ width: "45%" }}
+                  className="h-full bg-emerald-500 transition-all duration-500"
+                  title="Horario de Jornada Laboral"
+                />
+                <div
+                  style={{ width: "30%" }}
+                  className="h-full bg-blue-500 transition-all duration-500"
+                  title="Almacenamiento Cloud"
+                />
+                <div
+                  style={{ width: "25%" }}
+                  className="h-full bg-amber-500 transition-all duration-500"
+                  title="Tolerancia de Entrada"
+                />
+              </div>
+
+              {/* Leyenda con Métricas */}
+              <div className="mt-4 grid grid-cols-3 gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500" />
+                  <div className="min-w-0">
+                    <p className="truncate text-[11px] font-bold text-navy-700 dark:text-white">
+                      {asistencia.horaEntrada} a {asistencia.horaSalida}
+                    </p>
+                    <p className="truncate text-[10px] text-gray-400 dark:text-white/40">
+                      Jornada ({asistencia.horasEsperadas} hrs)
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-blue-500" />
+                  <div className="min-w-0">
+                    <p className="truncate text-[11px] font-bold text-navy-700 dark:text-white">
+                      {planLimits.storageGb || 500} GB
+                    </p>
+                    <p className="truncate text-[10px] text-gray-400 dark:text-white/40">
+                      Almacenamiento
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500" />
+                  <div className="min-w-0">
+                    <p className="truncate text-[11px] font-bold text-navy-700 dark:text-white">
+                      {asistencia.toleranciaMinutos} min
+                    </p>
+                    <p className="truncate text-[10px] text-gray-400 dark:text-white/40">
+                      Tolerancia
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </NexxusCard>
+        </div>
+
+        {/* Right Stack of 3 Cards (5 cols) - Alineadas a la izquierda */}
+        <div className="flex flex-col gap-4 lg:col-span-5">
+          {/* Card 1: Plan Contratado */}
+          <NexxusCard extra="p-5 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-gray-500 dark:text-white/50">
                 Plan Contratado
+              </span>
+              <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
+                {estadoPlan || "Activo"}
+              </span>
+            </div>
+            <div className="mt-2 text-left">
+              <p className="text-2xl sm:text-3xl font-black tracking-tight text-brand-500 dark:text-brand-300">
+                Plan {plan}
               </p>
-              <h3 className="mt-2 text-2xl font-extrabold text-brand-500 dark:text-brand-300">
-                {plan}
-              </h3>
+              <p className="mt-1 text-[11px] text-gray-400 dark:text-white/40">
+                Capacidad completa y soporte técnico prioritario
+              </p>
             </div>
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-500/10 text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
-              <MdOutlineWorkspacePremium className="h-6 w-6" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>Estado de suscripción</span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              {estadoPlan || "Activo"}
-            </span>
-          </div>
-        </NexxusCard>
+          </NexxusCard>
 
-        {/* Almacenamiento en Nube */}
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
+          {/* Card 2: Almacenamiento Cloud */}
+          <NexxusCard extra="p-5 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-gray-500 dark:text-white/50">
                 Almacenamiento Cloud
-              </p>
-              <h3 className="mt-2 text-2xl font-extrabold text-blue-600 dark:text-blue-400">
+              </span>
+              <span className="rounded-full bg-blue-500/10 px-2.5 py-0.5 text-[11px] font-bold text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
+                Espacio seguro
+              </span>
+            </div>
+            <div className="mt-2 text-left">
+              <p className="text-2xl sm:text-3xl font-black tracking-tight text-navy-700 dark:text-white">
                 {planLimits.storageGb || 500} GB
-              </h3>
-            </div>
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
-              <MdOutlineStorage className="h-6 w-6" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>Cuota de documentos</span>
-            <span className="inline-flex items-center rounded-full bg-blue-500/10 px-2.5 py-0.5 text-[11px] font-bold text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
-              Espacio seguro
-            </span>
-          </div>
-        </NexxusCard>
-
-        {/* Horario de Jornada */}
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
-                Jornada Laboral
               </p>
-              <h3 className="mt-2 text-2xl font-extrabold text-navy-700 dark:text-white">
-                {asistencia.horaEntrada} - {asistencia.horaSalida}
-              </h3>
+              <p className="mt-1 text-[11px] text-gray-400 dark:text-white/40">
+                Cuota documental y respaldos automáticos
+              </p>
             </div>
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
-              <MdOutlineAccessTime className="h-6 w-6" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>Horas base por día</span>
-            <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
-              {asistencia.horasEsperadas} hrs / jornada
-            </span>
-          </div>
-        </NexxusCard>
+          </NexxusCard>
 
-        {/* Margen de Tolerancia */}
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/50">
+          {/* Card 3: Tolerancia de Entrada */}
+          <NexxusCard extra="p-5 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-gray-500 dark:text-white/50">
                 Tolerancia de Entrada
-              </p>
-              <h3 className="mt-2 text-2xl font-extrabold text-amber-600 dark:text-amber-400">
+              </span>
+              <span className="rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-bold text-amber-600 dark:bg-amber-400/20 dark:text-amber-300">
+                Configurado
+              </span>
+            </div>
+            <div className="mt-2 text-left">
+              <p className="text-2xl sm:text-3xl font-black tracking-tight text-navy-700 dark:text-white">
                 {asistencia.toleranciaMinutos} min
-              </h3>
+              </p>
+              <p className="mt-1 text-[11px] text-gray-400 dark:text-white/40">
+                Margen de gracia antes de marcar retardo
+              </p>
             </div>
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:bg-amber-400/20 dark:text-amber-300">
-              <MdOutlineCheckCircle className="h-6 w-6" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>Margen antes de retardo</span>
-            <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-bold text-amber-600 dark:bg-amber-400/20 dark:text-amber-300">
-              Configurado
-            </span>
-          </div>
-        </NexxusCard>
+          </NexxusCard>
+        </div>
       </div>
 
       {/* Grid Principal: 2 Columnas */}
@@ -321,7 +402,7 @@ export default function ConfiguracionAdmin() {
               {/* Formulario de Edición de Nombre */}
               <form onSubmit={guardarNombre} className="mt-4 flex flex-col gap-2">
                 <label
-                  className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/50"
+                  className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50"
                   htmlFor="config-nombre-adm"
                 >
                   Nombre Completo
@@ -350,11 +431,11 @@ export default function ConfiguracionAdmin() {
 
             {/* Datos de contacto de la cuenta */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 border-t border-gray-100 pt-3.5 text-xs text-gray-500 dark:border-white/10 dark:text-white/60">
-              <div className="flex items-center gap-2 truncate rounded-lg bg-gray-50/70 px-2.5 py-1.5 dark:bg-white/[0.02]">
+              <div className="flex items-center gap-2 truncate rounded-xl border border-gray-100 bg-gray-50/70 px-3 py-2 dark:border-white/5 dark:bg-charcoal">
                 <MdEmail className="h-4 w-4 text-brand-500 shrink-0" />
                 <span className="truncate">{user?.email || "Sin correo"}</span>
               </div>
-              <div className="flex items-center gap-2 truncate rounded-lg bg-gray-50/70 px-2.5 py-1.5 dark:bg-white/[0.02]">
+              <div className="flex items-center gap-2 truncate rounded-xl border border-gray-100 bg-gray-50/70 px-3 py-2 dark:border-white/5 dark:bg-charcoal">
                 <MdPhone className="h-4 w-4 text-brand-500 shrink-0" />
                 <span className="truncate">{perfil?.telefono || "+503 Corporativo"}</span>
               </div>
@@ -376,7 +457,7 @@ export default function ConfiguracionAdmin() {
                 </div>
               </div>
               <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
-                Enterprise
+                {plan}
               </span>
             </div>
 
@@ -384,20 +465,20 @@ export default function ConfiguracionAdmin() {
               <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
                 Capacidades & Límites
               </p>
-              <div className="grid grid-cols-2 gap-2 text-xs font-medium text-navy-700 dark:text-white/80">
-                <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-3 dark:border-white/5 dark:bg-white/[0.02]">
+              <div className="grid grid-cols-2 gap-2.5 text-xs font-medium text-navy-700 dark:text-white/80">
+                <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-3 dark:border-white/5 dark:bg-charcoal">
                   <span className="block text-[10px] uppercase font-semibold text-gray-400 dark:text-white/40">Empleados</span>
                   <strong className="text-sm text-navy-700 dark:text-white">{planLimits.employees ?? "Ilimitado"}</strong>
                 </div>
-                <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-3 dark:border-white/5 dark:bg-white/[0.02]">
+                <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-3 dark:border-white/5 dark:bg-charcoal">
                   <span className="block text-[10px] uppercase font-semibold text-gray-400 dark:text-white/40">Departamentos</span>
                   <strong className="text-sm text-navy-700 dark:text-white">{planLimits.departments ?? "Ilimitado"}</strong>
                 </div>
-                <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-3 dark:border-white/5 dark:bg-white/[0.02]">
+                <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-3 dark:border-white/5 dark:bg-charcoal">
                   <span className="block text-[10px] uppercase font-semibold text-gray-400 dark:text-white/40">Sedes</span>
                   <strong className="text-sm text-navy-700 dark:text-white">{planLimits.branches ?? "Ilimitado"}</strong>
                 </div>
-                <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-3 dark:border-white/5 dark:bg-white/[0.02]">
+                <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-3 dark:border-white/5 dark:bg-charcoal">
                   <span className="block text-[10px] uppercase font-semibold text-gray-400 dark:text-white/40">Consultas IA</span>
                   <strong className="text-sm text-navy-700 dark:text-white">{planLimits.aiRequestsMonthly ?? "15,000"}/mes</strong>
                 </div>
@@ -424,6 +505,12 @@ export default function ConfiguracionAdmin() {
                 ))}
               </div>
             </div>
+            <Link
+              to="/plan-preferencias"
+              className="inline-flex h-11 items-center justify-center rounded-xl bg-brand-500 px-4 text-xs font-bold text-white shadow-md shadow-brand-500/20 transition hover:bg-brand-600 active:scale-98 dark:bg-brand-400"
+            >
+              Preferencias de plan
+            </Link>
           </NexxusCard>
         </div>
 
@@ -453,7 +540,7 @@ export default function ConfiguracionAdmin() {
               <form onSubmit={guardarAsistencia} className="flex flex-col gap-4 pt-1">
                 <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                   <div>
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/50" htmlFor="hora-entrada">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="hora-entrada">
                       Hora de Entrada
                     </label>
                     <input
@@ -466,7 +553,7 @@ export default function ConfiguracionAdmin() {
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/50" htmlFor="hora-salida">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="hora-salida">
                       Hora de Salida
                     </label>
                     <input
@@ -479,7 +566,7 @@ export default function ConfiguracionAdmin() {
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/50" htmlFor="tolerancia-min">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="tolerancia-min">
                       Tolerancia (minutos)
                     </label>
                     <input
@@ -495,7 +582,7 @@ export default function ConfiguracionAdmin() {
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-white/50" htmlFor="horas-esperadas">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-white/50" htmlFor="horas-esperadas">
                       Horas Esperadas
                     </label>
                     <input
@@ -594,7 +681,7 @@ export default function ConfiguracionAdmin() {
               <button
                 type="button"
                 onClick={toggleDark}
-                className="flex h-9 items-center gap-2 rounded-xl border border-gray-200 bg-gray-50/70 px-3 text-xs font-bold text-navy-700 transition hover:bg-gray-100 active:scale-95 dark:border-white/10 dark:bg-charcoal dark:text-white dark:hover:bg-white/10"
+                className="flex h-9 items-center gap-2 rounded-xl border border-gray-200 bg-gray-50/70 px-3.5 text-xs font-bold text-navy-700 transition hover:bg-gray-100 active:scale-95 dark:border-white/10 dark:bg-charcoal dark:text-white dark:hover:bg-white/10"
               >
                 {dark ? <RiSunFill className="h-4 w-4 text-amber-500" /> : <RiMoonFill className="h-4 w-4 text-indigo-500" />}
                 <span>Modo {dark ? "Oscuro" : "Claro"}</span>

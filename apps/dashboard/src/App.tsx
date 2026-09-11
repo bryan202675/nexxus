@@ -5,6 +5,7 @@ import AdminLayout from "layouts/admin";
 import AuthLayout from "layouts/auth";
 import RequireSuperAdmin from "components/auth/RequireSuperAdmin";
 import { refreshPlanCatalog } from "services/checkout";
+import PlanPreferencias from "views/nexxus/plan-preferencias";
 
 const App = () => {
   // Fase 15: precarga el catálogo real de planes desde la tabla `planes` una sola vez al
@@ -16,6 +17,7 @@ const App = () => {
 
   return (
     <Routes>
+      <Route path="/plan-preferencias" element={<PlanPreferencias />} />
       <Route path="auth/*" element={<AuthLayout />} />
       <Route
         path="admin/*"

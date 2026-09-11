@@ -399,6 +399,7 @@ export default function EstructuraOrganizativa() {
         </div>
       )}
 
+      {/* Header */}
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h2 className="text-xl font-bold tracking-tight text-navy-700 dark:text-white">
@@ -420,101 +421,167 @@ export default function EstructuraOrganizativa() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {/* Departamentos */}
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-semibold text-gray-500 dark:text-white/50">
-                Departamentos
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
-                {kpis.totalDepartamentos}
-              </h3>
-            </div>
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-500/10 text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
-              <MdOutlineAccountTree className="h-5.5 w-5.5" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>Límite del plan: {planLimits.departments === Infinity ? "Ilimitado" : planLimits.departments}</span>
-            <span className="font-semibold text-brand-600 dark:text-brand-400">Plan {plan}</span>
-          </div>
-        </NexxusCard>
+      {/* Grid de 4 Cards de Métricas Refinadas */}
+      {(() => {
+        const totalDeptos = kpis.totalDepartamentos;
+        const conLider = Math.max(0, totalDeptos - kpis.sinJefe);
+        const conLiderPercent = totalDeptos > 0 ? Math.round((conLider / totalDeptos) * 100) : 0;
+        const sinLiderPercent = totalDeptos > 0 ? Math.round((kpis.sinJefe / totalDeptos) * 100) : 0;
+        const ratioLiderazgo = kpis.totalEmpleados > 0 ? Math.round((kpis.totalJefes / kpis.totalEmpleados) * 100) : 0;
 
-        {/* Total Empleados */}
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-semibold text-gray-500 dark:text-white/50">
-                Total Plantilla
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
-                {kpis.totalEmpleados}
-              </h3>
-            </div>
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
-              <MdOutlinePeople className="h-5.5 w-5.5" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              100% distribuidos
-            </span>
-            <span className="font-semibold text-gray-700 dark:text-white/80">{kpis.totalCargos} cargos</span>
-          </div>
-        </NexxusCard>
+        return (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {/* Card 1: Departamentos */}
+            <NexxusCard extra="p-5 flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
+                    Departamentos
+                  </span>
+                  <span className="rounded-full bg-brand-500/10 px-2.5 py-0.5 text-[11px] font-bold text-brand-600 dark:bg-brand-400/20 dark:text-brand-300">
+                    Plan {plan}
+                  </span>
+                </div>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="text-3xl sm:text-4xl font-black tracking-tight text-navy-700 dark:text-white">
+                    {kpis.totalDepartamentos}
+                  </span>
+                  <span className="text-xs font-medium text-gray-400 dark:text-white/40">
+                    áreas operativas
+                  </span>
+                </div>
+              </div>
 
-        {/* Líderes & Jefaturas */}
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-semibold text-gray-500 dark:text-white/50">
-                Liderazgo & Jefes
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
-                {kpis.totalJefes}
-              </h3>
-            </div>
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300">
-              <MdOutlineSupervisorAccount className="h-5.5 w-5.5" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>{kpis.sinJefe > 0 ? `${kpis.sinJefe} sin jefe asignado` : "Cobertura completa"}</span>
-            <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${
-              kpis.sinJefe > 0 ? "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400" : "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400"
-            }`}>
-              {kpis.sinJefe > 0 ? "Atención" : "Óptimo"}
-            </span>
-          </div>
-        </NexxusCard>
+              <div className="mt-4">
+                <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+                  <div
+                    style={{ width: `${Math.max(conLiderPercent, 5)}%` }}
+                    className="h-full bg-brand-500 transition-all duration-500"
+                  />
+                  {kpis.sinJefe > 0 && (
+                    <div
+                      style={{ width: `${sinLiderPercent}%` }}
+                      className="h-full bg-amber-500 transition-all duration-500"
+                    />
+                  )}
+                </div>
+                <div className="mt-2.5 flex items-center justify-between text-[11px] font-medium text-gray-500 dark:text-white/60">
+                  <span>{kpis.sinJefe === 0 ? "100% con líder asignado" : `${conLider} de ${totalDeptos} con líder`}</span>
+                  <span className="font-bold text-navy-700 dark:text-white">{conLiderPercent}%</span>
+                </div>
+              </div>
+            </NexxusCard>
 
-        {/* Sedes & Ubicaciones */}
-        <NexxusCard extra="p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-semibold text-gray-500 dark:text-white/50">
-                Sedes de Trabajo
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold text-navy-700 dark:text-white">
-                {kpis.totalSedes}
-              </h3>
-            </div>
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-500/10 text-purple-600 dark:bg-purple-400/20 dark:text-purple-300">
-              <MdOutlineCorporateFare className="h-5.5 w-5.5" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-white/60">
-            <span>Puntos de operación</span>
-            <span className="inline-flex items-center rounded-md bg-purple-500/10 px-2 py-0.5 text-[11px] font-semibold text-purple-600 dark:bg-purple-500/20 dark:text-purple-400">
-              Activas
-            </span>
-          </div>
-        </NexxusCard>
-      </div>
+            {/* Card 2: Total Plantilla */}
+            <NexxusCard extra="p-5 flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
+                    Total Plantilla
+                  </span>
+                  <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300">
+                    {kpis.totalCargos} cargos
+                  </span>
+                </div>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="text-3xl sm:text-4xl font-black tracking-tight text-navy-700 dark:text-white">
+                    {kpis.totalEmpleados}
+                  </span>
+                  <span className="text-xs font-medium text-gray-400 dark:text-white/40">
+                    colaboradores
+                  </span>
+                </div>
+              </div>
 
+              <div className="mt-4">
+                <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+                  <div className="h-full w-full bg-emerald-500" />
+                </div>
+                <div className="mt-2.5 flex items-center justify-between text-[11px] font-medium text-gray-500 dark:text-white/60">
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    100% distribuidos
+                  </span>
+                  <span className="font-bold text-navy-700 dark:text-white">{kpis.totalDepartamentos} áreas</span>
+                </div>
+              </div>
+            </NexxusCard>
+
+            {/* Card 3: Liderazgo & Supervisión */}
+            <NexxusCard extra="p-5 flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
+                    Liderazgo & Jefes
+                  </span>
+                  <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                    kpis.sinJefe > 0
+                      ? "bg-amber-500/10 text-amber-600 dark:bg-amber-400/20 dark:text-amber-300"
+                      : "bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300"
+                  }`}>
+                    {kpis.sinJefe > 0 ? "Atención" : "Óptimo"}
+                  </span>
+                </div>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="text-3xl sm:text-4xl font-black tracking-tight text-navy-700 dark:text-white">
+                    {kpis.totalJefes}
+                  </span>
+                  <span className="text-xs font-medium text-gray-400 dark:text-white/40">
+                    líderes activos
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+                  <div
+                    style={{ width: `${Math.min(ratioLiderazgo * 5, 100)}%` }}
+                    className="h-full bg-blue-500 transition-all duration-500"
+                  />
+                </div>
+                <div className="mt-2.5 flex items-center justify-between text-[11px] font-medium text-gray-500 dark:text-white/60">
+                  <span>{kpis.sinJefe > 0 ? `${kpis.sinJefe} sin líder asignado` : "Cobertura completa"}</span>
+                  <span className="font-bold text-navy-700 dark:text-white">{ratioLiderazgo}% ratio</span>
+                </div>
+              </div>
+            </NexxusCard>
+
+            {/* Card 4: Sedes de Trabajo */}
+            <NexxusCard extra="p-5 flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-white/40">
+                    Sedes de Trabajo
+                  </span>
+                  <span className="rounded-full bg-purple-500/10 px-2.5 py-0.5 text-[11px] font-bold text-purple-600 dark:bg-purple-400/20 dark:text-purple-300">
+                    Activas
+                  </span>
+                </div>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="text-3xl sm:text-4xl font-black tracking-tight text-navy-700 dark:text-white">
+                    {kpis.totalSedes}
+                  </span>
+                  <span className="text-xs font-medium text-gray-400 dark:text-white/40">
+                    ubicaciones
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+                  <div className="h-full w-full bg-purple-500" />
+                </div>
+                <div className="mt-2.5 flex items-center justify-between text-[11px] font-medium text-gray-500 dark:text-white/60">
+                  <span>Puntos de operación</span>
+                  <span className="font-bold text-navy-700 dark:text-white">{kpis.totalSedes} sedes</span>
+                </div>
+              </div>
+            </NexxusCard>
+          </div>
+        );
+      })()}
+
+      {/* Tarjeta de Departamentos y Liderazgo */}
       <NexxusCard extra="p-6 flex flex-col gap-5" delay={100}>
         <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
           <div>
@@ -527,14 +594,14 @@ export default function EstructuraOrganizativa() {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="relative w-full sm:w-64">
+            <div className="relative w-full sm:w-72">
               <MdOutlineSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-gray-400 dark:text-white/40" />
               <input
                 type="text"
                 placeholder="Buscar departamento o jefe..."
                 value={busquedaDepto}
                 onChange={(e) => setBusquedaDepto(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2 pl-9 pr-3 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-2.5 pl-9 pr-3 text-xs font-medium text-navy-700 outline-none transition focus:border-brand-500 focus:bg-white dark:border-white/10 dark:bg-charcoal dark:text-white dark:focus:border-brand-400"
               />
             </div>
           </div>
@@ -597,8 +664,8 @@ export default function EstructuraOrganizativa() {
                     {/* Departamento */}
                     <td className="min-w-[180px] px-4 py-3.5">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
-                          <MdOutlineAccountTree className="h-5 w-5" />
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-xs font-black text-brand-600 dark:bg-brand-400/20 dark:text-brand-300">
+                          {dep.nombre ? dep.nombre.substring(0, 2).toUpperCase() : "DP"}
                         </div>
                         <div>
                           <p className="text-sm font-bold text-navy-700 dark:text-white">
@@ -1158,14 +1225,16 @@ function CatalogCard({
       <div className="flex flex-col h-full overflow-hidden">
         {/* Cabecera de la Tarjeta */}
         <div className="flex items-center justify-between border-b border-gray-100 pb-3 dark:border-white/10">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500 dark:bg-brand-400/20 dark:text-brand-300">
-              <Icon className="h-4.5 w-4.5" />
-            </div>
-            <div>
+          <div>
+            <div className="flex items-center gap-2">
               <h3 className="text-xs font-bold text-navy-700 dark:text-white">{title}</h3>
-              <p className="text-[10.5px] font-medium text-gray-400 dark:text-white/40">{filas.length} registrados</p>
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600 dark:bg-white/10 dark:text-white/70">
+                {filas.length}
+              </span>
             </div>
+            <p className="mt-0.5 text-[10.5px] font-medium text-gray-400 dark:text-white/40">
+              {filas.length === 1 ? "1 registrado" : `${filas.length} registrados`}
+            </p>
           </div>
 
           <button
@@ -1191,10 +1260,10 @@ function CatalogCard({
                 type="button"
                 key={r.id}
                 onClick={() => setSelectedId(r.id)}
-                className="flex w-full cursor-pointer items-center justify-between rounded-xl px-2 py-2.5 text-left transition hover:bg-gray-50/80 dark:hover:bg-white/[0.03]"
+                className="flex w-full cursor-pointer items-center justify-between rounded-xl px-2 py-2 text-left transition hover:bg-gray-50/80 dark:hover:bg-white/[0.03]"
               >
                 <div className="min-w-0 flex-1 pr-2">
-                  <p className="truncate text-xs font-semibold text-navy-700 dark:text-white">{r.nombreLabel}</p>
+                  <p className="truncate text-xs font-bold text-navy-700 dark:text-white">{r.nombreLabel}</p>
                   <p className="truncate text-[10.5px] text-gray-400 dark:text-white/50">
                     {r.direccionLabel || r.departamentoLabel || r.descripcionLabel || "—"}
                   </p>

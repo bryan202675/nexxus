@@ -57,6 +57,8 @@ const mapPago = (row) => ({
   status: row.estado,
   amount: numberValue(Number(row.monto)),
   createdAt: row.created_at || null,
+  referencia: row.referencia_externa || (row.id ? row.id.slice(0, 8) : "—"),
+  usuarioId: row.usuario_id || null,
 });
 
 // audit_logs no tiene columna de estado/severidad, asi que ya no se fabrica un "Success"
