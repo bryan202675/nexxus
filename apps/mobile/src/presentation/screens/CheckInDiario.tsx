@@ -1,884 +1,604 @@
-/**
- * Documentacion Nexxus - apps/mobile/src/presentation/screens/CheckInDiario.tsx
- * Capa: presentacion.
- * Proposito: Pantalla de Check-in diario del empleado con diseño profesional ejecutivo.
- * Rediseñado con estética Glassmorphism monocromática de Mi Pulso (sin morados),
- * animaciones suaves de Reanimated y microinteracciones táctiles.
- */
-
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from "react";
 import {
-  Alert,
-  KeyboardAvoidingView,
+  ActivityIndicator,
   Platform,
   SafeAreaView,
-  ScrollView,
   StatusBar,
   StyleSheet,
-  TouchableOpacity,
+  TextInput,
   View,
-} from 'react-native';
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Feather } from "@expo/vector-icons";
 import Animated, {
+  Easing,
   FadeInRight,
-  FadeInDown,
+  FadeOutLeft,
+  interpolateColor,
   useAnimatedStyle,
   useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
-import { Feather, MaterialIcons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
-import { useTranslation } from 'react-i18next';
-import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA, SOMBRAS } from '@/shared/constants/diseno';
-import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
-import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
-import BotonAnimado from '@/presentation/components/BotonAnimado';
-import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
-import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
+} from "react-native-reanimated";
+import { AdminTranslatedText } from "@/shared/i18n/AdminTranslatedText";
+import BotonAnimado from "@/presentation/components/BotonAnimado";
+import CheckInProgress from "@/presentation/components/checkin/CheckInProgress";
+import EnergyLevelStep from "@/presentation/components/checkin/EnergyLevelStep";
+import RestLevelStep from "@/presentation/components/checkin/RestLevelStep";
+import StressGaugeStep from "@/presentation/components/checkin/StressGaugeStep";
+import WorkloadSignalsStep from "@/presentation/components/checkin/WorkloadSignalsStep";
+import { MoodId } from "@/presentation/components/checkin/MoodFace";
+import MoodStep from "@/presentation/components/checkin/MoodStep";
+import { useContextoUsuario } from "@/presentation/context/ContextoUsuario";
+import { useTemaMobile } from "@/presentation/context/TemaMobileContext";
 
 const Text = AdminTranslatedText;
-const TextInput = AdminTranslatedTextInput;
-
+type NivelEnergia = "bajo" | "medio" | "alto";
+type NivelEstres = "bajo" | "moderado" | "alto" | "critico";
+const MOODS: { id: MoodId; label: string; detail: string }[] = [
+  { id: "excelente", label: "Excelente", detail: "Con ganas de avanzar" },
+  { id: "bien", label: "Bien", detail: "En buen ritmo" },
+  { id: "normal", label: "Normal", detail: "Un día a la vez" },
+  { id: "cansado", label: "Cansado", detail: "Necesito tomarlo con calma" },
+  { id: "saturado", label: "Saturado", detail: "Tengo mucho encima" },
+];
 interface Props {
-  navigation: any;
+  navigation: { goBack: () => void; navigate: (route: string) => void };
 }
 
-type NivelEnergia = 'bajo' | 'medio' | 'alto';
-type NivelEstres = 'bajo' | 'moderado' | 'alto' | 'critico';
-type IconoFeather = React.ComponentProps<typeof Feather>['name'];
-
-const INDICADORES = [
-  'Productivo',
-  'Enfocado',
-  'Cansado',
-  'Motivado',
-  'Distraído',
-  'Bajo presión',
-  'Creativo',
-  'Desafiado',
-];
-
-const EMOCIONES = [
-  { labelKey: 'checkInDiario.emotions.Agotado', emoji: '😔', valor: 1 },
-  { labelKey: 'checkInDiario.emotions.Frustrado', emoji: '😠', valor: 2 },
-  { labelKey: 'checkInDiario.emotions.Neutral', emoji: '😐', valor: 3 },
-  { labelKey: 'checkInDiario.emotions.Bien', emoji: '🙂', valor: 4 },
-  { labelKey: 'checkInDiario.emotions.Excelente', emoji: '😊', valor: 5 },
-];
-
-const PASOS = [
-  { titulo: 'Energía', icono: 'zap' as IconoFeather },
-  { titulo: 'Descanso', icono: 'moon' as IconoFeather },
-  { titulo: 'Ánimo', icono: 'smile' as IconoFeather },
-  { titulo: 'Estrés', icono: 'activity' as IconoFeather },
-  { titulo: 'Carga', icono: 'layers' as IconoFeather },
-  { titulo: 'Nota', icono: 'edit-3' as IconoFeather },
-];
-
-const COLORES_ESTRES: Record<NivelEstres, string> = {
-  bajo: '#10B981',
-  moderado: '#3B82F6',
-  alto: '#F59E0B',
-  critico: '#EF4444',
-};
-
 export default function CheckInDiario({ navigation }: Props) {
-  const { t } = useTranslation();
-  const { registrarCheckIn } = useContextoUsuario();
-  const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
-  const estilos = useMemo(() => crearEstilosCheckIn(colores, esOscuro), [colores, esOscuro]);
-
-  const [paso, setPaso] = useState(1);
-  const [enviando, setEnviando] = useState(false);
-  const [energia, setEnergia] = useState<NivelEnergia>('medio');
-  const [sueno, setSueno] = useState(3);
-  const [emocion, setEmocion] = useState(3);
-  const [estres, setEstres] = useState<NivelEstres>('moderado');
-  const [carga, setCarga] = useState(3);
-  const [indicadoresSeleccionados, setIndicadoresSeleccionados] = useState<string[]>([]);
-  const [nota, setNota] = useState('');
-
-  const animacionProgreso = useSharedValue(1 / 6);
-  const estiloProgreso = useAnimatedStyle(() => ({
-    width: `${animacionProgreso.value * 100}%`,
+  const { registrarCheckIn, registrarEventoAsistencia, perfil } =
+    useContextoUsuario();
+  const { esOscuro, colores } = useTemaMobile();
+  const styles = useMemo(
+    () => createStyles(colores, esOscuro),
+    [colores, esOscuro]
+  );
+  const [step, setStep] = useState(1);
+  const [mood, setMood] = useState<MoodId>("normal");
+  const [energy, setEnergy] = useState<NivelEnergia>("medio");
+  const [sleep, setSleep] = useState(3);
+  const [stress, setStress] = useState<NivelEstres>("moderado");
+  const [workload, setWorkload] = useState(3);
+  const [indicators, setIndicators] = useState<string[]>([]);
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [wellnessSaved, setWellnessSaved] = useState(false);
+  const [entryRecorded, setEntryRecorded] = useState(
+    Boolean(perfil?.estado_activo)
+  );
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const moodProgress = useSharedValue(2);
+  const changeMood = useCallback((next: MoodId) => setMood(next), []);
+  const toggleIndicator = (indicator: string) =>
+    setIndicators((current) =>
+      current.includes(indicator)
+        ? current.filter((item) => item !== indicator)
+        : [...current, indicator]
+    );
+  const moodBackground = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(
+      moodProgress.value,
+      [0, 1, 2, 3, 4],
+      ["#FFC47D", "#FFDFA0", "#979AF4", "#8FA8F6", "#FF858A"]
+    ),
   }));
-
-  const puntuacionPulso = useMemo(() => {
-    const valorEnergia = energia === 'alto' ? 5 : energia === 'medio' ? 3 : 1;
-    const valorEstres = estres === 'bajo' ? 5 : estres === 'moderado' ? 3 : estres === 'alto' ? 2 : 1;
-    return Math.round(((valorEnergia + sueno + emocion + valorEstres + (6 - carga)) / 25) * 100);
-  }, [energia, sueno, emocion, estres, carga]);
-
-  const estadoPulso =
-    puntuacionPulso >= 75
-      ? t('checkInDiario.pulse_states.stable')
-      : puntuacionPulso >= 50
-      ? t('checkInDiario.pulse_states.attention')
-      : t('checkInDiario.pulse_states.support');
-
-  const textoGuia =
-    estres === 'critico'
-      ? t('checkInDiario.guides.critical')
-      : carga >= 4
-      ? t('checkInDiario.guides.high_load')
-      : t('checkInDiario.guides.normal');
-
-  function irPaso(numero: number) {
-    if (numero < 1 || numero > 6) return;
-    setPaso(numero);
-    animacionProgreso.value = withTiming(numero / 6, { duration: 220 });
-  }
-
-  const toggleIndicador = (indicador: string) => {
-    if (indicadoresSeleccionados.includes(indicador)) {
-      setIndicadoresSeleccionados((prev) => prev.filter((i) => i !== indicador));
-    } else {
-      setIndicadoresSeleccionados((prev) => [...prev, indicador]);
+  const registerEntry = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      if (!wellnessSaved) {
+        const moodScore = MOODS.findIndex((item) => item.id === mood) + 1;
+        await registrarCheckIn({
+          energia: energy,
+          balanceEmocional: 6 - moodScore,
+          estres:
+            stress === "bajo"
+              ? 1
+              : stress === "moderado"
+              ? 2
+              : stress === "alto"
+              ? 4
+              : 5,
+          nivelEstres: stress,
+          calidadSueno: sleep,
+          cargaLaboral: workload,
+          indicadoresRapidos: indicators,
+          nota: note.trim() || undefined,
+          comentarios: `mood:${mood}; energyLevel:${energy}`,
+        });
+        setWellnessSaved(true);
+      }
+      if (!entryRecorded) {
+        await registrarEventoAsistencia("entrada");
+        const now = new Date();
+        await AsyncStorage.multiSet([
+          ["@asistencia_inicio", now.toISOString()],
+          [
+            "@asistencia_hora_entrada",
+            now.toLocaleTimeString("es-ES", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          ],
+        ]);
+        await AsyncStorage.removeItem("@asistencia_en_pausa");
+        setEntryRecorded(true);
+      }
+      setSuccess(true);
+      setTimeout(() => navigation.navigate("AppEmpleado"), 950);
+    } catch (reason) {
+      console.error("Error registrando check-in de entrada:", reason);
+      setError(
+        "No pudimos registrar tu entrada. Tus selecciones siguen aquí para que puedas intentarlo nuevamente."
+      );
+    } finally {
+      setSaving(false);
     }
   };
-
-  async function enviarCheckIn() {
-    setEnviando(true);
-    try {
-      await registrarCheckIn({
-        energia,
-        balanceEmocional: emocion,
-        estres: estres === 'bajo' ? 1 : estres === 'moderado' ? 2 : estres === 'alto' ? 4 : 5,
-        nivelEstres: estres,
-        calidadSueno: sueno,
-        cargaLaboral: carga,
-        indicadoresRapidos: indicadoresSeleccionados,
-        nota,
-      });
-      Alert.alert(t('checkInDiario.complete_checkin'), t('checkInDiario.pulse_registered'), [
-        { text: t('common.accept'), onPress: () => navigation.navigate('AppEmpleado') },
-      ]);
-    } catch (error) {
-      console.error('Error saving check-in:', error);
-      Alert.alert(t('common.error'), t('common.error_msg'));
-    } finally {
-      setEnviando(false);
-    }
-  }
-
-  const opcionesEnergia = [
-    {
-      id: 'bajo' as NivelEnergia,
-      etiqueta: t('checkInDiario.energy.low'),
-      icono: 'battery-1-bar' as const,
-      descripcion: t('checkInDiario.energy.low_desc'),
-    },
-    {
-      id: 'medio' as NivelEnergia,
-      etiqueta: t('checkInDiario.energy.mid'),
-      icono: 'battery-3-bar' as const,
-      descripcion: t('checkInDiario.energy.mid_desc'),
-    },
-    {
-      id: 'alto' as NivelEnergia,
-      etiqueta: t('checkInDiario.energy.high'),
-      icono: 'battery-full' as const,
-      descripcion: t('checkInDiario.energy.high_desc'),
-    },
-  ];
-
-  const opcionesEstres = [
-    { id: 'bajo' as NivelEstres, etiqueta: t('checkInDiario.stress.low'), detalle: t('checkInDiario.stress.low_desc') },
-    { id: 'moderado' as NivelEstres, etiqueta: t('checkInDiario.stress.mid'), detalle: t('checkInDiario.stress.mid_desc') },
-    { id: 'alto' as NivelEstres, etiqueta: t('checkInDiario.stress.high'), detalle: t('checkInDiario.stress.high_desc') },
-    { id: 'critico' as NivelEstres, etiqueta: t('checkInDiario.stress.critical'), detalle: t('checkInDiario.stress.critical_desc') },
-  ];
-
-  const renderPaso = () => {
-    switch (paso) {
-      case 1:
-        return (
-          <View style={estilos.pasoContainer}>
-            <TituloPaso icono="zap" titulo={t('checkInDiario.q_energy')} subtitulo={t('checkInDiario.q_energy_sub')} estilos={estilos} colores={colores} />
-            <View style={estilos.filaEnergia}>
-              {opcionesEnergia.map((opcion) => {
-                const activo = energia === opcion.id;
-                return (
-                  <BotonAnimado
-                    key={opcion.id}
-                    onPress={() => setEnergia(opcion.id)}
-                    scaleTo={0.97}
-                    style={[estilos.tarjetaSeleccion, activo && estilos.tarjetaSeleccionActiva]}
-                  >
-                    <View style={estilos.tarjetaHeader}>
-                      <View style={[estilos.iconoSeleccion, activo && estilos.iconoSeleccionActivo]}>
-                        <MaterialIcons
-                          name={opcion.icono}
-                          size={22}
-                          color={activo ? (esOscuro ? '#FFFFFF' : '#0F172A') : colores.textoSuave}
-                        />
-                      </View>
-                      {activo && (
-                        <View style={estilos.badgeSeleccionActiva}>
-                          <Feather name="check" size={12} color={esOscuro ? '#FFFFFF' : '#0F172A'} />
-                        </View>
-                      )}
-                    </View>
-                    <Text style={[estilos.textoSeleccion, activo && estilos.textoSeleccionActivo]}>{opcion.etiqueta}</Text>
-                    <Text style={estilos.descripcionSeleccion}>{opcion.descripcion}</Text>
-                  </BotonAnimado>
-                );
-              })}
-            </View>
-          </View>
-        );
-      case 2:
-        return (
-          <View style={estilos.pasoContainer}>
-            <TituloPaso icono="moon" titulo={t('checkInDiario.q_sleep')} subtitulo={t('checkInDiario.q_sleep_sub')} estilos={estilos} colores={colores} />
-            <View style={estilos.cardCentral}>
-              <BlurView intensity={Platform.OS === 'ios' ? intensidadBlur + 10 : 80} tint={blurTint} style={estilos.cardCentralContenido}>
-                <Text style={estilos.valorGrande}>{sueno}<Text style={estilos.valorDenominador}>/5</Text></Text>
-                <Text style={estilos.labelDescanso}>
-                  {sueno === 5
-                    ? t('checkInDiario.sleep_excellent', { defaultValue: 'Excelente descanso' })
-                    : sueno >= 4
-                    ? t('checkInDiario.sleep_good', { defaultValue: 'Buen descanso' })
-                    : sueno >= 3
-                    ? t('checkInDiario.sleep_regular', { defaultValue: 'Descanso regular' })
-                    : t('checkInDiario.sleep_insufficient', { defaultValue: 'Sueño insuficiente' })}
-                </Text>
-                <View style={estilos.estrellasFila}>
-                  {[1, 2, 3, 4, 5].map((num) => (
-                    <BotonAnimado key={num} onPress={() => setSueno(num)} scaleTo={0.88} style={estilos.botonRating}>
-                      <Feather
-                        name="star"
-                        size={32}
-                        color={num <= sueno ? (esOscuro ? '#FFFFFF' : '#0F172A') : (esOscuro ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.12)')}
-                      />
-                    </BotonAnimado>
-                  ))}
-                </View>
-              </BlurView>
-            </View>
-          </View>
-        );
-      case 3:
-        return (
-          <View style={estilos.pasoContainer}>
-            <TituloPaso icono="smile" titulo={t('checkInDiario.q_mood')} subtitulo={t('checkInDiario.q_mood_sub')} estilos={estilos} colores={colores} />
-            <View style={estilos.listaOpcionesVertical}>
-              {EMOCIONES.map((emo) => {
-                const activo = emocion === emo.valor;
-                return (
-                  <BotonAnimado
-                    key={emo.valor}
-                    onPress={() => setEmocion(emo.valor)}
-                    scaleTo={0.98}
-                    style={[estilos.filaOpcion, activo && estilos.filaOpcionActiva]}
-                  >
-                    <Text style={estilos.emoji}>{emo.emoji}</Text>
-                    <View style={estilos.contenidoFila}>
-                      <Text style={[estilos.textoFila, activo && estilos.textoFilaActiva]}>{t(emo.labelKey)}</Text>
-                      <Text style={estilos.detalleFila}>{t('checkInDiario.emotions.level', { level: emo.valor })}</Text>
-                    </View>
-                    {activo && (
-                      <View style={estilos.checkActivoPill}>
-                        <Feather name="check" size={14} color={esOscuro ? '#FFFFFF' : '#0F172A'} />
-                      </View>
-                    )}
-                  </BotonAnimado>
-                );
-              })}
-            </View>
-          </View>
-        );
-      case 4:
-        return (
-          <View style={estilos.pasoContainer}>
-            <TituloPaso icono="activity" titulo={t('checkInDiario.q_stress')} subtitulo={t('checkInDiario.q_stress_sub')} estilos={estilos} colores={colores} />
-            <View style={estilos.listaOpcionesVertical}>
-              {opcionesEstres.map((opc) => {
-                const activo = estres === opc.id;
-                const colorDot = COLORES_ESTRES[opc.id];
-                return (
-                  <BotonAnimado
-                    key={opc.id}
-                    onPress={() => setEstres(opc.id)}
-                    scaleTo={0.98}
-                    style={[estilos.filaOpcion, activo && estilos.filaOpcionActiva]}
-                  >
-                    <View style={[estilos.puntoNivel, { backgroundColor: colorDot }]} />
-                    <View style={estilos.contenidoFila}>
-                      <Text style={[estilos.textoFila, activo && estilos.textoFilaActiva]}>{opc.etiqueta}</Text>
-                      <Text style={estilos.detalleFila}>{opc.detalle}</Text>
-                    </View>
-                    {activo && (
-                      <View style={estilos.checkActivoPill}>
-                        <Feather name="check" size={14} color={esOscuro ? '#FFFFFF' : '#0F172A'} />
-                      </View>
-                    )}
-                  </BotonAnimado>
-                );
-              })}
-            </View>
-          </View>
-        );
-      case 5:
-        return (
-          <View style={estilos.pasoContainer}>
-            <TituloPaso icono="layers" titulo={t('checkInDiario.q_load')} subtitulo={t('checkInDiario.q_load_sub')} estilos={estilos} colores={colores} />
-            <View style={estilos.bloqueFormulario}>
-              <Text style={estilos.labelPequeno}>{t('checkInDiario.workload')}</Text>
-              <View style={estilos.filaCarga}>
-                {[1, 2, 3, 4, 5].map((num) => {
-                  const activo = num <= carga;
-                  const seleccionado = num === carga;
-                  return (
-                    <BotonAnimado
-                      key={num}
-                      onPress={() => setCarga(num)}
-                      scaleTo={0.92}
-                      style={[
-                        estilos.cuadroCarga,
-                        activo && estilos.cuadroCargaActivo,
-                        seleccionado && estilos.cuadroCargaSeleccionado,
-                      ]}
-                    >
-                      <Text style={[estilos.textoCuadroCarga, activo && estilos.textoCuadroActivo]}>{num}</Text>
-                    </BotonAnimado>
-                  );
-                })}
-              </View>
-            </View>
-
-            <View style={estilos.bloqueFormulario}>
-              <Text style={estilos.labelPequeno}>{t('checkInDiario.status_tags')}</Text>
-              <View style={estilos.contenedorChips}>
-                {INDICADORES.map((ind) => {
-                  const seleccionado = indicadoresSeleccionados.includes(ind);
-                  return (
-                    <BotonAnimado
-                      key={ind}
-                      onPress={() => toggleIndicador(ind)}
-                      scaleTo={0.94}
-                      style={[estilos.chip, seleccionado && estilos.chipSeleccionado]}
-                    >
-                      <Text style={[estilos.textoChip, seleccionado && estilos.textoChipSeleccionado]}>
-                        {t(`checkInDiario.tags.${ind}`)}
-                      </Text>
-                    </BotonAnimado>
-                  );
-                })}
-              </View>
-            </View>
-          </View>
-        );
-      case 6:
-        return (
-          <View style={estilos.pasoContainer}>
-            <TituloPaso icono="edit-3" titulo={t('checkInDiario.q_context')} subtitulo={t('checkInDiario.q_context_sub')} estilos={estilos} colores={colores} />
+  const now = new Date().toLocaleTimeString("es-ES", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  return (
+    <SafeAreaView style={styles.screen}>
+      {step === 1 && (
+        <Animated.View
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, moodBackground]}
+        />
+      )}
+      <StatusBar
+        barStyle={step === 1 || !esOscuro ? "dark-content" : "light-content"}
+        backgroundColor="transparent"
+        translucent
+      />
+      <View style={styles.top}>
+        <BotonAnimado
+          onPress={navigation.goBack}
+          style={[styles.close, step === 1 && styles.moodClose]}
+          accessibilityLabel="Cerrar check-in"
+        >
+          <Feather
+            name="x"
+            size={19}
+            color={step === 1 ? "#17141B" : colores.texto}
+          />
+        </BotonAnimado>
+        <CheckInProgress
+          step={step}
+          total={7}
+          dark={step === 1 ? false : esOscuro}
+          textColor={step === 1 ? "rgba(23,20,27,0.64)" : colores.textoSuave}
+        />
+        <BotonAnimado
+          onPress={() => {
+            setError(null);
+            setStep(7);
+          }}
+          style={styles.skip}
+          accessibilityLabel="Omitir preguntas"
+        >
+          <Text style={[styles.skipText, step === 1 && styles.moodInk]}>
+            Omitir
+          </Text>
+        </BotonAnimado>
+      </View>
+      <Animated.View
+        key={step}
+        entering={FadeInRight.duration(280).easing(Easing.out(Easing.cubic))}
+        exiting={FadeOutLeft.duration(220)}
+        style={styles.content}
+      >
+        {step === 1 && (
+          <MoodStep progress={moodProgress} mood={mood} onChange={changeMood} />
+        )}
+        {step === 2 && <EnergyLevelStep energy={energy} onChange={setEnergy} />}
+        {step === 3 && <RestLevelStep value={sleep} onChange={setSleep} />}
+        {step === 4 && <StressGaugeStep stress={stress} onChange={setStress} />}
+        {step === 5 && (
+          <WorkloadSignalsStep
+            workload={workload}
+            indicators={indicators}
+            onWorkloadChange={setWorkload}
+            onToggle={toggleIndicator}
+          />
+        )}
+        {step === 6 && (
+          <View style={styles.step}>
+            <Text style={styles.title}>¿Quieres añadir algo?</Text>
+            <Text style={styles.subtitle}>
+              Tu opinión es opcional y ayuda a dar contexto a tu pulso.
+            </Text>
             <TextInput
-              style={estilos.entradaNota}
-              placeholder={t('checkInDiario.add_context')}
+              value={note}
+              onChangeText={setNote}
+              placeholder="Comparte algo sobre tu jornada..."
               placeholderTextColor={colores.textoSuave}
               multiline
-              value={nota}
-              onChangeText={setNota}
               maxLength={500}
+              style={styles.noteInput}
+              accessibilityLabel="Opinión opcional"
             />
-            <View style={estilos.resumenFinal}>
-              <BlurView intensity={Platform.OS === 'ios' ? intensidadBlur + 10 : 80} tint={blurTint} style={estilos.resumenContenido}>
-                <View style={estilos.resumenFilaSuperior}>
-                  <View>
-                    <Text style={estilos.resumenTitulo}>{t('checkInDiario.estimated_pulse')}</Text>
-                    <Text style={estilos.resumenEstado}>{estadoPulso}</Text>
-                  </View>
-                  <Text style={estilos.resumenValor}>{puntuacionPulso}%</Text>
+          </View>
+        )}
+        {step === 7 && (
+          <View style={[styles.step, styles.summaryStep]}>
+            {success ? (
+              <View style={styles.success}>
+                <View style={styles.successMark}>
+                  <Feather name="check" size={38} color="#FFFFFF" />
                 </View>
-                <View style={estilos.resumenLinea}>
-                  <View style={estilos.resumenItem}>
-                    <Text style={estilos.resumenItemTexto}>
-                      {t('checkInDiario.steps.Energía')}: {t(`checkInDiario.energy.${energia === 'bajo' ? 'low' : energia === 'medio' ? 'mid' : 'high'}`)}
-                    </Text>
-                  </View>
-                  <View style={estilos.resumenItem}>
-                    <Text style={estilos.resumenItemTexto}>
-                      {t('checkInDiario.steps.Estrés')}: {t(`checkInDiario.stress.${estres === 'bajo' ? 'low' : estres === 'moderado' ? 'mid' : estres === 'alto' ? 'high' : 'critical'}`)}
-                    </Text>
-                  </View>
-                  <View style={estilos.resumenItem}>
-                    <Text style={estilos.resumenItemTexto}>
-                      {t('checkInDiario.steps.Carga')}: {carga}/5
-                    </Text>
-                  </View>
-                </View>
-              </BlurView>
-            </View>
-          </View>
-        );
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <SafeAreaView style={estilos.contenedor}>
-      <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
-      <View style={estilos.fondoAbsoluto}>
-        <FondoMobilePremium />
-      </View>
-
-      {/* Header flotante Glassmorphism */}
-      <View style={estilos.header}>
-        <BlurView intensity={Platform.OS === 'ios' ? intensidadBlur + 15 : 85} tint={blurTint} style={estilos.headerVidrio}>
-          <BotonAnimado onPress={() => navigation.goBack()} scaleTo={0.92} style={estilos.botonCerrar} accessibilityLabel="Cerrar">
-            <Feather name="x" size={18} color={colores.texto} />
-          </BotonAnimado>
-          <View style={estilos.headerCentro}>
-            <Text style={estilos.tituloHeader}>{t('miPulso.checkin_title')}</Text>
-            <Text style={estilos.subtituloHeader}>{t('checkInDiario.step_of', { current: paso, total: 6 })}</Text>
-          </View>
-          <View style={estilos.badgeAccion}>
-            <Text style={estilos.textoBadgeAccion}>{t('checkInDiario.daily')}</Text>
-          </View>
-        </BlurView>
-      </View>
-
-      {/* Barra de progreso y pastillas de pasos */}
-      <View style={estilos.contenedorProgreso}>
-        <View style={estilos.pistaProgreso}>
-          <Animated.View style={[estilos.rellenoProgreso, estiloProgreso]} />
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={estilos.pasosHorizontales}>
-          {PASOS.map((item, index) => {
-            const activo = paso === index + 1;
-            const completado = paso > index + 1;
-            return (
-              <BotonAnimado
-                key={item.titulo}
-                onPress={() => irPaso(index + 1)}
-                scaleTo={0.94}
-                style={[estilos.pillPaso, activo && estilos.pillPasoActivo, completado && estilos.pillPasoCompleto]}
-              >
-                <Feather
-                  name={completado ? 'check' : item.icono}
-                  size={12}
-                  color={activo || completado ? (esOscuro ? '#FFFFFF' : '#0F172A') : colores.textoSuave}
-                />
-                <Text style={[estilos.textoPillPaso, (activo || completado) && estilos.textoPillPasoActivo]}>
-                  {t(`checkInDiario.steps.${item.titulo}`)}
+                <Text style={styles.title}>Entrada registrada</Text>
+                <Text style={styles.subtitle}>
+                  Tu jornada comienza a las {now}.
                 </Text>
-              </BotonAnimado>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={estilos.flex}>
-        <ScrollView contentContainerStyle={estilos.scroll} showsVerticalScrollIndicator={false}>
-          <View style={estilos.cardGuia}>
-            <BlurView intensity={Platform.OS === 'ios' ? intensidadBlur + 10 : 80} tint={blurTint} style={estilos.cardGuiaContenido}>
-              <View style={estilos.iconoGuia}>
-                <Feather name="shield" size={16} color={colores.texto} />
               </View>
-              <View style={estilos.textosGuia}>
-                <Text style={estilos.tituloGuia}>{t('checkInDiario.private_pulse')}</Text>
-                <Text style={estilos.descripcionGuia}>{textoGuia}</Text>
-              </View>
-            </BlurView>
+            ) : (
+              <>
+                <Text style={styles.title}>Todo listo para comenzar</Text>
+                <Text style={styles.subtitle}>
+                  Revisa los detalles de tu jornada.
+                </Text>
+                <View style={styles.summary}>
+                  <Text style={styles.time}>{now}</Text>
+                  <SummaryRow
+                    icon="clock"
+                    title="Jornada de hoy"
+                    value={perfil?.horario_laboral || "Horario por confirmar"}
+                    styles={styles}
+                    accent={colores.primario}
+                  />
+                  <SummaryRow
+                    icon="map-pin"
+                    title="Sede"
+                    value={perfil?.sede || "Sede principal"}
+                    styles={styles}
+                    accent={colores.primario}
+                  />
+                </View>
+                {error && (
+                  <View style={styles.error}>
+                    <Feather name="alert-circle" size={18} color="#B42318" />
+                    <Text style={styles.errorText}>{error}</Text>
+                  </View>
+                )}
+              </>
+            )}
           </View>
-
-          <Animated.View key={paso} entering={FadeInRight.duration(240)}>
-            {renderPaso()}
-          </Animated.View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-
-      {/* Footer de navegación inferior flotante */}
-      <View style={estilos.pieAcciones}>
-        <BlurView intensity={Platform.OS === 'ios' ? intensidadBlur + 15 : 85} tint={blurTint} style={estilos.pieVidrio}>
-          {paso > 1 && (
-            <BotonAnimado onPress={() => irPaso(paso - 1)} scaleTo={0.92} style={estilos.botonNavegacionSecundario} accessibilityLabel="Paso anterior">
-              <Feather name="arrow-left" size={18} color={colores.texto} />
-            </BotonAnimado>
-          )}
-
-          {paso < 6 ? (
-            <BotonAnimado
-              onPress={() => irPaso(paso + 1)}
-              scaleTo={0.96}
-              style={[
-                estilos.botonPrincipal,
-                paso === 1 && { marginLeft: 0 },
-              ]}
-            >
-              <Text style={estilos.textoBotonPrincipal}>{t('common.continue')}</Text>
-              <Feather name="arrow-right" size={16} color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
-            </BotonAnimado>
-          ) : (
-            <BotonAnimado
-              onPress={enviarCheckIn}
-              scaleTo={0.96}
-              style={[
-                estilos.botonPrincipal,
-                paso === 1 && { marginLeft: 0 },
-                enviando && estilos.botonDeshabilitado,
-              ]}
-              disabled={enviando}
-            >
-              <Text style={estilos.textoBotonPrincipal}>{enviando ? t('checkInDiario.saving') : t('checkInDiario.complete_checkin')}</Text>
-              <Feather name="check-circle" size={16} color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
-            </BotonAnimado>
-          )}
-        </BlurView>
-      </View>
+        )}
+      </Animated.View>
+      {!success && (
+        <View style={styles.footer}>
+          <BotonAnimado
+            onPress={
+              step < 7
+                ? () => {
+                    setError(null);
+                    setStep((current) => current + 1);
+                  }
+                : registerEntry
+            }
+            disabled={saving || entryRecorded}
+            scaleTo={0.97}
+            style={[
+              styles.primary,
+              step === 1 && styles.moodPrimary,
+              (saving || entryRecorded) && styles.primaryDisabled,
+            ]}
+            accessibilityLabel={step < 7 ? "Continuar" : "Registrar entrada"}
+          >
+            {saving ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <Text style={styles.primaryText}>
+                  {step < 7
+                    ? "Continuar"
+                    : entryRecorded
+                    ? "Entrada registrada"
+                    : "Registrar entrada"}
+                </Text>
+                <Feather
+                  name={step < 7 ? "arrow-right" : "log-in"}
+                  size={18}
+                  color="#FFFFFF"
+                />
+              </>
+            )}
+          </BotonAnimado>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
 
-function TituloPaso({ icono, titulo, subtitulo, estilos, colores }: { icono: IconoFeather; titulo: string; subtitulo: string; estilos: any; colores: any }) {
+function SummaryRow({
+  icon,
+  title,
+  value,
+  styles,
+  accent,
+}: {
+  icon: React.ComponentProps<typeof Feather>["name"];
+  title: string;
+  value: string;
+  styles: ReturnType<typeof createStyles>;
+  accent: string;
+}) {
   return (
-    <View style={estilos.tituloPasoWrap}>
-      <View style={estilos.iconoTituloPaso}>
-        <Feather name={icono} size={18} color={colores.texto} />
+    <View style={styles.summaryRow}>
+      <View style={styles.summaryIcon}>
+        <Feather name={icon} size={17} color={accent} />
       </View>
-      <Text style={estilos.pregunta}>{titulo}</Text>
-      <Text style={estilos.subpregunta}>{subtitulo}</Text>
+      <View>
+        <Text style={styles.summaryLabel}>{title}</Text>
+        <Text style={styles.summaryValue}>{value}</Text>
+      </View>
     </View>
   );
 }
 
-function crearEstilosCheckIn(c: any, esOscuro: boolean) {
-  const cardBg = c.superficie;
-  const glassMini = c.vidrioSutil;
-  const progressBg = esOscuro ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
-  const progressFill = esOscuro ? '#FFFFFF' : '#0F172A';
-  const inputBg = esOscuro ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.9)';
-  const pieFooterBg = esOscuro ? 'rgba(7,7,18,0.78)' : 'rgba(255,255,255,0.88)';
-  const activeSurface = esOscuro ? 'rgba(255,255,255,0.14)' : 'rgba(15,23,42,0.06)';
-  const activeBorder = esOscuro ? 'rgba(255,255,255,0.32)' : 'rgba(15,23,42,0.22)';
-
+function createStyles(
+  c: ReturnType<typeof useTemaMobile>["colores"],
+  dark: boolean
+) {
+  const accent = c.primario;
   return StyleSheet.create({
-    contenedor: { flex: 1, backgroundColor: c.fondo },
-    flex: { flex: 1 },
-    fondoAbsoluto: { ...StyleSheet.absoluteFill, zIndex: -1, overflow: 'hidden' },
-    header: { paddingHorizontal: ESPACIADO.md, paddingTop: Platform.OS === 'ios' ? ESPACIADO.xs : ESPACIADO.sm, paddingBottom: ESPACIADO.xs },
-    headerVidrio: {
-      height: 60,
-      borderRadius: 30,
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: c.borde,
-      backgroundColor: c.superficie,
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 12,
-      gap: 10,
-      ...SOMBRAS.flotante,
+    screen: { flex: 1, backgroundColor: c.fondo },
+    top: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      paddingHorizontal: 20,
+      paddingTop: Platform.OS === "ios" ? 8 : 18,
     },
-    botonCerrar: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      backgroundColor: glassMini,
-      borderWidth: 1,
-      borderColor: c.borde,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    headerCentro: { flex: 1 },
-    tituloHeader: { fontSize: 16, fontWeight: '800', letterSpacing: -0.2, color: c.texto },
-    subtituloHeader: { fontSize: 11, fontWeight: '600', color: c.textoSuave, marginTop: 1 },
-    badgeAccion: {
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      borderRadius: RADIOS.completo,
-      backgroundColor: glassMini,
-      borderWidth: 1,
-      borderColor: c.borde,
-    },
-    textoBadgeAccion: { fontSize: 10, fontWeight: '700', color: c.texto, textTransform: 'uppercase', letterSpacing: 0.3 },
-
-    contenedorProgreso: { paddingHorizontal: ESPACIADO.md, paddingTop: ESPACIADO.xs },
-    pistaProgreso: { height: 4, backgroundColor: progressBg, width: '100%', borderRadius: 2, overflow: 'hidden' },
-    rellenoProgreso: { height: '100%', backgroundColor: progressFill, borderRadius: 2 },
-    pasosHorizontales: { gap: 8, paddingVertical: 10 },
-    pillPaso: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      paddingHorizontal: 12,
-      paddingVertical: 7,
-      borderRadius: RADIOS.completo,
-      borderWidth: 1,
-      borderColor: c.borde,
-      backgroundColor: c.superficie,
-    },
-    pillPasoActivo: {
-      backgroundColor: activeSurface,
-      borderColor: activeBorder,
-    },
-    pillPasoCompleto: {
-      backgroundColor: glassMini,
-    },
-    textoPillPaso: { fontSize: 11, fontWeight: '600', color: c.textoSuave },
-    textoPillPasoActivo: { color: c.texto, fontWeight: '700' },
-
-    scroll: { paddingHorizontal: ESPACIADO.md, paddingTop: ESPACIADO.xs, paddingBottom: 120 },
-    cardGuia: {
-      borderRadius: 20,
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: c.borde,
-      backgroundColor: c.superficie,
-      marginBottom: ESPACIADO.md,
-      ...SOMBRAS.suave,
-    },
-    cardGuiaContenido: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
-    iconoGuia: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: glassMini,
-      borderWidth: 1,
-      borderColor: c.borde,
-    },
-    textosGuia: { flex: 1 },
-    tituloGuia: { fontSize: 13, fontWeight: '700', color: c.texto },
-    descripcionGuia: { fontSize: 12, color: c.textoSuave, marginTop: 2, lineHeight: 16 },
-
-    pasoContainer: { flex: 1 },
-    tituloPasoWrap: { marginBottom: ESPACIADO.lg },
-    iconoTituloPaso: {
+    close: {
       width: 40,
       height: 40,
       borderRadius: 20,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: activeSurface,
-      borderWidth: 1,
-      borderColor: activeBorder,
-      marginBottom: ESPACIADO.sm,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: c.vidrioSutil,
     },
-    pregunta: { fontSize: 24, fontWeight: '800', letterSpacing: -0.6, color: c.texto },
-    subpregunta: { fontSize: 14, color: c.textoSuave, marginTop: 4, lineHeight: 19 },
-
-    filaEnergia: { gap: 12 },
-    tarjetaSeleccion: {
-      padding: 16,
-      borderRadius: 20,
-      backgroundColor: c.superficie,
+    moodClose: { backgroundColor: "transparent" },
+    skip: { minWidth: 50, alignItems: "flex-end", paddingVertical: 10 },
+    skipText: { color: c.textoSecundario, fontSize: 13, fontWeight: "700" },
+    moodInk: { color: "#17141B" },
+    content: { flex: 1, paddingHorizontal: 24, paddingTop: 34 },
+    step: { flex: 1 },
+    title: {
+      color: c.texto,
+      fontSize: 29,
+      fontWeight: "800",
+      letterSpacing: -0.8,
+      textAlign: "center",
+    },
+    subtitle: {
+      color: c.textoSuave,
+      fontSize: 15,
+      lineHeight: 22,
+      textAlign: "center",
+      marginTop: 8,
+    },
+    faceWrap: { flex: 1, minHeight: 196, justifyContent: "center" },
+    moodLabel: { alignItems: "center", marginBottom: 20 },
+    moodTitle: { color: c.texto, fontSize: 20, fontWeight: "800" },
+    moodDetail: { color: c.textoSuave, marginTop: 3, fontSize: 13 },
+    moods: { flexDirection: "row", justifyContent: "space-between", gap: 5 },
+    moodOption: {
+      minWidth: 54,
+      alignItems: "center",
+      gap: 7,
+      paddingVertical: 10,
+      borderRadius: 16,
+    },
+    moodOptionSelected: {
+      backgroundColor: dark
+        ? "rgba(255,255,255,0.08)"
+        : "rgba(109,40,217,0.08)",
+    },
+    moodDot: {
+      width: 9,
+      height: 9,
+      borderRadius: 5,
+      backgroundColor: c.bordeFuerte,
+    },
+    moodDotSelected: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+      backgroundColor: accent,
+    },
+    moodText: { color: c.textoSuave, fontSize: 10, fontWeight: "700" },
+    moodTextSelected: { color: c.texto },
+    energyList: { gap: 12, marginTop: 34 },
+    ratingWrap: {
+      marginTop: 40,
+      alignItems: "center",
+      padding: 24,
       borderWidth: 1,
       borderColor: c.borde,
-      gap: 4,
-      ...SOMBRAS.suave,
-    },
-    tarjetaSeleccionActiva: {
-      backgroundColor: activeSurface,
-      borderColor: activeBorder,
-    },
-    tarjetaHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 4,
-    },
-    iconoSeleccion: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: glassMini,
-      borderWidth: 1,
-      borderColor: c.borde,
-    },
-    iconoSeleccionActivo: {
-      backgroundColor: activeSurface,
-      borderColor: activeBorder,
-    },
-    badgeSeleccionActiva: {
-      width: 22,
-      height: 22,
-      borderRadius: 11,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: activeSurface,
-      borderWidth: 1,
-      borderColor: activeBorder,
-    },
-    textoSeleccion: { fontSize: 16, fontWeight: '700', color: c.textoSecundario },
-    textoSeleccionActivo: { color: c.texto },
-    descripcionSeleccion: { fontSize: 12, color: c.textoSuave, lineHeight: 16 },
-
-    cardCentral: {
       borderRadius: 24,
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: c.borde,
       backgroundColor: c.superficie,
-      ...SOMBRAS.flotante,
     },
-    cardCentralContenido: { alignItems: 'center', padding: 24 },
-    valorGrande: { fontSize: 52, fontWeight: '900', letterSpacing: -1, color: c.texto },
-    valorDenominador: { fontSize: 24, fontWeight: '600', color: c.textoSuave },
-    labelDescanso: { fontSize: 14, fontWeight: '600', color: c.textoSuave, marginTop: 4 },
-    estrellasFila: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 20 },
-    botonRating: { padding: 4 },
-
-    listaOpcionesVertical: { gap: 10 },
-    filaOpcion: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      padding: 14,
+    ratingValue: { color: c.texto, fontSize: 52, fontWeight: "800" },
+    ratingSuffix: { color: c.textoSuave, fontSize: 22 },
+    ratingRow: { flexDirection: "row", gap: 9, marginTop: 22 },
+    ratingButton: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: c.vidrioSutil,
+    },
+    ratingButtonActive: { backgroundColor: c.primario },
+    choiceList: { gap: 11, marginTop: 30 },
+    choice: {
+      minHeight: 57,
+      paddingHorizontal: 18,
       borderRadius: 18,
       borderWidth: 1,
       borderColor: c.borde,
       backgroundColor: c.superficie,
-      gap: 14,
-      ...SOMBRAS.suave,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
     },
-    filaOpcionActiva: {
-      borderColor: activeBorder,
-      backgroundColor: activeSurface,
+    choiceActive: { backgroundColor: c.primario, borderColor: c.primario },
+    choiceText: { color: c.texto, fontSize: 16, fontWeight: "700" },
+    sectionLabel: {
+      marginTop: 26,
+      marginBottom: 10,
+      color: c.textoSuave,
+      fontSize: 11,
+      fontWeight: "800",
+      letterSpacing: 0.7,
     },
-    emoji: { fontSize: 24 },
-    contenidoFila: { flex: 1 },
-    textoFila: { fontSize: 15, fontWeight: '700', color: c.textoSecundario },
-    textoFilaActiva: { color: c.texto },
-    detalleFila: { fontSize: 12, color: c.textoSuave, marginTop: 1 },
-    puntoNivel: { width: 10, height: 10, borderRadius: 5 },
-    checkActivoPill: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
-      backgroundColor: activeSurface,
-      borderWidth: 1,
-      borderColor: activeBorder,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-
-    bloqueFormulario: { marginBottom: ESPACIADO.lg },
-    labelPequeno: { fontSize: 11, fontWeight: '700', color: c.textoSuave, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 },
-    filaCarga: { flexDirection: 'row', gap: 8 },
-    cuadroCarga: {
+    workloadRow: { flexDirection: "row", gap: 9 },
+    workloadButton: {
       flex: 1,
-      height: 52,
+      height: 46,
       borderRadius: 14,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: c.vidrioSutil,
       borderWidth: 1,
       borderColor: c.borde,
-      backgroundColor: c.superficie,
     },
-    cuadroCargaActivo: {
-      backgroundColor: glassMini,
-    },
-    cuadroCargaSeleccionado: {
-      backgroundColor: activeSurface,
-      borderColor: activeBorder,
-      borderWidth: 1.5,
-    },
-    textoCuadroCarga: { fontSize: 16, fontWeight: '700', color: c.textoSuave },
-    textoCuadroActivo: { color: c.texto },
-
-    contenedorChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    workloadActive: { backgroundColor: c.primario, borderColor: c.primario },
+    workloadText: { color: c.texto, fontSize: 16, fontWeight: "800" },
+    chips: { flexDirection: "row", flexWrap: "wrap", gap: 9 },
     chip: {
-      paddingHorizontal: 14,
-      paddingVertical: 9,
-      borderRadius: RADIOS.completo,
+      paddingHorizontal: 13,
+      paddingVertical: 10,
+      borderRadius: 999,
+      backgroundColor: c.vidrioSutil,
       borderWidth: 1,
       borderColor: c.borde,
-      backgroundColor: c.superficie,
     },
-    chipSeleccionado: {
-      backgroundColor: activeSurface,
-      borderColor: activeBorder,
-    },
-    textoChip: { fontSize: 12, fontWeight: '600', color: c.textoSecundario },
-    textoChipSeleccionado: { color: c.texto, fontWeight: '700' },
-
-    entradaNota: {
-      minHeight: 120,
+    chipActive: { backgroundColor: c.primario, borderColor: c.primario },
+    chipText: { color: c.textoSecundario, fontSize: 12, fontWeight: "700" },
+    chipTextActive: { color: "#FFFFFF" },
+    noteInput: {
+      marginTop: 30,
+      minHeight: 170,
       borderRadius: 20,
-      padding: 16,
-      backgroundColor: inputBg,
-      borderWidth: 1,
-      borderColor: c.borde,
-      fontSize: 14,
-      color: c.texto,
-      textAlignVertical: 'top',
-      marginBottom: 16,
-    },
-    resumenFinal: {
-      borderRadius: 22,
-      overflow: 'hidden',
       borderWidth: 1,
       borderColor: c.borde,
       backgroundColor: c.superficie,
-      ...SOMBRAS.flotante,
+      color: c.texto,
+      padding: 16,
+      textAlignVertical: "top",
+      fontSize: 15,
+      lineHeight: 21,
     },
-    resumenContenido: { padding: 18 },
-    resumenFilaSuperior: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    resumenTitulo: { fontSize: 13, fontWeight: '600', color: c.textoSuave },
-    resumenValor: { fontSize: 36, fontWeight: '900', letterSpacing: -1, color: c.texto },
-    resumenEstado: { fontSize: 15, fontWeight: '800', color: c.texto, marginTop: 2 },
-    resumenLinea: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 },
-    resumenItem: {
-      backgroundColor: glassMini,
+    energyCard: {
+      minHeight: 76,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14,
       borderWidth: 1,
       borderColor: c.borde,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: RADIOS.completo,
+      backgroundColor: c.superficie,
+      padding: 16,
+      borderRadius: 21,
     },
-    resumenItemTexto: { fontSize: 11, fontWeight: '600', color: c.textoSecundario },
-
-    pieAcciones: {
-      paddingHorizontal: ESPACIADO.md,
-      paddingBottom: Platform.OS === 'ios' ? ESPACIADO.md : ESPACIADO.sm,
-      paddingTop: ESPACIADO.xs,
+    energyCardSelected: {
+      borderColor: c.bordeFocus,
+      backgroundColor: dark ? "rgba(124,58,237,0.14)" : "rgba(124,58,237,0.08)",
+      transform: [{ translateY: -2 }],
     },
-    pieVidrio: {
-      height: 64,
-      borderRadius: 32,
+    energyIcon: {
+      width: 42,
+      height: 42,
+      borderRadius: 14,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: c.vidrioSutil,
+    },
+    energyIconSelected: {
+      backgroundColor: dark ? "rgba(124,58,237,0.20)" : "rgba(124,58,237,0.12)",
+    },
+    energyCopy: { flex: 1 },
+    energyTitle: { color: c.texto, fontSize: 16, fontWeight: "700" },
+    energySubtitle: { color: c.textoSuave, fontSize: 12, marginTop: 3 },
+    summaryStep: { justifyContent: "center" },
+    summary: {
+      marginTop: 32,
       borderWidth: 1,
       borderColor: c.borde,
-      backgroundColor: pieFooterBg,
-      overflow: 'hidden',
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 8,
-      ...SOMBRAS.flotante,
-    },
-    espaciadorPie: { width: 48 },
-    botonNavegacionSecundario: {
-      width: 48,
-      height: 48,
       borderRadius: 24,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: c.borde,
-      backgroundColor: glassMini,
+      backgroundColor: c.superficie,
+      overflow: "hidden",
     },
-    botonPrincipal: {
+    time: {
+      paddingVertical: 25,
+      color: c.texto,
+      fontSize: 42,
+      fontWeight: "800",
+      letterSpacing: -1.5,
+      textAlign: "center",
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderColor: c.borde,
+    },
+    summaryRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 13,
+      padding: 18,
+    },
+    summaryIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 12,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: dark ? "rgba(124,58,237,0.18)" : "rgba(124,58,237,0.10)",
+    },
+    summaryLabel: { color: c.textoSuave, fontSize: 12, fontWeight: "600" },
+    summaryValue: {
+      color: c.texto,
+      fontSize: 15,
+      fontWeight: "700",
+      marginTop: 2,
+    },
+    footer: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 20 },
+    primary: {
+      height: 58,
+      borderRadius: 20,
+      backgroundColor: accent,
+      flexDirection: "row",
+      gap: 10,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    primaryDisabled: { opacity: 0.65 },
+    moodPrimary: { backgroundColor: "#17141B", borderRadius: 29 },
+    primaryText: { color: "#FFFFFF", fontSize: 16, fontWeight: "800" },
+    error: {
+      flexDirection: "row",
+      gap: 10,
+      marginTop: 16,
+      padding: 14,
+      borderRadius: 16,
+      backgroundColor: dark ? "rgba(180,35,24,0.18)" : "#FFF1F0",
+    },
+    errorText: {
       flex: 1,
-      height: 48,
-      marginLeft: 10,
-      borderRadius: 24,
-      backgroundColor: esOscuro ? '#FFFFFF' : '#0F172A',
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexDirection: 'row',
-      gap: 8,
-      ...SOMBRAS.suave,
+      color: dark ? "#FCA5A5" : "#8A1C13",
+      lineHeight: 18,
+      fontSize: 13,
     },
-    botonDeshabilitado: { opacity: 0.6 },
-    textoBotonPrincipal: {
-      fontSize: 14,
-      fontWeight: '800',
-      color: esOscuro ? '#0B0C1E' : '#FFFFFF',
-      letterSpacing: -0.1,
+    success: { alignItems: "center", gap: 10 },
+    successMark: {
+      width: 82,
+      height: 82,
+      borderRadius: 41,
+      backgroundColor: "#22C55E",
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: 10,
     },
   });
 }

@@ -9,10 +9,20 @@
  * del hilo de JS, sin cambiar la API publica que consumen las ~12 pantallas que ya lo usan.
  */
 
-import React from 'react';
-import { GestureResponderEvent, Pressable, StyleProp, ViewStyle } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { MOVIMIENTO } from '@/shared/constants/diseno';
+import React from "react";
+import {
+  AccessibilityState,
+  GestureResponderEvent,
+  Pressable,
+  StyleProp,
+  ViewStyle,
+} from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
+import { MOVIMIENTO } from "@/shared/constants/diseno";
 
 interface BotonAnimadoProps {
   children: React.ReactNode;
@@ -23,11 +33,22 @@ interface BotonAnimadoProps {
   disabled?: boolean;
   accessibilityLabel?: string;
   accessibilityHint?: string;
+  accessibilityState?: AccessibilityState;
 }
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export default function BotonAnimado({ children, onPress, onLongPress, style, scaleTo = MOVIMIENTO.pressScale, disabled = false, accessibilityLabel, accessibilityHint }: BotonAnimadoProps) {
+export default function BotonAnimado({
+  children,
+  onPress,
+  onLongPress,
+  style,
+  scaleTo = MOVIMIENTO.pressScale,
+  disabled = false,
+  accessibilityLabel,
+  accessibilityHint,
+  accessibilityState,
+}: BotonAnimadoProps) {
   const escala = useSharedValue(1);
 
   const manejarPressIn = () => {
@@ -54,6 +75,7 @@ export default function BotonAnimado({ children, onPress, onLongPress, style, sc
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
+      accessibilityState={accessibilityState}
       style={[style, estiloAnimado]}
     >
       {children}
