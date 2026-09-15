@@ -50,6 +50,16 @@ export function useAuth() {
     checkSession();
   }, []);
 
+  // Mantiene todas las instancias del hook coherentes cuando el cierre ocurre desde otro
+  // panel. Algunas pantallas usan useAuth directamente y otras consumen ContextoUsuario;
+  // sin este listener, la instancia del contexto podía conservar un usuario ya desautenticado.
+  useEffect(() => {
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) setUser(null);
+    });
+    return () => subscription.subscription.unsubscribe();
+  }, []);
+
   // "user"/"perfil" solo se poblaba una vez al iniciar sesión (getById) y con updateUser()
   // manuales en un par de pantallas -- cualquier cambio hecho por un admin desde el dashboard
   // web (p.ej. asignar un salario) nunca llegaba a la sesión ya abierta del empleado hasta que

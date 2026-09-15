@@ -12,6 +12,8 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
+import { useTemaMobile } from "@/presentation/context/TemaMobileContext";
+
 const SIGNALS = [
   "Productivo",
   "Enfocado",
@@ -29,7 +31,6 @@ const LABELS = [
   "Carga alta",
   "Sobrecarga",
 ];
-const BLOCK_COLORS = ["#94A3B8", "#64748B", "#475569", "#334155", "#17141B"];
 
 export default function WorkloadSignalsStep({
   workload,
@@ -42,6 +43,12 @@ export default function WorkloadSignalsStep({
   onWorkloadChange: (value: number) => void;
   onToggle: (value: string) => void;
 }) {
+  const { colores, esOscuro } = useTemaMobile();
+  const styles = React.useMemo(
+    () => crearEstilos(colores, esOscuro),
+    [colores, esOscuro]
+  );
+
   const load = useSharedValue(workload);
   useEffect(() => {
     load.value = withTiming(workload, { duration: 350 });
@@ -71,7 +78,12 @@ export default function WorkloadSignalsStep({
         </Pressable>
         <View style={styles.tower}>
           {[4, 3, 2, 1, 0].map((index) => (
-            <WorkBlock key={index} index={index} load={load} />
+            <WorkBlock
+              key={index}
+              index={index}
+              load={load}
+              esOscuro={esOscuro}
+            />
           ))}
         </View>
         <Pressable
@@ -103,7 +115,13 @@ export default function WorkloadSignalsStep({
               accessibilityState={{ selected }}
               style={[styles.chip, selected && styles.chipActive]}
             >
-              {selected && <Feather name="check" size={13} color="#FFFFFF" />}
+              {selected && (
+                <Feather
+                  name="check"
+                  size={13}
+                  color={esOscuro ? "#17141B" : "#FFFFFF"}
+                />
+              )}
               <Text
                 style={[styles.chipText, selected && styles.chipTextActive]}
               >
@@ -120,20 +138,29 @@ export default function WorkloadSignalsStep({
 function WorkBlock({
   index,
   load,
+  esOscuro,
 }: {
   index: number;
   load: SharedValue<number>;
+  esOscuro: boolean;
 }) {
+  const BLOCK_COLORS = esOscuro
+    ? ["#334155", "#475569", "#64748B", "#94A3B8", "#F8FAFC"]
+    : ["#94A3B8", "#64748B", "#475569", "#334155", "#17141B"];
+
+  const emptyColor = esOscuro ? "#FFFFFF0F" : "#F8FAFC";
+  const emptyBorder = esOscuro ? "#FFFFFF1F" : "#E2E8F0";
+
   const style = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(
       load.value,
       [index, index + 1],
-      ["#F8FAFC", BLOCK_COLORS[index]]
+      [emptyColor, BLOCK_COLORS[index]]
     ),
     borderColor: interpolateColor(
       load.value,
       [index, index + 1],
-      ["#E2E8F0", "rgba(255,255,255,0.15)"]
+      [emptyBorder, "#FFFFFF26"]
     ),
     opacity: interpolate(
       load.value,
@@ -165,132 +192,148 @@ function WorkBlock({
     backgroundColor: interpolateColor(
       load.value,
       [index, index + 1],
-      ["#CBD5E1", "rgba(255,255,255,0.6)"]
+      [
+        esOscuro ? "#FFFFFF33" : "#CBD5E1",
+        esOscuro && index === 4 ? "#17141B99" : "#FFFFFF99",
+      ]
     ),
   }));
 
   return (
-    <Animated.View style={[styles.block, style]}>
-      <Animated.View style={[styles.blockMark, markStyle]} />
+    <Animated.View
+      style={[
+        {
+          height: 24,
+          borderRadius: 8,
+          justifyContent: "center",
+          paddingHorizontal: 14,
+          borderWidth: 1,
+          shadowColor: "#000",
+          shadowOpacity: 0.12,
+          shadowRadius: 5,
+          shadowOffset: { width: 0, height: 3 },
+          elevation: 4,
+        },
+        style,
+      ]}
+    >
+      <Animated.View
+        style={[
+          {
+            width: 34,
+            height: 5,
+            borderRadius: 3,
+          },
+          markStyle,
+        ]}
+      />
     </Animated.View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, alignItems: "center" },
-  title: {
-    color: "#17141B",
-    fontSize: 28,
-    fontWeight: "800",
-    textAlign: "center",
-    letterSpacing: -0.8,
-    marginTop: 22,
-  },
-  subtitle: {
-    color: "rgba(23,20,27,0.64)",
-    fontSize: 14,
-    textAlign: "center",
-    marginTop: 8,
-  },
-  towerStage: {
-    width: "100%",
-    height: 220,
-    marginTop: 24,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    borderRadius: 32,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#F1F5F9",
-    shadowColor: "#020617",
-    shadowOpacity: 0.05,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 6,
-  },
-  tower: { width: 178, height: 160, justifyContent: "flex-end", gap: 6 },
-  block: {
-    height: 24,
-    borderRadius: 8,
-    justifyContent: "center",
-    paddingHorizontal: 14,
-    shadowColor: "#000",
-    shadowOpacity: 0.12,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 4,
-  },
-  blockMark: {
-    width: 34,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: "rgba(255,255,255,0.35)",
-  },
-  arrow: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#17141B",
-  },
-  disabled: { opacity: 0.18 },
-  arrowText: { color: "#FFFFFF", fontSize: 31, lineHeight: 36, fontWeight: "400" },
-  loadCopy: { alignItems: "center", marginTop: 24 },
-  eyebrow: {
-    color: "rgba(23,20,27,0.54)",
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.9,
-  },
-  loadLabel: {
-    color: "#17141B",
-    fontSize: 24,
-    fontWeight: "900",
-    marginTop: 4,
-  },
-  signalHeading: {
-    alignSelf: "flex-start",
-    marginTop: 24,
-    color: "rgba(23,20,27,0.54)",
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.9,
-  },
-  chips: {
-    width: "100%",
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    marginTop: 16,
-  },
-  chip: {
-    width: "48%",
-    marginBottom: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
-    borderRadius: 16,
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  chipActive: { 
-    backgroundColor: "#17141B", 
-    borderColor: "#17141B",
-  },
-  chipText: {
-    color: "#64748B",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  chipTextActive: { 
-    color: "#FFFFFF",
-    fontWeight: "700",
-  },
-});
+function crearEstilos(c: any, esOscuro: boolean) {
+  const contrast = esOscuro ? "#FFFFFF" : "#17141B";
+  const contrastInverted = esOscuro ? "#17141B" : "#FFFFFF";
+
+  return StyleSheet.create({
+    root: { flex: 1, alignItems: "center" },
+    title: {
+      color: c.texto,
+      fontSize: 28,
+      fontWeight: "800",
+      textAlign: "center",
+      letterSpacing: -0.8,
+      marginTop: 22,
+    },
+    subtitle: {
+      color: c.textoSuave,
+      fontSize: 14,
+      textAlign: "center",
+      marginTop: 8,
+    },
+    towerStage: {
+      width: "100%",
+      height: 220,
+      marginTop: 24,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 16,
+      borderRadius: 32,
+      backgroundColor: c.superficie,
+      borderWidth: 1,
+      borderColor: c.borde,
+    },
+    tower: { width: 178, height: 160, justifyContent: "flex-end", gap: 6 },
+    arrow: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: contrast,
+    },
+    disabled: { opacity: 0.18 },
+    arrowText: {
+      color: contrastInverted,
+      fontSize: 31,
+      lineHeight: 36,
+      fontWeight: "400",
+    },
+    loadCopy: { alignItems: "center", marginTop: 24 },
+    eyebrow: {
+      color: c.textoSuave,
+      fontSize: 11,
+      fontWeight: "800",
+      letterSpacing: 0.9,
+    },
+    loadLabel: {
+      color: c.texto,
+      fontSize: 24,
+      fontWeight: "900",
+      marginTop: 4,
+    },
+    signalHeading: {
+      alignSelf: "flex-start",
+      marginTop: 24,
+      color: c.textoSuave,
+      fontSize: 11,
+      fontWeight: "800",
+      letterSpacing: 0.9,
+    },
+    chips: {
+      width: "100%",
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "space-between",
+      marginTop: 16,
+    },
+    chip: {
+      width: "48%",
+      marginBottom: 12,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      paddingVertical: 14,
+      paddingHorizontal: 8,
+      borderRadius: 16,
+      backgroundColor: esOscuro ? "rgba(255,255,255,0.04)" : "#F8FAFC",
+      borderWidth: 1,
+      borderColor: esOscuro ? "rgba(255,255,255,0.12)" : "#E2E8F0",
+    },
+    chipActive: {
+      backgroundColor: contrast,
+      borderColor: contrast,
+    },
+    chipText: {
+      color: c.textoSecundario,
+      fontSize: 14,
+      fontWeight: "600",
+    },
+    chipTextActive: {
+      color: contrastInverted,
+      fontWeight: "700",
+    },
+  });
+}

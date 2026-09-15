@@ -2582,7 +2582,7 @@
   },
   "recuperarContrasena": {
     "title": "Recuperar contraseña",
-    "subtitle": "Ingresa el código de tu empresa y tu usuario para enviarte un enlace de restablecimiento.",
+    "subtitle": "Ingresa tu correo para recibir un código de recuperación de seis dígitos.",
     "alert_missing_data_title": "Faltan datos",
     "alert_missing_data_msg": "Ingresa el código de empresa y tu usuario.",
     "alert_error_title": "No se pudo enviar",
@@ -2593,7 +2593,7 @@
     "field_user_placeholder": "nombre.apellido",
     "success_title": "¡Solicitud enviada!",
     "success_msg": "Si tu cuenta existe y tiene un correo de contacto, en unos minutos te llegará un enlace para restablecer tu contraseña. Revisa también tu carpeta de spam.",
-    "btn_send": "Enviar enlace",
+    "btn_send": "Enviar código",
     "btn_back_to_login": "Volver a iniciar sesión"
   },
   "restablecerContrasena": {

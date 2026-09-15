@@ -63,6 +63,7 @@ import { normalizeRole } from "./src/shared/auth/roles";
 // Importa { LimitadorErrores }; reutiliza componentes visuales internos para mantener consistencia entre pantallas.
 import { LimitadorErrores } from "./src/presentation/components/LimitadorErrores";
 import { ToastProvider } from "./src/presentation/components/ui/ToastProvider";
+import CorreoRecuperacionObligatorio from "./src/presentation/components/CorreoRecuperacionObligatorio";
 // Importa estilos o efectos secundarios; inicializa o consume configuracion de internacionalizacion.
 import "./src/shared/i18n/config";
 
@@ -267,6 +268,13 @@ function EnrutadorPrincipal() {
     }
   }, [autenticado]);
 
+  // El stack conserva la pantalla actual después de cerrar sesión. Al no existir una sesión,
+  // ninguna ruta interna debe seguir visible ni accesible mediante el historial de navegación.
+  useEffect(() => {
+    if (cargando || autenticado) return;
+    navigation.reset({ index: 0, routes: [{ name: "Bienvenida" }] });
+  }, [autenticado, cargando, navigation]);
+
   // Ejecuta navegacion; cambia la pantalla activa manteniendo el flujo definido por React Navigation.
   useEffect(() => {
     console.log(
@@ -376,6 +384,8 @@ function EnrutadorPrincipal() {
         <Pila.Screen name="SaberMas" component={SaberMas} />
         <Pila.Screen name="SoporteGeneral" component={SoporteGeneral} />
       </Pila.Navigator>
+
+      <CorreoRecuperacionObligatorio visible={autenticado && Boolean(perfil)} />
 
       {cargando && (
         <View

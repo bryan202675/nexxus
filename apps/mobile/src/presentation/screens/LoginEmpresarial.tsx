@@ -282,7 +282,20 @@ function LoginEmpresarialContent({ navigation }: { navigation: any }) {
                       placeholder={t('landing_auth.workspace_login.field_company_code_placeholder') || 'EJ. NEXXUS'}
                       placeholderTextColor={esOscuro ? 'rgba(255,255,255,0.4)' : 'rgba(15,23,42,0.4)'}
                       value={form.codigoEmpresa}
-                      onChangeText={(v) => setForm({ ...form, codigoEmpresa: v })}
+                      onChangeText={(v) => {
+                        let clean = v.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+                        let result = clean;
+                        if (clean.length > 3) {
+                          result = clean.substring(0, 3) + '-' + clean.substring(3);
+                        } else if (clean.length === 3) {
+                          if (form.codigoEmpresa.length < 3) {
+                            result = clean + '-';
+                          } else if (v.endsWith('-')) {
+                            result = clean + '-';
+                          }
+                        }
+                        setForm({ ...form, codigoEmpresa: result });
+                      }}
                       autoCapitalize="characters"
                       onSubmitEditing={Keyboard.dismiss}
                     />
@@ -303,6 +316,7 @@ function LoginEmpresarialContent({ navigation }: { navigation: any }) {
                       value={form.usuario}
                       onChangeText={(v) => setForm({ ...form, usuario: v })}
                       autoCapitalize="none"
+                      autoCorrect={false}
                       onSubmitEditing={Keyboard.dismiss}
                     />
                   </View>

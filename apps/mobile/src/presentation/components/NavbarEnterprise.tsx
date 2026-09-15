@@ -16,6 +16,7 @@ import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import { useTranslation } from 'react-i18next';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Props {
   titulo: string;
@@ -26,6 +27,7 @@ interface Props {
   avatarLetra?: string;
   ocultarAccionesDerechas?: boolean;
   accionDerecha?: React.ReactNode;
+  usarMargenesSeguros?: boolean;
 }
 
 export default function NavbarEnterprise({
@@ -37,11 +39,13 @@ export default function NavbarEnterprise({
   avatarLetra,
   ocultarAccionesDerechas = false,
   accionDerecha,
+  usarMargenesSeguros = false,
 }: Props) {
   const { perfil, alertasNoLeidas } = useContextoUsuario();
   const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
   const { i18n } = useTranslation();
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const locale = i18n.language.startsWith('en') ? 'en-US' : 'es-SV';
   const fechaActual = new Intl.DateTimeFormat(locale, { weekday: 'short', day: '2-digit', month: 'short' }).format(new Date()).replace('.', '');
 
@@ -62,7 +66,10 @@ export default function NavbarEnterprise({
 
   return (
     <View style={{ zIndex: 100 }}>
-      <View style={estilos.appBarContainer}>
+      <View style={[
+        estilos.appBarContainer,
+        usarMargenesSeguros && { marginTop: Math.max(insets.top, Platform.OS === 'ios' ? ESPACIADO.xs : ESPACIADO.sm) }
+      ]}>
         <BlurView
           intensity={Platform.OS === 'ios' ? intensidadBlur + 15 : 85}
           tint={blurTint}

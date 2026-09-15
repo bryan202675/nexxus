@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LeaderTeamMember } from 'domain/entities/Leader';
+import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 
 export type LeaderEvaluationPayload = {
   empleadoId: string;
@@ -24,6 +25,9 @@ export function LeaderEvaluationForm({
   saving: boolean;
   onSubmit: (payload: LeaderEvaluationPayload) => Promise<void>;
 }) {
+  const { colores, esOscuro } = useTemaMobile();
+  const styles = React.useMemo(() => crearEstilos(colores, esOscuro), [colores, esOscuro]);
+
   const [employeeId, setEmployeeId] = useState(team[0]?.id || '');
   const [puntualidad, setPuntualidad] = useState(85);
   const [tareasCompletadas, setTareasCompletadas] = useState(85);
@@ -34,7 +38,7 @@ export function LeaderEvaluationForm({
   if (team.length === 0) {
     return (
       <View style={styles.empty}>
-        <MaterialIcons name="fact-check" size={26} color="#94A3B8" />
+        <MaterialIcons name="fact-check" size={26} color={colores.textoSuave} />
         <Text style={styles.emptyTitle}>Evaluaciones sin equipo</Text>
         <Text style={styles.emptyText}>Primero asigna empleados a este jefe para registrar desempeño mensual.</Text>
       </View>
@@ -73,13 +77,13 @@ export function LeaderEvaluationForm({
         })}
       </View>
 
-      <ScoreControl label="Puntualidad" value={puntualidad} onChange={setPuntualidad} />
-      <ScoreControl label="Tareas" value={tareasCompletadas} onChange={setTareasCompletadas} />
-      <ScoreControl label="Disciplina" value={disciplina} onChange={setDisciplina} />
+      <ScoreControl styles={styles} colores={colores} label="Puntualidad" value={puntualidad} onChange={setPuntualidad} />
+      <ScoreControl styles={styles} colores={colores} label="Tareas" value={tareasCompletadas} onChange={setTareasCompletadas} />
+      <ScoreControl styles={styles} colores={colores} label="Disciplina" value={disciplina} onChange={setDisciplina} />
 
       <TextInput
         placeholder="Comentario breve"
-        placeholderTextColor="#64748B"
+        placeholderTextColor={colores.textoSuave}
         value={comentarios}
         onChangeText={setComentarios}
         style={styles.input}
@@ -99,7 +103,7 @@ export function LeaderEvaluationForm({
   );
 }
 
-function ScoreControl({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
+function ScoreControl({ styles, colores, label, value, onChange }: { styles: any, colores: any, label: string; value: number; onChange: (value: number) => void }) {
   const setScore = (next: number) => onChange(Math.max(0, Math.min(100, next)));
   return (
     <View style={styles.scoreRow}>
@@ -109,150 +113,154 @@ function ScoreControl({ label, value, onChange }: { label: string; value: number
       </View>
       <View style={styles.scoreActions}>
         <Pressable accessibilityRole="button" onPress={() => setScore(value - 5)} style={({ pressed }) => [styles.scoreButton, pressed && styles.scoreButtonPressed]}>
-          <MaterialIcons name="remove" size={16} color="#CBD5E1" />
+          <MaterialIcons name="remove" size={16} color={colores.textoSecundario} />
         </Pressable>
         <Pressable accessibilityRole="button" onPress={() => setScore(value + 5)} style={({ pressed }) => [styles.scoreButton, pressed && styles.scoreButtonPressed]}>
-          <MaterialIcons name="add" size={16} color="#CBD5E1" />
+          <MaterialIcons name="add" size={16} color={colores.textoSecundario} />
         </Pressable>
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    padding: 14,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    gap: 12,
-  },
-  peopleRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  personButton: {
-    maxWidth: '48%',
-    minHeight: 34,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    paddingHorizontal: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  personButtonActive: {
-    borderColor: 'rgba(167,139,250,0.5)',
-    backgroundColor: 'rgba(124,58,237,0.24)',
-  },
-  personButtonPressed: {
-    opacity: 0.76,
-  },
-  personText: {
-    color: '#CBD5E1',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  personTextActive: {
-    color: '#FFFFFF',
-  },
-  scoreRow: {
-    minHeight: 44,
-    borderRadius: 12,
-    backgroundColor: 'rgba(15,23,42,0.52)',
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  scoreLabelWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  scoreLabel: {
-    color: '#E2E8F0',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  scoreValue: {
-    color: '#A78BFA',
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  scoreActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  scoreButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-  },
-  scoreButtonPressed: {
-    opacity: 0.2,
-  },
-  input: {
-    minHeight: 72,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    backgroundColor: 'rgba(15,23,42,0.52)',
-    color: '#F8FAFC',
-    padding: 12,
-    fontSize: 13,
-    textAlignVertical: 'top',
-  },
-  submitButton: {
-    minHeight: 42,
-    borderRadius: 14,
-    backgroundColor: '#7C3AED',
-    borderWidth: 1,
-    borderColor: 'rgba(216,180,254,0.35)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
-  },
-  submitText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  disabled: {
-    opacity: 0.55,
-  },
-  submitButtonPressed: {
-    opacity: 0.78,
-  },
-  empty: {
-    minHeight: 132,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    padding: 16,
-  },
-  emptyTitle: {
-    color: '#E2E8F0',
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  emptyText: {
-    color: '#94A3B8',
-    fontSize: 12,
-    lineHeight: 18,
-    textAlign: 'center',
-  },
-});
+function crearEstilos(c: any, esOscuro: boolean) {
+  return StyleSheet.create({
+    card: {
+      padding: 14,
+      borderRadius: 16,
+      backgroundColor: c.superficie,
+      borderWidth: 1,
+      borderColor: c.borde,
+      gap: 12,
+    },
+    peopleRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    personButton: {
+      maxWidth: '48%',
+      minHeight: 34,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: c.borde,
+      backgroundColor: c.fondo,
+      paddingHorizontal: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    personButtonActive: {
+      borderColor: '#17141B',
+      backgroundColor: esOscuro ? '#FFFFFF' : '#17141B',
+    },
+    personButtonPressed: {
+      opacity: 0.76,
+    },
+    personText: {
+      color: c.textoSecundario,
+      fontSize: 12,
+      fontWeight: '800',
+    },
+    personTextActive: {
+      color: esOscuro ? '#17141B' : '#FFFFFF',
+    },
+    scoreRow: {
+      minHeight: 44,
+      borderRadius: 12,
+      backgroundColor: c.fondo,
+      paddingHorizontal: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderWidth: 1,
+      borderColor: c.borde,
+    },
+    scoreLabelWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    scoreLabel: {
+      color: c.texto,
+      fontSize: 13,
+      fontWeight: '800',
+    },
+    scoreValue: {
+      color: c.textoSecundario,
+      fontSize: 13,
+      fontWeight: '900',
+    },
+    scoreActions: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    scoreButton: {
+      width: 30,
+      height: 30,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: c.borde,
+      backgroundColor: c.superficie,
+    },
+    scoreButtonPressed: {
+      opacity: 0.2,
+    },
+    input: {
+      minHeight: 72,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: c.borde,
+      backgroundColor: c.fondo,
+      color: c.texto,
+      padding: 12,
+      fontSize: 13,
+      textAlignVertical: 'top',
+    },
+    submitButton: {
+      minHeight: 42,
+      borderRadius: 14,
+      backgroundColor: '#17141B',
+      borderWidth: 1,
+      borderColor: '#17141B',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+      gap: 8,
+    },
+    submitText: {
+      color: '#FFFFFF',
+      fontSize: 12,
+      fontWeight: '900',
+    },
+    disabled: {
+      opacity: 0.55,
+    },
+    submitButtonPressed: {
+      opacity: 0.78,
+    },
+    empty: {
+      minHeight: 132,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: c.borde,
+      backgroundColor: c.superficie,
+      padding: 16,
+    },
+    emptyTitle: {
+      color: c.texto,
+      fontSize: 14,
+      fontWeight: '900',
+    },
+    emptyText: {
+      color: c.textoSuave,
+      fontSize: 12,
+      lineHeight: 18,
+      textAlign: 'center',
+    },
+  });
+}

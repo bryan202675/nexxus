@@ -96,6 +96,7 @@ export default function Comenzar() {
                 onChangeText={establecerCorreo}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                autoCorrect={false}
               />
             </View>
           </View>

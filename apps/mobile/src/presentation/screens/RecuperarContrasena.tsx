@@ -1,10 +1,7 @@
 /**
  * Documentacion Nexxus - apps/mobile/src/presentation/screens/RecuperarContrasena.tsx
  * Capa: presentacion.
- * Proposito: Pide un enlace de recuperación de contraseña, vía código de empresa + usuario
- * (mismo par que LoginEmpresarial) para admin/jefe/empleado. Llama a la Edge Function
- * `solicitar-recuperacion-password`, que resuelve el destino real (correo o correo_personal)
- * y envía el enlace.
+ * Proposito: Solicita y verifica un código de recuperación de seis dígitos enviado al correo.
  * Rediseñado con estética profesional premium basada en prototypes/mobile-login.html.
  */
 
@@ -43,23 +40,18 @@ const FONDO_CLARO = require('../../../assets/fondoNexxusClaro.jpg');
 const ISO_OSCURO = require('../../../assets/isoNexxus.png');
 const ISO_CLARO = require('../../../assets/isoNexxusBlack.png');
 
-function obtenerRedirectTo(): string {
-  if (Platform.OS === 'web' && typeof window !== 'undefined') {
-    const base = (process.env.EXPO_PUBLIC_BASE_URL || '').replace(/\/$/, '');
-    return `${window.location.origin}${base}/restablecer-contrasena`;
-  }
-  return 'nexxus://restablecer-contrasena';
-}
-
-function RecuperarContrasenaContent({ navigation, route }: { navigation: any; route: any }) {
+function RecuperarContrasenaContent({ navigation }: { navigation: any }) {
   const { t } = useTranslation();
   const { colores, blurTint, intensidadBlur, esOscuro, alternarModo } = useTemaMobile();
   const toast = useAdminToast();
 
-  const [codigoEmpresa, setCodigoEmpresa] = useState(route?.params?.codigoEmpresa || '');
-  const [usuario, setUsuario] = useState(route?.params?.usuario || '');
+  const [codigoEmpresa, setCodigoEmpresa] = useState('');
+  const [usuario, setUsuario] = useState('');
+  const [correo, setCorreo] = useState('');
+  const [correoVerificacion, setCorreoVerificacion] = useState('');
+  const [codigo, setCodigo] = useState('');
   const [enviando, setEnviando] = useState(false);
-  const [enviado, setEnviado] = useState(false);
+  const [codigoEnviado, setCodigoEnviado] = useState(false);
 
   // Animaciones de entrada escalonadas
   const animHeader = useRef(new Animated.Value(0)).current;
@@ -91,23 +83,43 @@ function RecuperarContrasenaContent({ navigation, route }: { navigation: any; ro
   }, []);
 
   const enviarSolicitud = async () => {
-    if (!codigoEmpresa.trim() || !usuario.trim()) {
-      toast.warning({ title: t('recuperarContrasena.alert_missing_data_title'), description: t('recuperarContrasena.alert_missing_data_msg') });
+    const correoNormalizado = correo.trim().toLowerCase();
+    if (!codigoEmpresa.trim() || !usuario.trim() || !/^\S+@\S+\.\S+$/.test(correoNormalizado)) {
+      toast.warning({ title: 'Faltan datos', description: 'Ingresa el código de empresa, tu usuario y el correo de recuperación.' });
       return;
     }
     setEnviando(true);
     try {
-      const { error } = await supabase.functions.invoke('solicitar-recuperacion-password', {
+      const { data, error } = await supabase.functions.invoke('solicitar-recuperacion-password', {
         body: {
           codigoEmpresa: codigoEmpresa.trim(),
           usuarioInterno: usuario.trim(),
-          redirectTo: obtenerRedirectTo(),
+          correo: correoNormalizado,
         },
       });
       if (error) throw new Error(error.message || 'No se pudo procesar la solicitud.');
-      setEnviado(true);
+      setCorreoVerificacion(typeof data?.correoVerificacion === 'string' ? data.correoVerificacion : correoNormalizado);
+      setCorreo(correoNormalizado);
+      setCodigoEnviado(true);
     } catch (err: any) {
       toast.error({ title: t('recuperarContrasena.alert_error_title'), description: err?.message || t('recuperarContrasena.alert_error_default_msg') });
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  const verificarCodigo = async () => {
+    if (!/^\d{6}$/.test(codigo)) {
+      toast.warning({ title: 'Código inválido', description: 'Ingresa los seis dígitos del correo.' });
+      return;
+    }
+    setEnviando(true);
+    try {
+      const { error } = await supabase.auth.verifyOtp({ email: correoVerificacion, token: codigo, type: 'recovery' });
+      if (error) throw new Error(error.message || 'El código no es válido o venció.');
+      navigation.replace('RestablecerContrasena');
+    } catch (err: any) {
+      toast.error({ title: 'No se pudo verificar el código', description: err?.message || 'Solicita un código nuevo e inténtalo otra vez.' });
     } finally {
       setEnviando(false);
     }
@@ -237,58 +249,66 @@ function RecuperarContrasenaContent({ navigation, route }: { navigation: any; ro
               ]}
             >
               <BlurView intensity={intensidadBlur + 30} tint={blurTint} style={estilos.formPanel}>
-                {enviado ? (
-                  <View style={estilos.exitoBox}>
-                    <Ionicons name="checkmark-circle" size={42} color="#22C55E" />
-                    <Text style={estilos.exitoTitulo}>{t('recuperarContrasena.success_title')}</Text>
-                    <Text style={estilos.exitoTexto}>
-                      {t('recuperarContrasena.success_msg')}
-                    </Text>
-                  </View>
-                ) : (
+                {!codigoEnviado ? (
                   <>
-                    {/* Campo Código de Empresa */}
                     <View style={estilos.inputGroup}>
-                      <Text style={estilos.label}>{t('recuperarContrasena.field_company_code_label')}</Text>
+                      <Text style={estilos.label}>CÓDIGO DE EMPRESA</Text>
                       <View style={estilos.inputWrapper}>
                         <Feather name="briefcase" size={18} color={esOscuro ? 'rgba(255,255,255,0.6)' : 'rgba(15,23,42,0.6)'} style={estilos.inputIcon} />
                         <TextInput
                           style={estilos.input}
-                          placeholder={t('recuperarContrasena.field_company_code_placeholder')}
+                          placeholder="EJ. NEXXUS"
                           placeholderTextColor={esOscuro ? 'rgba(255,255,255,0.4)' : 'rgba(15,23,42,0.4)'}
                           value={codigoEmpresa}
-                          onChangeText={setCodigoEmpresa}
+                          onChangeText={(v) => {
+                            let clean = v.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+                            let result = clean;
+                            if (clean.length > 3) {
+                              result = clean.substring(0, 3) + '-' + clean.substring(3);
+                            } else if (clean.length === 3) {
+                              if (codigoEmpresa.length < 3) {
+                                result = clean + '-';
+                              } else if (v.endsWith('-')) {
+                                result = clean + '-';
+                              }
+                            }
+                            setCodigoEmpresa(result);
+                          }}
                           autoCapitalize="characters"
-                          onSubmitEditing={Keyboard.dismiss}
                         />
                       </View>
                     </View>
-
-                    {/* Campo Usuario */}
                     <View style={estilos.inputGroup}>
-                      <Text style={estilos.label}>{t('recuperarContrasena.field_user_label')}</Text>
+                      <Text style={estilos.label}>USUARIO</Text>
                       <View style={estilos.inputWrapper}>
                         <Feather name="user" size={18} color={esOscuro ? 'rgba(255,255,255,0.6)' : 'rgba(15,23,42,0.6)'} style={estilos.inputIcon} />
+                        <TextInput style={estilos.input} placeholder="nombre.apellido" placeholderTextColor={esOscuro ? 'rgba(255,255,255,0.4)' : 'rgba(15,23,42,0.4)'} value={usuario} onChangeText={setUsuario} autoCapitalize="none" autoCorrect={false} />
+                      </View>
+                    </View>
+                    <View style={estilos.inputGroup}>
+                      <Text style={estilos.label}>CORREO ELECTRÓNICO</Text>
+                      <View style={estilos.inputWrapper}>
+                        <Feather name="mail" size={18} color={esOscuro ? 'rgba(255,255,255,0.6)' : 'rgba(15,23,42,0.6)'} style={estilos.inputIcon} />
                         <TextInput
                           style={estilos.input}
-                          placeholder={t('recuperarContrasena.field_user_placeholder')}
+                          placeholder="tu@correo.com"
                           placeholderTextColor={esOscuro ? 'rgba(255,255,255,0.4)' : 'rgba(15,23,42,0.4)'}
-                          value={usuario}
-                          onChangeText={setUsuario}
+                          value={correo}
+                          onChangeText={setCorreo}
                           autoCapitalize="none"
+                          autoCorrect={false}
+                          keyboardType="email-address"
                           onSubmitEditing={Keyboard.dismiss}
                         />
                       </View>
                     </View>
-
-                    {/* Botón Enviar Enlace (100% negro en modo claro, blanco en modo oscuro) */}
                     <BotonAnimado style={estilos.botonWrapSubmit} onPress={enviarSolicitud} disabled={enviando} scaleTo={0.96}>
                       <View style={estilos.botonSubmit}>
                         {enviando ? (
                           <ActivityIndicator color={esOscuro ? '#000000' : '#FFFFFF'} size="small" />
                         ) : (
                           <>
-                            <Text style={estilos.textoBotonSubmit}>{t('recuperarContrasena.btn_send')}</Text>
+                            <Text style={estilos.textoBotonSubmit}>Enviar código</Text>
                             <Feather
                               name="arrow-right"
                               size={20}
@@ -299,6 +319,23 @@ function RecuperarContrasenaContent({ navigation, route }: { navigation: any; ro
                         )}
                       </View>
                     </BotonAnimado>
+                  </>
+                ) : (
+                  <>
+                    <Text style={estilos.exitoTexto}>Enviamos un código de seis dígitos a {correo}.</Text>
+                    <View style={estilos.inputGroup}>
+                      <Text style={estilos.label}>CÓDIGO DE VERIFICACIÓN</Text>
+                      <View style={estilos.inputWrapper}>
+                        <Feather name="shield" size={18} color={esOscuro ? 'rgba(255,255,255,0.6)' : 'rgba(15,23,42,0.6)'} style={estilos.inputIcon} />
+                        <TextInput style={estilos.input} placeholder="000000" placeholderTextColor={esOscuro ? 'rgba(255,255,255,0.4)' : 'rgba(15,23,42,0.4)'} value={codigo} onChangeText={(value) => setCodigo(value.replace(/\D/g, '').slice(0, 6))} keyboardType="number-pad" maxLength={6} />
+                      </View>
+                    </View>
+                    <BotonAnimado style={estilos.botonWrapSubmit} onPress={verificarCodigo} disabled={enviando} scaleTo={0.96}>
+                      <View style={estilos.botonSubmit}>
+                        {enviando ? <ActivityIndicator color={esOscuro ? '#000000' : '#FFFFFF'} size="small" /> : <><Text style={estilos.textoBotonSubmit}>Verificar código</Text><Feather name="arrow-right" size={20} color={esOscuro ? '#000000' : '#FFFFFF'} style={estilos.iconoBotonSubmit} /></>}
+                      </View>
+                    </BotonAnimado>
+                    <TouchableOpacity onPress={() => { setCodigoEnviado(false); setCodigo(''); }} style={estilos.backLinkBtn}><Text style={estilos.textoEnlace}>Usar otro correo</Text></TouchableOpacity>
                   </>
                 )}
 

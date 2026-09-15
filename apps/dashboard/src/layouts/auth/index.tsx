@@ -1,10 +1,11 @@
 import Footer from "components/footer/FooterAuthDefault";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import routes from "routes";
 import FixedPlugin from "components/fixedPlugin/FixedPlugin";
 import { useAuth } from "context/AuthContext";
 
 export default function Auth() {
+  const location = useLocation();
   const authCtx = useAuth();
   const loading = authCtx?.loading;
   const user = authCtx?.user;
@@ -19,8 +20,11 @@ export default function Auth() {
     );
   }
 
-  // Redirigir únicamente si el usuario tiene sesión activa Y ROL DE ADMIN/SUPERADMIN
-  if (user && (esSuperAdmin || esAdminEmpresa)) {
+  const estaRecuperandoContrasena = ["/auth/recuperar-contrasena", "/auth/restablecer-contrasena"].includes(location.pathname);
+
+  // La sesión creada al verificar un OTP de recuperación es necesaria para cambiar la
+  // contraseña. No debe enviarse al dashboard antes de completar ese paso.
+  if (user && (esSuperAdmin || esAdminEmpresa) && !estaRecuperandoContrasena) {
     return <Navigate to="/admin" replace />;
   }
 

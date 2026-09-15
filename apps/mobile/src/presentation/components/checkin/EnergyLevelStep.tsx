@@ -9,6 +9,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
+import { useTemaMobile } from "@/presentation/context/TemaMobileContext";
 
 export type EnergyLevel = "bajo" | "medio" | "alto";
 const LEVELS: { id: EnergyLevel; label: string; detail: string }[] = [
@@ -26,6 +27,9 @@ export default function EnergyLevelStep({
   energy: EnergyLevel;
   onChange: (level: EnergyLevel) => void;
 }) {
+  const { colores, esOscuro } = useTemaMobile();
+  const styles = React.useMemo(() => crearEstilos(colores, esOscuro), [colores, esOscuro]);
+
   const level = useSharedValue(indexOf(energy));
   useEffect(() => {
     level.value = withTiming(indexOf(energy), { duration: 360 });
@@ -71,7 +75,7 @@ export default function EnergyLevelStep({
           <View style={styles.battery}>
             <Animated.View style={[styles.fill, fill]} />
             <Animated.View pointerEvents="none" style={[styles.ray, ray]}>
-              <Feather name="zap" size={42} color="#17141B" fill="#17141B" />
+              <Feather name="zap" size={42} color={esOscuro ? "#FFFFFF" : "#17141B"} fill={esOscuro ? "#FFFFFF" : "#17141B"} />
             </Animated.View>
           </View>
         </View>
@@ -96,81 +100,86 @@ export default function EnergyLevelStep({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, alignItems: "center" },
-  title: {
-    color: "#17141B",
-    fontSize: 28,
-    fontWeight: "800",
-    textAlign: "center",
-    letterSpacing: -0.8,
-    marginTop: 22,
-  },
-  subtitle: {
-    color: "rgba(23,20,27,0.62)",
-    fontSize: 14,
-    textAlign: "center",
-    marginTop: 8,
-  },
-  batteryStage: {
-    flex: 1,
-    width: "100%",
-    minHeight: 310,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 8,
-  },
-  batteryWrap: {
-    width: 154,
-    height: 254,
-    alignItems: "center",
-    justifyContent: "flex-end",
-  },
-  terminal: {
-    width: 58,
-    height: 13,
-    borderTopLeftRadius: 7,
-    borderTopRightRadius: 7,
-    backgroundColor: "#17141B",
-  },
-  battery: {
-    width: 154,
-    height: 235,
-    borderRadius: 28,
-    borderWidth: 6,
-    borderColor: "#17141B",
-    overflow: "hidden",
-    justifyContent: "flex-end",
-    backgroundColor: "rgba(255,255,255,0.24)",
-  },
-  fill: { width: "100%" },
-  ray: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  arrow: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#17141B",
-  },
-  disabled: { opacity: 0.18 },
-  arrowText: { color: "#FFFFFF", fontSize: 31, lineHeight: 36, fontWeight: "400" },
-  copy: { height: 104, alignItems: "center" },
-  eyebrow: {
-    color: "rgba(23,20,27,0.55)",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.9,
-  },
-  level: { color: "#17141B", fontSize: 24, fontWeight: "900", marginTop: 4 },
-  detail: { color: "rgba(23,20,27,0.64)", fontSize: 13, marginTop: 4 },
-});
+function crearEstilos(c: any, esOscuro: boolean) {
+  const contrast = esOscuro ? "#FFFFFF" : "#17141B";
+  const inverted = esOscuro ? "#000000" : "#FFFFFF";
+
+  return StyleSheet.create({
+    root: { flex: 1, alignItems: "center" },
+    title: {
+      color: c.texto,
+      fontSize: 28,
+      fontWeight: "800",
+      textAlign: "center",
+      letterSpacing: -0.8,
+      marginTop: 22,
+    },
+    subtitle: {
+      color: c.textoSuave,
+      fontSize: 14,
+      textAlign: "center",
+      marginTop: 8,
+    },
+    batteryStage: {
+      flex: 1,
+      width: "100%",
+      minHeight: 310,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 8,
+    },
+    batteryWrap: {
+      width: 154,
+      height: 254,
+      alignItems: "center",
+      justifyContent: "flex-end",
+    },
+    terminal: {
+      width: 58,
+      height: 13,
+      borderTopLeftRadius: 7,
+      borderTopRightRadius: 7,
+      backgroundColor: contrast,
+    },
+    battery: {
+      width: 154,
+      height: 235,
+      borderRadius: 28,
+      borderWidth: 6,
+      borderColor: contrast,
+      overflow: "hidden",
+      justifyContent: "flex-end",
+      backgroundColor: esOscuro ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
+    },
+    fill: { width: "100%" },
+    ray: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    arrow: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: contrast,
+    },
+    disabled: { opacity: 0.18 },
+    arrowText: { color: inverted, fontSize: 31, lineHeight: 36, fontWeight: "400" },
+    copy: { height: 104, alignItems: "center" },
+    eyebrow: {
+      color: c.textoSuave,
+      fontSize: 10,
+      fontWeight: "800",
+      letterSpacing: 0.9,
+    },
+    level: { color: c.texto, fontSize: 24, fontWeight: "900", marginTop: 4 },
+    detail: { color: c.textoSecundario, fontSize: 13, marginTop: 4 },
+  });
+}

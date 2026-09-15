@@ -65,14 +65,29 @@ function AnimatedStar({ level, top, left, right, bottom, size, type, appearAt }:
   );
 }
 
+const cloudStyles = StyleSheet.create({
+  cloudGroup: {
+    position: "absolute",
+    width: 118,
+    height: 70,
+  },
+  cloudBubble: {
+    position: "absolute",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 99,
+  },
+});
+
 const Cloud = ({ style }: any) => (
-  <Animated.View style={[styles.cloudGroup, style]}>
-    <View style={[styles.cloudBubble, { width: 44, height: 44, left: 0, bottom: 0 }]} />
-    <View style={[styles.cloudBubble, { width: 70, height: 70, left: 24, bottom: 0 }]} />
-    <View style={[styles.cloudBubble, { width: 44, height: 44, left: 74, bottom: 0 }]} />
-    <View style={[styles.cloudBubble, { width: 90, height: 26, left: 14, bottom: 0 }]} />
+  <Animated.View style={[cloudStyles.cloudGroup, style]}>
+    <View style={[cloudStyles.cloudBubble, { width: 44, height: 44, left: 0, bottom: 0 }]} />
+    <View style={[cloudStyles.cloudBubble, { width: 70, height: 70, left: 24, bottom: 0 }]} />
+    <View style={[cloudStyles.cloudBubble, { width: 44, height: 44, left: 74, bottom: 0 }]} />
+    <View style={[cloudStyles.cloudBubble, { width: 90, height: 26, left: 14, bottom: 0 }]} />
   </Animated.View>
 );
+
+import { useTemaMobile } from "@/presentation/context/TemaMobileContext";
 
 export default function RestLevelStep({
   value,
@@ -81,6 +96,9 @@ export default function RestLevelStep({
   value: number;
   onChange: (value: number) => void;
 }) {
+  const { colores, esOscuro } = useTemaMobile();
+  const styles = React.useMemo(() => crearEstilos(colores, esOscuro), [colores, esOscuro]);
+
   const level = useSharedValue(value - 1);
   useEffect(() => {
     level.value = withTiming(value - 1, { duration: 340 });
@@ -193,124 +211,116 @@ export default function RestLevelStep({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, alignItems: "center" },
-  title: {
-    color: "#17141B",
-    fontSize: 28,
-    fontWeight: "800",
-    textAlign: "center",
-    letterSpacing: -0.8,
-    marginTop: 22,
-  },
-  subtitle: {
-    color: "rgba(23,20,27,0.64)",
-    fontWeight: "600",
-    fontSize: 14,
-    textAlign: "center",
-    marginTop: 8,
-  },
-  scene: {
-    width: "100%",
-    height: 338,
-    marginTop: 30,
-    borderRadius: 32,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.20)",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 14,
-    overflow: "hidden",
-  },
-  orbit: {
-    width: 248,
-    height: 248,
-    borderRadius: 124,
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-  },
-  moon: {
-    width: 162,
-    height: 162,
-    borderRadius: 81,
-    overflow: "hidden",
-    backgroundColor: "#FFF9D7",
-    borderWidth: 4,
-    borderColor: "rgba(255,255,255,0.82)",
-  },
-  moonShadow: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "#253876",
-    borderTopLeftRadius: 80,
-    borderBottomLeftRadius: 80,
-  },
-  crater: {
-    position: "absolute",
-    backgroundColor: "rgba(0,0,0,0.06)",
-    borderRadius: 99,
-  },
-  cloudGroup: {
-    position: "absolute",
-    width: 118,
-    height: 70,
-  },
-  cloudBubble: {
-    position: "absolute",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 99,
-  },
-  fgCloud: {
-    bottom: 16,
-    left: 24,
-  },
-  bgCloud: {
-    bottom: 40,
-    right: 0,
-  },
-  arrow: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.22)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.32)",
-    zIndex: 10,
-  },
-  disabled: { opacity: 0.18 },
-  arrowText: { color: "#FFFFFF", fontSize: 34, lineHeight: 39 },
-  halo: {
-    position: "absolute",
-    width: 213,
-    height: 213,
-    borderRadius: 107,
-    backgroundColor: "rgba(255,255,255,0.13)",
-  },
-  copy: { height: 112, alignItems: "center", paddingTop: 18 },
-  eyebrow: {
-    color: "rgba(23,20,27,0.54)",
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.9,
-  },
-  level: {
-    color: "#17141B",
-    fontSize: 22,
-    fontWeight: "900",
-    marginTop: 4,
-    textAlign: "center",
-  },
-  detail: {
-    color: "rgba(23,20,27,0.64)",
-    fontSize: 14,
-    fontWeight: "600",
-    marginTop: 4,
-    textAlign: "center",
-  },
-});
+function crearEstilos(c: any, esOscuro: boolean) {
+  return StyleSheet.create({
+    root: { flex: 1, alignItems: "center" },
+    title: {
+      color: c.texto,
+      fontSize: 28,
+      fontWeight: "800",
+      textAlign: "center",
+      letterSpacing: -0.8,
+      marginTop: 22,
+    },
+    subtitle: {
+      color: c.textoSuave,
+      fontWeight: "600",
+      fontSize: 14,
+      textAlign: "center",
+      marginTop: 8,
+    },
+    scene: {
+      width: "100%",
+      height: 338,
+      marginTop: 30,
+      borderRadius: 32,
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.20)",
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 14,
+      overflow: "hidden",
+    },
+    orbit: {
+      width: 248,
+      height: 248,
+      borderRadius: 124,
+      alignItems: "center",
+      justifyContent: "center",
+      position: "relative",
+    },
+    moon: {
+      width: 162,
+      height: 162,
+      borderRadius: 81,
+      overflow: "hidden",
+      backgroundColor: "#FFF9D7",
+      borderWidth: 4,
+      borderColor: "rgba(255,255,255,0.82)",
+    },
+    moonShadow: {
+      position: "absolute",
+      top: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: "#253876",
+      borderTopLeftRadius: 80,
+      borderBottomLeftRadius: 80,
+    },
+    crater: {
+      position: "absolute",
+      backgroundColor: "rgba(0,0,0,0.06)",
+      borderRadius: 99,
+    },
+    fgCloud: {
+      bottom: 16,
+      left: 24,
+    },
+    bgCloud: {
+      bottom: 40,
+      right: 0,
+    },
+    arrow: {
+      width: 46,
+      height: 46,
+      borderRadius: 23,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "rgba(255,255,255,0.22)",
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.32)",
+      zIndex: 10,
+    },
+    disabled: { opacity: 0.18 },
+    arrowText: { color: "#FFFFFF", fontSize: 34, lineHeight: 39 },
+    halo: {
+      position: "absolute",
+      width: 213,
+      height: 213,
+      borderRadius: 107,
+      backgroundColor: "rgba(255,255,255,0.13)",
+    },
+    copy: { height: 112, alignItems: "center", paddingTop: 18 },
+    eyebrow: {
+      color: c.textoSuave,
+      fontSize: 11,
+      fontWeight: "800",
+      letterSpacing: 0.9,
+    },
+    level: {
+      color: c.texto,
+      fontSize: 22,
+      fontWeight: "900",
+      marginTop: 4,
+      textAlign: "center",
+    },
+    detail: {
+      color: c.textoSecundario,
+      fontSize: 14,
+      fontWeight: "600",
+      marginTop: 4,
+      textAlign: "center",
+    },
+  });
+}

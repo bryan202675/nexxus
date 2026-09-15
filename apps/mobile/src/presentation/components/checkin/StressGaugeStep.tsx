@@ -32,6 +32,8 @@ const AnimatedPath = Animated.createAnimatedComponent(Path);
 const indexOf = (level: StressLevel) =>
   LEVELS.findIndex((item) => item.id === level);
 
+import { useTemaMobile } from "@/presentation/context/TemaMobileContext";
+
 export default function StressGaugeStep({
   stress,
   onChange,
@@ -39,6 +41,11 @@ export default function StressGaugeStep({
   stress: StressLevel;
   onChange: (level: StressLevel) => void;
 }) {
+  const { colores, esOscuro } = useTemaMobile();
+  const styles = React.useMemo(() => crearEstilos(colores, esOscuro), [colores, esOscuro]);
+  const contrast = esOscuro ? "#FFFFFF" : "#17141B";
+  const contrastInverted = esOscuro ? "#17141B" : "#FFFFFF";
+
   const level = useSharedValue(indexOf(stress));
   useEffect(() => {
     level.value = withTiming(indexOf(stress), { duration: 420 });
@@ -93,30 +100,30 @@ export default function StressGaugeStep({
             <Path
               d="M28 160 A132 132 0 0 1 66.66 66.66 L106.97 106.97 A75 75 0 0 0 85 160 Z"
               fill="#22C55E"
-              stroke="#FFFFFF"
+              stroke={colores.superficie}
               strokeWidth="5"
             />
             <Path
               d="M66.66 66.66 A132 132 0 0 1 160 28 L160 85 A75 75 0 0 0 106.97 106.97 Z"
               fill="#A3E635"
-              stroke="#FFFFFF"
+              stroke={colores.superficie}
               strokeWidth="5"
             />
             <Path
               d="M160 28 A132 132 0 0 1 253.34 66.66 L213.03 106.97 A75 75 0 0 0 160 85 Z"
               fill="#FBBF24"
-              stroke="#FFFFFF"
+              stroke={colores.superficie}
               strokeWidth="5"
             />
             <Path
               d="M253.34 66.66 A132 132 0 0 1 292 160 L235 160 A75 75 0 0 0 213.03 106.97 Z"
               fill="#EF4444"
-              stroke="#FFFFFF"
+              stroke={colores.superficie}
               strokeWidth="5"
             />
-            <AnimatedPath animatedProps={needleProps} fill="#17141B" />
-            <Circle cx="160" cy="160" r="16" fill="#17141B" />
-            <Circle cx="160" cy="160" r="6" fill="#FFFFFF" />
+            <AnimatedPath animatedProps={needleProps} fill={contrast} />
+            <Circle cx="160" cy="160" r="16" fill={contrast} />
+            <Circle cx="160" cy="160" r="6" fill={contrastInverted} />
           </Svg>
         </View>
         <Pressable
@@ -140,70 +147,75 @@ export default function StressGaugeStep({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, alignItems: "center" },
-  title: {
-    color: "#17141B",
-    fontSize: 28,
-    fontWeight: "800",
-    textAlign: "center",
-    letterSpacing: -0.8,
-    marginTop: 22,
-  },
-  subtitle: {
-    color: "rgba(23,20,27,0.64)",
-    fontSize: 14,
-    textAlign: "center",
-    marginTop: 8,
-  },
-  card: {
-    flex: 1,
-    width: "100%",
-    minHeight: 294,
-    marginTop: 30,
-    borderRadius: 30,
-    backgroundColor: "#FFFFFF",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 5,
-  },
-  gauge: {
-    width: 245,
-    height: 174,
-    justifyContent: "flex-end",
-    alignItems: "center",
-    overflow: "hidden",
-  },
-  arrow: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#17141B",
-  },
-  disabled: { opacity: 0.18 },
-  arrowText: { color: "#FFFFFF", fontSize: 31, lineHeight: 36, fontWeight: "400" },
-  copy: { height: 112, alignItems: "center", paddingTop: 18 },
-  eyebrow: {
-    color: "rgba(23,20,27,0.54)",
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.9,
-  },
-  level: {
-    color: "#17141B",
-    fontSize: 23,
-    fontWeight: "900",
-    marginTop: 4,
-    textAlign: "center",
-  },
-  detail: {
-    color: "rgba(23,20,27,0.64)",
-    fontSize: 14,
-    fontWeight: "600",
-    marginTop: 4,
-    textAlign: "center",
-  },
-});
+function crearEstilos(c: any, esOscuro: boolean) {
+  const contrast = esOscuro ? "#FFFFFF" : "#17141B";
+  const inverted = esOscuro ? "#000000" : "#FFFFFF";
+
+  return StyleSheet.create({
+    root: { flex: 1, alignItems: "center" },
+    title: {
+      color: c.texto,
+      fontSize: 28,
+      fontWeight: "800",
+      textAlign: "center",
+      letterSpacing: -0.8,
+      marginTop: 22,
+    },
+    subtitle: {
+      color: c.textoSuave,
+      fontSize: 14,
+      textAlign: "center",
+      marginTop: 8,
+    },
+    card: {
+      flex: 1,
+      width: "100%",
+      minHeight: 294,
+      marginTop: 30,
+      borderRadius: 30,
+      backgroundColor: c.superficie,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 5,
+    },
+    gauge: {
+      width: 245,
+      height: 174,
+      justifyContent: "flex-end",
+      alignItems: "center",
+      overflow: "hidden",
+    },
+    arrow: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: contrast,
+    },
+    disabled: { opacity: 0.18 },
+    arrowText: { color: inverted, fontSize: 31, lineHeight: 36, fontWeight: "400" },
+    copy: { height: 112, alignItems: "center", paddingTop: 18 },
+    eyebrow: {
+      color: c.textoSuave,
+      fontSize: 11,
+      fontWeight: "800",
+      letterSpacing: 0.9,
+    },
+    level: {
+      color: c.texto,
+      fontSize: 23,
+      fontWeight: "900",
+      marginTop: 4,
+      textAlign: "center",
+    },
+    detail: {
+      color: c.textoSecundario,
+      fontSize: 14,
+      fontWeight: "600",
+      marginTop: 4,
+      textAlign: "center",
+    },
+  });
+}

@@ -5,7 +5,6 @@ import {
   SafeAreaView,
   StatusBar,
   StyleSheet,
-  TextInput,
   View,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -21,7 +20,9 @@ import Animated, {
 import { AdminTranslatedText } from "@/shared/i18n/AdminTranslatedText";
 import BotonAnimado from "@/presentation/components/BotonAnimado";
 import CheckInProgress from "@/presentation/components/checkin/CheckInProgress";
+import CheckInSummaryStep from "@/presentation/components/checkin/CheckInSummaryStep";
 import EnergyLevelStep from "@/presentation/components/checkin/EnergyLevelStep";
+import NoteStep from "@/presentation/components/checkin/NoteStep";
 import RestLevelStep from "@/presentation/components/checkin/RestLevelStep";
 import StressGaugeStep from "@/presentation/components/checkin/StressGaugeStep";
 import WorkloadSignalsStep from "@/presentation/components/checkin/WorkloadSignalsStep";
@@ -204,67 +205,27 @@ export default function CheckInDiario({ navigation }: Props) {
           />
         )}
         {step === 6 && (
-          <View style={styles.step}>
-            <Text style={styles.title}>¿Quieres añadir algo?</Text>
-            <Text style={styles.subtitle}>
-              Tu opinión es opcional y ayuda a dar contexto a tu pulso.
-            </Text>
-            <TextInput
-              value={note}
-              onChangeText={setNote}
-              placeholder="Comparte algo sobre tu jornada..."
-              placeholderTextColor={colores.textoSuave}
-              multiline
-              maxLength={500}
-              style={styles.noteInput}
-              accessibilityLabel="Opinión opcional"
-            />
-          </View>
+          <NoteStep
+            value={note}
+            onChange={setNote}
+            textColor={colores.texto}
+            softTextColor={colores.textoSuave}
+            dark={esOscuro}
+          />
         )}
         {step === 7 && (
-          <View style={[styles.step, styles.summaryStep]}>
-            {success ? (
-              <View style={styles.success}>
-                <View style={styles.successMark}>
-                  <Feather name="check" size={38} color="#FFFFFF" />
-                </View>
-                <Text style={styles.title}>Entrada registrada</Text>
-                <Text style={styles.subtitle}>
-                  Tu jornada comienza a las {now}.
-                </Text>
-              </View>
-            ) : (
-              <>
-                <Text style={styles.title}>Todo listo para comenzar</Text>
-                <Text style={styles.subtitle}>
-                  Revisa los detalles de tu jornada.
-                </Text>
-                <View style={styles.summary}>
-                  <Text style={styles.time}>{now}</Text>
-                  <SummaryRow
-                    icon="clock"
-                    title="Jornada de hoy"
-                    value={perfil?.horario_laboral || "Horario por confirmar"}
-                    styles={styles}
-                    accent={colores.primario}
-                  />
-                  <SummaryRow
-                    icon="map-pin"
-                    title="Sede"
-                    value={perfil?.sede || "Sede principal"}
-                    styles={styles}
-                    accent={colores.primario}
-                  />
-                </View>
-                {error && (
-                  <View style={styles.error}>
-                    <Feather name="alert-circle" size={18} color="#B42318" />
-                    <Text style={styles.errorText}>{error}</Text>
-                  </View>
-                )}
-              </>
-            )}
-          </View>
+          <CheckInSummaryStep
+            now={now}
+            schedule={perfil?.horario_laboral || "Horario por confirmar"}
+            location={perfil?.sede || "Sede principal"}
+            mood={MOODS.find((item) => item.id === mood)?.label || "Normal"}
+            energy={energy}
+            sleep={sleep}
+            workload={workload}
+            success={success}
+            error={error}
+            dark={esOscuro}
+          />
         )}
       </Animated.View>
       {!success && (
@@ -278,12 +239,11 @@ export default function CheckInDiario({ navigation }: Props) {
                   }
                 : registerEntry
             }
-            disabled={saving || entryRecorded}
+            disabled={saving || wellnessSaved}
             scaleTo={0.97}
             style={[
               styles.primary,
-              step === 1 && styles.moodPrimary,
-              (saving || entryRecorded) && styles.primaryDisabled,
+              (saving || wellnessSaved) && styles.primaryDisabled,
             ]}
             accessibilityLabel={step < 7 ? "Continuar" : "Registrar entrada"}
           >
@@ -295,7 +255,7 @@ export default function CheckInDiario({ navigation }: Props) {
                   {step < 7
                     ? "Continuar"
                     : entryRecorded
-                    ? "Entrada registrada"
+                    ? "Actualizar pulso"
                     : "Registrar entrada"}
                 </Text>
                 <Feather
@@ -309,32 +269,6 @@ export default function CheckInDiario({ navigation }: Props) {
         </View>
       )}
     </SafeAreaView>
-  );
-}
-
-function SummaryRow({
-  icon,
-  title,
-  value,
-  styles,
-  accent,
-}: {
-  icon: React.ComponentProps<typeof Feather>["name"];
-  title: string;
-  value: string;
-  styles: ReturnType<typeof createStyles>;
-  accent: string;
-}) {
-  return (
-    <View style={styles.summaryRow}>
-      <View style={styles.summaryIcon}>
-        <Feather name={icon} size={17} color={accent} />
-      </View>
-      <View>
-        <Text style={styles.summaryLabel}>{title}</Text>
-        <Text style={styles.summaryValue}>{value}</Text>
-      </View>
-    </View>
   );
 }
 
@@ -480,19 +414,6 @@ function createStyles(
     chipActive: { backgroundColor: c.primario, borderColor: c.primario },
     chipText: { color: c.textoSecundario, fontSize: 12, fontWeight: "700" },
     chipTextActive: { color: "#FFFFFF" },
-    noteInput: {
-      marginTop: 30,
-      minHeight: 170,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: c.borde,
-      backgroundColor: c.superficie,
-      color: c.texto,
-      padding: 16,
-      textAlignVertical: "top",
-      fontSize: 15,
-      lineHeight: 21,
-    },
     energyCard: {
       minHeight: 76,
       flexDirection: "row",
@@ -566,15 +487,14 @@ function createStyles(
     footer: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 20 },
     primary: {
       height: 58,
-      borderRadius: 20,
-      backgroundColor: accent,
+      borderRadius: 29,
+      backgroundColor: "#17141B",
       flexDirection: "row",
       gap: 10,
       alignItems: "center",
       justifyContent: "center",
     },
     primaryDisabled: { opacity: 0.65 },
-    moodPrimary: { backgroundColor: "#17141B", borderRadius: 29 },
     primaryText: { color: "#FFFFFF", fontSize: 16, fontWeight: "800" },
     error: {
       flexDirection: "row",

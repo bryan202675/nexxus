@@ -3,12 +3,12 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import Registro from "../index";
 
-const mocks = vi.hoisted(() => ({ signUp: vi.fn(), invoke: vi.fn() }));
+const mocks = vi.hoisted(() => ({ invoke: vi.fn(), verifyOtp: vi.fn() }));
 vi.mock("../../../../context/AuthContext", () => ({
   useAuth: () => ({ user: null, loading: false, rol: "", esSuperAdmin: false, esAdminEmpresa: false }),
 }));
 vi.mock("../../../../supabaseClient/supabaseConfig", () => ({
-  supabase: { auth: { signUp: mocks.signUp }, functions: { invoke: mocks.invoke } },
+  supabase: { auth: { verifyOtp: mocks.verifyOtp }, functions: { invoke: mocks.invoke } },
 }));
 
 async function submitRegistration() {
@@ -29,21 +29,12 @@ describe("Registro authentication gate", () => {
     mocks.invoke.mockResolvedValue({ error: null });
   });
 
-  it("waits for email confirmation when signUp returns a user without a session", async () => {
-    mocks.signUp.mockResolvedValue({ data: { user: { id: "test-user" }, session: null }, error: null });
+  it("requests a six-digit email confirmation code before continuing", async () => {
     await submitRegistration();
     expect(await screen.findByRole("heading", { name: "Confirma tu correo" })).toBeInTheDocument();
     expect(screen.queryByText("Elige tu plan")).not.toBeInTheDocument();
-    expect(mocks.invoke).not.toHaveBeenCalled();
-    expect(mocks.signUp).toHaveBeenCalledWith(expect.objectContaining({
-      options: expect.objectContaining({ emailRedirectTo: `${window.location.origin}/auth/registro` }),
+    expect(mocks.invoke).toHaveBeenCalledWith("registrar-cuenta-con-codigo", expect.objectContaining({
+      body: expect.objectContaining({ correo: "test@example.com", nombre: "Test Admin" }),
     }));
-  });
-
-  it("continues to checkout when signUp creates an authenticated session", async () => {
-    mocks.signUp.mockResolvedValue({ data: { user: { id: "test-user", email: "test@example.com" }, session: { user: { id: "test-user" } } }, error: null });
-    await submitRegistration();
-    expect(await screen.findByText("Elige tu plan")).toBeInTheDocument();
-    expect(mocks.invoke).toHaveBeenCalledWith("send-welcome-email");
   });
 });

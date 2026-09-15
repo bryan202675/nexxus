@@ -83,10 +83,6 @@ function RestablecerContrasenaContent({ navigation }: { navigation: any }) {
   }, []);
 
   useEffect(() => {
-    if (Platform.OS !== 'web') {
-      setSesionLista(true);
-      return;
-    }
     let activo = true;
     const { data: subscripcion } = supabase.auth.onAuthStateChange((evento) => {
       if (!activo) return;
@@ -247,10 +243,6 @@ function RestablecerContrasenaContent({ navigation }: { navigation: any }) {
               <BlurView intensity={intensidadBlur + 30} tint={blurTint} style={estilos.formPanel}>
                 {!sesionLista ? (
                   <ActivityIndicator color={esOscuro ? '#FFFFFF' : '#000000'} size="small" style={{ paddingVertical: 20 }} />
-                ) : Platform.OS !== 'web' ? (
-                  <Text style={estilos.aviso}>
-                    {t('restablecerContrasena.notice_web_only')}
-                  </Text>
                 ) : !sesionValida ? (
                   <Text style={estilos.aviso}>
                     {t('restablecerContrasena.notice_invalid_link')}

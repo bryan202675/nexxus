@@ -1,4 +1,4 @@
-// Fase 11: pide un enlace de recuperación de contraseña.
+// Fase 11: solicita un código de recuperación de contraseña.
 // Dos formas de identificarse (misma resolución que login_empresarial en
 // 0003_auth_login_empresarial.sql, simplificada -- sin el fallback por id/prefijo):
 //   - { correo } -- cuenta con correo real (admin que registró la empresa, vía sa-login).
@@ -10,18 +10,16 @@
 // demostró conocer usuario+contraseña vía rate limiting normal).
 import { withHandler, HttpError, safeString } from "../_shared/nexxus.ts";
 import { sendEmail } from "../_shared/gmail.ts";
-import { plantillaRecuperacionPassword } from "../_shared/emailTemplates.ts";
+import { plantillaCodigoDeAcceso } from "../_shared/emailTemplates.ts";
 
 const ROLES_CORREO_REAL = new Set(["admin_empresa", "super_admin"]);
-const RESPUESTA_GENERICA = { ok: true, mensaje: "Si la cuenta existe, se envió un enlace de recuperación." };
+const RESPUESTA_GENERICA = { ok: true, mensaje: "Si la cuenta existe, se envió un código de recuperación." };
 
 Deno.serve(withHandler(async (req, admin) => {
   const body = await req.json();
   const correo = safeString(body?.correo, 254).toLowerCase();
   const codigoEmpresa = safeString(body?.codigoEmpresa, 60);
   const usuarioInterno = safeString(body?.usuarioInterno, 60).toLowerCase();
-  const redirectTo = safeString(body?.redirectTo, 300);
-  if (!redirectTo) throw new HttpError(400, "Falta redirectTo.");
   if (!correo && !(codigoEmpresa && usuarioInterno)) {
     throw new HttpError(400, "Falta correo, o código de empresa + usuario.");
   }
@@ -39,7 +37,7 @@ Deno.serve(withHandler(async (req, admin) => {
 
   let usuario: { id: string; rol: string; correo: string; correo_personal: string | null; nombre: string } | null = null;
 
-  if (correo) {
+  if (correo && !(codigoEmpresa && usuarioInterno)) {
     const { data } = await admin
       .from("usuarios")
       .select("id, rol, correo, correo_personal, nombre")
@@ -69,23 +67,30 @@ Deno.serve(withHandler(async (req, admin) => {
 
   const destino = ROLES_CORREO_REAL.has(usuario.rol) ? usuario.correo : usuario.correo_personal;
   if (!destino) return RESPUESTA_GENERICA;
+  if (correo && destino.toLowerCase() !== correo) return RESPUESTA_GENERICA;
 
   const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
     type: "recovery",
     email: usuario.correo,
-    options: { redirectTo },
   });
-  if (linkError || !linkData?.properties?.action_link) {
+  if (linkError || !linkData?.properties?.email_otp) {
     console.error("[solicitar-recuperacion-password] generateLink falló:", linkError);
     return RESPUESTA_GENERICA;
   }
 
-  const { subject, html } = plantillaRecuperacionPassword({ nombre: usuario.nombre || "", link: linkData.properties.action_link });
+  const { subject, html } = plantillaCodigoDeAcceso({
+    nombre: usuario.nombre || "",
+    codigo: linkData.properties.email_otp,
+    proposito: "recuperacion",
+  });
   try {
     await sendEmail(destino, subject, html);
   } catch (error) {
     console.error("[solicitar-recuperacion-password] No se pudo enviar el correo:", error);
+    throw new HttpError(503, "No se pudo enviar el código de recuperación. Intenta de nuevo más tarde.");
   }
 
-  return RESPUESTA_GENERICA;
+  // Solo se devuelve tras comprobar empresa, usuario y correo de recuperación; el cliente
+  // necesita el correo de Auth para verificar el OTP, que puede diferir del correo personal.
+  return { ...RESPUESTA_GENERICA, correoVerificacion: usuario.correo };
 }));

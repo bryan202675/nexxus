@@ -171,30 +171,13 @@ export default function Registro() {
     setCargando(true);
     setError("");
     try {
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email: cuenta.correo.trim().toLowerCase(),
-        password: cuenta.password,
-        options: {
-          data: { displayName: limpiarTexto(cuenta.nombre) },
-          emailRedirectTo: `${window.location.origin}/auth/registro`,
-        },
+      const correo = cuenta.correo.trim().toLowerCase();
+      const { error: registrationError } = await supabase.functions.invoke("registrar-cuenta-con-codigo", {
+        body: { correo, nombre: limpiarTexto(cuenta.nombre), password: cuenta.password },
       });
-      if (signUpError) throw signUpError;
-      if (!data.session || !data.user) {
-        setUsuarioPendiente(null);
-        setCuenta((prev) => ({ ...prev, password: "", confirmar: "" }));
-        setRequiereConfirmacion(true);
-        return;
-      }
-      // Fire-and-forget: un correo de bienvenida lento o caído no debe bloquear el registro.
-      void supabase.functions.invoke("send-welcome-email").catch(() => {});
-      setUsuarioPendiente({
-        uid: data.user.id,
-        correo: data.user.email,
-        nombre: limpiarTexto(cuenta.nombre),
-      });
-      setCheckoutForm((a) => ({ ...a, email: data.user.email || "" }));
-      setPaso(2);
+      if (registrationError) throw registrationError;
+      setCuenta((prev) => ({ ...prev, correo, password: "", confirmar: "" }));
+      setRequiereConfirmacion(true);
     } catch (err) {
       setError(traducirErrorAuth(err));
     } finally {
@@ -763,7 +746,7 @@ export default function Registro() {
     );
   }
 
-  if (requiereConfirmacion) return <ConfirmarCorreo />;
+  if (requiereConfirmacion) return <ConfirmarCorreo correo={cuenta.correo} />;
 
   return (
     <div className="mt-16 mb-16 flex h-full w-full items-center justify-center px-2 md:mx-0 md:px-0 lg:mb-10 lg:items-center lg:justify-start">
