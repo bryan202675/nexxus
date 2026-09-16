@@ -31,6 +31,39 @@ Deno.serve(withHandler(async (req, admin) => {
   });
   if (error || !data?.properties?.email_otp) {
     if (error?.message.toLowerCase().includes("already")) {
+      const { data: usuarioExistente } = await admin
+        .from("usuarios")
+        .select("id, empresa_id, eliminado")
+        .eq("correo", correo)
+        .maybeSingle();
+
+      if (!usuarioExistente) {
+        try {
+          const { data: userList } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+          const authUser = userList?.users?.find((u: { email?: string }) => u.email?.toLowerCase() === correo);
+          if (authUser && !authUser.email_confirmed_at) {
+            await admin.auth.admin.deleteUser(authUser.id);
+            const retry = await admin.auth.admin.generateLink({
+              type: "signup",
+              email: correo,
+              password,
+              options: { data: { displayName: nombre } },
+            });
+            if (retry.data?.properties?.email_otp) {
+              const { subject, html } = plantillaCodigoDeAcceso({
+                nombre,
+                codigo: retry.data.properties.email_otp,
+                proposito: "confirmacion",
+              });
+              await sendEmail(correo, subject, html);
+              return { ok: true };
+            }
+          }
+        } catch (cleanupError) {
+          console.error("[registrar-cuenta-con-codigo] Error limpiando registro previo:", cleanupError);
+        }
+      }
+
       throw new HttpError(409, "Ya existe una cuenta con este correo. Inicia sesión o recupera tu contraseña.");
     }
     console.error("[registrar-cuenta-con-codigo] generateLink falló:", error);

@@ -8,6 +8,7 @@ import {
   validarTelefono,
   validarEmpresaForm,
   traducirErrorAuth,
+  extraerErrorRegistro,
 } from '../registro';
 
 describe('traducirErrorAuth', () => {
@@ -27,6 +28,29 @@ describe('traducirErrorAuth', () => {
     expect(traducirErrorAuth('Invalid login credentials')).toBe('Correo o contraseña incorrectos.');
     expect(traducirErrorAuth({ code: 'invalid_credentials' })).toBe('Correo o contraseña incorrectos.');
     expect(traducirErrorAuth(new Error('internal details'))).not.toContain('internal details');
+  });
+  it('detecta conflicto 409 y sugiere iniciar sesión o recuperar contraseña', () => {
+    expect(traducirErrorAuth({ status: 409 })).toBe('Ya existe una cuenta con este correo. Inicia sesión o recupera tu contraseña.');
+    expect(traducirErrorAuth({ context: { status: 409 }, message: 'Edge Function returned a non-2xx status code' })).toBe(
+      'Ya existe una cuenta con este correo. Inicia sesión o recupera tu contraseña.'
+    );
+    expect(traducirErrorAuth('Ya existe una cuenta con este correo.')).toMatch(/Ya existe una cuenta/);
+  });
+});
+
+describe('extraerErrorRegistro', () => {
+  it('extrae el mensaje de error de un Response context de Edge Function', async () => {
+    const errorResponse = new Response(JSON.stringify({ error: 'Ya existe una cuenta con este correo.' }), {
+      status: 409,
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const fakeError = {
+      name: 'FunctionsHttpError',
+      message: 'Edge Function returned a non-2xx status code',
+      context: errorResponse,
+    };
+    const resultado = await extraerErrorRegistro(fakeError);
+    expect(resultado).toBe('Ya existe una cuenta con este correo. Inicia sesión o recupera tu contraseña.');
   });
 });
 

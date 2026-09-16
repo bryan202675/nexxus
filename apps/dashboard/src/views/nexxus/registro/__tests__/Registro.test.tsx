@@ -37,4 +37,23 @@ describe("Registro authentication gate", () => {
       body: expect.objectContaining({ correo: "test@example.com", nombre: "Test Admin" }),
     }));
   });
+
+  it("shows friendly duplicate email error and login links on 409 conflict", async () => {
+    const errorResponse = new Response(JSON.stringify({ error: "Ya existe una cuenta con este correo. Inicia sesión o recupera tu contraseña." }), {
+      status: 409,
+      headers: { "Content-Type": "application/json" },
+    });
+    mocks.invoke.mockResolvedValue({
+      error: {
+        name: "FunctionsHttpError",
+        message: "Edge Function returned a non-2xx status code",
+        context: errorResponse,
+      },
+    });
+
+    await submitRegistration();
+    expect(await screen.findByText(/Ya existe una cuenta con este correo/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Iniciar sesión" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Recuperar contraseña" })).toBeInTheDocument();
+  });
 });

@@ -29,6 +29,7 @@ import {
   reglasPassword,
   seguridadPassword,
   traducirErrorAuth,
+  extraerErrorRegistro,
   validarCorreo,
   validarEmpresaForm,
   crearCuentaYEmpresa,
@@ -179,7 +180,8 @@ export default function Registro() {
       setCuenta((prev) => ({ ...prev, correo, password: "", confirmar: "" }));
       setRequiereConfirmacion(true);
     } catch (err) {
-      setError(traducirErrorAuth(err));
+      const mensaje = await extraerErrorRegistro(err);
+      setError(mensaje);
     } finally {
       setCargando(false);
     }
@@ -199,7 +201,8 @@ export default function Registro() {
       });
       if (oauthError) throw oauthError;
     } catch (err) {
-      setError(traducirErrorAuth(err));
+      const mensaje = await extraerErrorRegistro(err);
+      setError(mensaje);
       setCargando(false);
     }
   };
@@ -833,7 +836,20 @@ export default function Registro() {
         {errores.confirmar ? <p className="mb-3 -mt-2 text-xs font-medium text-red-500">{errores.confirmar}</p> : null}
 
         {error ? (
-          <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-500 dark:bg-red-400/10 dark:text-red-400">{error}</p>
+          <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-600 dark:bg-red-400/10 dark:text-red-400">
+            <p>{error}</p>
+            {error.toLowerCase().includes("ya existe") ? (
+              <div className="mt-2 flex items-center gap-3 text-xs font-semibold">
+                <Link to="/auth/sa-login" className="text-brand-500 underline hover:text-brand-600 dark:text-brand-400">
+                  Iniciar sesión
+                </Link>
+                <span>·</span>
+                <Link to="/auth/recuperar-contrasena" className="text-brand-500 underline hover:text-brand-600 dark:text-brand-400">
+                  Recuperar contraseña
+                </Link>
+              </div>
+            ) : null}
+          </div>
         ) : null}
 
         <button

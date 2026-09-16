@@ -101,12 +101,36 @@ export const FALLBACK_COUNTRIES = [
   { name: "Venezuela", code: "VE", dialCode: "+58" },
 ];
 
+export async function extraerErrorRegistro(err: unknown): Promise<string> {
+  if (typeof err === "object" && err !== null) {
+    const errorObj = err as Record<string, unknown>;
+    if (errorObj.context && typeof (errorObj.context as Response).clone === "function") {
+      try {
+        const body = await (errorObj.context as Response).clone().json();
+        if (body?.error && typeof body.error === "string") {
+          return traducirErrorAuth(body.error);
+        }
+        if (body?.message && typeof body.message === "string") {
+          return traducirErrorAuth(body.message);
+        }
+      } catch {
+        // Fallback si context.clone().json() falla
+      }
+    }
+  }
+  return traducirErrorAuth(err);
+}
+
 export function traducirErrorAuth(error: unknown) {
-  const details = typeof error === "object" && error !== null ? error : {};
+  const details = typeof error === "object" && error !== null ? (error as Record<string, unknown>) : {};
   const code = "code" in details ? String(details.code) : "";
-  const status = "status" in details ? details.status : undefined;
+  const contextStatus = typeof details.context === "object" && details.context !== null && "status" in details.context
+    ? (details.context as { status?: unknown }).status
+    : undefined;
+  const status = "status" in details ? details.status : contextStatus;
   const message = "message" in details ? details.message : error;
   const texto = `${code} ${String(message || "")}`.toLowerCase();
+
   if (texto.includes("over_email_send_rate_limit") || texto.includes("email rate limit")) {
     return "Se alcanzó el límite de envío de correos de confirmación. Revisa si ya recibiste el enlace (también en spam). Si no llegó, espera antes de volver a intentarlo o continúa con Google.";
   }
@@ -119,8 +143,16 @@ export function traducirErrorAuth(error: unknown) {
   if (texto.includes("email_address_not_authorized") || texto.includes("email address not authorized")) {
     return "El envío de correos de confirmación aún no está habilitado para este destinatario. Continúa con Google o contacta con soporte.";
   }
-  if (texto.includes("already registered") || texto.includes("already-in-use") || texto.includes("already exists")) {
-    return "Ese correo ya tiene una cuenta. Inicia sesión en su lugar.";
+  if (
+    status === 409 ||
+    texto.includes("already registered") ||
+    texto.includes("already-in-use") ||
+    texto.includes("already exists") ||
+    texto.includes("ya existe una cuenta") ||
+    texto.includes("ya existe un usuario") ||
+    texto.includes("ya está registrado")
+  ) {
+    return "Ya existe una cuenta con este correo. Inicia sesión o recupera tu contraseña.";
   }
   if (texto.includes("invalid_credentials") || texto.includes("invalid login credentials") || texto.includes("invalid-credential")) return "Correo o contraseña incorrectos.";
   if (texto.includes("popup closed")) return "Ventana de Google cerrada antes de terminar.";
