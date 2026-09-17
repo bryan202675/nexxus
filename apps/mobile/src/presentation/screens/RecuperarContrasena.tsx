@@ -11,6 +11,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Animated,
+  AccessibilityInfo,
   Easing,
   KeyboardAvoidingView,
   Platform,
@@ -21,7 +22,6 @@ import {
   SafeAreaView,
   ScrollView,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Feather, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -30,17 +30,39 @@ import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import { AdminToastProvider, useAdminToast } from '@/presentation/screens/admin/adminToast';
 import { supabase } from '@/infrastructure/supabase/supabaseClient';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
+import NexoVivo from '@/presentation/components/NexoVivo';
 
 const Text = AdminTranslatedText;
 const TextInput = AdminTranslatedTextInput;
 
+async function mensajeErrorRecuperacion(error: unknown): Promise<string> {
+  const context =
+    typeof error === 'object' && error !== null && 'context' in error && error.context instanceof Response
+      ? error.context
+      : null;
+  if (!context) return 'No se pudo procesar la solicitud.';
+
+  try {
+    const body: unknown = await context.json();
+    if (
+      typeof body === 'object' && body !== null && 'error' in body && typeof body.error === 'string'
+      && body.error.includes('correo de recuperación configurado')
+    ) {
+      return body.error;
+    }
+  } catch {
+    // Se mantiene un mensaje seguro si la respuesta no contiene JSON válido.
+  }
+  return 'No se pudo procesar la solicitud.';
+}
+
 // Importación estática pre-cargada para cambio de tema instantáneo en memoria nativa
-const FONDO_OSCURO = require('../../../assets/fondoNexxus.jpg');
-const FONDO_CLARO = require('../../../assets/fondoNexxusClaro.jpg');
 const ISO_OSCURO = require('../../../assets/isoNexxus.png');
 const ISO_CLARO = require('../../../assets/isoNexxusBlack.png');
 
-function RecuperarContrasenaContent({ navigation }: { navigation: any }) {
+type RecuperarRoute = { params?: { codigoEmpresa?: string; usuario?: string } };
+
+function RecuperarContrasenaContent({ navigation, route }: { navigation: any; route?: RecuperarRoute }) {
   const { t } = useTranslation();
   const { colores, blurTint, intensidadBlur, esOscuro, alternarModo } = useTemaMobile();
   const toast = useAdminToast();
@@ -52,6 +74,7 @@ function RecuperarContrasenaContent({ navigation }: { navigation: any }) {
   const [codigo, setCodigo] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [codigoEnviado, setCodigoEnviado] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
 
   // Animaciones de entrada escalonadas
   const animHeader = useRef(new Animated.Value(0)).current;
@@ -82,6 +105,19 @@ function RecuperarContrasenaContent({ navigation }: { navigation: any }) {
     ]).start();
   }, []);
 
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+    const suscripcion = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    return () => suscripcion.remove();
+  }, []);
+
+  useEffect(() => {
+    const params = route?.params;
+    if (!params) return;
+    if (params.codigoEmpresa) setCodigoEmpresa(params.codigoEmpresa);
+    if (params.usuario) setUsuario(params.usuario);
+  }, [route?.params]);
+
   const enviarSolicitud = async () => {
     const correoNormalizado = correo.trim().toLowerCase();
     if (!codigoEmpresa.trim() || !usuario.trim() || !/^\S+@\S+\.\S+$/.test(correoNormalizado)) {
@@ -97,12 +133,15 @@ function RecuperarContrasenaContent({ navigation }: { navigation: any }) {
           correo: correoNormalizado,
         },
       });
-      if (error) throw new Error(error.message || 'No se pudo procesar la solicitud.');
+      if (error) throw new Error(await mensajeErrorRecuperacion(error));
+      if (data?.enviado !== true || typeof data?.correoVerificacion !== 'string') {
+        throw new Error('No pudimos enviar un código con esos datos. Revisa el código de empresa, usuario y correo de recuperación.');
+      }
       setCorreoVerificacion(typeof data?.correoVerificacion === 'string' ? data.correoVerificacion : correoNormalizado);
       setCorreo(correoNormalizado);
       setCodigoEnviado(true);
-    } catch (err: any) {
-      toast.error({ title: t('recuperarContrasena.alert_error_title'), description: err?.message || t('recuperarContrasena.alert_error_default_msg') });
+    } catch (err: unknown) {
+      toast.error({ title: t('recuperarContrasena.alert_error_title'), description: err instanceof Error ? err.message : t('recuperarContrasena.alert_error_default_msg') });
     } finally {
       setEnviando(false);
     }
@@ -131,25 +170,17 @@ function RecuperarContrasenaContent({ navigation }: { navigation: any }) {
     <View style={estilos.container}>
       <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
 
-      {/* Imágenes de fondo pre-renderizadas superpuestas para cambio de tema instantáneo de 1 frame */}
-      <Image source={FONDO_OSCURO} style={[estilos.imagenFondo, { opacity: esOscuro ? 1 : 0 }]} resizeMode="cover" />
-      <Image source={FONDO_CLARO} style={[estilos.imagenFondo, { opacity: esOscuro ? 0 : 1 }]} resizeMode="cover" />
-
-      {/* Overlay con degradado para garantizar legibilidad */}
-      <LinearGradient
-        colors={
-          esOscuro
-            ? ['rgba(0, 0, 0, 0.4)', 'rgba(0, 0, 0, 0.25)', 'rgba(0, 0, 0, 0.88)']
-            : ['rgba(248, 250, 255, 0.45)', 'rgba(248, 250, 255, 0.25)', 'rgba(248, 250, 255, 0.88)']
-        }
-        style={estilos.degradadoOverlay}
-      />
-
       <SafeAreaView style={estilos.areaSegura}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={estilos.keyboardView}
         >
+          <View accessible={false} style={estilos.campoNexosSoporte}>
+            <NexoVivo color="#2563EB" forma="huevo" expresion="asombrado" mirada="arriba" accesorio="casco" size={64} drift={8} delay={140} reduceMotion={reduceMotion} style={estilos.nexoSoporteUno} />
+            <NexoVivo color="#14B8A6" forma="cuadrado" expresion="curioso" mirada="izquierda" accesorio="casco" size={54} drift={9} delay={520} reduceMotion={reduceMotion} style={estilos.nexoSoporteDos} />
+            <NexoVivo color="#F97316" forma="circulo" expresion="alegre" mirada="derecha" accesorio="casco" size={58} drift={7} delay={860} reduceMotion={reduceMotion} style={estilos.nexoSoporteTres} />
+          </View>
+
           <ScrollView
             contentContainerStyle={estilos.scrollContainer}
             keyboardShouldPersistTaps="handled"
@@ -186,8 +217,8 @@ function RecuperarContrasenaContent({ navigation }: { navigation: any }) {
                   <Image source={ISO_CLARO} style={[estilos.logoImagen, { opacity: esOscuro ? 0 : 1 }]} resizeMode="contain" />
                 </View>
                 <Text style={estilos.logoTexto}>
-                  Nexxus<Text style={estilos.logoPunto}>.</Text>
-                </Text>
+                Nexxus
+              </Text>
               </View>
 
               {/* Acciones derechas: Soporte y Cambio de tema */}
@@ -208,47 +239,48 @@ function RecuperarContrasenaContent({ navigation }: { navigation: any }) {
               </View>
             </Animated.View>
 
-            {/* Títulos principales */}
-            <Animated.View
-              style={[
-                estilos.bloqueBienvenida,
-                {
-                  opacity: animWelcome,
-                  transform: [
-                    {
-                      translateY: animWelcome.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [20, 0],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              <Text style={estilos.titulo}>{t('recuperarContrasena.title')}</Text>
-              <Text style={estilos.subtitulo}>
-                {t('recuperarContrasena.subtitle')}
-              </Text>
-            </Animated.View>
+            <View style={estilos.grupoInferior}>
+              {/* Títulos principales */}
+              <Animated.View
+                style={[
+                  estilos.bloqueBienvenida,
+                  {
+                    opacity: animWelcome,
+                    transform: [
+                      {
+                        translateY: animWelcome.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [20, 0],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <Text style={estilos.titulo}>{t('recuperarContrasena.title')}</Text>
+                <Text style={estilos.subtitulo}>
+                  {t('recuperarContrasena.subtitle')}
+                </Text>
+              </Animated.View>
 
-            {/* Panel de Formulario Glass Panel */}
-            <Animated.View
-              style={[
-                estilos.animWrapForm,
-                {
-                  opacity: animForm,
-                  transform: [
-                    {
-                      translateY: animForm.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [20, 0],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              <BlurView intensity={intensidadBlur + 30} tint={blurTint} style={estilos.formPanel}>
+              {/* Panel de Formulario Glass Panel */}
+              <Animated.View
+                style={[
+                  estilos.animWrapForm,
+                  {
+                    opacity: animForm,
+                    transform: [
+                      {
+                        translateY: animForm.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [20, 0],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <BlurView intensity={intensidadBlur + 30} tint={blurTint} style={estilos.formPanel}>
                 {!codigoEnviado ? (
                   <>
                     <View style={estilos.inputGroup}>
@@ -346,6 +378,7 @@ function RecuperarContrasenaContent({ navigation }: { navigation: any }) {
 
               </BlurView>
             </Animated.View>
+          </View>
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -365,16 +398,12 @@ function crearEstilos(c: any, esOscuro: boolean) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: esOscuro ? '#000000' : '#FFFFFF',
+      backgroundColor: c.fondo,
     },
-    imagenFondo: {
-      ...StyleSheet.absoluteFill,
-      width: '100%',
-      height: '100%',
-    },
-    degradadoOverlay: {
-      ...StyleSheet.absoluteFill,
-    },
+    campoNexosSoporte: { ...StyleSheet.absoluteFill, pointerEvents: 'none' },
+    nexoSoporteUno: { top: '11%', left: '10%' },
+    nexoSoporteDos: { top: '15%', left: '42%' },
+    nexoSoporteTres: { top: '11%', right: '9%' },
     areaSegura: {
       flex: 1,
     },
@@ -387,6 +416,10 @@ function crearEstilos(c: any, esOscuro: boolean) {
       paddingTop: 16,
       paddingBottom: 28,
       justifyContent: 'space-between',
+    },
+    grupoInferior: {
+      flex: 1,
+      justifyContent: 'flex-end',
     },
     header: {
       flexDirection: 'row',
@@ -432,11 +465,8 @@ function crearEstilos(c: any, esOscuro: boolean) {
       color: esOscuro ? '#FFFFFF' : '#000000',
       letterSpacing: -0.5,
     },
-    logoPunto: {
-      color: '#A855F7',
-    },
     bloqueBienvenida: {
-      marginVertical: 20,
+      marginBottom: 32,
       paddingHorizontal: 4,
     },
     titulo: {

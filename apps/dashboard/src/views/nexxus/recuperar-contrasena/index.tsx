@@ -32,6 +32,9 @@ export default function RecuperarContrasena() {
       const correoNormalizado = correo.trim().toLowerCase();
       const { data, error: invokeError } = await supabase.functions.invoke("solicitar-recuperacion-password", { body: { correo: correoNormalizado } });
       if (invokeError) throw invokeError;
+      if (!data?.enviado || typeof data.correoVerificacion !== "string") {
+        throw new Error("No se pudo enviar el código.");
+      }
       const correoAuth = typeof data === "object" && data !== null && "correoVerificacion" in data && typeof data.correoVerificacion === "string"
         ? data.correoVerificacion
         : correoNormalizado;

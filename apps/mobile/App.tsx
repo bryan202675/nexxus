@@ -136,6 +136,7 @@ import RestablecerContrasena from "./src/presentation/screens/RestablecerContras
 // Pantallas Usuario
 // Importa MiPulso; conecta esta ruta o flujo con otra pantalla del modulo de presentacion.
 import MiPulso from "./src/presentation/screens/MiPulso";
+import MiBienestar from "./src/presentation/screens/MiBienestar";
 // Importa PerfilLaboral; conecta esta ruta o flujo con otra pantalla del modulo de presentacion.
 import PerfilLaboral from "./src/presentation/screens/PerfilLaboral";
 // Importa HistorialCompleto; conecta esta ruta o flujo con otra pantalla del modulo de presentacion.
@@ -339,6 +340,7 @@ function EnrutadorPrincipal() {
 
         {/* Pantallas Comunes y de Usuario */}
         <Pila.Screen name="MiPulso" component={MiPulso} />
+        <Pila.Screen name="MiBienestar" component={MiBienestar} />
         <Pila.Screen
           name="CheckInDiario"
           component={CheckInDiario}

@@ -116,21 +116,15 @@ Deno.serve(withHandler(async (req, admin) => {
     throw new HttpError(400, "El código no es válido o venció.");
   }
 
-  const { error: authError } = await admin.auth.admin.updateUserById(caller.id, {
-    email: correo,
-    email_confirm: true,
-  });
-  if (authError) {
-    console.error("[gestionar-correo-recuperacion] No se pudo actualizar Auth:", authError);
-    throw new HttpError(400, "No se pudo usar ese correo. Puede estar asociado a otra cuenta.");
-  }
   const { error: actualizarError } = await admin
     .from("usuarios")
-    .update({ correo, correo_personal: correo })
+    // El correo de recuperación es un destino de notificaciones, no la identidad
+    // única de Supabase Auth. Por ello puede reutilizarse entre cuentas de demo.
+    .update({ correo_personal: correo })
     .eq("id", caller.id);
   if (actualizarError) {
-    console.error("[gestionar-correo-recuperacion] No se pudo sincronizar usuarios:", actualizarError);
-    throw new HttpError(500, "El correo se actualizó, pero no se pudo sincronizar el perfil. Contacta a soporte.");
+    console.error("[gestionar-correo-recuperacion] No se pudo guardar el correo:", actualizarError);
+    throw new HttpError(500, "No se pudo guardar el correo de recuperación. Intenta de nuevo.");
   }
   await admin.from("auth_rate_limits").delete().like("clave", `${PREFIJO_CODIGO}${caller.id}:%`);
   return { configurado: true, correo };

@@ -3,8 +3,8 @@
 // 0003_auth_login_empresarial.sql, simplificada -- sin el fallback por id/prefijo):
 //   - { correo } -- cuenta con correo real (admin que registró la empresa, vía sa-login).
 //   - { codigoEmpresa, usuarioInterno } -- cuenta con login sintético (admin/jefe/empleado, vía Expo).
-// El destino del correo NO es siempre el correo de login: para admin_empresa/super_admin es
-// `correo` (ya es real), para jefe/empleado es `correo_personal` (puede no existir todavía).
+// El destino es `correo_personal`, que puede reutilizarse para varias cuentas demo. Para
+// cuentas previas que aún no lo tienen se conserva el correo de Auth de administradores.
 // Respuesta siempre genérica -- no revela si la cuenta existe, es estándar para este tipo de
 // endpoint (a diferencia de login_empresarial, que sí es específico porque ahí el usuario ya
 // demostró conocer usuario+contraseña vía rate limiting normal).
@@ -14,6 +14,7 @@ import { plantillaCodigoDeAcceso } from "../_shared/emailTemplates.ts";
 
 const ROLES_CORREO_REAL = new Set(["admin_empresa", "super_admin"]);
 const RESPUESTA_GENERICA = { ok: true, mensaje: "Si la cuenta existe, se envió un código de recuperación." };
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 Deno.serve(withHandler(async (req, admin) => {
   const body = await req.json();
@@ -45,11 +46,30 @@ Deno.serve(withHandler(async (req, admin) => {
       .eq("eliminado", false)
       .maybeSingle();
     usuario = data;
+    // El formulario web conserva un único campo. Puede resolver un correo de
+    // recuperación solo cuando pertenece a una cuenta; con varias cuentas se
+    // requiere el flujo móvil (empresa + usuario) para no resetear otra cuenta.
+    if (!usuario) {
+      const { data: coincidencias } = await admin
+        .from("usuarios")
+        .select("id, rol, correo, correo_personal, nombre")
+        .eq("correo_personal", correo)
+        .eq("eliminado", false)
+        .limit(2);
+      if (coincidencias?.length === 1) usuario = coincidencias[0];
+    }
   } else {
     const codigoUpper = codigoEmpresa.toUpperCase();
     let { data: empresa } = await admin.from("empresas").select("id").eq("codigo", codigoUpper).maybeSingle();
     if (!empresa) {
       ({ data: empresa } = await admin.from("empresas").select("id").eq("codigo", codigoEmpresa).maybeSingle());
+    }
+    if (!empresa && UUID_RE.test(codigoEmpresa)) {
+      ({ data: empresa } = await admin.from("empresas").select("id").eq("id", codigoEmpresa).maybeSingle());
+    }
+    if (!empresa && codigoEmpresa.length >= 8) {
+      const { data: empresas } = await admin.from("empresas").select("id").limit(500);
+      empresa = empresas?.find((item) => item.id.toLowerCase().startsWith(codigoEmpresa.toLowerCase())) ?? null;
     }
     if (empresa) {
       const { data } = await admin
@@ -65,9 +85,11 @@ Deno.serve(withHandler(async (req, admin) => {
 
   if (!usuario) return RESPUESTA_GENERICA;
 
-  const destino = ROLES_CORREO_REAL.has(usuario.rol) ? usuario.correo : usuario.correo_personal;
+  if (usuario.correo_personal && correo && usuario.correo_personal.toLowerCase() !== correo) {
+    throw new HttpError(400, "El correo ingresado no coincide con el correo de recuperación configurado para este usuario.");
+  }
+  const destino = usuario.correo_personal || correo || (ROLES_CORREO_REAL.has(usuario.rol) ? usuario.correo : null);
   if (!destino) return RESPUESTA_GENERICA;
-  if (correo && destino.toLowerCase() !== correo) return RESPUESTA_GENERICA;
 
   const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
     type: "recovery",
@@ -92,5 +114,5 @@ Deno.serve(withHandler(async (req, admin) => {
 
   // Solo se devuelve tras comprobar empresa, usuario y correo de recuperación; el cliente
   // necesita el correo de Auth para verificar el OTP, que puede diferir del correo personal.
-  return { ...RESPUESTA_GENERICA, correoVerificacion: usuario.correo };
+  return { ...RESPUESTA_GENERICA, enviado: true, correoVerificacion: usuario.correo };
 }));

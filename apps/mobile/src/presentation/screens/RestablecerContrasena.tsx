@@ -11,6 +11,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Animated,
+  AccessibilityInfo,
   Easing,
   KeyboardAvoidingView,
   Platform,
@@ -21,7 +22,6 @@ import {
   ScrollView,
   Image,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -30,13 +30,12 @@ import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import { AdminToastProvider, useAdminToast } from '@/presentation/screens/admin/adminToast';
 import { supabase } from '@/infrastructure/supabase/supabaseClient';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
+import NexoVivo from '@/presentation/components/NexoVivo';
 
 const Text = AdminTranslatedText;
 const TextInput = AdminTranslatedTextInput;
 
 // Importación estática pre-cargada para cambio de tema instantáneo en memoria nativa
-const FONDO_OSCURO = require('../../../assets/fondoNexxus.jpg');
-const FONDO_CLARO = require('../../../assets/fondoNexxusClaro.jpg');
 const ISO_OSCURO = require('../../../assets/isoNexxus.png');
 const ISO_CLARO = require('../../../assets/isoNexxusBlack.png');
 
@@ -52,6 +51,7 @@ function RestablecerContrasenaContent({ navigation }: { navigation: any }) {
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [listo, setListo] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
 
   // Animaciones de entrada escalonadas
   const animHeader = useRef(new Animated.Value(0)).current;
@@ -80,6 +80,12 @@ function RestablecerContrasenaContent({ navigation }: { navigation: any }) {
         useNativeDriver: true,
       }),
     ]).start();
+  }, []);
+
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+    const suscripcion = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    return () => suscripcion.remove();
   }, []);
 
   useEffect(() => {
@@ -135,19 +141,12 @@ function RestablecerContrasenaContent({ navigation }: { navigation: any }) {
     <View style={estilos.container}>
       <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
 
-      {/* Imágenes de fondo pre-renderizadas superpuestas para cambio de tema instantáneo de 1 frame */}
-      <Image source={FONDO_OSCURO} style={[estilos.imagenFondo, { opacity: esOscuro ? 1 : 0 }]} resizeMode="cover" />
-      <Image source={FONDO_CLARO} style={[estilos.imagenFondo, { opacity: esOscuro ? 0 : 1 }]} resizeMode="cover" />
-
-      {/* Overlay con degradado para garantizar legibilidad */}
-      <LinearGradient
-        colors={
-          esOscuro
-            ? ['rgba(0, 0, 0, 0.4)', 'rgba(0, 0, 0, 0.25)', 'rgba(0, 0, 0, 0.88)']
-            : ['rgba(248, 250, 255, 0.45)', 'rgba(248, 250, 255, 0.25)', 'rgba(248, 250, 255, 0.88)']
-        }
-        style={estilos.degradadoOverlay}
-      />
+      <View accessible={false} style={estilos.campoNexosPrivacidad}>
+        <NexoVivo color="#7C3AED" forma="nube" expresion="alegre" mirada="centro" espiando={mostrarPassword} retrasoEspia={1600} size={58} drift={8} delay={120} reduceMotion={reduceMotion} style={estilos.nexoPrivacidadUno} />
+        <NexoVivo color="#EC4899" forma="capsula" expresion="timido" mirada="izquierda" ojosRedondos espiando={mostrarPassword} retrasoEspia={450} size={48} drift={7} delay={380} reduceMotion={reduceMotion} style={estilos.nexoPrivacidadDos} />
+        <NexoVivo color="#F97316" forma="rombo" expresion="sonrisa" mirada="derecha" espiando={mostrarPassword} retrasoEspia={2750} size={46} drift={8} delay={640} reduceMotion={reduceMotion} style={estilos.nexoPrivacidadTres} />
+        <NexoVivo color="#14B8A6" forma="circulo" expresion="alerta" mirada="izquierda" espiando={mostrarPassword} retrasoEspia={3900} size={42} drift={6} delay={840} reduceMotion={reduceMotion} style={estilos.nexoPrivacidadCuatro} />
+      </View>
 
       <SafeAreaView style={estilos.areaSegura}>
         <KeyboardAvoidingView
@@ -190,7 +189,7 @@ function RestablecerContrasenaContent({ navigation }: { navigation: any }) {
                   <Image source={ISO_CLARO} style={[estilos.logoImagen, { opacity: esOscuro ? 0 : 1 }]} resizeMode="contain" />
                 </View>
                 <Text style={estilos.logoTexto}>
-                  Nexxus<Text style={estilos.logoPunto}>.</Text>
+                  Nexxus
                 </Text>
               </View>
 
@@ -202,45 +201,46 @@ function RestablecerContrasenaContent({ navigation }: { navigation: any }) {
               </BotonAnimado>
             </Animated.View>
 
-            {/* Títulos principales */}
-            <Animated.View
-              style={[
-                estilos.bloqueBienvenida,
-                {
-                  opacity: animWelcome,
-                  transform: [
-                    {
-                      translateY: animWelcome.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [20, 0],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              <Text style={estilos.titulo}>{t('restablecerContrasena.title')}</Text>
-              <Text style={estilos.subtitulo}>{t('restablecerContrasena.subtitle')}</Text>
-            </Animated.View>
+            <View style={estilos.grupoInferior}>
+              {/* Títulos principales */}
+              <Animated.View
+                style={[
+                  estilos.bloqueBienvenida,
+                  {
+                    opacity: animWelcome,
+                    transform: [
+                      {
+                        translateY: animWelcome.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [20, 0],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <Text style={estilos.titulo}>{t('restablecerContrasena.title')}</Text>
+                <Text style={estilos.subtitulo}>{t('restablecerContrasena.subtitle')}</Text>
+              </Animated.View>
 
-            {/* Panel de Formulario Glass Panel */}
-            <Animated.View
-              style={[
-                estilos.animWrapForm,
-                {
-                  opacity: animForm,
-                  transform: [
-                    {
-                      translateY: animForm.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [20, 0],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              <BlurView intensity={intensidadBlur + 30} tint={blurTint} style={estilos.formPanel}>
+              {/* Panel de Formulario Glass Panel */}
+              <Animated.View
+                style={[
+                  estilos.animWrapForm,
+                  {
+                    opacity: animForm,
+                    transform: [
+                      {
+                        translateY: animForm.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [20, 0],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <BlurView intensity={intensidadBlur + 30} tint={blurTint} style={estilos.formPanel}>
                 {!sesionLista ? (
                   <ActivityIndicator color={esOscuro ? '#FFFFFF' : '#000000'} size="small" style={{ paddingVertical: 20 }} />
                 ) : !sesionValida ? (
@@ -317,6 +317,7 @@ function RestablecerContrasenaContent({ navigation }: { navigation: any }) {
 
               </BlurView>
             </Animated.View>
+          </View>
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -336,16 +337,13 @@ function crearEstilos(c: any, esOscuro: boolean) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: esOscuro ? '#000000' : '#FFFFFF',
+      backgroundColor: c.fondo,
     },
-    imagenFondo: {
-      ...StyleSheet.absoluteFill,
-      width: '100%',
-      height: '100%',
-    },
-    degradadoOverlay: {
-      ...StyleSheet.absoluteFill,
-    },
+    campoNexosPrivacidad: { ...StyleSheet.absoluteFill, pointerEvents: 'none' },
+    nexoPrivacidadUno: { top: '14%', left: '9%' },
+    nexoPrivacidadDos: { top: '18%', right: '10%' },
+    nexoPrivacidadTres: { top: '28%', left: '24%' },
+    nexoPrivacidadCuatro: { top: '32%', right: '23%' },
     areaSegura: {
       flex: 1,
     },
@@ -358,6 +356,10 @@ function crearEstilos(c: any, esOscuro: boolean) {
       paddingTop: 16,
       paddingBottom: 28,
       justifyContent: 'space-between',
+    },
+    grupoInferior: {
+      flex: 1,
+      justifyContent: 'flex-end',
     },
     header: {
       flexDirection: 'row',
@@ -398,11 +400,8 @@ function crearEstilos(c: any, esOscuro: boolean) {
       color: esOscuro ? '#FFFFFF' : '#000000',
       letterSpacing: -0.5,
     },
-    logoPunto: {
-      color: '#A855F7',
-    },
     bloqueBienvenida: {
-      marginVertical: 20,
+      marginBottom: 32,
       paddingHorizontal: 4,
     },
     titulo: {

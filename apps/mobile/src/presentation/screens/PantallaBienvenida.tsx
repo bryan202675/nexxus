@@ -1,379 +1,130 @@
-/**
- * Documentacion Nexxus - apps/mobile/src/presentation/screens/PantallaBienvenida.tsx
- * Capa: presentacion.
- * Proposito: Pantalla de bienvenida (Onboarding) de la app móvil. Rediseñada con estética profesional premium basada en prototypes/mobile-onboarding.html.
- * Rendimiento optimizado: Precarga de imágenes para cambio de tema instantáneo y animaciones ultra fluidas.
- */
-
-import React, { useEffect, useRef } from 'react';
-import {
-  View,
-  StyleSheet,
-  Animated,
-  SafeAreaView,
-  StatusBar,
-  Dimensions,
-  Image,
-  Easing,
-} from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { AccessibilityInfo, Animated, Easing, Image, SafeAreaView, StatusBar, StyleSheet, View } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { BlurView } from 'expo-blur';
 import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
+import NexoVivo from '@/presentation/components/NexoVivo';
 
 const Text = AdminTranslatedText;
-
-// Importación estática pre-cargada para cambio de tema instantáneo en memoria nativa
-const FONDO_OSCURO = require('../../../assets/fondoNexxus.jpg');
-const FONDO_CLARO = require('../../../assets/fondoNexxusClaro.jpg');
 const ISO_OSCURO = require('../../../assets/isoNexxus.png');
 const ISO_CLARO = require('../../../assets/isoNexxusBlack.png');
 
-const { width } = Dimensions.get('window');
-
 export default function PantallaBienvenida() {
-  console.log('[NEXXUS] PantallaBienvenida mounted successfully!');
   const { t } = useTranslation();
-  const navegacion = useNavigation<any>();
-  const { colores, blurTint, intensidadBlur, esOscuro, alternarModo } = useTemaMobile();
-
-  // Animaciones de entrada ultra fluidas
-  const animHeader = useRef(new Animated.Value(0)).current;
-  const animTitle = useRef(new Animated.Value(0)).current;
-  const animSub = useRef(new Animated.Value(0)).current;
-  const animButtons = useRef(new Animated.Value(0)).current;
+  const navegacion = useNavigation();
+  const { esOscuro, alternarModo, intensidadBlur, blurTint } = useTemaMobile();
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const entrada = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Easing idéntico al prototipo cubic-bezier(0.16, 1, 0.3, 1)
-    const easingCurva = Easing.bezier(0.16, 1, 0.3, 1);
-
-    Animated.stagger(100, [
-      Animated.timing(animHeader, {
-        toValue: 1,
-        duration: 700,
-        easing: easingCurva,
-        useNativeDriver: true,
-      }),
-      Animated.timing(animTitle, {
-        toValue: 1,
-        duration: 700,
-        easing: easingCurva,
-        useNativeDriver: true,
-      }),
-      Animated.timing(animSub, {
-        toValue: 1,
-        duration: 700,
-        easing: easingCurva,
-        useNativeDriver: true,
-      }),
-      Animated.timing(animButtons, {
-        toValue: 1,
-        duration: 700,
-        easing: easingCurva,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+    const suscripcion = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
+    return () => suscripcion.remove();
   }, []);
 
-  const estilos = crearEstilos(colores, esOscuro);
+  useEffect(() => {
+    Animated.timing(entrada, {
+      toValue: 1,
+      duration: reduceMotion ? 180 : 520,
+      easing: Easing.bezier(0.23, 1, 0.32, 1),
+      useNativeDriver: true,
+    }).start();
+  }, [entrada, reduceMotion]);
+
+  const estilos = crearEstilos(esOscuro);
 
   return (
     <View style={estilos.contenedor}>
       <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
+      <LinearGradient colors={esOscuro ? ['#090812', '#101126', '#090812'] : ['#F8F7FF', '#EEF2FF', '#F8F7FF']} style={StyleSheet.absoluteFill} />
 
-      {/* Imágenes de fondo pre-renderizadas superpuestas para cambio de tema instantáneo de 1 frame */}
-      <Image
-        source={FONDO_OSCURO}
-        style={[estilos.imagenFondo, { opacity: esOscuro ? 1 : 0 }]}
-        resizeMode="cover"
-      />
-      <Image
-        source={FONDO_CLARO}
-        style={[estilos.imagenFondo, { opacity: esOscuro ? 0 : 1 }]}
-        resizeMode="cover"
-      />
-
-      {/* Overlay con degradado continuo para garantizar legibilidad */}
-      <LinearGradient
-        colors={
-          esOscuro
-            ? ['rgba(0, 0, 0, 0.4)', 'rgba(0, 0, 0, 0.1)', 'rgba(0, 0, 0, 0.85)']
-            : ['rgba(248, 250, 255, 0.4)', 'rgba(248, 250, 255, 0.1)', 'rgba(248, 250, 255, 0.85)']
-        }
-        style={estilos.degradadoOverlay}
-      />
+      <View accessible={false} style={estilos.campoNexos}>
+        <NexoVivo color="#7C3AED" forma="nube" expresion="alegre" mirada="centro" size={70} drift={13} delay={80} reduceMotion={reduceMotion} style={estilos.nexoSuperiorIzquierdo} />
+        <NexoVivo color="#EC4899" forma="capsula" expresion="timido" mirada="izquierda" ojosRedondos size={56} drift={10} delay={290} reduceMotion={reduceMotion} style={estilos.nexoSuperiorDerecho} />
+        <NexoVivo color="#14B8A6" forma="circulo" expresion="dormido" mirada="centro" size={46} drift={9} delay={510} reduceMotion={reduceMotion} style={estilos.nexoLateralIzquierdo} />
+        <NexoVivo color="#3B82F6" forma="cuadrado" expresion="asombrado" mirada="izquierda" size={60} drift={11} delay={180} reduceMotion={reduceMotion} style={estilos.nexoLateralDerecho} />
+        <NexoVivo color="#F97316" forma="rombo" expresion="sonrisa" mirada="derecha" size={54} drift={11} delay={430} reduceMotion={reduceMotion} style={estilos.nexoMedioIzquierdo} />
+        <NexoVivo color="#84CC16" forma="gota" expresion="alerta" mirada="izquierda" ojosRedondos size={52} drift={8} delay={650} reduceMotion={reduceMotion} style={estilos.nexoMedioDerecho} />
+        <NexoVivo color="#2563EB" forma="capsula" expresion="sospecha" mirada="derecha" size={62} drift={12} delay={260} reduceMotion={reduceMotion} style={estilos.nexoInferiorIzquierdo} />
+        <NexoVivo color="#A855F7" forma="onda" expresion="timido" mirada="arriba" ojosRedondos size={43} drift={10} delay={570} reduceMotion={reduceMotion} style={estilos.nexoInferiorCentro} />
+        <NexoVivo color="#F43F5E" forma="bloque" expresion="sonrisa" mirada="izquierda" size={50} drift={9} delay={720} reduceMotion={reduceMotion} style={estilos.nexoInferiorDerecho} />
+      </View>
 
       <SafeAreaView style={estilos.areaSegura}>
-        <View style={estilos.contenidoPrincipal}>
-          {/* Header con Isotipo superpuesto y Marca */}
-          <Animated.View
-            style={[
-              estilos.header,
-              {
-                opacity: animHeader,
-                transform: [
-                  {
-                    translateY: animHeader.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [24, 0],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          >
-            <View style={estilos.logoContenedor}>
-              <View style={estilos.logoWrap}>
-                <Image
-                  source={ISO_OSCURO}
-                  style={[estilos.logoImagen, { opacity: esOscuro ? 1 : 0 }]}
-                  resizeMode="contain"
-                />
-                <Image
-                  source={ISO_CLARO}
-                  style={[estilos.logoImagen, { opacity: esOscuro ? 0 : 1 }]}
-                  resizeMode="contain"
-                />
-              </View>
-              <Text style={estilos.logoTexto}>
-                Nexxus<Text style={estilos.logoPunto}>.</Text>
-              </Text>
+        <Animated.View style={[estilos.contenido, { opacity: entrada, transform: [{ translateY: entrada.interpolate({ inputRange: [0, 1], outputRange: [reduceMotion ? 0 : 14, 0] }) }] }]}>
+          <View style={estilos.identidad}>
+            <View style={estilos.logoWrap}>
+              <Image source={ISO_OSCURO} style={[estilos.logo, { opacity: esOscuro ? 1 : 0 }]} resizeMode="contain" />
+              <Image source={ISO_CLARO} style={[estilos.logo, { opacity: esOscuro ? 0 : 1 }]} resizeMode="contain" />
             </View>
-          </Animated.View>
-
-          {/* Área inferior con Título, Subtítulo y Botones */}
-          <View style={estilos.bloqueInferior}>
-            <Animated.Text
-              style={[
-                estilos.titulo,
-                {
-                  opacity: animTitle,
-                  transform: [
-                    {
-                      translateY: animTitle.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [24, 0],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              {t('pantallaBienvenida.title')}
-            </Animated.Text>
-
-            <Animated.Text
-              style={[
-                estilos.subtitulo,
-                {
-                  opacity: animSub,
-                  transform: [
-                    {
-                      translateY: animSub.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [24, 0],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              {t('pantallaBienvenida.subtitle')}
-            </Animated.Text>
-
-            {/* Fila de Botones de Acción */}
-            <Animated.View
-              style={[
-                estilos.filaBotones,
-                {
-                  opacity: animButtons,
-                  transform: [
-                    {
-                      translateY: animButtons.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [24, 0],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              {/* Acción Principal: Comenzar (Negro completo en modo claro, Blanco completo en modo oscuro) */}
-              <BotonAnimado
-                style={estilos.botonWrapPrincipal}
-                onPress={() => navegacion.navigate('LoginEmpresarial')}
-                scaleTo={0.96}
-              >
-                <View style={estilos.botonPrincipal}>
-                  <Text style={estilos.textoBotonPrincipal}>
-                    {t('pantallaBienvenida.btn_start') || 'Comenzar'}
-                  </Text>
-                  <Feather
-                    name="arrow-up-right"
-                    size={22}
-                    color={esOscuro ? '#000000' : '#FFFFFF'}
-                    style={estilos.iconoBotonPrincipal}
-                  />
-                </View>
-              </BotonAnimado>
-
-              {/* Botón Glass para Cambio de Tema */}
-              <BotonAnimado
-                style={estilos.botonWrapGlass}
-                onPress={() => alternarModo()}
-                scaleTo={0.92}
-              >
-                <BlurView intensity={intensidadBlur + 25} tint={blurTint} style={estilos.botonGlass}>
-                  <Feather
-                    name={esOscuro ? 'sun' : 'moon'}
-                    size={22}
-                    color={esOscuro ? '#FFFFFF' : '#0F172A'}
-                  />
-                </BlurView>
-              </BotonAnimado>
-
-              {/* Botón Glass para Soporte Global */}
-              <BotonAnimado
-                style={estilos.botonWrapGlass}
-                onPress={() => navegacion.navigate('SoporteGeneral')}
-                scaleTo={0.92}
-              >
-                <BlurView intensity={intensidadBlur + 25} tint={blurTint} style={estilos.botonGlass}>
-                  <Feather
-                    name="help-circle"
-                    size={22}
-                    color={esOscuro ? '#FFFFFF' : '#0F172A'}
-                  />
-                </BlurView>
-              </BotonAnimado>
-            </Animated.View>
+            <Text style={estilos.nombre}>Nexxus</Text>
           </View>
+          <Text style={estilos.subtitulo}>{t('pantallaBienvenida.subtitle')}</Text>
+        </Animated.View>
+
+        <View style={estilos.filaBotones}>
+          <BotonAnimado
+            style={estilos.botonComenzarWrap}
+            onPress={() => navegacion.navigate('LoginEmpresarial' as never)}
+            scaleTo={0.97}
+            accessibilityLabel={t('pantallaBienvenida.btn_start') || 'Comenzar'}
+            accessibilityHint="Abre el acceso a Nexxus"
+          >
+            <View style={estilos.boton}>
+              <Text style={estilos.textoBoton}>{t('pantallaBienvenida.btn_start') || 'Comenzar'}</Text>
+              <Feather name="arrow-up-right" size={20} color={esOscuro ? '#111126' : '#FFFFFF'} />
+            </View>
+          </BotonAnimado>
+
+          <BotonAnimado onPress={() => alternarModo()} scaleTo={0.92} style={estilos.botonCirculoWrap}>
+            <BlurView intensity={intensidadBlur + 25} tint={blurTint} style={estilos.botonCirculo}>
+              <Feather name={esOscuro ? 'sun' : 'moon'} size={20} color={esOscuro ? '#FFFFFF' : '#111126'} />
+            </BlurView>
+          </BotonAnimado>
+
+
+          <BotonAnimado onPress={() => navegacion.navigate('SoporteGeneral' as never)} scaleTo={0.92} style={estilos.botonCirculoWrap}>
+            <BlurView intensity={intensidadBlur + 25} tint={blurTint} style={estilos.botonCirculo}>
+              <Feather name="help-circle" size={20} color={esOscuro ? '#FFFFFF' : '#111126'} />
+            </BlurView>
+          </BotonAnimado>
         </View>
       </SafeAreaView>
     </View>
   );
 }
 
-function crearEstilos(c: any, esOscuro: boolean) {
+function crearEstilos(esOscuro: boolean) {
+  const texto = esOscuro ? '#FFFFFF' : '#111126';
   return StyleSheet.create({
-    contenedor: {
-      flex: 1,
-      backgroundColor: esOscuro ? '#000000' : '#FFFFFF',
-    },
-    imagenFondo: {
-      ...StyleSheet.absoluteFill,
-      width: '100%',
-      height: '100%',
-    },
-    degradadoOverlay: {
-      ...StyleSheet.absoluteFill,
-    },
-    areaSegura: {
-      flex: 1,
-    },
-    contenidoPrincipal: {
-      flex: 1,
-      paddingHorizontal: 28,
-      paddingTop: 16,
-      paddingBottom: 28,
-      justifyContent: 'space-between',
-    },
-    header: {
-      paddingTop: 16,
-    },
-    logoContenedor: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-    },
-    logoWrap: {
-      width: 32,
-      height: 32,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    logoImagen: {
-      position: 'absolute',
-      width: 32,
-      height: 32,
-    },
-    logoTexto: {
-      fontSize: 22,
-      fontWeight: '700',
-      color: esOscuro ? '#FFFFFF' : '#000000',
-      letterSpacing: -0.5,
-    },
-    logoPunto: {
-      color: '#A855F7',
-    },
-    bloqueInferior: {
-      gap: 16,
-      marginBottom: 12,
-    },
-    titulo: {
-      fontSize: 44,
-      lineHeight: 48,
-      fontWeight: '700',
-      color: esOscuro ? '#FFFFFF' : '#000000',
-      letterSpacing: -1,
-    },
-    subtitulo: {
-      fontSize: 15,
-      lineHeight: 22,
-      fontWeight: '500',
-      color: esOscuro ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)',
-      maxWidth: 270,
-      marginBottom: 12,
-    },
-    filaBotones: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-    },
-    botonWrapPrincipal: {
-      flex: 1,
-    },
-    botonPrincipal: {
-      height: 58,
-      borderRadius: 9999,
-      // Completamente blanco en modo oscuro, completamente negro (#000000) en modo claro
-      backgroundColor: esOscuro ? '#FFFFFF' : '#000000',
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 20,
-      shadowColor: esOscuro ? '#FFFFFF' : '#000000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: esOscuro ? 0.25 : 0.2,
-      shadowRadius: 16,
-      elevation: 6,
-    },
-    textoBotonPrincipal: {
-      fontSize: 17,
-      fontWeight: '700',
-      color: esOscuro ? '#000000' : '#FFFFFF',
-    },
-    iconoBotonPrincipal: {
-      marginLeft: 6,
-    },
-    botonWrapGlass: {
-      width: 58,
-      height: 58,
-    },
-    botonGlass: {
-      width: 58,
-      height: 58,
-      borderRadius: 29,
-      alignItems: 'center',
-      justifyContent: 'center',
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: esOscuro ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.15)',
-      backgroundColor: esOscuro ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.5)',
-    },
+    contenedor: { flex: 1, backgroundColor: esOscuro ? '#090812' : '#F8F7FF' },
+    areaSegura: { flex: 1, justifyContent: 'space-between', paddingHorizontal: 28, paddingTop: 28, paddingBottom: 24 },
+    campoNexos: { ...StyleSheet.absoluteFill },
+    contenido: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 34 },
+    identidad: { flexDirection: 'row', alignItems: 'center', gap: 11 },
+    logoWrap: { width: 42, height: 42 },
+    logo: { position: 'absolute', width: 42, height: 42 },
+    nombre: { color: texto, fontSize: 31, fontWeight: '800', letterSpacing: -1.1 },
+    subtitulo: { maxWidth: 252, marginTop: 15, color: esOscuro ? 'rgba(255,255,255,0.72)' : 'rgba(17,17,38,0.66)', fontSize: 15, lineHeight: 22, fontWeight: '500', textAlign: 'center' },
+    filaBotones: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },
+    botonComenzarWrap: { },
+    boton: { height: 56, paddingHorizontal: 32, borderRadius: 28, backgroundColor: esOscuro ? '#FFFFFF' : '#111126', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, shadowColor: esOscuro ? '#FFFFFF' : '#111126', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 6 },
+    textoBoton: { color: esOscuro ? '#111126' : '#FFFFFF', fontSize: 16, fontWeight: '700' },
+    botonCirculoWrap: { width: 56, height: 56 },
+    botonCirculo: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderWidth: 1, borderColor: esOscuro ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)', backgroundColor: esOscuro ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' },
+    nexoSuperiorIzquierdo: { top: '12%', left: '15%' },
+    nexoSuperiorDerecho: { top: '17%', right: '15%' },
+    nexoLateralIzquierdo: { top: '28%', left: '4%' },
+    nexoLateralDerecho: { top: '31%', right: '4%' },
+    nexoMedioIzquierdo: { top: '48%', left: '8%' },
+    nexoMedioDerecho: { top: '49%', right: '7%' },
+    nexoInferiorIzquierdo: { bottom: '24%', left: '10%' },
+    nexoInferiorCentro: { bottom: '19%', left: '43%' },
+    nexoInferiorDerecho: { bottom: '27%', right: '8%' },
   });
 }

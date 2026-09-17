@@ -192,7 +192,7 @@ export default function MiPulso({ navigation }: { navigation: any }) {
           {/* Tags Simétricas en Pares 2x2 */}
           <View style={estilos.tagsParesGrid}>
             {[
-              { label: t('miPulso.tiles.checkin'), icono: 'activity' as const, destino: 'CheckInDiario' },
+              { label: t('miPulso.tiles.checkin'), icono: 'activity' as const, destino: 'MiBienestar' },
               { label: t('miPulso.tiles.salary'), icono: 'credit-card' as const, destino: 'MiSalario' },
               { label: t('miPulso.tiles.history'), icono: 'clock' as const, destino: 'HistorialCompleto' },
               { label: t('miPulso.tiles.ai_assistant'), icono: 'cpu' as const, destino: 'ChatIA' },
@@ -220,7 +220,7 @@ export default function MiPulso({ navigation }: { navigation: any }) {
           <Animated.View entering={FadeInDown.duration(320).delay(60)}>
             <BotonAnimado
               style={[estilos.bentoCard, estilos.bentoCardLarga]}
-              onPress={() => navigation.navigate('CheckInDiario')}
+              onPress={() => navigation.navigate('MiBienestar')}
               scaleTo={0.98}
             >
               <BlurView intensity={Platform.OS === 'ios' ? intensidadBlur + 6 : 75} tint={blurTint} style={estilos.bentoContent}>

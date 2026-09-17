@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
+  LayoutAnimation, UIManager, KeyboardAvoidingView,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -13,7 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
+import Animated, { Easing, FadeInDown, LinearTransition, FadeIn, FadeOut } from 'react-native-reanimated';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
@@ -85,6 +85,10 @@ const FAQ_ITEMS = [
   },
 ];
 
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 export default function SoporteGeneral({ navigation }: Props) {
   const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
   const { t } = useTranslation();
@@ -204,7 +208,7 @@ export default function SoporteGeneral({ navigation }: Props) {
           </View>
 
           <View style={estilos.navBadgeRight}>
-            <MaterialIcons name="headset-mic" size={15} color={esOscuro ? '#A78BFA' : '#7C3AED'} />
+            <MaterialIcons name="headset-mic" size={15} color={esOscuro ? '#FFFFFF' : '#111126'} />
             <Text style={estilos.navBadgeTexto}>AYUDA</Text>
           </View>
         </BlurView>
@@ -238,7 +242,7 @@ export default function SoporteGeneral({ navigation }: Props) {
                   {/* Encabezado del Recibo */}
                   <View style={estilos.receiptHeader}>
                     <View style={estilos.receiptHeaderLeft}>
-                      <Feather name="file-text" size={16} color={esOscuro ? '#A78BFA' : '#7C3AED'} />
+                      <Feather name="file-text" size={16} color={esOscuro ? '#FFFFFF' : '#111126'} />
                       <Text style={estilos.receiptHeaderTitulo}>TICKET DE ASISTENCIA</Text>
                     </View>
                     <View style={estilos.statusPillVerde}>
@@ -306,7 +310,7 @@ export default function SoporteGeneral({ navigation }: Props) {
               <Animated.View entering={FadeInDown.duration(260).delay(140).easing(Easing.out(Easing.quad))} style={estilos.canalesCard}>
                 <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.canalesContenido}>
                   <View style={estilos.canalesHeader}>
-                    <MaterialIcons name="support-agent" size={20} color={esOscuro ? '#A78BFA' : '#7C3AED'} />
+                    <MaterialIcons name="support-agent" size={20} color={esOscuro ? '#FFFFFF' : '#111126'} />
                     <Text style={estilos.canalesTitulo}>Canales de Atención Directa</Text>
                   </View>
 
@@ -350,7 +354,7 @@ export default function SoporteGeneral({ navigation }: Props) {
                   onPress={reiniciarFormulario}
                   activeOpacity={0.7}
                 >
-                  <Feather name="plus-circle" size={16} color={esOscuro ? '#A78BFA' : '#7C3AED'} />
+                  <Feather name="plus-circle" size={16} color={esOscuro ? '#FFFFFF' : '#111126'} />
                   <Text style={estilos.btnSecundarioTexto}>Registrar otra consulta</Text>
                 </TouchableOpacity>
               </Animated.View>
@@ -365,7 +369,7 @@ export default function SoporteGeneral({ navigation }: Props) {
                 <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.heroContenido}>
                   <View style={estilos.heroTopRow}>
                     <View style={estilos.heroIconoBadge}>
-                      <Feather name="help-circle" size={20} color={esOscuro ? '#A78BFA' : '#7C3AED'} />
+                      <Feather name="help-circle" size={20} color={esOscuro ? '#FFFFFF' : '#111126'} />
                     </View>
                     <View style={estilos.heroPill}>
                       <Text style={estilos.heroPillTexto}>CANAL DE ATENCIÓN GLOBAL</Text>
@@ -396,7 +400,7 @@ export default function SoporteGeneral({ navigation }: Props) {
                             <MaterialIcons
                               name={cat.icono}
                               size={20}
-                              color={seleccionada ? (esOscuro ? '#A78BFA' : '#7C3AED') : colores.textoSuave}
+                              color={seleccionada ? (esOscuro ? '#FFFFFF' : '#111126') : colores.textoSuave}
                             />
                           </View>
                           <View style={estilos.catTextos}>
@@ -409,7 +413,7 @@ export default function SoporteGeneral({ navigation }: Props) {
                           </View>
                           {seleccionada && (
                             <View style={estilos.catCheck}>
-                              <MaterialIcons name="check" size={14} color="#FFFFFF" />
+                              <MaterialIcons name="check" size={14} color={esOscuro ? '#111126' : '#FFFFFF'} />
                             </View>
                           )}
                         </TouchableOpacity>
@@ -431,7 +435,7 @@ export default function SoporteGeneral({ navigation }: Props) {
                       <Feather name="user" size={16} color={colores.textoSuave} style={estilos.inputIcono} />
                       <TextInput
                         style={estilos.input}
-                        placeholder="Ej. Bryan Martínez"
+                        placeholder="Ej. Juan Pérez"
                         placeholderTextColor={colores.textoSuave}
                         value={nombre}
                         onChangeText={setNombre}
@@ -447,7 +451,7 @@ export default function SoporteGeneral({ navigation }: Props) {
                       <Feather name="mail" size={16} color={colores.textoSuave} style={estilos.inputIcono} />
                       <TextInput
                         style={estilos.input}
-                        placeholder="tu-correo@empresa.com"
+                        placeholder="ejemplo@empresa.com"
                         placeholderTextColor={colores.textoSuave}
                         value={correo}
                         onChangeText={setCorreo}
@@ -593,7 +597,7 @@ export default function SoporteGeneral({ navigation }: Props) {
                   {FAQ_ITEMS.map((faq, idx) => {
                     const abierto = faqAbierto === idx;
                     return (
-                      <View key={idx} style={estilos.faqItem}>
+                      <Animated.View key={idx} style={estilos.faqItem} layout={LinearTransition.duration(250)}>
                         <TouchableOpacity
                           style={estilos.faqHeader}
                           onPress={() => setFaqAbierto(abierto ? null : idx)}
@@ -603,11 +607,11 @@ export default function SoporteGeneral({ navigation }: Props) {
                           <Feather name={abierto ? 'chevron-up' : 'chevron-down'} size={18} color={colores.textoSuave} />
                         </TouchableOpacity>
                         {abierto && (
-                          <View style={estilos.faqCuerpo}>
+                          <Animated.View style={estilos.faqCuerpo} entering={FadeIn.duration(250)} exiting={FadeOut.duration(200)}>
                             <Text style={estilos.faqRespuesta}>{faq.respuesta}</Text>
-                          </View>
+                          </Animated.View>
                         )}
-                      </View>
+                      </Animated.View>
                     );
                   })}
                 </BlurView>
@@ -687,14 +691,14 @@ function crearEstilos(c: any, esOscuro: boolean) {
       paddingHorizontal: 10,
       paddingVertical: 5,
       borderRadius: 14,
-      backgroundColor: esOscuro ? 'rgba(167, 139, 250, 0.14)' : 'rgba(124, 58, 237, 0.10)',
+      backgroundColor: esOscuro ? 'rgba(255,255,255,0.12)' : 'rgba(17,17,38,0.08)',
       borderWidth: 1,
-      borderColor: esOscuro ? 'rgba(167, 139, 250, 0.25)' : 'rgba(124, 58, 237, 0.20)',
+      borderColor: esOscuro ? 'rgba(255,255,255,0.2)' : 'rgba(17,17,38,0.15)',
     },
     navBadgeTexto: {
       fontSize: 10,
       fontWeight: '900',
-      color: esOscuro ? '#A78BFA' : '#7C3AED',
+      color: esOscuro ? '#FFFFFF' : '#111126',
       letterSpacing: 0.5,
     },
     scroll: {
@@ -725,7 +729,7 @@ function crearEstilos(c: any, esOscuro: boolean) {
       width: 36,
       height: 36,
       borderRadius: 12,
-      backgroundColor: esOscuro ? 'rgba(167, 139, 250, 0.16)' : 'rgba(124, 58, 237, 0.10)',
+      backgroundColor: esOscuro ? 'rgba(255,255,255,0.12)' : 'rgba(17,17,38,0.08)',
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -738,7 +742,7 @@ function crearEstilos(c: any, esOscuro: boolean) {
     heroPillTexto: {
       fontSize: 10,
       fontWeight: '800',
-      color: esOscuro ? '#A78BFA' : '#7C3AED',
+      color: esOscuro ? '#FFFFFF' : '#111126',
       letterSpacing: 0.5,
     },
     heroTitulo: {
@@ -787,8 +791,8 @@ function crearEstilos(c: any, esOscuro: boolean) {
       backgroundColor: c.vidrioSutil,
     },
     catBotonSeleccionado: {
-      borderColor: esOscuro ? '#A78BFA' : '#7C3AED',
-      backgroundColor: esOscuro ? 'rgba(167, 139, 250, 0.14)' : 'rgba(124, 58, 237, 0.08)',
+      borderColor: esOscuro ? 'rgba(255,255,255,0.4)' : 'rgba(17,17,38,0.3)',
+      backgroundColor: esOscuro ? 'rgba(255,255,255,0.1)' : 'rgba(17,17,38,0.06)',
     },
     catIconoWrap: {
       width: 36,
@@ -823,7 +827,7 @@ function crearEstilos(c: any, esOscuro: boolean) {
       width: 22,
       height: 22,
       borderRadius: 11,
-      backgroundColor: esOscuro ? '#A78BFA' : '#7C3AED',
+      backgroundColor: esOscuro ? '#FFFFFF' : '#111126',
       alignItems: 'center',
       justifyContent: 'center',
       marginLeft: 6,
@@ -1096,7 +1100,7 @@ function crearEstilos(c: any, esOscuro: boolean) {
     codigoValor: {
       fontSize: 22,
       fontWeight: '900',
-      color: esOscuro ? '#A78BFA' : '#7C3AED',
+      color: esOscuro ? '#FFFFFF' : '#111126',
       letterSpacing: 0.5,
     },
     btnCopiar: {
@@ -1150,7 +1154,7 @@ function crearEstilos(c: any, esOscuro: boolean) {
     prioridadBadgeTexto: {
       fontSize: 10.5,
       fontWeight: '900',
-      color: esOscuro ? '#A78BFA' : '#7C3AED',
+      color: esOscuro ? '#FFFFFF' : '#111126',
     },
     slaRow: {
       flexDirection: 'row',
@@ -1237,7 +1241,7 @@ function crearEstilos(c: any, esOscuro: boolean) {
     btnSecundarioTexto: {
       fontSize: 13.5,
       fontWeight: '800',
-      color: esOscuro ? '#A78BFA' : '#7C3AED',
+      color: esOscuro ? '#FFFFFF' : '#111126',
     },
   });
 }

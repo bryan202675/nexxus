@@ -77,7 +77,7 @@ export default function CorreoRecuperacionObligatorio({ visible }: Props) {
 
             <Text style={styles.titulo}>Protege tu cuenta</Text>
             <Text style={styles.descripcion}>
-              Agrega un correo real para recuperar tu contraseña. Al verificarlo, sustituirá el correo temporal de tu cuenta corporativa.
+              Agrega un correo real para recuperar tu contraseña. Puedes usar el mismo correo de recuperación en varias cuentas de demo.
             </Text>
 
             {!codigoEnviado ? (
