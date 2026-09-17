@@ -1,42 +1,424 @@
-import React, { useMemo, useState } from 'react';
-import { FlatList, RefreshControl, SafeAreaView, StatusBar, StyleSheet, View } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import {
+  FlatList,
+  Platform,
+  RefreshControl,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useTranslation } from 'react-i18next';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
 import DetalleTareaModal from '@/presentation/components/DetalleTareaModal';
+import TaskCalendarStrip from '@/presentation/components/tasks/TaskCalendarStrip';
+import TaskMonthPickerModal from '@/presentation/components/tasks/TaskMonthPickerModal';
+import TaskTabs, { TaskTab } from '@/presentation/components/tasks/TaskTabs';
+import TaskTimelineCard from '@/presentation/components/tasks/TaskTimelineCard';
+import {
+  TaskEmptyState,
+  TaskSkeleton,
+} from '@/presentation/components/tasks/TaskAgendaStates';
+import {
+  calendarDaysForMonth,
+  dateKey,
+  formatMonth,
+  taskMatchesDay,
+} from '@/presentation/components/tasks/taskAgendaUtils';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import { Task } from 'domain/entities/Task';
 
 const Text = AdminTranslatedText;
-type Props = { navigation: { navigate: (route: string) => void } };
-type Tab = 'pendientes' | 'completadas';
-const formatDueDate = (date?: string) => {
-  if (!date) return 'Sin fecha límite';
-  const value = new Date(date);
-  return Number.isNaN(value.getTime()) ? 'Sin fecha límite' : new Intl.DateTimeFormat('es-SV', { day: '2-digit', month: 'short' }).format(value).replace('.', '');
-};
-const priorityTone = (priority: Task['prioridad']) => priority === 'Urgente' ? '#D94675' : priority === 'Alta' ? '#F08F74' : priority === 'Media' ? '#8D7FE8' : '#78A982';
 
-export default function CentroTareas({ navigation }: Props) {
-  const { t } = useTranslation();
-  const { tareas, cambiarEstadoTarea, recargarDatos } = useContextoUsuario();
-  const [tab, setTab] = useState<Tab>('pendientes');
-  const [refreshing, setRefreshing] = useState(false);
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const pending = useMemo(() => tareas.filter((task) => task.estado !== 'completada'), [tareas]);
-  const completed = useMemo(() => tareas.filter((task) => task.estado === 'completada'), [tareas]);
-  const data = tab === 'pendientes' ? pending : completed;
-  const selectedTask = tareas.find((task) => task.id === selectedTaskId) ?? null;
-  const month = new Intl.DateTimeFormat('es-SV', { month: 'long', year: 'numeric' }).format(new Date());
-  const onRefresh = async () => { setRefreshing(true); try { await recargarDatos?.(); } finally { setRefreshing(false); } };
-  const renderTask = ({ item, index }: { item: Task; index: number }) => {
-    const done = item.estado === 'completada';
-    return <View style={[styles.taskRow, index === data.length - 1 && styles.lastTaskRow]}><View style={styles.timeColumn}><Text style={styles.timeLabel}>{item.fecha_limite ? formatDueDate(item.fecha_limite) : 'HOY'}</Text><View style={styles.timeLine} /></View><BotonAnimado style={[styles.taskCard, done && styles.completedCard]} scaleTo={0.98} onPress={() => setSelectedTaskId(item.id)}><View style={styles.cardTopRow}><View style={[styles.priorityDot, { backgroundColor: priorityTone(item.prioridad) }]} /><Text style={[styles.priority, { color: priorityTone(item.prioridad) }]}>{item.prioridad}</Text><View style={styles.projectPill}><Text style={styles.projectText} numberOfLines={1}>{item.proyecto || item.depto || 'NEXXUS'}</Text></View></View><Text style={[styles.taskTitle, done && styles.completedTitle]} numberOfLines={2}>{item.titulo}</Text><Text style={styles.taskMeta} numberOfLines={1}>{item.fecha_limite ? `Vence ${formatDueDate(item.fecha_limite)}` : 'Pendiente de programación'}</Text><View style={styles.cardFooter}><View style={styles.assignee}><Text style={styles.assigneeInitial}>{(item.asignado_a || 'N').charAt(0).toUpperCase()}</Text><Text style={styles.assigneeName} numberOfLines={1}>{item.asignado_a || 'Mi tarea'}</Text></View><BotonAnimado style={[styles.actionButton, done && styles.doneButton]} scaleTo={0.9} accessibilityLabel={done ? 'Marcar tarea pendiente' : 'Completar tarea'} onPress={() => cambiarEstadoTarea(item.id, done ? 'pendiente' : 'completada')}><Feather name={done ? 'check' : 'arrow-up-right'} size={16} color="#FFFFFF" /></BotonAnimado></View></BotonAnimado></View>;
+interface CentroTareasProps {
+  navigation: {
+    navigate: (route: string, params?: any) => void;
   };
-  return <SafeAreaView style={styles.screen}><StatusBar barStyle="dark-content" backgroundColor="#F7F4F0" /><FlatList data={data} keyExtractor={(item) => item.id} renderItem={renderTask} showsVerticalScrollIndicator={false} contentContainerStyle={styles.listContent} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#171719" />} ListHeaderComponent={<View><View style={styles.header}><Text style={styles.month}>{month}</Text><BotonAnimado style={styles.headerButton} scaleTo={0.92} onPress={() => navigation.navigate('CalendarioLaboral')} accessibilityLabel="Abrir calendario"><Feather name="chevron-down" size={20} color="#171719" /></BotonAnimado></View><Text style={styles.eyebrow}>MI AGENDA</Text><Text style={styles.title}>{t('centroTareas.title', { defaultValue: 'Mis tareas' })}</Text><View style={styles.tabs}><BotonAnimado onPress={() => setTab('pendientes')} scaleTo={0.97} style={[styles.tab, tab === 'pendientes' && styles.activeTab]}><Text style={[styles.tabText, tab === 'pendientes' && styles.activeTabText]}>Pendientes ({pending.length})</Text></BotonAnimado><BotonAnimado onPress={() => setTab('completadas')} scaleTo={0.97} style={[styles.tab, tab === 'completadas' && styles.activeTab]}><Text style={[styles.tabText, tab === 'completadas' && styles.activeTabText]}>Completadas ({completed.length})</Text></BotonAnimado></View></View>} ListEmptyComponent={<View style={styles.empty}><Feather name="check-circle" size={30} color="#A7A29B" /><Text style={styles.emptyTitle}>{tab === 'pendientes' ? 'No tienes tareas pendientes' : 'Aún no hay tareas completadas'}</Text></View>} /><DetalleTareaModal visible={selectedTask !== null} tarea={selectedTask} onClose={() => setSelectedTaskId(null)} onCambiarEstado={cambiarEstadoTarea} onAbrirChat={() => navigation.navigate('ChatIA')} /></SafeAreaView>;
+}
+
+export default function CentroTareas({ navigation }: CentroTareasProps) {
+  const { tareas, cargando, recargarDatos, cambiarEstadoTarea } = useContextoUsuario();
+  const { width } = useWindowDimensions();
+  const [tab, setTab] = useState<TaskTab>('pendientes');
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [monthPickerVisible, setMonthPickerVisible] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+
+  const containerWidth = Math.max(300, width - 32);
+
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    return date;
+  });
+
+  // Genera todos los días del mes seleccionado
+  const days = useMemo(() => calendarDaysForMonth(selectedDate), [selectedDate]);
+
+  const pending = useMemo(
+    () => tareas.filter((task) => task.estado !== 'completada'),
+    [tareas]
+  );
+
+  const pendingDaysSet = useMemo(() => {
+    const set = new Set<string>();
+    pending.forEach((task) => {
+      if (!task.fecha_limite) return;
+      const date = new Date(task.fecha_limite);
+      if (!Number.isNaN(date.getTime())) {
+        set.add(dateKey(date));
+      }
+    });
+    return set;
+  }, [pending]);
+
+  const completed = useMemo(
+    () => tareas.filter((task) => task.estado === 'completada'),
+    [tareas]
+  );
+
+  const selectedTask = useMemo(
+    () => tareas.find((task) => task.id === selectedTaskId) ?? null,
+    [selectedTaskId, tareas]
+  );
+
+  const visibleTasks = useMemo(() => {
+    const source = tab === 'pendientes' ? pending : completed;
+    return source
+      .filter((task) => taskMatchesDay(task, selectedDate))
+      .sort((first, second) =>
+        (first.fecha_limite || '9999').localeCompare(second.fecha_limite || '9999')
+      );
+  }, [completed, pending, selectedDate, tab]);
+
+  const isLoading = cargando && tareas.length === 0;
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    setRefreshError(null);
+    try {
+      await recargarDatos();
+    } catch {
+      setRefreshError('No se pudieron actualizar tus tareas. Inténtalo nuevamente.');
+    } finally {
+      setRefreshing(false);
+    }
+  }, [recargarDatos]);
+
+  const onToggle = useCallback(
+    async (task: Task) => {
+      try {
+        await cambiarEstadoTarea(
+          task.id,
+          task.estado === 'completada' ? 'pendiente' : 'completada'
+        );
+      } catch {
+        setRefreshError('No se pudo actualizar la tarea. Inténtalo nuevamente.');
+      }
+    },
+    [cambiarEstadoTarea]
+  );
+
+  const handleSelectMonth = useCallback((year: number, monthIndex: number) => {
+    const today = new Date();
+    const isCurrentMonthAndYear =
+      today.getFullYear() === year && today.getMonth() === monthIndex;
+
+    const newDate = new Date(year, monthIndex, isCurrentMonthAndYear ? today.getDate() : 1);
+    newDate.setHours(0, 0, 0, 0);
+    setSelectedDate(newDate);
+    setMonthPickerVisible(false);
+  }, []);
+
+  const renderTask = useCallback(
+    ({ item, index }: { item: Task; index: number }) => (
+      <View style={[styles.taskItemRow, { width: containerWidth }]}>
+        <TaskTimelineCard
+          task={item}
+          index={index}
+          onPress={(task) => setSelectedTaskId(task.id)}
+          onToggle={onToggle}
+        />
+      </View>
+    ),
+    [containerWidth, onToggle]
+  );
+
+  return (
+    <SafeAreaView style={styles.screen}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFF9F4" />
+
+      {/* Gradiente luminoso que cubre todo el fondo de la pantalla con desenfoque difuso */}
+      <View pointerEvents="none" style={styles.gradientArea}>
+        <LinearGradient
+          start={{ x: 0.05, y: 0 }}
+          end={{ x: 0.95, y: 1 }}
+          colors={[
+            '#FFAF62', // Dorado / melocotón cálido superior izquierdo
+            '#FF7FA7', // Rosa coral vibrante superior derecho
+            '#FFAEC7', // Transición suave en el centro
+            '#FFD6E5', // Rosa suave
+            '#FFE2CE', // Melocotón cálido inferior
+            '#FFC5DB', // Rosa pastel inferior derecho
+          ]}
+          locations={[0, 0.28, 0.52, 0.72, 0.88, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.amberGlowTop} />
+        <View style={styles.roseGlowTop} />
+        <View style={styles.peachCenterGlow} />
+        <View style={styles.amberGlowBottom} />
+        <View style={styles.roseGlowBottom} />
+
+        <BlurView
+          intensity={Platform.OS === 'ios' ? 75 : 55}
+          tint="light"
+          style={StyleSheet.absoluteFill}
+        />
+      </View>
+
+      <FlatList
+        data={isLoading ? [] : visibleTasks}
+        keyExtractor={(item) => item.id}
+        renderItem={renderTask}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#111111"
+          />
+        }
+        ListHeaderComponent={
+          <View>
+            {/* Header: Título Grande + Selector de Mes */}
+            <View style={styles.header}>
+              <Text style={styles.title}>Mis tareas</Text>
+              <BotonAnimado
+                style={styles.monthControl}
+                scaleTo={0.93}
+                onPress={() => setMonthPickerVisible(true)}
+                accessibilityLabel="Abrir selector de mes y año"
+              >
+                <Text style={styles.month}>{formatMonth(selectedDate)}</Text>
+                <Feather name="chevron-down" size={18} color="#1A171C" />
+              </BotonAnimado>
+            </View>
+
+            {/* Calendario horizontal con todos los días del mes e indicador de pendientes */}
+            <TaskCalendarStrip
+              days={days}
+              selectedDate={selectedDate}
+              pendingDaysSet={pendingDaysSet}
+              onSelect={setSelectedDate}
+            />
+
+            {/* Pestañas unidas continuamente al contenedor de tareas */}
+            <TaskTabs
+              active={tab}
+              pendingCount={pending.length}
+              completedCount={completed.length}
+              onChange={setTab}
+            />
+
+            {/* Inicio del cuerpo blanco del contenedor */}
+            <View
+              style={[
+                styles.whiteBodyTop,
+                {
+                  width: containerWidth,
+                  borderTopLeftRadius: tab === 'pendientes' ? 0 : 28,
+                  borderTopRightRadius: tab === 'pendientes' ? 28 : 0,
+                },
+              ]}
+            >
+              {refreshError && (
+                <BotonAnimado
+                  onPress={onRefresh}
+                  scaleTo={0.98}
+                  style={styles.error}
+                >
+                  <Text style={styles.errorText}>{refreshError}</Text>
+                  <Feather name="refresh-cw" size={14} color="#A53E5B" />
+                </BotonAnimado>
+              )}
+              {isLoading && <TaskSkeleton />}
+            </View>
+          </View>
+        }
+        ListEmptyComponent={
+          isLoading ? null : (
+            <View style={[styles.whiteBodyEmpty, { width: containerWidth }]}>
+              <TaskEmptyState completed={tab === 'completadas'} />
+            </View>
+          )
+        }
+        ListFooterComponent={
+          <View style={[styles.whiteBodyBottom, { width: containerWidth }]} />
+        }
+      />
+
+      {/* Modal Selector de Mes y Año */}
+      <TaskMonthPickerModal
+        visible={monthPickerVisible}
+        selectedDate={selectedDate}
+        onClose={() => setMonthPickerVisible(false)}
+        onSelectMonth={handleSelectMonth}
+      />
+
+      {/* Modal Integral de Detalle de Tarea */}
+      <DetalleTareaModal
+        visible={selectedTask !== null}
+        tarea={selectedTask}
+        onClose={() => setSelectedTaskId(null)}
+        onCambiarEstado={cambiarEstadoTarea}
+        onAbrirChat={() => navigation.navigate('ChatIA')}
+      />
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#F7F4F0' }, listContent: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 118 }, header: { flexDirection: 'row', alignItems: 'center', gap: 4 }, month: { color: '#171719', fontSize: 28, fontWeight: '800', letterSpacing: -1.2, textTransform: 'capitalize' }, headerButton: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16 }, eyebrow: { marginTop: 27, color: '#827D77', fontSize: 10, fontWeight: '800', letterSpacing: 1.15 }, title: { marginTop: 4, color: '#171719', fontSize: 36, fontWeight: '900', letterSpacing: -1.8 }, tabs: { flexDirection: 'row', gap: 8, marginTop: 18, marginBottom: 24 }, tab: { borderRadius: 18, paddingHorizontal: 14, paddingVertical: 9 }, activeTab: { backgroundColor: '#171719' }, tabText: { color: '#8A8580', fontSize: 12, fontWeight: '800' }, activeTabText: { color: '#FFFFFF' }, taskRow: { flexDirection: 'row', minHeight: 178 }, lastTaskRow: { minHeight: 154 }, timeColumn: { width: 57, alignItems: 'center' }, timeLabel: { color: '#67625E', fontSize: 10, fontWeight: '800', textAlign: 'center', textTransform: 'uppercase', marginTop: 17 }, timeLine: { width: 1, flex: 1, marginTop: 8, backgroundColor: '#D9D2CB' }, taskCard: { flex: 1, minHeight: 154, marginBottom: 16, borderRadius: 20, padding: 15, backgroundColor: '#F6BAD2', shadowColor: '#D77A9D', shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 7 }, elevation: 2 }, completedCard: { backgroundColor: '#E7E3DE', shadowOpacity: 0 }, cardTopRow: { flexDirection: 'row', alignItems: 'center', gap: 5 }, priorityDot: { width: 7, height: 7, borderRadius: 4 }, priority: { fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.45 }, projectPill: { maxWidth: 105, marginLeft: 'auto', paddingHorizontal: 8, paddingVertical: 4, backgroundColor: 'rgba(255,255,255,0.46)', borderRadius: 8 }, projectText: { color: '#3F383A', fontSize: 9, fontWeight: '900', letterSpacing: 0.45 }, taskTitle: { marginTop: 10, color: '#171719', fontSize: 18, fontWeight: '800', letterSpacing: -0.65, lineHeight: 21 }, completedTitle: { color: '#7F7974', textDecorationLine: 'line-through' }, taskMeta: { marginTop: 4, color: '#655B60', fontSize: 11, fontWeight: '600' }, cardFooter: { marginTop: 'auto', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, assignee: { flexDirection: 'row', alignItems: 'center', gap: 7, maxWidth: '72%' }, assigneeInitial: { width: 24, height: 24, borderRadius: 12, overflow: 'hidden', textAlign: 'center', paddingTop: 4, color: '#FFFFFF', backgroundColor: '#8B777A', fontSize: 11, fontWeight: '900' }, assigneeName: { color: '#4F4749', fontSize: 10, fontWeight: '700' }, actionButton: { width: 29, height: 29, borderRadius: 15, backgroundColor: '#171719', alignItems: 'center', justifyContent: 'center' }, doneButton: { backgroundColor: '#6F9D78' }, empty: { alignItems: 'center', paddingTop: 50, gap: 10 }, emptyTitle: { color: '#6D6762', fontSize: 14, fontWeight: '700' },
+  screen: {
+    backgroundColor: '#FFFDFB',
+    flex: 1,
+  },
+  gradientArea: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    overflow: 'hidden',
+  },
+  amberGlowTop: {
+    backgroundColor: 'rgba(255, 175, 95, 0.70)',
+    borderRadius: 200,
+    height: 380,
+    left: -110,
+    position: 'absolute',
+    top: -120,
+    width: 410,
+  },
+  roseGlowTop: {
+    backgroundColor: 'rgba(255, 115, 165, 0.65)',
+    borderRadius: 210,
+    height: 400,
+    position: 'absolute',
+    right: -130,
+    top: -90,
+    width: 430,
+  },
+  peachCenterGlow: {
+    backgroundColor: 'rgba(255, 215, 160, 0.55)',
+    borderRadius: 180,
+    height: 340,
+    left: 40,
+    position: 'absolute',
+    top: 220,
+    width: 360,
+  },
+  amberGlowBottom: {
+    backgroundColor: 'rgba(255, 185, 115, 0.55)',
+    borderRadius: 220,
+    height: 420,
+    left: -100,
+    position: 'absolute',
+    bottom: -100,
+    width: 440,
+  },
+  roseGlowBottom: {
+    backgroundColor: 'rgba(255, 130, 180, 0.50)',
+    borderRadius: 230,
+    height: 450,
+    position: 'absolute',
+    right: -120,
+    bottom: -120,
+    width: 460,
+  },
+  listContent: {
+    paddingBottom: 110,
+    paddingTop: 28,
+  },
+  header: {
+    alignItems: 'flex-start',
+    marginTop: 8,
+    marginBottom: 4,
+    paddingHorizontal: 20,
+  },
+  title: {
+    color: '#111111',
+    fontSize: 36,
+    fontWeight: '600',
+    letterSpacing: -0.7,
+    lineHeight: 42,
+  },
+  monthControl: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 4,
+    marginLeft: -4,
+    marginTop: 4,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+  },
+  month: {
+    color: '#262228',
+    fontSize: 18,
+    fontWeight: '500',
+    letterSpacing: -0.2,
+  },
+  whiteBodyTop: {
+    alignSelf: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingTop: 14,
+  },
+  taskItemRow: {
+    alignSelf: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+  },
+  whiteBodyEmpty: {
+    alignSelf: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingBottom: 32,
+  },
+  whiteBodyBottom: {
+    alignSelf: 'center',
+    backgroundColor: '#FFFFFF',
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    height: 24,
+    marginBottom: 20,
+    shadowColor: '#1A0C14',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.04,
+    shadowRadius: 14,
+    elevation: 2,
+  },
+  error: {
+    alignItems: 'center',
+    backgroundColor: '#FFE7EC',
+    borderRadius: 14,
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  errorText: {
+    color: '#A53E5B',
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 16,
+  },
 });
