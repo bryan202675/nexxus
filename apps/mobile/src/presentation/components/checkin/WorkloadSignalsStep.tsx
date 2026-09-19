@@ -1,5 +1,12 @@
 import React, { useEffect } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, {
@@ -31,6 +38,7 @@ const LABELS = [
   "Carga alta",
   "Sobrecarga",
 ];
+const isAndroid = Platform.OS === "android";
 
 export default function WorkloadSignalsStep({
   workload,
@@ -44,9 +52,11 @@ export default function WorkloadSignalsStep({
   onToggle: (value: string) => void;
 }) {
   const { colores, esOscuro } = useTemaMobile();
+  const { height } = useWindowDimensions();
+  const compact = isAndroid && height < 720;
   const styles = React.useMemo(
-    () => crearEstilos(colores, esOscuro),
-    [colores, esOscuro]
+    () => crearEstilos(colores, esOscuro, compact),
+    [colores, compact, esOscuro]
   );
 
   const load = useSharedValue(workload);
@@ -72,7 +82,11 @@ export default function WorkloadSignalsStep({
           disabled={workload === 1}
           accessibilityRole="button"
           accessibilityLabel="Reducir carga"
-          style={[styles.arrow, workload === 1 && styles.disabled]}
+          style={[
+            styles.arrow,
+            styles.arrowPrevious,
+            workload === 1 && styles.disabled,
+          ]}
         >
           <Text style={styles.arrowText}>‹</Text>
         </Pressable>
@@ -91,7 +105,11 @@ export default function WorkloadSignalsStep({
           disabled={workload === 5}
           accessibilityRole="button"
           accessibilityLabel="Aumentar carga"
-          style={[styles.arrow, workload === 5 && styles.disabled]}
+          style={[
+            styles.arrow,
+            styles.arrowNext,
+            workload === 5 && styles.disabled,
+          ]}
         >
           <Text style={styles.arrowText}>›</Text>
         </Pressable>
@@ -231,7 +249,7 @@ function WorkBlock({
   );
 }
 
-function crearEstilos(c: any, esOscuro: boolean) {
+function crearEstilos(c: any, esOscuro: boolean, compact: boolean) {
   const contrast = esOscuro ? "#FFFFFF" : "#17141B";
   const contrastInverted = esOscuro ? "#17141B" : "#FFFFFF";
 
@@ -253,26 +271,35 @@ function crearEstilos(c: any, esOscuro: boolean) {
     },
     towerStage: {
       width: "100%",
-      height: 220,
-      marginTop: 24,
+      height: compact ? 170 : isAndroid ? 188 : 220,
+      marginTop: isAndroid ? 20 : 24,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      paddingHorizontal: 16,
       borderRadius: 32,
       backgroundColor: c.superficie,
       borderWidth: 1,
       borderColor: c.borde,
     },
-    tower: { width: 178, height: 160, justifyContent: "flex-end", gap: 6 },
+    tower: {
+      width: isAndroid ? "58%" : 178,
+      maxWidth: 178,
+      height: compact ? 120 : isAndroid ? 136 : 160,
+      justifyContent: "flex-end",
+      gap: 6,
+    },
     arrow: {
+      position: isAndroid ? "absolute" : "relative",
       width: 44,
       height: 44,
       borderRadius: 22,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: contrast,
+      zIndex: 1,
     },
+    arrowPrevious: isAndroid ? { left: 16 } : {},
+    arrowNext: isAndroid ? { right: 16 } : {},
     disabled: { opacity: 0.18 },
     arrowText: {
       color: contrastInverted,
@@ -280,7 +307,10 @@ function crearEstilos(c: any, esOscuro: boolean) {
       lineHeight: 36,
       fontWeight: "400",
     },
-    loadCopy: { alignItems: "center", marginTop: 24 },
+    loadCopy: {
+      alignItems: "center",
+      marginTop: compact ? 12 : isAndroid ? 18 : 24,
+    },
     eyebrow: {
       color: c.textoSuave,
       fontSize: 11,
@@ -295,7 +325,7 @@ function crearEstilos(c: any, esOscuro: boolean) {
     },
     signalHeading: {
       alignSelf: "flex-start",
-      marginTop: 24,
+      marginTop: compact ? 12 : isAndroid ? 18 : 24,
       color: c.textoSuave,
       fontSize: 11,
       fontWeight: "800",
@@ -306,16 +336,16 @@ function crearEstilos(c: any, esOscuro: boolean) {
       flexDirection: "row",
       flexWrap: "wrap",
       justifyContent: "space-between",
-      marginTop: 16,
+      marginTop: compact ? 8 : isAndroid ? 12 : 16,
     },
     chip: {
       width: "48%",
-      marginBottom: 12,
+      marginBottom: compact ? 6 : isAndroid ? 8 : 12,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
       gap: 6,
-      paddingVertical: 14,
+      paddingVertical: compact ? 9 : isAndroid ? 11 : 14,
       paddingHorizontal: 8,
       borderRadius: 16,
       backgroundColor: esOscuro ? "rgba(255,255,255,0.04)" : "#F8FAFC",

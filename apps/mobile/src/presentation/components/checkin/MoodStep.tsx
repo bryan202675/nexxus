@@ -1,5 +1,12 @@
 import React, { useCallback } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import * as Haptics from "expo-haptics";
 import { SharedValue, withSpring } from "react-native-reanimated";
 import MoodFace, { MoodId } from "./MoodFace";
@@ -12,6 +19,7 @@ const MOODS: { id: MoodId; label: string }[] = [
   { id: "saturado", label: "SATURADO" },
 ];
 const clampIndex = (value: number) => Math.max(0, Math.min(4, value));
+const isAndroid = Platform.OS === "android";
 
 export default function MoodStep({
   progress,
@@ -22,6 +30,9 @@ export default function MoodStep({
   mood: MoodId;
   onChange: (mood: MoodId) => void;
 }) {
+  const { height } = useWindowDimensions();
+  const compact = isAndroid && height < 720;
+  const styles = React.useMemo(() => createStyles(compact), [compact]);
   const commit = useCallback(
     (index: number) => {
       const next = Math.round(clampIndex(index));
@@ -89,15 +100,16 @@ export default function MoodStep({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(compact: boolean) {
+  return StyleSheet.create({
   root: { flex: 1, alignItems: "center" },
   title: {
     color: "#17141B",
-    fontSize: 29,
+    fontSize: compact ? 25 : isAndroid ? 27 : 29,
     fontWeight: "800",
     letterSpacing: -0.9,
     textAlign: "center",
-    marginTop: 22,
+    marginTop: compact ? 10 : isAndroid ? 14 : 22,
   },
   subtitle: {
     color: "rgba(23,20,27,0.64)",
@@ -108,8 +120,8 @@ const styles = StyleSheet.create({
   face: {
     flex: 1,
     width: "100%",
-    minHeight: 270,
-    marginTop: 16,
+    minHeight: compact ? 194 : isAndroid ? 218 : 270,
+    marginTop: isAndroid ? 10 : 16,
     position: "relative",
   },
   direction: {
@@ -135,7 +147,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    marginBottom: 32,
+    marginBottom: compact ? 12 : isAndroid ? 18 : 32,
   },
   textContainer: {
     alignItems: "center",
@@ -153,4 +165,5 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     letterSpacing: -0.4,
   },
-});
+  });
+}

@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Platform, StyleSheet, Text, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import Animated, {
   Easing,
@@ -11,6 +11,7 @@ import Animated, {
 
 const METRICS = ["Ánimo", "Energía", "Descanso", "Carga"];
 const METRIC_ICONS = ["smile", "zap", "moon", "layers"] as const;
+const isAndroid = Platform.OS === "android";
 
 export default function CheckInSummaryStep({
   now,
@@ -143,7 +144,7 @@ export default function CheckInSummaryStep({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, alignItems: "center", paddingTop: 22 },
+  root: { flex: 1, alignItems: "center", paddingTop: isAndroid ? 12 : 22 },
   title: {
     fontSize: 28,
     fontWeight: "800",
@@ -163,11 +164,11 @@ const styles = StyleSheet.create({
   
   card: {
     width: "100%",
-    marginTop: 24,
-    borderRadius: 24,
-    padding: 24,
+    marginTop: isAndroid ? 18 : 24,
+    borderRadius: isAndroid ? 22 : 24,
+    padding: isAndroid ? 18 : 24,
     borderWidth: 1,
-    minHeight: 340,
+    minHeight: isAndroid ? 0 : 340,
     justifyContent: "center",
   },
   cardDark: {
@@ -209,7 +210,8 @@ const styles = StyleSheet.create({
     gap: 4, 
     flex: 1, 
     justifyContent: "flex-end", 
-    paddingLeft: 12 
+    paddingLeft: 12,
+    minWidth: 0,
   },
   locationText: { 
     fontSize: 12, 
@@ -217,11 +219,11 @@ const styles = StyleSheet.create({
   },
   
   timeSection: { 
-    marginTop: 24, 
+    marginTop: isAndroid ? 18 : 24,
     alignItems: "center" 
   },
   time: { 
-    fontSize: 52, 
+    fontSize: isAndroid ? 44 : 52,
     fontWeight: "900", 
     letterSpacing: -1.5 
   },
@@ -233,7 +235,7 @@ const styles = StyleSheet.create({
   
   divider: { 
     height: 1, 
-    marginVertical: 24, 
+    marginVertical: isAndroid ? 18 : 24,
     width: "100%" 
   },
   dividerDark: { backgroundColor: "rgba(255,255,255,0.08)" },
@@ -243,15 +245,15 @@ const styles = StyleSheet.create({
     flexDirection: "row", 
     flexWrap: "wrap", 
     justifyContent: "space-between", 
-    rowGap: 12 
+    rowGap: isAndroid ? 10 : 12
   },
   metricBox: {
     width: "48%",
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
-    borderRadius: 16,
-    gap: 10,
+    padding: isAndroid ? 10 : 12,
+    borderRadius: isAndroid ? 14 : 16,
+    gap: isAndroid ? 8 : 10,
   },
   metricBoxDark: { 
     backgroundColor: "rgba(255,255,255,0.04)",
@@ -265,9 +267,9 @@ const styles = StyleSheet.create({
   },
   
   iconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
+    width: isAndroid ? 30 : 34,
+    height: isAndroid ? 30 : 34,
+    borderRadius: isAndroid ? 10 : 12,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -331,7 +333,7 @@ const styles = StyleSheet.create({
     fontSize: 13, 
     textAlign: "center", 
     lineHeight: 19, 
-    marginTop: 24, 
+    marginTop: isAndroid ? 18 : 24,
     paddingHorizontal: 22 
   },
   error: { 

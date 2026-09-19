@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
     width: "100%",
     justifyContent: "center",
     alignItems: "center",
-    paddingBottom: 60,
+    paddingBottom: Platform.OS === "android" ? 20 : 60,
   },
   title: {
     fontSize: 28,
@@ -175,7 +175,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   noteCard: {
-    width: 238,
+    width: "76%",
+    maxWidth: 238,
     minHeight: 92,
     borderRadius: 18,
     paddingHorizontal: 18,
@@ -229,7 +230,7 @@ const styles = StyleSheet.create({
   lineShort: { width: "44%" },
   inputWrap: {
     width: "100%",
-    minHeight: 128,
+    minHeight: Platform.OS === "android" ? 112 : 128,
     marginTop: 18,
     borderRadius: 20,
     borderWidth: 1,

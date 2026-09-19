@@ -1,5 +1,12 @@
 import React, { useEffect } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { Circle, Line, Path, Polygon, Svg } from "react-native-svg";
 import * as Haptics from "expo-haptics";
 import Animated, {
@@ -28,6 +35,7 @@ const LEVELS: { id: StressLevel; label: string; detail: string }[] = [
     detail: "Baja el ritmo y busca apoyo si lo necesitas.",
   },
 ];
+const isAndroid = Platform.OS === "android";
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const indexOf = (level: StressLevel) =>
   LEVELS.findIndex((item) => item.id === level);
@@ -42,7 +50,12 @@ export default function StressGaugeStep({
   onChange: (level: StressLevel) => void;
 }) {
   const { colores, esOscuro } = useTemaMobile();
-  const styles = React.useMemo(() => crearEstilos(colores, esOscuro), [colores, esOscuro]);
+  const { height } = useWindowDimensions();
+  const compact = isAndroid && height < 720;
+  const styles = React.useMemo(
+    () => crearEstilos(colores, esOscuro, compact),
+    [colores, compact, esOscuro]
+  );
   const contrast = esOscuro ? "#FFFFFF" : "#17141B";
   const contrastInverted = esOscuro ? "#17141B" : "#FFFFFF";
 
@@ -91,12 +104,16 @@ export default function StressGaugeStep({
           disabled={stress === "bajo"}
           accessibilityRole="button"
           accessibilityLabel="Reducir estrés"
-          style={[styles.arrow, stress === "bajo" && styles.disabled]}
+          style={[
+            styles.arrow,
+            styles.arrowPrevious,
+            stress === "bajo" && styles.disabled,
+          ]}
         >
           <Text style={styles.arrowText}>‹</Text>
         </Pressable>
         <View style={styles.gauge}>
-          <Svg width="245" height="138" viewBox="0 0 320 180">
+          <Svg width={isAndroid ? "100%" : 245} height={isAndroid ? "100%" : 138} viewBox="0 0 320 180">
             <Path
               d="M28 160 A132 132 0 0 1 66.66 66.66 L106.97 106.97 A75 75 0 0 0 85 160 Z"
               fill="#22C55E"
@@ -131,7 +148,11 @@ export default function StressGaugeStep({
           disabled={stress === "critico"}
           accessibilityRole="button"
           accessibilityLabel="Aumentar estrés"
-          style={[styles.arrow, stress === "critico" && styles.disabled]}
+          style={[
+            styles.arrow,
+            styles.arrowNext,
+            stress === "critico" && styles.disabled,
+          ]}
         >
           <Text style={styles.arrowText}>›</Text>
         </Pressable>
@@ -147,7 +168,7 @@ export default function StressGaugeStep({
   );
 }
 
-function crearEstilos(c: any, esOscuro: boolean) {
+function crearEstilos(c: any, esOscuro: boolean, compact: boolean) {
   const contrast = esOscuro ? "#FFFFFF" : "#17141B";
   const inverted = esOscuro ? "#000000" : "#FFFFFF";
 
@@ -170,33 +191,41 @@ function crearEstilos(c: any, esOscuro: boolean) {
     card: {
       flex: 1,
       width: "100%",
-      minHeight: 294,
-      marginTop: 30,
+      minHeight: compact ? 238 : isAndroid ? 272 : 294,
+      marginTop: isAndroid ? 22 : 30,
       borderRadius: 30,
       backgroundColor: c.superficie,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      paddingHorizontal: 5,
+      paddingHorizontal: isAndroid ? 14 : 5,
     },
     gauge: {
-      width: 245,
-      height: 174,
+      width: isAndroid ? "100%" : 245,
+      height: compact ? 144 : isAndroid ? 166 : 174,
       justifyContent: "flex-end",
       alignItems: "center",
       overflow: "hidden",
     },
     arrow: {
+      position: isAndroid ? "absolute" : "relative",
       width: 44,
       height: 44,
       borderRadius: 22,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: contrast,
+      zIndex: 1,
     },
+    arrowPrevious: isAndroid ? { left: 14 } : {},
+    arrowNext: isAndroid ? { right: 14 } : {},
     disabled: { opacity: 0.18 },
     arrowText: { color: inverted, fontSize: 31, lineHeight: 36, fontWeight: "400" },
-    copy: { height: 112, alignItems: "center", paddingTop: 18 },
+    copy: {
+      height: compact ? 92 : 112,
+      alignItems: "center",
+      paddingTop: compact ? 12 : 18,
+    },
     eyebrow: {
       color: c.textoSuave,
       fontSize: 11,

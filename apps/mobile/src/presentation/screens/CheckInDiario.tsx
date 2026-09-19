@@ -160,7 +160,7 @@ export default function CheckInDiario({ navigation }: Props) {
         >
           <Feather
             name="x"
-            size={19}
+            size={Platform.OS === 'ios' ? 21 : 18}
             color={step === 1 ? "#17141B" : colores.texto}
           />
         </BotonAnimado>
@@ -275,6 +275,7 @@ function createStyles(
   c: ReturnType<typeof useTemaMobile>["colores"],
   dark: boolean
 ) {
+  const isIOS = Platform.OS === 'ios';
   const accent = c.primario;
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: c.fondo },
@@ -283,21 +284,25 @@ function createStyles(
       alignItems: "center",
       gap: 12,
       paddingHorizontal: 20,
-      paddingTop: 8,
+      paddingTop: isIOS ? 8 : 4,
     },
     close: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
+      width: isIOS ? 44 : 38,
+      height: isIOS ? 44 : 38,
+      borderRadius: isIOS ? 22 : 19,
       justifyContent: "center",
       alignItems: "center",
       backgroundColor: c.vidrioSutil,
     },
     moodClose: { backgroundColor: "transparent" },
     skip: { minWidth: 50, alignItems: "flex-end", paddingVertical: 10 },
-    skipText: { color: c.textoSecundario, fontSize: 13, fontWeight: "700" },
+    skipText: { color: c.textoSecundario, fontSize: isIOS ? 13 : 12, fontWeight: "700" },
     moodInk: { color: "#17141B" },
-    content: { flex: 1, paddingHorizontal: 24, paddingTop: 34 },
+    content: {
+      flex: 1,
+      paddingHorizontal: isIOS ? 24 : 20,
+      paddingTop: isIOS ? 34 : 22,
+    },
     step: { flex: 1 },
     title: {
       color: c.texto,
@@ -483,7 +488,11 @@ function createStyles(
       fontWeight: "700",
       marginTop: 2,
     },
-    footer: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 20 },
+    footer: {
+      paddingHorizontal: isIOS ? 24 : 20,
+      paddingTop: 10,
+      paddingBottom: isIOS ? 20 : 16,
+    },
     primary: {
       height: 58,
       borderRadius: 29,

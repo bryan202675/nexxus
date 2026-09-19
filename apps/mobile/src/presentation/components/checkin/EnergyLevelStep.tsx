@@ -1,5 +1,12 @@
 import React, { useEffect } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, {
@@ -19,6 +26,7 @@ const LEVELS: { id: EnergyLevel; label: string; detail: string }[] = [
 ];
 const indexOf = (level: EnergyLevel) =>
   LEVELS.findIndex((item) => item.id === level);
+const isAndroid = Platform.OS === "android";
 
 export default function EnergyLevelStep({
   energy,
@@ -28,7 +36,12 @@ export default function EnergyLevelStep({
   onChange: (level: EnergyLevel) => void;
 }) {
   const { colores, esOscuro } = useTemaMobile();
-  const styles = React.useMemo(() => crearEstilos(colores, esOscuro), [colores, esOscuro]);
+  const { height } = useWindowDimensions();
+  const compact = isAndroid && height < 720;
+  const styles = React.useMemo(
+    () => crearEstilos(colores, esOscuro, compact),
+    [colores, compact, esOscuro]
+  );
 
   const level = useSharedValue(indexOf(energy));
   useEffect(() => {
@@ -100,7 +113,7 @@ export default function EnergyLevelStep({
   );
 }
 
-function crearEstilos(c: any, esOscuro: boolean) {
+function crearEstilos(c: any, esOscuro: boolean, compact: boolean) {
   const contrast = esOscuro ? "#FFFFFF" : "#17141B";
   const inverted = esOscuro ? "#000000" : "#FFFFFF";
 
@@ -123,29 +136,29 @@ function crearEstilos(c: any, esOscuro: boolean) {
     batteryStage: {
       flex: 1,
       width: "100%",
-      minHeight: 310,
+      minHeight: compact ? 252 : 310,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       paddingHorizontal: 8,
     },
     batteryWrap: {
-      width: 154,
-      height: 254,
+      width: compact ? 132 : 154,
+      height: compact ? 216 : 254,
       alignItems: "center",
       justifyContent: "flex-end",
     },
     terminal: {
-      width: 58,
-      height: 13,
+      width: compact ? 50 : 58,
+      height: compact ? 11 : 13,
       borderTopLeftRadius: 7,
       borderTopRightRadius: 7,
       backgroundColor: contrast,
     },
     battery: {
-      width: 154,
-      height: 235,
-      borderRadius: 28,
+      width: compact ? 132 : 154,
+      height: compact ? 200 : 235,
+      borderRadius: compact ? 24 : 28,
       borderWidth: 6,
       borderColor: contrast,
       overflow: "hidden",
@@ -172,7 +185,7 @@ function crearEstilos(c: any, esOscuro: boolean) {
     },
     disabled: { opacity: 0.18 },
     arrowText: { color: inverted, fontSize: 31, lineHeight: 36, fontWeight: "400" },
-    copy: { height: 104, alignItems: "center" },
+    copy: { height: compact ? 88 : 104, alignItems: "center" },
     eyebrow: {
       color: c.textoSuave,
       fontSize: 10,

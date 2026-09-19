@@ -1,5 +1,12 @@
 import React, { useEffect } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, {
@@ -21,6 +28,7 @@ const LEVELS = [
     detail: "Llegas listo para una gran jornada.",
   },
 ];
+const isAndroid = Platform.OS === "android";
 
 const STAR_POSITIONS = [
   // level 1
@@ -97,7 +105,12 @@ export default function RestLevelStep({
   onChange: (value: number) => void;
 }) {
   const { colores, esOscuro } = useTemaMobile();
-  const styles = React.useMemo(() => crearEstilos(colores, esOscuro), [colores, esOscuro]);
+  const { height } = useWindowDimensions();
+  const compact = isAndroid && height < 720;
+  const styles = React.useMemo(
+    () => crearEstilos(colores, esOscuro, compact),
+    [colores, compact, esOscuro]
+  );
 
   const level = useSharedValue(value - 1);
   useEffect(() => {
@@ -165,7 +178,11 @@ export default function RestLevelStep({
           disabled={value === 1}
           accessibilityRole="button"
           accessibilityLabel="Menos cansancio"
-          style={[styles.arrow, value === 1 && styles.disabled]}
+          style={[
+            styles.arrow,
+            styles.arrowPrevious,
+            value === 1 && styles.disabled,
+          ]}
         >
           <Text style={styles.arrowText}>‹</Text>
         </Pressable>
@@ -195,7 +212,11 @@ export default function RestLevelStep({
           disabled={value === 5}
           accessibilityRole="button"
           accessibilityLabel="Más descanso"
-          style={[styles.arrow, value === 5 && styles.disabled]}
+          style={[
+            styles.arrow,
+            styles.arrowNext,
+            value === 5 && styles.disabled,
+          ]}
         >
           <Text style={styles.arrowText}>›</Text>
         </Pressable>
@@ -211,7 +232,7 @@ export default function RestLevelStep({
   );
 }
 
-function crearEstilos(c: any, esOscuro: boolean) {
+function crearEstilos(c: any, esOscuro: boolean, compact: boolean) {
   return StyleSheet.create({
     root: { flex: 1, alignItems: "center" },
     title: {
@@ -231,36 +252,35 @@ function crearEstilos(c: any, esOscuro: boolean) {
     },
     scene: {
       width: "100%",
-      height: 338,
-      marginTop: 30,
+      height: compact ? 256 : isAndroid ? 300 : 338,
+      marginTop: isAndroid ? 22 : 30,
       borderRadius: 32,
       borderWidth: 1,
       borderColor: "rgba(255,255,255,0.20)",
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      paddingHorizontal: 14,
       overflow: "hidden",
     },
     orbit: {
-      width: 248,
-      height: 248,
-      borderRadius: 124,
+      width: compact ? 212 : 248,
+      height: compact ? 212 : 248,
+      borderRadius: compact ? 106 : 124,
       alignItems: "center",
       justifyContent: "center",
       position: "relative",
     },
     moon: {
-      width: 162,
-      height: 162,
-      borderRadius: 81,
+      width: compact ? 142 : 162,
+      height: compact ? 142 : 162,
+      borderRadius: compact ? 71 : 81,
       overflow: "hidden",
       backgroundColor: "#FFF9D7",
       borderWidth: 4,
       borderColor: "rgba(255,255,255,0.82)",
     },
     moonShadow: {
-      position: "absolute",
+      position: isAndroid ? "absolute" : "relative",
       top: 0,
       right: 0,
       bottom: 0,
@@ -282,6 +302,7 @@ function crearEstilos(c: any, esOscuro: boolean) {
       right: 0,
     },
     arrow: {
+      position: "absolute",
       width: 46,
       height: 46,
       borderRadius: 23,
@@ -292,16 +313,22 @@ function crearEstilos(c: any, esOscuro: boolean) {
       borderColor: "rgba(255,255,255,0.32)",
       zIndex: 10,
     },
+    arrowPrevious: isAndroid ? { left: 14 } : {},
+    arrowNext: isAndroid ? { right: 14 } : {},
     disabled: { opacity: 0.18 },
     arrowText: { color: "#FFFFFF", fontSize: 34, lineHeight: 39 },
     halo: {
       position: "absolute",
-      width: 213,
-      height: 213,
-      borderRadius: 107,
+      width: compact ? 184 : 213,
+      height: compact ? 184 : 213,
+      borderRadius: compact ? 92 : 107,
       backgroundColor: "rgba(255,255,255,0.13)",
     },
-    copy: { height: 112, alignItems: "center", paddingTop: 18 },
+    copy: {
+      height: compact ? 92 : 112,
+      alignItems: "center",
+      paddingTop: compact ? 12 : 18,
+    },
     eyebrow: {
       color: c.textoSuave,
       fontSize: 11,
