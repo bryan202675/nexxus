@@ -1085,6 +1085,7 @@
     "low_risk": "Bajo Riesgo"
   },
   "perfilLaboral": {
+    "title": "Mi Perfil",
     "labor_info": "INFORMACIÓN LABORAL",
     "role": "Rol",
     "position": "Cargo",

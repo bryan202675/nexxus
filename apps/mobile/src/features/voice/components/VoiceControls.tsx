@@ -31,8 +31,8 @@ export default function VoiceControls({
 }: Props) {
   const { colores, esOscuro } = useTemaMobile();
 
-  const fondoVidrio = esOscuro ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.85)';
-  const bordeVidrio = esOscuro ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)';
+  const fondoVidrio = esOscuro ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.9)';
+  const bordeVidrio = esOscuro ? 'rgba(255, 255, 255, 0.12)' : 'rgba(41, 37, 34, 0.07)';
 
   return (
     <View style={estilos.contenedorDock}>
@@ -54,7 +54,7 @@ export default function VoiceControls({
             <MaterialIcons
               name="keyboard"
               size={22}
-              color={esOscuro ? '#E2E8F0' : '#1E293B'}
+              color={esOscuro ? '#E2E8F0' : '#514B47'}
             />
           </BotonAnimado>
           <Text style={[estilos.etiqueta, { color: colores.textoSuave }]}>
@@ -84,13 +84,13 @@ export default function VoiceControls({
           <Feather
             name={muteado ? 'mic-off' : 'mic'}
             size={25}
-            color={muteado ? '#EF4444' : esOscuro ? '#FFFFFF' : '#0F172A'}
+            color={muteado ? '#B54B45' : esOscuro ? '#FFFFFF' : '#292522'}
           />
         </BotonAnimado>
         <Text
           style={[
             estilos.etiqueta,
-            { color: muteado ? '#EF4444' : colores.textoSuave, fontWeight: muteado ? '700' : '500' },
+            { color: muteado ? '#B54B45' : colores.textoSuave, fontWeight: muteado ? '700' : '500' },
           ]}
         >
           {muteado ? 'Silenciado' : 'Silenciar'}
@@ -128,9 +128,9 @@ const estilos = StyleSheet.create({
     gap: 8,
   },
   botonPrincipal: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -146,13 +146,13 @@ const estilos = StyleSheet.create({
     ...SOMBRAS.flotante,
   },
   botonMuteado: {
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
-    borderColor: 'rgba(239, 68, 68, 0.35)',
+    backgroundColor: '#FFF0EE',
+    borderColor: 'rgba(181,75,69,0.2)',
   },
   botonFinalizar: {
-    backgroundColor: '#EF4444',
+    backgroundColor: '#B54B45',
     borderColor: 'rgba(255, 255, 255, 0.2)',
-    shadowColor: '#EF4444',
+    shadowColor: '#B54B45',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.45,
     shadowRadius: 12,

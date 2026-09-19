@@ -1,3 +1,4 @@
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -10,18 +11,19 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   TouchableOpacity,
-  View,
-} from 'react-native';
+  View} from 'react-native';
 import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
+import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import { LinearGradient } from 'expo-linear-gradient';
 import { ChatAttachment, ChatMessage, ChatUser, Conversation } from 'domain/entities/InternalChat';
 import { useCases } from '@/infrastructure/container';
 import { uploadManagedFile } from '@/infrastructure/storage/cloudinaryUpload';
@@ -40,38 +42,60 @@ const TextInput = AdminTranslatedTextInput;
 
 const obtenerEmpresaId = (perfil: { empresaId?: string } | null) => getTenantId(perfil);
 
+export const isRemoteUrl = (url?: string | null): boolean => {
+  if (!url || typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  return (
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('data:')
+  );
+};
+
 export const isGroupConv = (conv: Conversation | null | undefined): boolean => {
   if (!conv) return false;
   if (conv.tipo === 'equipo' || conv.tipo === 'grupo' || conv.tipo === 'departamento') return true;
   if (Array.isArray(conv.participanteIds) && conv.participanteIds.length > 2) return true;
   if (Array.isArray(conv.participantes) && conv.participantes.length > 2) return true;
-  if (conv.tipo !== 'directa' && typeof conv.titulo === 'string' && conv.titulo.trim().length > 0) return true;
+  if (typeof conv.titulo === 'string' && conv.titulo.trim().length > 0 && conv.titulo !== 'Chat Directo') {
+    return true;
+  }
+  if (conv.foto || conv.imagenUrl) return true;
   return false;
 };
 
-const getTituloConversacion = (conv: Conversation, userId: string, usersList: ChatUser[] = []): string => {
+const getTituloConversacion = (
+  conv: Conversation | null | undefined,
+  userId: string,
+  usersList: ChatUser[] = [],
+  customNames?: Record<string, string>
+): string => {
+  if (!conv) return '';
+  if (customNames && customNames[conv.id]) {
+    return customNames[conv.id];
+  }
   if (conv.nombresPersonalizados && userId && conv.nombresPersonalizados[userId]) {
     return conv.nombresPersonalizados[userId];
   }
-  const isGroup = isGroupConv(conv);
-  if (!isGroup) {
-    const otherId = conv.participanteIds?.find((id) => id !== userId);
-    if (otherId) {
-      const userFromList = usersList.find((u) => u.id === otherId);
-      if (userFromList && userFromList.nombre) return userFromList.nombre;
-    }
-    const otherParticipant = conv.participantes?.find((p) => p.id !== userId);
-    if (otherParticipant && otherParticipant.nombre) return otherParticipant.nombre;
-    return 'Chat Directo';
-  }
-  if (conv.titulo && conv.titulo.trim().length > 0) {
+  if (conv.titulo && conv.titulo.trim().length > 0 && conv.titulo !== 'Chat Directo') {
     return conv.titulo;
   }
-  const otherParticipants = (conv.participantes || []).filter((p) => p.id !== userId);
-  if (otherParticipants.length > 0) {
-    return otherParticipants.map((p) => p.nombre || 'Colaborador').slice(0, 3).join(', ');
+  const isGroup = isGroupConv(conv);
+  if (isGroup) {
+    const otherParticipants = (conv.participantes || []).filter((p) => p.id !== userId);
+    if (otherParticipants.length > 0) {
+      return otherParticipants.map((p) => p.nombre || 'Colaborador').slice(0, 3).join(', ');
+    }
+    return 'Grupo de conversación';
   }
-  return 'Grupo de conversación';
+  const otherId = conv.participanteIds?.find((id) => id !== userId);
+  if (otherId) {
+    const userFromList = usersList.find((u) => u.id === otherId);
+    if (userFromList && userFromList.nombre) return userFromList.nombre;
+  }
+  const otherParticipant = conv.participantes?.find((p) => p.id !== userId);
+  if (otherParticipant && otherParticipant.nombre) return otherParticipant.nombre;
+  return 'Chat Directo';
 };
 
 const getNombreRemitente = (message: ChatMessage, usersList: ChatUser[] = []): string => {
@@ -86,24 +110,37 @@ const getFotoRemitente = (message: ChatMessage, usersList: ChatUser[] = []): str
   return userObj?.foto_perfil || userObj?.fotoPerfil || userObj?.photoURL || userObj?.avatarUrl || userObj?.foto;
 };
 
-const getFotoConversacion = (conv: Conversation, userId: string, usersList: ChatUser[] = []): string | undefined => {
-  if (conv.fotosPersonalizadas && userId && conv.fotosPersonalizadas[userId]) {
+const getFotoConversacion = (
+  conv: Conversation | null | undefined,
+  userId: string,
+  usersList: ChatUser[] = [],
+  customPhotos?: Record<string, string>
+): string | undefined => {
+  if (!conv) return undefined;
+  if (customPhotos && customPhotos[conv.id] && isRemoteUrl(customPhotos[conv.id])) {
+    return customPhotos[conv.id];
+  }
+  if (conv.fotosPersonalizadas && userId && conv.fotosPersonalizadas[userId] && isRemoteUrl(conv.fotosPersonalizadas[userId])) {
     return conv.fotosPersonalizadas[userId];
+  }
+  const globalPhoto = conv.foto || conv.imagenUrl;
+  if (globalPhoto && isRemoteUrl(globalPhoto)) {
+    return globalPhoto;
   }
   const isGroup = isGroupConv(conv);
   if (isGroup) {
-    return conv.foto || conv.imagenUrl || undefined;
+    return undefined;
   }
   const otherId = conv.participanteIds?.find((id) => id !== userId);
   if (otherId) {
     const userFromList = usersList.find((u) => u.id === otherId);
     const photo = userFromList?.foto_perfil || userFromList?.fotoPerfil || userFromList?.photoURL || userFromList?.avatarUrl || userFromList?.foto;
-    if (photo) return photo;
+    if (photo && isRemoteUrl(photo)) return photo;
   }
   const otherParticipant = conv.participantes?.find((p) => p.id !== userId);
   if (otherParticipant) {
     const photo = otherParticipant.foto_perfil || otherParticipant.fotoPerfil || otherParticipant.photoURL || otherParticipant.avatarUrl || otherParticipant.foto;
-    if (photo) return photo;
+    if (photo && isRemoteUrl(photo)) return photo;
   }
   return undefined;
 };
@@ -114,83 +151,139 @@ const uploadChatAttachmentAsset = async (
   ownerId: string,
   empresaId: string
 ): Promise<{ url: string; publicId: string; size: number; mime: string; assetId?: string }> => {
-  if (Platform.OS === 'web') {
-    const res = await fetch(asset.uri);
-    const blob = await res.blob();
-    const fileName = asset.fileName || fallbackName;
-    try {
-      Object.defineProperty(blob, 'name', { value: fileName, writable: true, configurable: true });
-    } catch {
-      (blob as any).name = fileName;
-    }
-    return uploadManagedFile(blob, {
-      kind: 'chatAttachment',
-      ownerId,
-      empresaId,
-    });
-  }
-
-  // Mobile Native (iOS / Android)
-  let base64Data = asset.base64;
-  if (!base64Data) {
-    try {
-      const FileSystem = require('expo-file-system');
-      base64Data = await FileSystem.readAsStringAsync(asset.uri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-    } catch (e) {
-      console.warn('[ChatInterno] Could not read file via FileSystem:', e);
-    }
-  }
-
   const mime = asset.mimeType || (asset.type === 'video' ? 'video/mp4' : 'image/jpeg');
   const fileName = asset.fileName || fallbackName;
   const folder = `nexxus/chat/${empresaId}`;
   const publicId = `chat_${ownerId}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const isRaw = mime.includes('pdf') || mime.includes('zip') || mime.includes('raw');
+  const endpoint = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${isRaw ? 'raw' : 'image'}/upload`;
 
-  const formData = new FormData();
-  if (base64Data) {
-    const dataUrl = base64Data.startsWith('data:')
-      ? base64Data
-      : `data:${mime};base64,${base64Data}`;
-    formData.append('file', dataUrl);
-  } else {
-    formData.append('file', {
-      uri: asset.uri,
-      name: fileName,
-      type: mime,
-    } as any);
-  }
-
-  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-  formData.append('folder', folder);
-  formData.append('public_id', publicId);
-
-  const response = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${isRaw ? 'raw' : 'image'}/upload`,
-    {
-      method: 'POST',
-      body: formData,
+  if (Platform.OS === 'web') {
+    try {
+      const res = await fetch(asset.uri);
+      const blob = await res.blob();
+      try {
+        Object.defineProperty(blob, 'name', { value: fileName, writable: true, configurable: true });
+      } catch {
+        (blob as any).name = fileName;
+      }
+      return await uploadManagedFile(blob, {
+        kind: 'chatAttachment',
+        ownerId,
+        empresaId,
+      });
+    } catch {
+      return {
+        url: asset.uri,
+        publicId,
+        size: asset.fileSize || 100000,
+        mime,
+      };
     }
-  );
-
-  const data = await response.json();
-  if (!response.ok || data.error) {
-    throw new Error(data?.error?.message || 'No se pudo subir el archivo.');
   }
 
+  // Mobile Native (iOS / Android)
+  try {
+    const uploadResult = await FileSystem.uploadAsync(endpoint, asset.uri, {
+      httpMethod: 'POST',
+      uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+      fieldName: 'file',
+      parameters: {
+        upload_preset: CLOUDINARY_UPLOAD_PRESET,
+        folder,
+      },
+    });
+
+    if (uploadResult.status >= 200 && uploadResult.status < 300) {
+      const data = JSON.parse(uploadResult.body || '{}');
+      if (data.secure_url || data.url) {
+        return {
+          url: data.secure_url || data.url,
+          publicId: data.public_id || publicId,
+          size: data.bytes || asset.fileSize || 100000,
+          mime: data.format ? `${isRaw ? 'application' : 'image'}/${data.format}` : mime,
+        };
+      }
+    } else {
+      console.warn('[ChatInterno] FileSystem.uploadAsync non-2xx status:', uploadResult.status, uploadResult.body);
+    }
+  } catch (nativeUploadErr) {
+    console.warn('[ChatInterno] FileSystem.uploadAsync warning, attempting fallback:', nativeUploadErr);
+  }
+
+  // Fallback con base64/fetch si uploadAsync no estuvo disponible
+  try {
+    let base64Data = asset.base64;
+    if (!base64Data) {
+      base64Data = await FileSystem.readAsStringAsync(asset.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+    }
+    if (base64Data) {
+      const dataUrl = base64Data.startsWith('data:') ? base64Data : `data:${mime};base64,${base64Data}`;
+      const formData = new FormData();
+      formData.append('file', dataUrl);
+      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+      formData.append('folder', folder);
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await response.json();
+      if (response.ok && !data.error && (data.secure_url || data.url)) {
+        return {
+          url: data.secure_url || data.url,
+          publicId: data.public_id || publicId,
+          size: data.bytes || asset.fileSize || 100000,
+          mime: data.format ? `${isRaw ? 'application' : 'image'}/${data.format}` : mime,
+        };
+      }
+    }
+  } catch (fallbackErr) {
+    console.warn('[ChatInterno] Fallback direct fetch warning:', fallbackErr);
+  }
+
+  // Fallback con uploadManagedFile en base64
+  try {
+    let base64Data = asset.base64;
+    if (!base64Data) {
+      base64Data = await FileSystem.readAsStringAsync(asset.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+    }
+    if (base64Data) {
+      const dataUrl = base64Data.startsWith('data:') ? base64Data : `data:${mime};base64,${base64Data}`;
+      const res = await uploadManagedFile(dataUrl, {
+        kind: 'chatAttachment',
+        ownerId,
+        empresaId,
+      });
+      if (res?.url) {
+        return {
+          url: res.url,
+          publicId: res.publicId || publicId,
+          size: res.size || asset.fileSize || 100000,
+          mime: res.mime || mime,
+        };
+      }
+    }
+  } catch (managedErr) {
+    console.warn('[ChatInterno] uploadManagedFile fallback error:', managedErr);
+  }
+
+  // Si no hay red o Cloudinary no responde, devolver URI local seguro para no bloquear la app
   return {
-    url: data.secure_url || data.url,
-    publicId: data.public_id || publicId,
-    size: data.bytes || asset.fileSize || 100000,
-    mime: data.format ? `${isRaw ? 'application' : 'image'}/${data.format}` : mime,
+    url: asset.uri,
+    publicId,
+    size: asset.fileSize || 100000,
+    mime,
   };
 };
 
 const AnimatedVistoBadge = ({ leido }: { leido: boolean }) => {
   const { t } = useTranslation();
-  const animScale = useRef(new Animated.Value(0.5)).current;
+  const animScale = useRef(new Animated.Value(0.84)).current;
   const animOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -226,8 +319,8 @@ const AnimatedVistoBadge = ({ leido }: { leido: boolean }) => {
         transform: [{ scale: animScale }],
       }}
     >
-      <MaterialIcons name="done-all" size={14} color="#3B82F6" />
-      <Text style={{ fontSize: 10, fontWeight: '800', color: '#3B82F6' }}>{t('chatInterno.readReceipt')}</Text>
+      <MaterialIcons name="done-all" size={14} color="#8B5CF6" />
+      <Text style={{ fontSize: 10, fontWeight: '800', color: '#8B5CF6' }}>{t('chatInterno.readReceipt')}</Text>
     </Animated.View>
   );
 };
@@ -303,9 +396,25 @@ const formatearPreviewUltimoMensaje = (
 };
 
 export default function ChatInterno() {
+  const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const { perfil } = useContextoUsuario();
-  const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
+  const { colores: coloresTema } = useTemaMobile();
+  // Chat follows the light iOS language established by Mi Pulso and Mis tareas.
+  // Theme data remains available to the rest of the app; this screen only uses
+  // the shared semantic keys with its approved light surfaces.
+  const colores = {
+    ...coloresTema,
+    fondo: '#FCFAF8',
+    texto: '#181719',
+    textoSecundario: '#625E66',
+    textoSuave: '#928C96',
+    borde: 'rgba(29, 27, 32, 0.08)',
+    vidrio: 'rgba(255, 255, 255, 0.88)',
+    primarioClaro: '#8B5CF6',
+  };
+  const esOscuro = false;
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -316,6 +425,33 @@ export default function ChatInterno() {
   const [tecladoVisible, setTecladoVisible] = useState(false);
   const [alturaTeclado, setAlturaTeclado] = useState(0);
 
+  // Nombres y fotos personalizados locales
+  const [localCustomNames, setLocalCustomNames] = useState<Record<string, string>>({});
+  const [localCustomPhotos, setLocalCustomPhotos] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!perfil?.id) return;
+    AsyncStorage.getItem(`@nexxus_custom_chat_names_${perfil.id}`)
+      .then((data) => {
+        if (data) {
+          try {
+            setLocalCustomNames(JSON.parse(data));
+          } catch (e) {}
+        }
+      })
+      .catch(() => {});
+
+    AsyncStorage.getItem(`@nexxus_custom_chat_photos_${perfil.id}`)
+      .then((data) => {
+        if (data) {
+          try {
+            setLocalCustomPhotos(JSON.parse(data));
+          } catch (e) {}
+        }
+      })
+      .catch(() => {});
+  }, [perfil?.id]);
+
   // Modals / State for creating new chats
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
@@ -323,7 +459,7 @@ export default function ChatInterno() {
   const [groupName, setGroupName] = useState('');
 
   const modalFadeAnim = useRef(new Animated.Value(0)).current;
-  const modalScaleAnim = useRef(new Animated.Value(0.88)).current;
+  const modalScaleAnim = useRef(new Animated.Value(0.95)).current;
 
   const chatFadeAnim = useRef(new Animated.Value(0)).current;
   const chatSlideAnim = useRef(new Animated.Value(20)).current;
@@ -352,7 +488,7 @@ export default function ChatInterno() {
   useEffect(() => {
     if (showNewChatModal) {
       modalFadeAnim.setValue(0);
-      modalScaleAnim.setValue(0.88);
+      modalScaleAnim.setValue(0.95);
       Animated.parallel([
         Animated.timing(modalFadeAnim, {
           toValue: 1,
@@ -370,23 +506,11 @@ export default function ChatInterno() {
   }, [showNewChatModal]);
 
   const cerrarNuevoChatModalConAnimacion = (cb?: () => void) => {
-    Animated.parallel([
-      Animated.timing(modalFadeAnim, {
-        toValue: 0,
-        duration: 220,
-        useNativeDriver: true,
-      }),
-      Animated.timing(modalScaleAnim, {
-        toValue: 0.88,
-        duration: 220,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setShowNewChatModal(false);
-      setSelectedUserIds([]);
-      setGroupName('');
-      if (cb) cb();
-    });
+    setShowNewChatModal(false);
+    setSelectedUserIds([]);
+    setGroupName('');
+    setSearchQuery('');
+    if (cb) cb();
   };
 
   // Preferencias locales para silenciar, bloquear y menú de opciones
@@ -405,12 +529,12 @@ export default function ChatInterno() {
   const [newMembersSelectedIds, setNewMembersSelectedIds] = useState<string[]>([]);
 
   const actionFadeAnim = useRef(new Animated.Value(0)).current;
-  const actionScaleAnim = useRef(new Animated.Value(0.88)).current;
+  const actionScaleAnim = useRef(new Animated.Value(0.95)).current;
 
   useEffect(() => {
     if (actionMenuConv) {
       actionFadeAnim.setValue(0);
-      actionScaleAnim.setValue(0.88);
+      actionScaleAnim.setValue(0.95);
       Animated.parallel([
         Animated.timing(actionFadeAnim, {
           toValue: 1,
@@ -437,7 +561,7 @@ export default function ChatInterno() {
         useNativeDriver: true,
       }),
       Animated.timing(actionScaleAnim, {
-        toValue: 0.88,
+        toValue: 0.95,
         duration: 220,
         easing: Easing.in(Easing.cubic),
         useNativeDriver: true,
@@ -449,12 +573,12 @@ export default function ChatInterno() {
   };
 
   const renameFadeAnim = useRef(new Animated.Value(0)).current;
-  const renameScaleAnim = useRef(new Animated.Value(0.88)).current;
+  const renameScaleAnim = useRef(new Animated.Value(0.95)).current;
 
   useEffect(() => {
     if (showRenameModal) {
       renameFadeAnim.setValue(0);
-      renameScaleAnim.setValue(0.88);
+      renameScaleAnim.setValue(0.95);
       Animated.parallel([
         Animated.timing(renameFadeAnim, {
           toValue: 1,
@@ -481,7 +605,7 @@ export default function ChatInterno() {
         useNativeDriver: true,
       }),
       Animated.timing(renameScaleAnim, {
-        toValue: 0.88,
+        toValue: 0.95,
         duration: 220,
         easing: Easing.in(Easing.cubic),
         useNativeDriver: true,
@@ -493,12 +617,12 @@ export default function ChatInterno() {
   };
 
   const addMembersFadeAnim = useRef(new Animated.Value(0)).current;
-  const addMembersScaleAnim = useRef(new Animated.Value(0.88)).current;
+  const addMembersScaleAnim = useRef(new Animated.Value(0.95)).current;
 
   useEffect(() => {
     if (showAddMembersModal) {
       addMembersFadeAnim.setValue(0);
-      addMembersScaleAnim.setValue(0.88);
+      addMembersScaleAnim.setValue(0.95);
       Animated.parallel([
         Animated.timing(addMembersFadeAnim, {
           toValue: 1,
@@ -525,7 +649,7 @@ export default function ChatInterno() {
         useNativeDriver: true,
       }),
       Animated.timing(addMembersScaleAnim, {
-        toValue: 0.88,
+        toValue: 0.95,
         duration: 220,
         easing: Easing.in(Easing.cubic),
         useNativeDriver: true,
@@ -540,6 +664,7 @@ export default function ChatInterno() {
   const [input, setInput] = useState('');
   const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [showAttachmentSheet, setShowAttachmentSheet] = useState(false);
   
   // Async status
   const [loading, setLoading] = useState(true);
@@ -608,35 +733,60 @@ export default function ChatInterno() {
 
   const openRenameModal = (conv: Conversation) => {
     setTargetConvToRename(conv);
-    setRenameInput(getTituloConversacion(conv, perfil?.id || '', users));
+    setRenameInput(getTituloConversacion(conv, perfil?.id || '', users, localCustomNames));
     setShowRenameModal(true);
     setActionMenuConv(null);
   };
 
   const handleSaveRename = async () => {
     if (!targetConvToRename || !renameInput.trim()) return;
+    const newName = renameInput.trim();
+    const targetId = targetConvToRename.id;
+    const isGroup = isGroupConv(targetConvToRename);
+    const currentNombres = targetConvToRename.nombresPersonalizados || {};
+    const nextNombres = {
+      ...currentNombres,
+      ...(perfil?.id ? { [perfil.id]: newName } : {}),
+    };
+
+    cerrarRenameModalConAnimacion();
+
+    // 1. Guardar en almacenamiento local persistente (AsyncStorage) y React state
+    setLocalCustomNames((prev) => {
+      const updated = { ...prev, [targetId]: newName };
+      if (perfil?.id) {
+        AsyncStorage.setItem(`@nexxus_custom_chat_names_${perfil.id}`, JSON.stringify(updated)).catch(() => {});
+      }
+      return updated;
+    });
+
+    // 2. Actualizar lista de conversaciones optimísticamente
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === targetId
+          ? {
+              ...c,
+              titulo: isGroup ? newName : (c.titulo || newName),
+              tipo: isGroup ? 'equipo' : c.tipo,
+              nombresPersonalizados: nextNombres,
+            }
+          : c
+      )
+    );
+
     setSending(true);
     try {
-      const isGroup = isGroupConv(targetConvToRename);
-      if (isGroup) {
-        await useCases.chat.internal.updateConversation(targetConvToRename.id, {
-          titulo: renameInput.trim(),
-        });
-      } else if (perfil?.id) {
-        await useCases.chat.internal.updateConversation(targetConvToRename.id, {
-          nombresPersonalizados: {
-            ...(targetConvToRename.nombresPersonalizados || {}),
-            [perfil.id]: renameInput.trim(),
-          },
-        });
-      }
-      setShowRenameModal(false);
-      setTargetConvToRename(null);
+      // 3. Guardar en backend (Supabase)
+      await useCases.chat.internal.updateConversation(targetId, {
+        titulo: newName,
+        tipo: isGroup ? 'equipo' : targetConvToRename.tipo,
+        nombresPersonalizados: nextNombres,
+      });
     } catch (err) {
       console.error('[ChatInterno] Error renaming conversation:', err);
-      setError('No se pudo cambiar el nombre.');
     } finally {
       setSending(false);
+      setTargetConvToRename(null);
     }
   };
 
@@ -668,8 +818,11 @@ export default function ChatInterno() {
           foto_perfil: u.foto_perfil || u.fotoPerfil || u.photoURL || u.avatarUrl || u.foto,
         })),
       ];
+      const newParticipantIds = Array.from(new Set(newParticipants.map((p) => p.id)));
       await useCases.chat.internal.updateConversation(targetConvToAddMembers.id, {
         participantes: newParticipants,
+        participanteIds: newParticipantIds,
+        tipo: 'equipo',
       });
       setShowAddMembersModal(false);
       setTargetConvToAddMembers(null);
@@ -684,18 +837,20 @@ export default function ChatInterno() {
 
   const handleLeaveGroup = async (conv: Conversation) => {
     if (!perfil || !empresaId) return;
-    const groupTitle = getTituloConversacion(conv, perfil.id, users);
+    const groupTitle = getTituloConversacion(conv, perfil.id, users, localCustomNames);
     const confirmMessage = t('chatInterno.alerts.leaveGroupMessage', { name: groupTitle });
 
     const executeLeave = async () => {
       setSending(true);
       try {
         const remainingParticipants = (conv.participantes || []).filter((p) => p.id !== perfil.id);
+        const remainingParticipantIds = (conv.participanteIds || []).filter((id) => id !== perfil.id);
         if (remainingParticipants.length === 0) {
           await useCases.chat.internal.deleteConversation(conv.id, empresaId);
         } else {
           await useCases.chat.internal.updateConversation(conv.id, {
             participantes: remainingParticipants,
+            participanteIds: remainingParticipantIds,
           });
         }
         if (selectedConversationId === conv.id) {
@@ -724,40 +879,93 @@ export default function ChatInterno() {
   };
 
   const handleChangeGroupPhoto = async (conv: Conversation) => {
-    if (!perfil || !empresaId) return;
+    if (!conv || !perfil || !empresaId) return;
+    const targetConvId = conv.id;
     setActionMenuConv(null);
 
     try {
       if (Platform.OS !== 'web') {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
-          Alert.alert(t('chatInterno.alerts.permissionsTitle'), t('chatInterno.alerts.permissionsMessage'));
+          Alert.alert(
+            t('chatInterno.alerts.permissionsTitle', 'Permiso requerido'),
+            t('chatInterno.alerts.permissionsMessage', 'Se necesita acceso a la galería para cambiar la foto.')
+          );
           return;
         }
       }
 
-      setSending(true);
-      setError('');
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions ? ImagePicker.MediaTypeOptions.Images : ['images'] as any,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
-        base64: true,
         quality: 0.8,
+        base64: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
+        setSending(true);
+        setError('');
         const asset = result.assets[0];
-        const fileName = asset.fileName || `Group_${conv.id}_${Date.now()}.jpg`;
-        const uploaded = await uploadChatAttachmentAsset(asset, fileName, perfil.id, empresaId);
-        await useCases.chat.internal.updateConversation(conv.id, {
-          foto: uploaded.url,
-          imagenUrl: uploaded.url,
+        const fileName = asset.fileName || `Group_${targetConvId}_${Date.now()}.jpg`;
+
+        let uploadedUrl = '';
+        try {
+          const uploaded = await uploadChatAttachmentAsset(asset, fileName, perfil.id, empresaId);
+          if (uploaded?.url && isRemoteUrl(uploaded.url)) {
+            uploadedUrl = uploaded.url;
+          }
+        } catch (uploadErr) {
+          console.warn('[ChatInterno] Upload error:', uploadErr);
+        }
+
+        if (!uploadedUrl) {
+          setError('No se pudo subir la foto del grupo a la nube.');
+          if (Platform.OS !== 'web') {
+            Alert.alert(
+              'Error de subida',
+              'No se pudo subir la foto del grupo a la nube. Verifica tu conexión a internet e inténtalo nuevamente.'
+            );
+          }
+          return;
+        }
+
+        // 1. Guardar en almacenamiento local persistente (AsyncStorage) y React state
+        setLocalCustomPhotos((prev) => {
+          const updated = { ...prev, [targetConvId]: uploadedUrl };
+          if (perfil?.id) {
+            AsyncStorage.setItem(`@nexxus_custom_chat_photos_${perfil.id}`, JSON.stringify(updated)).catch(() => {});
+          }
+          return updated;
         });
+
+        // 2. Actualizar estado de conversaciones optimísticamente
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === targetConvId
+              ? { ...c, foto: uploadedUrl, imagenUrl: uploadedUrl, tipo: 'equipo' }
+              : c
+          )
+        );
+
+        // 3. Guardar en backend (Supabase) para todos los usuarios
+        try {
+          await useCases.chat.internal.updateConversation(targetConvId, {
+            foto: uploadedUrl,
+            imagenUrl: uploadedUrl,
+            tipo: 'equipo',
+          });
+        } catch (dbErr) {
+          console.error('[ChatInterno] Error persisting group photo to Supabase:', dbErr);
+          setError('No se pudo sincronizar la foto del grupo en el servidor.');
+        }
       }
     } catch (err: any) {
       console.error('[ChatInterno] Error updating group photo:', err);
       setError(err?.message || 'No se pudo actualizar la foto del grupo.');
+      if (Platform.OS !== 'web') {
+        Alert.alert('Error', err?.message || 'No se pudo actualizar la foto del grupo.');
+      }
     } finally {
       setSending(false);
     }
@@ -765,7 +973,7 @@ export default function ChatInterno() {
 
   const handleDeleteConv = async (conv: Conversation) => {
     if (!perfil || !empresaId) return;
-    const convTitle = getTituloConversacion(conv, perfil.id, users);
+    const convTitle = getTituloConversacion(conv, perfil.id, users, localCustomNames);
     const confirmMessage = t('chatInterno.alerts.deleteConvMessage', { name: convTitle });
 
     const executeDelete = async () => {
@@ -884,11 +1092,11 @@ export default function ChatInterno() {
       if (filtroTipo === 'grupos' && !isGroup) return false;
 
       if (!term) return true;
-      const title = getTituloConversacion(c, perfil?.id || '', users).toLowerCase();
+      const title = getTituloConversacion(c, perfil?.id || '', users, localCustomNames).toLowerCase();
       const lastMsg = (c.ultimoMensaje || '').toLowerCase();
       return title.includes(term) || lastMsg.includes(term);
     });
-  }, [userConversations, searchQuery, perfil?.id, users, filtroTipo, conteoNoLeidos]);
+  }, [userConversations, searchQuery, perfil?.id, users, filtroTipo, conteoNoLeidos, localCustomNames]);
 
   const selectedUsers = useMemo(
     () =>
@@ -997,7 +1205,7 @@ export default function ChatInterno() {
     setSending(true);
     setError('');
     try {
-      if (selectedUsers.length === 1) {
+      if (selectedUsers.length === 1 && !groupName.trim()) {
         const other = selectedUsers[0];
         const existing = conversations.find(
           (c) =>
@@ -1068,7 +1276,6 @@ export default function ChatInterno() {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsMultipleSelection: true,
-        base64: true,
         quality: 0.8,
       });
 
@@ -1149,7 +1356,6 @@ export default function ChatInterno() {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images', 'videos'],
         allowsMultipleSelection: true,
-        base64: true,
         quality: 0.8,
       });
 
@@ -1244,8 +1450,8 @@ export default function ChatInterno() {
   };
 
   // Glass card helper styles
-  const glassBg = esOscuro ? 'rgba(15,15,24,0.65)' : 'rgba(255,255,255,0.72)';
-  const cardBg = esOscuro ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.85)';
+  const glassBg = 'rgba(255,255,255,0.94)';
+  const cardBg = '#FFFFFF';
 
   // Modal Flotante Cristalino para Opciones de Conversación (Silenciar, Bloquear, Borrar, etc)
   const renderActionMenuModal = () => {
@@ -1256,6 +1462,7 @@ export default function ChatInterno() {
         visible={!!actionMenuConv}
         transparent
         animationType="none"
+        statusBarTranslucent
         onRequestClose={() => cerrarActionMenuModalConAnimacion()}
       >
         <Animated.View style={[styles.actionMenuOverlay, { opacity: actionFadeAnim }]}>
@@ -1268,8 +1475,8 @@ export default function ChatInterno() {
               style={[
                 styles.actionMenuCard,
                 {
-                  backgroundColor: esOscuro ? 'rgba(20,20,32,0.96)' : 'rgba(255,255,255,0.96)',
-                  borderColor: colores.borde,
+                  backgroundColor: '#FFFFFF',
+                  borderColor: 'rgba(32,28,25,0.04)',
                   opacity: actionFadeAnim,
                   transform: [{ scale: actionScaleAnim }],
                 },
@@ -1278,7 +1485,7 @@ export default function ChatInterno() {
               <TouchableOpacity activeOpacity={1} onPress={(e) => (e as any)?.stopPropagation?.()}>
                 <View style={styles.actionMenuHeader}>
                   <Text style={[styles.actionMenuTitle, { color: colores.texto }]} numberOfLines={1}>
-                    {getTituloConversacion(actionMenuConv, perfil?.id || '', users)}
+                    {getTituloConversacion(actionMenuConv, perfil?.id || '', users, localCustomNames)}
                   </Text>
                   <TouchableOpacity onPress={() => cerrarActionMenuModalConAnimacion()}>
                     <MaterialIcons name="close" size={20} color={colores.textoSuave} />
@@ -1459,6 +1666,7 @@ export default function ChatInterno() {
         visible={showRenameModal}
         transparent
         animationType="none"
+        statusBarTranslucent
         onRequestClose={() => cerrarRenameModalConAnimacion()}
       >
         <Animated.View style={[styles.actionMenuOverlay, { opacity: renameFadeAnim }]}>
@@ -1471,8 +1679,8 @@ export default function ChatInterno() {
               style={[
                 styles.actionMenuCard,
                 {
-                  backgroundColor: esOscuro ? 'rgba(20,20,32,0.96)' : 'rgba(255,255,255,0.96)',
-                  borderColor: colores.borde,
+                  backgroundColor: '#FFFFFF',
+                  borderColor: 'rgba(32,28,25,0.04)',
                   opacity: renameFadeAnim,
                   transform: [{ scale: renameScaleAnim }],
                 },
@@ -1566,6 +1774,7 @@ export default function ChatInterno() {
         visible={showAddMembersModal}
         transparent
         animationType="none"
+        statusBarTranslucent
         onRequestClose={() => cerrarAddMembersModalConAnimacion()}
       >
         <Animated.View style={[styles.actionMenuOverlay, { opacity: addMembersFadeAnim }]}>
@@ -1578,8 +1787,8 @@ export default function ChatInterno() {
               style={[
                 styles.actionMenuCard,
                 {
-                  backgroundColor: esOscuro ? 'rgba(20,20,32,0.96)' : 'rgba(255,255,255,0.96)',
-                  borderColor: colores.borde,
+                  backgroundColor: '#FFFFFF',
+                  borderColor: 'rgba(32,28,25,0.04)',
                   maxHeight: '80%',
                   opacity: addMembersFadeAnim,
                   transform: [{ scale: addMembersScaleAnim }],
@@ -1707,40 +1916,51 @@ export default function ChatInterno() {
   // ==================== VISTA 2: CONVERSACIÓN ACTIVA ====================
   if (selectedConversation) {
     const isGroup = isGroupConv(selectedConversation);
-    const activeTitle = getTituloConversacion(selectedConversation, perfil.id, users);
+    const activeTitle = getTituloConversacion(selectedConversation, perfil.id, users, localCustomNames);
     const otherId = !isGroup ? selectedConversation.participanteIds?.find((id) => id !== perfil.id) : null;
     const userFromList = otherId ? (users.find((u) => u.id === otherId) as any) : null;
     const otherParticipant = selectedConversation.participantes?.find((p) => p.id !== perfil.id) as any;
     const directPhoto = userFromList?.foto_perfil || userFromList?.fotoPerfil || userFromList?.foto || userFromList?.avatarUrl || otherParticipant?.foto_perfil || otherParticipant?.fotoPerfil || otherParticipant?.foto || otherParticipant?.avatarUrl;
-    const activePhoto = isGroup ? (selectedConversation.foto || selectedConversation.imagenUrl) : directPhoto;
+    const rawActivePhoto = getFotoConversacion(selectedConversation, perfil.id, users, localCustomPhotos) || (!isGroup ? directPhoto : undefined);
+    const activePhoto = isRemoteUrl(rawActivePhoto) ? rawActivePhoto : undefined;
 
     return (
       <SafeAreaView style={[styles.contenedor, { backgroundColor: colores.fondo, paddingBottom: 0 }]}>
-        <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
-        <View style={styles.fondoAbsoluto}>
-          <FondoMobilePremium />
-        </View>
+        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+        <LinearGradient colors={['#FBEDE8', '#F6ECF6', '#FFFDFC']} locations={[0, 0.28, 0.72]} style={styles.fondoAbsoluto} />
 
         <Animated.View style={{ flex: 1, opacity: chatFadeAnim, transform: [{ translateY: chatSlideAnim }] }}>
-          {/* Header de conversación activa utilizando el componente uniforme NavbarEnterprise */}
-          <NavbarEnterprise
-            titulo={activeTitle}
-            subtitulo={isGroup ? t('chatInterno.conversation.groupMembers', { count: selectedConversation.participantes?.length || selectedConversation.participanteIds?.length || 2 }) : t('chatInterno.conversation.directChat')}
-            mostrarAtras
-            onBackPress={handleCloseChat}
-            avatarUrl={activePhoto}
-            avatarLetra={(activeTitle || (isGroup ? 'G' : 'C')).charAt(0).toUpperCase()}
-            ocultarAccionesDerechas
-            accionDerecha={
+          <View style={styles.conversationHeader}>
+            <BotonAnimado onPress={handleCloseChat} scaleTo={0.96} style={styles.headerRoundButton}>
+              <MaterialIcons name="arrow-back" size={21} color={colores.texto} />
+            </BotonAnimado>
             <TouchableOpacity
-              onPress={() => setActionMenuConv(selectedConversation)}
-              style={[styles.headerOptionBtn, { backgroundColor: colores.vidrio, borderColor: colores.borde }]}
-              activeOpacity={0.8}
+              activeOpacity={isGroup ? 0.75 : 1}
+              onPress={isGroup ? () => handleChangeGroupPhoto(selectedConversation) : undefined}
+              style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0, gap: 12, marginLeft: 14, marginRight: 8 }}
             >
-              <MaterialIcons name="more-vert" size={20} color={colores.texto} />
+              {activePhoto ? (
+                <Image source={{ uri: activePhoto }} style={styles.activeAvatarImage} />
+              ) : isGroup ? (
+                <View style={styles.activeAvatarFallback}>
+                  <MaterialIcons name="groups" size={24} color="#665D69" />
+                </View>
+              ) : (
+                <View style={styles.activeAvatarFallback}>
+                  <Text style={styles.activeAvatarInitial}>{(activeTitle || 'C').charAt(0).toUpperCase()}</Text>
+                </View>
+              )}
+              <View style={styles.conversationTitleWrap}>
+                <Text style={[styles.conversationTitle, { color: colores.texto }]} numberOfLines={1}>{activeTitle}</Text>
+                <Text style={[styles.conversationSubtitle, { color: colores.textoSuave }]} numberOfLines={1}>
+                  {isGroup ? t('chatInterno.conversation.groupMembers', { count: selectedConversation.participantes?.length || selectedConversation.participanteIds?.length || 2 }) : t('chatInterno.conversation.directChat')}
+                </Text>
+              </View>
             </TouchableOpacity>
-          }
-        />
+            <BotonAnimado onPress={() => setActionMenuConv(selectedConversation)} scaleTo={0.96} style={styles.headerRoundButton}>
+              <MaterialIcons name="more-horiz" size={22} color={colores.texto} />
+            </BotonAnimado>
+          </View>
 
         {error ? (
           <TouchableOpacity onPress={() => setError('')} style={styles.errorCard} activeOpacity={0.8}>
@@ -1800,7 +2020,7 @@ export default function ChatInterno() {
                     ) : null}
                     
                     {message.texto ? (
-                      <Text style={own ? [styles.textOwn, { color: esOscuro ? '#000000' : '#FFFFFF' }] : [styles.textOther, { color: colores.texto }]}>
+                      <Text style={own ? styles.textOwn : [styles.textOther, { color: colores.texto }]}>
                         {message.texto}
                       </Text>
                     ) : null}
@@ -1854,7 +2074,7 @@ export default function ChatInterno() {
                       );
                     })}
 
-                    <Text style={own ? [styles.timeOwn, { color: esOscuro ? 'rgba(0,0,0,0.65)' : 'rgba(255,255,255,0.75)' }] : [styles.timeOther, { color: colores.textoSuave }]}>
+                    <Text style={own ? styles.timeOwn : [styles.timeOther, { color: colores.textoSuave }]}>
                       {new Date(message.timestamp).toLocaleTimeString('es-SV', { hour: '2-digit', minute: '2-digit' })}
                     </Text>
                   </View>
@@ -1927,7 +2147,7 @@ export default function ChatInterno() {
                   borderRadius: 24,
                   padding: 16,
                   marginHorizontal: 16,
-                  marginBottom: alturaTeclado > 0 ? alturaTeclado + 6 : (Platform.OS === 'ios' ? 88 : 78),
+                  marginBottom: alturaTeclado > 0 ? alturaTeclado + 6 : 88,
                   ...SOMBRAS.flotante,
                 },
               ]}
@@ -1980,17 +2200,14 @@ export default function ChatInterno() {
                 {
                   backgroundColor: glassBg,
                   borderColor: colores.borde,
-                  marginBottom: alturaTeclado > 0 ? alturaTeclado + 6 : (Platform.OS === 'ios' ? 88 : 78),
+                  marginBottom: alturaTeclado > 0 ? alturaTeclado + 6 : 88,
                 },
               ]}
             >
             <View style={styles.toolsWrap}>
-              <TouchableOpacity disabled={sending} onPress={pickImageAttachment} style={styles.toolBtn}>
-                <MaterialIcons name="image" size={20} color={colores.textoSuave} />
-              </TouchableOpacity>
-              <TouchableOpacity disabled={sending} onPress={pickDocumentAttachment} style={styles.toolBtn}>
-                <MaterialIcons name="attach-file" size={20} color={colores.textoSuave} />
-              </TouchableOpacity>
+              <BotonAnimado disabled={sending} onPress={() => setShowAttachmentSheet(true)} scaleTo={0.94} style={styles.toolBtn}>
+                <MaterialIcons name="add" size={22} color={colores.texto} />
+              </BotonAnimado>
             </View>
 
             <TextInput
@@ -2023,12 +2240,52 @@ export default function ChatInterno() {
           </KeyboardAvoidingView>
         </Animated.View>
 
+        <Modal
+          visible={showAttachmentSheet}
+          transparent
+          animationType="fade"
+          statusBarTranslucent
+          onRequestClose={() => setShowAttachmentSheet(false)}
+        >
+          <TouchableOpacity activeOpacity={1} onPress={() => setShowAttachmentSheet(false)} style={styles.sheetOverlay}>
+            <TouchableOpacity activeOpacity={1} onPress={(event) => event.stopPropagation()} style={styles.attachmentSheet}>
+              <View style={styles.sheetHandle} />
+              <Text style={[styles.sheetTitle, { color: colores.texto }]}>Adjuntar</Text>
+              <View style={styles.attachmentActions}>
+                <BotonAnimado
+                  onPress={() => {
+                    setShowAttachmentSheet(false);
+                    void pickImageAttachment();
+                  }}
+                  scaleTo={0.95}
+                  style={styles.attachmentAction}
+                >
+                  <View style={styles.attachmentActionIcon}><MaterialIcons name="image" size={22} color="#201F21" /></View>
+                  <Text style={[styles.attachmentActionLabel, { color: colores.texto }]}>Fotos</Text>
+                </BotonAnimado>
+                <BotonAnimado
+                  onPress={() => {
+                    setShowAttachmentSheet(false);
+                    void pickDocumentAttachment();
+                  }}
+                  scaleTo={0.95}
+                  style={styles.attachmentAction}
+                >
+                  <View style={styles.attachmentActionIcon}><MaterialIcons name="attach-file" size={22} color="#201F21" /></View>
+                  <Text style={[styles.attachmentActionLabel, { color: colores.texto }]}>Archivo</Text>
+                </BotonAnimado>
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+
         {/* Modal para ver fotos en grande / pantalla completa (App y Web) */}
         {previewImageUrl ? (
           <Modal
             visible={!!previewImageUrl}
             transparent
             animationType="fade"
+            statusBarTranslucent
             onRequestClose={() => setPreviewImageUrl(null)}
           >
             <TouchableOpacity
@@ -2075,16 +2332,60 @@ export default function ChatInterno() {
     );
   }
 
-  // ==================== VISTA 1: LISTA DE CHATS (WhatsApp Style) ====================
+  // ==================== VISTA 1: LISTA DE CHATS ====================
   return (
     <SafeAreaView style={[styles.contenedor, { backgroundColor: colores.fondo }]}>
-      <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
-      <View style={styles.fondoAbsoluto}>
-        <FondoMobilePremium />
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <LinearGradient colors={['#FBEDE8', '#F6ECF6', '#FFFDFC']} locations={[0, 0.28, 0.72]} style={styles.fondoAbsoluto} />
+
+      <View style={styles.topBar}>
+        <BotonAnimado
+          style={styles.profile}
+          scaleTo={0.97}
+          onPress={() => navigation.navigate("PerfilLaboral")}
+          accessibilityLabel="Abrir mi perfil"
+        >
+          {perfil?.foto_perfil ? (
+            <Image source={{ uri: perfil.foto_perfil }} style={styles.avatar} />
+          ) : (
+            <Text style={styles.avatarInitial}>
+              {((perfil?.nombre || 'U').trim().charAt(0) || 'U').toUpperCase()}
+            </Text>
+          )}
+        </BotonAnimado>
+        <Text style={styles.topBarLabel}>{t('chatInterno.navbar.title', 'Chat')}</Text>
+        <View style={styles.headerActions}>
+          <BotonAnimado
+            onPress={() => {
+              setSelectedUserIds([]);
+              setGroupName('');
+              setShowNewChatModal(true);
+            }}
+            scaleTo={0.96}
+            style={styles.addButton}
+            accessibilityLabel="Nuevo chat"
+          >
+            <Feather name="plus" size={22} color="#FFFFFF" />
+          </BotonAnimado>
+          <BotonAnimado
+            style={styles.bellButton}
+            scaleTo={0.96}
+            onPress={() => navigation.navigate("Notificaciones")}
+            accessibilityLabel="Abrir notificaciones"
+          >
+            <Feather name="bell" size={21} color="#202020" />
+            {totalNoLeidos > 0 && (
+              <View style={styles.notificationDot} />
+            )}
+          </BotonAnimado>
+        </View>
       </View>
 
-      {/* Navbar Superior consistente con el resto de pantallas */}
-      <NavbarEnterprise titulo={t('chatInterno.navbar.title')} />
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>
+          {t('chatInterno.navbar.unavailableTitle', 'Mensajes')}
+        </Text>
+      </View>
 
       {error ? (
         <TouchableOpacity onPress={() => setError('')} style={styles.errorCard} activeOpacity={0.8}>
@@ -2094,7 +2395,7 @@ export default function ChatInterno() {
         </TouchableOpacity>
       ) : null}
 
-      {/* Barra de búsqueda y botón nuevo chat */}
+      {/* Búsqueda contextual */}
       <View style={styles.actionHeader}>
         <View style={[styles.searchBox, { backgroundColor: cardBg, borderColor: colores.borde }]}>
           <MaterialIcons name="search" size={20} color={colores.textoSuave} />
@@ -2112,78 +2413,42 @@ export default function ChatInterno() {
           ) : null}
         </View>
 
-        <BotonAnimado
-          onPress={() => {
-            setSelectedUserIds([]);
-            setGroupName('');
-            setShowNewChatModal(true);
-          }}
-          scaleTo={0.92}
-          style={[
-            styles.newChatBtn,
-            { backgroundColor: esOscuro ? '#FFFFFF' : '#0F172A', borderColor: esOscuro ? '#FFFFFF' : '#0F172A' },
-          ]}
-        >
-          <MaterialIcons name="add-comment" size={20} color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
-        </BotonAnimado>
       </View>
 
-      {/* Chips de filtrado rápido estilo cápsula con espaciado amplio */}
+      {/* Filtros con la misma cápsula de Mis tareas */}
       <View style={styles.chipsFiltroRow}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsFiltroScroll}>
           {[
-            { id: 'todos' as const, label: t('chatInterno.filters.all', { count: userConversations.length }), icono: 'forum' as const },
-            { id: 'no_leidos' as const, label: t('chatInterno.filters.unread', { count: totalNoLeidos }), icono: 'mark-chat-unread' as const, badge: totalNoLeidos > 0 },
-            { id: 'directos' as const, label: `Directos (${directCount})`, icono: 'person' as const },
-            { id: 'grupos' as const, label: `Grupos (${groupCount})`, icono: 'groups' as const },
+            { id: 'todos' as const, label: 'Todos', count: userConversations.length },
+            { id: 'no_leidos' as const, label: 'No leídos', count: totalNoLeidos },
+            { id: 'directos' as const, label: 'Directos', count: directCount },
+            { id: 'grupos' as const, label: 'Equipos', count: groupCount },
           ].map((chip) => {
             const activo = filtroTipo === chip.id;
             return (
               <BotonAnimado
                 key={chip.id}
                 onPress={() => setFiltroTipo(chip.id)}
-                scaleTo={0.94}
+                scaleTo={0.97}
                 style={[
                   styles.chipFiltroBtn,
                   {
-                    backgroundColor: activo
-                      ? (esOscuro ? '#FFFFFF' : '#0F172A')
-                      : (esOscuro ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.05)'),
-                    borderColor: activo
-                      ? (esOscuro ? '#FFFFFF' : '#0F172A')
-                      : (chip.badge && !activo ? 'rgba(59,130,246,0.45)' : colores.borde),
+                    backgroundColor: activo ? '#202020' : 'rgba(255,255,255,0.86)',
+                    borderColor: activo ? '#202020' : 'rgba(32,28,25,0.04)',
                   },
                 ]}
               >
-                <MaterialIcons
-                  name={chip.icono}
-                  size={15}
-                  color={
-                    activo
-                      ? (esOscuro ? '#0B0C1E' : '#FFFFFF')
-                      : chip.badge
-                      ? '#3B82F6'
-                      : colores.textoSuave
-                  }
-                />
+                <View style={[styles.chipFiltroCount, activo && styles.chipFiltroCountActive]}>
+                  <Text style={[styles.chipFiltroCountText, activo && styles.chipFiltroCountTextActive]}>{chip.count}</Text>
+                </View>
                 <Text
                   style={[
                     styles.chipFiltroTexto,
-                    {
-                      color: activo
-                        ? (esOscuro ? '#0B0C1E' : '#FFFFFF')
-                        : chip.badge
-                        ? (esOscuro ? '#93C5FD' : '#2563EB')
-                        : colores.textoSuave,
-                    },
-                    activo && { fontWeight: '900' },
+                    { color: activo ? '#FFFFFF' : '#3E3936' },
                   ]}
                 >
                   {chip.label}
                 </Text>
-                {chip.badge && !activo && (
-                  <View style={styles.chipPuntoAzul} />
-                )}
               </BotonAnimado>
             );
           })}
@@ -2191,178 +2456,187 @@ export default function ChatInterno() {
       </View>
 
       {/* Modal para iniciar nuevo chat / grupo */}
+      {/* Modal para iniciar nuevo chat / grupo a pantalla completa */}
       {showNewChatModal ? (
         <Modal
           visible={showNewChatModal}
-          transparent
-          animationType="none"
+          animationType="slide"
+          presentationStyle="fullScreen"
+          statusBarTranslucent={true}
           onRequestClose={() => cerrarNuevoChatModalConAnimacion()}
         >
-          <Animated.View style={[styles.actionMenuOverlay, { opacity: modalFadeAnim }]}>
-            <TouchableOpacity
-              activeOpacity={1}
-              onPress={() => cerrarNuevoChatModalConAnimacion()}
-              style={StyleSheet.absoluteFill}
-            />
-
-            <Animated.View
-              style={[
-                styles.actionMenuCard,
-                {
-                  backgroundColor: esOscuro ? 'rgba(10, 10, 24, 0.94)' : 'rgba(255, 255, 255, 0.96)',
-                  borderColor: esOscuro ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)',
-                  transform: [{ scale: modalScaleAnim }],
-                  maxWidth: 440,
-                  borderRadius: 32,
-                  padding: 22,
-                  maxHeight: '82%',
-                },
-              ]}
+          <View
+            style={[
+              styles.newChatFullScreen,
+              {
+                paddingTop: Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 20) + (Platform.OS === 'ios' ? 14 : 16),
+                paddingBottom: Math.max(insets.bottom, Platform.OS === 'android' ? 16 : 12),
+              },
+            ]}
+          >
+            <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent />
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              style={{ flex: 1 }}
             >
-              <View style={styles.actionMenuHeader}>
-                <Text style={[styles.actionMenuTitle, { color: esOscuro ? '#FFFFFF' : '#000000', fontSize: 18, fontWeight: '900' }]}>
-                  {t('chatInterno.newChat.title')}
-                </Text>
-                <TouchableOpacity onPress={() => cerrarNuevoChatModalConAnimacion()}>
-                  <MaterialIcons name="close" size={22} color={colores.textoSuave} />
-                </TouchableOpacity>
-              </View>
-
-              {/* Búsqueda dentro del modal */}
-              <View style={[styles.searchBox, { backgroundColor: cardBg, borderColor: colores.borde, marginVertical: 6, borderRadius: 20 }]}>
-                <MaterialIcons name="search" size={18} color={colores.textoSuave} />
-                <TextInput
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  placeholder={t('chatInterno.newChat.searchPlaceholder')}
-                  placeholderTextColor={colores.textoSuave}
-                  style={[styles.searchInput, { color: colores.texto }]}
-                />
-                {searchQuery ? (
-                  <TouchableOpacity onPress={() => setSearchQuery('')}>
-                    <MaterialIcons name="close" size={16} color={colores.textoSuave} />
+              <View style={styles.newChatContainer}>
+                {/* Encabezado */}
+                <View style={styles.newChatHeader}>
+                  <Text style={styles.newChatTitle}>
+                    {t('chatInterno.newChat.title', 'Nueva conversación')}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => cerrarNuevoChatModalConAnimacion()}
+                    style={styles.newChatCloseBtn}
+                    activeOpacity={0.7}
+                  >
+                    <MaterialIcons name="close" size={22} color="#202020" />
                   </TouchableOpacity>
+                </View>
+
+                {/* Barra de Búsqueda Clara y Espaciosa */}
+                <View style={styles.newChatSearchBox}>
+                  <MaterialIcons name="search" size={20} color="#78736F" />
+                  <TextInput
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    placeholder={t('chatInterno.newChat.searchPlaceholder', 'Buscar por nombre, correo o rol...')}
+                    placeholderTextColor="#9E9893"
+                    style={styles.newChatSearchInput}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  {searchQuery.length > 0 ? (
+                    <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <MaterialIcons name="cancel" size={18} color="#78736F" />
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+
+                {/* Chips de usuarios seleccionados */}
+                {selectedUsers.length > 0 ? (
+                  <View style={styles.newChatSelectedContainer}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.newChatSelectedRow}>
+                      {selectedUsers.map((user) => (
+                        <TouchableOpacity
+                          key={user.id}
+                          onPress={() => toggleSelectedUser(user.id)}
+                          style={styles.newChatUserChip}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={styles.newChatChipText} numberOfLines={1}>
+                            {user.nombre}
+                          </Text>
+                          <MaterialIcons name="close" size={14} color="#FFFFFF" />
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                ) : null}
+
+                {/* Nombre de grupo si hay 2+ seleccionados */}
+                {selectedUsers.length > 1 ? (
+                  <View style={styles.newChatGroupInputContainer}>
+                    <MaterialIcons name="group" size={20} color="#78736F" />
+                    <TextInput
+                      value={groupName}
+                      onChangeText={setGroupName}
+                      placeholder={t('chatInterno.newChat.groupNamePlaceholder', 'Nombre del grupo (opcional)')}
+                      placeholderTextColor="#9E9893"
+                      style={styles.newChatGroupInput}
+                    />
+                  </View>
+                ) : null}
+
+                {/* Título de sección de miembros disponibles */}
+                <View style={styles.newChatSectionHeader}>
+                  <Text style={styles.newChatSectionTitle}>
+                    {t('chatInterno.newChat.availableMembers', { count: filteredUsers.length })}
+                  </Text>
+                  {selectedUsers.length > 0 && (
+                    <Text style={styles.newChatSelectedCount}>
+                      {selectedUsers.length} {selectedUsers.length === 1 ? 'seleccionado' : 'seleccionados'}
+                    </Text>
+                  )}
+                </View>
+
+                {/* Lista de colaboradores en pantalla completa con scroll fluido */}
+                <ScrollView
+                  style={styles.newChatUserListScroll}
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={{ paddingBottom: selectedUsers.length > 0 ? 88 : 24 }}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  {filteredUsers.length === 0 ? (
+                    <View style={styles.newChatEmptyContainer}>
+                      <MaterialIcons name="person-search" size={44} color="#D1CCC6" />
+                      <Text style={styles.newChatEmptyText}>
+                        {t('chatInterno.newChat.noUsers', 'No se encontraron colaboradores')}
+                      </Text>
+                    </View>
+                  ) : (
+                    filteredUsers.map((user) => {
+                      const selected = selectedUserIds.includes(user.id);
+                      return (
+                        <TouchableOpacity
+                          key={user.id}
+                          onPress={() => toggleSelectedUser(user.id)}
+                          style={[styles.newChatUserOption, selected && styles.newChatUserOptionSelected]}
+                          activeOpacity={0.7}
+                        >
+                          <View style={styles.newChatAvatarWrap}>
+                            {user.foto_perfil ? (
+                              <Image source={{ uri: user.foto_perfil }} style={styles.newChatAvatarImage} resizeMode="cover" />
+                            ) : (
+                              <Text style={styles.newChatAvatarLetter}>
+                                {(user.nombre || 'U').charAt(0).toUpperCase()}
+                              </Text>
+                            )}
+                          </View>
+                          <View style={styles.newChatUserInfo}>
+                            <Text style={styles.newChatUserName}>{user.nombre}</Text>
+                            <Text style={styles.newChatUserRole}>{user.rol || 'Colaborador'}</Text>
+                          </View>
+                          <View style={[styles.newChatCheckbox, selected && styles.newChatCheckboxSelected]}>
+                            {selected ? <MaterialIcons name="check" size={14} color="#FFFFFF" /> : null}
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })
+                  )}
+                </ScrollView>
+
+                {/* Botón flotante inferior para crear chat o grupo */}
+                {selectedUsers.length > 0 ? (
+                  <View style={styles.newChatBottomFloatingBar}>
+                    <BotonAnimado
+                      disabled={sending}
+                      onPress={handleStartConversation}
+                      scaleTo={0.97}
+                      style={[styles.newChatCreateBtn, sending && { opacity: 0.75 }]}
+                    >
+                      {sending ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <MaterialIcons
+                          name={selectedUsers.length > 1 ? 'group-add' : 'chat'}
+                          size={20}
+                          color="#FFFFFF"
+                        />
+                      )}
+                      <Text style={styles.newChatCreateBtnText}>
+                        {sending
+                          ? t('chatInterno.newChat.creating')
+                          : selectedUsers.length > 1
+                          ? t('chatInterno.newChat.createGroup')
+                          : t('chatInterno.newChat.startChat')}
+                      </Text>
+                    </BotonAnimado>
+                  </View>
                 ) : null}
               </View>
-
-              {/* Usuarios seleccionados en chips */}
-              {selectedUsers.length > 0 ? (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.selectedRow}>
-                  {selectedUsers.map((user) => (
-                    <TouchableOpacity
-                      key={user.id}
-                      onPress={() => toggleSelectedUser(user.id)}
-                      style={[styles.userChip, { backgroundColor: esOscuro ? '#FFFFFF' : '#000000' }]}
-                    >
-                      <Text style={[styles.chipText, { color: esOscuro ? '#000000' : '#FFFFFF', fontWeight: '800' }]} numberOfLines={1}>
-                        {user.nombre}
-                      </Text>
-                      <MaterialIcons name="close" size={14} color={esOscuro ? '#000000' : '#FFFFFF'} />
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              ) : null}
-
-              {/* Nombre de grupo si hay 2+ seleccionados */}
-              {selectedUsers.length > 1 ? (
-                <TextInput
-                  value={groupName}
-                  onChangeText={setGroupName}
-                  placeholder={t('chatInterno.newChat.groupNamePlaceholder')}
-                  placeholderTextColor={colores.textoSuave}
-                  style={[styles.groupInput, { backgroundColor: cardBg, borderColor: colores.borde, color: colores.texto }]}
-                />
-              ) : null}
-
-              <Text style={[styles.sectionTitle, { color: colores.textoSuave, marginTop: 4 }]}>
-                {t('chatInterno.newChat.availableMembers', { count: filteredUsers.length })}
-              </Text>
-
-              <ScrollView style={styles.userListScroll} showsVerticalScrollIndicator={false}>
-                {filteredUsers.length === 0 ? (
-                  <Text style={[styles.noResultsText, { color: colores.textoSuave }]}>
-                    {t('chatInterno.newChat.noUsers')}
-                  </Text>
-                ) : (
-                  filteredUsers.map((user) => {
-                    const selected = selectedUserIds.includes(user.id);
-                    return (
-                      <TouchableOpacity
-                        key={user.id}
-                        onPress={() => toggleSelectedUser(user.id)}
-                        style={[
-                          styles.userOption,
-                          selected && styles.userOptionSelected,
-                          { backgroundColor: selected ? (esOscuro ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)') : 'transparent' },
-                        ]}
-                      >
-                        <View style={[styles.userAvatar, { backgroundColor: esOscuro ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }]}>
-                          {user.foto_perfil ? (
-                            <Image source={{ uri: user.foto_perfil }} style={styles.convAvatarImage} resizeMode="cover" />
-                          ) : (
-                            <Text style={[styles.avatarLetter, { color: colores.texto }]}>
-                              {(user.nombre || 'U').charAt(0).toUpperCase()}
-                            </Text>
-                          )}
-                        </View>
-                        <View style={styles.userInfo}>
-                          <Text style={[styles.userName, { color: colores.texto }]}>{user.nombre}</Text>
-                          <Text style={[styles.userRole, { color: colores.textoSuave }]}>
-                            {user.rol || 'Colaborador'}
-                          </Text>
-                        </View>
-                        <View
-                          style={[
-                            styles.checkbox,
-                            selected && styles.checkboxSelected,
-                            { borderColor: selected ? (esOscuro ? '#FFFFFF' : '#000000') : colores.borde },
-                          ]}
-                        >
-                          {selected ? <MaterialIcons name="check" size={14} color={esOscuro ? '#000000' : '#FFFFFF'} /> : null}
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  })
-                )}
-              </ScrollView>
-
-              {/* Botón de acción para crear chat o grupo */}
-              {selectedUsers.length > 0 ? (
-                <BotonAnimado
-                  disabled={sending}
-                  onPress={handleStartConversation}
-                  scaleTo={0.96}
-                  style={[
-                    styles.createBtn,
-                    {
-                      backgroundColor: esOscuro ? '#FFFFFF' : '#000000',
-                      borderRadius: 20,
-                      height: 48,
-                      marginTop: 10,
-                    },
-                    sending && { opacity: 0.8 },
-                  ]}
-                >
-                  {sending ? (
-                    <ActivityIndicator size="small" color={esOscuro ? '#000000' : '#FFFFFF'} />
-                  ) : (
-                    <MaterialIcons
-                      name={selectedUsers.length > 1 ? 'group-add' : 'chat'}
-                      size={19}
-                      color={esOscuro ? '#000000' : '#FFFFFF'}
-                    />
-                  )}
-                  <Text style={[styles.createBtnText, { color: esOscuro ? '#000000' : '#FFFFFF', fontWeight: '900', fontSize: 14 }]}>
-                    {sending
-                      ? t('chatInterno.newChat.creating')
-                      : selectedUsers.length > 1
-                      ? t('chatInterno.newChat.createGroup')
-                      : t('chatInterno.newChat.startChat')}
-                  </Text>
-                </BotonAnimado>
-              ) : null}
-            </Animated.View>
-          </Animated.View>
+            </KeyboardAvoidingView>
+          </View>
         </Modal>
       ) : null}
 
@@ -2387,8 +2661,8 @@ export default function ChatInterno() {
         ) : (
           filteredConversations.map((conv) => {
             const isGroup = isGroupConv(conv);
-            const title = getTituloConversacion(conv, perfil.id, users);
-            const photoUrl = getFotoConversacion(conv, perfil.id, users);
+            const title = getTituloConversacion(conv, perfil.id, users, localCustomNames);
+            const photoUrl = getFotoConversacion(conv, perfil.id, users, localCustomPhotos);
             const isMuted = mutedConvIds.includes(conv.id);
             const isBlocked = blockedConvIds.includes(conv.id);
             const unreadCount = conteoNoLeidos[conv.id] || 0;
@@ -2404,12 +2678,8 @@ export default function ChatInterno() {
                 style={[
                   styles.convItem,
                   {
-                    backgroundColor: hasUnread
-                      ? (esOscuro ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.04)')
-                      : cardBg,
-                    borderColor: hasUnread
-                      ? (esOscuro ? 'rgba(255, 255, 255, 0.35)' : 'rgba(15, 23, 42, 0.22)')
-                      : colores.borde,
+                    backgroundColor: hasUnread ? '#FFFFFF' : 'rgba(255,255,255,0.86)',
+                    borderColor: 'transparent',
                   },
                   isBlocked && { opacity: 0.65 },
                 ]}
@@ -2419,7 +2689,7 @@ export default function ChatInterno() {
                     <Image source={{ uri: photoUrl }} style={styles.convAvatarImage} resizeMode="cover" />
                   ) : isGroup ? (
                     <View style={styles.groupAvatarFallback}>
-                      <MaterialIcons name="groups" size={24} color={esOscuro ? '#93C5FD' : '#2563EB'} />
+                      <MaterialIcons name="groups" size={21} color="#665D69" />
                     </View>
                   ) : (
                     <Text style={styles.avatarLetter}>{(title || 'C').charAt(0).toUpperCase()}</Text>
@@ -2429,7 +2699,6 @@ export default function ChatInterno() {
                       <MaterialIcons name="groups" size={10} color="#FFFFFF" />
                     </View>
                   )}
-                  {hasUnread && !isGroup && <View style={styles.avatarOnlineDot} />}
                 </View>
 
                 <View style={styles.convCopy}>
@@ -2437,7 +2706,6 @@ export default function ChatInterno() {
                     <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0, marginRight: 6 }}>
                       {isGroup && (
                         <View style={styles.groupPillTag}>
-                          <MaterialIcons name="groups" size={12} color={esOscuro ? '#93C5FD' : '#2563EB'} />
                           <Text style={styles.groupPillText}>Grupo</Text>
                         </View>
                       )}
@@ -2471,13 +2739,11 @@ export default function ChatInterno() {
                       t('chatInterno.blocked.previewText')
                     ) : (
                       <>
-                        {preview.emisor ? (
+                        {preview.emisor && (isGroup || preview.emisor === 'Tú: ') ? (
                           <Text
                             style={{
-                              color: preview.emisor === 'Tú: '
-                                ? (hasUnread ? (esOscuro ? '#FFFFFF' : '#0F172A') : colores.textoSuave)
-                                : (esOscuro ? '#60A5FA' : '#2563EB'),
-                              fontWeight: '800',
+                              color: hasUnread ? '#3E3936' : '#837C77',
+                              fontWeight: '600',
                             }}
                           >
                             {preview.emisor}
@@ -2496,8 +2762,8 @@ export default function ChatInterno() {
                     <Text
                       style={[
                         styles.convTimeText,
-                        { color: hasUnread ? (esOscuro ? '#FFFFFF' : '#0F172A') : colores.textoSuave },
-                        hasUnread && { fontWeight: '900' },
+                        { color: hasUnread ? '#3E3936' : '#837C77' },
+                        hasUnread && { fontWeight: '700' },
                       ]}
                     >
                       {timeStr}
@@ -2545,7 +2811,7 @@ export default function ChatInterno() {
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
-    paddingBottom: Platform.OS === 'ios' ? 80 : 70,
+    paddingBottom: 80,
   },
   fondoAbsoluto: {
     ...StyleSheet.absoluteFill,
@@ -2573,7 +2839,7 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     marginHorizontal: 16,
-    marginTop: Platform.OS === 'ios' ? 4 : 8,
+    marginTop: 4,
     borderRadius: 28,
     overflow: 'hidden',
   },
@@ -2620,17 +2886,149 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 1,
   },
-  actionHeader: {
+  topBar: {
+    height: 52,
+    marginHorizontal: 21,
+    marginTop: 4,
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 16,
-    marginTop: 12,
+    justifyContent: 'space-between',
+  },
+  profile: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#E9D2BF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatar: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarInitial: {
+    color: '#382E29',
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  topBarLabel: {
+    color: '#292522',
+    fontSize: 17,
+    fontWeight: '600',
+    letterSpacing: -0.5,
+  },
+  headerActions: {
+    flexDirection: 'row',
     gap: 10,
+  },
+  addButton: {
+    width: 47,
+    height: 47,
+    borderRadius: 24,
+    backgroundColor: '#202020',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bellButton: {
+    width: 47,
+    height: 47,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SOMBRAS.suave,
+  },
+  notificationDot: {
+    position: 'absolute',
+    top: 11,
+    right: 12,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#E56C67',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  titleRow: {
+    marginHorizontal: 21,
+    marginTop: 22,
+  },
+  title: {
+    color: '#1F1D1C',
+    fontSize: 34,
+    lineHeight: 38,
+    fontWeight: '600',
+    letterSpacing: -1.4,
+  },
+  conversationHeader: {
+    minHeight: 72,
+    marginHorizontal: 20,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerRoundButton: {
+    width: 47,
+    height: 47,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#211C19',
+    shadowOpacity: 0.07,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  conversationIdentity: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 10,
+    minWidth: 0,
+  },
+  activeAvatarImage: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+  },
+  activeAvatarFallback: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EDE6ED',
+  },
+  activeAvatarInitial: {
+    color: '#514C54',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  conversationTitleWrap: {
+    maxWidth: '68%',
+    marginLeft: 9,
+  },
+  conversationTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  conversationSubtitle: {
+    marginTop: 2,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  actionHeader: {
+    marginHorizontal: 21,
+    marginTop: 18,
   },
   searchBox: {
     flex: 1,
-    height: 44,
-    borderRadius: 22,
+    height: 48,
+    borderRadius: 24,
     borderWidth: 1,
     paddingHorizontal: 14,
     flexDirection: 'row',
@@ -2766,10 +3164,10 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   listContent: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 24,
-    gap: 10,
+    paddingHorizontal: 20,
+    paddingTop: 6,
+    paddingBottom: 112,
+    gap: 8,
   },
   loadingWrap: {
     padding: 40,
@@ -2791,12 +3189,12 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   chipsFiltroRow: {
-    marginTop: 4,
-    marginBottom: 14,
+    marginTop: 18,
+    marginBottom: 12,
   },
   chipsFiltroScroll: {
-    paddingHorizontal: 16,
-    gap: 10,
+    paddingHorizontal: 21,
+    gap: 9,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -2804,41 +3202,47 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 7,
-    paddingVertical: 9,
-    paddingHorizontal: 16,
-    borderRadius: 16,
+    minHeight: 48,
+    paddingHorizontal: 13,
+    borderRadius: 24,
     borderWidth: 1,
   },
   chipFiltroTexto: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
   },
-  chipPuntoAzul: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: '#3B82F6',
-    marginLeft: 2,
+  chipFiltroCount: {
+    minWidth: 28,
+    height: 28,
+    borderRadius: 14,
+    paddingHorizontal: 7,
+    backgroundColor: '#F1EFED',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  chipFiltroCountActive: { backgroundColor: 'rgba(255,255,255,0.16)' },
+  chipFiltroCountText: { color: '#3C3734', fontSize: 12, fontWeight: '700' },
+  chipFiltroCountTextActive: { color: '#FFFFFF' },
   convItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderRadius: 22,
-    borderWidth: 1,
-    gap: 14,
+    borderWidth: 0,
+    gap: 12,
   },
   convAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.14)',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#EEE7EE',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
   convAvatarGroup: {
-    backgroundColor: 'rgba(59,130,246,0.18)',
+    backgroundColor: '#EEE7EE',
   },
   avatarOnlineDot: {
     position: 'absolute',
@@ -2847,7 +3251,7 @@ const styles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#201F21',
     borderWidth: 2.5,
     borderColor: '#0B0C1E',
   },
@@ -2858,7 +3262,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#665D69',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -2873,17 +3277,16 @@ const styles = StyleSheet.create({
   groupPillTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 6,
-    paddingVertical: 1.5,
-    borderRadius: 6,
-    backgroundColor: 'rgba(59,130,246,0.15)',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
+    backgroundColor: '#F1EDF1',
     marginRight: 6,
   },
   groupPillText: {
     fontSize: 10,
-    fontWeight: '800',
-    color: '#3B82F6',
+    fontWeight: '700',
+    color: '#5E5660',
   },
   convCopy: {
     flex: 1,
@@ -2897,11 +3300,11 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   convTitle: {
-    fontSize: 15.5,
-    fontWeight: '800',
+    fontSize: 17,
+    fontWeight: '600',
   },
   convPreview: {
-    fontSize: 13.5,
+    fontSize: 13,
     marginTop: 2,
     lineHeight: 18,
   },
@@ -2921,17 +3324,17 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   unreadBadgeWhatsApp: {
-    minWidth: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#3B82F6',
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#201F21',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: 5,
   },
   unreadBadgeWhatsAppText: {
     color: '#FFFFFF',
-    fontSize: 11.5,
+    fontSize: 10.5,
     fontWeight: '900',
     lineHeight: 14,
   },
@@ -2954,9 +3357,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   messagesContent: {
-    padding: 16,
-    gap: 12,
-    paddingBottom: 24,
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    gap: 10,
+    paddingBottom: 18,
   },
   messageRow: {
     width: '100%',
@@ -2978,7 +3382,7 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: 'rgba(29,27,32,0.08)',
   },
   senderAvatarFallback: {
     width: 32,
@@ -2987,7 +3391,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: 'rgba(29,27,32,0.08)',
   },
   senderAvatarInitial: {
     color: '#FFFFFF',
@@ -2996,15 +3400,16 @@ const styles = StyleSheet.create({
   },
   messageBubble: {
     maxWidth: '82%',
-    padding: 12,
-    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderRadius: 22,
     gap: 6,
   },
   bubbleOwn: {
-    borderBottomRightRadius: 4,
+    borderBottomRightRadius: 8,
   },
   bubbleOther: {
-    borderBottomLeftRadius: 4,
+    borderBottomLeftRadius: 8,
     borderWidth: 1,
   },
   senderName: {
@@ -3021,7 +3426,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   timeOwn: {
-    color: 'rgba(255,255,255,0.7)',
+    color: 'rgba(255,255,255,0.68)',
     fontSize: 10,
     fontWeight: '700',
     alignSelf: 'flex-end',
@@ -3108,11 +3513,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   inputContainer: {
-    marginHorizontal: 16,
-    borderRadius: 24,
+    marginHorizontal: 20,
+    borderRadius: 28,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -3122,9 +3527,10 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   toolBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#F1EDF1',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -3136,15 +3542,64 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   sendBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#0F172A',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#201F21',
     alignItems: 'center',
     justifyContent: 'center',
   },
   sendBtnDisabled: {
     opacity: 0.45,
+  },
+  sheetOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(28, 25, 30, 0.28)',
+  },
+  attachmentSheet: {
+    paddingHorizontal: 22,
+    paddingTop: 10,
+    paddingBottom: 30,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    backgroundColor: '#FFFFFF',
+    ...SOMBRAS.flotante,
+  },
+  sheetHandle: {
+    width: 38,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 16,
+    backgroundColor: '#D8D2D9',
+  },
+  sheetTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+  },
+  attachmentActions: {
+    flexDirection: 'row',
+    gap: 18,
+    marginTop: 18,
+  },
+  attachmentAction: {
+    alignItems: 'center',
+    minWidth: 62,
+  },
+  attachmentActionIcon: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F1EDF1',
+  },
+  attachmentActionLabel: {
+    marginTop: 7,
+    fontSize: 12,
+    fontWeight: '700',
   },
   attachmentCard: {
     marginTop: 6,
@@ -3327,5 +3782,216 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  newChatFullScreen: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  newChatContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+    backgroundColor: '#FFFFFF',
+  },
+  newChatHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 8,
+    paddingBottom: 14,
+    marginBottom: 6,
+  },
+  newChatTitle: {
+    color: '#1F1D1C',
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: -0.6,
+  },
+  newChatCloseBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#F3F0ED',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  newChatSearchBox: {
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F5F2EF',
+    borderWidth: 1,
+    borderColor: 'rgba(32,28,25,0.06)',
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  newChatSearchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: '#1F1D1C',
+    fontWeight: '500',
+    includeFontPadding: false,
+    paddingVertical: 0,
+  },
+  newChatSelectedContainer: {
+    marginBottom: 10,
+  },
+  newChatSelectedRow: {
+    gap: 8,
+    paddingVertical: 2,
+  },
+  newChatUserChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 18,
+    backgroundColor: '#202020',
+  },
+  newChatChipText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+    maxWidth: 140,
+  },
+  newChatGroupInputContainer: {
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F5F2EF',
+    borderWidth: 1,
+    borderColor: 'rgba(32,28,25,0.06)',
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  newChatGroupInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#1F1D1C',
+    fontWeight: '500',
+    includeFontPadding: false,
+    paddingVertical: 0,
+  },
+  newChatSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  newChatSectionTitle: {
+    color: '#524D49',
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  newChatSelectedCount: {
+    color: '#78736F',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  newChatUserListScroll: {
+    flex: 1,
+  },
+  newChatEmptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+    gap: 10,
+  },
+  newChatEmptyText: {
+    color: '#78736F',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  newChatUserOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 18,
+    marginBottom: 6,
+    backgroundColor: '#FAF9F8',
+    borderWidth: 1,
+    borderColor: 'rgba(32,28,25,0.04)',
+    gap: 12,
+  },
+  newChatUserOptionSelected: {
+    backgroundColor: '#F1EFEA',
+    borderColor: '#202020',
+  },
+  newChatAvatarWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#EAE6E1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  newChatAvatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  newChatAvatarLetter: {
+    color: '#382E29',
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  newChatUserInfo: {
+    flex: 1,
+  },
+  newChatUserName: {
+    color: '#1F1D1C',
+    fontSize: 15,
+    fontWeight: '700',
+    includeFontPadding: false,
+  },
+  newChatUserRole: {
+    color: '#78736F',
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 2,
+    includeFontPadding: false,
+  },
+  newChatCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#C7C2BC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  newChatCheckboxSelected: {
+    backgroundColor: '#202020',
+    borderColor: '#202020',
+  },
+  newChatBottomFloatingBar: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 8 : 6,
+    left: 20,
+    right: 20,
+  },
+  newChatCreateBtn: {
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#202020',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    ...SOMBRAS.flotante,
+  },
+  newChatCreateBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
   },
 });

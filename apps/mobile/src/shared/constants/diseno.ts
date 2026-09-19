@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 /**
  * Documentacion Nexxus - apps/mobile/src/shared/constants/diseno.ts
  * Capa: compartido.
@@ -135,28 +137,28 @@ export const SOMBRAS = {
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
-    elevation: 3,
+    elevation: Platform.OS === 'android' ? 1 : 3,
   },
   tarjeta: {
     shadowColor: COLORES.sombra,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.12,
     shadowRadius: 24,
-    elevation: 6,
+    elevation: Platform.OS === 'android' ? 3 : 6,
   },
   flotante: {
     shadowColor: COLORES.sombra,
     shadowOffset: { width: 0, height: 16 },
     shadowOpacity: 0.16,
     shadowRadius: 32,
-    elevation: 10,
+    elevation: Platform.OS === 'android' ? 5 : 10,
   },
   premium: {
     shadowColor: '#7C4DFF',
     shadowOffset: { width: 0, height: 20 },
     shadowOpacity: 0.2,
     shadowRadius: 40,
-    elevation: 15,
+    elevation: Platform.OS === 'android' ? 7 : 15,
   }
 };
 
@@ -200,8 +202,8 @@ export const TEMAS_MOVILES = {
     gradienteFondo: ['#070712', '#0B0B19', '#02030A'] as const,
   },
   claro: {
-    fondo: '#EEF2FF',
-    fondoProfundo: '#F8FAFF',
+    fondo: '#FBF8F7',
+    fondoProfundo: '#FFFDFC',
     superficie: 'rgba(255,255,255,0.78)',
     superficieElevada: 'rgba(255,255,255,0.92)',
     texto: '#111827',
@@ -211,14 +213,14 @@ export const TEMAS_MOVILES = {
     vidrio: 'rgba(255,255,255,0.62)',
     vidrioFuerte: 'rgba(255,255,255,0.82)',
     vidrioProfundo: 'rgba(255,255,255,0.92)',
-    borde: 'rgba(92,70,180,0.16)',
-    bordeSutil: 'rgba(92,70,180,0.10)',
-    bordeFuerte: 'rgba(92,70,180,0.26)',
+    borde: 'rgba(36,29,40,0.10)',
+    bordeSutil: 'rgba(36,29,40,0.06)',
+    bordeFuerte: 'rgba(36,29,40,0.16)',
     bordeFocus: 'rgba(109,40,217,0.48)',
-    sombra: '#7C65D1',
+    sombra: '#7F6D78',
     primario: '#6D28D9',
     primarioClaro: '#8B5CF6',
     secundario: '#2563EB',
-    gradienteFondo: ['#F8FAFF', '#EEF2FF', '#E7ECFF'] as const,
+    gradienteFondo: ['#FFFDFC', '#FAF3F5', '#F6F0F8'] as const,
   },
 } as const;

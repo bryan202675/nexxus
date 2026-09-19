@@ -7,16 +7,15 @@
  */
 
 // Importa React desde React; habilita componentes, hooks y tipos base para esta pieza.
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React from 'react';
 import {
   View,
   StyleSheet,
   TouchableOpacity,
   FlatList,
-  SafeAreaView,
   StatusBar,
-  Alert,
-} from 'react-native';
+  Alert} from 'react-native';
 // Importa { Feather }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { Feather } from '@expo/vector-icons';
 // Importa Animated y FadeInDown desde Reanimated; habilita animaciones de entrada fluidas.

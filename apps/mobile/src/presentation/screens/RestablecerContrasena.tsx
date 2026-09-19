@@ -5,6 +5,7 @@
  * Rediseñada con estética profesional premium basada en prototypes/mobile-login.html.
  */
 
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
@@ -18,10 +19,8 @@ import {
   ActivityIndicator,
   StatusBar,
   Keyboard,
-  SafeAreaView,
   ScrollView,
-  Image,
-} from 'react-native';
+  Image} from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';

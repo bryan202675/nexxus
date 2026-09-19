@@ -1,11 +1,15 @@
-/**
- * ModalShell — hoja inferior (bottom sheet) reutilizable con gesto real de swipe-down para
- * cerrar (Gesture Handler + Reanimated, hilo nativo). Reemplaza los `<Modal transparent>`
- * con `justifyContent:'flex-end'` que cada pantalla armaba a mano sin gesto de cierre.
- */
-import React from 'react';
-import { Dimensions, Modal, StyleProp, StyleSheet, ViewStyle } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  StyleProp,
+  StyleSheet,
+  ViewStyle,
+  useWindowDimensions,
+} from 'react-native';
 import Animated, {
+  Easing,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
@@ -15,8 +19,8 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { BlurView } from 'expo-blur';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import { ESPACIADO, RADIOS } from '@/shared/constants/diseno';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const ALTURA_PANTALLA = Dimensions.get('window').height;
 const UMBRAL_CIERRE = 120;
 
 interface ModalShellProps {
@@ -29,20 +33,62 @@ interface ModalShellProps {
 
 export default function ModalShell({ visible, onClose, children, maxHeight = '85%', style }: ModalShellProps) {
   const { colores, blurTint } = useTemaMobile();
-  const traslacionY = useSharedValue(ALTURA_PANTALLA);
+  const { height: alturaPantalla } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const traslacionY = useSharedValue(alturaPantalla);
   const opacidadFondo = useSharedValue(0);
+  const [activo, setActivo] = useState(visible);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (visible) {
-      traslacionY.value = withTiming(0, { duration: 260 });
-      opacidadFondo.value = withTiming(1, { duration: 220 });
-    } else {
-      traslacionY.value = withTiming(ALTURA_PANTALLA, { duration: 220 });
-      opacidadFondo.value = withTiming(0, { duration: 180 });
+      setActivo(true);
+      traslacionY.value = withTiming(0, {
+        duration: 360,
+        easing: Easing.bezier(0.16, 1, 0.3, 1),
+      });
+      opacidadFondo.value = withTiming(1, {
+        duration: 320,
+        easing: Easing.out(Easing.cubic),
+      });
+    } else if (activo) {
+      opacidadFondo.value = withTiming(0, {
+        duration: 280,
+        easing: Easing.in(Easing.cubic),
+      });
+      traslacionY.value = withTiming(
+        alturaPantalla,
+        {
+          duration: 320,
+          easing: Easing.bezier(0.25, 1, 0.5, 1),
+        },
+        (finished) => {
+          if (finished) {
+            runOnJS(setActivo)(false);
+          }
+        }
+      );
     }
-  }, [visible, traslacionY, opacidadFondo]);
+  }, [visible, alturaPantalla, traslacionY, opacidadFondo, activo]);
 
-  const cerrar = () => onClose();
+  const cerrar = () => {
+    opacidadFondo.value = withTiming(0, {
+      duration: 260,
+      easing: Easing.in(Easing.cubic),
+    });
+    traslacionY.value = withTiming(
+      alturaPantalla,
+      {
+        duration: 300,
+        easing: Easing.bezier(0.25, 1, 0.5, 1),
+      },
+      (finished) => {
+        if (finished) {
+          runOnJS(setActivo)(false);
+          runOnJS(onClose)();
+        }
+      }
+    );
+  };
 
   const gestoArrastre = Gesture.Pan()
     .onUpdate((evento) => {
@@ -50,11 +96,24 @@ export default function ModalShell({ visible, onClose, children, maxHeight = '85
     })
     .onEnd((evento) => {
       if (evento.translationY > UMBRAL_CIERRE || evento.velocityY > 800) {
-        traslacionY.value = withTiming(ALTURA_PANTALLA, { duration: 200 }, () => {
-          runOnJS(cerrar)();
-        });
+        traslacionY.value = withTiming(
+          alturaPantalla,
+          {
+            duration: 280,
+            easing: Easing.bezier(0.25, 1, 0.5, 1),
+          },
+          (finished) => {
+            if (finished) {
+              runOnJS(setActivo)(false);
+              runOnJS(onClose)();
+            }
+          }
+        );
       } else {
-        traslacionY.value = withTiming(0, { duration: 220 });
+        traslacionY.value = withTiming(0, {
+          duration: 280,
+          easing: Easing.bezier(0.16, 1, 0.3, 1),
+        });
       }
     });
 
@@ -64,46 +123,58 @@ export default function ModalShell({ visible, onClose, children, maxHeight = '85
   const estiloFondo = useAnimatedStyle(() => ({ opacity: opacidadFondo.value }));
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+    <Modal visible={activo} transparent animationType="none" onRequestClose={cerrar}>
       <Animated.View style={[StyleSheet.absoluteFill, estiloFondo]}>
         <BlurView intensity={60} tint={blurTint} style={StyleSheet.absoluteFill} />
       </Animated.View>
       <Animated.View
-        pointerEvents={visible ? 'auto' : 'none'}
+        pointerEvents={activo ? 'auto' : 'none'}
         style={[StyleSheet.absoluteFill, estilos.overlay]}
-        onTouchEnd={onClose}
+        onTouchEnd={cerrar}
       />
-      <GestureDetector gesture={gestoArrastre}>
-        <Animated.View
-          style={[
-            estilos.hoja,
-            { backgroundColor: colores.vidrioFuerte, borderColor: colores.borde, maxHeight },
-            estiloHoja,
-            style,
-          ]}
-        >
-          <BlurView intensity={80} tint={blurTint} style={StyleSheet.absoluteFill} />
-          <Animated.View style={[estilos.manija, { backgroundColor: colores.bordeFuerte }]} />
-          {children}
-        </Animated.View>
-      </GestureDetector>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={estilos.keyboardContainer}
+        pointerEvents="box-none"
+      >
+        <GestureDetector gesture={gestoArrastre}>
+          <Animated.View
+            style={[
+              estilos.hoja,
+              {
+                backgroundColor: colores.vidrioFuerte,
+                borderColor: colores.borde,
+                maxHeight,
+                paddingBottom: ESPACIADO.xl + insets.bottom,
+              },
+              estiloHoja,
+              style,
+            ]}
+          >
+            <BlurView intensity={80} tint={blurTint} style={StyleSheet.absoluteFill} />
+            <Animated.View style={[estilos.manija, { backgroundColor: colores.bordeFuerte }]} />
+            {children}
+          </Animated.View>
+        </GestureDetector>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const estilos = StyleSheet.create({
   overlay: { justifyContent: 'flex-end' },
+  keyboardContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
   hoja: {
+    width: '100%',
     borderTopLeftRadius: RADIOS.xxl,
     borderTopRightRadius: RADIOS.xxl,
     borderWidth: 1,
     borderBottomWidth: 0,
     overflow: 'hidden',
     padding: ESPACIADO.xl,
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
   },
   manija: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: ESPACIADO.md },
 });

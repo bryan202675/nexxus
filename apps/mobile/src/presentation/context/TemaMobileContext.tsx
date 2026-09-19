@@ -77,7 +77,7 @@ const ContextoTemaMobile = createContext<TemaMobile | null>(null);
  */
 export function ProveedorTemaMobile({ children }: { children: ReactNode }) {
   // Inicializa [modo, setModo]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const [modo, setModo] = useState<ModoTemaMobile>('oscuro');
+  const [modo, setModo] = useState<ModoTemaMobile>('claro');
 
   // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
   useEffect(() => {

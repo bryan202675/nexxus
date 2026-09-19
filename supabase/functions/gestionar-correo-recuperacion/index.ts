@@ -33,13 +33,17 @@ Deno.serve(withHandler(async (req, admin) => {
   const accion = safeString(body?.accion, 20);
   const { data: usuario, error: usuarioError } = await admin
     .from("usuarios")
-    .select("nombre, correo_personal")
+    .select("nombre, correo, correo_personal, rol")
     .eq("id", caller.id)
     .single();
   if (usuarioError || !usuario) throw new HttpError(404, "No se encontró el usuario.");
 
-  if (accion === "estado") return { configurado: Boolean(usuario.correo_personal) };
-  if (usuario.correo_personal) return { configurado: true };
+  const correoActual = usuario.correo?.toLowerCase() || caller.correo?.toLowerCase() || "";
+  const esSintetico = correoActual.endsWith(".nexxus") || correoActual.includes("@demo.");
+  const tieneCorreoValido = Boolean(usuario.correo_personal) || (!esSintetico && correoValido(correoActual));
+
+  if (accion === "estado") return { configurado: tieneCorreoValido };
+  if (tieneCorreoValido && !body?.forzar) return { configurado: true };
 
   const correo = safeString(body?.correo, 254).toLowerCase();
   if (!correoValido(correo)) throw new HttpError(400, "Ingresa un correo electrónico válido.");
@@ -78,7 +82,8 @@ Deno.serve(withHandler(async (req, admin) => {
     } catch (error) {
       await admin.from("auth_rate_limits").delete().eq("clave", claveCodigo(caller.id, hash));
       console.error("[gestionar-correo-recuperacion] No se pudo enviar el correo:", error);
-      throw new HttpError(503, "No se pudo enviar el código. Intenta de nuevo más tarde.");
+      const detalle = error instanceof Error ? error.message : "Error al enviar correo.";
+      throw new HttpError(503, `No se pudo enviar el código: ${detalle}`);
     }
     return { enviado: true };
   }

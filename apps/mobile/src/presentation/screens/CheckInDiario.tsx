@@ -1,12 +1,11 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
-  SafeAreaView,
   StatusBar,
   StyleSheet,
-  View,
-} from "react-native";
+  View} from 'react-native';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Feather } from "@expo/vector-icons";
 import Animated, {
@@ -284,7 +283,7 @@ function createStyles(
       alignItems: "center",
       gap: 12,
       paddingHorizontal: 20,
-      paddingTop: Platform.OS === "ios" ? 8 : 18,
+      paddingTop: 8,
     },
     close: {
       width: 40,

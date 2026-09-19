@@ -1,106 +1,286 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  FlatList,
-  SafeAreaView,
-  StatusBar,
-  ScrollView,
-} from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { FlatList, Image, StatusBar, StyleSheet, TouchableOpacity, View, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
-import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
-import { EmptyState } from '@/presentation/components/ui';
-import BotonAnimado from '@/presentation/components/BotonAnimado';
-import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
-import { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/constants/diseno';
-import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { Easing, FadeInDown, FadeOut, Layout } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
-import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 import { Notification } from 'domain/entities/Notification';
-import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
-import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
+import { SOMBRAS } from '@/shared/constants/diseno';
+import BotonAnimado from '@/presentation/components/BotonAnimado';
+import { EmptyState, ModalShell } from '@/presentation/components/ui';
+import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
+import { useUserTabBottomPadding } from '@/presentation/hooks/useUserTabBottomPadding';
+import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 import { translateWithApi } from '@/shared/i18n/translatorApi';
 
 const Text = AdminTranslatedText;
 
 interface Props {
-  navigation: any;
+  navigation: {
+    navigate: (screen: string) => void;
+    goBack?: () => void;
+    canGoBack?: () => boolean;
+  };
 }
 
-const normalizarTipo = (tipo?: string) => (tipo || 'general').toLowerCase();
+type Filtro = 'todas' | 'no_leidas' | string;
 
-const crearFechaNotificacion = (fecha: any) => {
-  if (!fecha) return null;
-  if (typeof fecha?.toDate === 'function') return fecha.toDate();
-  if (typeof fecha?.seconds === 'number') return new Date(fecha.seconds * 1000);
-  const date = new Date(fecha);
-  return Number.isNaN(date.getTime()) ? null : date;
+interface GrupoNotificaciones {
+  id: string;
+  tipo: string;
+  items: Notification[];
+}
+
+type ActividadItem =
+  | { kind: 'section'; id: string; label: string }
+  | { kind: 'notification'; id: string; notification: Notification }
+  | { kind: 'group'; id: string; group: GrupoNotificaciones };
+
+const normalizarTipo = (tipo?: string) => (tipo || 'info').toLowerCase();
+
+const crearFecha = (fecha?: string) => {
+  const date = fecha ? new Date(fecha) : new Date(0);
+  return Number.isNaN(date.getTime()) ? new Date(0) : date;
 };
 
-const formatearFechaNotificacion = (fecha: any, language: string, fallback: string) => {
-  const date = crearFechaNotificacion(fecha);
-  if (!date) return fallback;
+const claveContenido = (notificacion: Notification) =>
+  `${normalizarTipo(notificacion.tipo)}-${(notificacion.titulo || '').trim().toLocaleLowerCase()}`;
 
-  const locale = language === 'es' ? 'es-SV' : 'en-US';
-  return `${date.toLocaleDateString(locale, { day: '2-digit', month: 'short' })} • ${date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}`;
+const actorDesdeMensaje = (mensaje: string) => {
+  const match = (mensaje || '').trim().match(/^([A-ZÁÉÍÓÚÑ][\p{L}'-]+(?:\s+[A-ZÁÉÍÓÚÑ][\p{L}'-]+)?)/u);
+  return match?.[1] || null;
 };
+
+const iniciales = (nombre: string) =>
+  nombre.split(' ').slice(0, 2).map((parte) => parte[0]).join('').toUpperCase();
+
+const etiquetaTipo = (tipo: string) => {
+  const etiquetas: Record<string, string> = {
+    bienestar: 'Bienestar',
+    tarea: 'Tarea',
+    anuncio: 'Anuncio',
+    ausencia: 'Solicitud',
+    aprobacion: 'Aprobación',
+    mensaje: 'Mensaje',
+    privada: 'Privada',
+    info: 'Aviso',
+  };
+  return etiquetas[tipo] || 'Aviso';
+};
+
+const iconoTipo = (tipo: string): keyof typeof MaterialIcons.glyphMap => {
+  const iconos: Record<string, keyof typeof MaterialIcons.glyphMap> = {
+    tarea: 'assignment',
+    ausencia: 'event-busy',
+    bienestar: 'favorite',
+    anuncio: 'campaign',
+    aprobacion: 'check-circle',
+    mensaje: 'chat-bubble',
+    privada: 'lock',
+  };
+  return iconos[tipo] || 'notifications';
+};
+
+const fechaCorta = (fecha: string, locale: string) =>
+  crearFecha(fecha).toLocaleTimeString(locale, {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+
+const fechaRelativa = (fecha: string, locale: string) => {
+  const d = crearFecha(fecha);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+
+  if (diffMins < 2) return 'Ahora';
+  if (diffMins < 60) return `Hace ${diffMins} min`;
+  if (diffHours < 24) return `Hace ${diffHours} h`;
+  return d.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
+};
+
+const fechaFormateadaLarga = (fecha: string, locale: string) => {
+  const d = crearFecha(fecha);
+  const fechaStr = d.toLocaleDateString(locale, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+  const horaStr = d.toLocaleTimeString(locale, {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+  return `${fechaStr} · ${horaStr}`;
+};
+
+const grupoFecha = (fecha: string) => {
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const dia = crearFecha(fecha);
+  dia.setHours(0, 0, 0, 0);
+  const diferencia = Math.round((hoy.getTime() - dia.getTime()) / 86_400_000);
+  if (diferencia <= 0) return 'Hoy';
+  if (diferencia === 1) return 'Ayer';
+  if (diferencia < 7) return 'Esta semana';
+  return 'Anteriores';
+};
+
+function AvatarActividad({ notification, small = false }: { notification: Notification; small?: boolean }) {
+  const actor = actorDesdeMensaje(notification.mensaje);
+  const tipo = normalizarTipo(notification.tipo);
+  const tamano = small ? 32 : 42;
+
+  if (actor) {
+    return (
+      <View style={[styles.avatar, { width: tamano, height: tamano, borderRadius: tamano / 2 }]}>
+        <Text style={[styles.avatarInitial, small && styles.avatarInitialSmall]}>{iniciales(actor)}</Text>
+        <View style={styles.avatarBadge}>
+          <MaterialIcons name={iconoTipo(tipo)} size={small ? 8 : 10} color="#FFFFFF" />
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.iconAvatar, { width: tamano, height: tamano, borderRadius: tamano / 2 }]}>
+      <MaterialIcons name={iconoTipo(tipo)} size={small ? 16 : 20} color="#202020" />
+    </View>
+  );
+}
 
 export default function Notificaciones({ navigation }: Props) {
   const { t, i18n } = useTranslation();
-  const { notificaciones, leerNotificacion } = useContextoUsuario();
-  const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
-  const estilos = crearEstilosNotif(colores, esOscuro);
-
-  const [filtro, setFiltro] = useState<string>('todas');
-  const [traduccionesDinamicas, setTraduccionesDinamicas] = useState<Record<string, { titulo: string; mensaje: string }>>({});
+  const { notificaciones, leerNotificacion, perfil } = useContextoUsuario();
+  const bottomPadding = useUserTabBottomPadding(116);
+  const [filtro, setFiltro] = useState<Filtro>('todas');
+  const [traducciones, setTraducciones] = useState<Record<string, { titulo: string; mensaje: string }>>({});
   const [marcandoTodas, setMarcandoTodas] = useState(false);
+  const [gruposAbiertos, setGruposAbiertos] = useState<Record<string, boolean>>({});
+  const [notificacionSeleccionada, setNotificacionSeleccionada] = useState<Notification | null>(null);
+  const locale = i18n.language.startsWith('en') ? 'en-US' : 'es-SV';
 
-  const noLeidas = notificaciones.filter((notif) => !notif.leida).length;
+  const manejarRegresar = () => {
+    if (navigation.canGoBack?.() || typeof navigation.goBack === 'function') {
+      navigation.goBack?.();
+    } else {
+      navigation.navigate('MiPulso');
+    }
+  };
+
+  const noLeidas = notificaciones.filter((item) => !item.leida).length;
   const leidas = notificaciones.length - noLeidas;
-  const tiposActivos = Array.from(new Set(notificaciones.map((notif) => normalizarTipo(notif.tipo)))).filter(tipo => !!tipo);
 
-  const notificacionesFiltradas = notificaciones.filter((notif) => {
-    if (filtro === 'todas') return true;
-    if (filtro === 'no_leidas') return !notif.leida;
-    return normalizarTipo(notif.tipo) === filtro;
-  });
+  const tiposActivos = useMemo(
+    () => Array.from(new Set(notificaciones.map((item) => normalizarTipo(item.tipo)))),
+    [notificaciones],
+  );
 
   useEffect(() => {
     let activo = true;
+    if (!i18n.language.startsWith('en')) {
+      setTraducciones({});
+      return () => { activo = false; };
+    }
 
-    const traducirContenido = async () => {
-      if (!i18n.language.startsWith('en')) {
-        setTraduccionesDinamicas({});
-        return;
-      }
+    void Promise.all(notificaciones.map(async (item) => {
+      const [titulo, mensaje] = await Promise.all([
+        translateWithApi(item.titulo || '', i18n.language),
+        translateWithApi(item.mensaje || '', i18n.language),
+      ]);
+      return [item.id, { titulo, mensaje }] as const;
+    })).then((pares) => {
+      if (activo) setTraducciones(Object.fromEntries(pares));
+    }).catch(() => {
+      if (activo) setTraducciones({});
+    });
 
-      const pares = await Promise.all(notificaciones.map(async (notif) => {
-        const [titulo, mensaje] = await Promise.all([
-          translateWithApi(notif.titulo || '', i18n.language),
-          translateWithApi(notif.mensaje || '', i18n.language),
-        ]);
-        return [notif.id, { titulo, mensaje }] as const;
-      }));
-
-      if (activo) setTraduccionesDinamicas(Object.fromEntries(pares));
-    };
-
-    traducirContenido();
-    return () => {
-      activo = false;
-    };
+    return () => { activo = false; };
   }, [i18n.language, notificaciones]);
 
-  const manejarPresionarNotificacion = async (notif: Notification) => {
-    if (!notif.leida) {
-      await leerNotificacion(notif.id);
+  const notificacionesFiltradas = useMemo(() => notificaciones.filter((item) => {
+    if (filtro === 'todas') return true;
+    if (filtro === 'no_leidas') return !item.leida;
+    return normalizarTipo(item.tipo) === filtro;
+  }), [filtro, notificaciones]);
+
+  const destacada = useMemo(
+    () => notificacionesFiltradas.find((item) => !item.leida) || notificacionesFiltradas[0],
+    [notificacionesFiltradas],
+  );
+
+  // Generación con claves únicas garantizadas para prevenir advertencias de React
+  const actividad = useMemo<ActividadItem[]>(() => {
+    const restantes = notificacionesFiltradas.filter((item) => item.id !== destacada?.id);
+    const porFecha = new Map<string, Notification[]>();
+    restantes.forEach((item) => {
+      const etiqueta = grupoFecha(item.fecha);
+      porFecha.set(etiqueta, [...(porFecha.get(etiqueta) || []), item]);
+    });
+
+    return Array.from(porFecha.entries()).flatMap(([etiqueta, items], secIdx) => {
+      const porContenido = new Map<string, Notification[]>();
+      items.forEach((item) => {
+        const key = claveContenido(item);
+        porContenido.set(key, [...(porContenido.get(key) || []), item]);
+      });
+
+      const filas = Array.from(porContenido.entries()).flatMap(([key, repetidas], gIdx) => {
+        if (repetidas.length < 2) {
+          const unica = repetidas[0];
+          return [{
+            kind: 'notification' as const,
+            id: `notif-${secIdx}-${gIdx}-${unica.id}`,
+            notification: unica,
+          }];
+        }
+        const groupId = `${secIdx}-${key}`;
+        const group: GrupoNotificaciones = { id: groupId, tipo: normalizarTipo(repetidas[0].tipo), items: repetidas };
+        if (!gruposAbiertos[groupId]) {
+          return [{ kind: 'group' as const, id: `group-${secIdx}-${groupId}`, group }];
+        }
+        return [
+          { kind: 'group' as const, id: `group-${secIdx}-${groupId}`, group },
+          ...repetidas.map((notification, itemIdx) => ({
+            kind: 'notification' as const,
+            id: `notif-grouped-${secIdx}-${groupId}-${notification.id}-${itemIdx}`,
+            notification,
+          })),
+        ];
+      });
+
+      return [
+        { kind: 'section' as const, id: `sec-${secIdx}-${etiqueta}`, label: etiqueta },
+        ...filas,
+      ];
+    });
+  }, [destacada?.id, gruposAbiertos, notificacionesFiltradas]);
+
+  const contenido = (item: Notification) => traducciones[item.id] || { titulo: item.titulo, mensaje: item.mensaje };
+
+  const abrirDetalleNotificacion = async (item: Notification) => {
+    setNotificacionSeleccionada(item);
+    if (!item.leida) {
+      try {
+        await leerNotificacion(item.id);
+      } catch {
+        // Silencioso
+      }
     }
-    if (notif.tipo === 'tarea') {
+  };
+
+  const ejecutarAccionDestino = (item: Notification) => {
+    setNotificacionSeleccionada(null);
+    const tipo = normalizarTipo(item.tipo);
+    if (tipo === 'tarea') {
       navigation.navigate('CentroTareas');
-    } else if (notif.tipo === 'ausencia') {
+    } else if (tipo === 'ausencia' || tipo === 'aprobacion') {
       navigation.navigate('SolicitudesAusencia');
+    } else if (tipo === 'mensaje') {
+      navigation.navigate('Chat');
     }
   };
 
@@ -108,364 +288,1145 @@ export default function Notificaciones({ navigation }: Props) {
     if (marcandoTodas || noLeidas === 0) return;
     setMarcandoTodas(true);
     try {
-      const sinLeer = notificaciones.filter((n) => !n.leida);
-      await Promise.all(sinLeer.map((n) => leerNotificacion(n.id)));
-    } catch {
-      // safe fallback
+      await Promise.all(notificaciones.filter((item) => !item.leida).map((item) => leerNotificacion(item.id)));
     } finally {
       setMarcandoTodas(false);
     }
   };
 
-  const obtenerIcono = (tipo: string) => {
-    switch (tipo) {
-      case 'tarea': return 'assignment';
-      case 'ausencia': return 'event-busy';
-      case 'bienestar': return 'favorite';
-      default: return 'notifications';
-    }
+  const conteoPorFiltro = (filtroId: string) => {
+    if (filtroId === 'todas') return notificaciones.length;
+    if (filtroId === 'no_leidas') return noLeidas;
+    return notificaciones.filter((n) => normalizarTipo(n.tipo) === filtroId).length;
   };
 
-  const obtenerColorIcono = (tipo: string) => {
-    switch (tipo) {
-      case 'tarea': return esOscuro ? '#93C5FD' : '#2563EB';
-      case 'ausencia': return '#F59E0B';
-      case 'bienestar': return '#10B981';
-      default: return esOscuro ? '#93C5FD' : '#2563EB';
-    }
-  };
+  const filtros = [
+    { id: 'todas', label: 'Todas' },
+    { id: 'no_leidas', label: 'No leídas' },
+    ...tiposActivos.map((tipo) => ({ id: tipo, label: etiquetaTipo(tipo) })),
+  ];
 
-  const renderNotificacion = ({ item, index }: { item: Notification; index: number }) => {
-    const tipo = normalizarTipo(item.tipo);
-    const contenidoTraducido = traduccionesDinamicas[item.id];
-    const titulo = contenidoTraducido?.titulo || item.titulo;
-    const mensaje = contenidoTraducido?.mensaje || item.mensaje;
+  const renderActividad = ({ item, index }: { item: ActividadItem; index: number }) => {
+    if (item.kind === 'section') {
+      return (
+        <View style={styles.seccionCabecera}>
+          <Text style={styles.fechaGrupo}>{item.label}</Text>
+          <View style={styles.seccionLinea} />
+        </View>
+      );
+    }
+
+    if (item.kind === 'group') {
+      const principal = item.group.items[0];
+      const actor = actorDesdeMensaje(principal.mensaje);
+      const abierto = Boolean(gruposAbiertos[item.group.id]);
+
+      return (
+        <Animated.View
+          layout={Layout.duration(160)}
+          entering={FadeInDown.duration(180).delay(Math.min(index, 6) * 15).easing(Easing.out(Easing.quad))}
+        >
+          <BotonAnimado
+            style={[styles.tarjetaNotificacion, styles.tarjetaGrupo]}
+            scaleTo={0.98}
+            onPress={() => setGruposAbiertos((actual) => ({ ...actual, [item.group.id]: !abierto }))}
+          >
+            <AvatarActividad notification={principal} />
+            <View style={styles.filaTexto}>
+              <View style={styles.filaTituloFila}>
+                <Text style={styles.filaTitulo} numberOfLines={1}>
+                  {item.group.items.length} avisos de {etiquetaTipo(item.group.tipo).toLowerCase()}
+                </Text>
+                <View style={styles.pillContadorGrupo}>
+                  <Text style={styles.pillContadorTexto}>+{item.group.items.length}</Text>
+                </View>
+              </View>
+              <Text style={styles.filaMensaje} numberOfLines={1}>
+                {actor ? `${actor} y ${item.group.items.length - 1} más` : `${item.group.items.length} notificaciones agrupadas`}
+              </Text>
+            </View>
+            <View style={styles.botonExpandir}>
+              <Feather name={abierto ? 'chevron-up' : 'chevron-down'} size={17} color="#57534E" />
+            </View>
+          </BotonAnimado>
+        </Animated.View>
+      );
+    }
+
+    const notification = item.notification;
+    const data = contenido(notification);
+    const tipo = normalizarTipo(notification.tipo);
 
     return (
       <Animated.View
-        entering={FadeInDown.duration(260).delay(Math.min(index, 10) * 35).easing(Easing.out(Easing.quad))}
-        style={estilos.tarjetaWrap}
+        layout={Layout.duration(160)}
+        entering={FadeInDown.duration(180).delay(Math.min(index, 6) * 15).easing(Easing.out(Easing.quad))}
       >
         <BotonAnimado
-          style={[estilos.tarjeta, !item.leida && estilos.tarjetaNoLeida]}
-          onPress={() => manejarPresionarNotificacion(item)}
+          style={[
+            styles.tarjetaNotificacion,
+            !notification.leida ? styles.tarjetaNoLeida : styles.tarjetaLeida,
+          ]}
           scaleTo={0.98}
+          onPress={() => void abrirDetalleNotificacion(notification)}
         >
-          <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.tarjetaBlur}>
-            <View style={[
-              estilos.iconoContenedor,
-              {
-                backgroundColor: esOscuro ? 'rgba(59,130,246,0.14)' : 'rgba(37,99,235,0.08)',
-                borderColor: esOscuro ? 'rgba(96,165,250,0.25)' : 'rgba(37,99,235,0.18)',
-              }
-            ]}>
-              <MaterialIcons name={obtenerIcono(tipo) as any} size={20} color={obtenerColorIcono(tipo)} />
+          {!notification.leida && <View style={styles.barraAcentoNoLeida} />}
+          <AvatarActividad notification={notification} />
+          <View style={styles.filaTexto}>
+            <View style={styles.filaTituloFila}>
+              <Text style={[styles.filaTitulo, !notification.leida && styles.filaTituloNoLeida]} numberOfLines={1}>
+                {data.titulo}
+              </Text>
+              {!notification.leida && <Animated.View exiting={FadeOut.duration(140)} style={styles.puntoNoLeida} />}
             </View>
-            <View style={estilos.contenido}>
-              <View style={estilos.filaTitulo}>
-                <Text style={[estilos.titulo, !item.leida && estilos.textoNoLeido]} numberOfLines={1}>{titulo}</Text>
-                {!item.leida && <View style={estilos.puntoAzul} />}
+            <Text style={styles.filaMensaje} numberOfLines={2}>{data.mensaje}</Text>
+            <View style={styles.filaMeta}>
+              <View style={styles.etiquetaMini}>
+                <Text style={styles.etiquetaMiniTexto}>{etiquetaTipo(tipo)}</Text>
               </View>
-              <Text style={estilos.mensaje} numberOfLines={3}>{mensaje}</Text>
-              <View style={estilos.metaFila}>
-                <Text style={estilos.fecha}>{formatearFechaNotificacion(item.fecha, i18n.language, t('perfilLaboral.no_date', { defaultValue: 'Hoy' }))}</Text>
-                <View style={estilos.tipoBadge}>
-                  <Text style={estilos.tipoBadgeTexto}>{t(`notificaciones.types.${tipo}`, { defaultValue: tipo.toUpperCase() })}</Text>
-                </View>
-              </View>
+              <Text style={styles.metaSeparador}>•</Text>
+              <Text style={styles.horaRelativa}>{fechaRelativa(notification.fecha, locale)}</Text>
             </View>
-          </BlurView>
+          </View>
+          <View style={styles.filaFin}>
+            <Feather name="chevron-right" size={17} color="#78716C" />
+          </View>
         </BotonAnimado>
       </Animated.View>
     );
   };
 
+  const notificationSeleccionadaTipo = notificacionSeleccionada ? normalizarTipo(notificacionSeleccionada.tipo) : 'info';
+  const dataModal = notificacionSeleccionada ? contenido(notificacionSeleccionada) : { titulo: '', mensaje: '' };
+  const actorModal = notificacionSeleccionada ? actorDesdeMensaje(notificacionSeleccionada.mensaje) : null;
+
   return (
-    <SafeAreaView style={estilos.contenedor}>
-      <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
-      <View style={estilos.fondoAbsoluto}>
-        <FondoMobilePremium />
-      </View>
-      <NavbarEnterprise
-        titulo={t('notificaciones.title', { defaultValue: 'Notificaciones' })}
-        subtitulo={t('notificaciones.subtitle', { defaultValue: 'Avisos, tareas y actividad' })}
-        mostrarAtras
+    <SafeAreaView style={styles.screen}>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <LinearGradient
+        pointerEvents="none"
+        colors={['#FBEDE8', '#F6ECF6', '#FFFDFC']}
+        locations={[0, 0.28, 0.75]}
+        style={StyleSheet.absoluteFill}
       />
 
+      {/* Barra Superior */}
+      <View style={styles.topBar}>
+        <BotonAnimado
+          style={styles.backButton}
+          scaleTo={0.96}
+          onPress={manejarRegresar}
+          accessibilityLabel="Regresar"
+        >
+          <Feather name="arrow-left" size={21} color="#202020" />
+        </BotonAnimado>
+
+        <Text style={styles.topBarLabel}>
+          {t('notificaciones.title', { defaultValue: 'Notificaciones' })}
+        </Text>
+
+        <View style={styles.headerActions}>
+          <BotonAnimado
+            style={styles.addButton}
+            scaleTo={0.96}
+            onPress={() => void marcarTodasComoLeidas()}
+            accessibilityLabel="Marcar todas como leídas"
+          >
+            <Feather name="check" size={21} color="#FFFFFF" />
+          </BotonAnimado>
+
+          <BotonAnimado
+            style={styles.bellButton}
+            scaleTo={0.96}
+            onPress={() => navigation.navigate('BusquedaGlobal')}
+            accessibilityLabel="Buscar notificaciones"
+          >
+            <Feather name="search" size={21} color="#202020" />
+          </BotonAnimado>
+        </View>
+      </View>
+
       <FlatList
-        data={notificacionesFiltradas}
-        keyExtractor={(item) => item.id}
-        renderItem={renderNotificacion}
-        contentContainerStyle={estilos.lista}
+        data={actividad}
+        keyExtractor={(item, index) => `${item.id}-${index}`}
+        renderItem={renderActividad}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
         ListHeaderComponent={
           <View>
-            {/* Resumen Métricas Bento */}
-            <View style={estilos.resumenGrid}>
-              <View style={estilos.resumenCard}>
-                <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.resumenContent}>
-                  <View style={[estilos.iconoResumenBadge, { backgroundColor: esOscuro ? 'rgba(59,130,246,0.18)' : 'rgba(37,99,235,0.10)' }]}>
-                    <Feather name="bell" size={15} color={esOscuro ? '#93C5FD' : '#2563EB'} />
-                  </View>
-                  <View>
-                    <Text style={estilos.resumenValor}>{noLeidas}</Text>
-                    <Text style={estilos.resumenLabel}>{t('notificaciones.summary.unread', { defaultValue: 'Sin leer' })}</Text>
-                  </View>
-                </BlurView>
-              </View>
+            {/* Cabecera Hero */}
+            <Animated.View
+              entering={FadeInDown.duration(200).easing(Easing.out(Easing.quad))}
+              style={styles.hero}
+            >
+              <Text style={styles.heroTitulo}>Tu bandeja,{`\n`}al día</Text>
+              <Text style={styles.heroSubtitulo}>Alertas y avisos en tiempo real.</Text>
+            </Animated.View>
 
-              <View style={estilos.resumenCard}>
-                <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.resumenContent}>
-                  <View style={[estilos.iconoResumenBadge, { backgroundColor: 'rgba(16,185,129,0.12)' }]}>
-                    <Feather name="check-circle" size={15} color="#10B981" />
-                  </View>
-                  <View>
-                    <Text style={estilos.resumenValor}>{leidas}</Text>
-                    <Text style={estilos.resumenLabel}>{t('notificaciones.summary.read', { defaultValue: 'Leídas' })}</Text>
-                  </View>
-                </BlurView>
-              </View>
-
-              <View style={estilos.resumenCard}>
-                <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.resumenContent}>
-                  <View style={[estilos.iconoResumenBadge, { backgroundColor: 'rgba(245,158,11,0.12)' }]}>
-                    <Feather name="layers" size={15} color="#F59E0B" />
-                  </View>
-                  <View>
-                    <Text style={estilos.resumenValor}>{tiposActivos.length || 1}</Text>
-                    <Text style={estilos.resumenLabel}>{t('notificaciones.summary.types', { defaultValue: 'Tipos' })}</Text>
-                  </View>
-                </BlurView>
-              </View>
-            </View>
-
-            {/* Cabecera de la Bandeja */}
-            <View style={estilos.cabeceraLista}>
-              <Text style={estilos.tituloSeccion}>{t('notificaciones.tray', { defaultValue: 'Bandeja de Entrada' })}</Text>
-              {noLeidas > 0 && (
-                <TouchableOpacity onPress={marcarTodasComoLeidas} disabled={marcandoTodas} activeOpacity={0.8}>
-                  <Text style={estilos.linkMarcarLeidas}>
-                    {marcandoTodas
-                      ? t('notificaciones.marking', { defaultValue: 'Marcando...' })
-                      : t('notificaciones.mark_all_read', { defaultValue: 'Marcar todas leídas' })}
+            {/* Banner de Resumen Ejecutivo Minimalista y Ligero */}
+            <Animated.View
+              entering={FadeInDown.duration(220).delay(35).easing(Easing.out(Easing.quad))}
+              style={styles.resumenMinimalista}
+            >
+              <View style={styles.resumenFilaSuperior}>
+                <View style={styles.resumenStatusPill}>
+                  <View style={[styles.statusDot, noLeidas > 0 ? styles.statusDotPending : styles.statusDotClear]} />
+                  <Text style={styles.statusPillTexto}>
+                    {noLeidas > 0
+                      ? `${noLeidas} ${noLeidas === 1 ? 'pendiente' : 'pendientes'}`
+                      : 'Bandeja al día'}
                   </Text>
-                </TouchableOpacity>
-              )}
+                </View>
+
+                {noLeidas > 0 && (
+                  <TouchableOpacity
+                    style={styles.botonMarcarSimple}
+                    onPress={() => void marcarTodasComoLeidas()}
+                    disabled={marcandoTodas}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name="check" size={12} color="#1C1917" />
+                    <Text style={styles.botonMarcarSimpleTexto}>
+                      {marcandoTodas ? 'Marcando...' : 'Marcar todo'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <View style={styles.resumenContadoresFila}>
+                <View style={styles.resumenItemMetrica}>
+                  <Text style={[styles.metricaNumero, noLeidas > 0 && styles.metricaNumeroActivo]}>{noLeidas}</Text>
+                  <Text style={styles.metricaLabel}>Sin leer</Text>
+                </View>
+                <View style={styles.metricaSeparador} />
+                <View style={styles.resumenItemMetrica}>
+                  <Text style={styles.metricaNumero}>{leidas}</Text>
+                  <Text style={styles.metricaLabel}>Leídas</Text>
+                </View>
+                <View style={styles.metricaSeparador} />
+                <View style={styles.resumenItemMetrica}>
+                  <Text style={styles.metricaNumero}>{tiposActivos.length}</Text>
+                  <Text style={styles.metricaLabel}>Categorías</Text>
+                </View>
+              </View>
+            </Animated.View>
+
+            {/* Cabecera Actividad */}
+            <View style={styles.actividadCabecera}>
+              <View style={styles.actividadTituloWrap}>
+                <Text style={styles.actividadTitulo}>Actividad</Text>
+                <View style={styles.actividadBadgeCount}>
+                  <Text style={styles.actividadBadgeCountTexto}>{notificacionesFiltradas.length}</Text>
+                </View>
+              </View>
             </View>
 
-            {/* Chips de Filtro */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={estilos.filtrosScroll}>
-              {[
-                { id: 'todas', label: t('notificaciones.all', { defaultValue: 'Todas' }) },
-                { id: 'no_leidas', label: t('notificaciones.unread', { defaultValue: 'No leídas' }) },
-                ...tiposActivos.map((tipo) => ({ id: tipo, label: t(`notificaciones.types.${tipo}`, { defaultValue: tipo.toUpperCase() }) })),
-              ].map((item) => (
-                <TouchableOpacity
-                  key={item.id}
-                  onPress={() => setFiltro(item.id as any)}
-                  style={[estilos.chip, filtro === item.id && estilos.chipActivo]}
-                  activeOpacity={0.8}
+            {/* Carrusel de Filtros de Píldora Planas (Sin sombras) */}
+            <FlatList
+              horizontal
+              data={filtros}
+              keyExtractor={(item, index) => `filtro-${item.id}-${index}`}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filtrosContenedor}
+              renderItem={({ item }) => {
+                const activo = filtro === item.id;
+                const total = conteoPorFiltro(item.id);
+                return (
+                  <BotonAnimado
+                    style={[styles.filtroPill, activo && styles.filtroPillActivo]}
+                    scaleTo={0.98}
+                    onPress={() => setFiltro(item.id)}
+                  >
+                    <Text style={[styles.filtroPillTexto, activo && styles.filtroPillTextoActivo]}>
+                      {item.label}
+                    </Text>
+                    <View style={[styles.filtroBadge, activo ? styles.filtroBadgeActivo : styles.filtroBadgeInactivo]}>
+                      <Text style={[styles.filtroBadgeTexto, activo && styles.filtroBadgeTextoActivo]}>
+                        {total}
+                      </Text>
+                    </View>
+                  </BotonAnimado>
+                );
+              }}
+            />
+
+            {/* Tarjeta Destacada "Lo Importante" */}
+            {destacada && (
+              <Animated.View
+                entering={FadeInDown.duration(220).delay(50).easing(Easing.out(Easing.quad))}
+                style={styles.destacadaSeccion}
+              >
+                <View style={styles.destacadaCabecera}>
+                  <Text style={styles.destacadaEtiqueta}>Lo importante</Text>
+                  {!destacada.leida && (
+                    <View style={styles.destacadaBadgePendiente}>
+                      <View style={styles.puntoDestacada} />
+                      <Text style={styles.destacadaBadgePendienteTexto}>Prioritario</Text>
+                    </View>
+                  )}
+                </View>
+
+                <BotonAnimado
+                  style={styles.destacadaCard}
+                  scaleTo={0.98}
+                  onPress={() => void abrirDetalleNotificacion(destacada)}
                 >
-                  <Text style={[estilos.textoChip, filtro === item.id && estilos.textoChipActivo]}>{item.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+                  <View style={styles.destacadaTopRow}>
+                    <View style={styles.destacadaTipoPill}>
+                      <MaterialIcons
+                        name={iconoTipo(normalizarTipo(destacada.tipo))}
+                        size={13}
+                        color="#1C1917"
+                      />
+                      <Text style={styles.destacadaTipoTexto}>
+                        {etiquetaTipo(normalizarTipo(destacada.tipo))}
+                      </Text>
+                    </View>
+                    <Text style={styles.destacadaHora}>{fechaRelativa(destacada.fecha, locale)}</Text>
+                  </View>
+
+                  <Text style={styles.destacadaTitulo} numberOfLines={2}>
+                    {contenido(destacada).titulo}
+                  </Text>
+                  <Text style={styles.destacadaMensaje} numberOfLines={2}>
+                    {contenido(destacada).mensaje}
+                  </Text>
+
+                  <View style={styles.destacadaPie}>
+                    <View style={styles.destacadaAutorWrap}>
+                      <AvatarActividad notification={destacada} small />
+                      <View style={styles.destacadaAutorInfo}>
+                        <Text style={styles.destacadaAutorNombre}>
+                          {actorDesdeMensaje(destacada.mensaje) || 'Sistema Nexxus'}
+                        </Text>
+                        <Text style={styles.destacadaFechaLarga}>
+                          {fechaCorta(destacada.fecha, locale)} · {grupoFecha(destacada.fecha)}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.destacadaBotonAbrir}>
+                      <Text style={styles.destacadaBotonAbrirTexto}>Detalle</Text>
+                      <Feather name="arrow-up-right" size={14} color="#FFFFFF" />
+                    </View>
+                  </View>
+                </BotonAnimado>
+              </Animated.View>
+            )}
           </View>
         }
         ListEmptyComponent={
-          <EmptyState icono="bell-off" titulo={t('notificaciones.no_notifications', { defaultValue: 'Bandeja al día' })} detalle={t('notificaciones.no_notifications_detail', { defaultValue: 'No tienes notificaciones pendientes en este momento.' })} />
+          <EmptyState
+            icono="bell-off"
+            titulo="Todo al día"
+            detalle={
+              filtro === 'no_leidas'
+                ? 'No tienes notificaciones pendientes.'
+                : 'No hay notificaciones en esta categoría.'
+            }
+          />
         }
       />
+
+      {/* Modal de Detalle Completo (ModalShell) */}
+      <ModalShell
+        visible={Boolean(notificacionSeleccionada)}
+        onClose={() => setNotificacionSeleccionada(null)}
+        maxHeight="86%"
+      >
+        {notificacionSeleccionada && (
+          <ScrollView
+            style={styles.modalScroll}
+            contentContainerStyle={styles.modalContenido}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Header del Modal */}
+            <View style={styles.modalHeaderRow}>
+              <View style={styles.modalTipoPill}>
+                <MaterialIcons
+                  name={iconoTipo(notificationSeleccionadaTipo)}
+                  size={15}
+                  color="#1C1917"
+                />
+                <Text style={styles.modalTipoTexto}>
+                  {etiquetaTipo(notificationSeleccionadaTipo)}
+                </Text>
+              </View>
+
+              <View style={styles.modalHeaderDerecha}>
+                <View style={[styles.modalEstadoPill, notificacionSeleccionada.leida ? styles.modalEstadoLeida : styles.modalEstadoNoLeida]}>
+                  <Text style={[styles.modalEstadoTexto, notificacionSeleccionada.leida ? styles.modalEstadoTextoLeida : styles.modalEstadoTextoNoLeida]}>
+                    {notificacionSeleccionada.leida ? 'Leída' : 'Nueva'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.modalBotonCerrar}
+                  onPress={() => setNotificacionSeleccionada(null)}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="x" size={17} color="#202020" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Tarjeta del Emisor */}
+            <View style={styles.modalEmisorCard}>
+              <AvatarActividad notification={notificacionSeleccionada} />
+              <View style={styles.modalEmisorInfo}>
+                <Text style={styles.modalEmisorNombre}>
+                  {actorModal || 'Sistema Nexxus'}
+                </Text>
+                <Text style={styles.modalEmisorFecha}>
+                  {fechaFormateadaLarga(notificacionSeleccionada.fecha, locale)}
+                </Text>
+              </View>
+            </View>
+
+            {/* Título y Mensaje Completo */}
+            <View style={styles.modalCuerpo}>
+              <Text style={styles.modalTituloPrincipal}>
+                {dataModal.titulo}
+              </Text>
+              <View style={styles.modalMensajeCard}>
+                <Text style={styles.modalMensajeTexto}>
+                  {dataModal.mensaje}
+                </Text>
+              </View>
+            </View>
+
+            {/* Acciones Rápidas */}
+            <View style={styles.modalAcciones}>
+              {(notificationSeleccionadaTipo === 'tarea' ||
+                notificationSeleccionadaTipo === 'ausencia' ||
+                notificationSeleccionadaTipo === 'aprobacion' ||
+                notificationSeleccionadaTipo === 'mensaje') && (
+                <BotonAnimado
+                  style={styles.modalBotonPrimario}
+                  scaleTo={0.98}
+                  onPress={() => ejecutarAccionDestino(notificacionSeleccionada)}
+                >
+                  <Feather
+                    name={
+                      notificationSeleccionadaTipo === 'tarea'
+                        ? 'arrow-right'
+                        : notificationSeleccionadaTipo === 'mensaje'
+                        ? 'message-circle'
+                        : 'external-link'
+                    }
+                    size={17}
+                    color="#FFFFFF"
+                  />
+                  <Text style={styles.modalBotonPrimarioTexto}>
+                    {notificationSeleccionadaTipo === 'tarea'
+                      ? 'Ir al Centro de Tareas'
+                      : notificationSeleccionadaTipo === 'mensaje'
+                      ? 'Abrir Mensajes'
+                      : 'Ver Solicitudes'}
+                  </Text>
+                </BotonAnimado>
+              )}
+
+              <BotonAnimado
+                style={styles.modalBotonSecundario}
+                scaleTo={0.98}
+                onPress={() => setNotificacionSeleccionada(null)}
+              >
+                <Text style={styles.modalBotonSecundarioTexto}>Cerrar</Text>
+              </BotonAnimado>
+            </View>
+          </ScrollView>
+        )}
+      </ModalShell>
     </SafeAreaView>
   );
 }
 
-function crearEstilosNotif(c: any, esOscuro: boolean) {
-  const glass = esOscuro ? 'rgba(24, 24, 38, 0.88)' : 'rgba(255, 255, 255, 0.94)';
-  const glassMini = c.vidrioSutil;
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: '#FFFDFC' },
 
-  return StyleSheet.create({
-    contenedor: { flex: 1, backgroundColor: c.fondo },
-    fondoAbsoluto: { ...StyleSheet.absoluteFill, zIndex: -1, overflow: 'hidden' },
+  /* Top Bar */
+  topBar: {
+    height: 52,
+    marginHorizontal: 21,
+    marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    width: 47,
+    height: 47,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SOMBRAS.suave,
+  },
+  topBarLabel: {
+    color: '#292522',
+    fontSize: 17,
+    fontWeight: '600',
+    letterSpacing: -0.5,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  addButton: {
+    width: 47,
+    height: 47,
+    borderRadius: 24,
+    backgroundColor: '#202020',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bellButton: {
+    width: 47,
+    height: 47,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SOMBRAS.suave,
+  },
 
-    lista: {
-      paddingHorizontal: 16,
-      paddingTop: 12,
-      paddingBottom: 110,
-    },
+  content: {
+    paddingHorizontal: 21,
+    paddingTop: 0,
+    paddingBottom: 116,
+  },
 
-    resumenGrid: {
-      flexDirection: 'row',
-      gap: 10,
-      marginBottom: 20,
-    },
-    resumenCard: {
-      flex: 1,
-      minHeight: 96,
-      borderRadius: 20,
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: c.borde,
-      backgroundColor: glass,
-      ...SOMBRAS.flotante,
-    },
-    resumenContent: {
-      flex: 1,
-      padding: 12,
-      justifyContent: 'space-between',
-    },
-    iconoResumenBadge: {
-      width: 30,
-      height: 30,
-      borderRadius: 15,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: c.borde,
-    },
-    resumenValor: {
-      fontSize: 20,
-      fontWeight: '900',
-      color: c.texto,
-      lineHeight: 24,
-    },
-    resumenLabel: {
-      fontSize: 10.5,
-      fontWeight: '700',
-      color: c.textoSuave,
-      marginTop: 2,
-    },
+  /* Hero Section */
+  hero: {
+    marginTop: 22,
+    marginBottom: 20,
+  },
+  heroTitulo: {
+    color: '#1F1D1C',
+    fontSize: 34,
+    lineHeight: 38,
+    fontWeight: '600',
+    letterSpacing: -1.4,
+  },
+  heroSubtitulo: {
+    color: '#78716C',
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 6,
+    maxWidth: 300,
+  },
 
-    cabeceraLista: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 12,
-      paddingHorizontal: 2,
-    },
-    tituloSeccion: {
-      fontSize: 16.5,
-      fontWeight: '900',
-      color: c.texto,
-      letterSpacing: -0.3,
-    },
-    linkMarcarLeidas: {
-      fontSize: 12.5,
-      fontWeight: '800',
-      color: esOscuro ? '#93C5FD' : '#2563EB',
-    },
+  /* Resumen Minimalista y Ligero */
+  resumenMinimalista: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(32, 28, 25, 0.06)',
+    ...SOMBRAS.suave,
+  },
+  resumenFilaSuperior: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(32, 28, 25, 0.05)',
+  },
+  resumenStatusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+  },
+  statusDotPending: {
+    backgroundColor: '#1C1917',
+  },
+  statusDotClear: {
+    backgroundColor: '#16A34A',
+  },
+  statusPillTexto: {
+    color: '#1C1917',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  botonMarcarSimple: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 10,
+    backgroundColor: '#F5F4F2',
+  },
+  botonMarcarSimpleTexto: {
+    color: '#1C1917',
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
+  resumenContadoresFila: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingTop: 10,
+  },
+  resumenItemMetrica: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  metricaNumero: {
+    color: '#1C1917',
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  metricaNumeroActivo: {
+    color: '#1C1917',
+  },
+  metricaLabel: {
+    color: '#78716C',
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  metricaSeparador: {
+    width: 1,
+    height: 20,
+    backgroundColor: 'rgba(32, 28, 25, 0.06)',
+  },
 
-    filtrosScroll: {
-      gap: 8,
-      marginBottom: 16,
-    },
-    chip: {
-      paddingHorizontal: 16,
-      paddingVertical: 8,
-      borderRadius: RADIOS.completo,
-      backgroundColor: glass,
-      borderWidth: 1,
-      borderColor: c.borde,
-    },
-    chipActivo: {
-      backgroundColor: esOscuro ? 'rgba(59,130,246,0.20)' : 'rgba(37,99,235,0.12)',
-      borderColor: esOscuro ? 'rgba(96,165,250,0.5)' : 'rgba(37,99,235,0.4)',
-    },
-    textoChip: {
-      fontSize: 12,
-      fontWeight: '700',
-      color: c.textoSuave,
-    },
-    textoChipActivo: {
-      color: esOscuro ? '#93C5FD' : '#2563EB',
-      fontWeight: '900',
-    },
+  /* Actividad Cabecera */
+  actividadCabecera: {
+    marginTop: 22,
+    marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  actividadTituloWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  actividadTitulo: {
+    color: '#1C1917',
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+  },
+  actividadBadgeCount: {
+    backgroundColor: 'rgba(32, 28, 25, 0.06)',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  actividadBadgeCountTexto: {
+    color: '#57534E',
+    fontSize: 11,
+    fontWeight: '700',
+  },
 
-    tarjetaWrap: {
-      marginBottom: 10,
-    },
-    tarjeta: {
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: c.borde,
-      overflow: 'hidden',
-      backgroundColor: glass,
-      ...SOMBRAS.flotante,
-    },
-    tarjetaNoLeida: {
-      borderColor: esOscuro ? 'rgba(96,165,250,0.4)' : 'rgba(37,99,235,0.3)',
-      backgroundColor: esOscuro ? 'rgba(28, 30, 48, 0.94)' : 'rgba(255, 255, 255, 0.98)',
-    },
-    tarjetaBlur: {
-      flexDirection: 'row',
-      padding: 14,
-      alignItems: 'flex-start',
-      gap: 12,
-    },
-    iconoContenedor: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 1,
-    },
-    contenido: { flex: 1 },
-    filaTitulo: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 4,
-    },
-    titulo: {
-      fontSize: 14.5,
-      fontWeight: '700',
-      color: c.texto,
-      letterSpacing: -0.2,
-      flex: 1,
-    },
-    textoNoLeido: {
-      fontWeight: '900',
-      color: c.texto,
-    },
-    puntoAzul: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: esOscuro ? '#60A5FA' : '#2563EB',
-      marginLeft: 8,
-    },
-    mensaje: {
-      fontSize: 12.5,
-      color: c.textoSecundario,
-      lineHeight: 17,
-    },
-    metaFila: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 8,
-      marginTop: 10,
-    },
-    fecha: {
-      fontSize: 10.5,
-      color: c.textoSuave,
-      fontWeight: '600',
-    },
-    tipoBadge: {
-      paddingHorizontal: 8,
-      paddingVertical: 2,
-      borderRadius: 6,
-      backgroundColor: glassMini,
-      borderWidth: 1,
-      borderColor: c.borde,
-    },
-    tipoBadgeTexto: {
-      fontSize: 9.5,
-      color: esOscuro ? '#93C5FD' : '#2563EB',
-      fontWeight: '800',
-      letterSpacing: 0.4,
-    },
-  });
-}
+  /* Filtros Planos (Sin Sombras) */
+  filtrosContenedor: {
+    gap: 8,
+    paddingVertical: 6,
+    paddingRight: 10,
+  },
+  filtroPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minHeight: 35,
+    borderRadius: 18,
+    paddingHorizontal: 13,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(32, 28, 25, 0.08)',
+  },
+  filtroPillActivo: {
+    backgroundColor: '#1C1917',
+    borderColor: '#1C1917',
+  },
+  filtroPillTexto: {
+    color: '#57534E',
+    fontSize: 12.5,
+    fontWeight: '600',
+  },
+  filtroPillTextoActivo: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  filtroBadge: {
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    minWidth: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filtroBadgeInactivo: {
+    backgroundColor: '#F5F4F2',
+  },
+  filtroBadgeActivo: {
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+  },
+  filtroBadgeTexto: {
+    color: '#78716C',
+    fontSize: 10.5,
+    fontWeight: '700',
+  },
+  filtroBadgeTextoActivo: {
+    color: '#FFFFFF',
+  },
 
+  /* Destacada "Lo importante" */
+  destacadaSeccion: {
+    marginTop: 12,
+    marginBottom: 14,
+  },
+  destacadaCabecera: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  destacadaEtiqueta: {
+    color: '#44403C',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  destacadaBadgePendiente: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#F5F4F2',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(32, 28, 25, 0.08)',
+  },
+  puntoDestacada: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#1C1917',
+  },
+  destacadaBadgePendienteTexto: {
+    color: '#1C1917',
+    fontSize: 10.5,
+    fontWeight: '700',
+  },
+  destacadaCard: {
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(32, 28, 25, 0.06)',
+    ...SOMBRAS.suave,
+  },
+  destacadaTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  destacadaTipoPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: '#F5F4F2',
+    borderWidth: 1,
+    borderColor: 'rgba(32, 28, 25, 0.06)',
+  },
+  destacadaTipoTexto: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#1C1917',
+  },
+  destacadaHora: {
+    color: '#A8A29E',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  destacadaTitulo: {
+    color: '#1C1917',
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: '700',
+    letterSpacing: -0.4,
+    marginTop: 10,
+  },
+  destacadaMensaje: {
+    color: '#57534E',
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 4,
+  },
+  destacadaPie: {
+    marginTop: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(32, 28, 25, 0.05)',
+  },
+  destacadaAutorWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  destacadaAutorInfo: {
+    flex: 1,
+  },
+  destacadaAutorNombre: {
+    color: '#202020',
+    fontSize: 12.5,
+    fontWeight: '700',
+  },
+  destacadaFechaLarga: {
+    color: '#A8A29E',
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  destacadaBotonAbrir: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#1C1917',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 14,
+  },
+  destacadaBotonAbrirTexto: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+
+  /* Secciones por Fecha */
+  seccionCabecera: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 16,
+    marginBottom: 10,
+  },
+  fechaGrupo: {
+    color: '#57534E',
+    fontSize: 13.5,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  seccionLinea: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(32, 28, 25, 0.06)',
+  },
+
+  /* Tarjetas de Notificación */
+  tarjetaNotificacion: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 13,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(32, 28, 25, 0.05)',
+    ...SOMBRAS.suave,
+    overflow: 'hidden',
+  },
+  tarjetaNoLeida: {
+    backgroundColor: '#FFFFFF',
+    borderColor: 'rgba(32, 28, 25, 0.1)',
+  },
+  tarjetaLeida: {
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    opacity: 0.85,
+  },
+  tarjetaGrupo: {
+    backgroundColor: '#F8F6F4',
+    borderColor: 'rgba(32, 28, 25, 0.08)',
+  },
+  barraAcentoNoLeida: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 3.5,
+    backgroundColor: '#1C1917',
+  },
+  filaTexto: {
+    flex: 1,
+    minWidth: 0,
+  },
+  filaTituloFila: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  filaTitulo: {
+    color: '#44403C',
+    fontSize: 13.5,
+    fontWeight: '600',
+    letterSpacing: -0.2,
+    flexShrink: 1,
+  },
+  filaTituloNoLeida: {
+    color: '#1C1917',
+    fontWeight: '700',
+  },
+  puntoNoLeida: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#1C1917',
+  },
+  filaMensaje: {
+    color: '#78716C',
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 2,
+  },
+  filaMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+  },
+  etiquetaMini: {
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+    backgroundColor: '#F5F4F2',
+    borderWidth: 1,
+    borderColor: 'rgba(32, 28, 25, 0.06)',
+  },
+  etiquetaMiniTexto: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#383533',
+  },
+  metaSeparador: {
+    color: '#D6D3D1',
+    fontSize: 10,
+  },
+  horaRelativa: {
+    color: '#A8A29E',
+    fontSize: 10.5,
+    fontWeight: '500',
+  },
+  filaFin: {
+    paddingLeft: 4,
+  },
+  botonExpandir: {
+    padding: 4,
+  },
+  pillContadorGrupo: {
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+    backgroundColor: '#EAE7E2',
+  },
+  pillContadorTexto: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#202020',
+  },
+
+  /* Avatares Monocromáticos y Neutros */
+  avatar: {
+    backgroundColor: '#EAE6E1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'visible',
+    borderWidth: 1,
+    borderColor: 'rgba(32, 28, 25, 0.08)',
+  },
+  avatarInitial: {
+    color: '#202020',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  avatarInitialSmall: {
+    fontSize: 10.5,
+  },
+  avatarBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 15,
+    height: 15,
+    borderRadius: 7.5,
+    backgroundColor: '#202020',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconAvatar: {
+    backgroundColor: '#F4F2EE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(32, 28, 25, 0.08)',
+  },
+
+  /* Modal de Detalle (ModalShell) */
+  modalScroll: {
+    flexGrow: 1,
+  },
+  modalContenido: {
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  modalTipoPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    backgroundColor: '#F5F4F2',
+    borderWidth: 1,
+    borderColor: 'rgba(32, 28, 25, 0.08)',
+  },
+  modalTipoTexto: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1C1917',
+  },
+  modalHeaderDerecha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  modalEstadoPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  modalEstadoLeida: {
+    backgroundColor: '#F5F5F4',
+  },
+  modalEstadoNoLeida: {
+    backgroundColor: '#1C1917',
+  },
+  modalEstadoTexto: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  modalEstadoTextoLeida: {
+    color: '#78716C',
+  },
+  modalEstadoTextoNoLeida: {
+    color: '#FFFFFF',
+  },
+  modalBotonCerrar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalEmisorCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#F8F6F4',
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(32, 28, 25, 0.06)',
+  },
+  modalEmisorInfo: {
+    flex: 1,
+  },
+  modalEmisorNombre: {
+    color: '#1C1917',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  modalEmisorFecha: {
+    color: '#78716C',
+    fontSize: 11.5,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  modalCuerpo: {
+    marginBottom: 20,
+  },
+  modalTituloPrincipal: {
+    color: '#1C1917',
+    fontSize: 21,
+    lineHeight: 26,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    marginBottom: 12,
+  },
+  modalMensajeCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(32, 28, 25, 0.06)',
+  },
+  modalMensajeTexto: {
+    color: '#332E2B',
+    fontSize: 14.5,
+    lineHeight: 22,
+    letterSpacing: -0.1,
+  },
+  modalAcciones: {
+    gap: 10,
+    marginTop: 8,
+  },
+  modalBotonPrimario: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: '#1C1917',
+  },
+  modalBotonPrimarioTexto: {
+    color: '#FFFFFF',
+    fontSize: 14.5,
+    fontWeight: '700',
+  },
+  modalBotonSecundario: {
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0, 0, 0, 0.04)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalBotonSecundarioTexto: {
+    color: '#57534E',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+});

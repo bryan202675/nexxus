@@ -1,5 +1,6 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React from 'react';
-import { RefreshControl, SafeAreaView, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
+import { RefreshControl, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 import BotonAnimado from '@/presentation/components/BotonAnimado';

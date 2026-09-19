@@ -1,45 +1,54 @@
 /**
  * Documentacion Nexxus - apps/mobile/src/presentation/screens/HistorialCompleto.tsx
  * Capa: presentacion.
- * Proposito: Pantalla ejecutiva del historial unificado de actividad (asistencias, nómina, tareas, solicitudes, bienestar).
- * Rediseñado con estética Glassmorphism monocromática ejecutiva, tarjetas Bento interactivas,
- * transiciones fluidas con Reanimated y pull-to-refresh.
+ * Proposito: Historial ejecutivo y consolidado de actividad (tareas, asistencias, nómina, solicitudes, bienestar).
+ * Rediseñado con la estética idéntica a Mi Pulso: tipografía limpia de gran escala, paleta minimalista
+ * y discreta (negros, beiges, pasteles suaves), tarjetas Bento, animaciones fluidas y modales ejecutivos.
  */
+
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
+  Keyboard,
   Platform,
-  SafeAreaView,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
+  TextInput,
+  TouchableOpacity,
   View,
-  RefreshControl,
-  ActivityIndicator,
 } from 'react-native';
+import Animated, {
+  Easing,
+  FadeInDown,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
-import { EmptyState } from '@/presentation/components/ui';
-import { RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/constants/diseno';
-import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
-import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
-import { translateWithApi } from '@/shared/i18n/translatorApi';
-import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
-import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
+import ModalShell from '@/presentation/components/ui/ModalShell';
+import { EmptyState } from '@/presentation/components/ui';
+import { SOMBRAS } from '@/shared/constants/diseno';
+import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
+import { useUserTabBottomPadding } from '@/presentation/hooks/useUserTabBottomPadding';
+import { translateWithApi } from '@/shared/i18n/translatorApi';
 
 const Text = AdminTranslatedText;
 
-interface Props {
-  navigation: any;
-}
-
 type CategoriaHistorial = 'todo' | 'tareas' | 'asistencias' | 'solicitudes' | 'bienestar' | 'documentos' | 'nomina';
-type IconoFeather = React.ComponentProps<typeof Feather>['name'];
-type IconoMaterial = React.ComponentProps<typeof MaterialIcons>['name'];
+
+interface Navigation {
+  navigate: (route: string, params?: Record<string, string>) => void;
+  goBack: () => void;
+  canGoBack?: () => boolean;
+}
 
 interface ActividadHistorial {
   id: string;
@@ -50,9 +59,9 @@ interface ActividadHistorial {
   categoria: CategoriaHistorial;
   estado: string;
   fecha: string;
-  icono: IconoMaterial;
-  color: string;
   prioridad?: string;
+  pantallaDestino?: string;
+  icono?: React.ComponentProps<typeof Feather>['name'];
 }
 
 const esIngles = (language: string) => language.startsWith('en');
@@ -101,31 +110,140 @@ const traducirPrioridad = (valor: string, language: string) => {
   return mapa[(valor || '').toLowerCase().trim()] || valor;
 };
 
-export default function HistorialCompleto({ navigation }: Props) {
-  const { t, i18n } = useTranslation();
-  const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
-  const estilos = useMemo(() => crearEstilosHistorial(colores, esOscuro), [colores, esOscuro]);
+const formatFechaElegante = (fechaStr?: string, locale: string = 'es-SV') => {
+  if (!fechaStr) return 'Sin fecha';
+  const d = new Date(fechaStr);
+  if (isNaN(d.getTime())) return fechaStr;
 
+  const now = new Date();
+  const esMismoDia =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
+
+  const timeStr = new Intl.DateTimeFormat(locale, {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(d);
+
+  if (esMismoDia) {
+    return `Hoy, ${timeStr}`;
+  }
+
+  const ayer = new Date(now);
+  ayer.setDate(now.getDate() - 1);
+  const esAyer =
+    d.getFullYear() === ayer.getFullYear() &&
+    d.getMonth() === ayer.getMonth() &&
+    d.getDate() === ayer.getDate();
+
+  if (esAyer) {
+    return `Ayer, ${timeStr}`;
+  }
+
+  const datePart = new Intl.DateTimeFormat(locale, {
+    day: 'numeric',
+    month: 'short',
+  }).format(d);
+
+  return `${datePart} · ${timeStr}`;
+};
+
+const formatFechaLarga = (fechaStr?: string, locale: string = 'es-SV') => {
+  if (!fechaStr) return 'Sin fecha registrada';
+  const d = new Date(fechaStr);
+  if (isNaN(d.getTime())) return fechaStr;
+
+  const fechaFormat = new Intl.DateTimeFormat(locale, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(d);
+
+  const horaFormat = new Intl.DateTimeFormat(locale, {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(d);
+
+  return `${fechaFormat} · ${horaFormat}`;
+};
+
+const getEstadoBadgeStyle = (estado: string) => {
+  const est = (estado || '').toLowerCase();
+  if (['completada', 'aprobada', 'aprobado', 'resuelto', 'pagado', 'leído', 'leido', 'activo'].includes(est)) {
+    return {
+      bg: '#EAF4DC',
+      dot: '#7DA842',
+      text: '#455E24',
+      label: 'Completado',
+    };
+  }
+  if (['rechazada', 'rechazado', 'cancelada', 'cancelado'].includes(est)) {
+    return {
+      bg: '#F6ECEB',
+      dot: '#BF665E',
+      text: '#833932',
+      label: 'Rechazado',
+    };
+  }
+  if (['en_progreso', 'en progreso', 'procesando', 'pendiente', 'no leída', 'no leida'].includes(est)) {
+    return {
+      bg: '#FFF6E5',
+      dot: '#D6A23D',
+      text: '#7C5819',
+      label: 'En curso',
+    };
+  }
+  return {
+    bg: '#F5F2EF',
+    dot: '#9E9791',
+    text: '#544F4B',
+    label: estado || 'Registrado',
+  };
+};
+
+export default function HistorialCompleto({ navigation }: { navigation: Navigation }) {
+  const bottomPadding = useUserTabBottomPadding(96);
+  const { t, i18n } = useTranslation();
   const {
     perfil,
-    tareas,
-    solicitudes,
-    solicitudesInternas,
+    tareas = [],
+    solicitudes = [],
+    solicitudesInternas = [],
     metrics,
-    focusSessions,
-    documentos,
-    pagos,
-    citas,
-    notificaciones,
-    feedbacks,
+    focusSessions = [],
+    documentos = [],
+    pagos = [],
+    citas = [],
+    notificaciones = [],
+    feedbacks = [],
     recargarDatos,
     cargando,
   } = useContextoUsuario();
 
   const [categoria, setCategoria] = useState<CategoriaHistorial>('todo');
   const [refrescando, setRefrescando] = useState(false);
+  const [busqueda, setBusqueda] = useState('');
+  const [buscadorAbierto, setBuscadorAbierto] = useState(false);
+  const [actividadSeleccionada, setActividadSeleccionada] = useState<ActividadHistorial | null>(null);
   const [traduccionesDinamicas, setTraduccionesDinamicas] = useState<Record<string, { titulo: string; detalle: string }>>({});
+
+  const entrance = useSharedValue(0);
+  const reduceMotion = useReducedMotion();
   const language = i18n.language;
+  const locale = esIngles(language) ? 'en-US' : 'es-SV';
+
+  useEffect(() => {
+    entrance.value = reduceMotion
+      ? 1
+      : withTiming(1, { duration: 240, easing: Easing.out(Easing.cubic) });
+  }, [entrance, reduceMotion]);
+
+  const entranceStyle = useAnimatedStyle(() => ({
+    opacity: entrance.value,
+    transform: [{ translateY: (1 - entrance.value) * 10 }],
+  }));
 
   const manejarRefrescar = async () => {
     setRefrescando(true);
@@ -138,190 +256,214 @@ export default function HistorialCompleto({ navigation }: Props) {
     }
   };
 
+  const manejarRegresar = () => {
+    if (navigation.canGoBack?.() || typeof navigation.goBack === 'function') {
+      navigation.goBack();
+    } else {
+      navigation.navigate('MiPulso');
+    }
+  };
+
   const actividades = useMemo<ActividadHistorial[]>(() => {
     const eventos: ActividadHistorial[] = [];
 
+    // Tareas
     tareas.forEach((tarea) =>
       eventos.push({
         id: `tarea_${tarea.id}`,
         titulo: tarea.titulo,
         detalle: tarea.descripcion || tarea.proyecto || textoIdioma(language, 'Actividad de tarea registrada', 'Registered task activity'),
-        tipo: t('historialCompleto.activity_types.tarea'),
+        tipo: t('historialCompleto.activity_types.tarea', { defaultValue: 'Tarea' }),
         tipoKey: 'tarea',
         categoria: 'tareas',
         estado: tarea.estado,
         fecha: tarea.fecha_limite || tarea.fecha_creacion,
-        icono: tarea.estado === 'completada' ? 'check-circle' : 'assignment',
-        color: tarea.estado === 'completada' ? '#10B981' : '#3B82F6',
         prioridad: tarea.prioridad,
+        pantallaDestino: 'CentroTareas',
+        icono: 'check-square',
       })
     );
 
+    // Solicitudes de Ausencia
     solicitudes.forEach((solicitud) =>
       eventos.push({
         id: `ausencia_${solicitud.id}`,
         titulo: solicitud.asunto,
-        detalle: `${solicitud.tipo} · ${solicitud.motivo}`,
-        tipo: t('historialCompleto.activity_types.ausencia'),
+        detalle: `${solicitud.tipo} · ${solicitud.motivo || 'Sin detalle adicional'}`,
+        tipo: t('historialCompleto.activity_types.ausencia', { defaultValue: 'Ausencia' }),
         tipoKey: 'ausencia',
         categoria: 'solicitudes',
         estado: solicitud.estado,
         fecha: solicitud.fecha_solicitud,
-        icono: 'event-busy',
-        color: solicitud.estado === 'aprobada' ? '#10B981' : solicitud.estado === 'rechazada' ? '#EF4444' : '#F59E0B',
         prioridad: solicitud.prioridad,
+        pantallaDestino: 'SolicitudesAusencia',
+        icono: 'calendar',
       })
     );
 
+    // Solicitudes Internas
     solicitudesInternas.forEach((solicitud) =>
       eventos.push({
         id: `solicitud_${solicitud.id}`,
         titulo: solicitud.titulo,
-        detalle: solicitud.descripcion,
-        tipo: t('historialCompleto.activity_types.solicitud_interna'),
+        detalle: solicitud.descripcion || 'Petición interna registrada',
+        tipo: t('historialCompleto.activity_types.solicitud_interna', { defaultValue: 'Solicitud' }),
         tipoKey: 'solicitud_interna',
         categoria: 'solicitudes',
         estado: solicitud.estado,
         fecha: solicitud.timestamp,
-        icono: 'assignment-ind',
-        color: solicitud.estado === 'aprobada' || solicitud.estado === 'resuelto' ? '#10B981' : solicitud.estado === 'rechazada' ? '#EF4444' : '#F59E0B',
         prioridad: solicitud.prioridad,
+        pantallaDestino: 'SolicitudesInternas',
+        icono: 'file-text',
       })
     );
 
+    // Focus / Bienestar
     focusSessions.forEach((sesion) =>
       eventos.push({
         id: `focus_${sesion.id}`,
-        titulo: `${t('historialCompleto.activity_types.bienestar')} (${sesion.duracionMinutos} min)`,
+        titulo: `${t('historialCompleto.activity_types.bienestar', { defaultValue: 'Sesión Focus' })} (${sesion.duracionMinutos} min)`,
         detalle: textoIdioma(
           language,
           `${sesion.tareasCompletadas} tareas completadas · concentración ${sesion.nivelConcentracion}/5`,
           `${sesion.tareasCompletadas} completed tasks · focus ${sesion.nivelConcentracion}/5`
         ),
-        tipo: t('historialCompleto.activity_types.bienestar'),
+        tipo: t('historialCompleto.activity_types.bienestar', { defaultValue: 'Bienestar' }),
         tipoKey: 'bienestar',
         categoria: 'bienestar',
         estado: 'completada',
         fecha: sesion.fecha,
-        icono: 'timer',
-        color: '#06B6D4',
+        pantallaDestino: 'MiBienestar',
+        icono: 'zap',
       })
     );
 
+    // Pulso / CheckIns
     (metrics?.recentCheckIns || []).forEach((checkIn) =>
       eventos.push({
-        id: `checkin_${checkIn.id}`,
-        titulo: t('historialCompleto.activity_types.pulso'),
-        detalle: textoIdioma(language, `Energía: ${checkIn.energia}`, `Energy: ${traducirEnergia(checkIn.energia, language)}`),
-        tipo: t('historialCompleto.activity_types.pulso'),
+        id: `checkin_${checkIn.id || checkIn.fecha}`,
+        titulo: checkIn.indicadoresRapidos?.[0] || t('historialCompleto.activity_types.pulso', { defaultValue: 'Pulso registrado' }),
+        detalle: textoIdioma(
+          language,
+          `Energía: ${checkIn.energia || 'Media'} · Estrés: ${checkIn.nivelEstres || 'Normal'}`,
+          `Energy: ${traducirEnergia(checkIn.energia || 'Media', language)} · Stress: ${checkIn.nivelEstres || 'Normal'}`
+        ),
+        tipo: t('historialCompleto.activity_types.pulso', { defaultValue: 'Pulso' }),
         tipoKey: 'pulso',
         categoria: 'bienestar',
         estado: 'registrado',
         fecha: checkIn.fecha,
-        icono: 'favorite',
-        color: '#EC4899',
+        pantallaDestino: 'MiBienestar',
+        icono: 'activity',
       })
     );
 
+    // Asistencia
     if (perfil?.ultimoCheckIn) {
       eventos.push({
         id: `asistencia_${perfil.id}_${perfil.ultimoCheckIn}`,
-        titulo: t('historialCompleto.activity_types.asistencia'),
+        titulo: t('historialCompleto.activity_types.asistencia', { defaultValue: 'Registro de Asistencia' }),
         detalle: perfil.estado_trabajo
           ? textoIdioma(
               language,
-              `Estado actual: ${traducirEstadoTrabajo(perfil.estado_trabajo, language)}`,
-              `Current status: ${traducirEstadoTrabajo(perfil.estado_trabajo, language)}`
+              `Estado: ${traducirEstadoTrabajo(perfil.estado_trabajo, language)}`,
+              `Status: ${traducirEstadoTrabajo(perfil.estado_trabajo, language)}`
             )
-          : textoIdioma(language, 'Registro de asistencia del usuario', 'User attendance record'),
-        tipo: t('historialCompleto.activity_types.asistencia'),
+          : textoIdioma(language, 'Registro de turno en el sistema', 'Shift record in system'),
+        tipo: t('historialCompleto.activity_types.asistencia', { defaultValue: 'Asistencia' }),
         tipoKey: 'asistencia',
         categoria: 'asistencias',
         estado: perfil.estado_activo ? 'activo' : 'registrado',
         fecha: perfil.ultimoCheckIn,
-        icono: 'access-time',
-        color: '#10B981',
+        pantallaDestino: 'ControlAsistencia',
+        icono: 'clock',
       });
     }
 
+    // Documentos
     documentos.forEach((documento) =>
       eventos.push({
         id: `documento_${documento.id}`,
         titulo: documento.titulo,
-        detalle: textoIdioma(language, `Documento ${documento.tipo}`, `Document ${documento.tipo}`),
-        tipo: t('historialCompleto.activity_types.documento'),
+        detalle: textoIdioma(language, `Documento ${documento.tipo || 'general'}`, `Document ${documento.tipo || 'general'}`),
+        tipo: t('historialCompleto.activity_types.documento', { defaultValue: 'Documento' }),
         tipoKey: 'documento',
         categoria: 'documentos',
         estado: documento.leido ? 'leído' : 'pendiente',
         fecha: documento.fechaSubida,
+        pantallaDestino: 'CentroDocumentos',
         icono: 'folder',
-        color: documento.leido ? '#10B981' : '#3B82F6',
       })
     );
 
+    // Nómina / Pagos
     pagos.forEach((pago) =>
       eventos.push({
         id: `pago_${pago.id}`,
-        titulo: `${t('historialCompleto.activity_types.nomina')} ${pago.periodo}`,
-        detalle: `${pago.moneda || 'USD'} ${Math.round(pago.salario_neto).toLocaleString('en-US')} ${textoIdioma(language, 'neto', 'net')}`,
-        tipo: t('historialCompleto.activity_types.nomina'),
+        titulo: `${t('historialCompleto.activity_types.nomina', { defaultValue: 'Nómina' })} ${pago.periodo || ''}`,
+        detalle: `${pago.moneda || 'USD'} ${Math.round(pago.salario_neto || 0).toLocaleString('en-US')} ${textoIdioma(language, 'neto', 'net')}`,
+        tipo: t('historialCompleto.activity_types.nomina', { defaultValue: 'Nómina' }),
         tipoKey: 'nomina',
         categoria: 'nomina',
-        estado: pago.estado,
+        estado: pago.estado || 'pagado',
         fecha: pago.fecha_pago,
-        icono: 'payments',
-        color: pago.estado?.toLowerCase() === 'pagado' ? '#10B981' : pago.estado?.toLowerCase() === 'procesando' ? '#3B82F6' : '#F59E0B',
+        pantallaDestino: 'MiSalario',
+        icono: 'credit-card',
       })
     );
 
+    // Citas de bienestar
     citas.forEach((cita) =>
       eventos.push({
         id: `cita_${cita.id}`,
-        titulo: textoIdioma(language, `Sesión con ${cita.especialista}`, `Session with ${cita.especialista}`),
-        detalle: `${cita.especialidad} · ${cita.tipoSesion}`,
-        tipo: t('historialCompleto.activity_types.cita'),
+        titulo: textoIdioma(language, `Sesión con ${cita.especialista || 'Especialista'}`, `Session with ${cita.especialista || 'Specialist'}`),
+        detalle: `${cita.especialidad || 'Bienestar'} · ${cita.tipoSesion || 'Consulta'}`,
+        tipo: t('historialCompleto.activity_types.cita', { defaultValue: 'Cita' }),
         tipoKey: 'cita',
         categoria: 'bienestar',
-        estado: cita.estado,
+        estado: cita.estado || 'registrado',
         fecha: cita.fecha_creacion || cita.fecha,
-        icono: 'event-available',
-        color: cita.estado === 'completada' ? '#10B981' : cita.estado === 'cancelada' ? '#EF4444' : '#06B6D4',
+        pantallaDestino: 'MiBienestar',
+        icono: 'heart',
       })
     );
 
+    // Notificaciones
     notificaciones.forEach((notificacion) =>
       eventos.push({
         id: `notificacion_${notificacion.id}`,
         titulo: notificacion.titulo,
         detalle: notificacion.mensaje,
-        tipo: t('historialCompleto.activity_types.notificacion'),
+        tipo: t('historialCompleto.activity_types.notificacion', { defaultValue: 'Aviso' }),
         tipoKey: 'notificacion',
         categoria: notificacion.tipo === 'ausencia' || notificacion.tipo === 'aprobacion' ? 'solicitudes' : notificacion.tipo === 'bienestar' ? 'bienestar' : 'todo',
         estado: notificacion.leida ? 'leída' : 'no leída',
         fecha: notificacion.fecha,
-        icono: 'notifications',
-        color: notificacion.leida ? colores.textoSuave : '#3B82F6',
+        pantallaDestino: 'Notificaciones',
+        icono: 'bell',
       })
     );
 
+    // Feedbacks
     feedbacks.forEach((feedback) =>
       eventos.push({
         id: `feedback_${feedback.id}`,
-        titulo: `${t('historialCompleto.activity_types.feedback')}: ${feedback.tipo}`,
+        titulo: `${t('historialCompleto.activity_types.feedback', { defaultValue: 'Feedback' })}: ${feedback.tipo || ''}`,
         detalle: feedback.mensaje,
-        tipo: t('historialCompleto.activity_types.feedback'),
+        tipo: t('historialCompleto.activity_types.feedback', { defaultValue: 'Feedback' }),
         tipoKey: 'feedback',
         categoria: 'bienestar',
-        estado: feedback.estado,
+        estado: feedback.estado || 'registrado',
         fecha: feedback.fecha,
-        icono: 'forum',
-        color: feedback.estado === 'resuelto' ? '#10B981' : '#F59E0B',
+        pantallaDestino: 'CentroApoyo',
+        icono: 'message-circle',
       })
     );
 
-    return eventos.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-  }, [tareas, solicitudes, solicitudesInternas, metrics, focusSessions, perfil, documentos, pagos, citas, notificaciones, feedbacks, t, language, colores.textoSuave]);
+    return eventos.sort((a, b) => new Date(b.fecha || 0).getTime() - new Date(a.fecha || 0).getTime());
+  }, [tareas, solicitudes, solicitudesInternas, focusSessions, metrics, perfil, documentos, pagos, citas, notificaciones, feedbacks, t, language]);
 
+  // Traducciones dinámicas para idiomas secundarios
   useEffect(() => {
     let activo = true;
 
@@ -359,328 +501,837 @@ export default function HistorialCompleto({ navigation }: Props) {
     };
   }, [actividades, language]);
 
-  const actividadesFiltradas =
-    categoria === 'todo' ? actividades : actividades.filter((actividad) => actividad.categoria === categoria);
+  // Conteo por categorías para los chips
+  const conteoPorCategoria = useMemo(() => {
+    const mapa: Record<CategoriaHistorial, number> = {
+      todo: actividades.length,
+      tareas: 0,
+      asistencias: 0,
+      solicitudes: 0,
+      bienestar: 0,
+      documentos: 0,
+      nomina: 0,
+    };
+    actividades.forEach((item) => {
+      if (item.categoria && mapa[item.categoria] !== undefined) {
+        mapa[item.categoria]++;
+      }
+    });
+    return mapa;
+  }, [actividades]);
 
-  const resumen = useMemo(() => {
+  // Resumen de Métricas
+  const metricasResumen = useMemo(() => {
     const completadas = actividades.filter((item) =>
-      ['completada', 'aprobada', 'aprobado', 'resuelto', 'Pagado', 'leído', 'activo'].includes(item.estado)
+      ['completada', 'aprobada', 'aprobado', 'resuelto', 'pagado', 'leído', 'leido', 'activo'].includes((item.estado || '').toLowerCase())
     ).length;
+
     const pendientes = actividades.filter((item) =>
-      ['pendiente', 'Procesando', 'no leída', 'en progreso'].includes(item.estado)
+      ['pendiente', 'procesando', 'no leída', 'no leida', 'en_progreso', 'en progreso'].includes((item.estado || '').toLowerCase())
     ).length;
+
     const bienestar = actividades.filter((item) => item.categoria === 'bienestar').length;
 
-    return [
-      { label: t('historialCompleto.summary_events'), valor: actividades.length.toString(), icono: 'activity' as IconoFeather, color: '#3B82F6' },
-      { label: t('historialCompleto.summary_resolved'), valor: completadas.toString(), icono: 'check-circle' as IconoFeather, color: '#10B981' },
-      { label: t('historialCompleto.summary_pending'), valor: pendientes.toString(), icono: 'clock' as IconoFeather, color: '#F59E0B' },
-      { label: t('historialCompleto.summary_wellness'), valor: bienestar.toString(), icono: 'heart' as IconoFeather, color: '#EC4899' },
-    ];
-  }, [actividades, t]);
+    return {
+      total: actividades.length,
+      completadas,
+      pendientes,
+      bienestar,
+    };
+  }, [actividades]);
 
-  const filtros: { id: CategoriaHistorial; label: string; icono: IconoFeather }[] = [
-    { id: 'todo', label: t('historialCompleto.filter_all'), icono: 'grid' },
-    { id: 'tareas', label: t('historialCompleto.filter_tasks'), icono: 'check-square' },
-    { id: 'asistencias', label: t('historialCompleto.filter_attendance'), icono: 'clock' },
-    { id: 'solicitudes', label: t('historialCompleto.filter_requests'), icono: 'file-text' },
-    { id: 'bienestar', label: t('historialCompleto.filter_wellness'), icono: 'heart' },
-    { id: 'documentos', label: t('historialCompleto.filter_docs'), icono: 'folder' },
-    { id: 'nomina', label: t('historialCompleto.filter_payroll'), icono: 'credit-card' },
+  // Filtrado final con búsqueda
+  const actividadesFiltradas = useMemo(() => {
+    let lista = categoria === 'todo' ? actividades : actividades.filter((item) => item.categoria === categoria);
+    if (busqueda.trim()) {
+      const q = busqueda.toLowerCase().trim();
+      lista = lista.filter(
+        (item) =>
+          item.titulo.toLowerCase().includes(q) ||
+          item.detalle.toLowerCase().includes(q) ||
+          item.tipo.toLowerCase().includes(q) ||
+          (item.prioridad && item.prioridad.toLowerCase().includes(q))
+      );
+    }
+    return lista;
+  }, [actividades, categoria, busqueda]);
+
+  const filtros: { id: CategoriaHistorial; label: string; icon: React.ComponentProps<typeof Feather>['name'] }[] = [
+    { id: 'todo', label: t('historialCompleto.filter_all', { defaultValue: 'Todo' }), icon: 'grid' },
+    { id: 'tareas', label: t('historialCompleto.filter_tasks', { defaultValue: 'Tareas' }), icon: 'check-square' },
+    { id: 'asistencias', label: t('historialCompleto.filter_attendance', { defaultValue: 'Asistencias' }), icon: 'clock' },
+    { id: 'solicitudes', label: t('historialCompleto.filter_requests', { defaultValue: 'Solicitudes' }), icon: 'file-text' },
+    { id: 'bienestar', label: t('historialCompleto.filter_wellness', { defaultValue: 'Bienestar' }), icon: 'heart' },
+    { id: 'documentos', label: t('historialCompleto.filter_docs', { defaultValue: 'Documentos' }), icon: 'folder' },
+    { id: 'nomina', label: t('historialCompleto.filter_payroll', { defaultValue: 'Nómina' }), icon: 'credit-card' },
   ];
 
-  const renderItem = ({ item, index }: { item: ActividadHistorial; index: number }) => {
-    const contenido = traduccionesDinamicas[item.id] || item;
+  const abrirDetalle = (item: ActividadHistorial) => {
+    setActividadSeleccionada(item);
+  };
+
+  const irAPantallaDestino = (item: ActividadHistorial) => {
+    setActividadSeleccionada(null);
+    if (item.pantallaDestino) {
+      navigation.navigate(item.pantallaDestino);
+    }
+  };
+
+  const renderActividadCard = ({ item, index }: { item: ActividadHistorial; index: number }) => {
+    const data = traduccionesDinamicas[item.id] || item;
+    const badge = getEstadoBadgeStyle(item.estado);
 
     return (
-      <Animated.View entering={FadeInDown.duration(280).delay(Math.min(index, 10) * 25)} style={estilos.itemHistorial}>
-        {/* Eje de línea de tiempo */}
-        <View style={estilos.ejeHistorial}>
-          <View style={[estilos.puntoHistorial, { borderColor: item.color }]} />
-          {index !== actividadesFiltradas.length - 1 && <View style={estilos.lineaHistorial} />}
-        </View>
-
-        {/* Tarjeta Bento de evento */}
-        <View style={estilos.infoHistorial}>
-          <BotonAnimado scaleTo={0.98} style={estilos.tarjetaHist}>
-            <BlurView intensity={Platform.OS === 'ios' ? intensidadBlur + 6 : 75} tint={blurTint} style={estilos.tarjetaContenido}>
-              <View style={estilos.headerHist}>
-                <View style={estilos.tipoWrap}>
-                  <View style={[estilos.iconoTipo, { borderColor: `${item.color}35`, backgroundColor: `${item.color}15` }]}>
-                    <MaterialIcons name={item.icono} size={17} color={item.color} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={estilos.tipoHist}>{item.tipo.toUpperCase()}</Text>
-                    <Text style={estilos.fechaHist}>{formatearFecha(item.fecha, i18n.language)}</Text>
-                  </View>
-                </View>
-
-                <View style={estilos.badgeEstado}>
-                  <Text style={[estilos.textoBadge, { color: item.color }]}>
-                    {normalizarEstado(item.estado, t)}
-                  </Text>
-                </View>
-              </View>
-
-              <Text style={estilos.tituloHist} numberOfLines={2}>
-                {contenido.titulo}
+      <Animated.View
+        entering={reduceMotion ? undefined : FadeInDown.duration(220).delay(Math.min(index, 8) * 20)}
+      >
+        <BotonAnimado
+          scaleTo={0.98}
+          onPress={() => abrirDetalle(item)}
+          style={styles.actividadCard}
+          accessibilityLabel={`Ver detalle de ${data.titulo}`}
+        >
+          <View style={styles.cardTop}>
+            <View style={[styles.statusPill, { backgroundColor: badge.bg }]}>
+              <View style={[styles.statusDot, { backgroundColor: badge.dot }]} />
+              <Text style={[styles.statusText, { color: badge.text }]}>
+                {badge.label}
               </Text>
-              <Text style={estilos.detalleHist} numberOfLines={3}>
-                {contenido.detalle}
-              </Text>
+            </View>
+            <View style={styles.arrowButton}>
+              <Feather name="arrow-up-right" size={18} color="#202020" />
+            </View>
+          </View>
 
-              {item.prioridad && (
-                <View style={estilos.metaFila}>
-                  <Feather name="flag" size={11} color={colores.textoSuave} />
-                  <Text style={estilos.metaTexto}>
-                    {t('historialCompleto.priority_label', {
-                      prioridad: traducirPrioridad(item.prioridad, language),
-                    })}
-                  </Text>
-                </View>
-              )}
-            </BlurView>
-          </BotonAnimado>
-        </View>
+          <Text style={styles.cardTitle} numberOfLines={2}>
+            {data.titulo}
+          </Text>
+
+          <Text style={styles.cardDetail} numberOfLines={2}>
+            {data.detalle}
+          </Text>
+
+          <View style={styles.cardFooter}>
+            <View style={styles.timeRow}>
+              <Feather name="clock" size={14} color="#78736F" />
+              <Text style={styles.timeText}>{formatFechaElegante(item.fecha, locale)}</Text>
+            </View>
+
+            <View style={styles.typeTag}>
+              <Text style={styles.typeTagText}>{item.tipo}</Text>
+            </View>
+          </View>
+        </BotonAnimado>
       </Animated.View>
     );
   };
 
-  return (
-    <SafeAreaView style={estilos.contenedor}>
-      <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
-      <View style={estilos.fondoAbsoluto}>
-        <FondoMobilePremium />
-      </View>
+  const modalData = actividadSeleccionada
+    ? traduccionesDinamicas[actividadSeleccionada.id] || actividadSeleccionada
+    : { titulo: '', detalle: '' };
+  const modalBadge = actividadSeleccionada ? getEstadoBadgeStyle(actividadSeleccionada.estado) : null;
 
-      <NavbarEnterprise
-        titulo={t('historialCompleto.title')}
-        subtitulo={t('historialCompleto.subtitle')}
-        mostrarAtras
-        ocultarAccionesDerechas
-        accionDerecha={
-          <BotonAnimado
-            onPress={manejarRefrescar}
-            scaleTo={0.92}
-            disabled={refrescando || cargando}
-            accessibilityLabel="Actualizar historial"
-            style={estilos.iconButtonHeader}
-          >
-            {refrescando || cargando ? (
-              <ActivityIndicator size="small" color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
-            ) : (
-              <MaterialIcons name="refresh" size={19} color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
-            )}
-          </BotonAnimado>
-        }
+  return (
+    <SafeAreaView style={styles.screen}>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <LinearGradient
+        pointerEvents="none"
+        colors={['#FBEDE8', '#F6ECF6', '#FFFDFC']}
+        locations={[0, 0.28, 0.72]}
+        style={styles.ambient}
       />
+
+      {/* Barra Superior */}
+      <View style={styles.topBar}>
+        <BotonAnimado
+          style={styles.backButton}
+          scaleTo={0.96}
+          onPress={manejarRegresar}
+          accessibilityLabel="Regresar"
+        >
+          <Feather name="arrow-left" size={21} color="#202020" />
+        </BotonAnimado>
+
+        <Text style={styles.topBarLabel}>
+          {t('historialCompleto.title', { defaultValue: 'Historial' })}
+        </Text>
+
+        <View style={styles.headerActions}>
+          <BotonAnimado
+            style={styles.addButton}
+            scaleTo={0.96}
+            onPress={manejarRefrescar}
+            accessibilityLabel="Actualizar historial"
+          >
+            <Feather name="refresh-cw" size={19} color="#FFFFFF" />
+          </BotonAnimado>
+          <BotonAnimado
+            style={styles.searchButton}
+            scaleTo={0.96}
+            onPress={() => setBuscadorAbierto((prev) => !prev)}
+            accessibilityLabel="Buscar en historial"
+          >
+            <Feather name={buscadorAbierto ? 'x' : 'search'} size={20} color="#202020" />
+          </BotonAnimado>
+        </View>
+      </View>
 
       <FlatList
         data={actividadesFiltradas}
         keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={estilos.lista}
+        renderItem={renderActividadCard}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
         refreshControl={
           <RefreshControl
             refreshing={refrescando}
             onRefresh={manejarRefrescar}
-            tintColor={colores.texto}
+            tintColor="#202020"
           />
         }
         ListHeaderComponent={
-          <View style={{ marginBottom: 12 }}>
-            {/* Grid 4 Métricas Bento */}
-            <View style={estilos.resumenGrid}>
-              {resumen.map((item) => (
-                <View key={item.label} style={estilos.tarjetaResumen}>
-                  <BlurView intensity={Platform.OS === 'ios' ? intensidadBlur + 6 : 75} tint={blurTint} style={estilos.resumenContenido}>
-                    <View style={estilos.filaTopMetrica}>
-                      <Feather name={item.icono} size={15} color={item.color} />
-                      <Text style={estilos.valorResumen}>{item.valor}</Text>
-                    </View>
-                    <Text style={estilos.labelResumen} numberOfLines={1}>{item.label}</Text>
-                  </BlurView>
+          <Animated.View style={entranceStyle}>
+            {/* Buscador Desplegable */}
+            {buscadorAbierto && (
+              <View style={styles.searchContainer}>
+                <Feather name="search" size={18} color="#78736F" style={{ marginLeft: 14 }} />
+                <TextInput
+                  style={styles.searchInput}
+                  value={busqueda}
+                  onChangeText={setBusqueda}
+                  placeholder="Buscar por título, detalle o categoría..."
+                  placeholderTextColor="#86807D"
+                  autoFocus
+                />
+                {busqueda.length > 0 && (
+                  <TouchableOpacity onPress={() => setBusqueda('')} style={styles.searchClear}>
+                    <Feather name="x-circle" size={16} color="#78736F" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+
+            {/* Cabecera Hero */}
+            <Text style={styles.hero}>
+              Tu historial,{`\n`}al día
+            </Text>
+            <Text style={styles.heroSubtitle}>
+              Actividad consolidada de tareas, asistencias, solicitudes y bienestar.
+            </Text>
+
+            {/* Banner de Métricas Bento Minimalista */}
+            <View style={styles.resumenCard}>
+              <View style={styles.resumenTopRow}>
+                <View style={styles.resumenStatusPill}>
+                  <View style={styles.resumenStatusDot} />
+                  <Text style={styles.resumenStatusText}>
+                    {metricasResumen.total} {metricasResumen.total === 1 ? 'registro' : 'registros en total'}
+                  </Text>
                 </View>
-              ))}
+                <Text style={styles.resumenPeriodoLabel}>Actualizado en tiempo real</Text>
+              </View>
+
+              <View style={styles.resumenGrid}>
+                <View style={styles.metricaItem}>
+                  <Text style={styles.metricaValor}>{metricasResumen.total}</Text>
+                  <Text style={styles.metricaLabel}>Eventos</Text>
+                </View>
+                <View style={styles.metricaDivider} />
+                <View style={styles.metricaItem}>
+                  <Text style={[styles.metricaValor, { color: '#272321' }]}>{metricasResumen.completadas}</Text>
+                  <Text style={styles.metricaLabel}>Resueltos</Text>
+                </View>
+                <View style={styles.metricaDivider} />
+                <View style={styles.metricaItem}>
+                  <Text style={styles.metricaValor}>{metricasResumen.pendientes}</Text>
+                  <Text style={styles.metricaLabel}>En curso</Text>
+                </View>
+                <View style={styles.metricaDivider} />
+                <View style={styles.metricaItem}>
+                  <Text style={styles.metricaValor}>{metricasResumen.bienestar}</Text>
+                  <Text style={styles.metricaLabel}>Bienestar</Text>
+                </View>
+              </View>
             </View>
 
-            {/* Selector de Categorías Horizontal */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={estilos.scrollFiltros}>
-              {filtros.map((filtro) => {
-                const activo = categoria === filtro.id;
+            {/* Título de Sección y Filtros */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Filtrar actividad</Text>
+              {categoria !== 'todo' && (
+                <BotonAnimado scaleTo={0.97} onPress={() => setCategoria('todo')}>
+                  <Text style={styles.resetFilterText}>Ver todo</Text>
+                </BotonAnimado>
+              )}
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chips}
+            >
+              {filtros.map((item) => {
+                const active = categoria === item.id;
+                const count = conteoPorCategoria[item.id] || 0;
                 return (
                   <BotonAnimado
-                    key={filtro.id}
-                    onPress={() => setCategoria(filtro.id)}
-                    scaleTo={0.94}
-                    style={[estilos.chip, activo && estilos.chipActivo]}
+                    key={item.id}
+                    scaleTo={0.97}
+                    onPress={() => setCategoria(item.id)}
+                    style={[styles.chip, active && styles.chipActive]}
                   >
-                    <Feather name={filtro.icono} size={13} color={activo ? colores.texto : colores.textoSuave} />
-                    <Text style={[estilos.textoChip, activo && estilos.textoChipActivo]}>{filtro.label}</Text>
+                    <View style={[styles.chipCount, active && styles.chipCountActive]}>
+                      <Text style={styles.chipCountText}>{count}</Text>
+                    </View>
+                    <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>
+                      {item.label}
+                    </Text>
                   </BotonAnimado>
                 );
               })}
             </ScrollView>
-          </View>
+
+            <View style={[styles.sectionHeader, { marginTop: 22 }]}>
+              <Text style={styles.sectionTitle}>Línea de tiempo</Text>
+              <Text style={styles.resultsCount}>
+                {actividadesFiltradas.length} {actividadesFiltradas.length === 1 ? 'resultado' : 'resultados'}
+              </Text>
+            </View>
+          </Animated.View>
         }
         ListEmptyComponent={
           <EmptyState
             icono="archive"
-            titulo={t('historialCompleto.empty_msg')}
-            detalle={t('historialCompleto.empty_detail')}
+            titulo={t('historialCompleto.empty_msg', { defaultValue: 'No hay registros en esta categoría.' })}
+            detalle={t('historialCompleto.empty_detail', { defaultValue: 'Cuando completes tareas, solicitudes, asistencias o check-ins, aparecerán aquí de forma automática.' })}
           />
         }
       />
+
+      {/* Modal de Detalle Completo de Actividad (ModalShell) */}
+      <ModalShell
+        visible={Boolean(actividadSeleccionada)}
+        onClose={() => setActividadSeleccionada(null)}
+        maxHeight="86%"
+      >
+        {actividadSeleccionada && (
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.modalContent}
+          >
+            {/* Header del Modal */}
+            <View style={styles.modalHeaderRow}>
+              <View style={styles.modalTypePill}>
+                <Feather
+                  name={actividadSeleccionada.icono || 'activity'}
+                  size={14}
+                  color="#202020"
+                />
+                <Text style={styles.modalTypePillText}>{actividadSeleccionada.tipo}</Text>
+              </View>
+
+              <View style={styles.modalHeaderActions}>
+                {modalBadge && (
+                  <View style={[styles.modalStatusPill, { backgroundColor: modalBadge.bg }]}>
+                    <View style={[styles.statusDot, { backgroundColor: modalBadge.dot }]} />
+                    <Text style={[styles.statusText, { color: modalBadge.text }]}>
+                      {modalBadge.label}
+                    </Text>
+                  </View>
+                )}
+                <TouchableOpacity
+                  style={styles.modalCloseButton}
+                  onPress={() => setActividadSeleccionada(null)}
+                  activeOpacity={0.7}
+                  accessibilityLabel="Cerrar modal"
+                >
+                  <Feather name="x" size={18} color="#202020" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Título Principal */}
+            <Text style={styles.modalTitle}>{modalData.titulo}</Text>
+
+            {/* Tarjeta de Descripción */}
+            <View style={styles.modalDetailCard}>
+              <Text style={styles.modalDetailLabel}>Detalle y Registro</Text>
+              <Text style={styles.modalDetailBody}>{modalData.detalle}</Text>
+            </View>
+
+            {/* Grid de Metadatos */}
+            <View style={styles.modalMetaGrid}>
+              <View style={styles.modalMetaCard}>
+                <View style={styles.modalMetaHeader}>
+                  <Feather name="calendar" size={14} color="#78736F" />
+                  <Text style={styles.modalMetaLabel}>FECHA Y HORA</Text>
+                </View>
+                <Text style={styles.modalMetaValue}>
+                  {formatFechaLarga(actividadSeleccionada.fecha, locale)}
+                </Text>
+              </View>
+
+              <View style={styles.modalMetaCard}>
+                <View style={styles.modalMetaHeader}>
+                  <Feather name="tag" size={14} color="#78736F" />
+                  <Text style={styles.modalMetaLabel}>CATEGORÍA</Text>
+                </View>
+                <Text style={styles.modalMetaValue}>
+                  {actividadSeleccionada.categoria.charAt(0).toUpperCase() + actividadSeleccionada.categoria.slice(1)}
+                </Text>
+              </View>
+
+              {actividadSeleccionada.prioridad && (
+                <View style={styles.modalMetaCard}>
+                  <View style={styles.modalMetaHeader}>
+                    <Feather name="flag" size={14} color="#78736F" />
+                    <Text style={styles.modalMetaLabel}>PRIORIDAD</Text>
+                  </View>
+                  <Text style={styles.modalMetaValue}>
+                    {traducirPrioridad(actividadSeleccionada.prioridad, language)}
+                  </Text>
+                </View>
+              )}
+
+              <View style={styles.modalMetaCard}>
+                <View style={styles.modalMetaHeader}>
+                  <Feather name="check-circle" size={14} color="#78736F" />
+                  <Text style={styles.modalMetaLabel}>ESTADO OFICIAL</Text>
+                </View>
+                <Text style={styles.modalMetaValue}>
+                  {actividadSeleccionada.estado.charAt(0).toUpperCase() + actividadSeleccionada.estado.slice(1)}
+                </Text>
+              </View>
+            </View>
+
+            {/* Botón de Acción Directa para Navegar a la Pantalla de Origen */}
+            {actividadSeleccionada.pantallaDestino && (
+              <BotonAnimado
+                style={styles.modalCtaButton}
+                scaleTo={0.98}
+                onPress={() => irAPantallaDestino(actividadSeleccionada)}
+              >
+                <Text style={styles.modalCtaButtonText}>
+                  Ver detalle en {actividadSeleccionada.tipo}
+                </Text>
+                <Feather name="arrow-up-right" size={17} color="#FFFFFF" />
+              </BotonAnimado>
+            )}
+          </ScrollView>
+        )}
+      </ModalShell>
     </SafeAreaView>
   );
 }
 
-function formatearFecha(fecha: string, locale: string) {
-  const valor = new Date(fecha);
-  if (Number.isNaN(valor.getTime())) return esIngles(locale) ? 'No date' : 'Sin fecha';
-  const loc = locale === 'es' ? 'es-SV' : 'en-US';
-  return `${valor.toLocaleDateString(loc, { day: '2-digit', month: 'short' })} • ${valor.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' })}`;
-}
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: '#FFFDFC' },
+  ambient: { ...StyleSheet.absoluteFill },
+  content: {
+    paddingHorizontal: 21,
+    paddingTop: 4,
+  },
 
-function normalizarEstado(estado: string, t: any) {
-  const key = estado.toLowerCase().replace(/ /g, '_');
-  return t(`historialCompleto.status.${key}`, { defaultValue: estado }).toUpperCase();
-}
+  // Barra Superior
+  topBar: {
+    height: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 21,
+  },
+  backButton: {
+    width: 47,
+    height: 47,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SOMBRAS.suave,
+  },
+  topBarLabel: {
+    color: '#312E2C',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  headerActions: { flexDirection: 'row', gap: 10 },
+  addButton: {
+    width: 47,
+    height: 47,
+    borderRadius: 24,
+    backgroundColor: '#202020',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchButton: {
+    width: 47,
+    height: 47,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SOMBRAS.suave,
+  },
 
-function crearEstilosHistorial(c: any, esOscuro: boolean) {
-  const glass = c.vidrio;
-  const glassMini = c.vidrioSutil;
-  const activeSurface = esOscuro ? 'rgba(255,255,255,0.15)' : 'rgba(15,23,42,0.10)';
-  const activeBorder = esOscuro ? 'rgba(255,255,255,0.30)' : 'rgba(15,23,42,0.22)';
+  // Buscador
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(43,36,31,0.06)',
+    ...SOMBRAS.suave,
+  },
+  searchInput: {
+    flex: 1,
+    height: 46,
+    paddingHorizontal: 12,
+    fontSize: 13,
+    color: '#1F1D1C',
+    fontWeight: '500',
+  },
+  searchClear: {
+    padding: 12,
+  },
 
-  return StyleSheet.create({
-    contenedor: { flex: 1, backgroundColor: c.fondo },
-    fondoAbsoluto: { ...StyleSheet.absoluteFill, zIndex: -1, overflow: 'hidden' },
+  // Hero
+  hero: {
+    marginTop: 18,
+    color: '#1F1D1C',
+    fontSize: 34,
+    lineHeight: 38,
+    letterSpacing: -1.4,
+    fontWeight: '600',
+  },
+  heroSubtitle: {
+    color: '#86807D',
+    fontSize: 14,
+    fontWeight: '500',
+    lineHeight: 19,
+    marginTop: 6,
+    marginBottom: 18,
+  },
 
-    iconButtonHeader: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      backgroundColor: esOscuro ? '#FFFFFF' : '#0F172A',
-      alignItems: 'center',
-      justifyContent: 'center',
-      ...SOMBRAS.suave,
-    },
+  // Banner Resumen Bento
+  resumenCard: {
+    padding: 16,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(43,36,31,0.035)',
+    ...SOMBRAS.suave,
+  },
+  resumenTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  resumenStatusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    backgroundColor: '#F5F2EF',
+  },
+  resumenStatusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#D5E774',
+  },
+  resumenStatusText: {
+    color: '#544F4B',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  resumenPeriodoLabel: {
+    color: '#86807D',
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  resumenGrid: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 4,
+  },
+  metricaItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  metricaValor: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1F1D1C',
+    letterSpacing: -0.6,
+  },
+  metricaLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#78736F',
+    marginTop: 3,
+  },
+  metricaDivider: {
+    width: 1,
+    height: 26,
+    backgroundColor: '#EFECE9',
+  },
 
-    lista: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 110 },
+  // Encabezados de Sección
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 24,
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    color: '#24211F',
+    fontSize: 22,
+    fontWeight: '600',
+    letterSpacing: -0.8,
+  },
+  resetFilterText: {
+    color: '#5F5A56',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  resultsCount: {
+    color: '#86807D',
+    fontSize: 12,
+    fontWeight: '600',
+  },
 
-    // Resumen Grid
-    resumenGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 10,
-      marginBottom: 16,
-    },
-    tarjetaResumen: {
-      width: '48.5%',
-      borderRadius: 18,
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: c.borde,
-      backgroundColor: c.superficie,
-      ...SOMBRAS.suave,
-    },
-    resumenContenido: {
-      padding: 12,
-      minHeight: 70,
-      justifyContent: 'space-between',
-    },
-    filaTopMetrica: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    valorResumen: { fontSize: 22, fontWeight: '900', color: c.texto, letterSpacing: -0.4 },
-    labelResumen: { fontSize: 11, fontWeight: '700', color: c.textoSuave, marginTop: 4 },
+  // Chips Carrusel
+  chips: { gap: 9, paddingRight: 20 },
+  chip: {
+    height: 50,
+    borderRadius: 25,
+    paddingHorizontal: 9,
+    paddingRight: 17,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(43,36,31,0.035)',
+  },
+  chipActive: {
+    backgroundColor: '#D5E774',
+    borderColor: '#D5E774',
+  },
+  chipCount: {
+    minWidth: 32,
+    height: 32,
+    paddingHorizontal: 8,
+    borderRadius: 16,
+    backgroundColor: '#F5F2EF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chipCountActive: { backgroundColor: '#FFFFFF' },
+  chipCountText: { color: '#3A3531', fontSize: 13, fontWeight: '700' },
+  chipLabel: { color: '#4B4642', fontSize: 14, fontWeight: '600' },
+  chipLabelActive: { color: '#2E3023', fontWeight: '700' },
 
-    // Filtros
-    scrollFiltros: { gap: 8, paddingBottom: 6 },
-    chip: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      paddingHorizontal: 14,
-      paddingVertical: 9,
-      borderRadius: RADIOS.completo,
-      backgroundColor: c.superficie,
-      borderWidth: 1,
-      borderColor: c.borde,
-    },
-    chipActivo: {
-      backgroundColor: activeSurface,
-      borderColor: activeBorder,
-      borderWidth: 1.5,
-    },
-    textoChip: { fontSize: 12, color: c.textoSuave, fontWeight: '600' },
-    textoChipActivo: { color: c.texto, fontWeight: '800' },
+  // Tarjetas de Actividad
+  actividadCard: {
+    padding: 18,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    marginBottom: 12,
+    ...SOMBRAS.suave,
+  },
+  cardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  statusPill: {
+    minHeight: 28,
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F5F2EF',
+  },
+  statusDot: { width: 7, height: 7, borderRadius: 4 },
+  statusText: { color: '#544F4B', fontSize: 11, fontWeight: '700' },
+  arrowButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F7F6F4',
+  },
+  cardTitle: {
+    color: '#272321',
+    fontSize: 18,
+    fontWeight: '600',
+    letterSpacing: -0.4,
+    marginTop: 12,
+    lineHeight: 23,
+  },
+  cardDetail: {
+    color: '#78736F',
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 18,
+    marginTop: 5,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F5F2EF',
+  },
+  timeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  timeText: { color: '#78736F', fontSize: 12, fontWeight: '600' },
+  typeTag: {
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 10,
+    backgroundColor: '#F7F6F4',
+  },
+  typeTagText: {
+    color: '#544F4B',
+    fontSize: 11,
+    fontWeight: '700',
+  },
 
-    // Timeline Items
-    itemHistorial: { flexDirection: 'row' },
-    ejeHistorial: { alignItems: 'center', width: 28 },
-    puntoHistorial: {
-      width: 12,
-      height: 12,
-      borderRadius: 6,
-      zIndex: 2,
-      marginTop: 20,
-      backgroundColor: c.fondo,
-      borderWidth: 3,
-    },
-    lineaHistorial: {
-      position: 'absolute',
-      top: 28,
-      bottom: -6,
-      width: 1.5,
-      backgroundColor: c.borde,
-      zIndex: 1,
-    },
-
-    infoHistorial: { flex: 1, paddingBottom: 14, paddingLeft: 6 },
-    tarjetaHist: {
-      borderRadius: 20,
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: c.borde,
-      backgroundColor: c.superficie,
-      ...SOMBRAS.suave,
-    },
-    tarjetaContenido: { padding: 14 },
-    headerHist: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
-      gap: 8,
-      marginBottom: 8,
-    },
-    tipoWrap: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
-    iconoTipo: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 1,
-    },
-    tipoHist: { fontSize: 10, fontWeight: '800', color: c.texto, letterSpacing: 0.3 },
-    fechaHist: { fontSize: 11, color: c.textoSuave, fontWeight: '600', marginTop: 1 },
-    badgeEstado: {
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: RADIOS.completo,
-      backgroundColor: glassMini,
-      borderWidth: 1,
-      borderColor: c.borde,
-    },
-    textoBadge: { fontSize: 9, fontWeight: '800', letterSpacing: 0.2 },
-    tituloHist: { fontSize: 14, fontWeight: '800', color: c.texto, marginBottom: 3, letterSpacing: -0.2 },
-    detalleHist: { fontSize: 12, color: c.textoSecundario, lineHeight: 17, fontWeight: '500' },
-    metaFila: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8 },
-    metaTexto: { fontSize: 11, color: c.textoSuave, fontWeight: '600' },
-  });
-}
+  // Modal
+  modalContent: {
+    paddingBottom: 24,
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  modalTypePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 14,
+    backgroundColor: '#F5F2EF',
+  },
+  modalTypePillText: {
+    color: '#202020',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  modalHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  modalStatusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+  },
+  modalCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SOMBRAS.suave,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1F1D1C',
+    letterSpacing: -0.6,
+    lineHeight: 28,
+    marginBottom: 14,
+  },
+  modalDetailCard: {
+    padding: 16,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(43,36,31,0.04)',
+    marginBottom: 16,
+    ...SOMBRAS.suave,
+  },
+  modalDetailLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#86807D',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    marginBottom: 6,
+  },
+  modalDetailBody: {
+    fontSize: 14,
+    color: '#383431',
+    lineHeight: 21,
+    fontWeight: '500',
+  },
+  modalMetaGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 20,
+  },
+  modalMetaCard: {
+    width: '48.5%',
+    padding: 13,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(43,36,31,0.035)',
+    ...SOMBRAS.suave,
+  },
+  modalMetaHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  modalMetaLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#86807D',
+    letterSpacing: 0.5,
+  },
+  modalMetaValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1F1D1C',
+    lineHeight: 18,
+  },
+  modalCtaButton: {
+    height: 54,
+    borderRadius: 18,
+    backgroundColor: '#202020',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginTop: 4,
+  },
+  modalCtaButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+});

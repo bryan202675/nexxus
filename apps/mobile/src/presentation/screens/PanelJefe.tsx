@@ -11,7 +11,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
 import { AdminTranslatedText } from "@/shared/i18n/AdminTranslatedText";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { LeaderDashboard, LeaderTeamMember } from "domain/entities/Leader";
 import { RequestReportItem } from "domain/entities/RequestReport";
@@ -26,6 +26,7 @@ import { useCases } from "@/infrastructure/container";
 import { useContextoUsuario } from "@/presentation/context/ContextoUsuario";
 import { normalizeRole } from "@/shared/auth/roles";
 import { getTenantId } from "@/shared/auth/tenant";
+import { SOMBRAS } from "@/shared/constants/diseno";
 import BotonAnimado from "@/presentation/components/BotonAnimado";
 import EmptyState from "@/presentation/components/ui/EmptyState";
 import { SkeletonLista } from "@/presentation/components/ui/Skeleton";
@@ -96,7 +97,11 @@ const obtenerEmpresaId = (
   perfil: { empresaId?: string; empresa?: string } | null
 ) => getTenantId(perfil);
 
-export default function PanelJefe() {
+type Navigation = {
+  navigate: (route: string, params?: Record<string, string>) => void;
+};
+
+export default function PanelJefe({ navigation }: { navigation?: Navigation } = {}) {
   const { t } = useTranslation();
   const { perfil } = useContextoUsuario();
   const empresaId = obtenerEmpresaId(perfil);
@@ -244,7 +249,12 @@ export default function PanelJefe() {
   if (!esJefe) {
     return (
       <SafeAreaView style={styles.centerState}>
-        <LinearGradient pointerEvents="none" colors={["#F6E8E5", "#F5EAF5", "#FFFDFC"]} locations={[0, 0.3, 0.78]} style={styles.ambient} />
+        <LinearGradient
+          pointerEvents="none"
+          colors={["#FBEDE8", "#F6ECF6", "#FFFDFC"]}
+          locations={[0, 0.28, 0.72]}
+          style={styles.ambient}
+        />
         <View style={styles.stateContent}>
           <MaterialIcons name="lock" size={34} color={colores.textoSuave} />
           <Text style={styles.stateTitle}>
@@ -261,7 +271,12 @@ export default function PanelJefe() {
   if (!empresaId) {
     return (
       <SafeAreaView style={styles.centerState}>
-        <LinearGradient pointerEvents="none" colors={["#F6E8E5", "#F5EAF5", "#FFFDFC"]} locations={[0, 0.3, 0.78]} style={styles.ambient} />
+        <LinearGradient
+          pointerEvents="none"
+          colors={["#FBEDE8", "#F6ECF6", "#FFFDFC"]}
+          locations={[0, 0.28, 0.72]}
+          style={styles.ambient}
+        />
         <View style={styles.stateContent}>
           <MaterialIcons name="business" size={34} color={colores.textoSuave} />
           <Text style={styles.stateTitle}>
@@ -277,23 +292,61 @@ export default function PanelJefe() {
 
   return (
     <SafeAreaView style={styles.root} edges={["top", "left", "right"]}>
-      <StatusBar barStyle={esOscuro ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
-      <LinearGradient pointerEvents="none" colors={["#F6E8E5", "#F5EAF5", "#FFFDFC"]} locations={[0, 0.3, 0.78]} style={styles.ambient} />
+      <StatusBar
+        barStyle={esOscuro ? "light-content" : "dark-content"}
+        backgroundColor="transparent"
+        translucent
+      />
+      <LinearGradient
+        pointerEvents="none"
+        colors={["#FBEDE8", "#F6ECF6", "#FFFDFC"]}
+        locations={[0, 0.28, 0.72]}
+        style={styles.ambient}
+      />
       <Animated.ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
         showsVerticalScrollIndicator={false}
         style={estiloEntrada}
       >
         <View style={styles.topBar}>
-          <View style={styles.managerIdentity}>
+          <BotonAnimado
+            style={styles.profile}
+            scaleTo={0.97}
+            onPress={() => navigation?.navigate("PerfilLaboral")}
+            accessibilityLabel="Abrir mi perfil"
+          >
             {perfil?.foto_perfil ? (
-              <Image source={{ uri: perfil.foto_perfil }} style={styles.managerAvatar} />
+              <Image
+                source={{ uri: perfil.foto_perfil }}
+                style={styles.profileAvatar}
+              />
             ) : (
-              <View style={styles.managerAvatarFallback}>
-                <Text style={styles.managerAvatarText}>{(perfil?.nombre || "J").charAt(0).toUpperCase()}</Text>
-              </View>
+              <Text style={styles.profileAvatarInitial}>
+                {(perfil?.nombre || "J").charAt(0).toUpperCase()}
+              </Text>
             )}
-            <Text style={styles.managerLabel}>Equipo</Text>
+          </BotonAnimado>
+          <Text style={styles.topBarLabel}>Equipo</Text>
+          <View style={styles.headerActions}>
+            <BotonAnimado
+              style={styles.addButton}
+              scaleTo={0.96}
+              onPress={() => navigation?.navigate("BusquedaGlobal")}
+              accessibilityLabel="Buscar en equipo"
+            >
+              <Feather name="search" size={21} color="#FFFFFF" />
+            </BotonAnimado>
+            <BotonAnimado
+              style={styles.bellButton}
+              scaleTo={0.96}
+              onPress={() => navigation?.navigate("Notificaciones")}
+              accessibilityLabel="Abrir notificaciones"
+            >
+              <Feather name="bell" size={21} color="#202020" />
+              {alertasPendientes > 0 && (
+                <View style={styles.notificationDot} />
+              )}
+            </BotonAnimado>
           </View>
         </View>
         <View style={styles.header}>
@@ -940,7 +993,7 @@ function DetailStat({ label, value, alert = false }: { label: string; value: num
 
 const directoryStyles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#FFFDFC" },
-  ambient: { ...StyleSheet.absoluteFill, height: 330 },
+  ambient: { ...StyleSheet.absoluteFill },
   header: { minHeight: Platform.OS === "android" ? 52 : 56, paddingHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 },
   circle: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "rgba(0,0,0,0.04)", shadowColor: "#211C19", shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
   title: { color: "#211E1C", fontSize: 18, fontWeight: "700", letterSpacing: Platform.OS === "ios" ? -0.3 : 0 },
@@ -992,51 +1045,67 @@ function crearEstilos(c: any, esOscuro: boolean) {
       backgroundColor: "#FFFDFC",
     },
     content: {
-      paddingHorizontal: 20,
-      paddingTop: Platform.OS === "android" ? 10 : 14,
+      paddingHorizontal: 21,
+      paddingTop: 4,
       paddingBottom: 132,
-      gap: 24,
+      gap: 16,
     },
-    ambient: { ...StyleSheet.absoluteFill, height: 330 },
+    ambient: { ...StyleSheet.absoluteFill },
     topBar: {
-      minHeight: 44,
+      height: 52,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      marginBottom: 2,
     },
-    managerIdentity: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 10,
-    },
-    managerAvatar: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-    },
-    managerAvatarFallback: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
+    profile: {
+      width: 46,
+      height: 46,
+      borderRadius: 23,
+      overflow: "hidden",
       backgroundColor: "#E9D2BF",
       alignItems: "center",
       justifyContent: "center",
     },
-    managerAvatarText: {
-      color: "#382E29",
-      fontSize: 16,
-      fontWeight: "700",
-    },
-    managerLabel: {
-      color: "#211E1C",
+    profileAvatar: { width: "100%", height: "100%" },
+    profileAvatarInitial: { color: "#382E29", fontSize: 17, fontWeight: "700" },
+    topBarLabel: {
+      color: "#292522",
       fontSize: 17,
-      fontWeight: "700",
-      letterSpacing: Platform.OS === "ios" ? -0.4 : 0,
+      fontWeight: "600",
+      letterSpacing: -0.5,
+    },
+    headerActions: { flexDirection: "row", gap: 10 },
+    addButton: {
+      width: 47,
+      height: 47,
+      borderRadius: 24,
+      backgroundColor: "#202020",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    bellButton: {
+      width: 47,
+      height: 47,
+      borderRadius: 24,
+      backgroundColor: "#FFFFFF",
+      alignItems: "center",
+      justifyContent: "center",
+      ...SOMBRAS.suave,
+    },
+    notificationDot: {
+      position: "absolute",
+      top: 11,
+      right: 12,
+      width: 7,
+      height: 7,
+      borderRadius: 4,
+      backgroundColor: "#E56C67",
+      borderWidth: 1.5,
+      borderColor: "#FFFFFF",
     },
     header: {
-      gap: 6,
-      marginTop: 2,
+      gap: 4,
+      marginTop: 0,
     },
     eyebrow: {
       color: c.textoSecundario,
@@ -1046,11 +1115,11 @@ function crearEstilos(c: any, esOscuro: boolean) {
       textTransform: "uppercase",
     },
     title: {
-      color: "#211E1C",
-      fontSize: Platform.OS === "ios" ? 32 : 30,
-      lineHeight: Platform.OS === "ios" ? 36 : 38,
-      fontWeight: "700",
-      letterSpacing: Platform.OS === "ios" ? -1.1 : -0.3,
+      color: "#1F1D1C",
+      fontSize: 34,
+      lineHeight: 38,
+      fontWeight: "600",
+      letterSpacing: -1.4,
     },
     subtitle: {
       color: "#78716C",
@@ -1061,7 +1130,7 @@ function crearEstilos(c: any, esOscuro: boolean) {
       flexDirection: "row",
       alignItems: "stretch",
       gap: 10,
-      marginTop: 2,
+      marginTop: 0,
     },
     metricCard: {
       flex: 1,

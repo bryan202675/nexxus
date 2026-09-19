@@ -1,3 +1,4 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState } from 'react';
 import {
   View,
@@ -5,9 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Platform,
-  SafeAreaView,
-  StatusBar,
-} from 'react-native';
+  StatusBar} from 'react-native';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
@@ -177,7 +176,7 @@ function crearEstilos(c: any, esOscuro: boolean, cAcento: string) {
     },
     navBarContainer: {
       marginHorizontal: 16,
-      marginTop: Platform.OS === 'ios' ? 8 : 14,
+      marginTop: 8,
       marginBottom: 10,
       borderRadius: 30,
       overflow: 'hidden',

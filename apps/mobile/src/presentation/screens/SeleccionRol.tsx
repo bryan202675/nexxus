@@ -7,15 +7,14 @@
  */
 
 // Importa React, { useState, useRef, useEffect } desde React; habilita componentes, hooks y tipos base para esta pieza.
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState } from 'react';
 import {
   View,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  StatusBar,
-  SafeAreaView,
-} from 'react-native';
+  StatusBar} from 'react-native';
 // Importa { LinearGradient } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';

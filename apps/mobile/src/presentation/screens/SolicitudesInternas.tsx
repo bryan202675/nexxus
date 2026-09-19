@@ -1,17 +1,16 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState } from 'react';
 import {
   View,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   Alert,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  FlatList,
-} from 'react-native';
+  FlatList} from 'react-native';
 import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';

@@ -1,471 +1,616 @@
-import React from 'react';
-import {
-  View, StyleSheet, ScrollView,
-  StatusBar, SafeAreaView, TouchableOpacity,
-} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useMemo } from 'react';
+import { Image, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
 import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
-import { Feather, MaterialIcons } from '@expo/vector-icons';
-import { SOMBRAS } from '@/shared/constants/diseno';
-import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
-import { BlurView } from 'expo-blur';
-import BotonAnimado from '@/presentation/components/BotonAnimado';
-import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
+import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
-import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
+import { SOMBRAS } from '@/shared/constants/diseno';
+import BotonAnimado from '@/presentation/components/BotonAnimado';
+import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
-import EmptyState from '@/presentation/components/ui/EmptyState';
+import { useUserTabBottomPadding } from '@/presentation/hooks/useUserTabBottomPadding';
 
 const Text = AdminTranslatedText;
+interface Props { navigation: { navigate: (route: string) => void } }
+type Icon = React.ComponentProps<typeof Feather>['name'];
 
-interface Props { navigation: any; }
-
-type GrupoAtajos = {
-  tituloKey: string;
-  icono: keyof typeof MaterialIcons.glyphMap;
-  atajos: { tituloKey: string; subtituloKey: string; icono: React.ComponentProps<typeof Feather>['name']; destino: string; color: string }[];
-};
-
-const GRUPOS_ATAJOS: GrupoAtajos[] = [
-  {
-    tituloKey: 'recursos.shortcut_groups.wellness',
-    icono: 'favorite',
-    atajos: [
-      { tituloKey: 'recursos.shortcut_items.ControlAsistencia.title', subtituloKey: 'recursos.shortcut_items.ControlAsistencia.subtitle', icono: 'clock', destino: 'ControlAsistencia', color: '#3B82F6' },
-      { tituloKey: 'recursos.shortcut_items.CheckInDiario.title', subtituloKey: 'recursos.shortcut_items.CheckInDiario.subtitle', icono: 'activity', destino: 'CheckInDiario', color: '#EC4899' },
-      { tituloKey: 'recursos.shortcut_items.CalendarioLaboral.title', subtituloKey: 'recursos.shortcut_items.CalendarioLaboral.subtitle', icono: 'calendar', destino: 'CalendarioLaboral', color: '#10B981' },
-      { tituloKey: 'recursos.shortcut_items.CentroTareas.title', subtituloKey: 'recursos.shortcut_items.CentroTareas.subtitle', icono: 'check-square', destino: 'CentroTareas', color: '#8B5CF6' },
-      { tituloKey: 'recursos.shortcut_items.MisObjetivos.title', subtituloKey: 'recursos.shortcut_items.MisObjetivos.subtitle', icono: 'flag', destino: 'MisObjetivos', color: '#06B6D4' },
-    ],
-  },
-  {
-    tituloKey: 'recursos.shortcut_groups.management',
-    icono: 'assignment-turned-in',
-    atajos: [
-      { tituloKey: 'recursos.shortcut_items.SolicitudesAusencia.title', subtituloKey: 'recursos.shortcut_items.SolicitudesAusencia.subtitle', icono: 'sun', destino: 'SolicitudesAusencia', color: '#F59E0B' },
-      { tituloKey: 'recursos.shortcut_items.SolicitudesInternas.title', subtituloKey: 'recursos.shortcut_items.SolicitudesInternas.subtitle', icono: 'file-text', destino: 'SolicitudesInternas', color: '#06B6D4' },
-    ],
-  },
-  {
-    tituloKey: 'recursos.shortcut_groups.docs_learning',
-    icono: 'menu-book',
-    atajos: [
-      { tituloKey: 'recursos.shortcut_items.CentroDocumentos.title', subtituloKey: 'recursos.shortcut_items.CentroDocumentos.subtitle', icono: 'folder', destino: 'CentroDocumentos', color: '#3B82F6' },
-      { tituloKey: 'recursos.shortcut_items.MiSalario.title', subtituloKey: 'recursos.shortcut_items.MiSalario.subtitle', icono: 'credit-card', destino: 'MiSalario', color: '#10B981' },
-      { tituloKey: 'recursos.shortcut_items.CentroAprendizaje.title', subtituloKey: 'recursos.shortcut_items.CentroAprendizaje.subtitle', icono: 'book-open', destino: 'CentroAprendizaje', color: '#8B5CF6' },
-      { tituloKey: 'recursos.shortcut_items.MisLogros.title', subtituloKey: 'recursos.shortcut_items.MisLogros.subtitle', icono: 'award', destino: 'MisLogros', color: '#F59E0B' },
-      { tituloKey: 'recursos.shortcut_items.MisActivos.title', subtituloKey: 'recursos.shortcut_items.MisActivos.subtitle', icono: 'briefcase', destino: 'MisActivos', color: '#EC4899' },
-    ],
-  },
-  {
-    tituloKey: 'recursos.shortcut_groups.comms',
-    icono: 'forum',
-    atajos: [
-      { tituloKey: 'recursos.shortcut_items.BandejaUnificada.title', subtituloKey: 'recursos.shortcut_items.BandejaUnificada.subtitle', icono: 'inbox', destino: 'BandejaUnificada', color: '#06B6D4' },
-      { tituloKey: 'recursos.shortcut_items.Notificaciones.title', subtituloKey: 'recursos.shortcut_items.Notificaciones.subtitle', icono: 'bell', destino: 'Notificaciones', color: '#F59E0B' },
-      { tituloKey: 'recursos.shortcut_items.BusquedaGlobal.title', subtituloKey: 'recursos.shortcut_items.BusquedaGlobal.subtitle', icono: 'search', destino: 'BusquedaGlobal', color: '#3B82F6' },
-    ],
-  },
-  {
-    tituloKey: 'recursos.shortcut_groups.account',
-    icono: 'account-circle',
-    atajos: [
-      { tituloKey: 'recursos.shortcut_items.PerfilLaboral.title', subtituloKey: 'recursos.shortcut_items.PerfilLaboral.subtitle', icono: 'user', destino: 'PerfilLaboral', color: '#8B5CF6' },
-      { tituloKey: 'recursos.shortcut_items.HistorialCompleto.title', subtituloKey: 'recursos.shortcut_items.HistorialCompleto.subtitle', icono: 'clock', destino: 'HistorialCompleto', color: '#10B981' },
-      { tituloKey: 'recursos.shortcut_items.CentroApoyo.title', subtituloKey: 'recursos.shortcut_items.CentroApoyo.subtitle', icono: 'headphones', destino: 'CentroApoyo', color: '#F59E0B' },
-      { tituloKey: 'recursos.shortcut_items.ConfiguracionApp.title', subtituloKey: 'recursos.shortcut_items.ConfiguracionApp.subtitle', icono: 'settings', destino: 'ConfiguracionApp', color: '#64748B' },
-    ],
-  },
+const quickActions: { label: string; icon: Icon; route: string }[] = [
+  { label: 'Check-in', icon: 'activity', route: 'CheckInDiario' },
+  { label: 'Solicitudes', icon: 'calendar', route: 'SolicitudesAusencia' },
+  { label: 'Documentos', icon: 'folder', route: 'CentroDocumentos' },
+  { label: 'Salario', icon: 'credit-card', route: 'MiSalario' },
 ];
 
+const categories: { title: string; detail: string; icon: Icon; route: string }[] = [
+  { title: 'Trabajo', detail: 'Asistencia y agenda', icon: 'briefcase', route: 'ControlAsistencia' },
+  { title: 'Documentos', detail: 'Archivos y nóminas', icon: 'folder', route: 'CentroDocumentos' },
+  { title: 'Bienestar', detail: 'Tu pulso diario', icon: 'heart', route: 'CheckInDiario' },
+  { title: 'Cuenta', detail: 'Perfil y ayuda', icon: 'user', route: 'PerfilLaboral' },
+];
+
+function getDocumentIcon(tipo?: string): Icon {
+  switch (tipo?.toLowerCase()) {
+    case 'nomina':
+      return 'dollar-sign';
+    case 'contrato':
+      return 'file-text';
+    case 'certificado':
+      return 'award';
+    case 'rrhh':
+      return 'users';
+    case 'evaluacion':
+      return 'trending-up';
+    default:
+      return 'file-text';
+  }
+}
+
+function formatDocDate(fecha?: string) {
+  if (!fecha) return '';
+  const d = new Date(fecha);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+}
+
 export default function Recursos({ navigation }: Props) {
-  const { t, i18n } = useTranslation();
-  const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
-  const estilos = crearEstilosRecursos(colores, esOscuro);
-  const { documentos, marcarDocumentoLeido } = useContextoUsuario();
-
-  const documentosPendientes = documentos.filter((documento) => !documento.leido);
-  const documentosRecientes = documentos.slice(0, 3);
-  const totalCategorias = new Set(documentos.map((documento) => documento.tipo)).size;
-
-  const resumen = [
-    { label: t('recursos.summary.documents', { defaultValue: 'Documentos' }), valor: documentos.length.toString(), icono: 'folder' as const, color: '#3B82F6' },
-    { label: i18n.language.startsWith('en') ? 'Pending' : t('recursos.summary.pending', { defaultValue: 'Pendientes' }), valor: documentosPendientes.length.toString(), icono: 'bell' as const, color: '#F59E0B' },
-    { label: t('recursos.summary.categories', { defaultValue: 'Categorías' }), valor: totalCategorias.toString(), icono: 'layers' as const, color: '#06B6D4' },
-  ];
-
-  const marcarLeido = async (id: string) => {
-    try {
-      await marcarDocumentoLeido(id);
-    } catch {}
+  const { t } = useTranslation();
+  const { colores, esOscuro } = useTemaMobile();
+  const { perfil, documentos, solicitudes, solicitudesInternas, marcarDocumentoLeido } = useContextoUsuario();
+  const styles = useMemo(() => createStyles(colores, esOscuro), [colores, esOscuro]);
+  const bottomPadding = useUserTabBottomPadding(112);
+  const recentDocuments = useMemo(
+    () => documentos.slice().sort((a, b) => new Date(b.fechaSubida).getTime() - new Date(a.fechaSubida).getTime()).slice(0, 4),
+    [documentos],
+  );
+  const pendingDoc = useMemo(
+    () => documentos.find((doc) => !doc.leido),
+    [documentos],
+  );
+  const readDocuments = useMemo(
+    () => (pendingDoc ? recentDocuments.filter((doc) => doc.id !== pendingDoc.id).slice(0, 3) : recentDocuments.slice(0, 3)),
+    [recentDocuments, pendingDoc],
+  );
+  const pendingDocuments = documentos.filter((document) => !document.leido).length;
+  const openRequests = solicitudes.length + solicitudesInternas.length;
+  const documentAction = (id: string) => {
+    const document = documentos.find((item) => item.id === id);
+    if (document && !document.leido) void marcarDocumentoLeido(id);
+    navigation.navigate('CentroDocumentos');
   };
 
   return (
-    <SafeAreaView style={estilos.contenedor}>
-      <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
-      <View style={estilos.fondoAbsoluto}>
-        <FondoMobilePremium />
+    <SafeAreaView style={styles.screen}>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <LinearGradient
+        pointerEvents="none"
+        colors={['#FBEDE8', '#F6ECF6', '#FFFDFC']}
+        locations={[0, 0.28, 0.72]}
+        style={styles.ambient}
+      />
+
+      <View style={styles.topBar}>
+        <BotonAnimado
+          style={styles.profile}
+          scaleTo={0.97}
+          onPress={() => navigation.navigate("PerfilLaboral")}
+          accessibilityLabel="Abrir mi perfil"
+        >
+          {perfil?.foto_perfil ? (
+            <Image source={{ uri: perfil.foto_perfil }} style={styles.avatar} />
+          ) : (
+            <Text style={styles.avatarInitial}>
+              {((perfil?.nombre || 'U').trim().charAt(0) || 'U').toUpperCase()}
+            </Text>
+          )}
+        </BotonAnimado>
+        <Text style={styles.topBarLabel}>{t('recursos.title', { defaultValue: 'Recursos' })}</Text>
+        <View style={styles.headerActions}>
+          <BotonAnimado
+            style={styles.addButton}
+            scaleTo={0.96}
+            onPress={() => navigation.navigate("BusquedaGlobal")}
+            accessibilityLabel="Buscar recursos"
+          >
+            <Feather name="search" size={21} color="#FFFFFF" />
+          </BotonAnimado>
+          <BotonAnimado
+            style={styles.bellButton}
+            scaleTo={0.96}
+            onPress={() => navigation.navigate("Notificaciones")}
+            accessibilityLabel="Abrir notificaciones"
+          >
+            <Feather name="bell" size={21} color="#202020" />
+            {pendingDocuments > 0 && (
+              <View style={styles.notificationDot} />
+            )}
+          </BotonAnimado>
+        </View>
       </View>
 
-      {/* Navbar Superior ejecutiva */}
-      <NavbarEnterprise titulo={t('recursos.title', { defaultValue: 'Recursos' })} />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}>
+        <Animated.View entering={FadeInDown.duration(260).easing(Easing.out(Easing.quad))} style={styles.hero}>
+          <Text style={styles.heroTitle}>Todo lo que{'\n'}necesitas</Text>
+          <Text style={styles.heroSubtitle}>Documentos, solicitudes y herramientas para tu día.</Text>
+        </Animated.View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }}>
-        {/* Banner Hero Ejecutivo */}
-        <View style={estilos.headerHero}>
-          <View style={estilos.headerHeroTextos}>
-            <Text style={estilos.eyebrow}>{t('recursos.ops_center_eyebrow')}</Text>
-            <Text style={estilos.tituloHero}>{t('recursos.services_title')}</Text>
-            <Text style={estilos.subtituloHero}>{t('recursos.services_subtitle')}</Text>
-          </View>
-        </View>
-
-        {/* Métricas Rápidas */}
-        <View style={estilos.resumenGrid}>
-          {resumen.map((item, indice) => (
-            <Animated.View
-              key={item.label}
-              entering={FadeInDown.duration(260).delay(indice * 40).easing(Easing.out(Easing.quad))}
-              style={estilos.tarjetaResumen}
-            >
-              <View style={estilos.tarjetaResumenTop}>
-                <View style={[estilos.iconoResumenBadge, { backgroundColor: `${item.color}1E`, borderColor: `${item.color}35` }]}>
-                  <Feather name={item.icono} size={15} color={item.color} />
+        <Animated.View entering={FadeInDown.duration(280).delay(45).easing(Easing.out(Easing.quad))} style={styles.heroCardWrap}>
+          <BotonAnimado style={styles.heroCard} scaleTo={0.985} onPress={() => navigation.navigate('CentroDocumentos')}>
+            <View style={styles.heroCardHeader}>
+              <View style={styles.heroBadgeRow}>
+                <View style={styles.heroIconBox}>
+                  <Feather name="folder" size={17} color="#FFFFFF" />
+                </View>
+                <View>
+                  <Text style={styles.heroCardHeading}>CENTRO DE RECURSOS</Text>
+                  <Text style={styles.heroCardSubtitle}>Documentos y solicitudes activas</Text>
                 </View>
               </View>
-              <View>
-                <Text style={estilos.valorResumen}>{item.valor}</Text>
-                <Text style={estilos.labelResumen}>{item.label}</Text>
+              <View style={styles.heroArrowBox}>
+                <Feather name="arrow-up-right" size={16} color="#FFFFFF" />
               </View>
-            </Animated.View>
-          ))}
-        </View>
-
-        {/* Sección: Documentos Recientes */}
-        <View style={estilos.seccionRecursos}>
-          <View style={estilos.cabeceraSec}>
-            <View style={estilos.cabeceraTituloRow}>
-              <MaterialIcons name="folder-open" size={20} color={esOscuro ? '#FFFFFF' : '#0F172A'} />
-              <Text style={estilos.tituloSec}>{t('recursos.your_documents', { defaultValue: 'Documentos Recientes' })}</Text>
             </View>
-            <TouchableOpacity onPress={() => navigation.navigate('CentroDocumentos')} activeOpacity={0.7}>
-              <Text style={estilos.verTodosText}>{t('recursos.see_all')}</Text>
-            </TouchableOpacity>
+
+            <View style={styles.heroMetricsGrid}>
+              <View style={styles.heroMetricBox}>
+                <Text style={styles.heroMetricNumber}>{pendingDocuments}</Text>
+                <Text style={styles.heroMetricLabel}>Documentos</Text>
+                <Text style={styles.heroMetricSub}>pendientes</Text>
+              </View>
+              <View style={styles.heroMetricDivider} />
+              <View style={styles.heroMetricBox}>
+                <Text style={styles.heroMetricNumber}>{openRequests}</Text>
+                <Text style={styles.heroMetricLabel}>Solicitudes</Text>
+                <Text style={styles.heroMetricSub}>en curso</Text>
+              </View>
+              <View style={styles.heroMetricDivider} />
+              <View style={styles.heroMetricBox}>
+                <Text style={styles.heroMetricNumber}>{pendingDocuments + openRequests}</Text>
+                <Text style={styles.heroMetricLabel}>Total</Text>
+                <Text style={styles.heroMetricSub}>por atender</Text>
+              </View>
+            </View>
+          </BotonAnimado>
+        </Animated.View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.quickActions}
+          style={styles.quickActionsScroll}
+        >
+          {quickActions.map((action) => (
+            <BotonAnimado
+              key={action.route}
+              style={styles.quickPill}
+              scaleTo={0.97}
+              onPress={() => navigation.navigate(action.route)}
+            >
+              <Feather
+                name={action.icon}
+                size={15}
+                color={colores.texto}
+              />
+              <Text style={styles.quickPillText}>
+                {action.label}
+              </Text>
+            </BotonAnimado>
+          ))}
+        </ScrollView>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionHeaderTitle}>Tus documentos</Text>
+            <BotonAnimado scaleTo={0.97} onPress={() => navigation.navigate('CentroDocumentos')}>
+              <Text style={styles.seeAll}>Ver todos</Text>
+            </BotonAnimado>
           </View>
 
-          {documentosRecientes.length === 0 ? (
-            <EmptyState icono="folder" titulo={t('recursos.no_docs_msg', { defaultValue: 'No hay documentos pendientes' })} />
+          {documentos.length === 0 ? (
+            <View style={styles.emptyDocument}>
+              <View style={styles.emptyIconBox}>
+                <Feather name="folder" size={20} color={colores.textoSuave} />
+              </View>
+              <Text style={styles.emptyText}>Aún no tienes documentos disponibles.</Text>
+            </View>
           ) : (
-            <View style={estilos.listaDocs}>
-              {documentosRecientes.map((documento, indiceDoc) => {
-                const esLeido = documento.leido;
-                const colorTema = esLeido ? '#10B981' : '#3B82F6';
-                return (
-                  <Animated.View
-                    key={documento.id}
-                    entering={FadeInDown.duration(260).delay(indiceDoc * 40).easing(Easing.out(Easing.quad))}
-                  >
-                    <BotonAnimado
-                      style={[
-                        estilos.docCard,
-                        !esLeido && { borderColor: esOscuro ? 'rgba(59,130,246,0.45)' : 'rgba(37,99,235,0.35)' }
-                      ]}
-                      onPress={() => marcarLeido(documento.id)}
-                    >
-                      <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.docContent}>
-                        <View style={[estilos.docIcono, { backgroundColor: `${colorTema}1A`, borderColor: `${colorTema}33` }]}>
-                          <MaterialIcons name={esLeido ? 'task-alt' : 'description'} size={22} color={colorTema} />
+            <View style={styles.documentsContainer}>
+              {pendingDoc && (
+                <BotonAnimado
+                  style={styles.featuredDocument}
+                  scaleTo={0.985}
+                  onPress={() => documentAction(pendingDoc.id)}
+                >
+                  <View style={styles.featuredTopRow}>
+                    <View style={styles.statusPillPending}>
+                      <View style={styles.statusDotPending} />
+                      <Text style={styles.statusTextPending}>Pendiente de lectura</Text>
+                    </View>
+                    <View style={styles.arrowButton}>
+                      <Feather name="arrow-up-right" size={17} color="#1F1D1C" />
+                    </View>
+                  </View>
+
+                  <Text numberOfLines={2} style={styles.featuredTitle}>
+                    {pendingDoc.titulo}
+                  </Text>
+
+                  <View style={styles.featuredFooter}>
+                    <Text style={styles.featuredMeta}>
+                      {pendingDoc.tipo}
+                      {formatDocDate(pendingDoc.fechaSubida) ? ` · ${formatDocDate(pendingDoc.fechaSubida)}` : ''}
+                    </Text>
+                  </View>
+                </BotonAnimado>
+              )}
+
+              {readDocuments.length > 0 && (
+                <View style={styles.documentsGroupCard}>
+                  {readDocuments.map((document, idx) => {
+                    const isLast = idx === readDocuments.length - 1;
+                    return (
+                      <BotonAnimado
+                        key={document.id}
+                        style={[
+                          styles.docRow,
+                          !isLast && styles.docRowBorder,
+                        ]}
+                        scaleTo={0.985}
+                        onPress={() => documentAction(document.id)}
+                      >
+                        <View style={styles.docIconBox}>
+                          <Feather
+                            name={getDocumentIcon(document.tipo)}
+                            size={16}
+                            color="#24211F"
+                          />
                         </View>
-                        <View style={estilos.docTexto}>
-                          <Text style={[estilos.docTitulo, !esLeido && { fontWeight: '800' }]} numberOfLines={1}>
-                            {documento.titulo}
+                        <View style={styles.docInfo}>
+                          <Text numberOfLines={1} style={styles.docTitle}>
+                            {document.titulo}
                           </Text>
-                          <View style={estilos.docTags}>
-                            <View style={estilos.badgeTipo}>
-                              <Text style={estilos.textoBadgeTipo}>{documento.tipo.toUpperCase()}</Text>
-                            </View>
-                            <Text style={estilos.puntoSeparador}>•</Text>
-                            <Text style={[estilos.textoEstado, { color: colorTema }]}>
-                              {esLeido ? t('recursos.read', { defaultValue: 'Leído' }) : t('recursos.pending', { defaultValue: 'Pendiente' })}
-                            </Text>
-                          </View>
+                          <Text style={styles.docMeta}>
+                            {document.tipo}
+                            {formatDocDate(document.fechaSubida) ? ` · ${formatDocDate(document.fechaSubida)}` : ''}
+                            {document.leido ? ' · Leído' : ''}
+                          </Text>
                         </View>
-                        <View style={[estilos.botonAccionMini, { backgroundColor: `${colorTema}1A` }]}>
-                          <Feather name={esLeido ? 'check' : 'arrow-right'} size={15} color={colorTema} />
-                        </View>
-                      </BlurView>
-                    </BotonAnimado>
-                  </Animated.View>
-                );
-              })}
+                        <Feather name="chevron-right" size={17} color={colores.textoSuave} />
+                      </BotonAnimado>
+                    );
+                  })}
+                </View>
+              )}
             </View>
           )}
         </View>
 
-        {/* Hub de Dominios 2x2 */}
-        {GRUPOS_ATAJOS.map((grupo, indiceGrupo) => (
-          <View key={grupo.tituloKey} style={estilos.seccionRecursos}>
-            <View style={estilos.cabeceraSec}>
-              <View style={estilos.cabeceraTituloRow}>
-                <MaterialIcons name={grupo.icono} size={20} color={esOscuro ? '#FFFFFF' : '#0F172A'} />
-                <Text style={estilos.tituloSec}>{t(grupo.tituloKey)}</Text>
-              </View>
-            </View>
-
-            <View style={estilos.gridAtajos2x2}>
-              {grupo.atajos.map((atajo, indiceAtajo) => (
-                <Animated.View
-                  key={atajo.tituloKey}
-                  entering={FadeInDown.duration(260).delay(indiceAtajo * 35).easing(Easing.out(Easing.quad))}
-                  style={estilos.cardAtajo2x2Wrap}
-                >
-                  <BotonAnimado style={estilos.cardAtajo2x2} onPress={() => navigation.navigate(atajo.destino)} scaleTo={0.97}>
-                    <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.cardAtajoContenido}>
-                      <View style={estilos.cardAtajoHeader}>
-                        <View style={[estilos.iconoAtajoBadge, { backgroundColor: `${atajo.color}1E`, borderColor: `${atajo.color}35` }]}>
-                          <Feather name={atajo.icono} size={17} color={atajo.color} />
-                        </View>
-                        <MaterialIcons name="chevron-right" size={19} color={colores.textoSuave} />
-                      </View>
-                      <View style={estilos.cardAtajoBody}>
-                        <Text style={estilos.cardAtajoTitulo} numberOfLines={1}>{t(atajo.tituloKey)}</Text>
-                        <Text style={estilos.cardAtajoSubtitulo} numberOfLines={1}>{t(atajo.subtituloKey)}</Text>
-                      </View>
-                    </BlurView>
-                  </BotonAnimado>
-                </Animated.View>
-              ))}
-            </View>
-          </View>
-        ))}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Explorar</Text>
+          <View style={styles.categoryGrid}>{categories.map((category, index) => <Animated.View key={category.title} entering={FadeInDown.duration(220).delay(100 + index * 35).easing(Easing.out(Easing.quad))} style={styles.categoryWrap}><BotonAnimado style={styles.categoryCard} scaleTo={0.98} onPress={() => navigation.navigate(category.route)}><Feather name={category.icon} size={19} color={colores.texto} /><View style={styles.categoryFooter}><View><Text style={styles.categoryTitle}>{category.title}</Text><Text style={styles.categoryDetail} numberOfLines={1}>{category.detail}</Text></View><Feather name="arrow-up-right" size={16} color={colores.textoSuave} /></View></BotonAnimado></Animated.View>)}</View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function crearEstilosRecursos(c: any, esOscuro: boolean) {
-  const glass = esOscuro ? 'rgba(24, 24, 38, 0.88)' : 'rgba(255, 255, 255, 0.94)';
-  const glassMini = esOscuro ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.04)';
-
+function createStyles(c: { fondo: string; texto: string; textoSuave: string; borde: string }, esOscuro: boolean) {
+  const paper = esOscuro ? 'rgba(31, 29, 38, 0.94)' : '#FFFFFF';
   return StyleSheet.create({
-    contenedor: { flex: 1, backgroundColor: c.fondo },
-    fondoAbsoluto: { ...StyleSheet.absoluteFill, zIndex: -1, overflow: 'hidden' },
-
-    headerHero: {
-      marginTop: 10,
-      marginHorizontal: 16,
-      marginBottom: 12,
-    },
-    headerHeroTextos: {
-      gap: 4,
-    },
-    eyebrow: {
-      fontSize: 11.5,
-      fontWeight: '800',
-      color: c.textoSuave,
-      letterSpacing: 1.2,
-      textTransform: 'uppercase',
-    },
-    tituloHero: {
-      fontSize: 24,
-      fontWeight: '900',
-      color: c.texto,
-      letterSpacing: -0.5,
-    },
-    subtituloHero: {
-      fontSize: 13,
-      color: c.textoSuave,
-      lineHeight: 18,
-    },
-
-    resumenGrid: {
+    screen: { flex: 1, backgroundColor: '#FFFDFC' },
+    ambient: { ...StyleSheet.absoluteFill },
+    topBar: {
+      height: 52,
+      marginHorizontal: 21,
+      marginTop: 4,
       flexDirection: 'row',
-      gap: 10,
-      paddingHorizontal: 16,
-      marginBottom: 16,
-    },
-    tarjetaResumen: {
-      flex: 1,
-      minHeight: 104,
-      borderRadius: 20,
-      padding: 14,
-      backgroundColor: glass,
-      borderWidth: 1,
-      borderColor: c.borde,
-      justifyContent: 'space-between',
-      ...SOMBRAS.flotante,
-    },
-    tarjetaResumenTop: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
       alignItems: 'center',
+      justifyContent: 'space-between',
     },
-    iconoResumenBadge: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
+    profile: {
+      width: 46,
+      height: 46,
+      borderRadius: 23,
+      backgroundColor: '#E9D2BF',
       alignItems: 'center',
       justifyContent: 'center',
-      borderWidth: 1,
+      overflow: 'hidden',
     },
-    valorResumen: {
-      fontSize: 22,
-      fontWeight: '900',
-      color: c.texto,
-      lineHeight: 26,
+    avatar: {
+      width: '100%',
+      height: '100%',
     },
-    labelResumen: {
-      fontSize: 11,
-      color: c.textoSuave,
+    avatarInitial: {
+      color: '#382E29',
+      fontSize: 17,
       fontWeight: '700',
-      marginTop: 2,
     },
-
-    seccionRecursos: {
-      paddingHorizontal: 16,
-      marginBottom: 20,
+    topBarLabel: {
+      color: '#292522',
+      fontSize: 17,
+      fontWeight: '600',
+      letterSpacing: -0.5,
     },
-    cabeceraSec: {
+    headerActions: {
+      flexDirection: 'row',
+      gap: 10,
+    },
+    addButton: {
+      width: 47,
+      height: 47,
+      borderRadius: 24,
+      backgroundColor: '#202020',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    bellButton: {
+      width: 47,
+      height: 47,
+      borderRadius: 24,
+      backgroundColor: '#FFFFFF',
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...SOMBRAS.suave,
+    },
+    notificationDot: {
+      position: 'absolute',
+      top: 11,
+      right: 12,
+      width: 7,
+      height: 7,
+      borderRadius: 4,
+      backgroundColor: '#E56C67',
+      borderWidth: 1.5,
+      borderColor: '#FFFFFF',
+    },
+    content: { paddingTop: 0 },
+    hero: { paddingHorizontal: 21, marginTop: 22, marginBottom: 20 },
+    heroTitle: { color: '#1F1D1C', fontSize: 34, lineHeight: 38, fontWeight: '600', letterSpacing: -1.4 },
+    heroSubtitle: { color: '#78716C', fontSize: 14, lineHeight: 20, marginTop: 6, maxWidth: 300 },
+    heroCardWrap: { marginHorizontal: 21 },
+    heroCard: {
+      backgroundColor: '#18181B',
+      borderRadius: 24,
+      padding: 20,
+      minHeight: 168,
+      borderWidth: 1,
+      borderColor: 'rgba(255, 255, 255, 0.08)',
+      justifyContent: 'space-between',
+      ...SOMBRAS.flotante,
+    },
+    heroCardHeader: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 12,
     },
-    cabeceraTituloRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-    },
-    tituloSec: {
-      fontSize: 17,
-      fontWeight: '900',
-      color: c.texto,
-      letterSpacing: -0.3,
-    },
-    verTodosText: {
-      fontSize: 12.5,
-      fontWeight: '800',
-      color: esOscuro ? '#93C5FD' : '#2563EB',
-    },
-
-    listaDocs: {
-      gap: 10,
-    },
-    docCard: {
-      borderRadius: 20,
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: c.borde,
-      backgroundColor: glass,
-      ...SOMBRAS.flotante,
-    },
-    docContent: {
-      padding: 14,
+    heroBadgeRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
     },
-    docIcono: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
+    heroIconBox: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: 'rgba(255, 255, 255, 0.12)',
       alignItems: 'center',
       justifyContent: 'center',
-      borderWidth: 1,
     },
-    docTexto: {
-      flex: 1,
+    heroCardHeading: {
+      color: '#FFFFFF',
+      fontSize: 13,
+      fontWeight: '700',
+      letterSpacing: 0.5,
+    },
+    heroCardSubtitle: {
+      color: 'rgba(255, 255, 255, 0.6)',
+      fontSize: 11.5,
+      marginTop: 2,
+    },
+    heroArrowBox: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+      alignItems: 'center',
       justifyContent: 'center',
     },
-    docTitulo: {
-      fontSize: 14.5,
-      fontWeight: '700',
-      color: c.texto,
-      marginBottom: 4,
+    heroMetricsGrid: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+      borderRadius: 18,
+      paddingVertical: 14,
+      paddingHorizontal: 8,
+      marginTop: 18,
+      borderWidth: 1,
+      borderColor: 'rgba(255, 255, 255, 0.06)',
     },
-    docTags: {
+    heroMetricBox: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    heroMetricNumber: {
+      color: '#FFFFFF',
+      fontSize: 22,
+      fontWeight: '700',
+      letterSpacing: -0.5,
+    },
+    heroMetricLabel: {
+      color: 'rgba(255, 255, 255, 0.88)',
+      fontSize: 11.5,
+      fontWeight: '600',
+      marginTop: 3,
+    },
+    heroMetricSub: {
+      color: 'rgba(255, 255, 255, 0.45)',
+      fontSize: 10,
+      fontWeight: '500',
+      marginTop: 1,
+    },
+    heroMetricDivider: {
+      width: 1,
+      height: 28,
+      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    section: { marginTop: 31 },
+    sectionTitle: { color: c.texto, fontSize: 20, fontWeight: '800', letterSpacing: -0.55, paddingHorizontal: 21, marginBottom: 13 },
+    sectionHeader: { paddingHorizontal: 21, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 13 },
+    sectionHeaderTitle: { color: c.texto, fontSize: 20, fontWeight: '800', letterSpacing: -0.55 },
+    seeAll: { color: c.texto, fontSize: 12.5, fontWeight: '700' },
+    quickActionsScroll: { marginTop: 20 },
+    quickActions: { gap: 10, paddingHorizontal: 21 },
+    quickPill: {
+      height: 48,
+      borderRadius: 24,
+      paddingHorizontal: 16,
+      backgroundColor: paper,
+      borderWidth: 1,
+      borderColor: c.borde,
+      flexDirection: 'row',
+      gap: 8,
+      alignItems: 'center',
+      ...SOMBRAS.suave,
+    },
+    quickPillActive: { backgroundColor: '#18181B', borderColor: '#18181B' },
+    quickPillText: { color: c.texto, fontSize: 13, fontWeight: '600' },
+    quickPillTextActive: { color: '#FFF' },
+    documentsContainer: {
+      paddingHorizontal: 21,
+      gap: 12,
+    },
+    featuredDocument: {
+      borderRadius: 22,
+      backgroundColor: paper,
+      padding: 18,
+      borderWidth: 1,
+      borderColor: c.borde,
+      ...SOMBRAS.suave,
+    },
+    featuredTopRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    statusPillPending: {
+      borderRadius: 10,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
+      backgroundColor: '#FFF0EE',
     },
-    badgeTipo: {
-      backgroundColor: glassMini,
-      paddingHorizontal: 7,
-      paddingVertical: 3,
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: c.borde,
+    statusDotPending: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: '#E06B73',
     },
-    textoBadgeTipo: {
-      fontSize: 9.5,
-      fontWeight: '900',
-      color: c.textoSuave,
-      letterSpacing: 0.5,
-    },
-    puntoSeparador: {
-      color: c.textoSuave,
-      fontSize: 10,
-    },
-    textoEstado: {
+    statusTextPending: {
       fontSize: 11,
-      fontWeight: '800',
+      fontWeight: '600',
+      color: '#A34C56',
     },
-    botonAccionMini: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
+    featuredTitle: {
+      color: c.texto,
+      fontSize: 17,
+      lineHeight: 22,
+      fontWeight: '700',
+      letterSpacing: -0.3,
+      marginTop: 14,
+    },
+    featuredFooter: {
+      marginTop: 12,
+    },
+    featuredMeta: {
+      color: c.textoSuave,
+      fontSize: 12,
+      textTransform: 'capitalize',
+    },
+    arrowButton: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      backgroundColor: '#F4F1F5',
       alignItems: 'center',
       justifyContent: 'center',
     },
-
-    gridAtajos2x2: {
+    documentsGroupCard: {
+      borderRadius: 22,
+      backgroundColor: paper,
+      borderWidth: 1,
+      borderColor: c.borde,
+      overflow: 'hidden',
+      ...SOMBRAS.suave,
+    },
+    docRow: {
       flexDirection: 'row',
-      flexWrap: 'wrap',
+      alignItems: 'center',
+      paddingVertical: 13,
+      paddingHorizontal: 15,
       gap: 12,
     },
-    cardAtajo2x2Wrap: {
-      width: '48.2%',
+    docRowBorder: {
+      borderBottomWidth: 1,
+      borderBottomColor: c.borde,
     },
-    cardAtajo2x2: {
-      minHeight: 114,
-      borderRadius: 20,
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: c.borde,
-      backgroundColor: glass,
-      ...SOMBRAS.flotante,
-    },
-    cardAtajoContenido: {
-      flex: 1,
-      padding: 14,
-      justifyContent: 'space-between',
-    },
-    cardAtajoHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    },
-    iconoAtajoBadge: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
+    docIconBox: {
+      width: 38,
+      height: 38,
+      borderRadius: 12,
+      backgroundColor: '#F5F3F0',
       alignItems: 'center',
       justifyContent: 'center',
-      borderWidth: 1,
     },
-    cardAtajoBody: {
-      marginTop: 8,
-      gap: 2,
+    docInfo: {
+      flex: 1,
+      minWidth: 0,
     },
-    cardAtajoTitulo: {
-      fontSize: 13.5,
-      fontWeight: '800',
+    docTitle: {
       color: c.texto,
+      fontSize: 14,
+      fontWeight: '600',
+      letterSpacing: -0.2,
     },
-    cardAtajoSubtitulo: {
-      fontSize: 11,
-      fontWeight: '500',
+    docMeta: {
       color: c.textoSuave,
+      fontSize: 11.5,
+      marginTop: 2,
+      textTransform: 'capitalize',
     },
+    emptyDocument: {
+      marginHorizontal: 21,
+      minHeight: 120,
+      borderRadius: 22,
+      backgroundColor: paper,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      borderWidth: 1,
+      borderColor: c.borde,
+      ...SOMBRAS.suave,
+    },
+    emptyIconBox: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: '#F5F3F0',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    emptyText: {
+      color: c.textoSuave,
+      fontSize: 13,
+    },
+    categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 21, gap: 11 },
+    categoryWrap: { width: '48.4%' },
+    categoryCard: { minHeight: 128, borderRadius: 25, backgroundColor: paper, padding: 16, justifyContent: 'space-between', ...SOMBRAS.tarjeta },
+    categoryFooter: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 4 },
+    categoryTitle: { color: c.texto, fontSize: 15, fontWeight: '700' },
+    categoryDetail: { color: c.textoSuave, fontSize: 10.5, marginTop: 3, maxWidth: 108 },
   });
 }

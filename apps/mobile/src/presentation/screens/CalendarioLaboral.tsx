@@ -7,9 +7,10 @@
  */
 
 // Importa React, { useState } desde React; habilita componentes, hooks y tipos base para esta pieza.
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState } from 'react';
 // Importa { View, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, ScrollView } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
-import { View, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, ScrollView } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, StatusBar, ScrollView } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 // Importa { MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { MaterialIcons } from '@expo/vector-icons';

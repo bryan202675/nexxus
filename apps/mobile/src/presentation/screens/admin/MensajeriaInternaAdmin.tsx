@@ -357,10 +357,11 @@ export default function MensajeriaInternaAdmin() {
         otherParticipant?.photoURL ||
         otherParticipant?.avatarUrl ||
         otherParticipant?.foto ||
-        conv.imagenUrl
+        conv.imagenUrl ||
+        conv.foto
       );
     }
-    return conv.imagenUrl;
+    return conv.imagenUrl || conv.foto;
   };
 
   const selectedConversationHeaderPhoto = useMemo(() => {
@@ -372,6 +373,7 @@ export default function MensajeriaInternaAdmin() {
     const active = selectedConversationId === conversation.id;
     const initials = conversation.titulo ? conversation.titulo.charAt(0).toUpperCase() : '?';
     const photo = obtenerFotoConversacion(conversation);
+    const isGroup = conversation.tipo === 'equipo';
 
     return (
       <TouchableOpacity key={conversation.id} onPress={() => setSelectedConversationId(conversation.id)} style={[styles.conversation, active && styles.conversationActive]} activeOpacity={0.9}>
@@ -380,6 +382,8 @@ export default function MensajeriaInternaAdmin() {
           <View style={[styles.convAvatar, active && styles.convAvatarActive]}>
             {photo ? (
               <Image source={{ uri: photo }} style={styles.avatarImage} />
+            ) : isGroup ? (
+              <MaterialIcons name="groups" size={22} color={active ? '#FFFFFF' : '#6B7280'} />
             ) : (
               <Text style={styles.convAvatarText}>{initials}</Text>
             )}
@@ -488,6 +492,8 @@ export default function MensajeriaInternaAdmin() {
                   <View style={styles.chatHeaderAvatar}>
                     {selectedConversationHeaderPhoto ? (
                       <Image source={{ uri: selectedConversationHeaderPhoto }} style={styles.avatarImage} />
+                    ) : selectedConversation.tipo === 'equipo' ? (
+                      <MaterialIcons name="groups" size={24} color="#6B7280" />
                     ) : (
                       <Text style={styles.chatHeaderAvatarText}>
                         {selectedConversation.titulo ? selectedConversation.titulo.charAt(0).toUpperCase() : '?'}

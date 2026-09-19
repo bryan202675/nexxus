@@ -32,7 +32,7 @@ export function subscribeQuery<T>(
     .channel(channelName)
     .on(
       'postgres_changes',
-      { event: '*', schema: 'public', table, ...(filter ? { filter } : {}) },
+      { event: '*', schema: 'public', table },
       run,
     )
     .subscribe();

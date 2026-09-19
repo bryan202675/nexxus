@@ -7,17 +7,16 @@
  */
 
 // Importa React, { useEffect, useMemo, useState } desde React; habilita componentes, hooks y tipos base para esta pieza.
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   TouchableOpacity,
-  View,
-} from 'react-native';
+  View} from 'react-native';
 // Importa { Feather, MaterialIcons }; aporta iconos reutilizables para comunicar acciones y estados visuales.
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 // Importa { BlurView } desde Expo; conecta la app con capacidades nativas o web de la plataforma.
@@ -744,7 +743,7 @@ function crearEstilosAprendizaje(c: any, esOscuro: boolean) {
     // fondoAbsoluto: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     fondoAbsoluto: { ...StyleSheet.absoluteFill, zIndex: -1, overflow: 'hidden' },
     // header: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
-    header: { paddingHorizontal: ESPACIADO.lg, paddingTop: Platform.OS === 'ios' ? ESPACIADO.sm : ESPACIADO.lg, paddingBottom: ESPACIADO.sm },
+    header: { paddingHorizontal: ESPACIADO.lg, paddingTop: ESPACIADO.sm, paddingBottom: ESPACIADO.sm },
     // headerVidrio: estilo de cabecera; organiza titulo, acciones superiores y alineacion inicial.
     headerVidrio: { minHeight: 72, borderRadius: RADIOS.xl, overflow: 'hidden', borderWidth: 1, borderColor: c.borde, backgroundColor: glassMini, flexDirection: 'row', alignItems: 'center', paddingHorizontal: ESPACIADO.md, gap: ESPACIADO.sm },
     // botonRegresar: estilo de boton; define area tactil, forma, alineacion y apariencia de una accion.

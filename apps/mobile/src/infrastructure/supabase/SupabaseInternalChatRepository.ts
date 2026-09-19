@@ -19,13 +19,17 @@ function mapConversationRow(row: Record<string, any>): Conversation {
     : [];
 
   const rawTipo = datos.tipo || row.tipo || (participanteIds.length > 2 || participantes.length > 2 ? 'equipo' : 'directa');
+  const rawTitulo = datos.titulo || row.titulo || '';
+  const rawFoto = datos.foto || datos.imagenUrl || row.foto || row.imagen_url || row.imagenUrl || '';
+
   const isGroup =
     rawTipo === 'equipo' ||
     rawTipo === 'grupo' ||
     rawTipo === 'departamento' ||
     participanteIds.length > 2 ||
     participantes.length > 2 ||
-    (Boolean(datos.titulo) && rawTipo !== 'directa');
+    (Boolean(rawTitulo) && rawTipo !== 'directa') ||
+    (Boolean(rawFoto) && rawTipo !== 'directa');
   const tipo = (isGroup ? 'equipo' : 'directa') as ConversationType;
 
   return {
@@ -33,9 +37,9 @@ function mapConversationRow(row: Record<string, any>): Conversation {
     id: row.id,
     empresaId: row.empresa_id,
     tipo,
-    titulo: datos.titulo || row.titulo || '',
-    foto: datos.foto || row.foto || '',
-    imagenUrl: datos.imagenUrl || datos.foto || row.imagenUrl || row.foto || undefined,
+    titulo: rawTitulo,
+    foto: rawFoto,
+    imagenUrl: rawFoto || undefined,
     participanteIds,
     participantes,
     nombresPersonalizados: datos.nombresPersonalizados || {},
@@ -183,31 +187,46 @@ export class SupabaseInternalChatRepository implements IInternalChatRepository {
   }
 
   async updateConversation(conversationId: string, data: Partial<Conversation>): Promise<void> {
-    const { data: current } = await supabase.from('conversaciones').select('*').eq('id', conversationId).maybeSingle();
+    const { data: current, error: fetchErr } = await supabase.from('conversaciones').select('*').eq('id', conversationId).maybeSingle();
+    if (fetchErr) {
+      console.error('[SupabaseInternalChatRepository] Error al consultar conversación previa:', fetchErr);
+    }
     const currentDatos = current?.datos || {};
-    const { titulo, foto, imagenUrl, participantes, tipo, nombresPersonalizados, fotosPersonalizadas, eliminadoPor, ...core } = data as any;
+    const { titulo, foto, imagenUrl, participantes, tipo, nombresPersonalizados, fotosPersonalizadas, eliminadoPor, participanteIds } = data as any;
 
+    const nextFoto = foto !== undefined ? foto : imagenUrl !== undefined ? imagenUrl : currentDatos.foto || currentDatos.imagenUrl;
     const nextDatos = {
       ...currentDatos,
       ...(titulo !== undefined ? { titulo } : {}),
-      ...(foto !== undefined ? { foto, imagenUrl: foto } : {}),
-      ...(imagenUrl !== undefined ? { imagenUrl, foto: imagenUrl } : {}),
+      ...(nextFoto !== undefined ? { foto: nextFoto, imagenUrl: nextFoto } : {}),
       ...(participantes !== undefined ? { participantes } : {}),
       ...(tipo !== undefined ? { tipo } : {}),
       ...(nombresPersonalizados !== undefined ? { nombresPersonalizados } : {}),
       ...(fotosPersonalizadas !== undefined ? { fotosPersonalizadas } : {}),
       ...(eliminadoPor !== undefined ? { eliminadoPor } : {}),
+      ...(participanteIds !== undefined ? { participanteIds } : {}),
     };
 
     const row: Record<string, any> = {
       datos: nextDatos,
     };
-    if (core.participanteIds) row.participante_ids = core.participanteIds;
-    if (titulo !== undefined && 'titulo' in (current || {})) row.titulo = titulo;
-    if (foto !== undefined && 'foto' in (current || {})) row.foto = foto;
+    if (participanteIds !== undefined) {
+      row.participante_ids = participanteIds;
+    }
 
-    const { error } = await supabase.from('conversaciones').update(row).eq('id', conversationId);
-    if (error && !error.message?.includes("'datos'")) throw error;
+    let { error } = await supabase.from('conversaciones').update(row).eq('id', conversationId);
+    if (error && (error.code === '42703' || error.message?.includes("'datos'") || error.message?.includes('schema cache') || error.code === 'PGRST204')) {
+      console.warn('[SupabaseInternalChatRepository] Columna "datos" ausente en Supabase. Intentando actualizar participante_ids si corresponde...');
+      if (participanteIds !== undefined) {
+        const retry = await supabase.from('conversaciones').update({ participante_ids: participanteIds }).eq('id', conversationId);
+        error = retry.error;
+      }
+    }
+
+    if (error) {
+      console.error('[SupabaseInternalChatRepository] Error al actualizar conversación en BD:', error.message || error);
+      throw new Error(error.message || 'Error al actualizar conversación en la base de datos.');
+    }
   }
 
   async deleteConversation(conversationId: string): Promise<void> {

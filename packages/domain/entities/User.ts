@@ -14,6 +14,7 @@ export interface User {
   id: string;
   nombre: string;
   correo: string;
+  correo_personal?: string;
   rol: 'super_admin' | 'admin_empresa' | 'empleado' | 'jefe' | 'admin' | 'psicologo' | 'jefe_sector' | string;
   departamento: string;
   departamentoId?: string;

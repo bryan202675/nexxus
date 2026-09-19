@@ -68,7 +68,7 @@ export default function NavbarEnterprise({
     <View style={{ zIndex: 100 }}>
       <View style={[
         estilos.appBarContainer,
-        usarMargenesSeguros && { marginTop: Math.max(insets.top, Platform.OS === 'ios' ? ESPACIADO.xs : ESPACIADO.sm) }
+        usarMargenesSeguros && { marginTop: Math.max(insets.top, ESPACIADO.xs) }
       ]}>
         <BlurView
           intensity={Platform.OS === 'ios' ? intensidadBlur + 15 : 85}
@@ -76,9 +76,9 @@ export default function NavbarEnterprise({
           style={[
             estilos.appBar,
             {
-              backgroundColor: colores.superficie,
-              borderColor: colores.borde,
-              shadowColor: colores.sombra,
+              backgroundColor: 'transparent',
+              borderColor: 'transparent',
+              shadowColor: 'transparent',
             },
           ]}
         >
@@ -158,15 +158,15 @@ export default function NavbarEnterprise({
                 onPress={() => navigation.navigate('Notificaciones')}
                 scaleTo={0.93}
                 accessibilityLabel="Abrir notificaciones"
-                style={[
-                  estilos.iconoPlano,
-                  {
-                    backgroundColor: colores.vidrioSutil,
-                    borderColor: colores.borde,
+              style={[
+                estilos.iconoPlano,
+                {
+                    backgroundColor: '#202022',
+                    borderColor: '#202022',
                   },
                 ]}
               >
-                <Feather name="bell" size={17} color={colores.texto} />
+                <Feather name="bell" size={17} color="#FFFFFF" />
                 {alertasNoLeidas > 0 && (
                   <View
                     style={[
@@ -203,22 +203,18 @@ export default function NavbarEnterprise({
 
 const estilos = StyleSheet.create({
   appBarContainer: {
-    marginHorizontal: ESPACIADO.md,
-    marginTop: Platform.OS === 'ios' ? ESPACIADO.xs : ESPACIADO.sm,
-    borderRadius: 30,
-    overflow: 'hidden',
+    marginHorizontal: 20,
+    marginTop: ESPACIADO.sm,
   },
   appBar: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
+    paddingHorizontal: 0,
+    paddingVertical: 4,
     backgroundColor: 'transparent',
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderRadius: 30,
-    ...SOMBRAS.flotante,
+    borderWidth: 0,
+    borderRadius: 0,
   },
   titulos: { flex: 1, minWidth: 0, justifyContent: 'center' },
   titulo: { fontSize: 16, fontWeight: '800', letterSpacing: -0.3 },

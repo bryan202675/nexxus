@@ -1,424 +1,511 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
-  Platform,
+  Image,
   RefreshControl,
-  SafeAreaView,
+  ScrollView,
   StatusBar,
   StyleSheet,
-  useWindowDimensions,
   View,
-} from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
-import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
-import BotonAnimado from '@/presentation/components/BotonAnimado';
-import DetalleTareaModal from '@/presentation/components/DetalleTareaModal';
-import TaskCalendarStrip from '@/presentation/components/tasks/TaskCalendarStrip';
-import TaskMonthPickerModal from '@/presentation/components/tasks/TaskMonthPickerModal';
-import TaskTabs, { TaskTab } from '@/presentation/components/tasks/TaskTabs';
-import TaskTimelineCard from '@/presentation/components/tasks/TaskTimelineCard';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { AdminTranslatedText } from "@/shared/i18n/AdminTranslatedText";
+import BotonAnimado from "@/presentation/components/BotonAnimado";
+import DetalleTareaModal from "@/presentation/components/DetalleTareaModal";
+import TaskCalendarStrip from "@/presentation/components/tasks/TaskCalendarStrip";
+import TaskMonthPickerModal from "@/presentation/components/tasks/TaskMonthPickerModal";
+import TaskTimelineCard from "@/presentation/components/tasks/TaskTimelineCard";
 import {
   TaskEmptyState,
   TaskSkeleton,
-} from '@/presentation/components/tasks/TaskAgendaStates';
+} from "@/presentation/components/tasks/TaskAgendaStates";
 import {
-  calendarDaysForMonth,
-  dateKey,
+  MONTH_NAMES,
+  calendarDays,
   formatMonth,
+  isSameDay,
   taskMatchesDay,
-} from '@/presentation/components/tasks/taskAgendaUtils';
-import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
-import { Task } from 'domain/entities/Task';
+} from "@/presentation/components/tasks/taskAgendaUtils";
+import { useContextoUsuario } from "@/presentation/context/ContextoUsuario";
+import { SOMBRAS } from "@/shared/constants/diseno";
+import { Task } from "domain/entities/Task";
+import { useUserTabBottomPadding } from "@/presentation/hooks/useUserTabBottomPadding";
 
 const Text = AdminTranslatedText;
+type Filter = "todas" | "pendientes" | "completadas" | "urgentes";
+type Navigation = { navigate: (route: string) => void; goBack: () => void };
 
-interface CentroTareasProps {
-  navigation: {
-    navigate: (route: string, params?: any) => void;
-  };
-}
-
-export default function CentroTareas({ navigation }: CentroTareasProps) {
-  const { tareas, cargando, recargarDatos, cambiarEstadoTarea } = useContextoUsuario();
-  const { width } = useWindowDimensions();
-  const [tab, setTab] = useState<TaskTab>('pendientes');
+export default function CentroTareas({
+  navigation,
+}: {
+  navigation: Navigation;
+}) {
+  const { perfil, tareas, cargando, recargarDatos, cambiarEstadoTarea } =
+    useContextoUsuario();
+  const bottomPadding = useUserTabBottomPadding(115);
+  const [filter, setFilter] = useState<Filter>("todas");
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [monthPickerVisible, setMonthPickerVisible] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-
-  const containerWidth = Math.max(300, width - 32);
-
-  const [selectedDate, setSelectedDate] = useState(() => {
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [monthAnchor, setMonthAnchor] = useState(() => {
     const date = new Date();
     date.setHours(0, 0, 0, 0);
     return date;
   });
-
-  // Genera todos los días del mes seleccionado
-  const days = useMemo(() => calendarDaysForMonth(selectedDate), [selectedDate]);
-
-  const pending = useMemo(
-    () => tareas.filter((task) => task.estado !== 'completada'),
-    [tareas]
+  const firstName =
+    perfil?.nombre?.split(" ")[0] || "Usuario";
+  const anchorDate = useMemo(
+    () => selectedDate ?? monthAnchor,
+    [selectedDate, monthAnchor]
   );
+  const days = useMemo(() => calendarDays(anchorDate, 7), [anchorDate]);
 
-  const pendingDaysSet = useMemo(() => {
-    const set = new Set<string>();
-    pending.forEach((task) => {
-      if (!task.fecha_limite) return;
-      const date = new Date(task.fecha_limite);
-      if (!Number.isNaN(date.getTime())) {
-        set.add(dateKey(date));
-      }
-    });
-    return set;
-  }, [pending]);
+  const onSelectDay = useCallback((date: Date) => {
+    setSelectedDate((prev) => (prev && isSameDay(prev, date) ? null : date));
+  }, []);
 
-  const completed = useMemo(
-    () => tareas.filter((task) => task.estado === 'completada'),
-    [tareas]
-  );
+  const selectMonth = useCallback((year: number, month: number) => {
+    const next = new Date(year, month, 1);
+    next.setHours(0, 0, 0, 0);
+    setMonthAnchor(next);
+    setSelectedDate(next);
+    setMonthPickerVisible(false);
+  }, []);
 
   const selectedTask = useMemo(
     () => tareas.find((task) => task.id === selectedTaskId) ?? null,
     [selectedTaskId, tareas]
   );
+  const relevantTasks = useMemo(() => {
+    if (!selectedDate) return tareas;
+    return tareas.filter((task) => taskMatchesDay(task, selectedDate));
+  }, [selectedDate, tareas]);
 
-  const visibleTasks = useMemo(() => {
-    const source = tab === 'pendientes' ? pending : completed;
-    return source
-      .filter((task) => taskMatchesDay(task, selectedDate))
-      .sort((first, second) =>
-        (first.fecha_limite || '9999').localeCompare(second.fecha_limite || '9999')
-      );
-  }, [completed, pending, selectedDate, tab]);
-
+  const counts = useMemo(
+    () => ({
+      todas: relevantTasks.length,
+      pendientes: relevantTasks.filter((task) => task.estado !== "completada").length,
+      completadas: relevantTasks.filter((task) => task.estado === "completada").length,
+      urgentes: relevantTasks.filter(
+        (task) => task.prioridad === "Urgente" || task.prioridad === "Alta"
+      ).length,
+    }),
+    [relevantTasks]
+  );
+  const visibleTasks = useMemo(
+    () =>
+      relevantTasks
+        .filter((task) => {
+          if (filter === "todas") return true;
+          if (filter === "pendientes") return task.estado !== "completada";
+          if (filter === "completadas") return task.estado === "completada";
+          if (filter === "urgentes")
+            return task.prioridad === "Urgente" || task.prioridad === "Alta";
+          return true;
+        })
+        .sort((a, b) =>
+          (a.fecha_limite || "9999").localeCompare(b.fecha_limite || "9999")
+        ),
+    [filter, relevantTasks]
+  );
   const isLoading = cargando && tareas.length === 0;
-
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     setRefreshError(null);
     try {
       await recargarDatos();
     } catch {
-      setRefreshError('No se pudieron actualizar tus tareas. Inténtalo nuevamente.');
+      setRefreshError(
+        "No se pudieron actualizar tus tareas. Inténtalo nuevamente."
+      );
     } finally {
       setRefreshing(false);
     }
   }, [recargarDatos]);
-
   const onToggle = useCallback(
     async (task: Task) => {
       try {
         await cambiarEstadoTarea(
           task.id,
-          task.estado === 'completada' ? 'pendiente' : 'completada'
+          task.estado === "completada" ? "pendiente" : "completada"
         );
       } catch {
-        setRefreshError('No se pudo actualizar la tarea. Inténtalo nuevamente.');
+        setRefreshError(
+          "No se pudo actualizar la tarea. Inténtalo nuevamente."
+        );
       }
     },
     [cambiarEstadoTarea]
   );
-
-  const handleSelectMonth = useCallback((year: number, monthIndex: number) => {
-    const today = new Date();
-    const isCurrentMonthAndYear =
-      today.getFullYear() === year && today.getMonth() === monthIndex;
-
-    const newDate = new Date(year, monthIndex, isCurrentMonthAndYear ? today.getDate() : 1);
-    newDate.setHours(0, 0, 0, 0);
-    setSelectedDate(newDate);
-    setMonthPickerVisible(false);
-  }, []);
-
   const renderTask = useCallback(
     ({ item, index }: { item: Task; index: number }) => (
-      <View style={[styles.taskItemRow, { width: containerWidth }]}>
-        <TaskTimelineCard
-          task={item}
-          index={index}
-          onPress={(task) => setSelectedTaskId(task.id)}
-          onToggle={onToggle}
-        />
-      </View>
+      <TaskTimelineCard
+        task={item}
+        index={index}
+        onPress={(task) => setSelectedTaskId(task.id)}
+        onToggle={onToggle}
+      />
     ),
-    [containerWidth, onToggle]
+    [onToggle]
   );
-
   return (
     <SafeAreaView style={styles.screen}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFF9F4" />
-
-      {/* Gradiente luminoso que cubre todo el fondo de la pantalla con desenfoque difuso */}
-      <View pointerEvents="none" style={styles.gradientArea}>
-        <LinearGradient
-          start={{ x: 0.05, y: 0 }}
-          end={{ x: 0.95, y: 1 }}
-          colors={[
-            '#FFAF62', // Dorado / melocotón cálido superior izquierdo
-            '#FF7FA7', // Rosa coral vibrante superior derecho
-            '#FFAEC7', // Transición suave en el centro
-            '#FFD6E5', // Rosa suave
-            '#FFE2CE', // Melocotón cálido inferior
-            '#FFC5DB', // Rosa pastel inferior derecho
-          ]}
-          locations={[0, 0.28, 0.52, 0.72, 0.88, 1]}
-          style={StyleSheet.absoluteFill}
-        />
-        <View style={styles.amberGlowTop} />
-        <View style={styles.roseGlowTop} />
-        <View style={styles.peachCenterGlow} />
-        <View style={styles.amberGlowBottom} />
-        <View style={styles.roseGlowBottom} />
-
-        <BlurView
-          intensity={Platform.OS === 'ios' ? 75 : 55}
-          tint="light"
-          style={StyleSheet.absoluteFill}
-        />
-      </View>
-
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor="transparent"
+        translucent
+      />
+      <LinearGradient
+        pointerEvents="none"
+        colors={["#FBEDE8", "#F6ECF6", "#FFFDFC"]}
+        locations={[0, 0.28, 0.72]}
+        style={styles.ambient}
+      />
       <FlatList
         data={isLoading ? [] : visibleTasks}
         keyExtractor={(item) => item.id}
         renderItem={renderTask}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: bottomPadding }]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#111111"
+            tintColor="#202020"
           />
         }
         ListHeaderComponent={
           <View>
-            {/* Header: Título Grande + Selector de Mes */}
             <View style={styles.header}>
-              <Text style={styles.title}>Mis tareas</Text>
               <BotonAnimado
-                style={styles.monthControl}
-                scaleTo={0.93}
-                onPress={() => setMonthPickerVisible(true)}
-                accessibilityLabel="Abrir selector de mes y año"
+                style={styles.profile}
+                scaleTo={0.97}
+                onPress={() => navigation.navigate("PerfilLaboral")}
+                accessibilityLabel="Abrir mi perfil"
               >
-                <Text style={styles.month}>{formatMonth(selectedDate)}</Text>
-                <Feather name="chevron-down" size={18} color="#1A171C" />
+                {perfil?.foto_perfil ? (
+                  <Image
+                    source={{ uri: perfil.foto_perfil }}
+                    style={styles.avatar}
+                  />
+                ) : (
+                  <Text style={styles.avatarInitial}>
+                    {firstName.charAt(0).toUpperCase()}
+                  </Text>
+                )}
+              </BotonAnimado>
+              <Text style={styles.dateLabel}>{formatMonth(anchorDate)}</Text>
+              <View style={styles.headerActions}>
+                <BotonAnimado
+                  style={styles.addButton}
+                  scaleTo={0.96}
+                  onPress={() => navigation.navigate("BusquedaGlobal")}
+                  accessibilityLabel="Buscar tareas"
+                >
+                  <Feather name="search" size={21} color="#FFFFFF" />
+                </BotonAnimado>
+                <BotonAnimado
+                  style={styles.bellButton}
+                  scaleTo={0.96}
+                  accessibilityLabel="Más opciones"
+                >
+                  <Feather name="more-horizontal" size={23} color="#202020" />
+                </BotonAnimado>
+              </View>
+            </View>
+            <View style={styles.titleRow}>
+              <Text style={styles.title}>Mis{`\n`}tareas</Text>
+              <BotonAnimado
+                style={styles.calendarPill}
+                scaleTo={0.97}
+                onPress={() => setMonthPickerVisible(true)}
+              >
+                <Feather name="calendar" size={20} color="#25211F" />
+                <Text style={styles.calendarText}>Calendario</Text>
               </BotonAnimado>
             </View>
-
-            {/* Calendario horizontal con todos los días del mes e indicador de pendientes */}
             <TaskCalendarStrip
               days={days}
               selectedDate={selectedDate}
-              pendingDaysSet={pendingDaysSet}
-              onSelect={setSelectedDate}
+              onSelect={onSelectDay}
             />
-
-            {/* Pestañas unidas continuamente al contenedor de tareas */}
-            <TaskTabs
-              active={tab}
-              pendingCount={pending.length}
-              completedCount={completed.length}
-              onChange={setTab}
-            />
-
-            {/* Inicio del cuerpo blanco del contenedor */}
-            <View
-              style={[
-                styles.whiteBodyTop,
-                {
-                  width: containerWidth,
-                  borderTopLeftRadius: tab === 'pendientes' ? 0 : 28,
-                  borderTopRightRadius: tab === 'pendientes' ? 28 : 0,
-                },
-              ]}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filters}
             >
-              {refreshError && (
+              {(
+                ["todas", "pendientes", "completadas", "urgentes"] as Filter[]
+              ).map((item) => (
+                <TaskFilter
+                  key={item}
+                  active={filter === item}
+                  label={
+                    item === "todas"
+                      ? "Todas"
+                      : item === "pendientes"
+                      ? "Pendientes"
+                      : item === "completadas"
+                      ? "Hechas"
+                      : "Importantes"
+                  }
+                  count={counts[item]}
+                  icon={item === "urgentes" ? "star" : undefined}
+                  onPress={() => setFilter(item)}
+                />
+              ))}
+            </ScrollView>
+            <View style={styles.dayContext}>
+              <View style={styles.contextLeft}>
+                <Feather
+                  name={selectedDate ? "calendar" : "layers"}
+                  size={19}
+                  color="#58514D"
+                />
+                <Text style={styles.contextTitle}>
+                  {selectedDate
+                    ? isSameDay(selectedDate, new Date())
+                      ? "Hoy"
+                      : `${selectedDate.getDate()} de ${MONTH_NAMES[selectedDate.getMonth()]}`
+                    : "Todas las fechas"}
+                </Text>
+              </View>
+              {selectedDate ? (
                 <BotonAnimado
-                  onPress={onRefresh}
-                  scaleTo={0.98}
-                  style={styles.error}
+                  scaleTo={0.96}
+                  onPress={() => setSelectedDate(null)}
+                  style={styles.clearDateButton}
                 >
-                  <Text style={styles.errorText}>{refreshError}</Text>
-                  <Feather name="refresh-cw" size={14} color="#A53E5B" />
+                  <Text style={styles.clearDateText}>Ver todas</Text>
+                  <Feather name="x" size={13} color="#6E6864" />
                 </BotonAnimado>
+              ) : (
+                <Text style={styles.todayLabel}>
+                  {visibleTasks.length}{" "}
+                  {visibleTasks.length === 1 ? "tarea" : "tareas"}
+                </Text>
               )}
-              {isLoading && <TaskSkeleton />}
             </View>
+            {refreshError ? (
+              <BotonAnimado
+                onPress={onRefresh}
+                scaleTo={0.98}
+                style={styles.error}
+              >
+                <Text style={styles.errorText}>{refreshError}</Text>
+                <Feather name="refresh-cw" size={14} color="#A34A45" />
+              </BotonAnimado>
+            ) : null}
+            {isLoading ? <TaskSkeleton /> : null}
           </View>
         }
         ListEmptyComponent={
           isLoading ? null : (
-            <View style={[styles.whiteBodyEmpty, { width: containerWidth }]}>
-              <TaskEmptyState completed={tab === 'completadas'} />
-            </View>
+            <TaskEmptyState completed={filter === "completadas"} />
           )
         }
-        ListFooterComponent={
-          <View style={[styles.whiteBodyBottom, { width: containerWidth }]} />
-        }
+        ListFooterComponent={<View style={styles.bottomSpace} />}
       />
-
-      {/* Modal Selector de Mes y Año */}
       <TaskMonthPickerModal
         visible={monthPickerVisible}
-        selectedDate={selectedDate}
+        selectedDate={anchorDate}
         onClose={() => setMonthPickerVisible(false)}
-        onSelectMonth={handleSelectMonth}
+        onSelectMonth={selectMonth}
       />
-
-      {/* Modal Integral de Detalle de Tarea */}
       <DetalleTareaModal
         visible={selectedTask !== null}
         tarea={selectedTask}
         onClose={() => setSelectedTaskId(null)}
         onCambiarEstado={cambiarEstadoTarea}
-        onAbrirChat={() => navigation.navigate('ChatIA')}
+        onAbrirChat={() => navigation.navigate("ChatIA")}
       />
     </SafeAreaView>
   );
 }
 
+function TaskFilter({
+  active,
+  label,
+  count,
+  icon,
+  onPress,
+}: {
+  active: boolean;
+  label: string;
+  count: number;
+  icon?: React.ComponentProps<typeof Feather>["name"];
+  onPress: () => void;
+}) {
+  return (
+    <BotonAnimado
+      onPress={onPress}
+      scaleTo={0.97}
+      style={[styles.filter, active && styles.filterActive]}
+    >
+      {icon ? (
+        <Feather name={icon} size={16} color={active ? "#FFFFFF" : "#3E3936"} />
+      ) : (
+        <View style={[styles.filterCount, active && styles.filterCountActive]}>
+          <Text
+            style={[
+              styles.filterCountText,
+              active && styles.filterCountTextActive,
+            ]}
+          >
+            {count}
+          </Text>
+        </View>
+      )}
+      <Text style={[styles.filterText, active && styles.filterTextActive]}>
+        {label}
+      </Text>
+    </BotonAnimado>
+  );
+}
+
 const styles = StyleSheet.create({
-  screen: {
-    backgroundColor: '#FFFDFB',
-    flex: 1,
-  },
-  gradientArea: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    overflow: 'hidden',
-  },
-  amberGlowTop: {
-    backgroundColor: 'rgba(255, 175, 95, 0.70)',
-    borderRadius: 200,
-    height: 380,
-    left: -110,
-    position: 'absolute',
-    top: -120,
-    width: 410,
-  },
-  roseGlowTop: {
-    backgroundColor: 'rgba(255, 115, 165, 0.65)',
-    borderRadius: 210,
-    height: 400,
-    position: 'absolute',
-    right: -130,
-    top: -90,
-    width: 430,
-  },
-  peachCenterGlow: {
-    backgroundColor: 'rgba(255, 215, 160, 0.55)',
-    borderRadius: 180,
-    height: 340,
-    left: 40,
-    position: 'absolute',
-    top: 220,
-    width: 360,
-  },
-  amberGlowBottom: {
-    backgroundColor: 'rgba(255, 185, 115, 0.55)',
-    borderRadius: 220,
-    height: 420,
-    left: -100,
-    position: 'absolute',
-    bottom: -100,
-    width: 440,
-  },
-  roseGlowBottom: {
-    backgroundColor: 'rgba(255, 130, 180, 0.50)',
-    borderRadius: 230,
-    height: 450,
-    position: 'absolute',
-    right: -120,
-    bottom: -120,
-    width: 460,
-  },
+  screen: { flex: 1, backgroundColor: "#FFFDFC" },
+  ambient: { ...StyleSheet.absoluteFill },
   listContent: {
-    paddingBottom: 110,
-    paddingTop: 28,
+    paddingHorizontal: 21,
+    paddingTop: 4,
+    paddingBottom: 115,
   },
   header: {
-    alignItems: 'flex-start',
-    marginTop: 8,
-    marginBottom: 4,
-    paddingHorizontal: 20,
+    height: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  profile: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    overflow: "hidden",
+    backgroundColor: "#E9D2BF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatar: { width: "100%", height: "100%" },
+  avatarInitial: { color: "#382E29", fontSize: 17, fontWeight: "700" },
+  dateLabel: {
+    color: "#292522",
+    fontSize: 17,
+    fontWeight: "600",
+    letterSpacing: -0.5,
+  },
+  headerActions: { flexDirection: "row", gap: 10 },
+  addButton: {
+    width: 47,
+    height: 47,
+    borderRadius: 24,
+    backgroundColor: "#202020",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bellButton: {
+    width: 47,
+    height: 47,
+    borderRadius: 24,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    ...SOMBRAS.suave,
+  },
+  titleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    marginTop: 22,
   },
   title: {
-    color: '#111111',
-    fontSize: 36,
-    fontWeight: '600',
+    color: "#1F1D1C",
+    fontSize: 34,
+    lineHeight: 38,
+    fontWeight: "600",
+    letterSpacing: -1.4,
+  },
+  calendarPill: {
+    height: 50,
+    borderRadius: 25,
+    paddingHorizontal: 17,
+    backgroundColor: "#FFFFFF",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    ...SOMBRAS.suave,
+  },
+  calendarText: { color: "#292522", fontSize: 15, fontWeight: "600" },
+  filters: { flexDirection: "row", gap: 9, marginTop: 18, paddingRight: 4 },
+  filter: {
+    minHeight: 48,
+    borderRadius: 24,
+    paddingHorizontal: 13,
+    backgroundColor: "rgba(255,255,255,0.86)",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    borderWidth: 1,
+    borderColor: "rgba(32,28,25,0.04)",
+  },
+  filterActive: { backgroundColor: "#202020", borderColor: "#202020" },
+  filterCount: {
+    minWidth: 28,
+    height: 28,
+    borderRadius: 14,
+    paddingHorizontal: 7,
+    backgroundColor: "#F1EFED",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  filterCountActive: { backgroundColor: "rgba(255,255,255,0.16)" },
+  filterCountText: { color: "#3C3734", fontSize: 12, fontWeight: "700" },
+  filterCountTextActive: { color: "#FFFFFF" },
+  filterText: { color: "#3E3936", fontSize: 13, fontWeight: "600" },
+  filterTextActive: { color: "#FFFFFF" },
+  dayContext: {
+    marginTop: 24,
+    marginBottom: 14,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  contextLeft: { flexDirection: "row", alignItems: "center", gap: 9 },
+  contextTitle: {
+    color: "#383330",
+    fontSize: 24,
+    fontWeight: "600",
     letterSpacing: -0.7,
-    lineHeight: 42,
   },
-  monthControl: {
-    alignItems: 'center',
-    flexDirection: 'row',
+  todayLabel: { color: "#837C77", fontSize: 13, fontWeight: "600" },
+  clearDateButton: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
-    marginLeft: -4,
-    marginTop: 4,
-    paddingHorizontal: 4,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    backgroundColor: "#F1EFED",
   },
-  month: {
-    color: '#262228',
-    fontSize: 18,
-    fontWeight: '500',
-    letterSpacing: -0.2,
-  },
-  whiteBodyTop: {
-    alignSelf: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingTop: 14,
-  },
-  taskItemRow: {
-    alignSelf: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-  },
-  whiteBodyEmpty: {
-    alignSelf: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingBottom: 32,
-  },
-  whiteBodyBottom: {
-    alignSelf: 'center',
-    backgroundColor: '#FFFFFF',
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-    height: 24,
-    marginBottom: 20,
-    shadowColor: '#1A0C14',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.04,
-    shadowRadius: 14,
-    elevation: 2,
+  clearDateText: {
+    color: "#544E4A",
+    fontSize: 12,
+    fontWeight: "700",
   },
   error: {
-    alignItems: 'center',
-    backgroundColor: '#FFE7EC',
-    borderRadius: 14,
-    flexDirection: 'row',
-    gap: 8,
+    borderRadius: 15,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     marginBottom: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    backgroundColor: "#FFF0EE",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
-  errorText: {
-    color: '#A53E5B',
-    flex: 1,
-    fontSize: 12,
-    fontWeight: '600',
-    lineHeight: 16,
-  },
+  errorText: { flex: 1, color: "#A34A45", fontSize: 12, fontWeight: "600" },
+  bottomSpace: { height: 18 },
 });

@@ -4,20 +4,20 @@
  * Proposito: Pantalla de chat y copiloto operativo Nexxus IA con la mascota oficial Nexxus IA, despliegue animado de opciones con el botón '+', borrado de conversación y experiencia conversacional fluida.
  */
 
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   Image,
   Keyboard,
   KeyboardAvoidingView,
+  Modal,
   Platform,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   TouchableOpacity,
-  View,
-} from 'react-native';
+  TouchableWithoutFeedback,
+  View} from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -38,15 +38,14 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Rect } from 'react-native-svg';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
-import { COLORES, ESPACIADO, SOMBRAS } from '@/shared/constants/diseno';
+import { ESPACIADO, SOMBRAS } from '@/shared/constants/diseno';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import { useTranslation } from 'react-i18next';
 import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import { useCases } from '@/infrastructure/container';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
-import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
+import AiAmbientBackground from '@/presentation/components/AiAmbientBackground';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
 import RenderMarkdownIA from '@/presentation/components/RenderMarkdownIA';
 import { SensitiveAiAction } from 'domain/entities/AiAssistant';
@@ -95,6 +94,7 @@ function IconoOndasVoz({ size = 18, color = '#FFFFFF' }: { size?: number; color?
 }
 
 export default function ChatIA({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
   const {
     perfil,
@@ -110,9 +110,76 @@ export default function ChatIA({ navigation }: Props) {
   const { colores, esOscuro } = useTemaMobile();
 
   const primerNombre = useMemo(() => {
-    if (!perfil?.nombre) return i18n.language === 'es' ? 'Colega' : 'Colleague';
+    if (!perfil?.nombre) return '';
     return perfil.nombre.trim().split(' ')[0];
-  }, [perfil?.nombre, i18n.language]);
+  }, [perfil?.nombre]);
+
+  const tituloDinamico = useMemo(() => {
+    const hora = new Date().getHours();
+    const es = i18n.language === 'es';
+    const nombre = primerNombre;
+    const sufijo = nombre ? `, ${nombre}` : '';
+
+    if (es) {
+      if (hora >= 5 && hora < 12) {
+        const poolManana = [
+          { saludo: nombre ? `¡Buen día${sufijo}!` : '¡Buenos días!', pregunta: '¿Qué planificamos hoy?' },
+          { saludo: nombre ? `¡Hola${sufijo}!` : '¡Hola!', pregunta: '¿Todo listo para empezar?' },
+          { saludo: '¿Todo listo', pregunta: nombre ? `para empezar, ${nombre}?` : 'para empezar hoy?' },
+          { saludo: nombre ? `Buenos días${sufijo}` : 'Buenos días', pregunta: '¿En qué nos enfocamos hoy?' },
+          { saludo: '¿En qué puedo', pregunta: nombre ? `ayudarte hoy, ${nombre}?` : 'ayudarte hoy?' },
+          { saludo: nombre ? `¡Hola${sufijo}!` : '¡Hola!', pregunta: '¿Qué priorizamos hoy?' },
+          { saludo: '¿Listo para avanzar?', pregunta: nombre ? `Dime en qué te apoyo, ${nombre}` : 'Dime en qué te apoyo hoy' },
+        ];
+        return poolManana[Math.floor(Math.random() * poolManana.length)];
+      } else if (hora >= 12 && hora < 19) {
+        const poolTarde = [
+          { saludo: nombre ? `Buenas tardes${sufijo}` : 'Buenas tardes', pregunta: '¿En qué te apoyo hoy?' },
+          { saludo: nombre ? `¡Hola${sufijo}!` : '¡Hola!', pregunta: '¿Qué resolvemos hoy?' },
+          { saludo: '¿Cómo va tu jornada?', pregunta: nombre ? `¿En qué te colaboro, ${nombre}?` : '¿En qué te colaboro?' },
+          { saludo: '¿En qué puedo', pregunta: nombre ? `ayudarte hoy, ${nombre}?` : 'ayudarte hoy?' },
+          { saludo: nombre ? `¡Buenas tardes${sufijo}!` : '¡Buenas tardes!', pregunta: '¿Todo listo para avanzar?' },
+          { saludo: '¿Qué tenemos pendiente', pregunta: nombre ? `para esta tarde, ${nombre}?` : 'para esta tarde?' },
+          { saludo: nombre ? `¡Hola${sufijo}!` : '¡Hola!', pregunta: '¿Qué organizamos ahora?' },
+        ];
+        return poolTarde[Math.floor(Math.random() * poolTarde.length)];
+      } else {
+        const poolNoche = [
+          { saludo: nombre ? `Buenas noches${sufijo}` : 'Buenas noches', pregunta: '¿Cómo cerramos tu día?' },
+          { saludo: nombre ? `¡Hola${sufijo}!` : '¡Hola!', pregunta: '¿Qué necesitas revisar?' },
+          { saludo: '¿Todo listo para', pregunta: nombre ? `cerrar el día, ${nombre}?` : 'cerrar tu jornada?' },
+          { saludo: '¿En qué puedo', pregunta: nombre ? `ayudarte esta noche, ${nombre}?` : 'ayudarte esta noche?' },
+          { saludo: nombre ? `Buenas noches${sufijo}` : 'Buenas noches', pregunta: '¿Dejamos todo listo para mañana?' },
+          { saludo: '¿Cómo estuvo tu día?', pregunta: nombre ? `Puedo ayudarte a resumirlo, ${nombre}` : 'Puedo ayudarte a resumirlo' },
+        ];
+        return poolNoche[Math.floor(Math.random() * poolNoche.length)];
+      }
+    } else {
+      if (hora >= 5 && hora < 12) {
+        const poolMorning = [
+          { saludo: nombre ? `Good morning${sufijo}!` : 'Good morning!', pregunta: 'How can I help you today?' },
+          { saludo: nombre ? `Hello${sufijo}!` : 'Hello!', pregunta: 'All ready to get started?' },
+          { saludo: 'Ready to tackle', pregunta: nombre ? `the day, ${nombre}?` : 'the day ahead?' },
+          { saludo: nombre ? `Good morning${sufijo}` : 'Good morning', pregunta: 'What should we prioritize today?' },
+        ];
+        return poolMorning[Math.floor(Math.random() * poolMorning.length)];
+      } else if (hora >= 12 && hora < 19) {
+        const poolAfternoon = [
+          { saludo: nombre ? `Good afternoon${sufijo}` : 'Good afternoon', pregunta: 'What are we tackling today?' },
+          { saludo: nombre ? `Hello${sufijo}!` : 'Hello!', pregunta: 'How can I assist you right now?' },
+          { saludo: 'How is your day going?', pregunta: nombre ? `Need help with anything, ${nombre}?` : 'Need help with anything?' },
+        ];
+        return poolAfternoon[Math.floor(Math.random() * poolAfternoon.length)];
+      } else {
+        const poolEvening = [
+          { saludo: nombre ? `Good evening${sufijo}` : 'Good evening', pregunta: 'How can I assist you tonight?' },
+          { saludo: nombre ? `Hello${sufijo}!` : 'Hello!', pregunta: 'Ready to wrap up today?' },
+          { saludo: 'Wrapping up today?', pregunta: nombre ? `Let us review your progress, ${nombre}` : 'Let us review your progress' },
+        ];
+        return poolEvening[Math.floor(Math.random() * poolEvening.length)];
+      }
+    }
+  }, [primerNombre, i18n.language]);
 
   const abrirNexxusVoice = () => {
     navigation.navigate('VoiceChatScreen');
@@ -120,11 +187,20 @@ export default function ChatIA({ navigation }: Props) {
 
   const animacionEscritura = useSharedValue(0);
   const rotacionPlus = useSharedValue(0);
+  const pulsoHero = useSharedValue(1);
   const [textoEntrada, setTextoEntrada] = useState('');
   const [escribiendo, setEscribiendo] = useState(false);
   const referenciaScroll = useRef<ScrollView>(null);
   const [tecladoVisible, setTecladoVisible] = useState(false);
   const [menuOpcionesVisible, setMenuOpcionesVisible] = useState(false);
+  const [confirmacionBorradoVisible, setConfirmacionBorradoVisible] = useState(false);
+  const [sugerenciaActiva, setSugerenciaActiva] = useState('resumen');
+
+  const bottomSpacing = tecladoVisible
+    ? 8
+    : Platform.OS === 'ios'
+    ? 88
+    : Math.max(12, insets.bottom + 8) + 64;
 
   const alternarMenuOpciones = () => {
     const siguiente = !menuOpcionesVisible;
@@ -176,19 +252,21 @@ export default function ChatIA({ navigation }: Props) {
 
   const confirmarLimpiarChat = () => {
     if (mensajes.length === 0) return;
-    Alert.alert(
-      'Borrar chat',
-      '¿Deseas eliminar todos los mensajes de esta conversación con Nexxus IA?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Borrar todo',
-          style: 'destructive',
-          onPress: limpiarHistorial,
-        },
-      ],
-    );
+    setConfirmacionBorradoVisible(true);
   };
+
+  useEffect(() => {
+    pulsoHero.value = withRepeat(
+      withSequence(
+        withTiming(1.035, { duration: 2100, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1, { duration: 2100, easing: Easing.inOut(Easing.sin) }),
+      ),
+      -1,
+      true,
+    );
+  }, [pulsoHero]);
+
+  const estiloPulsoHero = useAnimatedStyle(() => ({ transform: [{ scale: pulsoHero.value }] }));
 
   useEffect(() => {
     async function cargarHistorial() {
@@ -348,6 +426,7 @@ export default function ChatIA({ navigation }: Props) {
 
   function enviarMensaje(texto: string) {
     if (!texto.trim()) return;
+    Keyboard.dismiss();
 
     const mensajeUsuario: Mensaje = {
       id: Date.now().toString(),
@@ -395,63 +474,103 @@ export default function ChatIA({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={estilos.contenedor}>
+    <SafeAreaView style={estilos.contenedor} edges={['top', 'left', 'right']}>
       <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
 
-      {/* Fondo visual Premium unificado con el resto de la app */}
       <View pointerEvents="none" style={estilos.fondoAbsoluto}>
-        <FondoMobilePremium />
+        <AiAmbientBackground state={escribiendo ? 'thinking' : 'idle'} />
       </View>
 
-      {/* Navbar Superior Original */}
-      <NavbarEnterprise
-        titulo={t('chatIA.title', { defaultValue: 'Asistente IA' })}
-        accionDerecha={
-          mensajes.length > 0 ? (
-            <BotonAnimado
-              onPress={confirmarLimpiarChat}
-              scaleTo={0.92}
-              style={estilos.btnLimpiarHeader}
-              accessibilityLabel="Borrar conversación"
-            >
-              <Feather name="trash-2" size={17} color="#EF4444" />
-            </BotonAnimado>
-          ) : undefined
-        }
-      />
+      <View style={estilos.topBar}>
+        <BotonAnimado
+          style={estilos.profile}
+          scaleTo={0.97}
+          onPress={() => navigation.navigate("PerfilLaboral")}
+          accessibilityLabel="Abrir mi perfil"
+        >
+          {perfil?.foto_perfil ? (
+            <Image source={{ uri: perfil.foto_perfil }} style={estilos.avatar} />
+          ) : (
+            <Text style={estilos.avatarInitial}>
+              {((perfil?.nombre || 'U').trim().charAt(0) || 'U').toUpperCase()}
+            </Text>
+          )}
+        </BotonAnimado>
+        <Text style={estilos.topBarLabel}>Nexxus IA</Text>
+        <View style={estilos.headerActions}>
+          <BotonAnimado
+            onPress={abrirNexxusVoice}
+            scaleTo={0.96}
+            style={estilos.addButton}
+            accessibilityLabel="Llamada de voz con IA"
+          >
+            <IconoOndasVoz size={18} color="#FFFFFF" />
+          </BotonAnimado>
+          <BotonAnimado
+            onPress={mensajes.length > 0 ? confirmarLimpiarChat : alternarMenuOpciones}
+            scaleTo={0.96}
+            style={estilos.bellButton}
+            accessibilityLabel={mensajes.length > 0 ? "Borrar conversación" : "Opciones de IA"}
+          >
+            {mensajes.length > 0 ? (
+              <Feather name="trash-2" size={19} color="#B54B45" />
+            ) : (
+              <MaterialIcons name="tune" size={20} color="#202020" />
+            )}
+          </BotonAnimado>
+        </View>
+      </View>
 
       <KeyboardAvoidingView style={estilos.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={0}>
         {/* Estado Inicial de Bienvenida con Mascota Nexxus IA */}
         {mensajes.length === 0 ? (
-          <View style={estilos.contenedorHeroMascota}>
-            <Animated.View entering={FadeInDown.duration(400).easing(Easing.out(Easing.quad))} style={estilos.heroContenido}>
-              <View style={estilos.iconoMascotaWrap}>
-                <Image source={MASCOTA_NEXXUS} style={estilos.mascotaImgHero} resizeMode="contain" />
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+            <View style={estilos.contenedorHeroMascota}>
+              <Animated.View entering={FadeInDown.duration(260).easing(Easing.out(Easing.quad))} style={estilos.heroContenido}>
+                <Text style={estilos.tituloHeroMascota}>
+                  {tituloDinamico.saludo}{`\n`}{tituloDinamico.pregunta}
+                </Text>
+                <Text style={estilos.subtituloHeroMascota}>Tu asistente para organizar el día y avanzar con claridad.</Text>
+              </Animated.View>
+              <Animated.View entering={FadeInDown.delay(60).duration(260).easing(Easing.out(Easing.quad))} style={estilos.tarjetaEstadoIA}>
+                <Animated.View style={[estilos.iconoMascotaWrap, estiloPulsoHero]}>
+                  <View style={estilos.haloMascotaExterior} />
+                  <Image source={MASCOTA_NEXXUS} style={estilos.mascotaImgHero} resizeMode="contain" />
+                </Animated.View>
+                <View style={estilos.estadoIACopy}>
+                  <Text style={estilos.estadoIATitulo}>Nexxus IA</Text>
+                  <Text style={estilos.estadoIADestacado}>{contexto.urgentes > 0 ? `${contexto.urgentes} tarea${contexto.urgentes === 1 ? '' : 's'} urgente${contexto.urgentes === 1 ? '' : 's'}` : 'Tu día está bajo control'}</Text>
+                  <Text style={estilos.estadoIADetalle}>{contexto.pendientes > 0 ? `${contexto.pendientes} pendientes por organizar` : 'No tienes tareas pendientes'}</Text>
+                </View>
+              </Animated.View>
+              <View style={estilos.cabeceraPreguntas}>
+                <Text style={estilos.tituloPreguntas}>Preguntas rápidas</Text>
               </View>
-              <Text style={estilos.tituloHeroMascota}>
-                ¿Y ahora qué, {primerNombre}?
-              </Text>
-            </Animated.View>
-
-            {/* Sugerencias Rápidas Iniciales */}
-            <Animated.View entering={FadeInUp.delay(120).duration(400)} style={estilos.wrapSugerenciasHero}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={estilos.scrollSugerenciasHero}>
-                {SUGERENCIAS_RAPIDAS.map((sug) => (
-                  <BotonAnimado key={sug.comando} onPress={() => enviarMensaje(sug.label)} scaleTo={0.95}>
-                    <View style={estilos.chipSugerenciaMascota}>
-                      <MaterialIcons name={sug.icono} size={15} color={esOscuro ? '#93C5FD' : '#2563EB'} />
-                      <Text style={estilos.textoChipMascota}>{sug.label}</Text>
-                    </View>
-                  </BotonAnimado>
-                ))}
-              </ScrollView>
-            </Animated.View>
-          </View>
+              <Animated.View entering={FadeInUp.delay(110).duration(260)} style={estilos.wrapSugerenciasHero}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={estilos.scrollSugerenciasHero}>
+                  {SUGERENCIAS_RAPIDAS.map((sug) => (
+                    <BotonAnimado key={sug.comando} onPress={() => { Keyboard.dismiss(); setSugerenciaActiva(sug.comando); enviarMensaje(sug.label); }} scaleTo={0.98}>
+                      <View style={[estilos.chipSugerenciaMascota, sugerenciaActiva === sug.comando && estilos.chipSugerenciaActiva]}>
+                        <MaterialIcons name={sug.icono} size={15} color={sugerenciaActiva === sug.comando ? '#FFFFFF' : (esOscuro ? '#CBD5E1' : '#292522')} />
+                        <Text style={[estilos.textoChipMascota, sugerenciaActiva === sug.comando && estilos.textoChipActivo]}>{sug.label}</Text>
+                      </View>
+                    </BotonAnimado>
+                  ))}
+                </ScrollView>
+              </Animated.View>
+              <Animated.View entering={FadeInUp.delay(150).duration(260)} style={estilos.tarjetaRecomendacion}>
+                <View style={estilos.recomendacionCopy}><Text style={estilos.recomendacionEyebrow}>RECOMENDACIÓN</Text><Text style={estilos.recomendacionTitulo}>{contexto.urgentes > 0 ? 'Prioriza tus tareas de hoy' : 'Planifica tu siguiente paso'}</Text><Text style={estilos.recomendacionDetalle}>{contexto.urgentes > 0 ? `${contexto.urgentes} requieren tu atención.` : 'Puedo ayudarte a definir qué sigue.'}</Text></View>
+                <BotonAnimado onPress={() => { Keyboard.dismiss(); enviarMensaje(contexto.urgentes > 0 ? 'Tareas urgentes' : 'Resumen de mi día'); }} scaleTo={0.97} style={estilos.botonVerRecomendacion}><Text style={estilos.textoVerRecomendacion}>Ver</Text></BotonAnimado>
+              </Animated.View>
+            </View>
+          </TouchableWithoutFeedback>
         ) : (
           <ScrollView
             ref={referenciaScroll}
             contentContainerStyle={estilos.scrollChat}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             onContentSizeChange={() => referenciaScroll.current?.scrollToEnd({ animated: true })}
           >
             {mensajes.map((mensaje) => {
@@ -493,7 +612,7 @@ export default function ChatIA({ navigation }: Props) {
                           return (
                             <View key={accion.id} style={estilos.tarjetaAccionSensible}>
                               <View style={estilos.tarjetaAccionHeader}>
-                                <MaterialIcons name="verified-user" size={16} color={esOscuro ? '#93C5FD' : '#2563EB'} />
+                                <MaterialIcons name="verified-user" size={16} color={esOscuro ? '#C4B5FD' : '#7C3AED'} />
                                 <Text style={estilos.tarjetaAccionTitulo} numberOfLines={2}>{accion.titulo}</Text>
                               </View>
                               {resultado ? (
@@ -570,27 +689,33 @@ export default function ChatIA({ navigation }: Props) {
         )}
 
         {/* Barra Inferior de Entrada */}
-        <View style={[estilos.contenedorEntrada, { paddingBottom: tecladoVisible ? ESPACIADO.xs : (Platform.OS === 'ios' ? 96 : 104) }]}>
+        <View style={[estilos.contenedorEntrada, { paddingBottom: bottomSpacing }]}>
           {/* Panel Desplegable Animado al Presionar '+' */}
           {menuOpcionesVisible && (
             <Animated.View
-              entering={FadeInUp.duration(260).easing(Easing.out(Easing.quad))}
+              entering={FadeInUp.duration(240).easing(Easing.out(Easing.quad))}
               exiting={FadeOutDown.duration(180).easing(Easing.in(Easing.quad))}
               style={estilos.panelMenuOpciones}
             >
               <View style={estilos.panelMenuHeader}>
-                <Text style={estilos.panelMenuTitulo}>Opciones rápidas</Text>
+                <View style={estilos.panelMenuHeaderIzquierda}>
+                  <View style={estilos.panelMenuHeaderBadge}>
+                    <MaterialIcons name="auto-awesome" size={13} color={esOscuro ? '#FFFFFF' : '#211E1C'} />
+                  </View>
+                  <Text style={estilos.panelMenuTitulo}>Opciones rápidas</Text>
+                </View>
                 <TouchableOpacity
                   onPress={alternarMenuOpciones}
+                  style={estilos.panelMenuBtnCerrar}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   accessibilityLabel="Cerrar opciones"
                 >
-                  <MaterialIcons name="close" size={18} color={colores.textoSuave} />
+                  <MaterialIcons name="close" size={15} color={esOscuro ? '#CBD5E1' : '#64748B'} />
                 </TouchableOpacity>
               </View>
 
-              {/* Sugerencias Rápidas */}
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={estilos.scrollSugerenciasMenu}>
+              {/* Sugerencias Rápidas en Cuadrícula Moderna */}
+              <View style={estilos.panelMenuGrid}>
                 {SUGERENCIAS_RAPIDAS.map((sugerencia) => (
                   <BotonAnimado
                     key={sugerencia.comando}
@@ -598,15 +723,16 @@ export default function ChatIA({ navigation }: Props) {
                       alternarMenuOpciones();
                       enviarMensaje(sugerencia.label);
                     }}
-                    scaleTo={0.94}
+                    scaleTo={0.96}
+                    style={estilos.itemMenuOpcion}
                   >
-                    <View style={estilos.chipSugerenciaMascota}>
-                      <MaterialIcons name={sugerencia.icono} size={14} color={esOscuro ? '#93C5FD' : '#2563EB'} />
-                      <Text style={estilos.textoChipMascota}>{sugerencia.label}</Text>
+                    <View style={estilos.itemMenuIconoWrap}>
+                      <MaterialIcons name={sugerencia.icono} size={15} color={esOscuro ? '#FFFFFF' : '#211E1C'} />
                     </View>
+                    <Text style={estilos.itemMenuTexto} numberOfLines={1}>{sugerencia.label}</Text>
                   </BotonAnimado>
                 ))}
-              </ScrollView>
+              </View>
 
               {/* Fila de Acciones Utilitarias: Borrar Conversación y Llamada de Voz */}
               <View style={estilos.filaAccionesUtilitarias}>
@@ -615,7 +741,7 @@ export default function ChatIA({ navigation }: Props) {
                     alternarMenuOpciones();
                     confirmarLimpiarChat();
                   }}
-                  scaleTo={0.95}
+                  scaleTo={0.96}
                   disabled={mensajes.length === 0}
                   style={[
                     estilos.btnAccionUtilitaria,
@@ -626,13 +752,13 @@ export default function ChatIA({ navigation }: Props) {
                 >
                   <Feather
                     name="trash-2"
-                    size={15}
-                    color={mensajes.length === 0 ? (esOscuro ? '#64748B' : '#94A3B8') : '#EF4444'}
+                    size={14}
+                    color={mensajes.length === 0 ? (esOscuro ? '#64748B' : '#94A3B8') : '#DC2626'}
                   />
                   <Text
                     style={[
                       estilos.textoAccionUtilitaria,
-                      { color: mensajes.length === 0 ? (esOscuro ? '#64748B' : '#94A3B8') : '#EF4444' },
+                      { color: mensajes.length === 0 ? (esOscuro ? '#64748B' : '#94A3B8') : '#DC2626' },
                     ]}
                   >
                     Borrar chat
@@ -644,12 +770,12 @@ export default function ChatIA({ navigation }: Props) {
                     alternarMenuOpciones();
                     abrirNexxusVoice();
                   }}
-                  scaleTo={0.95}
+                  scaleTo={0.96}
                   style={[estilos.btnAccionUtilitaria, estilos.btnAccionVoz]}
                   accessibilityLabel="Llamada de voz con Nexxus IA"
                 >
-                  <IconoOndasVoz size={15} color={esOscuro ? '#93C5FD' : '#2563EB'} />
-                  <Text style={[estilos.textoAccionUtilitaria, { color: esOscuro ? '#93C5FD' : '#2563EB' }]}>
+                  <IconoOndasVoz size={14} color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
+                  <Text style={[estilos.textoAccionUtilitaria, { color: esOscuro ? '#0B0C1E' : '#FFFFFF' }]}>
                     Nexxus Voice
                   </Text>
                 </BotonAnimado>
@@ -669,7 +795,7 @@ export default function ChatIA({ navigation }: Props) {
                 <MaterialIcons
                   name="add"
                   size={24}
-                  color={menuOpcionesVisible ? (esOscuro ? '#93C5FD' : '#2563EB') : (esOscuro ? 'rgba(255,255,255,0.7)' : '#64748B')}
+                  color={menuOpcionesVisible ? (esOscuro ? '#FFFFFF' : '#211E1C') : (esOscuro ? 'rgba(255,255,255,0.7)' : '#64748B')}
                 />
               </Animated.View>
             </TouchableOpacity>
@@ -681,8 +807,8 @@ export default function ChatIA({ navigation }: Props) {
               value={textoEntrada}
               onChangeText={setTextoEntrada}
               onSubmitEditing={() => enviarMensaje(textoEntrada)}
+              blurOnSubmit={true}
               returnKeyType="send"
-              multiline
               maxLength={500}
             />
 
@@ -719,7 +845,7 @@ export default function ChatIA({ navigation }: Props) {
                     accessibilityLabel="Hablar con la IA en tiempo real"
                   >
                     <View style={estilos.botonVozOndas}>
-                      <IconoOndasVoz size={18} color="#FFFFFF" />
+                      <IconoOndasVoz size={18} color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
                     </View>
                   </BotonAnimado>
                 </Animated.View>
@@ -728,6 +854,19 @@ export default function ChatIA({ navigation }: Props) {
           </View>
         </View>
       </KeyboardAvoidingView>
+      <Modal visible={confirmacionBorradoVisible} transparent animationType="fade" onRequestClose={() => setConfirmacionBorradoVisible(false)}>
+        <View style={estilos.overlayModal}>
+          <View style={estilos.modalConfirmacion}>
+            <View style={estilos.iconoModal}><Feather name="trash-2" size={20} color="#B54B45" /></View>
+            <Text style={estilos.tituloModal}>Borrar conversación</Text>
+            <Text style={estilos.textoModal}>Eliminarás este historial de Nexxus IA de este dispositivo.</Text>
+            <View style={estilos.accionesModal}>
+              <BotonAnimado onPress={() => setConfirmacionBorradoVisible(false)} scaleTo={0.97} style={estilos.botonModalSecundario}><Text style={estilos.textoModalSecundario}>Cancelar</Text></BotonAnimado>
+              <BotonAnimado onPress={() => { setConfirmacionBorradoVisible(false); void limpiarHistorial(); }} scaleTo={0.97} style={estilos.botonModalPeligro}><Text style={estilos.textoModalPeligro}>Borrar</Text></BotonAnimado>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -751,6 +890,60 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
       flex: 1,
     },
 
+    topBar: {
+      height: 52,
+      paddingHorizontal: 21,
+      marginTop: 4,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    profile: {
+      width: 46,
+      height: 46,
+      borderRadius: 23,
+      backgroundColor: '#E9D2BF',
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+    },
+    avatar: {
+      width: '100%',
+      height: '100%',
+    },
+    avatarInitial: {
+      color: '#382E29',
+      fontSize: 17,
+      fontWeight: '700',
+    },
+    topBarLabel: {
+      color: '#292522',
+      fontSize: 17,
+      fontWeight: '600',
+      letterSpacing: -0.5,
+    },
+    headerActions: {
+      flexDirection: 'row',
+      gap: 10,
+    },
+    addButton: {
+      width: 47,
+      height: 47,
+      borderRadius: 24,
+      backgroundColor: '#202020',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    bellButton: {
+      width: 47,
+      height: 47,
+      borderRadius: 24,
+      backgroundColor: '#FFFFFF',
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...SOMBRAS.suave,
+    },
+
     btnLimpiarHeader: {
       width: 36,
       height: 36,
@@ -765,42 +958,50 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
     // Estado Hero con Mascota Nexxus IA
     contenedorHeroMascota: {
       flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 24,
-      paddingBottom: 20,
+      paddingHorizontal: 21,
+      paddingTop: 22,
+      paddingBottom: 16,
+      gap: 18,
     },
     heroContenido: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 26,
+      alignItems: 'flex-start',
     },
     iconoMascotaWrap: {
-      width: 88,
-      height: 88,
+      width: 106,
+      height: 106,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 16,
+      marginBottom: 0,
     },
+    haloMascotaExterior: { position: 'absolute', width: 104, height: 104, borderRadius: 52, backgroundColor: 'rgba(167,139,250,0.18)' },
+    haloMascotaInterior: { position: 'absolute', width: 84, height: 84, borderRadius: 42, backgroundColor: 'rgba(255,255,255,0.72)', borderWidth: 1, borderColor: 'rgba(124,58,237,0.12)' },
     mascotaImgHero: {
-      width: 84,
-      height: 84,
+      width: 82,
+      height: 82,
     },
     tituloHeroMascota: {
-      fontSize: 26,
-      fontWeight: '500',
-      color: esOscuro ? '#FFFFFF' : '#0F172A',
-      textAlign: 'center',
-      letterSpacing: -0.4,
-      lineHeight: 34,
+      fontSize: 34,
+      fontWeight: '600',
+      color: esOscuro ? '#FFFFFF' : '#1F1D1C',
+      textAlign: 'left',
+      letterSpacing: -1.4,
+      lineHeight: 38,
     },
+    subtituloHeroMascota: { marginTop: 9, maxWidth: 310, fontSize: 14, lineHeight: 21, color: esOscuro ? 'rgba(255,255,255,0.68)' : '#78716C', textAlign: 'left' },
+    tarjetaEstadoIA: { minHeight: 150, borderRadius: 28, backgroundColor: '#211F20', padding: 18, flexDirection: 'row', alignItems: 'center', gap: 15, shadowColor: '#211E1C', shadowOpacity: 0.12, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 3 },
+    estadoIACopy: { flex: 1, gap: 4 },
+    estadoIATitulo: { color: 'rgba(255,255,255,0.68)', fontSize: 13, fontWeight: '600' },
+    estadoIADestacado: { color: '#FFFFFF', fontSize: 18, lineHeight: 23, fontWeight: '600', letterSpacing: -0.35 },
+    estadoIADetalle: { color: 'rgba(255,255,255,0.52)', fontSize: 12, lineHeight: 17 },
+    cabeceraPreguntas: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', marginTop: 2 },
+    tituloPreguntas: { color: esOscuro ? '#FFFFFF' : '#292522', fontSize: 20, fontWeight: '600', letterSpacing: -0.5 },
     wrapSugerenciasHero: {
       width: '100%',
       marginTop: 8,
     },
     scrollSugerenciasHero: {
-      paddingHorizontal: 8,
-      gap: 10,
+      paddingRight: 20,
+      gap: 9,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -810,26 +1011,35 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 7,
-      paddingHorizontal: 15,
-      paddingVertical: 9,
-      borderRadius: 20,
-      backgroundColor: esOscuro ? 'rgba(255,255,255,0.06)' : '#FFFFFF',
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderRadius: 21,
+      backgroundColor: esOscuro ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.9)',
       borderWidth: 1,
       borderColor: bordeCapsula,
-      ...SOMBRAS.flotante,
+      shadowOpacity: 0,
     },
+    chipSugerenciaActiva: { backgroundColor: '#211E1C', borderColor: '#211E1C' },
     textoChipMascota: {
       fontSize: 12.5,
       fontWeight: '600',
-      color: esOscuro ? '#E2E8F0' : '#1E293B',
+      color: esOscuro ? '#E2E8F0' : '#514B47',
     },
+    textoChipActivo: { color: '#FFFFFF' },
+    tarjetaRecomendacion: { minHeight: 108, padding: 17, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.9)', flexDirection: 'row', alignItems: 'flex-end', gap: 12, shadowColor: '#302A27', shadowOpacity: 0.05, shadowRadius: 14, shadowOffset: { width: 0, height: 5 }, elevation: 1 },
+    recomendacionCopy: { flex: 1, gap: 3 },
+    recomendacionEyebrow: { color: '#938C87', fontSize: 10, fontWeight: '700', letterSpacing: 0.8 },
+    recomendacionTitulo: { color: '#292522', fontSize: 17, fontWeight: '600', letterSpacing: -0.3 },
+    recomendacionDetalle: { color: '#837C77', fontSize: 12, lineHeight: 17 },
+    botonVerRecomendacion: { height: 34, paddingHorizontal: 14, borderRadius: 17, backgroundColor: '#211E1C', alignItems: 'center', justifyContent: 'center' },
+    textoVerRecomendacion: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
 
     // Historial de chat
     scrollChat: {
-      paddingHorizontal: 16,
-      paddingTop: 12,
+      paddingHorizontal: 21,
+      paddingTop: 18,
       paddingBottom: 24,
-      gap: 16,
+      gap: 18,
     },
     filaBurbuja: {
       flexDirection: 'row',
@@ -867,12 +1077,12 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
     burbujaIA: {
       paddingHorizontal: 16,
       paddingVertical: 14,
-      borderRadius: 22,
+      borderRadius: 24,
       borderTopLeftRadius: 4,
-      backgroundColor: cardBlanca,
+      backgroundColor: esOscuro ? cardBlanca : 'rgba(255,255,255,0.9)',
       borderWidth: 1,
       borderColor: bordeCapsula,
-      ...SOMBRAS.flotante,
+      ...SOMBRAS.suave,
     },
     textoBurbujaIA: {
       fontSize: 14,
@@ -897,8 +1107,8 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
       paddingVertical: 12,
       borderRadius: 20,
       borderBottomRightRadius: 4,
-      backgroundColor: esOscuro ? '#1E1B4B' : '#0F172A',
-      ...SOMBRAS.flotante,
+      backgroundColor: esOscuro ? '#34224D' : '#211E1C',
+      ...SOMBRAS.suave,
     },
     textoBurbujaUsuario: {
       fontSize: 14,
@@ -991,7 +1201,7 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
     },
     tarjetaAccionResultado: {
       fontSize: 12,
-      color: esOscuro ? '#93C5FD' : '#2563EB',
+      color: esOscuro ? '#C4B5FD' : '#7C3AED',
       fontWeight: '800',
     },
     tarjetaAccionResultadoError: {
@@ -1013,7 +1223,7 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
       width: 5,
       height: 5,
       borderRadius: 2.5,
-      backgroundColor: esOscuro ? '#60A5FA' : '#2563EB',
+      backgroundColor: esOscuro ? '#A78BFA' : '#7C3AED',
     },
 
     // Barra de entrada inferior
@@ -1025,36 +1235,87 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
     panelMenuOpciones: {
       marginHorizontal: 16,
       marginBottom: 10,
-      padding: 14,
-      borderRadius: 22,
+      padding: 16,
+      borderRadius: 24,
       backgroundColor: cardBlanca,
       borderWidth: 1,
       borderColor: bordeCapsula,
       ...SOMBRAS.flotante,
-      gap: 10,
+      gap: 12,
     },
     panelMenuHeader: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: 4,
+    },
+    panelMenuHeaderIzquierda: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    panelMenuHeaderBadge: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: esOscuro ? 'rgba(255,255,255,0.08)' : '#F5F3F1',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     panelMenuTitulo: {
-      fontSize: 11.5,
+      fontSize: 13,
       fontWeight: '700',
-      textTransform: 'uppercase',
-      letterSpacing: 0.8,
-      color: c.textoSuave,
+      letterSpacing: -0.2,
+      color: esOscuro ? '#FFFFFF' : '#211E1C',
     },
-    scrollSugerenciasMenu: {
+    panelMenuBtnCerrar: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: esOscuro ? 'rgba(255,255,255,0.08)' : '#F5F3F1',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    panelMenuGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
       gap: 8,
-      paddingVertical: 2,
+    },
+    itemMenuOpcion: {
+      width: '48.5%',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 10,
+      borderRadius: 14,
+      backgroundColor: esOscuro ? 'rgba(255,255,255,0.05)' : '#F7F6F4',
+      borderWidth: 1,
+      borderColor: esOscuro ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+    },
+    itemMenuIconoWrap: {
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      backgroundColor: esOscuro ? 'rgba(255,255,255,0.1)' : '#FFFFFF',
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000000',
+      shadowOpacity: 0.04,
+      shadowRadius: 3,
+      shadowOffset: { width: 0, height: 1 },
+    },
+    itemMenuTexto: {
+      flex: 1,
+      fontSize: 12,
+      fontWeight: '600',
+      color: esOscuro ? '#F1F5F9' : '#383330',
+      letterSpacing: -0.1,
     },
     filaAccionesUtilitarias: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 10,
-      paddingTop: 4,
+      paddingTop: 10,
       borderTopWidth: 1,
       borderTopColor: bordeCapsula,
     },
@@ -1069,12 +1330,12 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
       borderWidth: 1,
     },
     btnAccionBorrar: {
-      backgroundColor: 'rgba(239, 68, 68, 0.08)',
-      borderColor: 'rgba(239, 68, 68, 0.22)',
+      backgroundColor: esOscuro ? 'rgba(239, 68, 68, 0.1)' : '#FEF2F2',
+      borderColor: esOscuro ? 'rgba(239, 68, 68, 0.22)' : '#FEE2E2',
     },
     btnAccionVoz: {
-      backgroundColor: esOscuro ? 'rgba(37, 99, 235, 0.12)' : 'rgba(37, 99, 235, 0.08)',
-      borderColor: esOscuro ? 'rgba(37, 99, 235, 0.28)' : 'rgba(37, 99, 235, 0.2)',
+      backgroundColor: esOscuro ? '#FFFFFF' : '#211E1C',
+      borderColor: esOscuro ? '#FFFFFF' : '#211E1C',
     },
     btnAccionDeshabilitada: {
       opacity: 0.45,
@@ -1089,17 +1350,17 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
 
     barraCapsula: {
       marginHorizontal: 16,
-      borderRadius: 32,
+      borderRadius: 30,
       backgroundColor: capsulaBg,
       borderWidth: 1,
       borderColor: bordeCapsula,
       flexDirection: 'row',
       alignItems: 'center',
-      paddingLeft: 8,
+      paddingLeft: 9,
       paddingRight: 8,
-      paddingVertical: 6,
+      paddingVertical: 7,
       minHeight: 58,
-      ...SOMBRAS.flotante,
+      ...SOMBRAS.suave,
     },
     btnAccionPlus: {
       width: 38,
@@ -1125,7 +1386,7 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
       width: 38,
       height: 38,
       borderRadius: 19,
-      backgroundColor: esOscuro ? '#2563EB' : '#1D4ED8',
+      backgroundColor: esOscuro ? '#FFFFFF' : '#211E1C',
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -1133,9 +1394,19 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
       width: 38,
       height: 38,
       borderRadius: 19,
-      backgroundColor: esOscuro ? '#FFFFFF' : '#0F172A',
+      backgroundColor: esOscuro ? '#FFFFFF' : '#211E1C',
       alignItems: 'center',
       justifyContent: 'center',
     },
+    overlayModal: { flex: 1, backgroundColor: 'rgba(35,30,28,0.24)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+    modalConfirmacion: { width: '100%', maxWidth: 390, padding: 22, borderRadius: 28, backgroundColor: '#FFFFFF' },
+    iconoModal: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF0EE' },
+    tituloModal: { marginTop: 15, fontSize: 20, fontWeight: '600', color: '#292522' },
+    textoModal: { marginTop: 6, fontSize: 14, lineHeight: 20, color: '#78716C' },
+    accionesModal: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 22 },
+    botonModalSecundario: { height: 42, paddingHorizontal: 16, borderRadius: 15, backgroundColor: '#F1EFED', justifyContent: 'center' },
+    textoModalSecundario: { color: '#514B47', fontSize: 13, fontWeight: '600' },
+    botonModalPeligro: { height: 42, paddingHorizontal: 16, borderRadius: 15, backgroundColor: '#B54B45', justifyContent: 'center' },
+    textoModalPeligro: { color: '#FFFFFF', fontSize: 13, fontWeight: '600' },
   });
 }

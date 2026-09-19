@@ -1,807 +1,321 @@
 import React, { useState } from 'react';
-import {
-  Image,
-  Platform,
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  View,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
+import { ActivityIndicator, Alert, Image, Platform, StatusBar, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
-import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as FileSystem from 'expo-file-system/legacy';
-import { useTranslation } from 'react-i18next';
+import * as ImagePicker from 'expo-image-picker';
 import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
-import { EmptyState } from '@/presentation/components/ui';
+import { useTranslation } from 'react-i18next';
+import { SOMBRAS } from '@/shared/constants/diseno';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
-import { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/constants/diseno';
+import ProfileBottomNavigation from '@/presentation/components/ProfileBottomNavigation';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
-import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
-import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
-import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 
 const Text = AdminTranslatedText;
 
 interface Props {
-  navigation: any;
+  navigation: {
+    navigate: (screen: string, params?: { screen: string }) => void;
+    goBack?: () => void;
+    canGoBack?: () => boolean;
+  };
 }
 
-type IconoFeather = React.ComponentProps<typeof Feather>['name'];
+type Icon = React.ComponentProps<typeof Feather>['name'];
+type Dato = { label: string; value: string; icon: Icon; tone: 'peach' | 'lilac' | 'mint' | 'sand' };
 
-const crearFechaValida = (fecha: any) => {
-  if (!fecha) return null;
-  if (typeof fecha?.toDate === 'function') return fecha.toDate();
-  if (typeof fecha?.seconds === 'number') return new Date(fecha.seconds * 1000);
-  const date = new Date(fecha);
-  return Number.isNaN(date.getTime()) ? null : date;
+const FONDOS_TONO: Record<Dato['tone'], string> = { peach: '#F5E5DD', lilac: '#EBE5F3', mint: '#E3F0E8', sand: '#F2EBDD' };
+
+const formatearFecha = (fecha: string | undefined, idioma: string, fallback: string) => {
+  if (!fecha) return fallback;
+  const valor = new Date(fecha);
+  return Number.isNaN(valor.getTime()) ? fallback : valor.toLocaleDateString(idioma.startsWith('es') ? 'es-SV' : 'en-US');
 };
 
-const formatearFechaPerfil = (fecha: any, language: string, fallback: string) => {
-  const date = crearFechaValida(fecha);
-  return date ? date.toLocaleDateString(language === 'es' ? 'es-SV' : 'en-US') : fallback;
+const traducirRol = (rol: string | undefined, fallback: string) => {
+  const roles: Record<string, string> = { empleado: 'Empleado', jefe: 'Jefe', admin: 'Administrador', admin_empresa: 'Administrador' };
+  return roles[(rol || '').toLowerCase()] || rol || fallback;
 };
+
+function TituloSeccion({ children }: { children: string }) {
+  return <Text style={styles.tituloSeccion}>{children}</Text>;
+}
+
+function DatoCard({ item }: { item: Dato }) {
+  return (
+    <View style={styles.datoCard}>
+      <View style={[styles.iconoDato, { backgroundColor: FONDOS_TONO[item.tone] }]}>
+        <Feather name={item.icon} size={16} color="#4B433D" />
+      </View>
+      <Text style={styles.labelDato}>{item.label}</Text>
+      <Text style={styles.valorDato} numberOfLines={2}>{item.value}</Text>
+    </View>
+  );
+}
+
+function EstadoVacio({ icon, title, detail }: { icon: Icon; title: string; detail?: string }) {
+  return (
+    <View style={styles.vacioCard}>
+      <View style={styles.vacioIcono}><Feather name={icon} size={18} color="#867C74" /></View>
+      <View style={styles.vacioTexto}><Text style={styles.vacioTitulo}>{title}</Text>{detail && <Text style={styles.vacioDetalle}>{detail}</Text>}</View>
+    </View>
+  );
+}
 
 export default function PerfilLaboral({ navigation }: Props) {
   const { t, i18n } = useTranslation();
-  const { perfil, cerrarSesion, actualizarFotoPerfil } = useContextoUsuario();
-  const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
-  const estilos = crearEstilosPerfil(colores, esOscuro);
-
+  const { perfil, cerrarSesion, actualizarFotoPerfil, notificaciones, alertasNoLeidas: alertasCtx } = useContextoUsuario();
+  const alertasNoLeidas = alertasCtx ?? (notificaciones?.filter((n) => !n.leida).length ?? 0);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
 
   if (!perfil) return null;
 
-  const inicial = perfil.nombre?.charAt(0).toUpperCase() || 'U';
+  const manejarRegresar = () => {
+    if (navigation.canGoBack && navigation.canGoBack()) {
+      navigation.goBack?.();
+    } else if (navigation.goBack) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('MiPulso');
+    }
+  };
+
+  const rol = traducirRol(perfil.rol, t('common.employee', { defaultValue: 'Empleado' }));
   const estadoActivo = perfil.activo !== false && perfil.estado_activo !== false;
+  const sinDefinir = t('perfilLaboral.no_defined', { defaultValue: 'No definido' });
+  const sinAsignar = t('perfilLaboral.no_assigned', { defaultValue: 'No asignado' });
+  const sinRegistro = t('perfilLaboral.no_registered', { defaultValue: 'No registrado' });
+  const salario = typeof perfil.salarioBase === 'number' ? `$${Math.round(perfil.salarioBase).toLocaleString('en-US')}` : sinDefinir;
+  const vacaciones = typeof perfil.dias_vacaciones_disponibles === 'number' ? `${perfil.dias_vacaciones_disponibles} días` : sinDefinir;
+  const inicial = perfil.nombre?.trim().charAt(0).toUpperCase() || 'U';
   const kpis = perfil.kpis || [];
+  const permisos = perfil.permisos?.modulos || [];
+  const sedes = perfil.permisos?.sedes || [];
   const habilidades = perfil.habilidades || [];
-  const historial = perfil.historial_laboral || [];
   const certificaciones = perfil.certificaciones || [];
-  const permisosModulos = perfil.permisos?.modulos || [];
-  const permisosSedes = perfil.permisos?.sedes || [];
-  const salario = typeof perfil.salarioBase === 'number'
-    ? `$${Math.round(perfil.salarioBase).toLocaleString('en-US')}`
-    : t('perfilLaboral.no_defined', { defaultValue: 'No definido' });
-  const vacaciones = typeof perfil.dias_vacaciones_disponibles === 'number'
-    ? `${perfil.dias_vacaciones_disponibles} ${i18n.language === 'es' ? 'días' : 'days'}`
-    : t('perfilLaboral.no_defined', { defaultValue: 'No definido' });
+  const historial = perfil.historial_laboral || [];
 
-  const traducirRol = (rol?: string) => {
-    const normalizado = (rol || '').toLowerCase();
-    if (normalizado === 'empleado') return t('common.employee', { defaultValue: 'Empleado' });
-    if (normalizado === 'admin') return t('admin.roles.admin', { defaultValue: 'Admin' });
-    if (normalizado === 'jefe') return t('admin.roles.jefe', { defaultValue: i18n.language === 'es' ? 'Jefe' : 'Manager' });
-    return rol || t('common.employee', { defaultValue: 'Empleado' });
-  };
-
-  const traducirValorLaboral = (valor?: string) => {
-    const limpio = (valor || '').trim();
-    const normalizado = limpio.toLowerCase();
-
-    if (!limpio) return '';
-    if (normalizado === 'empleado') return t('common.employee', { defaultValue: 'Empleado' });
-    if (normalizado === 'sede central') return t('perfilLaboral.central_headquarters', { defaultValue: 'Sede Central' });
-    if (normalizado === 'general') return t('common.general', { defaultValue: 'General' });
-
-    return limpio;
-  };
-
-  const datosLaborales: { label: string; valor: string; icono: IconoFeather }[] = [
-    { label: t('perfilLaboral.role', { defaultValue: 'Rol' }), valor: traducirRol(perfil.rol), icono: 'shield' },
-    { label: t('perfilLaboral.position', { defaultValue: 'Cargo' }), valor: traducirValorLaboral(perfil.cargo) || t('perfilLaboral.no_defined', { defaultValue: 'No definido' }), icono: 'briefcase' },
-    { label: t('perfilLaboral.department', { defaultValue: 'Departamento' }), valor: traducirValorLaboral(perfil.departamento) || t('perfilLaboral.no_assigned', { defaultValue: 'No asignado' }), icono: 'grid' },
-    { label: t('perfilLaboral.location', { defaultValue: 'Sede' }), valor: traducirValorLaboral(perfil.sede) || t('perfilLaboral.no_assigned', { defaultValue: 'No asignado' }), icono: 'map-pin' },
+  const laborales: Dato[] = [
+    { label: 'Rol', value: rol, icon: 'shield', tone: 'lilac' },
+    { label: 'Cargo', value: perfil.cargo || sinDefinir, icon: 'briefcase', tone: 'peach' },
+    { label: 'Departamento', value: perfil.departamento || sinAsignar, icon: 'grid', tone: 'mint' },
+    { label: 'Sede', value: perfil.sede || sinAsignar, icon: 'map-pin', tone: 'sand' },
+  ];
+  const operacion: Dato[] = [
+    { label: 'Horario laboral', value: perfil.horario_laboral || sinDefinir, icon: 'clock', tone: 'sand' },
+    { label: 'Vacaciones', value: vacaciones, icon: 'calendar', tone: 'mint' },
+    { label: 'Salario base', value: salario, icon: 'credit-card', tone: 'peach' },
+    { label: 'Último check-in', value: formatearFecha(perfil.ultimoCheckIn, i18n.language, sinRegistro), icon: 'check-circle', tone: 'lilac' },
+  ];
+  const contacto: Dato[] = [
+    { label: 'Correo', value: perfil.correo || sinRegistro, icon: 'mail', tone: 'lilac' },
+    { label: 'Teléfono', value: perfil.telefono || sinRegistro, icon: 'phone', tone: 'mint' },
+    { label: 'Jefe directo', value: perfil.jefeNombre || sinAsignar, icon: 'user-check', tone: 'peach' },
+    { label: 'Empresa', value: perfil.empresa || sinRegistro, icon: 'layers', tone: 'sand' },
   ];
 
-  const datosContacto: { label: string; valor: string; icono: IconoFeather }[] = [
-    { label: t('perfilLaboral.email', { defaultValue: 'Correo Electrónico' }), valor: perfil.correo || t('perfilLaboral.no_registered', { defaultValue: 'No registrado' }), icono: 'mail' },
-    { label: t('perfilLaboral.phone', { defaultValue: 'Teléfono' }), valor: perfil.telefono || t('perfilLaboral.no_registered', { defaultValue: 'No registrado' }), icono: 'phone' },
-    { label: t('perfilLaboral.direct_manager', { defaultValue: 'Jefe Directo' }), valor: perfil.jefeNombre || t('perfilLaboral.no_assigned', { defaultValue: 'No asignado' }), icono: 'user-check' },
-    { label: t('perfilLaboral.company', { defaultValue: 'Empresa' }), valor: perfil.empresa || t('perfilLaboral.no_registered', { defaultValue: 'No registrado' }), icono: 'layers' },
-  ];
-
-  const datosOperativos: { label: string; valor: string; icono: IconoFeather }[] = [
-    { label: t('perfilLaboral.schedule', { defaultValue: 'Horario Laboral' }), valor: perfil.horario_laboral || t('perfilLaboral.no_defined', { defaultValue: 'No definido' }), icono: 'clock' },
-    { label: t('perfilLaboral.vacations', { defaultValue: 'Vacaciones' }), valor: vacaciones, icono: 'calendar' },
-    { label: t('perfilLaboral.base_salary', { defaultValue: 'Salario Base' }), valor: salario, icono: 'credit-card' },
-    { label: t('perfilLaboral.last_checkin', { defaultValue: 'Último Marcaje' }), valor: formatearFechaPerfil(perfil.ultimoCheckIn, i18n?.language, t('perfilLaboral.no_registered', { defaultValue: 'No registrado' })), icono: 'check-circle' },
-  ];
-
-  const seleccionarYSubirFoto = async () => {
+  const seleccionarFoto = async () => {
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.7,
-        base64: true,
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0];
-        setSubiendoFoto(true);
-
-        let fileToUpload: any;
-
-        if (Platform.OS === 'web') {
-          const response = await fetch(asset.uri);
-          fileToUpload = await response.blob();
-        } else {
-          const mimeType = asset.mimeType || 'image/jpeg';
-          let base64String = asset.base64;
-          if (!base64String) {
-            base64String = await FileSystem.readAsStringAsync(asset.uri, {
-              encoding: FileSystem.EncodingType.Base64,
-            });
-          }
-          fileToUpload = `data:${mimeType};base64,${base64String}`;
-        }
-
-        await actualizarFotoPerfil(fileToUpload);
-        Alert.alert(t('common.success', { defaultValue: 'Éxito' }), t('perfilLaboral.photo_success', { defaultValue: 'Foto actualizada correctamente.' }));
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.7, base64: true });
+      if (result.canceled || !result.assets[0]) return;
+      setSubiendoFoto(true);
+      const asset = result.assets[0];
+      let archivo: Blob | string;
+      if (Platform.OS === 'web') {
+        archivo = await (await fetch(asset.uri)).blob();
+      } else {
+        const base64 = asset.base64 || await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 });
+        archivo = `data:${asset.mimeType || 'image/jpeg'};base64,${base64}`;
       }
-    } catch (e) {
-      console.error('Error al subir foto:', e);
+      await actualizarFotoPerfil(archivo);
+      Alert.alert(t('common.success', { defaultValue: 'Éxito' }), t('perfilLaboral.photo_success', { defaultValue: 'Foto actualizada correctamente.' }));
+    } catch {
       Alert.alert(t('common.error', { defaultValue: 'Error' }), t('perfilLaboral.photo_error', { defaultValue: 'No se pudo subir la foto.' }));
     } finally {
       setSubiendoFoto(false);
     }
   };
 
-  const obtenerColorIcono = (icono: string) => {
-    switch (icono) {
-      case 'shield': return esOscuro ? '#93C5FD' : '#2563EB';
-      case 'briefcase': return '#38BDF8';
-      case 'grid': return '#3B82F6';
-      case 'map-pin': return '#F59E0B';
-      case 'mail': return '#38BDF8';
-      case 'phone': return '#34D399';
-      case 'user-check': return '#60A5FA';
-      case 'layers': return '#2DD4BF';
-      case 'clock': return '#F59E0B';
-      case 'calendar': return '#34D399';
-      case 'credit-card': return '#10B981';
-      case 'check-circle': return '#10B981';
-      case 'activity': return '#34D399';
-      case 'user': return '#60A5FA';
-      case 'trending-up': return '#F59E0B';
-      case 'sliders': return '#3B82F6';
-      default: return colores.textoSuave;
-    }
-  };
-
-  const renderTarjetaDato = (item: { label: string; valor: string; icono: IconoFeather }) => (
-    <View key={`${item.label}-${item.valor}`} style={estilos.tarjetaDato}>
-      <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.tarjetaDatoContent}>
-        <View style={estilos.iconoDatoBadge}>
-          <Feather name={item.icono} size={15} color={obtenerColorIcono(item.icono)} />
-        </View>
-        <View style={estilos.contenidoDato}>
-          <Text style={estilos.labelDato}>{item.label}</Text>
-          <Text style={estilos.valorDato} numberOfLines={2}>{item.valor}</Text>
-        </View>
-      </BlurView>
-    </View>
-  );
-
   return (
-    <SafeAreaView style={estilos.contenedor}>
-      <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
-      <View style={estilos.fondoAbsoluto}>
-        <FondoMobilePremium />
+    <SafeAreaView style={styles.screen}>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <LinearGradient pointerEvents="none" colors={['#FBEDE8', '#F6ECF6', '#FFFDFC']} locations={[0, 0.28, 0.72]} style={StyleSheet.absoluteFill} />
+
+      {/* Barra Superior */}
+      <View style={styles.topBar}>
+        <BotonAnimado
+          style={styles.backButton}
+          scaleTo={0.96}
+          onPress={manejarRegresar}
+          accessibilityLabel="Regresar"
+        >
+          <Feather name="arrow-left" size={21} color="#202020" />
+        </BotonAnimado>
+
+        <Text style={styles.topBarLabel}>Mi Perfil</Text>
+
+        <View style={styles.headerActions}>
+          <BotonAnimado
+            style={styles.addButton}
+            scaleTo={0.96}
+            onPress={() => navigation.navigate('Notificaciones')}
+            accessibilityLabel="Abrir notificaciones"
+          >
+            <Feather name="bell" size={21} color="#FFFFFF" />
+            {alertasNoLeidas > 0 && <View style={styles.notificationDot} />}
+          </BotonAnimado>
+
+          <BotonAnimado
+            style={styles.bellButton}
+            scaleTo={0.96}
+            onPress={() => navigation.navigate('ConfiguracionApp')}
+            accessibilityLabel="Abrir configuración"
+          >
+            <Feather name="settings" size={21} color="#202020" />
+          </BotonAnimado>
+        </View>
       </View>
 
-      <NavbarEnterprise
-        titulo={t('perfilLaboral.my_profile', { defaultValue: 'Mi Perfil' })}
-        subtitulo={t('perfilLaboral.labor_record', { defaultValue: 'Ficha laboral y datos corporativos' })}
-        mostrarAtras
-      />
+      <Animated.ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        <Animated.View entering={FadeInDown.duration(220).easing(Easing.out(Easing.cubic))} style={styles.hero}>
+          <Text style={styles.heroTitulo}>Mi perfil,{`\n`}en detalle</Text>
+          <Text style={styles.heroSubtitulo}>Tu información, operación y recorrido laboral.</Text>
+        </Animated.View>
 
-      <Animated.ScrollView contentContainerStyle={estilos.scroll} showsVerticalScrollIndicator={false}>
-        {/* Header Hero del Perfil */}
-        <Animated.View entering={FadeInDown.duration(260).delay(0).easing(Easing.out(Easing.quad))} style={estilos.cardPrincipal}>
-          <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.cardContenido}>
-            <View style={estilos.perfilHeader}>
-              <TouchableOpacity style={estilos.avatarContenedor} onPress={seleccionarYSubirFoto} disabled={subiendoFoto} activeOpacity={0.8}>
-                {perfil.foto_perfil ? (
-                  <Image source={{ uri: perfil.foto_perfil }} style={estilos.avatar} />
-                ) : (
-                  <View style={estilos.avatarPlaceholder}>
-                    <Text style={estilos.avatarLetra}>{inicial}</Text>
-                  </View>
-                )}
-                {subiendoFoto && (
-                  <View style={estilos.avatarCargandoOverlay}>
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  </View>
-                )}
-                {!subiendoFoto && (
-                  <View style={estilos.botonCambiarFoto}>
-                    <Feather name="camera" size={12} color="#FFFFFF" />
-                  </View>
-                )}
-              </TouchableOpacity>
-
-              <View style={estilos.infoUsuario}>
-                <Text style={estilos.nombre} numberOfLines={2}>{perfil.nombre}</Text>
-                <Text style={estilos.puesto} numberOfLines={1}>{traducirValorLaboral(perfil.cargo) || traducirValorLaboral(perfil.departamento) || traducirRol(perfil.rol)}</Text>
-                <View style={estilos.filaBadges}>
-                  <View style={[estilos.badgeEstado, estadoActivo ? estilos.badgeActivo : estilos.badgeInactivo]}>
-                    <Text style={[estilos.textoBadgeEstado, estadoActivo ? estilos.textoActivo : estilos.textoInactivo]}>
-                      {estadoActivo ? t('perfilLaboral.active', { defaultValue: 'ACTIVO' }) : t('perfilLaboral.inactive', { defaultValue: 'INACTIVO' })}
-                    </Text>
-                  </View>
-                  <View style={estilos.badgeEmpresa}>
-                    <Feather name="briefcase" size={11} color={colores.textoSuave} />
-                    <Text style={estilos.textoEmpresa}>{perfil.empresa || t('perfilLaboral.company', { defaultValue: 'Empresa' })}</Text>
-                  </View>
-                </View>
+        <Animated.View entering={FadeInDown.duration(220).delay(40).easing(Easing.out(Easing.cubic))} style={styles.perfilCard}>
+          <View style={styles.perfilTop}>
+            <BotonAnimado style={styles.avatarWrap} scaleTo={0.98} onPress={() => void seleccionarFoto()} disabled={subiendoFoto}>
+              {perfil.foto_perfil ? <Image source={{ uri: perfil.foto_perfil }} style={styles.avatar} /> : <Text style={styles.avatarInitial}>{inicial}</Text>}
+              {subiendoFoto ? <View style={styles.avatarLoading}><ActivityIndicator size="small" color="#FFFFFF" /></View> : <View style={styles.camera}><Feather name="camera" size={12} color="#FFFFFF" /></View>}
+            </BotonAnimado>
+            <View style={styles.identidad}>
+              <Text style={styles.nombre} numberOfLines={2}>{perfil.nombre}</Text>
+              <Text style={styles.cargo} numberOfLines={1}>{perfil.cargo || rol}</Text>
+              <View style={styles.pillsPerfil}>
+                <View style={[styles.estadoPill, estadoActivo ? styles.estadoActivo : styles.estadoInactivo]}><View style={[styles.estadoDot, estadoActivo ? styles.dotActivo : styles.dotInactivo]} /><Text style={styles.estadoTexto}>{estadoActivo ? 'Activo' : 'Inactivo'}</Text></View>
+                <View style={styles.empresaPill}><Feather name="briefcase" size={11} color="#6F665F" /><Text style={styles.empresaTexto} numberOfLines={1}>{perfil.empresa || 'Empresa'}</Text></View>
               </View>
             </View>
-          </BlurView>
+          </View>
+          <View style={styles.perfilFooter}><View><Text style={styles.footerLabel}>Expediente</Text><Text style={styles.footerValue}>{perfil.departamento || 'Organización'}</Text></View><View style={styles.footerDivider} /><View><Text style={styles.footerLabel}>Estado laboral</Text><Text style={styles.footerValue}>{perfil.estado_trabajo?.replaceAll('_', ' ') || 'Disponible'}</Text></View></View>
         </Animated.View>
 
-        {/* Datos Laborales */}
-        <Animated.View entering={FadeInDown.duration(260).delay(40).easing(Easing.out(Easing.quad))} style={estilos.seccion}>
-          <Text style={estilos.tituloSeccion}>{t('perfilLaboral.labor_info', { defaultValue: 'INFORMACIÓN LABORAL' })}</Text>
-          <View style={estilos.gridResumen}>
-            {datosLaborales.map(renderTarjetaDato)}
+        <Animated.View entering={FadeInDown.duration(220).delay(80).easing(Easing.out(Easing.cubic))} style={styles.seccion}>
+          <TituloSeccion>Información laboral</TituloSeccion><View style={styles.grid}>{laborales.map((item) => <DatoCard key={item.label} item={item} />)}</View>
+        </Animated.View>
+        <Animated.View entering={FadeInDown.duration(220).delay(110).easing(Easing.out(Easing.cubic))} style={styles.seccion}>
+          <TituloSeccion>Operación diaria</TituloSeccion><View style={styles.grid}>{operacion.map((item) => <DatoCard key={item.label} item={item} />)}</View>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.duration(220).delay(140).easing(Easing.out(Easing.cubic))} style={styles.seccion}>
+          <TituloSeccion>Contacto y relación</TituloSeccion>
+          <View style={styles.contactoCard}>{contacto.map((item, index) => <View key={item.label} style={[styles.contactoFila, index < contacto.length - 1 && styles.contactoSeparador]}><View style={[styles.iconoContacto, { backgroundColor: FONDOS_TONO[item.tone] }]}><Feather name={item.icon} size={16} color="#4B433D" /></View><View style={styles.contactoTexto}><Text style={styles.contactoLabel}>{item.label}</Text><Text style={styles.contactoValor} numberOfLines={2}>{item.value}</Text></View></View>)}</View>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.duration(220).delay(170).easing(Easing.out(Easing.cubic))} style={styles.seccion}>
+          <TituloSeccion>Indicadores asignados</TituloSeccion>
+          {kpis.length ? <View style={styles.kpiStack}>{kpis.map((kpi) => { const percentage = Math.min(100, Math.max(0, Math.round((Number(kpi.valor) / Math.max(Number(kpi.meta), 1)) * 100))); return <View key={kpi.nombre} style={styles.kpiCard}><View style={styles.kpiHead}><Text style={styles.kpiTitle}>{kpi.nombre}</Text><Text style={styles.kpiPercent}>{percentage}%</Text></View><Text style={styles.kpiValue}>{kpi.valor}{kpi.unidad}</Text><View style={styles.progressTrack}><View style={[styles.progressValue, { width: `${percentage}%` }]} /></View><Text style={styles.kpiMeta}>Meta: {kpi.meta}{kpi.unidad}</Text></View>; })}</View> : <EstadoVacio icon="bar-chart-2" title="No tienes indicadores asignados." detail="Cuando recibas uno, aparecerá aquí." />}
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.duration(220).delay(200).easing(Easing.out(Easing.cubic))} style={styles.seccion}>
+          <TituloSeccion>Permisos y habilidades</TituloSeccion>
+          <View style={styles.permisosCard}>
+            <GrupoPills title="Módulos autorizados" icon="grid" values={permisos} empty="Sin permisos especiales" />
+            {sedes.length > 0 && <><View style={styles.divisor} /><GrupoPills title="Sedes permitidas" icon="map-pin" values={sedes} empty="Sin sedes asignadas" /></>}
+            <View style={styles.divisor} /><GrupoPills title="Habilidades registradas" icon="zap" values={habilidades} empty="Sin habilidades registradas" />
+            <View style={styles.divisor} /><GrupoPills title="Certificaciones" icon="award" values={certificaciones} empty="Sin certificaciones registradas" />
           </View>
         </Animated.View>
 
-        {/* Operación Diaria */}
-        <Animated.View entering={FadeInDown.duration(260).delay(80).easing(Easing.out(Easing.quad))} style={estilos.seccion}>
-          <Text style={estilos.tituloSeccion}>{t('perfilLaboral.daily_operation', { defaultValue: 'OPERACIÓN DIARIA' })}</Text>
-          <View style={estilos.gridResumen}>
-            {datosOperativos.map(renderTarjetaDato)}
-          </View>
+        <Animated.View entering={FadeInDown.duration(220).delay(230).easing(Easing.out(Easing.cubic))} style={styles.seccion}>
+          <TituloSeccion>Línea de tiempo laboral</TituloSeccion>
+          {historial.length ? <View style={styles.historialCard}>{historial.map((item, index) => <View key={`${item.puesto}-${item.fecha}`} style={styles.timelineRow}><View style={styles.timelineRail}><View style={styles.timelineDot} />{index < historial.length - 1 && <View style={styles.timelineLine} />}</View><View style={styles.timelineContent}><Text style={styles.timelineTitle}>{item.puesto}</Text><Text style={styles.timelineAction}>{item.accion}</Text><Text style={styles.timelineDate}>{formatearFecha(item.fecha, i18n.language, 'Fecha no registrada')}</Text></View></View>)}</View> : <EstadoVacio icon="clock" title="Sin historial laboral registrado." detail="Los cambios importantes de tu recorrido aparecerán aquí." />}
         </Animated.View>
 
-        {/* Contacto y Organización */}
-        <Animated.View entering={FadeInDown.duration(260).delay(120).easing(Easing.out(Easing.quad))} style={estilos.seccion}>
-          <Text style={estilos.tituloSeccion}>{t('perfilLaboral.contact_relation', { defaultValue: 'CONTACTO Y ESTRUCTURA' })}</Text>
-          <View style={estilos.cardVidrio}>
-            <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.cardContenido}>
-              <View style={estilos.listaDatos}>
-                {datosContacto.map((item, idx) => (
-                  <View key={item.label} style={[estilos.filaInfo, idx === datosContacto.length - 1 && { borderBottomWidth: 0 }]}>
-                    <View style={estilos.iconoInfo}>
-                      <Feather name={item.icono} size={15} color={obtenerColorIcono(item.icono)} />
-                    </View>
-                    <View style={estilos.infoLinea}>
-                      <Text style={estilos.labelLinea}>{item.label}</Text>
-                      <Text style={estilos.valorLinea} numberOfLines={2}>{item.valor}</Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </BlurView>
-          </View>
+        <Animated.View entering={FadeInDown.duration(220).delay(260).easing(Easing.out(Easing.cubic))}>
+          <BotonAnimado onPress={cerrarSesion} scaleTo={0.98} style={styles.logout}><View style={styles.logoutIcon}><Feather name="log-out" size={18} color="#C5544E" /></View><View style={styles.logoutCopy}><Text style={styles.logoutTitle}>Cerrar sesión</Text><Text style={styles.logoutDetail}>Finalizar sesión en este dispositivo</Text></View><Feather name="chevron-right" size={18} color="#A28F88" /></BotonAnimado>
         </Animated.View>
-
-        {/* Indicadores / KPIs */}
-        <Animated.View entering={FadeInDown.duration(260).delay(160).easing(Easing.out(Easing.quad))} style={estilos.seccion}>
-          <Text style={estilos.tituloSeccion}>{t('perfilLaboral.assigned_indicators', { defaultValue: 'INDICADORES ASIGNADOS' })}</Text>
-          {kpis.length > 0 ? (
-            <View style={estilos.gridKpis}>
-              {kpis.map((kpi) => {
-                const avance = Math.min(100, Math.max(0, Math.round((Number(kpi.valor) / Math.max(Number(kpi.meta), 1)) * 100)));
-                return (
-                  <View key={kpi.nombre} style={estilos.cardVidrio}>
-                    <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.cardContenido}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Text style={estilos.tituloKpi}>{kpi.nombre}</Text>
-                        <Text style={estilos.metaKpi}>{avance}%</Text>
-                      </View>
-                      <Text style={estilos.valorKpi}>{kpi.valor}{kpi.unidad}</Text>
-                      <View style={estilos.barraFondoKpi}>
-                        <View style={[estilos.barraProgresoKpi, { width: `${avance}%` }]} />
-                      </View>
-                      <Text style={estilos.metaKpi}>{t('perfilLaboral.goal', { defaultValue: 'Meta:' })} {kpi.meta}{kpi.unidad}</Text>
-                    </BlurView>
-                  </View>
-                );
-              })}
-            </View>
-          ) : (
-            <EmptyState icono="bar-chart-2" titulo={t('perfilLaboral.no_kpis', { defaultValue: 'Sin indicadores asignados' })} />
-          )}
-        </Animated.View>
-
-        {/* Habilidades y Permisos */}
-        <Animated.View entering={FadeInDown.duration(260).delay(200).easing(Easing.out(Easing.quad))} style={estilos.seccion}>
-          <Text style={estilos.tituloSeccion}>{t('perfilLaboral.permissions_skills', { defaultValue: 'PERMISOS Y COMPETENCIAS' })}</Text>
-          <View style={estilos.cardVidrio}>
-            <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.cardContenido}>
-              <Text style={estilos.labelGrupo}>{t('perfilLaboral.authorized_modules', { defaultValue: 'Módulos Autorizados' })}</Text>
-              <View style={estilos.contenedorChips}>
-                {permisosModulos.length > 0 ? permisosModulos.map((modulo) => (
-                  <View key={modulo} style={estilos.chip}>
-                    <Text style={estilos.textoChip}>{modulo}</Text>
-                  </View>
-                )) : <Text style={estilos.textoVacioInline}>{t('perfilLaboral.no_permissions', { defaultValue: 'Sin permisos especiales' })}</Text>}
-              </View>
-
-              {permisosSedes.length > 0 && (
-                <>
-                  <View style={estilos.divisorHorizontal} />
-                  <Text style={estilos.labelGrupo}>{t('perfilLaboral.allowed_locations', { defaultValue: 'Sedes Permitidas' })}</Text>
-                  <View style={estilos.contenedorChips}>
-                    {permisosSedes.map((sede) => (
-                      <View key={sede} style={estilos.chipSecundario}>
-                        <Text style={estilos.textoChip}>{sede}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </>
-              )}
-
-              <View style={estilos.divisorHorizontal} />
-              <Text style={estilos.labelGrupo}>{t('perfilLaboral.registered_skills', { defaultValue: 'Habilidades Registradas' })}</Text>
-              <View style={estilos.contenedorChips}>
-                {habilidades.length > 0 ? habilidades.map((habilidad) => (
-                  <View key={habilidad} style={estilos.chip}>
-                    <Text style={estilos.textoChip}>{habilidad}</Text>
-                  </View>
-                )) : <Text style={estilos.textoVacioInline}>{t('perfilLaboral.no_skills', { defaultValue: 'Sin habilidades registradas' })}</Text>}
-              </View>
-
-              <View style={estilos.divisorHorizontal} />
-              <Text style={estilos.labelGrupo}>{t('perfilLaboral.certifications', { defaultValue: 'Certificaciones' })}</Text>
-              <View style={estilos.contenedorChips}>
-                {certificaciones.length > 0 ? certificaciones.map((certificacion) => (
-                  <View key={certificacion} style={estilos.chip}>
-                    <Text style={estilos.textoChip}>{certificacion}</Text>
-                  </View>
-                )) : <Text style={estilos.textoVacioInline}>{t('perfilLaboral.no_certifications', { defaultValue: 'Sin certificaciones' })}</Text>}
-              </View>
-            </BlurView>
-          </View>
-        </Animated.View>
-
-        {/* Historial Laboral */}
-        <Animated.View entering={FadeInDown.duration(260).delay(240).easing(Easing.out(Easing.quad))} style={estilos.seccion}>
-          <Text style={estilos.tituloSeccion}>{t('perfilLaboral.labor_timeline', { defaultValue: 'LÍNEA DE TIEMPO LABORAL' })}</Text>
-          {historial.length > 0 ? (
-            <View style={estilos.cardVidrio}>
-              <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.cardContenido}>
-                {historial.map((hist, index) => (
-                  <View key={`${hist.puesto}-${hist.fecha}-${index}`} style={estilos.itemHistorial}>
-                    <View style={estilos.timelineLinea}>
-                      <View style={estilos.timelinePunto} />
-                      {index !== historial.length - 1 && <View style={estilos.timelineRaya} />}
-                    </View>
-                    <View style={estilos.historialContenido}>
-                      <Text style={estilos.historialPuesto}>{hist.puesto}</Text>
-                      <Text style={estilos.historialAccion}>{hist.accion}</Text>
-                      <Text style={estilos.historialFecha}>
-                        {formatearFechaPerfil(hist.fecha, i18n?.language, t('perfilLaboral.no_date', { defaultValue: 'Fecha no registrada' }))}
-                      </Text>
-                    </View>
-                  </View>
-                ))}
-              </BlurView>
-            </View>
-          ) : (
-            <EmptyState icono="archive" titulo={t('perfilLaboral.no_labor_history', { defaultValue: 'Sin historial previo' })} />
-          )}
-        </Animated.View>
-
-        {/* Botón Cerrar Sesión */}
-        <Animated.View entering={FadeInDown.duration(260).delay(280).easing(Easing.out(Easing.quad))}>
-          <BotonAnimado onPress={cerrarSesion} style={estilos.botonCerrarSesion} scaleTo={0.98}>
-            <BlurView intensity={intensidadBlur} tint={blurTint} style={estilos.contenidoCerrarSesion}>
-              <View style={estilos.iconoCerrarSesion}>
-                <Feather name="log-out" size={18} color="#EF4444" />
-              </View>
-              <View style={estilos.textosCerrarSesion}>
-                <Text style={estilos.tituloCerrarSesion}>{t('perfilLaboral.logout_title', { defaultValue: 'Cerrar Sesión' })}</Text>
-                <Text style={estilos.subtituloCerrarSesion}>{t('perfilLaboral.logout_desc', { defaultValue: 'Finalizar sesión activa en este dispositivo' })}</Text>
-              </View>
-              <Feather name="chevron-right" size={18} color={colores.textoSuave} />
-            </BlurView>
-          </BotonAnimado>
-        </Animated.View>
-
-        <View style={{ height: 110 }} />
       </Animated.ScrollView>
+      <ProfileBottomNavigation navigation={navigation} />
     </SafeAreaView>
   );
 }
 
-function crearEstilosPerfil(c: any, esOscuro: boolean) {
-  const glass = esOscuro ? 'rgba(24, 24, 38, 0.88)' : 'rgba(255, 255, 255, 0.94)';
-  const glassMicro = c.vidrioSutil;
-  const separador = esOscuro ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-
-  return StyleSheet.create({
-    contenedor: { flex: 1, backgroundColor: c.fondo },
-    fondoAbsoluto: { ...StyleSheet.absoluteFill, zIndex: -1, overflow: 'hidden' },
-
-    scroll: {
-      paddingHorizontal: 16,
-      paddingTop: 12,
-      paddingBottom: 110,
-    },
-    seccion: {
-      marginBottom: 20,
-    },
-    tituloSeccion: {
-      fontSize: 11.5,
-      fontWeight: '800',
-      color: c.textoSuave,
-      textTransform: 'uppercase',
-      letterSpacing: 0.8,
-      marginBottom: 8,
-      marginLeft: 4,
-    },
-
-    cardVidrio: {
-      borderRadius: 22,
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: c.borde,
-      backgroundColor: glass,
-      ...SOMBRAS.flotante,
-    },
-    cardPrincipal: {
-      borderRadius: 24,
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: c.borde,
-      backgroundColor: glass,
-      marginBottom: 20,
-      ...SOMBRAS.flotante,
-    },
-    cardContenido: {
-      padding: 16,
-      overflow: 'hidden',
-    },
-
-    perfilHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 14,
-    },
-    avatarContenedor: {
-      width: 76,
-      height: 76,
-      borderRadius: 38,
-      position: 'relative',
-    },
-    avatar: {
-      width: '100%',
-      height: '100%',
-      borderRadius: 38,
-    },
-    avatarPlaceholder: {
-      flex: 1,
-      backgroundColor: esOscuro ? 'rgba(59,130,246,0.15)' : 'rgba(37,99,235,0.10)',
-      borderRadius: 38,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: esOscuro ? 'rgba(96,165,250,0.3)' : 'rgba(37,99,235,0.2)',
-    },
-    avatarLetra: {
-      fontSize: 28,
-      fontWeight: '900',
-      color: esOscuro ? '#93C5FD' : '#2563EB',
-    },
-    avatarCargandoOverlay: {
-      ...StyleSheet.absoluteFill,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      borderRadius: 38,
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 5,
-    },
-    botonCambiarFoto: {
-      position: 'absolute',
-      bottom: 0,
-      right: 0,
-      width: 24,
-      height: 24,
-      borderRadius: 12,
-      backgroundColor: esOscuro ? '#3B82F6' : '#2563EB',
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 2,
-      borderColor: c.fondo,
-      zIndex: 10,
-    },
-
-    infoUsuario: { flex: 1, justifyContent: 'center' },
-    nombre: {
-      fontSize: 18,
-      fontWeight: '900',
-      color: c.texto,
-      letterSpacing: -0.4,
-    },
-    puesto: {
-      fontSize: 13,
-      color: c.textoSecundario,
-      marginTop: 2,
-      fontWeight: '600',
-    },
-    filaBadges: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      alignItems: 'center',
-      gap: 6,
-      marginTop: 8,
-    },
-    badgeEstado: {
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 999,
-      borderWidth: 1,
-    },
-    badgeActivo: {
-      backgroundColor: 'rgba(34,197,94,0.14)',
-      borderColor: 'rgba(34,197,94,0.28)',
-    },
-    badgeInactivo: {
-      backgroundColor: 'rgba(148,163,184,0.12)',
-      borderColor: 'rgba(148,163,184,0.24)',
-    },
-    textoBadgeEstado: {
-      fontSize: 9.5,
-      fontWeight: '800',
-      letterSpacing: 0.4,
-    },
-    textoActivo: { color: '#10B981' },
-    textoInactivo: { color: c.textoSuave },
-    badgeEmpresa: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 999,
-      backgroundColor: glassMicro,
-      borderWidth: 1,
-      borderColor: c.borde,
-    },
-    textoEmpresa: {
-      fontSize: 10,
-      color: c.textoSecundario,
-      fontWeight: '700',
-    },
-
-    gridResumen: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 10,
-    },
-    tarjetaDato: {
-      width: '48.5%',
-      minHeight: 88,
-      borderRadius: 20,
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: c.borde,
-      backgroundColor: glass,
-      ...SOMBRAS.flotante,
-    },
-    tarjetaDatoContent: {
-      flex: 1,
-      padding: 12,
-      justifyContent: 'space-between',
-    },
-    iconoDatoBadge: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: glassMicro,
-      borderWidth: 1,
-      borderColor: c.borde,
-    },
-    contenidoDato: { gap: 2, marginTop: 4 },
-    labelDato: {
-      fontSize: 10.5,
-      color: c.textoSuave,
-      fontWeight: '700',
-      textTransform: 'uppercase',
-      letterSpacing: 0.4,
-    },
-    valorDato: {
-      fontSize: 13.5,
-      color: c.texto,
-      fontWeight: '800',
-      letterSpacing: -0.2,
-    },
-
-    listaDatos: { gap: 2 },
-    filaInfo: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      paddingVertical: 10,
-      borderBottomWidth: 1,
-      borderBottomColor: separador,
-    },
-    iconoInfo: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: glassMicro,
-      borderWidth: 1,
-      borderColor: c.borde,
-    },
-    infoLinea: { flex: 1 },
-    labelLinea: {
-      fontSize: 10.5,
-      color: c.textoSuave,
-      fontWeight: '700',
-      textTransform: 'uppercase',
-      letterSpacing: 0.4,
-    },
-    valorLinea: {
-      fontSize: 13.5,
-      color: c.texto,
-      fontWeight: '700',
-      marginTop: 1,
-    },
-
-    gridKpis: { gap: 10 },
-    tituloKpi: {
-      fontSize: 11,
-      color: c.textoSuave,
-      fontWeight: '700',
-      textTransform: 'uppercase',
-      letterSpacing: 0.4,
-    },
-    valorKpi: {
-      fontSize: 22,
-      fontWeight: '900',
-      color: c.texto,
-      marginVertical: 4,
-      letterSpacing: -0.3,
-    },
-    barraFondoKpi: {
-      height: 5,
-      backgroundColor: esOscuro ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-      borderRadius: 3,
-      overflow: 'hidden',
-    },
-    barraProgresoKpi: {
-      height: '100%',
-      backgroundColor: esOscuro ? '#3B82F6' : '#2563EB',
-      borderRadius: 3,
-    },
-    metaKpi: {
-      fontSize: 11,
-      color: c.textoSuave,
-      marginTop: 4,
-      fontWeight: '600',
-    },
-
-    labelGrupo: {
-      fontSize: 11,
-      color: c.textoSuave,
-      fontWeight: '800',
-      textTransform: 'uppercase',
-      letterSpacing: 0.6,
-      marginBottom: 8,
-    },
-    contenedorChips: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 6,
-    },
-    chip: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 999,
-      backgroundColor: esOscuro ? 'rgba(59,130,246,0.14)' : 'rgba(37,99,235,0.10)',
-      borderWidth: 1,
-      borderColor: esOscuro ? 'rgba(96,165,250,0.25)' : 'rgba(37,99,235,0.20)',
-    },
-    chipSecundario: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 999,
-      backgroundColor: glassMicro,
-      borderWidth: 1,
-      borderColor: c.borde,
-    },
-    textoChip: {
-      fontSize: 11.5,
-      color: esOscuro ? '#93C5FD' : '#2563EB',
-      fontWeight: '700',
-    },
-    textoVacioInline: {
-      fontSize: 12,
-      color: c.textoSuave,
-      fontStyle: 'italic',
-    },
-    divisorHorizontal: {
-      height: 1,
-      backgroundColor: separador,
-      marginVertical: 14,
-    },
-
-    itemHistorial: { flexDirection: 'row' },
-    timelineLinea: { width: 24, alignItems: 'center' },
-    timelinePunto: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: esOscuro ? '#3B82F6' : '#2563EB',
-      marginTop: 5,
-    },
-    timelineRaya: {
-      width: 1.5,
-      flex: 1,
-      minHeight: 36,
-      backgroundColor: separador,
-      marginTop: 4,
-    },
-    historialContenido: {
-      flex: 1,
-      paddingBottom: 14,
-    },
-    historialPuesto: {
-      fontSize: 13.5,
-      color: c.texto,
-      fontWeight: '800',
-    },
-    historialAccion: {
-      fontSize: 12,
-      color: c.textoSecundario,
-      marginTop: 2,
-    },
-    historialFecha: {
-      fontSize: 10.5,
-      color: c.textoSuave,
-      marginTop: 4,
-      fontWeight: '600',
-    },
-
-    botonCerrarSesion: {
-      borderRadius: 22,
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: 'rgba(239,68,68,0.25)',
-      backgroundColor: glass,
-      marginTop: 4,
-      ...SOMBRAS.flotante,
-    },
-    contenidoCerrarSesion: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      padding: 16,
-      backgroundColor: 'rgba(239,68,68,0.04)',
-    },
-    iconoCerrarSesion: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: 'rgba(239,68,68,0.10)',
-    },
-    textosCerrarSesion: { flex: 1 },
-    tituloCerrarSesion: {
-      fontSize: 14.5,
-      color: '#EF4444',
-      fontWeight: '800',
-    },
-    subtituloCerrarSesion: {
-      fontSize: 11.5,
-      color: c.textoSuave,
-      marginTop: 2,
-    },
-  });
+function GrupoPills({ title, icon, values, empty }: { title: string; icon: Icon; values: string[]; empty: string }) {
+  return <View><View style={styles.grupoTitulo}><View style={styles.grupoIcono}><Feather name={icon} size={14} color="#615851" /></View><Text style={styles.grupoLabel}>{title}</Text></View>{values.length ? <View style={styles.pills}><>{values.map((value) => <View key={value} style={styles.pill}><Text style={styles.pillText}>{value}</Text></View>)}</></View> : <Text style={styles.emptyInline}>{empty}</Text>}</View>;
 }
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: '#FFFDFC' },
+
+  /* Top Bar */
+  topBar: {
+    height: 52,
+    marginHorizontal: 21,
+    marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    width: 47,
+    height: 47,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SOMBRAS.suave,
+  },
+  topBarLabel: {
+    color: '#292522',
+    fontSize: 17,
+    fontWeight: '600',
+    letterSpacing: -0.5,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  addButton: {
+    width: 47,
+    height: 47,
+    borderRadius: 24,
+    backgroundColor: '#202020',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bellButton: {
+    width: 47,
+    height: 47,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SOMBRAS.suave,
+  },
+  notificationDot: {
+    position: 'absolute',
+    top: 11,
+    right: 12,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#E5484D',
+    borderWidth: 1.5,
+    borderColor: '#202020',
+  },
+
+  content: { paddingHorizontal: 21, paddingTop: 0, paddingBottom: 96 },
+  hero: { marginTop: 22, marginBottom: 22 },
+  heroTitulo: { color: '#1F1D1C', fontSize: 34, lineHeight: 38, fontWeight: '600', letterSpacing: -1.4 },
+  heroSubtitulo: { color: '#756D67', fontSize: 14, lineHeight: 20, fontWeight: '500', marginTop: 9 },
+  perfilCard: { backgroundColor: '#FFFFFF', borderRadius: 27, padding: 19, shadowColor: '#5E4A3B', shadowOpacity: 0.12, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 4 }, perfilTop: { flexDirection: 'row', alignItems: 'center', gap: 15 }, avatarWrap: { width: 84, height: 84, borderRadius: 42, backgroundColor: '#E7D5C5', alignItems: 'center', justifyContent: 'center', overflow: 'visible' }, avatar: { width: '100%', height: '100%', borderRadius: 42 }, avatarInitial: { color: '#4E3C30', fontSize: 29, fontWeight: '700' }, avatarLoading: { ...StyleSheet.absoluteFill, borderRadius: 42, backgroundColor: 'rgba(32,32,32,0.55)', alignItems: 'center', justifyContent: 'center' }, camera: { position: 'absolute', right: -1, bottom: 0, width: 26, height: 26, borderRadius: 13, backgroundColor: '#202020', borderWidth: 2, borderColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }, identidad: { flex: 1, minWidth: 0 }, nombre: { color: '#2B2521', fontSize: 21, lineHeight: 25, fontWeight: '600', letterSpacing: -0.65 }, cargo: { color: '#756D67', fontSize: 13.5, fontWeight: '600', marginTop: 3 }, pillsPerfil: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 }, estadoPill: { height: 27, paddingHorizontal: 9, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 5 }, estadoActivo: { backgroundColor: '#E8F2E6' }, estadoInactivo: { backgroundColor: '#F1EEEB' }, estadoDot: { width: 6, height: 6, borderRadius: 3 }, dotActivo: { backgroundColor: '#4C9B63' }, dotInactivo: { backgroundColor: '#998E86' }, estadoTexto: { color: '#576157', fontSize: 10.5, fontWeight: '700' }, empresaPill: { maxWidth: 135, height: 27, paddingHorizontal: 9, borderRadius: 14, backgroundColor: '#F4F1EE', flexDirection: 'row', alignItems: 'center', gap: 5 }, empresaTexto: { color: '#6F665F', fontSize: 10.5, fontWeight: '700', flexShrink: 1 }, perfilFooter: { marginTop: 18, paddingTop: 14, borderTopWidth: 1, borderColor: '#F0ECE8', flexDirection: 'row', alignItems: 'center' }, footerLabel: { color: '#9A9088', fontSize: 9.5, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }, footerValue: { color: '#554C46', fontSize: 12, fontWeight: '600', marginTop: 3, textTransform: 'capitalize' }, footerDivider: { width: 1, height: 25, backgroundColor: '#EEE9E4', marginHorizontal: 18 },
+  seccion: { marginTop: 29 }, tituloSeccion: { color: '#463F3A', fontSize: 19, fontWeight: '600', letterSpacing: -0.45, marginBottom: 11 }, grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10 }, datoCard: { width: '48.5%', minHeight: 112, borderRadius: 21, padding: 13, backgroundColor: 'rgba(255,255,255,0.9)', shadowColor: '#725D4D', shadowOpacity: 0.08, shadowRadius: 11, shadowOffset: { width: 0, height: 5 }, elevation: 2 }, iconoDato: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' }, tonoPeach: { backgroundColor: '#F5E5DD' }, tonoLilac: { backgroundColor: '#EBE5F3' }, tonoMint: { backgroundColor: '#E3F0E8' }, tonoSand: { backgroundColor: '#F2EBDD' }, labelDato: { color: '#958B84', fontSize: 9.5, textTransform: 'uppercase', fontWeight: '700', letterSpacing: 0.45, marginTop: 11 }, valorDato: { color: '#3D3631', fontSize: 13.5, lineHeight: 17, fontWeight: '700', letterSpacing: -0.2, marginTop: 3 },
+  contactoCard: { backgroundColor: '#FFFFFF', borderRadius: 24, paddingHorizontal: 17, shadowColor: '#725D4D', shadowOpacity: 0.09, shadowRadius: 13, shadowOffset: { width: 0, height: 6 }, elevation: 3 }, contactoFila: { minHeight: 68, flexDirection: 'row', alignItems: 'center', gap: 12 }, contactoSeparador: { borderBottomWidth: 1, borderColor: '#F0ECE8' }, iconoContacto: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' }, contactoTexto: { flex: 1 }, contactoLabel: { color: '#9A9088', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.45, fontWeight: '700' }, contactoValor: { color: '#403833', fontSize: 13.5, fontWeight: '600', marginTop: 2 },
+  vacioCard: { minHeight: 91, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.78)', padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: 'rgba(66,57,50,0.04)' }, vacioIcono: { width: 39, height: 39, borderRadius: 20, backgroundColor: '#F2EEEA', alignItems: 'center', justifyContent: 'center' }, vacioTexto: { flex: 1 }, vacioTitulo: { color: '#5C534D', fontSize: 13.5, fontWeight: '700' }, vacioDetalle: { color: '#938982', fontSize: 11.5, lineHeight: 16, marginTop: 3 }, kpiStack: { gap: 10 }, kpiCard: { backgroundColor: '#FFFFFF', borderRadius: 22, padding: 16, shadowColor: '#725D4D', shadowOpacity: 0.08, shadowRadius: 11, shadowOffset: { width: 0, height: 5 }, elevation: 2 }, kpiHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, kpiTitle: { color: '#685F58', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.45, fontWeight: '700' }, kpiPercent: { color: '#4A8B5E', fontSize: 12, fontWeight: '700' }, kpiValue: { color: '#332D29', fontSize: 25, fontWeight: '600', letterSpacing: -0.7, marginTop: 7 }, progressTrack: { height: 6, borderRadius: 3, backgroundColor: '#ECE8E3', overflow: 'hidden', marginTop: 10 }, progressValue: { height: '100%', borderRadius: 3, backgroundColor: '#B5C96B' }, kpiMeta: { color: '#91877F', fontSize: 10.5, fontWeight: '600', marginTop: 6 },
+  permisosCard: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 17, shadowColor: '#725D4D', shadowOpacity: 0.09, shadowRadius: 13, shadowOffset: { width: 0, height: 6 }, elevation: 3 }, grupoTitulo: { flexDirection: 'row', alignItems: 'center', gap: 8 }, grupoIcono: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#F2EEEA', alignItems: 'center', justifyContent: 'center' }, grupoLabel: { color: '#5B524C', fontSize: 12.5, fontWeight: '700' }, pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 11 }, pill: { backgroundColor: '#F3F0ED', borderRadius: 15, paddingHorizontal: 10, paddingVertical: 6 }, pillText: { color: '#625951', fontSize: 11, fontWeight: '600' }, emptyInline: { color: '#938982', fontSize: 11.5, fontStyle: 'italic', marginTop: 9 }, divisor: { height: 1, backgroundColor: '#F0ECE8', marginVertical: 15 },
+  historialCard: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 17, shadowColor: '#725D4D', shadowOpacity: 0.09, shadowRadius: 13, shadowOffset: { width: 0, height: 6 }, elevation: 3 }, timelineRow: { flexDirection: 'row' }, timelineRail: { width: 25, alignItems: 'center' }, timelineDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#B5C96B', marginTop: 5 }, timelineLine: { width: 1.5, flex: 1, minHeight: 41, backgroundColor: '#EAE5E0', marginTop: 4 }, timelineContent: { flex: 1, paddingBottom: 17 }, timelineTitle: { color: '#443C36', fontSize: 13.5, fontWeight: '700' }, timelineAction: { color: '#776D66', fontSize: 12, marginTop: 2 }, timelineDate: { color: '#9A9088', fontSize: 10.5, fontWeight: '600', marginTop: 5 },
+  logout: { marginTop: 24, minHeight: 70, borderRadius: 23, backgroundColor: '#FFF8F7', paddingHorizontal: 17, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: '#F4DDD9' }, logoutIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#FBE6E3', alignItems: 'center', justifyContent: 'center' }, logoutCopy: { flex: 1 }, logoutTitle: { color: '#AD4E49', fontSize: 14.5, fontWeight: '700' }, logoutDetail: { color: '#9A807B', fontSize: 11.5, marginTop: 2 },
+});

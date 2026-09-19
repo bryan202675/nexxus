@@ -17,6 +17,7 @@ export function mapUserRow(row: Record<string, any>): User {
     id: row.id,
     nombre: row.nombre,
     correo: row.correo,
+    correo_personal: row.correo_personal ?? undefined,
     rol: row.rol,
     departamento: row.departamento_nombre ?? '',
     departamentoId: row.departamento_id ?? undefined,

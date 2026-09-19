@@ -1,12 +1,12 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useRef } from 'react';
-import { AppState, SafeAreaView, StatusBar, StyleSheet, View } from 'react-native';
+import { AppState, StatusBar, StyleSheet, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
-import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
+import AiAmbientBackground, { AiAmbientState } from '@/presentation/components/AiAmbientBackground';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
 import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
-import { ESPACIADO, TIPOGRAFIA } from '@/shared/constants/diseno';
+import { ESPACIADO } from '@/shared/constants/diseno';
 import VoiceOrb from '../components/VoiceOrb';
 import VoiceStatus from '../components/VoiceStatus';
 import VoiceControls from '../components/VoiceControls';
@@ -21,7 +21,6 @@ interface Props {
 }
 
 export default function VoiceChatScreen({ navigation }: Props) {
-  const { colores, esOscuro } = useTemaMobile();
   const { perfil } = useContextoUsuario();
   const {
     estado,
@@ -84,23 +83,31 @@ export default function VoiceChatScreen({ navigation }: Props) {
   };
 
   const llamadaActiva = estado === 'listening' || estado === 'thinking' || estado === 'speaking';
+  const estadoAmbiental: AiAmbientState = estado === 'listening'
+    ? 'listening'
+    : estado === 'thinking' || estado === 'connecting' || estado === 'reconnecting'
+      ? 'thinking'
+      : estado === 'speaking'
+        ? 'speaking'
+        : 'idle';
+  const señalAmbiental = estado === 'listening' ? nivelEntrada : estado === 'speaking' ? nivelSalida : 0;
 
   return (
-    <SafeAreaView style={[estilos.contenedor, { backgroundColor: colores.fondo }]}>
-      <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
+    <SafeAreaView style={estilos.contenedor}>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       <View style={estilos.fondoAbsoluto}>
-        <FondoMobilePremium />
+        <AiAmbientBackground state={estadoAmbiental} signal={señalAmbiental} />
       </View>
 
       <View style={estilos.encabezado}>
         <BotonAnimado
           onPress={salir}
           accessibilityLabel="Cerrar Nexxus Voice"
-          style={[estilos.botonCerrar, { backgroundColor: colores.vidrio, borderColor: colores.borde }]}
+          style={estilos.botonCerrar}
         >
-          <Feather name="chevron-down" size={22} color={colores.texto} />
+          <Feather name="chevron-down" size={22} color="#292522" />
         </BotonAnimado>
-        <Text style={[TIPOGRAFIA.micro, { color: colores.textoSuave, letterSpacing: 1.5, fontWeight: '800' }]}>NEXXUS IA</Text>
+        <Text style={estilos.marca}>NEXXUS IA</Text>
         <View style={estilos.botonCerrar} />
       </View>
 
@@ -130,7 +137,7 @@ export default function VoiceChatScreen({ navigation }: Props) {
               style={[
                 estilos.botonReintentar,
                 {
-                  backgroundColor: esOscuro ? '#2563EB' : '#1D4ED8',
+                  backgroundColor: '#211E1C',
                 },
               ]}
             >
@@ -142,16 +149,10 @@ export default function VoiceChatScreen({ navigation }: Props) {
               onPress={salir}
               accessibilityLabel="Cancelar y volver"
               scaleTo={0.94}
-              style={[
-                estilos.botonCancelarError,
-                {
-                  backgroundColor: esOscuro ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
-                  borderColor: esOscuro ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.1)',
-                },
-              ]}
+              style={estilos.botonCancelarError}
             >
-              <Feather name="x" size={16} color={colores.textoSuave} />
-              <Text style={[estilos.textoCancelarError, { color: colores.textoSuave }]}>Cancelar</Text>
+              <Feather name="x" size={16} color="#625B56" />
+              <Text style={estilos.textoCancelarError}>Cancelar</Text>
             </BotonAnimado>
           </View>
         ) : (
@@ -176,6 +177,7 @@ export default function VoiceChatScreen({ navigation }: Props) {
 const estilos = StyleSheet.create({
   contenedor: {
     flex: 1,
+    backgroundColor: '#FFFDFC',
   },
   fondoAbsoluto: {
     position: 'absolute',
@@ -188,29 +190,34 @@ const estilos = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: ESPACIADO.lg,
-    paddingTop: ESPACIADO.sm,
+    minHeight: 66,
+    paddingHorizontal: 20,
   },
   botonCerrar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'transparent',
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    shadowColor: '#302A27',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 2,
   },
+  marca: { color: '#514B47', fontSize: 11, fontWeight: '700', letterSpacing: 1.6 },
   centro: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: ESPACIADO.xxl,
+    gap: 26,
   },
   transcripcion: {
-    paddingBottom: ESPACIADO.md,
+    paddingBottom: 16,
   },
   pie: {
-    paddingBottom: ESPACIADO.xxl,
+    paddingBottom: 34,
     paddingTop: ESPACIADO.md,
   },
   grupoReintentar: {
@@ -249,10 +256,13 @@ const estilos = StyleSheet.create({
     paddingHorizontal: 18,
     borderRadius: 25,
     borderWidth: 1,
+    backgroundColor: 'rgba(255,255,255,0.76)',
+    borderColor: 'rgba(41,37,34,0.08)',
   },
   textoCancelarError: {
     fontSize: 14,
     fontWeight: '600',
     letterSpacing: -0.2,
+    color: '#625B56',
   },
 });

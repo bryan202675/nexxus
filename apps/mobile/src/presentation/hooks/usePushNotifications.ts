@@ -12,21 +12,46 @@
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import { isRunningInExpoGo } from 'expo';
-import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { useCases } from '@/infrastructure/container';
 
-// Controla como se muestra una notificacion recibida con la app en primer plano.
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+let handlerConfigured = false;
+
+// Carga la librería perezosamente para evitar crasheos fatales en Expo Go Android
+function safeGetNotifications() {
+  if (Platform.OS === 'web' || isRunningInExpoGo()) {
+    return null;
+  }
+  try {
+    return require('expo-notifications');
+  } catch (e) {
+    return null;
+  }
+}
+
+// Inicializa el handler de notificaciones solo cuando es seguro y necesario.
+const setupNotificationHandler = () => {
+  if (handlerConfigured) return;
+  handlerConfigured = true;
+  
+  const Notifications = safeGetNotifications();
+  if (Notifications) {
+    try {
+      Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowAlert: true,
+          shouldPlaySound: true,
+          shouldSetBadge: false,
+          shouldShowBanner: true,
+          shouldShowList: true,
+        }),
+      });
+    } catch (_e) {
+      // Ignora errores si la plataforma nativa falla al inicializar
+    }
+  }
+};
 
 const obtenerProjectId = (): string | null => {
   const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? (Constants as any).easConfig?.projectId ?? null;
@@ -41,6 +66,9 @@ export function usePushNotifications(usuarioId: string | null | undefined) {
   const yaRegistrado = useRef<string | null>(null);
 
   useEffect(() => {
+    // Solo inicia el handler si de verdad llegamos a usar este hook (cuando el componente monta)
+    setupNotificationHandler();
+
     if (!usuarioId || Platform.OS === 'web' || yaRegistrado.current === usuarioId) return;
 
     // Expo Go (SDK 53+) no soporta push remoto en Android; requiere Development Build
@@ -65,6 +93,9 @@ export function usePushNotifications(usuarioId: string | null | undefined) {
     let cancelado = false;
 
     const registrar = async () => {
+      const Notifications = safeGetNotifications();
+      if (!Notifications) return;
+
       try {
         const permisoActual = await Notifications.getPermissionsAsync();
         let estado = permisoActual.status;

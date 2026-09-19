@@ -112,7 +112,8 @@ export async function uploadManagedFile(file: Blob | File | string, options: Man
   }
 
   const suffix = `${limits.publicId}_${Date.now()}_${hash.slice(0, 10)}`;
-  const uploaded = await uploadWithRetry(prepared as any, limits.folder(options.ownerId), suffix, options.onProgress, options.signal);
+  const targetFolder = options.kind === 'profilePhoto' ? limits.folder(options.ownerId) : limits.folder(options.empresaId);
+  const uploaded = await uploadWithRetry(prepared as any, targetFolder, suffix, options.onProgress, options.signal);
 
   const { data: registered, error: registerError } = await supabase.functions.invoke('register-upload-metadata', {
     body: {

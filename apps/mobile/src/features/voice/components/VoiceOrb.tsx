@@ -14,12 +14,11 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import { VoiceSessionState } from '../types/voice.types';
 
 const MASCOTA_NEXXUS = require('../../../../assets/nexxusIA.png');
 
-const TAMANO_BASE = 156;
+const TAMANO_BASE = 174;
 
 interface Props {
   estado: VoiceSessionState;
@@ -28,7 +27,6 @@ interface Props {
 }
 
 export default function VoiceOrb({ estado, nivelEntrada, nivelSalida }: Props) {
-  const { esOscuro } = useTemaMobile();
   const respiracion = useSharedValue(1);
   const nivelReactivo = useSharedValue(0);
 
@@ -98,10 +96,10 @@ export default function VoiceOrb({ estado, nivelEntrada, nivelSalida }: Props) {
     estado === 'error'
       ? '#EF4444'
       : estado === 'speaking'
-      ? (esOscuro ? '#60A5FA' : '#2563EB')
+      ? '#8B5CF6'
       : estado === 'listening'
-      ? (esOscuro ? '#A78BFA' : '#7C3AED')
-      : (esOscuro ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)');
+      ? '#7C3AED'
+      : '#B69AD8';
 
   return (
     <View style={estilos.contenedor}>
@@ -161,7 +159,7 @@ const estilos = StyleSheet.create({
     height: TAMANO_BASE,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#2563EB',
+    shadowColor: '#7C3AED',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.20,
     shadowRadius: 18,

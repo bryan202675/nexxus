@@ -6,7 +6,16 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, TextInput, Platform, KeyboardAvoidingView } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Modal,
+  ScrollView,
+  TextInput,
+  Platform,
+  KeyboardAvoidingView,
+} from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Feather } from '@expo/vector-icons';
 import { Ticket, TicketEstado } from 'domain/entities/Ticket';
@@ -14,7 +23,8 @@ import { TicketMessage } from 'domain/entities/TicketMessage';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
 import { useCases } from '@/infrastructure/container';
-import { COLORES, ESPACIADO } from '@/shared/constants/diseno';
+import { COLORES, ESPACIADO, SOMBRAS } from '@/shared/constants/diseno';
+import BotonAnimado from '@/presentation/components/BotonAnimado';
 
 interface Props {
   visible: boolean;
@@ -32,7 +42,12 @@ const ESTADOS: { estado: TicketEstado; label: string; color: string }[] = [
 
 const formatearFechaHora = (iso: string) => {
   try {
-    return new Date(iso).toLocaleString('es-SV', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    return new Date(iso).toLocaleString('es-SV', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   } catch {
     return iso;
   }
@@ -58,13 +73,15 @@ export default function TicketHiloModal({ visible, ticket, onClose, puedeGestion
     if (!perfil || !nuevoMensaje.trim()) return;
     const texto = nuevoMensaje.trim();
     setNuevoMensaje('');
-    await useCases.tickets.messages.create.execute({
-      ticketId: ticket.id,
-      empresaId: ticket.empresaId,
-      autorId: perfil.id,
-      autorNombre: perfil.nombre || 'Usuario',
-      texto,
-    }).catch(() => {});
+    await useCases.tickets.messages.create
+      .execute({
+        ticketId: ticket.id,
+        empresaId: ticket.empresaId,
+        autorId: perfil.id,
+        autorNombre: perfil.nombre || 'Usuario',
+        texto,
+      })
+      .catch(() => {});
   };
 
   const cambiarEstado = (estado: TicketEstado) => {
@@ -77,46 +94,73 @@ export default function TicketHiloModal({ visible, ticket, onClose, puedeGestion
         <BlurView intensity={60} tint={blurTint} style={StyleSheet.absoluteFill} />
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={estilos.modalView}>
           <View style={estilos.modalContenido}>
+            <View style={estilos.manija} />
             <View style={estilos.header}>
-              <View style={{ flex: 1 }}>
-                <Text style={estilos.titulo} numberOfLines={1}>{ticket.titulo}</Text>
-                <Text style={estilos.subtitulo}>{ticket.creadoPorNombre} · {formatearFechaHora(ticket.createdAt)}</Text>
+              <View style={{ flex: 1, paddingRight: 8 }}>
+                <Text style={estilos.titulo} numberOfLines={1}>
+                  {ticket.titulo}
+                </Text>
+                <Text style={estilos.subtitulo}>
+                  {ticket.creadoPorNombre} · {formatearFechaHora(ticket.createdAt)}
+                </Text>
               </View>
-              <TouchableOpacity onPress={onClose} style={estilos.botonCerrar}>
-                <Feather name="x" size={18} color={colores.texto} />
-              </TouchableOpacity>
+              <BotonAnimado onPress={onClose} style={estilos.botonCerrar} scaleTo={0.94}>
+                <Feather name="x" size={18} color={esOscuro ? '#F7F2ED' : '#202020'} />
+              </BotonAnimado>
             </View>
 
-            <Text style={estilos.descripcion}>{ticket.descripcion}</Text>
+            <View style={estilos.descContainer}>
+              <Text style={estilos.descripcion}>{ticket.descripcion}</Text>
+            </View>
 
             <View style={estilos.estadoGrid}>
               {ESTADOS.map((e) => {
                 const activo = ticket.estado === e.estado;
                 const puedeTocar = puedeGestionar || ticket.creadoPor === perfil?.id;
                 return (
-                  <TouchableOpacity
+                  <BotonAnimado
                     key={e.estado}
                     disabled={!puedeTocar}
-                    style={[estilos.chipEstado, activo && { backgroundColor: e.color, borderColor: e.color }]}
+                    scaleTo={0.96}
+                    style={[
+                      estilos.chipEstado,
+                      activo && { backgroundColor: `${e.color}20`, borderColor: e.color },
+                    ]}
                     onPress={() => cambiarEstado(e.estado)}
                   >
-                    <Text style={[estilos.textoChipEstado, activo && { color: '#fff' }]}>{e.label}</Text>
-                  </TouchableOpacity>
+                    <View
+                      style={[
+                        estilos.dotEstado,
+                        { backgroundColor: activo ? e.color : esOscuro ? '#8A8078' : '#A89F97' },
+                      ]}
+                    />
+                    <Text style={[estilos.textoChipEstado, activo && { color: e.color, fontWeight: '700' }]}>
+                      {e.label}
+                    </Text>
+                  </BotonAnimado>
                 );
               })}
             </View>
 
             <ScrollView style={estilos.hilo} showsVerticalScrollIndicator={false}>
               {mensajes.length === 0 ? (
-                <Text style={estilos.vacioTexto}>Aún no hay mensajes en este ticket.</Text>
+                <View style={estilos.vacioWrap}>
+                  <Feather name="message-circle" size={24} color={esOscuro ? '#8A8078' : '#9E948C'} />
+                  <Text style={estilos.vacioTexto}>Aún no hay mensajes en este ticket.</Text>
+                </View>
               ) : (
-                mensajes.map((m) => (
-                  <View key={m.id} style={[estilos.mensaje, m.autorId === perfil?.id && estilos.mensajePropio]}>
-                    <Text style={estilos.mensajeAutor}>{m.autorNombre}</Text>
-                    <Text style={estilos.mensajeTexto}>{m.texto}</Text>
-                    <Text style={estilos.mensajeFecha}>{formatearFechaHora(m.createdAt)}</Text>
-                  </View>
-                ))
+                mensajes.map((m) => {
+                  const esPropio = m.autorId === perfil?.id;
+                  return (
+                    <View key={m.id} style={[estilos.mensaje, esPropio ? estilos.mensajePropio : estilos.mensajeAjeno]}>
+                      <Text style={[estilos.mensajeAutor, esPropio && estilos.mensajeAutorPropio]}>{m.autorNombre}</Text>
+                      <Text style={[estilos.mensajeTexto, esPropio && estilos.mensajeTextoPropio]}>{m.texto}</Text>
+                      <Text style={[estilos.mensajeFecha, esPropio && estilos.mensajeFechaPropio]}>
+                        {formatearFechaHora(m.createdAt)}
+                      </Text>
+                    </View>
+                  );
+                })
               )}
             </ScrollView>
 
@@ -124,15 +168,20 @@ export default function TicketHiloModal({ visible, ticket, onClose, puedeGestion
               <TextInput
                 style={estilos.input}
                 placeholder="Escribe un mensaje..."
-                placeholderTextColor={colores.textoSuave}
+                placeholderTextColor={esOscuro ? '#8A8078' : '#9E948C'}
                 value={nuevoMensaje}
                 onChangeText={setNuevoMensaje}
                 onSubmitEditing={enviarMensaje}
                 returnKeyType="send"
               />
-              <TouchableOpacity style={estilos.botonEnviar} onPress={enviarMensaje} disabled={!nuevoMensaje.trim()}>
-                <Feather name="send" size={16} color={esOscuro ? '#000' : '#fff'} />
-              </TouchableOpacity>
+              <BotonAnimado
+                style={[estilos.botonEnviar, !nuevoMensaje.trim() && estilos.botonEnviarDeshabilitado]}
+                scaleTo={0.94}
+                onPress={enviarMensaje}
+                disabled={!nuevoMensaje.trim()}
+              >
+                <Feather name="send" size={16} color="#FFFFFF" />
+              </BotonAnimado>
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -142,32 +191,130 @@ export default function TicketHiloModal({ visible, ticket, onClose, puedeGestion
 }
 
 function crearEstilos(c: any, esOscuro: boolean) {
-  const modalBg = esOscuro ? 'rgba(25,25,35,0.97)' : 'rgba(240,240,255,0.97)';
-  const glassMini = esOscuro ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
-  const glassBorder = esOscuro ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)';
-  const texto = esOscuro ? '#FFFFFF' : '#000000';
+  const modalBg = esOscuro ? '#1C1822' : '#FFFDFC';
+  const containerBorder = esOscuro ? 'rgba(255,255,255,0.08)' : '#ECE5DE';
+  const surfaceMuted = esOscuro ? 'rgba(255,255,255,0.05)' : '#F5F0EB';
+  const surfaceBorder = esOscuro ? 'rgba(255,255,255,0.07)' : '#EBE4DC';
+  const texto = esOscuro ? '#F7F2ED' : '#251F1C';
+  const textoSuave = esOscuro ? '#A89F97' : '#7D736C';
 
   return StyleSheet.create({
     overlay: { flex: 1, justifyContent: 'flex-end' },
     modalView: { flex: 1, justifyContent: 'flex-end' },
-    modalContenido: { backgroundColor: modalBg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: ESPACIADO.lg, height: '85%', borderWidth: 1, borderColor: c.borde },
-    header: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: ESPACIADO.sm },
-    titulo: { fontSize: 18, fontWeight: '800', color: texto },
-    subtitulo: { fontSize: 11, color: c.textoSuave, marginTop: 2 },
-    botonCerrar: { width: 32, height: 32, borderRadius: 16, backgroundColor: glassMini, alignItems: 'center', justifyContent: 'center' },
-    descripcion: { fontSize: 13, color: c.textoSecundario, lineHeight: 19, marginBottom: ESPACIADO.md },
-    estadoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: ESPACIADO.md },
-    chipEstado: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: glassMini, borderWidth: 1, borderColor: glassBorder },
-    textoChipEstado: { fontSize: 11, fontWeight: '700', color: c.textoSuave },
-    hilo: { flex: 1, marginBottom: ESPACIADO.sm },
-    vacioTexto: { fontSize: 12, color: c.textoSuave, textAlign: 'center', marginTop: 30 },
-    mensaje: { backgroundColor: glassMini, borderRadius: 14, borderWidth: 1, borderColor: glassBorder, padding: 10, marginBottom: 8, maxWidth: '85%' },
-    mensajePropio: { alignSelf: 'flex-end', backgroundColor: esOscuro ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.06)' },
-    mensajeAutor: { fontSize: 11, fontWeight: '800', color: texto },
-    mensajeTexto: { fontSize: 13, color: texto, marginTop: 2, lineHeight: 18 },
-    mensajeFecha: { fontSize: 9, color: c.textoSuave, marginTop: 4 },
+    modalContenido: {
+      backgroundColor: modalBg,
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+      paddingHorizontal: 20,
+      paddingTop: 12,
+      paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+      height: '85%',
+      borderWidth: 1,
+      borderColor: containerBorder,
+      ...SOMBRAS.flotante,
+    },
+    manija: {
+      width: 38,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: esOscuro ? 'rgba(255,255,255,0.18)' : '#DED5CC',
+      alignSelf: 'center',
+      marginBottom: 14,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 12,
+    },
+    titulo: { fontSize: 18, fontWeight: '700', color: texto, letterSpacing: -0.3 },
+    subtitulo: { fontSize: 11.5, color: textoSuave, marginTop: 2 },
+    botonCerrar: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      backgroundColor: surfaceMuted,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: surfaceBorder,
+    },
+    descContainer: {
+      backgroundColor: surfaceMuted,
+      borderRadius: 16,
+      padding: 12,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: surfaceBorder,
+    },
+    descripcion: { fontSize: 12.5, color: texto, lineHeight: 18 },
+    estadoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginBottom: 12 },
+    chipEstado: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 11,
+      paddingVertical: 6,
+      borderRadius: 14,
+      backgroundColor: surfaceMuted,
+      borderWidth: 1,
+      borderColor: surfaceBorder,
+    },
+    dotEstado: { width: 6, height: 6, borderRadius: 3 },
+    textoChipEstado: { fontSize: 11, fontWeight: '600', color: textoSuave },
+    hilo: { flex: 1, marginBottom: 12 },
+    vacioWrap: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 36,
+      gap: 8,
+    },
+    vacioTexto: { fontSize: 12.5, color: textoSuave, textAlign: 'center' },
+    mensaje: {
+      borderRadius: 16,
+      padding: 12,
+      marginBottom: 8,
+      maxWidth: '82%',
+      borderWidth: 1,
+    },
+    mensajePropio: {
+      alignSelf: 'flex-end',
+      backgroundColor: esOscuro ? '#352D40' : '#202020',
+      borderColor: esOscuro ? 'rgba(255,255,255,0.1)' : '#202020',
+    },
+    mensajeAjeno: {
+      alignSelf: 'flex-start',
+      backgroundColor: surfaceMuted,
+      borderColor: surfaceBorder,
+    },
+    mensajeAutor: { fontSize: 11, fontWeight: '700', color: textoSuave, marginBottom: 2 },
+    mensajeAutorPropio: { color: esOscuro ? '#C4B5FD' : '#DED7F2' },
+    mensajeTexto: { fontSize: 13, color: texto, lineHeight: 18 },
+    mensajeTextoPropio: { color: '#FFFFFF' },
+    mensajeFecha: { fontSize: 9.5, color: textoSuave, marginTop: 4, alignSelf: 'flex-end' },
+    mensajeFechaPropio: { color: 'rgba(255,255,255,0.6)' },
     filaEnvio: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-    input: { flex: 1, backgroundColor: glassMini, borderRadius: 14, borderWidth: 1, borderColor: glassBorder, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, color: texto },
-    botonEnviar: { width: 40, height: 40, borderRadius: 20, backgroundColor: texto, alignItems: 'center', justifyContent: 'center' },
+    input: {
+      flex: 1,
+      backgroundColor: surfaceMuted,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: surfaceBorder,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      fontSize: 13,
+      color: texto,
+    },
+    botonEnviar: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      backgroundColor: '#202020',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    botonEnviarDeshabilitado: {
+      opacity: 0.4,
+    },
   });
 }

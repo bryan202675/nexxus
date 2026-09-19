@@ -5,6 +5,7 @@
  * Rendimiento optimizado: Precarga de imágenes para cambio de tema instantáneo y animaciones ultra fluidas.
  */
 
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -19,9 +20,7 @@ import {
   StatusBar,
   Image,
   Keyboard,
-  SafeAreaView,
-  ScrollView,
-} from 'react-native';
+  ScrollView} from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';

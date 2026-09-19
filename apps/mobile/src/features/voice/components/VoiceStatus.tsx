@@ -19,9 +19,9 @@ function textosPorEstado(estado: VoiceSessionState, error: VoiceSessionError | n
     case 'listening':
       return { titulo: 'Nexxus está escuchando', subtitulo: 'Habla de forma natural' };
     case 'thinking':
-      return { titulo: 'Pensando...', subtitulo: 'Un momento' };
+      return { titulo: 'Nexxus está pensando', subtitulo: 'Un momento' };
     case 'speaking':
-      return { titulo: 'Nexxus está hablando', subtitulo: 'Puedes interrumpirme cuando quieras' };
+      return { titulo: 'Nexxus está respondiendo', subtitulo: 'Puedes interrumpirme en cualquier momento' };
     case 'reconnecting':
       return { titulo: 'Reconectando', subtitulo: 'No pudimos mantener la conexión' };
     case 'ended':
@@ -67,13 +67,16 @@ export default function VoiceStatus({ estado, error }: Props) {
 const estilos = StyleSheet.create({
   contenedor: {
     alignItems: 'center',
-    gap: ESPACIADO.xxs,
-    minHeight: 56,
+    gap: 5,
+    minHeight: 60,
   },
   titulo: {
     textAlign: 'center',
+    fontSize: 21,
+    fontWeight: '600',
   },
   subtitulo: {
     textAlign: 'center',
+    fontSize: 13,
   },
 });

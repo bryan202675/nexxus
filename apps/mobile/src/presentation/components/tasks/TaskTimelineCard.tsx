@@ -1,20 +1,17 @@
-import React, { memo } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
-import BotonAnimado from '@/presentation/components/BotonAnimado';
-import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
-import { Task } from 'domain/entities/Task';
-import TaskAvatar from './TaskAvatar';
-import {
-  formatAssigneeName,
-  formatCardTime,
-  formatTimelineTime,
-} from './taskAgendaUtils';
+import React, { memo } from "react";
+import { StyleSheet, View } from "react-native";
+import { Feather } from "@expo/vector-icons";
+import Animated, {
+  FadeInDown,
+  useReducedMotion,
+} from "react-native-reanimated";
+import BotonAnimado from "@/presentation/components/BotonAnimado";
+import { AdminTranslatedText } from "@/shared/i18n/AdminTranslatedText";
+import { Task } from "domain/entities/Task";
+import { formatCardTime, formatTimelineTime } from "./taskAgendaUtils";
+import TaskAvatar from "./TaskAvatar";
 
 const Text = AdminTranslatedText;
-
 interface TaskTimelineCardProps {
   task: Task;
   index: number;
@@ -28,101 +25,112 @@ function TaskTimelineCard({
   onPress,
   onToggle,
 }: TaskTimelineCardProps) {
-  const completed = task.estado === 'completada';
-  const isHero = index === 0 && !completed;
-  const backgroundColor = isHero ? '#F8A8C6' : completed ? '#F1F1EF' : '#F4F4F6';
-
+  const reduceMotion = useReducedMotion();
   const time = formatTimelineTime(task);
-  const assignee = formatAssigneeName(task);
-
-  const handleToggle = () => {
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } catch {
-      // Haptics fallback
-    }
-    onToggle(task);
-  };
-
+  const completed = task.estado === "completada";
+  const stateLabel = completed
+    ? "Completada"
+    : task.estado === "en_progreso"
+    ? "En progreso"
+    : "Pendiente";
+  const stateStyle = completed
+    ? styles.stateDone
+    : task.estado === "en_progreso"
+    ? styles.stateProgress
+    : styles.statePending;
+  const stateTextStyle = completed
+    ? styles.stateDoneText
+    : task.estado === "en_progreso"
+    ? styles.stateProgressText
+    : styles.statePendingText;
+  const assigneeName = task.asignado_a?.trim();
+  const hasNamedAssignee = Boolean(
+    assigneeName &&
+      !/^[0-9a-f]{8}-[0-9a-f]{4}/i.test(assigneeName) &&
+      assigneeName.length <= 48
+  );
   return (
     <Animated.View
-      entering={FadeInDown.delay(Math.min(index, 6) * 45).duration(280)}
-      style={[styles.row, isHero && styles.heroRow]}
+      entering={
+        reduceMotion
+          ? undefined
+          : FadeInDown.delay(Math.min(index, 5) * 35).duration(220)
+      }
+      style={styles.row}
     >
-      {/* Columna Timeline con Hora (2 líneas limpias) y Línea vertical simétrica */}
-      <View style={styles.timelineColumn}>
-        <View style={styles.timeWrapper}>
-          <Text style={styles.timeHour}>{time.hour}</Text>
-          <Text style={styles.timePeriod}>{time.period}</Text>
-        </View>
-        <View style={styles.lineContainer}>
-          <View
-            style={[
-              styles.timelineLine,
-              isHero ? styles.timelineLineActive : styles.timelineLineInactive,
-            ]}
-          />
-        </View>
-      </View>
-
-      {/* Tarjeta de Tarea */}
       <BotonAnimado
         onPress={() => onPress(task)}
         scaleTo={0.98}
-        style={[
-          styles.card,
-          { backgroundColor },
-          isHero && styles.heroCard,
-          completed && styles.completedCard,
-        ]}
+        style={styles.card}
         accessibilityLabel={`Abrir tarea ${task.titulo}`}
       >
-        {/* Horario / Schedule */}
-        <Text style={[styles.schedule, completed && styles.completedMuted]}>
-          {formatCardTime(task)}
-        </Text>
-
-        {/* Título de la tarea */}
-        <Text
-          numberOfLines={isHero ? 3 : 2}
-          style={[
-            styles.title,
-            isHero && styles.heroTitle,
-            completed && styles.completedTitle,
-          ]}
-        >
-          {task.titulo}
-        </Text>
-
-        {/* Footer: Responsable + Botón de Acción Circular */}
-        <View style={styles.footer}>
-          <View style={styles.assigneeContainer}>
-            <TaskAvatar name={assignee.name} size={32} />
-            <View style={styles.assigneeTextColumn}>
-              <Text numberOfLines={1} style={styles.assigneeName}>
-                {assignee.name}
+        <View style={styles.cardContent}>
+          <View style={styles.timeline}>
+            <Text style={styles.hour}>{time.hour}</Text>
+            <Text style={styles.period}>{time.period}</Text>
+            <View style={styles.line} />
+          </View>
+          <View style={styles.taskContent}>
+            <Text
+              style={[styles.title, completed && styles.completedTitle]}
+              numberOfLines={2}
+            >
+              {task.titulo}
+            </Text>
+            {task.descripcion ? (
+              <Text style={styles.description} numberOfLines={2}>
+                {task.descripcion}
               </Text>
-              <Text numberOfLines={1} style={styles.assigneeRole}>
-                {assignee.role}
+            ) : (
+              <Text style={styles.description} numberOfLines={1}>
+                {formatCardTime(task)}
               </Text>
+            )}
+            <View style={styles.footer}>
+              <View style={styles.metadata}>
+                {hasNamedAssignee ? (
+                  <View style={styles.assignee}>
+                    <TaskAvatar name={assigneeName} size={29} />
+                    <Text style={styles.assigneeName} numberOfLines={1}>
+                      {assigneeName}
+                    </Text>
+                  </View>
+                ) : null}
+                {task.tags?.slice(0, 2).map((tag) => (
+                  <View key={tag} style={styles.tag}>
+                    <Text style={styles.tagText} numberOfLines={1}>
+                      {tag}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+              <BotonAnimado
+                onPress={() => onToggle(task)}
+                scaleTo={0.95}
+                style={[styles.statePill, stateStyle]}
+                accessibilityLabel={
+                  completed
+                    ? "Marcar como pendiente"
+                    : "Cambiar estado de la tarea"
+                }
+              >
+                <Text style={[styles.stateText, stateTextStyle]}>
+                  {stateLabel}
+                </Text>
+                {completed ? (
+                  <Feather name="check" size={14} color="#54745A" />
+                ) : (
+                  <Feather
+                    name="arrow-up-right"
+                    size={14}
+                    color={
+                      task.estado === "en_progreso" ? "#7A48BD" : "#403A37"
+                    }
+                  />
+                )}
+              </BotonAnimado>
             </View>
           </View>
-
-          <BotonAnimado
-            onPress={handleToggle}
-            scaleTo={0.90}
-            style={[
-              styles.actionButton,
-              completed && styles.completedActionButton,
-            ]}
-            accessibilityLabel={completed ? 'Marcar como pendiente' : 'Completar tarea'}
-          >
-            <Feather
-              name={completed ? 'check' : 'arrow-up-right'}
-              size={17}
-              color="#FFFFFF"
-            />
-          </BotonAnimado>
         </View>
       </BotonAnimado>
     </Animated.View>
@@ -130,142 +138,97 @@ function TaskTimelineCard({
 }
 
 export default memo(TaskTimelineCard);
-
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    minHeight: 122,
-    marginBottom: 12,
+  row: { minHeight: 184, marginBottom: 15 },
+  cardContent: { flex: 1, flexDirection: "row" },
+  timeline: { width: 72, alignItems: "center", paddingTop: 17, marginRight: 4 },
+  hour: {
+    color: "#312C29",
+    fontSize: 22,
+    fontWeight: "600",
+    letterSpacing: -0.8,
   },
-  heroRow: {
-    minHeight: 160,
-  },
-  timelineColumn: {
-    alignItems: 'center',
-    width: 44,
-    marginRight: 8,
-  },
-  timeWrapper: {
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  timeHour: {
-    color: '#1A1719',
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 14,
-    textAlign: 'center',
-  },
-  timePeriod: {
-    color: '#706B70',
-    fontSize: 9.5,
-    fontWeight: '600',
-    lineHeight: 12,
-    textAlign: 'center',
-    textTransform: 'uppercase',
-  },
-  lineContainer: {
-    alignItems: 'center',
-    flex: 1,
-    marginTop: 6,
-    width: 12,
-  },
-  timelineLine: {
-    flex: 1,
-    width: 1.5,
-  },
-  timelineLineActive: {
-    backgroundColor: '#111111',
-    width: 2,
-  },
-  timelineLineInactive: {
-    backgroundColor: '#E4E0E2',
-    width: 1.5,
+  period: { color: "#7E7772", fontSize: 11, fontWeight: "700", marginTop: 2 },
+  line: {
+    height: 46,
+    width: 1,
+    marginTop: 12,
+    backgroundColor: "#DED9D4",
   },
   card: {
     flex: 1,
-    minHeight: 112,
-    borderRadius: 22,
-    padding: 15,
+    minHeight: 184,
+    padding: 17,
+    borderRadius: 27,
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#2C2520",
+    shadowOpacity: 0.06,
+    shadowRadius: 15,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 2,
   },
-  heroCard: {
-    minHeight: 152,
-    borderRadius: 24,
-    padding: 16,
-  },
-  completedCard: {
-    backgroundColor: '#F1F1EF',
-  },
-  schedule: {
-    color: '#554A50',
-    fontSize: 10.5,
-    fontWeight: '600',
-    letterSpacing: 0.1,
+  taskContent: {
+    flex: 1,
+    minWidth: 0,
+    paddingTop: 2,
+    justifyContent: "space-between",
   },
   title: {
-    color: '#121014',
-    fontSize: 17,
-    fontWeight: '600',
-    letterSpacing: -0.3,
-    lineHeight: 22,
-    marginTop: 5,
-  },
-  heroTitle: {
+    color: "#292522",
     fontSize: 19,
-    fontWeight: '600',
-    letterSpacing: -0.4,
     lineHeight: 24,
+    fontWeight: "600",
+    letterSpacing: -0.55,
+  },
+  completedTitle: { color: "#85807B", textDecorationLine: "line-through" },
+  description: {
+    color: "#827B76",
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: "500",
     marginTop: 6,
   },
-  completedTitle: {
-    color: '#7E787C',
-    textDecorationLine: 'line-through',
-  },
-  completedMuted: {
-    color: '#8C858A',
-  },
   footer: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 'auto',
-    paddingTop: 8,
-  },
-  assigneeContainer: {
-    alignItems: 'center',
-    flexDirection: 'row',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     gap: 8,
-    maxWidth: '72%',
+    marginTop: 14,
   },
-  assigneeTextColumn: {
-    justifyContent: 'center',
+  metadata: { flex: 1, flexDirection: "row", gap: 5, overflow: "hidden" },
+  assignee: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    maxWidth: 118,
   },
   assigneeName: {
-    color: '#1D191E',
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 15,
-  },
-  assigneeRole: {
-    color: '#6A5F67',
+    color: "#665F5A",
     fontSize: 10.5,
-    fontWeight: '500',
-    lineHeight: 13,
+    fontWeight: "600",
+    flexShrink: 1,
   },
-  actionButton: {
-    alignItems: 'center',
-    backgroundColor: '#111111',
-    borderRadius: 20,
-    height: 40,
-    justifyContent: 'center',
-    width: 40,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 1,
+  tag: {
+    maxWidth: 84,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 13,
+    backgroundColor: "#F4F1EE",
   },
-  completedActionButton: {
-    backgroundColor: '#4B734E',
+  tagText: { color: "#706964", fontSize: 10, fontWeight: "600" },
+  statePill: {
+    minHeight: 34,
+    paddingHorizontal: 12,
+    borderRadius: 17,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
   },
+  statePending: { backgroundColor: "#F4F1EE" },
+  stateProgress: { backgroundColor: "#EFE2FA" },
+  stateDone: { backgroundColor: "#E6F0E6" },
+  stateText: { fontSize: 11, fontWeight: "700" },
+  statePendingText: { color: "#403A37" },
+  stateProgressText: { color: "#7A48BD" },
+  stateDoneText: { color: "#54745A" },
 });

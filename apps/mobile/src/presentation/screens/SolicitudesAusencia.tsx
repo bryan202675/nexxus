@@ -1,56 +1,59 @@
 /**
  * Documentacion Nexxus - apps/mobile/src/presentation/screens/SolicitudesAusencia.tsx
  * Capa: presentacion.
- * Proposito: Gestión, creación, detalle, edición y cancelación de solicitudes de ausencia.
- * Rediseñado con estética Glassmorphism monocromática ejecutiva, selector de rango
- * de fechas con calendario visual interactivo, adjuntos múltiples y animaciones fluidas con Reanimated.
+ * Proposito: Gestión, creación, detalle, edición y cancelación de solicitudes de ausencia y permisos.
+ * Rediseñado con la estética idéntica a Mi Pulso: tipografía limpia, paleta minimalista y discreta
+ * (negros, beiges, pasteles suaves), tarjetas Bento, animaciones fluidas y modales ejecutivos.
  */
 
-import React, { useMemo, useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  SafeAreaView,
-  StatusBar,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  TouchableOpacity,
+  View,
   ActivityIndicator,
-  Image,
+  Linking,
 } from 'react-native';
 import Animated, {
+  Easing,
   FadeInDown,
-  FadeInUp,
-  FadeInRight,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { useTranslation } from 'react-i18next';
-import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
-import { COLORES, ESPACIADO, RADIOS, SOMBRAS, TIPOGRAFIA } from '@/shared/constants/diseno';
-import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
-import { Absence, AdjuntoItem } from 'domain/entities/Absence';
-import FondoMobilePremium from '@/presentation/components/FondoMobilePremium';
-import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
-import ModalShell from '@/presentation/components/ui/ModalShell';
-import EmptyState from '@/presentation/components/ui/EmptyState';
+import { AdminTranslatedText, AdminTranslatedTextInput } from '@/shared/i18n/AdminTranslatedText';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
-import NavbarEnterprise from '@/presentation/components/NavbarEnterprise';
+import ModalShell from '@/presentation/components/ui/ModalShell';
+import Skeleton from '@/presentation/components/ui/Skeleton';
+import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
+import { SOMBRAS } from '@/shared/constants/diseno';
+import { useUserTabBottomPadding } from '@/presentation/hooks/useUserTabBottomPadding';
+import { Absence, AdjuntoItem } from 'domain/entities/Absence';
 
 const Text = AdminTranslatedText;
 const TextInput = AdminTranslatedTextInput;
 
-interface Props {
-  navigation: any;
-}
+type FilterScope = 'todas' | 'pendiente' | 'aprobada' | 'rechazada';
+
+type Navigation = {
+  navigate: (route: string, params?: Record<string, string>) => void;
+  goBack: () => void;
+  canGoBack?: () => boolean;
+};
 
 const DIAS_SEMANA = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 const NOMBRES_MESES = [
@@ -58,47 +61,91 @@ const NOMBRES_MESES = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ];
 
-const COLORES_PRIORIDAD: Record<Absence['prioridad'], string> = {
-  baja: '#10B981',
-  media: '#3B82F6',
-  alta: '#F59E0B',
-  urgente: '#EF4444',
+const CATEGORIAS: { id: Absence['tipo']; label: string; icon: React.ComponentProps<typeof Feather>['name'] }[] = [
+  { id: 'vacaciones', label: 'Vacaciones', icon: 'sun' },
+  { id: 'enfermedad', label: 'Enfermedad', icon: 'activity' },
+  { id: 'personal', label: 'Personal', icon: 'user' },
+  { id: 'emergencia', label: 'Emergencia', icon: 'alert-circle' },
+  { id: 'capacitacion', label: 'Capacitación', icon: 'book-open' },
+  { id: 'otro', label: 'Otro motivo', icon: 'file-text' },
+];
+
+const PRIORIDADES: { id: Absence['prioridad']; label: string; dotColor: string }[] = [
+  { id: 'baja', label: 'Baja', dotColor: '#D5E774' },
+  { id: 'media', label: 'Media', dotColor: '#E9D2BF' },
+  { id: 'alta', label: 'Alta', dotColor: '#F2AD84' },
+  { id: 'urgente', label: 'Urgente', dotColor: '#202020' },
+];
+
+const getStatusTheme = (estado?: string) => {
+  switch (estado) {
+    case 'aprobada':
+      return {
+        bg: '#EAF4DC',
+        dot: '#7DA842',
+        text: '#455E24',
+        label: 'Aprobada',
+      };
+    case 'rechazada':
+      return {
+        bg: '#F6ECEB',
+        dot: '#BF665E',
+        text: '#833932',
+        label: 'Rechazada',
+      };
+    case 'cancelada':
+      return {
+        bg: '#EFECE9',
+        dot: '#96908A',
+        text: '#5D5853',
+        label: 'Cancelada',
+      };
+    default:
+      return {
+        bg: '#FFF6E5',
+        dot: '#D6A23D',
+        text: '#7C5819',
+        label: 'Pendiente',
+      };
+  }
 };
 
-const ICONOS_CATEGORIA: Partial<Record<Absence['tipo'], React.ComponentProps<typeof Feather>['name']>> = {
-  vacaciones: 'sun',
-  enfermedad: 'activity',
-  personal: 'user',
-  emergencia: 'alert-triangle',
-  capacitacion: 'book-open',
-  otro: 'file-text',
+const formatPeriodDate = (inicio?: string, fin?: string) => {
+  if (!inicio) return 'Sin fecha';
+  if (!fin || inicio === fin) {
+    const d = new Date(inicio);
+    if (isNaN(d.getTime())) return inicio;
+    return new Intl.DateTimeFormat('es-SV', { day: 'numeric', month: 'short' }).format(d);
+  }
+  const d1 = new Date(inicio);
+  const d2 = new Date(fin);
+  if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return `${inicio} — ${fin}`;
+  const f1 = new Intl.DateTimeFormat('es-SV', { day: 'numeric', month: 'short' }).format(d1);
+  const f2 = new Intl.DateTimeFormat('es-SV', { day: 'numeric', month: 'short' }).format(d2);
+  return `${f1} — ${f2}`;
 };
 
-export default function SolicitudesAusencia({ navigation }: Props) {
+export default function SolicitudesAusencia({ navigation }: { navigation: Navigation }) {
+  const bottomPadding = useUserTabBottomPadding(96);
   const { t } = useTranslation();
-  const { solicitudes, crearSolicitudAusencia, actualizarSolicitudAusencia, cancelarSolicitudAusencia, recargarDatos } = useContextoUsuario();
-  const { colores, blurTint, intensidadBlur, esOscuro } = useTemaMobile();
-  const estilos = useMemo(() => crearEstilosSolicAus(colores, esOscuro), [colores, esOscuro]);
+  const {
+    perfil,
+    solicitudes = [],
+    crearSolicitudAusencia,
+    actualizarSolicitudAusencia,
+    cancelarSolicitudAusencia,
+    recargarDatos,
+    cargando,
+  } = useContextoUsuario();
 
-  // Modales
+  const [scope, setScope] = useState<FilterScope>('todas');
+  const [refreshing, setRefreshing] = useState(false);
   const [modalFormVisible, setModalFormVisible] = useState(false);
   const [detalleModalVisible, setDetalleModalVisible] = useState(false);
   const [solicitudSeleccionada, setSolicitudSeleccionada] = useState<Absence | null>(null);
   const [solicitudEditando, setSolicitudEditando] = useState<Absence | null>(null);
-
   const [enviando, setEnviando] = useState(false);
-  const [refrescando, setRefrescando] = useState(false);
   const [calendarioAbierto, setCalendarioAbierto] = useState(false);
-
-  const manejarRefrescar = async () => {
-    setRefrescando(true);
-    try {
-      if (recargarDatos) {
-        await recargarDatos();
-      }
-    } catch {}
-    setRefrescando(false);
-  };
 
   // Form State
   const [asunto, setAsunto] = useState('');
@@ -114,6 +161,55 @@ export default function SolicitudesAusencia({ navigation }: Props) {
   const [calMes, setCalMes] = useState(hoy.getMonth());
   const [calAnio, setCalAnio] = useState(hoy.getFullYear());
 
+  const entrance = useSharedValue(0);
+  const reduceMotion = useReducedMotion();
+
+  const firstName =
+    perfil?.nombre?.split(' ')[0] ||
+    t('miPulso.user_default', { defaultValue: 'Usuario' });
+
+  useEffect(() => {
+    entrance.value = reduceMotion
+      ? 1
+      : withTiming(1, { duration: 240, easing: Easing.out(Easing.cubic) });
+  }, [entrance, reduceMotion]);
+
+  const entranceStyle = useAnimatedStyle(() => ({
+    opacity: entrance.value,
+    transform: [{ translateY: (1 - entrance.value) * 10 }],
+  }));
+
+  const refresh = async () => {
+    setRefreshing(true);
+    try {
+      if (recargarDatos) {
+        await recargarDatos();
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const counts = useMemo(
+    () => ({
+      todas: solicitudes.length,
+      pendiente: solicitudes.filter((s) => s.estado === 'pendiente').length,
+      aprobada: solicitudes.filter((s) => s.estado === 'aprobada').length,
+      rechazada: solicitudes.filter((s) => s.estado === 'rechazada').length,
+    }),
+    [solicitudes]
+  );
+
+  const solicitudesFiltradas = useMemo(() => {
+    if (scope === 'todas') return solicitudes;
+    return solicitudes.filter((s) => s.estado === scope);
+  }, [scope, solicitudes]);
+
+  const solicitudDestacada = useMemo(() => {
+    return solicitudes.find((s) => s.estado === 'pendiente') || solicitudes[0] || null;
+  }, [solicitudes]);
+
+  // Calendario Helper Functions
   const cambiarMesCal = (delta: number) => {
     let nuevoMes = calMes + delta;
     let nuevoAnio = calAnio;
@@ -174,12 +270,12 @@ export default function SolicitudesAusencia({ navigation }: Props) {
     return Math.max(1, diff);
   }, [fechaInicio, fechaFin]);
 
-  // Selección de archivos múltiples
+  // Archivos y fotos
   const tomarFoto = async () => {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(t('solicitudesAusencia.permission_required_title', { defaultValue: 'Permiso requerido' }), t('solicitudesAusencia.permission_camera_msg', { defaultValue: 'Se necesita acceso a la cámara para tomar una foto.' }));
+        Alert.alert('Permiso requerido', 'Se necesita acceso a la cámara para tomar una foto.');
         return;
       }
       const res = await ImagePicker.launchCameraAsync({
@@ -195,8 +291,8 @@ export default function SolicitudesAusencia({ navigation }: Props) {
         };
         setAdjuntos((prev) => [...prev, item]);
       }
-    } catch (e) {
-      Alert.alert(t('solicitudesAusencia.alert_error', { defaultValue: 'Error' }), t('solicitudesAusencia.error_camera_msg', { defaultValue: 'No se pudo abrir la cámara.' }));
+    } catch {
+      Alert.alert('Error', 'No se pudo abrir la cámara.');
     }
   };
 
@@ -204,7 +300,7 @@ export default function SolicitudesAusencia({ navigation }: Props) {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(t('solicitudesAusencia.permission_required_title', { defaultValue: 'Permiso requerido' }), t('solicitudesAusencia.permission_gallery_msg', { defaultValue: 'Se necesita acceso a la galería para seleccionar imágenes.' }));
+        Alert.alert('Permiso requerido', 'Se necesita acceso a la galería para seleccionar fotos.');
         return;
       }
       const res = await ImagePicker.launchImageLibraryAsync({
@@ -221,8 +317,8 @@ export default function SolicitudesAusencia({ navigation }: Props) {
         }));
         setAdjuntos((prev) => [...prev, ...nuevos]);
       }
-    } catch (e) {
-      Alert.alert(t('solicitudesAusencia.alert_error', { defaultValue: 'Error' }), t('solicitudesAusencia.error_gallery_msg', { defaultValue: 'No se pudo abrir la galería.' }));
+    } catch {
+      Alert.alert('Error', 'No se pudo acceder a la galería.');
     }
   };
 
@@ -237,124 +333,31 @@ export default function SolicitudesAusencia({ navigation }: Props) {
         const nuevos: AdjuntoItem[] = res.assets.map((file, index) => ({
           id: `${Date.now()}_${index}_${Math.random().toString(36).substr(2, 6)}`,
           uri: file.uri,
-          nombre: file.name || `archivo_${index + 1}`,
+          nombre: file.name || `documento_${index + 1}`,
           tipo: file.mimeType?.startsWith('image/') ? 'imagen' : 'documento',
         }));
         setAdjuntos((prev) => [...prev, ...nuevos]);
       }
-    } catch (e) {
-      Alert.alert(t('solicitudesAusencia.alert_error', { defaultValue: 'Error' }), t('solicitudesAusencia.error_document_msg', { defaultValue: 'No se pudo seleccionar el documento.' }));
+    } catch {
+      Alert.alert('Error', 'No se pudo seleccionar el archivo.');
     }
   };
 
   const mostrarOpcionesAdjunto = () => {
     Alert.alert(
-      t('solicitudesAusencia.attach_options_title', { defaultValue: 'Adjuntar comprobante o archivo' }),
-      t('solicitudesAusencia.attach_options_msg', { defaultValue: 'Selecciona el origen del archivo:' }),
+      'Adjuntar comprobante',
+      'Selecciona el origen del comprobante o archivo:',
       [
-        { text: t('solicitudesAusencia.attach_option_browse', { defaultValue: 'Explorar Archivos' }), onPress: seleccionarDocumento },
-        { text: t('solicitudesAusencia.attach_option_photo', { defaultValue: 'Tomar foto' }), onPress: tomarFoto },
-        { text: t('solicitudesAusencia.attach_option_gallery', { defaultValue: 'Elegir de la galería' }), onPress: seleccionarDeGaleria },
-        { text: t('solicitudesAusencia.attach_option_cancel', { defaultValue: 'Cancelar' }), style: 'cancel' },
+        { text: 'Explorar archivos', onPress: seleccionarDocumento },
+        { text: 'Tomar foto', onPress: tomarFoto },
+        { text: 'Elegir de galería', onPress: seleccionarDeGaleria },
+        { text: 'Cancelar', style: 'cancel' },
       ]
     );
   };
 
   const eliminarAdjunto = (id: string) => {
     setAdjuntos((prev) => prev.filter((a) => a.id !== id));
-  };
-
-  const abrirFormularioCrear = () => {
-    setSolicitudEditando(null);
-    resetForm();
-    setModalFormVisible(true);
-  };
-
-  const abrirFormularioEditar = (sol: Absence) => {
-    setSolicitudEditando(sol);
-    setAsunto(sol.asunto || '');
-    setTipo(sol.tipo || 'vacaciones');
-    setFechaInicio(sol.fecha_inicio || '');
-    setFechaFin(sol.fecha_fin || '');
-    setMotivo(sol.motivo === 'Sin justificación adicional' ? '' : (sol.motivo || ''));
-    setPrioridad(sol.prioridad || 'media');
-    setAdjuntos(sol.archivos_adjuntos || (sol.archivo_adjunto ? [{ id: '1', uri: sol.archivo_adjunto, nombre: 'Archivo adjunto', tipo: 'documento' }] : []));
-    setDetalleModalVisible(false);
-    setModalFormVisible(true);
-  };
-
-  const manejarGuardarSolicitud = async () => {
-    if (!asunto.trim() || !fechaInicio || !fechaFin) {
-      Alert.alert(t('solicitudesAusencia.alert_incomplete'), t('solicitudesAusencia.alert_incomplete_msg'));
-      return;
-    }
-
-    setEnviando(true);
-    try {
-      if (solicitudEditando) {
-        // Modo Edición
-        if (actualizarSolicitudAusencia) {
-          await actualizarSolicitudAusencia(solicitudEditando.id, {
-            asunto: asunto.trim(),
-            tipo,
-            fecha_inicio: fechaInicio,
-            fecha_fin: fechaFin,
-            motivo: motivo.trim() || 'Sin justificación adicional',
-            prioridad,
-            archivos_adjuntos: adjuntos,
-            archivo_adjunto: adjuntos.length > 0 ? adjuntos[0].uri : undefined,
-          });
-        }
-        Alert.alert(t('solicitudesAusencia.alert_update_success', { defaultValue: 'Solicitud Actualizada' }), t('solicitudesAusencia.alert_update_success_msg', { defaultValue: 'Los cambios en tu solicitud se han guardado con éxito.' }));
-      } else {
-        // Modo Creación
-        await crearSolicitudAusencia({
-          asunto: asunto.trim(),
-          tipo,
-          fecha_inicio: fechaInicio,
-          fecha_fin: fechaFin,
-          motivo: motivo.trim() || 'Sin justificación adicional',
-          prioridad,
-          estado: 'pendiente',
-          fecha_solicitud: new Date().toISOString(),
-          archivos_adjuntos: adjuntos,
-          archivo_adjunto: adjuntos.length > 0 ? adjuntos[0].uri : undefined,
-        });
-        Alert.alert(t('solicitudesAusencia.alert_success'), t('solicitudesAusencia.alert_success_msg'));
-      }
-      setModalFormVisible(false);
-      resetForm();
-    } catch (error) {
-      Alert.alert(t('common.error'), t('solicitudesAusencia.alert_error_msg'));
-    } finally {
-      setEnviando(false);
-    }
-  };
-
-  const manejarCancelarSolicitud = (sol: Absence) => {
-    Alert.alert(
-      t('solicitudesAusencia.cancel_confirm_title', { defaultValue: 'Cancelar Solicitud' }),
-      t('solicitudesAusencia.cancel_confirm_msg', { subject: sol.asunto || sol.tipo, defaultValue: `¿Estás seguro de cancelar tu solicitud de ${sol.asunto || sol.tipo}? Esta acción no se puede deshacer.` }),
-      [
-        { text: t('solicitudesAusencia.cancel_confirm_keep', { defaultValue: 'No, mantener' }), style: 'cancel' },
-        {
-          text: t('solicitudesAusencia.cancel_confirm_confirm', { defaultValue: 'Sí, cancelar solicitud' }),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              if (cancelarSolicitudAusencia) {
-                await cancelarSolicitudAusencia(sol.id);
-              }
-              setDetalleModalVisible(false);
-              setSolicitudSeleccionada(null);
-              Alert.alert(t('solicitudesAusencia.cancel_success_title', { defaultValue: 'Solicitud Cancelada' }), t('solicitudesAusencia.cancel_success_msg', { defaultValue: 'La solicitud ha sido cancelada correctamente.' }));
-            } catch (e) {
-              Alert.alert(t('solicitudesAusencia.alert_error', { defaultValue: 'Error' }), t('solicitudesAusencia.cancel_error_msg', { defaultValue: 'No se pudo cancelar la solicitud.' }));
-            }
-          },
-        },
-      ]
-    );
   };
 
   const resetForm = () => {
@@ -369,376 +372,489 @@ export default function SolicitudesAusencia({ navigation }: Props) {
     setCalendarioAbierto(false);
   };
 
-  const obtenerColorEstado = (estado: string) => {
-    switch (estado) {
-      case 'aprobada':
-        return '#10B981';
-      case 'rechazada':
-        return '#EF4444';
-      case 'cancelada':
-        return '#6B7280';
-      default:
-        return '#F59E0B';
+  const abrirFormularioCrear = () => {
+    resetForm();
+    setModalFormVisible(true);
+  };
+
+  const abrirFormularioEditar = (sol: Absence) => {
+    setSolicitudEditando(sol);
+    setAsunto(sol.asunto || '');
+    setTipo(sol.tipo || 'vacaciones');
+    setFechaInicio(sol.fecha_inicio || '');
+    setFechaFin(sol.fecha_fin || '');
+    setMotivo(sol.motivo === 'Sin justificación adicional' ? '' : sol.motivo || '');
+    setPrioridad(sol.prioridad || 'media');
+    setAdjuntos(
+      sol.archivos_adjuntos ||
+        (sol.archivo_adjunto ? [{ id: '1', uri: sol.archivo_adjunto, nombre: 'Archivo adjunto', tipo: 'documento' }] : [])
+    );
+    setDetalleModalVisible(false);
+    setModalFormVisible(true);
+  };
+
+  const manejarGuardarSolicitud = async () => {
+    if (!asunto.trim() || !fechaInicio || !fechaFin) {
+      Alert.alert('Campos incompletos', 'Por favor completa el título y el rango de fechas.');
+      return;
+    }
+
+    setEnviando(true);
+    try {
+      if (solicitudEditando) {
+        if (actualizarSolicitudAusencia) {
+          await actualizarSolicitudAusencia(solicitudEditando.id, {
+            asunto: asunto.trim(),
+            tipo,
+            fecha_inicio: fechaInicio,
+            fecha_fin: fechaFin,
+            motivo: motivo.trim() || 'Sin justificación adicional',
+            prioridad,
+            archivos_adjuntos: adjuntos,
+            archivo_adjunto: adjuntos.length > 0 ? adjuntos[0].uri : undefined,
+          });
+        }
+        Alert.alert('Solicitud actualizada', 'Los cambios han sido guardados correctamente.');
+      } else {
+        await crearSolicitudAusencia({
+          asunto: asunto.trim(),
+          tipo,
+          fecha_inicio: fechaInicio,
+          fecha_fin: fechaFin,
+          motivo: motivo.trim() || 'Sin justificación adicional',
+          prioridad,
+          estado: 'pendiente',
+          fecha_solicitud: new Date().toISOString(),
+          archivos_adjuntos: adjuntos,
+          archivo_adjunto: adjuntos.length > 0 ? adjuntos[0].uri : undefined,
+        });
+        Alert.alert('Solicitud enviada', 'Tu solicitud fue registrada con éxito para su revisión.');
+      }
+      setModalFormVisible(false);
+      resetForm();
+    } catch {
+      Alert.alert('Error', 'No se pudo guardar la solicitud. Intenta nuevamente.');
+    } finally {
+      setEnviando(false);
     }
   };
 
-  const categorias: { id: Absence['tipo']; label: string }[] = [
-    { id: 'vacaciones', label: t('solicitudesAusencia.categories.vacaciones') },
-    { id: 'enfermedad', label: t('solicitudesAusencia.categories.enfermedad') },
-    { id: 'personal', label: t('solicitudesAusencia.categories.personal') },
-    { id: 'emergencia', label: t('solicitudesAusencia.categories.emergencia') },
-    { id: 'capacitacion', label: t('solicitudesAusencia.categories.capacitacion') },
-  ];
-
-  const prioridades: { id: Absence['prioridad']; label: string }[] = [
-    { id: 'baja', label: t('solicitudesAusencia.priorities.low') },
-    { id: 'media', label: t('solicitudesAusencia.priorities.medium') },
-    { id: 'alta', label: t('solicitudesAusencia.priorities.high') },
-    { id: 'urgente', label: t('solicitudesAusencia.priorities.urgent') },
-  ];
-
-  const renderItem = ({ item, index }: { item: Absence; index: number }) => {
-    const colorSt = obtenerColorEstado(item.estado);
-    const iconoCat = ICONOS_CATEGORIA[item.tipo] || 'clock';
-    const totalAdjuntos = item.archivos_adjuntos?.length || (item.archivo_adjunto ? 1 : 0);
-    const observacionAdmin = item.comentario_resolucion || item.observaciones;
-
-    return (
-      <Animated.View entering={FadeInDown.duration(280).delay(index * 35)} style={estilos.bentoCard}>
-        <BotonAnimado
-          onPress={() => {
-            setSolicitudSeleccionada(item);
-            setDetalleModalVisible(true);
-          }}
-          scaleTo={0.98}
-          style={{ width: '100%' }}
-        >
-          <BlurView intensity={Platform.OS === 'ios' ? intensidadBlur + 10 : 80} tint={blurTint} style={estilos.bentoContent}>
-            <View style={estilos.headerTarjeta}>
-              <View style={estilos.infoBasica}>
-                <View style={estilos.filaTipo}>
-                  <View style={estilos.iconoTipoPill}>
-                    <Feather name={iconoCat} size={12} color={colores.texto} />
-                  </View>
-                  <Text style={estilos.tipoSolicitud}>{t(`solicitudesAusencia.categories.${item.tipo}`, { defaultValue: item.tipo }).toUpperCase()}</Text>
-                </View>
-                <Text style={estilos.asuntoSolicitud} numberOfLines={1}>
-                  {item.asunto || item.tipo.toUpperCase()}
-                </Text>
-              </View>
-              <View style={[estilos.badgeEstado, { backgroundColor: colorSt + '18', borderColor: colorSt + '40' }]}>
-                <Text style={[estilos.textoBadge, { color: colorSt }]}>
-                  {t(`common.${item.estado}`, { defaultValue: item.estado }).toUpperCase()}
-                </Text>
-              </View>
-            </View>
-
-            <Text style={estilos.motivoSolicitud} numberOfLines={2}>
-              {item.motivo}
-            </Text>
-
-            {/* Banner de Observación de Aprobación/Rechazo */}
-            {observacionAdmin && (item.estado === 'aprobada' || item.estado === 'rechazada') && (
-              <View style={[estilos.resolucionBannerMini, item.estado === 'aprobada' ? estilos.resolucionBannerAprobada : estilos.resolucionBannerRechazada]}>
-                <Feather
-                  name={item.estado === 'aprobada' ? 'check-circle' : 'alert-circle'}
-                  size={12}
-                  color={item.estado === 'aprobada' ? '#10B981' : '#EF4444'}
-                />
-                <Text
-                  style={[estilos.textoResolucionBannerMini, { color: item.estado === 'aprobada' ? '#10B981' : '#EF4444' }]}
-                  numberOfLines={1}
-                >
-                  {observacionAdmin}
-                </Text>
-              </View>
-            )}
-
-            <View style={estilos.divisorHorizontal} />
-
-            <View style={estilos.footerCard}>
-              <View style={estilos.fechasSolicitud}>
-                <Feather name="calendar" size={13} color={colores.textoSuave} />
-                <Text style={estilos.textoFechas}>
-                  {item.fecha_inicio} al {item.fecha_fin}
-                </Text>
-              </View>
-
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                {totalAdjuntos > 0 && (
-                  <View style={estilos.adjuntosBadgeMini}>
-                    <Feather name="paperclip" size={11} color={colores.textoSuave} />
-                    <Text style={estilos.textoAdjuntosBadgeMini}>{totalAdjuntos}</Text>
-                  </View>
-                )}
-                <View style={estilos.prioridadPill}>
-                  <View style={[estilos.puntoPrioridadMini, { backgroundColor: COLORES_PRIORIDAD[item.prioridad || 'media'] }]} />
-                  <Text style={estilos.textoPrioridadMini}>{t(`solicitudesAusencia.priorities.${item.prioridad || 'media'}`)}</Text>
-                </View>
-              </View>
-            </View>
-          </BlurView>
-        </BotonAnimado>
-      </Animated.View>
+  const manejarCancelarSolicitud = (sol: Absence) => {
+    Alert.alert(
+      'Cancelar solicitud',
+      `¿Deseas cancelar tu solicitud de "${sol.asunto || sol.tipo}"?`,
+      [
+        { text: 'No, mantener', style: 'cancel' },
+        {
+          text: 'Sí, cancelar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              if (cancelarSolicitudAusencia) {
+                await cancelarSolicitudAusencia(sol.id);
+              }
+              setDetalleModalVisible(false);
+              setSolicitudSeleccionada(null);
+              Alert.alert('Solicitud cancelada', 'Tu solicitud ha sido cancelada exitosamente.');
+            } catch {
+              Alert.alert('Error', 'No se pudo cancelar la solicitud.');
+            }
+          },
+        },
+      ]
     );
   };
 
+  const manejarRegresar = () => {
+    if (navigation?.canGoBack?.()) {
+      navigation.goBack();
+    } else if (navigation?.goBack) {
+      navigation.goBack();
+    } else {
+      navigation?.navigate('Inicio');
+    }
+  };
+
   return (
-    <SafeAreaView style={estilos.contenedor}>
-      <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
-      <View style={estilos.fondoAbsoluto}>
-        <FondoMobilePremium />
-      </View>
+    <SafeAreaView style={styles.screen}>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <LinearGradient
+        pointerEvents="none"
+        colors={['#FBEDE8', '#F6ECF6', '#FFFDFC']}
+        locations={[0, 0.28, 0.72]}
+        style={styles.ambient}
+      />
 
-      <NavbarEnterprise
-        titulo={t('solicitudesAusencia.title')}
-        subtitulo={t('solicitudesAusencia.nav_subtitle', { defaultValue: 'Gestión y permisos' })}
-        mostrarAtras
-        ocultarAccionesDerechas
-        accionDerecha={
+      {/* Barra Superior */}
+      <View style={styles.topBar}>
+        <BotonAnimado
+          style={styles.backButton}
+          scaleTo={0.96}
+          onPress={manejarRegresar}
+          accessibilityLabel="Regresar"
+        >
+          <Feather name="arrow-left" size={21} color="#202020" />
+        </BotonAnimado>
+
+        <Text style={styles.topBarLabel}>Ausencias</Text>
+
+        <View style={styles.headerActions}>
           <BotonAnimado
+            style={styles.addButton}
+            scaleTo={0.96}
             onPress={abrirFormularioCrear}
-            scaleTo={0.92}
-            style={estilos.botonHeaderNueva}
-            accessibilityLabel={t('solicitudesAusencia.new_request_label', { defaultValue: 'Nueva Solicitud' })}
+            accessibilityLabel="Crear nueva solicitud"
           >
-            <Feather name="plus" size={19} color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
+            <Feather name="plus" size={21} color="#FFFFFF" />
           </BotonAnimado>
-        }
-      />
 
-      {/* Métricas rápidas de cabecera */}
-      <View style={estilos.resumenSuperior}>
-        <BlurView intensity={Platform.OS === 'ios' ? intensidadBlur + 10 : 80} tint={blurTint} style={estilos.resumenVidrio}>
-          <View style={estilos.metricaColumna}>
-            <Text style={estilos.metricaValor}>{solicitudes.length}</Text>
-            <Text style={estilos.metricaLabel}>{t('solicitudesAusencia.summary_total', { defaultValue: 'Total' })}</Text>
-          </View>
-          <View style={estilos.divisorVertical} />
-          <View style={estilos.metricaColumna}>
-            <Text style={[estilos.metricaValor, { color: '#F59E0B' }]}>
-              {solicitudes.filter((s) => s.estado === 'pendiente').length}
-            </Text>
-            <Text style={estilos.metricaLabel}>{t('solicitudesAusencia.summary_pending', { defaultValue: 'Pendientes' })}</Text>
-          </View>
-          <View style={estilos.divisorVertical} />
-          <View style={estilos.metricaColumna}>
-            <Text style={[estilos.metricaValor, { color: '#10B981' }]}>
-              {solicitudes.filter((s) => s.estado === 'aprobada').length}
-            </Text>
-            <Text style={estilos.metricaLabel}>{t('solicitudesAusencia.summary_approved', { defaultValue: 'Aprobadas' })}</Text>
-          </View>
-        </BlurView>
-      </View>
-
-      <Animated.FlatList
-        data={solicitudes}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={estilos.lista}
-        showsVerticalScrollIndicator={false}
-        refreshing={refrescando}
-        onRefresh={manejarRefrescar}
-        ListEmptyComponent={
-          <View style={estilos.emptyWrap}>
-            <EmptyState
-              icono="calendar"
-              titulo={t('solicitudesAusencia.empty_msg')}
-              detalle={t('solicitudesAusencia.empty_detail', { defaultValue: 'No tienes solicitudes registradas actualmente.' })}
-            />
-            <BotonAnimado
-              onPress={abrirFormularioCrear}
-              scaleTo={0.96}
-              style={estilos.botonEmptyCTA}
-            >
-              <Feather name="plus" size={17} color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
-              <Text style={estilos.textoEmptyCTA}>{t('solicitudesAusencia.create_request_label', { defaultValue: 'Crear Solicitud' })}</Text>
-            </BotonAnimado>
-          </View>
-        }
-      />
-
-      {/* Botón flotante inferior permanente para crear solicitud */}
-      {solicitudes.length > 0 && (
-        <View style={estilos.fabContenedor}>
           <BotonAnimado
-            onPress={abrirFormularioCrear}
-            scaleTo={0.95}
-            style={estilos.fabBoton}
-            accessibilityLabel={t('solicitudesAusencia.new_request_label', { defaultValue: 'Nueva Solicitud' })}
+            style={styles.bellButton}
+            scaleTo={0.96}
+            onPress={() => navigation.navigate('ConfiguracionApp')}
+            accessibilityLabel="Abrir configuración"
           >
-            <Feather name="plus" size={18} color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
-            <Text style={estilos.fabTexto}>{t('solicitudesAusencia.new_request_label', { defaultValue: 'Nueva Solicitud' })}</Text>
+            <Feather name="settings" size={20} color="#202020" />
           </BotonAnimado>
         </View>
-      )}
+      </View>
+
+      <Animated.ScrollView
+        style={entranceStyle}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={refresh}
+            tintColor="#202020"
+          />
+        }
+      >
+        {/* Hero Title con la misma tipografía de Mi Pulso */}
+        <Text style={styles.hero}>Tus{'\n'}solicitudes</Text>
+
+        {/* Overview Banner con el estilo de PulseOverviewCard */}
+        {cargando && solicitudes.length === 0 ? (
+          <OverviewSkeleton />
+        ) : (
+          <Animated.View entering={reduceMotion ? undefined : FadeInDown.duration(240).delay(40)}>
+            <SolicitudesOverviewCard
+              total={counts.todas}
+              pendientes={counts.pendiente}
+              aprobadas={counts.aprobada}
+              destacada={solicitudDestacada}
+              onPressNueva={abrirFormularioCrear}
+            />
+          </Animated.View>
+        )}
+
+        {/* Header de Sección para Filtros y Registros */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Historial de tiempo</Text>
+          <BotonAnimado scaleTo={0.97} onPress={abrirFormularioCrear}>
+            <Text style={styles.viewAll}>+ Solicitar</Text>
+          </BotonAnimado>
+        </View>
+
+        {/* Chips de Filtro idénticos a Mi Pulso */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chips}
+        >
+          {(['todas', 'pendiente', 'aprobada', 'rechazada'] as FilterScope[]).map((item) => (
+            <ScopeChip
+              key={item}
+              label={
+                item === 'todas'
+                  ? 'Todas'
+                  : item === 'pendiente'
+                  ? 'Pendientes'
+                  : item === 'aprobada'
+                  ? 'Aprobadas'
+                  : 'Rechazadas'
+              }
+              count={counts[item]}
+              active={scope === item}
+              onPress={() => setScope(item)}
+            />
+          ))}
+        </ScrollView>
+
+        {/* Lista de Solicitudes en tarjetas Bento idénticas a checkinCard */}
+        <Animated.View
+          key={scope}
+          entering={reduceMotion ? undefined : FadeInDown.duration(220)}
+          style={styles.requestList}
+        >
+          {solicitudesFiltradas.length > 0 ? (
+            solicitudesFiltradas.map((item, index) => (
+              <SolicitudCard
+                key={item.id || `${item.fecha_inicio}-${index}`}
+                solicitud={item}
+                onPress={() => {
+                  setSolicitudSeleccionada(item);
+                  setDetalleModalVisible(true);
+                }}
+              />
+            ))
+          ) : (
+            <EmptySolicitudesCard
+              scope={scope}
+              onPress={abrirFormularioCrear}
+            />
+          )}
+        </Animated.View>
+      </Animated.ScrollView>
 
       {/* MODAL DETALLE DE SOLICITUD */}
-      <ModalShell visible={detalleModalVisible} onClose={() => setDetalleModalVisible(false)} style={estilos.modalContenido}>
+      <ModalShell
+        visible={detalleModalVisible}
+        onClose={() => setDetalleModalVisible(false)}
+        maxHeight="92%"
+      >
         {solicitudSeleccionada && (
-          <View style={estilos.flexModal}>
-            <View style={estilos.modalHeader}>
-              <View style={{ flex: 1, marginRight: 10 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                  <View style={estilos.iconoTipoPill}>
-                    <Feather name={ICONOS_CATEGORIA[solicitudSeleccionada.tipo] || 'clock'} size={12} color={colores.texto} />
-                  </View>
-                  <Text style={estilos.tipoSolicitud}>
-                    {t(`solicitudesAusencia.categories.${solicitudSeleccionada.tipo}`, { defaultValue: solicitudSeleccionada.tipo }).toUpperCase()}
+          <View style={styles.modalBody}>
+            {/* Header del Modal */}
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderLeft}>
+                <View style={styles.modalCategoryIcon}>
+                  <Feather
+                    name={
+                      CATEGORIAS.find((c) => c.id === solicitudSeleccionada.tipo)?.icon ||
+                      'calendar'
+                    }
+                    size={16}
+                    color="#202020"
+                  />
+                </View>
+                <View>
+                  <Text style={styles.modalCategoryText}>
+                    {CATEGORIAS.find((c) => c.id === solicitudSeleccionada.tipo)?.label ||
+                      solicitudSeleccionada.tipo.toUpperCase()}
+                  </Text>
+                  <Text style={styles.modalTitle} numberOfLines={1}>
+                    {solicitudSeleccionada.asunto || 'Solicitud de permiso'}
                   </Text>
                 </View>
-                <Text style={estilos.modalTitulo} numberOfLines={2}>
-                  {solicitudSeleccionada.asunto || solicitudSeleccionada.tipo.toUpperCase()}
-                </Text>
               </View>
-              <BotonAnimado onPress={() => setDetalleModalVisible(false)} scaleTo={0.92} style={estilos.botonCerrarModal}>
-                <Feather name="x" size={18} color={colores.texto} />
+
+              <BotonAnimado
+                onPress={() => setDetalleModalVisible(false)}
+                scaleTo={0.92}
+                style={styles.modalCloseButton}
+              >
+                <Feather name="x" size={18} color="#202020" />
               </BotonAnimado>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={estilos.scrollModal}>
-              {/* Card de Resolución y Observación si ya fue aprobada o rechazada */}
-              {(solicitudSeleccionada.estado === 'aprobada' || solicitudSeleccionada.estado === 'rechazada') && (
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.modalScroll}
+            >
+              {/* Card de Resolución si fue aprobada o rechazada */}
+              {(solicitudSeleccionada.estado === 'aprobada' ||
+                solicitudSeleccionada.estado === 'rechazada') && (
                 <View
                   style={[
-                    estilos.detalleSeccionCard,
+                    styles.resolutionCard,
                     solicitudSeleccionada.estado === 'aprobada'
-                      ? estilos.detalleCardResolucionAprobada
-                      : estilos.detalleCardResolucionRechazada,
+                      ? styles.resolutionCardApproved
+                      : styles.resolutionCardRejected,
                   ]}
                 >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <View style={styles.resolutionHeader}>
                     <Feather
-                      name={solicitudSeleccionada.estado === 'aprobada' ? 'check-circle' : 'alert-circle'}
-                      size={18}
-                      color={solicitudSeleccionada.estado === 'aprobada' ? '#10B981' : '#EF4444'}
+                      name={
+                        solicitudSeleccionada.estado === 'aprobada'
+                          ? 'check-circle'
+                          : 'alert-circle'
+                      }
+                      size={17}
+                      color={
+                        solicitudSeleccionada.estado === 'aprobada' ? '#455E24' : '#833932'
+                      }
                     />
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        style={[
-                          estilos.detalleResolucionTitulo,
-                          { color: solicitudSeleccionada.estado === 'aprobada' ? '#10B981' : '#EF4444' },
-                        ]}
-                      >
-                        {solicitudSeleccionada.estado === 'aprobada'
-                          ? t('solicitudesAusencia.resolution_approved_title', { defaultValue: 'Solicitud Aprobada' })
-                          : t('solicitudesAusencia.resolution_rejected_title', { defaultValue: 'Solicitud Rechazada' })}
-                      </Text>
-                      {solicitudSeleccionada.resolved_at && (
-                        <Text style={estilos.detalleResolucionFecha}>
-                          {new Date(solicitudSeleccionada.resolved_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </Text>
-                      )}
-                    </View>
+                    <Text
+                      style={[
+                        styles.resolutionTitle,
+                        {
+                          color:
+                            solicitudSeleccionada.estado === 'aprobada'
+                              ? '#455E24'
+                              : '#833932',
+                        },
+                      ]}
+                    >
+                      {solicitudSeleccionada.estado === 'aprobada'
+                        ? 'Solicitud aprobada'
+                        : 'Solicitud rechazada'}
+                    </Text>
                   </View>
-
-                  <Text style={estilos.detalleLabel}>{t('solicitudesAusencia.resolution_message_label', { defaultValue: 'Mensaje / Observación de Administración' })}</Text>
-                  <Text style={estilos.detalleMotivoTexto}>
+                  <Text style={styles.resolutionBody}>
                     {solicitudSeleccionada.comentario_resolucion ||
                       solicitudSeleccionada.observaciones ||
                       (solicitudSeleccionada.estado === 'aprobada'
-                        ? t('solicitudesAusencia.resolution_default_approved', { defaultValue: 'Tu solicitud ha sido aprobada exitosamente.' })
-                        : t('solicitudesAusencia.resolution_default_rejected', { defaultValue: 'Tu solicitud ha sido rechazada por administración.' }))}
+                        ? 'Tu solicitud ha sido aprobada por administración.'
+                        : 'Tu solicitud no pudo ser aprobada en esta ocasión.')}
                   </Text>
                 </View>
               )}
 
-              {/* Estado */}
-              <View style={estilos.detalleSeccionCard}>
-                <Text style={estilos.detalleLabel}>{t('solicitudesAusencia.detail_status_label', { defaultValue: 'Estado actual' })}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-                  <View style={[estilos.badgeEstado, { backgroundColor: obtenerColorEstado(solicitudSeleccionada.estado) + '18', borderColor: obtenerColorEstado(solicitudSeleccionada.estado) + '40' }]}>
-                    <Text style={[estilos.textoBadge, { color: obtenerColorEstado(solicitudSeleccionada.estado) }]}>
-                      {t(`common.${solicitudSeleccionada.estado}`, { defaultValue: solicitudSeleccionada.estado }).toUpperCase()}
+              {/* Estado y Prioridad */}
+              <View style={styles.detailSectionCard}>
+                <Text style={styles.detailLabel}>Estado actual</Text>
+                <View style={styles.detailStatusRow}>
+                  <View
+                    style={[
+                      styles.statusPill,
+                      { backgroundColor: getStatusTheme(solicitudSeleccionada.estado).bg },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.statusDot,
+                        { backgroundColor: getStatusTheme(solicitudSeleccionada.estado).dot },
+                      ]}
+                    />
+                    <Text
+                      style={[
+                        styles.statusText,
+                        { color: getStatusTheme(solicitudSeleccionada.estado).text },
+                      ]}
+                    >
+                      {getStatusTheme(solicitudSeleccionada.estado).label}
                     </Text>
                   </View>
-                  <View style={estilos.prioridadPill}>
-                    <View style={[estilos.puntoPrioridadMini, { backgroundColor: COLORES_PRIORIDAD[solicitudSeleccionada.prioridad || 'media'] }]} />
-                    <Text style={estilos.textoPrioridadMini}>
-                      {t('solicitudesAusencia.detail_priority_label', { priority: t(`solicitudesAusencia.priorities.${solicitudSeleccionada.prioridad || 'media'}`), defaultValue: `Prioridad ${t(`solicitudesAusencia.priorities.${solicitudSeleccionada.prioridad || 'media'}`)}` })}
+
+                  <View style={styles.detailPriorityPill}>
+                    <View
+                      style={[
+                        styles.priorityDot,
+                        {
+                          backgroundColor:
+                            PRIORIDADES.find((p) => p.id === solicitudSeleccionada.prioridad)
+                              ?.dotColor || '#E9D2BF',
+                        },
+                      ]}
+                    />
+                    <Text style={styles.detailPriorityText}>
+                      Prioridad{' '}
+                      {PRIORIDADES.find((p) => p.id === solicitudSeleccionada.prioridad)
+                        ?.label || 'Media'}
                     </Text>
                   </View>
                 </View>
               </View>
 
               {/* Rango de Fechas */}
-              <View style={estilos.detalleSeccionCard}>
-                <Text style={estilos.detalleLabel}>{t('solicitudesAusencia.detail_period_label', { defaultValue: 'Período de Ausencia' })}</Text>
-                <View style={estilos.detalleFilaFechas}>
-                  <View style={estilos.detalleFechaBox}>
-                    <Text style={estilos.detalleFechaBoxLabel}>{t('solicitudesAusencia.detail_from_label', { defaultValue: 'Desde' })}</Text>
-                    <Text style={estilos.detalleFechaBoxValor}>{solicitudSeleccionada.fecha_inicio}</Text>
+              <View style={styles.detailSectionCard}>
+                <Text style={styles.detailLabel}>Período de ausencia</Text>
+                <View style={styles.detailPeriodRow}>
+                  <View style={styles.detailDateBox}>
+                    <Text style={styles.detailDateBoxLabel}>Desde</Text>
+                    <Text style={styles.detailDateBoxValue}>
+                      {solicitudSeleccionada.fecha_inicio}
+                    </Text>
                   </View>
-                  <Feather name="arrow-right" size={16} color={colores.textoSuave} />
-                  <View style={estilos.detalleFechaBox}>
-                    <Text style={estilos.detalleFechaBoxLabel}>{t('solicitudesAusencia.detail_to_label', { defaultValue: 'Hasta' })}</Text>
-                    <Text style={estilos.detalleFechaBoxValor}>{solicitudSeleccionada.fecha_fin}</Text>
+                  <Feather name="arrow-right" size={16} color="#86807D" />
+                  <View style={styles.detailDateBox}>
+                    <Text style={styles.detailDateBoxLabel}>Hasta</Text>
+                    <Text style={styles.detailDateBoxValue}>
+                      {solicitudSeleccionada.fecha_fin}
+                    </Text>
                   </View>
                 </View>
               </View>
 
               {/* Justificación */}
-              <View style={estilos.detalleSeccionCard}>
-                <Text style={estilos.detalleLabel}>{t('solicitudesAusencia.detail_justification_label', { defaultValue: 'Justificación' })}</Text>
-                <Text style={estilos.detalleMotivoTexto}>
-                  {solicitudSeleccionada.motivo || t('solicitudesAusencia.detail_no_justification', { defaultValue: 'Sin justificación adicional.' })}
+              <View style={styles.detailSectionCard}>
+                <Text style={styles.detailLabel}>Justificación</Text>
+                <Text style={styles.detailJustificationText}>
+                  {solicitudSeleccionada.motivo || 'Sin justificación adicional.'}
                 </Text>
               </View>
 
-              {/* Archivos Adjuntos */}
-              {((solicitudSeleccionada.archivos_adjuntos && solicitudSeleccionada.archivos_adjuntos.length > 0) || solicitudSeleccionada.archivo_adjunto) && (
-                <View style={estilos.detalleSeccionCard}>
-                  <Text style={estilos.detalleLabel}>{t('solicitudesAusencia.detail_attachments_label', { defaultValue: 'Comprobantes / Archivos Adjuntos' })}</Text>
-                  <View style={{ gap: 8, marginTop: 8 }}>
+              {/* Comprobantes y Adjuntos */}
+              {((solicitudSeleccionada.archivos_adjuntos &&
+                solicitudSeleccionada.archivos_adjuntos.length > 0) ||
+                solicitudSeleccionada.archivo_adjunto) && (
+                <View style={styles.detailSectionCard}>
+                  <Text style={styles.detailLabel}>Comprobantes adjuntos</Text>
+                  <View style={styles.attachmentsList}>
                     {solicitudSeleccionada.archivos_adjuntos?.map((adj, i) => (
-                      <View key={adj.id || `adj-${i}`} style={estilos.cardAdjuntoPreview}>
+                      <TouchableOpacity
+                        key={adj.id || `adj-${i}`}
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          if (adj.uri) Linking.openURL(adj.uri).catch(() => {});
+                        }}
+                        style={styles.attachmentPreviewItem}
+                      >
                         {adj.tipo === 'imagen' ? (
-                          <Image source={{ uri: adj.uri }} style={estilos.thumbAdjunto} />
+                          <Image source={{ uri: adj.uri }} style={styles.attachmentThumb} />
                         ) : (
-                          <View style={estilos.iconoDocWrap}>
-                            <Feather name="file-text" size={20} color={esOscuro ? '#FFFFFF' : '#0F172A'} />
+                          <View style={styles.attachmentDocIcon}>
+                            <Feather name="file-text" size={18} color="#202020" />
                           </View>
                         )}
-                        <View style={estilos.infoAdjunto}>
-                          <Text style={estilos.nombreAdjunto} numberOfLines={1}>{adj.nombre}</Text>
-                          <Text style={estilos.subAdjunto}>{adj.tipo === 'imagen' ? t('solicitudesAusencia.attachment_type_photo', { defaultValue: 'Foto adjunta' }) : t('solicitudesAusencia.attachment_type_document', { defaultValue: 'Documento adjunto' })}</Text>
+                        <View style={styles.attachmentMeta}>
+                          <Text style={styles.attachmentName} numberOfLines={1}>
+                            {adj.nombre}
+                          </Text>
+                          <Text style={styles.attachmentSub}>
+                            {adj.tipo === 'imagen' ? 'Foto adjunta' : 'Documento'}
+                          </Text>
                         </View>
-                      </View>
+                        <Feather name="external-link" size={15} color="#86807D" />
+                      </TouchableOpacity>
                     ))}
-                    {!solicitudSeleccionada.archivos_adjuntos?.length && solicitudSeleccionada.archivo_adjunto && (
-                      <View style={estilos.cardAdjuntoPreview}>
-                        <View style={estilos.iconoDocWrap}>
-                          <Feather name="file-text" size={20} color={esOscuro ? '#FFFFFF' : '#0F172A'} />
-                        </View>
-                        <View style={estilos.infoAdjunto}>
-                          <Text style={estilos.nombreAdjunto} numberOfLines={1}>{t('solicitudesAusencia.generic_attachment_name', { defaultValue: 'Archivo adjunto' })}</Text>
-                          <Text style={estilos.subAdjunto}>{t('solicitudesAusencia.attachment_generic_sub', { defaultValue: 'Comprobante cargado' })}</Text>
-                        </View>
-                      </View>
-                    )}
+                    {!solicitudSeleccionada.archivos_adjuntos?.length &&
+                      solicitudSeleccionada.archivo_adjunto && (
+                        <TouchableOpacity
+                          activeOpacity={0.8}
+                          onPress={() => {
+                            if (solicitudSeleccionada.archivo_adjunto)
+                              Linking.openURL(solicitudSeleccionada.archivo_adjunto).catch(() => {});
+                          }}
+                          style={styles.attachmentPreviewItem}
+                        >
+                          <View style={styles.attachmentDocIcon}>
+                            <Feather name="file-text" size={18} color="#202020" />
+                          </View>
+                          <View style={styles.attachmentMeta}>
+                            <Text style={styles.attachmentName} numberOfLines={1}>
+                              Comprobante adjunto
+                            </Text>
+                            <Text style={styles.attachmentSub}>Toca para abrir</Text>
+                          </View>
+                          <Feather name="external-link" size={15} color="#86807D" />
+                        </TouchableOpacity>
+                      )}
                   </View>
                 </View>
               )}
 
-              {/* Acciones de Edición y Cancelación (si está pendiente) */}
+              {/* Acciones de Edición y Cancelación */}
               {solicitudSeleccionada.estado === 'pendiente' && (
-                <View style={estilos.filaAccionesDetalle}>
+                <View style={styles.detailActionsRow}>
                   <BotonAnimado
                     onPress={() => abrirFormularioEditar(solicitudSeleccionada)}
-                    scaleTo={0.96}
-                    style={estilos.botonEditarDetalle}
+                    scaleTo={0.97}
+                    style={styles.editButton}
                   >
-                    <Feather name="edit-3" size={16} color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
-                    <Text style={estilos.textoBotonEditarDetalle}>{t('solicitudesAusencia.edit_request_button', { defaultValue: 'Editar Solicitud' })}</Text>
+                    <Feather name="edit-3" size={16} color="#FFFFFF" />
+                    <Text style={styles.editButtonText}>Editar</Text>
                   </BotonAnimado>
 
                   <BotonAnimado
                     onPress={() => manejarCancelarSolicitud(solicitudSeleccionada)}
-                    scaleTo={0.96}
-                    style={estilos.botonCancelarDetalle}
+                    scaleTo={0.97}
+                    style={styles.cancelButton}
                   >
-                    <Feather name="trash-2" size={16} color="#EF4444" />
-                    <Text style={estilos.textoBotonCancelarDetalle}>{t('solicitudesAusencia.cancel_button', { defaultValue: 'Cancelar' })}</Text>
+                    <Feather name="trash-2" size={16} color="#833932" />
+                    <Text style={styles.cancelButtonText}>Cancelar</Text>
                   </BotonAnimado>
                 </View>
               )}
@@ -748,63 +864,86 @@ export default function SolicitudesAusencia({ navigation }: Props) {
       </ModalShell>
 
       {/* MODAL CREAR / EDITAR SOLICITUD */}
-      <ModalShell visible={modalFormVisible} onClose={() => setModalFormVisible(false)} style={estilos.modalContenido}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={estilos.flexModal}>
-          <View style={estilos.modalHeader}>
+      <ModalShell
+        visible={modalFormVisible}
+        onClose={() => setModalFormVisible(false)}
+        maxHeight="92%"
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalBody}
+        >
+          {/* Header Modal Form */}
+          <View style={styles.modalHeader}>
             <View>
-              <Text style={estilos.modalTitulo}>
-                {solicitudEditando ? t('solicitudesAusencia.edit_request_button', { defaultValue: 'Editar Solicitud' }) : t('solicitudesAusencia.modal_title')}
+              <Text style={styles.modalCategoryText}>
+                {solicitudEditando ? 'MODIFICAR' : 'NUEVA SOLICITUD'}
               </Text>
-              <Text style={estilos.modalSubtitulo}>
-                {solicitudEditando ? t('solicitudesAusencia.modal_subtitle_edit', { defaultValue: 'Modifica las fechas o detalles' }) : t('solicitudesAusencia.modal_subtitle_create', { defaultValue: 'Registra tus fechas y motivo' })}
+              <Text style={styles.modalTitle}>
+                {solicitudEditando ? 'Editar solicitud' : 'Solicitar ausencia'}
               </Text>
             </View>
-            <BotonAnimado onPress={() => setModalFormVisible(false)} scaleTo={0.92} style={estilos.botonCerrarModal}>
-              <Feather name="x" size={18} color={colores.texto} />
+
+            <BotonAnimado
+              onPress={() => setModalFormVisible(false)}
+              scaleTo={0.92}
+              style={styles.modalCloseButton}
+            >
+              <Feather name="x" size={18} color="#202020" />
             </BotonAnimado>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={estilos.scrollModal}>
-            {/* Asunto */}
-            <Text style={estilos.label}>{t('solicitudesAusencia.label_subject')}</Text>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.modalScroll}
+          >
+            {/* Título o Asunto */}
+            <Text style={styles.formLabel}>Asunto o título</Text>
             <TextInput
-              style={estilos.input}
-              placeholder={t('solicitudesAusencia.placeholder_subject')}
-              placeholderTextColor={colores.textoSuave}
+              style={styles.formInput}
+              placeholder="Ej. Vacaciones de verano, Cita médica..."
+              placeholderTextColor="#9E9893"
               value={asunto}
               onChangeText={setAsunto}
             />
 
-            {/* Categoría */}
-            <Text style={estilos.label}>{t('solicitudesAusencia.label_category')}</Text>
-            <View style={estilos.gridTipos}>
-              {categorias.map((cat) => {
-                const activo = tipo === cat.id;
+            {/* Categorías */}
+            <Text style={styles.formLabel}>Motivo principal</Text>
+            <View style={styles.categoriesGrid}>
+              {CATEGORIAS.map((cat) => {
+                const active = tipo === cat.id;
                 return (
                   <BotonAnimado
                     key={cat.id}
                     onPress={() => setTipo(cat.id)}
-                    scaleTo={0.94}
-                    style={[estilos.chipTipo, activo && estilos.chipTipoActivo]}
+                    scaleTo={0.95}
+                    style={[styles.categoryChip, active && styles.categoryChipActive]}
                   >
                     <Feather
-                      name={ICONOS_CATEGORIA[cat.id] || 'clock'}
-                      size={13}
-                      color={activo ? (esOscuro ? '#0B0C1E' : '#FFFFFF') : colores.textoSuave}
+                      name={cat.icon}
+                      size={14}
+                      color={active ? '#FFFFFF' : '#544F4B'}
                     />
-                    <Text style={[estilos.textoChip, activo && estilos.textoChipActivo]}>{cat.label}</Text>
+                    <Text
+                      style={[
+                        styles.categoryChipLabel,
+                        active && styles.categoryChipLabelActive,
+                      ]}
+                    >
+                      {cat.label}
+                    </Text>
                   </BotonAnimado>
                 );
               })}
             </View>
 
-            {/* Selector de Rango de Fechas con Calendario Interactivo */}
-            <View style={estilos.seccionFechasHeader}>
-              <Text style={estilos.labelSinMargin}>{t('solicitudesAusencia.label_dates_section', { defaultValue: 'Fechas de Ausencia' })}</Text>
+            {/* Selector de Rango de Fechas */}
+            <View style={styles.dateHeaderRow}>
+              <Text style={styles.formLabelNoMargin}>Período de fechas</Text>
               {diasSeleccionadosCount > 0 && (
-                <View style={estilos.badgeDiasCount}>
-                  <Text style={estilos.textoDiasCount}>
-                    {t('solicitudesAusencia.days_count', { count: diasSeleccionadosCount, defaultValue: `${diasSeleccionadosCount} ${diasSeleccionadosCount === 1 ? 'día' : 'días'}` })}
+                <View style={styles.daysCountPill}>
+                  <Text style={styles.daysCountText}>
+                    {diasSeleccionadosCount} {diasSeleccionadosCount === 1 ? 'día' : 'días'}
                   </Text>
                 </View>
               )}
@@ -813,159 +952,184 @@ export default function SolicitudesAusencia({ navigation }: Props) {
             <BotonAnimado
               onPress={() => setCalendarioAbierto(!calendarioAbierto)}
               scaleTo={0.98}
-              style={[estilos.cardRangoFechas, calendarioAbierto && estilos.cardRangoFechasAbierto]}
+              style={[
+                styles.dateRangePickerCard,
+                calendarioAbierto && styles.dateRangePickerCardActive,
+              ]}
             >
-              <View style={estilos.fechaSlot}>
-                <Text style={estilos.fechaSlotLabel}>{t('solicitudesAusencia.label_start_date')}</Text>
-                <View style={estilos.fechaSlotValorWrap}>
-                  <Feather name="calendar" size={14} color={colores.textoSuave} />
-                  <Text style={[estilos.fechaSlotValor, !fechaInicio && { color: colores.textoSuave }]}>
-                    {fechaInicio || t('solicitudesAusencia.select_placeholder', { defaultValue: 'Seleccionar' })}
+              <View style={styles.dateSlot}>
+                <Text style={styles.dateSlotLabel}>Inicio</Text>
+                <View style={styles.dateSlotValueWrap}>
+                  <Feather name="calendar" size={14} color="#78736F" />
+                  <Text
+                    style={[
+                      styles.dateSlotValue,
+                      !fechaInicio && { color: '#9E9893' },
+                    ]}
+                  >
+                    {fechaInicio || 'Seleccionar'}
                   </Text>
                 </View>
               </View>
 
-              <Feather name="arrow-right" size={16} color={colores.textoSuave} />
+              <Feather name="arrow-right" size={16} color="#86807D" />
 
-              <View style={estilos.fechaSlot}>
-                <Text style={estilos.fechaSlotLabel}>{t('solicitudesAusencia.label_end_date')}</Text>
-                <View style={estilos.fechaSlotValorWrap}>
-                  <Feather name="calendar" size={14} color={colores.textoSuave} />
-                  <Text style={[estilos.fechaSlotValor, !fechaFin && { color: colores.textoSuave }]}>
-                    {fechaFin || t('solicitudesAusencia.select_placeholder', { defaultValue: 'Seleccionar' })}
+              <View style={styles.dateSlot}>
+                <Text style={styles.dateSlotLabel}>Fin</Text>
+                <View style={styles.dateSlotValueWrap}>
+                  <Feather name="calendar" size={14} color="#78736F" />
+                  <Text
+                    style={[
+                      styles.dateSlotValue,
+                      !fechaFin && { color: '#9E9893' },
+                    ]}
+                  >
+                    {fechaFin || 'Seleccionar'}
                   </Text>
                 </View>
               </View>
             </BotonAnimado>
 
-            {/* Calendario visual embebido interactivo */}
+            {/* Calendario Embebido Interactivo */}
             {calendarioAbierto && (
-              <Animated.View entering={FadeInDown.duration(260)} style={estilos.calendarioContainer}>
-                <BlurView intensity={Platform.OS === 'ios' ? intensidadBlur + 10 : 80} tint={blurTint} style={estilos.calendarioVidrio}>
-                  {/* Cabecera del Calendario */}
-                  <View style={estilos.calHeader}>
-                    <BotonAnimado onPress={() => cambiarMesCal(-1)} scaleTo={0.88} style={estilos.calBotonNav}>
-                      <Feather name="chevron-left" size={18} color={colores.texto} />
-                    </BotonAnimado>
-                    <Text style={estilos.calMesTitulo}>
-                      {NOMBRES_MESES[calMes]} {calAnio}
+              <Animated.View
+                entering={FadeInDown.duration(240)}
+                style={styles.calendarContainer}
+              >
+                {/* Cabecera del Mes */}
+                <View style={styles.calHeader}>
+                  <BotonAnimado
+                    onPress={() => cambiarMesCal(-1)}
+                    scaleTo={0.88}
+                    style={styles.calNavBtn}
+                  >
+                    <Feather name="chevron-left" size={18} color="#202020" />
+                  </BotonAnimado>
+                  <Text style={styles.calMonthTitle}>
+                    {NOMBRES_MESES[calMes]} {calAnio}
+                  </Text>
+                  <BotonAnimado
+                    onPress={() => cambiarMesCal(1)}
+                    scaleTo={0.88}
+                    style={styles.calNavBtn}
+                  >
+                    <Feather name="chevron-right" size={18} color="#202020" />
+                  </BotonAnimado>
+                </View>
+
+                {/* Días de la Semana */}
+                <View style={styles.calWeekRow}>
+                  {DIAS_SEMANA.map((d) => (
+                    <Text key={d} style={styles.calWeekDay}>
+                      {d}
                     </Text>
-                    <BotonAnimado onPress={() => cambiarMesCal(1)} scaleTo={0.88} style={estilos.calBotonNav}>
-                      <Feather name="chevron-right" size={18} color={colores.texto} />
-                    </BotonAnimado>
-                  </View>
+                  ))}
+                </View>
 
-                  {/* Días de la semana */}
-                  <View style={estilos.calSemanaFila}>
-                    {DIAS_SEMANA.map((d) => (
-                      <Text key={d} style={estilos.calSemanaLetra}>
-                        {d}
-                      </Text>
-                    ))}
-                  </View>
+                {/* Cuadrícula de Días */}
+                <View style={styles.calDaysGrid}>
+                  {diasEnMes.map((dia, idx) => {
+                    if (dia === 0) {
+                      return <View key={`empty-${idx}`} style={styles.calDayEmpty} />;
+                    }
 
-                  {/* Cuadrícula de días */}
-                  <View style={estilos.calGridDias}>
-                    {diasEnMes.map((dia, idx) => {
-                      if (dia === 0) {
-                        return <View key={`empty-${idx}`} style={estilos.calDiaVacio} />;
-                      }
+                    const fechaDia = formatearFecha(calAnio, calMes, dia);
+                    const esInicio = fechaDia === fechaInicio;
+                    const esFin = fechaDia === fechaFin;
+                    const enRango =
+                      fechaInicio && fechaFin && fechaDia > fechaInicio && fechaDia < fechaFin;
+                    const esHoy =
+                      fechaDia ===
+                      formatearFecha(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
 
-                      const fechaDia = formatearFecha(calAnio, calMes, dia);
-                      const esInicio = fechaDia === fechaInicio;
-                      const esFin = fechaDia === fechaFin;
-                      const enRango = fechaInicio && fechaFin && fechaDia > fechaInicio && fechaDia < fechaFin;
-                      const esHoy = fechaDia === formatearFecha(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
-
-                      return (
-                        <TouchableOpacity
-                          key={`day-${dia}`}
-                          onPress={() => seleccionarDiaCalendario(dia)}
-                          activeOpacity={0.7}
+                    return (
+                      <TouchableOpacity
+                        key={`day-${dia}`}
+                        onPress={() => seleccionarDiaCalendario(dia)}
+                        activeOpacity={0.7}
+                        style={[
+                          styles.calDayBtn,
+                          enRango && styles.calDayInRange,
+                          (esInicio || esFin) && styles.calDayEdge,
+                        ]}
+                      >
+                        <Text
                           style={[
-                            estilos.calDiaBoton,
-                            enRango && estilos.calDiaEnRango,
-                            (esInicio || esFin) && estilos.calDiaExtremo,
+                            styles.calDayText,
+                            esHoy && styles.calDayTodayText,
+                            enRango && styles.calDayInRangeText,
+                            (esInicio || esFin) && styles.calDayEdgeText,
                           ]}
                         >
-                          <Text
-                            style={[
-                              estilos.calDiaTexto,
-                              esHoy && estilos.calDiaHoyTexto,
-                              enRango && estilos.calDiaEnRangoTexto,
-                              (esInicio || esFin) && estilos.calDiaExtremoTexto,
-                            ]}
-                          >
-                            {dia}
-                          </Text>
-                          {esHoy && !(esInicio || esFin) && <View style={estilos.calPuntoHoy} />}
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
+                          {dia}
+                        </Text>
+                        {esHoy && !(esInicio || esFin) && <View style={styles.calTodayDot} />}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
 
-                  {/* Botón rápido para confirmar selección de fechas */}
-                  <BotonAnimado
-                    onPress={() => setCalendarioAbierto(false)}
-                    scaleTo={0.96}
-                    style={estilos.calBotonConfirmar}
-                  >
-                    <Text style={estilos.calBotonConfirmarTexto}>{t('solicitudesAusencia.apply_dates_button', { defaultValue: 'Aplicar fechas' })}</Text>
-                  </BotonAnimado>
-                </BlurView>
+                {/* Botón Aplicar */}
+                <BotonAnimado
+                  onPress={() => setCalendarioAbierto(false)}
+                  scaleTo={0.96}
+                  style={styles.calApplyBtn}
+                >
+                  <Text style={styles.calApplyBtnText}>Aplicar selección</Text>
+                </BotonAnimado>
               </Animated.View>
             )}
 
-            {/* Justificación (Opcional) */}
-            <View style={estilos.seccionJustificacionHeader}>
-              <Text style={estilos.labelSinMargin}>{t('solicitudesAusencia.label_justification')}</Text>
-              <View style={estilos.badgeOpcional}>
-                <Text style={estilos.textoBadgeOpcional}>{t('solicitudesAusencia.optional_badge', { defaultValue: 'Opcional' })}</Text>
-              </View>
+            {/* Justificación */}
+            <View style={styles.dateHeaderRow}>
+              <Text style={styles.formLabelNoMargin}>Justificación o notas</Text>
+              <Text style={styles.optionalBadge}>Opcional</Text>
             </View>
             <TextInput
-              style={[estilos.input, estilos.textArea]}
-              placeholder={t('solicitudesAusencia.placeholder_justification', { defaultValue: 'Explica el motivo (opcional)...' })}
-              placeholderTextColor={colores.textoSuave}
+              style={[styles.formInput, styles.textArea]}
+              placeholder="Escribe detalles adicionales sobre tu solicitud..."
+              placeholderTextColor="#9E9893"
               multiline
-              numberOfLines={4}
+              numberOfLines={3}
               value={motivo}
               onChangeText={setMotivo}
             />
 
-            {/* Adjuntar Archivos Múltiples / Comprobantes */}
-            <View style={estilos.seccionAdjuntoHeader}>
-              <Text style={estilos.labelSinMargin}>{t('solicitudesAusencia.label_attachments_section', { defaultValue: 'Comprobantes o Archivos' })}</Text>
-              <View style={estilos.badgeOpcional}>
-                <Text style={estilos.textoBadgeOpcional}>{t('solicitudesAusencia.optional_badge', { defaultValue: 'Opcional' })}</Text>
-              </View>
+            {/* Comprobantes Adjuntos */}
+            <View style={styles.dateHeaderRow}>
+              <Text style={styles.formLabelNoMargin}>Comprobantes o fotos</Text>
+              <Text style={styles.optionalBadge}>Opcional</Text>
             </View>
 
             {adjuntos.length > 0 && (
-              <View style={{ gap: 8, marginBottom: 8 }}>
+              <View style={styles.attachmentsList}>
                 {adjuntos.map((adj) => (
-                  <Animated.View key={adj.id} entering={FadeInDown.duration(220)} style={estilos.cardAdjuntoPreview}>
+                  <Animated.View
+                    key={adj.id}
+                    entering={FadeInDown.duration(200)}
+                    style={styles.attachmentFormItem}
+                  >
                     {adj.tipo === 'imagen' ? (
-                      <Image source={{ uri: adj.uri }} style={estilos.thumbAdjunto} />
+                      <Image source={{ uri: adj.uri }} style={styles.attachmentThumb} />
                     ) : (
-                      <View style={estilos.iconoDocWrap}>
-                        <Feather name="file-text" size={20} color={esOscuro ? '#FFFFFF' : '#0F172A'} />
+                      <View style={styles.attachmentDocIcon}>
+                        <Feather name="file-text" size={18} color="#202020" />
                       </View>
                     )}
-                    <View style={estilos.infoAdjunto}>
-                      <Text style={estilos.nombreAdjunto} numberOfLines={1}>
+                    <View style={styles.attachmentMeta}>
+                      <Text style={styles.attachmentName} numberOfLines={1}>
                         {adj.nombre}
                       </Text>
-                      <Text style={estilos.subAdjunto}>
-                        {adj.tipo === 'imagen' ? t('solicitudesAusencia.attachment_type_photo', { defaultValue: 'Foto adjunta' }) : t('solicitudesAusencia.attachment_type_document', { defaultValue: 'Documento adjunto' })}
+                      <Text style={styles.attachmentSub}>
+                        {adj.tipo === 'imagen' ? 'Foto adjunta' : 'Documento cargado'}
                       </Text>
                     </View>
                     <BotonAnimado
                       onPress={() => eliminarAdjunto(adj.id)}
                       scaleTo={0.9}
-                      style={estilos.botonQuitarAdjunto}
+                      style={styles.removeAttachmentBtn}
                     >
-                      <Feather name="trash-2" size={16} color="#EF4444" />
+                      <Feather name="trash-2" size={15} color="#833932" />
                     </BotonAnimado>
                   </Animated.View>
                 ))}
@@ -975,55 +1139,61 @@ export default function SolicitudesAusencia({ navigation }: Props) {
             <BotonAnimado
               onPress={mostrarOpcionesAdjunto}
               scaleTo={0.97}
-              style={estilos.botonAdjuntar}
+              style={styles.attachButton}
             >
-              <View style={estilos.iconoAdjuntarWrap}>
-                <Feather name="paperclip" size={16} color={colores.texto} />
+              <View style={styles.attachIconWrap}>
+                <Feather name="paperclip" size={16} color="#202020" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={estilos.textoAdjuntarTitulo}>
-                  {adjuntos.length > 0 ? t('solicitudesAusencia.attach_button_add_another', { defaultValue: '+ Adjuntar otro archivo o foto' }) : t('solicitudesAusencia.attach_button_add', { defaultValue: 'Adjuntar documento o foto' })}
+                <Text style={styles.attachTitle}>
+                  {adjuntos.length > 0 ? '+ Adjuntar otro archivo' : 'Adjuntar documento o foto'}
                 </Text>
-                <Text style={estilos.textoAdjuntarSub}>{t('solicitudesAusencia.attach_button_sub', { defaultValue: 'Archivos PDF, Word, fotos de galería o cámara' })}</Text>
+                <Text style={styles.attachSub}>Formatos PDF, Word, fotos de cámara o galería</Text>
               </View>
-              <Feather name="file-plus" size={18} color={colores.textoSuave} />
+              <Feather name="plus" size={17} color="#78736F" />
             </BotonAnimado>
 
             {/* Prioridad */}
-            <Text style={estilos.label}>{t('solicitudesAusencia.label_priority')}</Text>
-            <View style={estilos.filaPrioridad}>
-              {prioridades.map((p) => {
-                const activo = prioridad === p.id;
-                const dotColor = COLORES_PRIORIDAD[p.id];
+            <Text style={styles.formLabel}>Nivel de prioridad</Text>
+            <View style={styles.priorityGrid}>
+              {PRIORIDADES.map((p) => {
+                const active = prioridad === p.id;
                 return (
                   <BotonAnimado
                     key={p.id}
                     onPress={() => setPrioridad(p.id)}
                     scaleTo={0.95}
-                    style={[estilos.chipPrioridad, activo && estilos.chipPrioridadActivo]}
+                    style={[styles.priorityChip, active && styles.priorityChipActive]}
                   >
-                    <View style={[estilos.puntoPrioridad, { backgroundColor: dotColor }]} />
-                    <Text style={[estilos.textoChipP, activo && estilos.textoChipPActivo]}>{p.label}</Text>
+                    <View style={[styles.priorityDot, { backgroundColor: p.dotColor }]} />
+                    <Text
+                      style={[
+                        styles.priorityChipText,
+                        active && styles.priorityChipTextActive,
+                      ]}
+                    >
+                      {p.label}
+                    </Text>
                   </BotonAnimado>
                 );
               })}
             </View>
 
-            {/* Botón Enviar / Guardar */}
+            {/* Botón Guardar / Enviar */}
             <BotonAnimado
-              style={[estilos.botonEnviar, enviando && { opacity: 0.6 }]}
+              style={[styles.submitButton, enviando && { opacity: 0.6 }]}
               onPress={manejarGuardarSolicitud}
-              scaleTo={0.96}
+              scaleTo={0.97}
               disabled={enviando}
             >
               {enviando ? (
-                <ActivityIndicator color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
+                <ActivityIndicator color="#FFFFFF" />
               ) : (
                 <>
-                  <Text style={estilos.textoBotonEnviar}>
-                    {solicitudEditando ? t('solicitudesAusencia.btn_submit_edit', { defaultValue: 'Guardar Cambios' }) : t('solicitudesAusencia.btn_submit')}
+                  <Text style={styles.submitButtonText}>
+                    {solicitudEditando ? 'Guardar cambios' : 'Enviar solicitud'}
                   </Text>
-                  <Feather name="check" size={17} color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
+                  <Feather name="check" size={17} color="#FFFFFF" />
                 </>
               )}
             </BotonAnimado>
@@ -1034,515 +1204,1099 @@ export default function SolicitudesAusencia({ navigation }: Props) {
   );
 }
 
-function crearEstilosSolicAus(c: any, esOscuro: boolean) {
-  const glassMini = c.vidrioSutil;
-  const inputBg = esOscuro ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.9)';
-  const activeSurface = esOscuro ? 'rgba(255,255,255,0.14)' : 'rgba(15,23,42,0.06)';
-  const activeBorder = esOscuro ? 'rgba(255,255,255,0.32)' : 'rgba(15,23,42,0.22)';
-  const modalBg = esOscuro ? 'rgba(11,12,30,0.96)' : 'rgba(248,250,252,0.97)';
-
-  return StyleSheet.create({
-    contenedor: { flex: 1, backgroundColor: c.fondo },
-    fondoAbsoluto: { ...StyleSheet.absoluteFill, zIndex: -1, overflow: 'hidden' },
-
-    botonHeaderNueva: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      backgroundColor: esOscuro ? '#FFFFFF' : '#0F172A',
-      alignItems: 'center',
-      justifyContent: 'center',
-      ...SOMBRAS.suave,
-    },
-
-    resumenSuperior: {
-      paddingHorizontal: ESPACIADO.md,
-      marginTop: ESPACIADO.sm,
-      marginBottom: ESPACIADO.sm,
-    },
-    resumenVidrio: {
-      height: 64,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: c.borde,
-      backgroundColor: c.superficie,
-      overflow: 'hidden',
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-around',
-      paddingHorizontal: 12,
-      ...SOMBRAS.suave,
-    },
-    metricaColumna: { alignItems: 'center', flex: 1 },
-    metricaValor: { fontSize: 18, fontWeight: '800', color: c.texto, letterSpacing: -0.3 },
-    metricaLabel: { fontSize: 11, fontWeight: '600', color: c.textoSuave, marginTop: 1 },
-    divisorVertical: { width: 1, height: 24, backgroundColor: c.borde },
-
-    lista: { paddingHorizontal: ESPACIADO.md, paddingBottom: 110, gap: 12 },
-    bentoCard: {
-      borderRadius: 22,
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: c.borde,
-      backgroundColor: c.superficie,
-      ...SOMBRAS.suave,
-    },
-    bentoContent: { padding: 16 },
-    headerTarjeta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
-    infoBasica: { flex: 1, marginRight: 10 },
-    filaTipo: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
-    iconoTipoPill: {
-      width: 22,
-      height: 22,
-      borderRadius: 11,
-      backgroundColor: glassMini,
-      borderWidth: 1,
-      borderColor: c.borde,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    tipoSolicitud: { fontSize: 10, fontWeight: '800', color: c.textoSuave, letterSpacing: 0.4 },
-    asuntoSolicitud: { fontSize: 16, fontWeight: '800', color: c.texto, letterSpacing: -0.2 },
-    badgeEstado: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: RADIOS.completo, borderWidth: 1 },
-    textoBadge: { fontSize: 10, fontWeight: '800', letterSpacing: 0.3 },
-    motivoSolicitud: { fontSize: 13, color: c.textoSecundario, lineHeight: 18, marginBottom: 4 },
-    divisorHorizontal: { height: 1, backgroundColor: c.borde, marginVertical: 10 },
-    footerCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    fechasSolicitud: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    textoFechas: { fontSize: 12, color: c.textoSuave, fontWeight: '600' },
-    prioridadPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, backgroundColor: glassMini },
-    puntoPrioridadMini: { width: 6, height: 6, borderRadius: 3 },
-    textoPrioridadMini: { fontSize: 11, fontWeight: '600', color: c.textoSecundario },
-    emptyWrap: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingTop: 30,
-      paddingHorizontal: 20,
-    },
-    botonEmptyCTA: {
-      marginTop: 20,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      backgroundColor: esOscuro ? '#FFFFFF' : '#0F172A',
-      paddingHorizontal: 20,
-      paddingVertical: 12,
-      borderRadius: RADIOS.completo,
-      ...SOMBRAS.suave,
-    },
-    textoEmptyCTA: {
-      color: esOscuro ? '#0B0C1E' : '#FFFFFF',
-      fontWeight: '800',
-      fontSize: 14,
-      letterSpacing: -0.1,
-    },
-
-    fabContenedor: {
-      position: 'absolute',
-      bottom: 24,
-      alignSelf: 'center',
-      zIndex: 99,
-    },
-    fabBoton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      backgroundColor: esOscuro ? '#FFFFFF' : '#0F172A',
-      paddingHorizontal: 22,
-      paddingVertical: 13,
-      borderRadius: RADIOS.completo,
-      ...SOMBRAS.flotante,
-    },
-    fabTexto: {
-      color: esOscuro ? '#0B0C1E' : '#FFFFFF',
-      fontWeight: '800',
-      fontSize: 14,
-      letterSpacing: -0.2,
-    },
-
-    flexModal: { flex: 1 },
-    modalContenido: { backgroundColor: modalBg, height: '90%' },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 18, paddingBottom: 12 },
-    modalTitulo: { fontSize: 20, fontWeight: '800', color: c.texto, letterSpacing: -0.4 },
-    modalSubtitulo: { fontSize: 12, fontWeight: '600', color: c.textoSuave, marginTop: 1 },
-    botonCerrarModal: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: glassMini,
-      borderWidth: 1,
-      borderColor: c.borde,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    scrollModal: { paddingHorizontal: 20, paddingBottom: 40 },
-
-    label: { fontSize: 11, fontWeight: '700', color: c.textoSuave, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8, marginTop: 16 },
-    labelSinMargin: { fontSize: 11, fontWeight: '700', color: c.textoSuave, textTransform: 'uppercase', letterSpacing: 0.4 },
-    seccionFechasHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, marginBottom: 8 },
-    badgeDiasCount: { backgroundColor: activeSurface, borderWidth: 1, borderColor: activeBorder, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
-    textoDiasCount: { fontSize: 11, fontWeight: '700', color: c.texto },
-
-    input: {
-      backgroundColor: inputBg,
-      borderRadius: 16,
-      paddingHorizontal: 16,
-      paddingVertical: 13,
-      borderWidth: 1,
-      borderColor: c.borde,
-      color: c.texto,
-      fontSize: 15,
-    },
-    textArea: { minHeight: 90, textAlignVertical: 'top', paddingTop: 12 },
-
-    gridTipos: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    chipTipo: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      paddingHorizontal: 14,
-      paddingVertical: 9,
-      borderRadius: RADIOS.completo,
-      backgroundColor: c.superficie,
-      borderWidth: 1,
-      borderColor: c.borde,
-    },
-    chipTipoActivo: {
-      backgroundColor: esOscuro ? '#FFFFFF' : '#0F172A',
-      borderColor: esOscuro ? '#FFFFFF' : '#0F172A',
-    },
-    textoChip: { fontSize: 12, fontWeight: '600', color: c.textoSecundario },
-    textoChipActivo: { color: esOscuro ? '#0B0C1E' : '#FFFFFF', fontWeight: '800' },
-
-    cardRangoFechas: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      backgroundColor: inputBg,
-      borderRadius: 18,
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderWidth: 1,
-      borderColor: c.borde,
-    },
-    cardRangoFechasAbierto: {
-      borderColor: activeBorder,
-      backgroundColor: activeSurface,
-    },
-    fechaSlot: { flex: 1 },
-    fechaSlotLabel: { fontSize: 10, fontWeight: '700', color: c.textoSuave, textTransform: 'uppercase', marginBottom: 2 },
-    fechaSlotValorWrap: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    fechaSlotValor: { fontSize: 14, fontWeight: '700', color: c.texto },
-
-    calendarioContainer: {
-      borderRadius: 20,
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: c.borde,
-      backgroundColor: c.superficie,
-      marginTop: 10,
-      marginBottom: 6,
-      ...SOMBRAS.flotante,
-    },
-    calendarioVidrio: { padding: 14 },
-    calHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-    calMesTitulo: { fontSize: 15, fontWeight: '800', color: c.texto, letterSpacing: -0.2 },
-    calBotonNav: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: glassMini,
-      borderWidth: 1,
-      borderColor: c.borde,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    calSemanaFila: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-    calSemanaLetra: { width: 38, textAlign: 'center', fontSize: 11, fontWeight: '700', color: c.textoSuave },
-
-    calGridDias: { flexDirection: 'row', flexWrap: 'wrap' },
-    calDiaVacio: { width: '14.28%', height: 38 },
-    calDiaBoton: {
-      width: '14.28%',
-      height: 38,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderRadius: 10,
-    },
-    calDiaEnRango: {
-      backgroundColor: activeSurface,
-      borderRadius: 0,
-    },
-    calDiaExtremo: {
-      backgroundColor: esOscuro ? '#FFFFFF' : '#0F172A',
-      borderRadius: 12,
-    },
-    calDiaTexto: { fontSize: 13, fontWeight: '600', color: c.texto },
-    calDiaEnRangoTexto: { color: c.texto, fontWeight: '700' },
-    calDiaExtremoTexto: { color: esOscuro ? '#0B0C1E' : '#FFFFFF', fontWeight: '800' },
-    calDiaHoyTexto: { color: esOscuro ? '#FFFFFF' : '#0F172A', fontWeight: '800' },
-    calPuntoHoy: { width: 4, height: 4, borderRadius: 2, backgroundColor: esOscuro ? '#FFFFFF' : '#0F172A', marginTop: 1 },
-
-    calBotonConfirmar: {
-      marginTop: 12,
-      height: 38,
-      borderRadius: 19,
-      backgroundColor: activeSurface,
-      borderWidth: 1,
-      borderColor: activeBorder,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    calBotonConfirmarTexto: { fontSize: 12, fontWeight: '700', color: c.texto },
-
-    seccionJustificacionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, marginBottom: 8 },
-    seccionAdjuntoHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, marginBottom: 8 },
-    badgeOpcional: { backgroundColor: glassMini, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: c.borde },
-    textoBadgeOpcional: { fontSize: 10, fontWeight: '700', color: c.textoSuave },
-
-    botonAdjuntar: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      backgroundColor: inputBg,
-      borderRadius: 18,
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-      borderWidth: 1,
-      borderColor: c.borde,
-      borderStyle: 'dashed',
-    },
-    iconoAdjuntarWrap: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: glassMini,
-      borderWidth: 1,
-      borderColor: c.borde,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    textoAdjuntarTitulo: { fontSize: 13, fontWeight: '700', color: c.texto },
-    textoAdjuntarSub: { fontSize: 11, color: c.textoSuave, marginTop: 1 },
-
-    cardAdjuntoPreview: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      backgroundColor: inputBg,
-      borderRadius: 18,
-      padding: 10,
-      borderWidth: 1,
-      borderColor: activeBorder,
-    },
-    thumbAdjunto: { width: 44, height: 44, borderRadius: 12 },
-    iconoDocWrap: {
-      width: 44,
-      height: 44,
-      borderRadius: 12,
-      backgroundColor: activeSurface,
-      borderWidth: 1,
-      borderColor: activeBorder,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    infoAdjunto: { flex: 1 },
-    nombreAdjunto: { fontSize: 13, fontWeight: '700', color: c.texto },
-    subAdjunto: { fontSize: 11, color: '#10B981', fontWeight: '600', marginTop: 1 },
-    botonQuitarAdjunto: {
-      width: 34,
-      height: 34,
-      borderRadius: 17,
-      backgroundColor: 'rgba(239,68,68,0.12)',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-
-    filaPrioridad: { flexDirection: 'row', gap: 8 },
-    chipPrioridad: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 6,
-      paddingVertical: 11,
-      borderRadius: 14,
-      backgroundColor: c.superficie,
-      borderWidth: 1,
-      borderColor: c.borde,
-    },
-    chipPrioridadActivo: {
-      backgroundColor: activeSurface,
-      borderColor: activeBorder,
-      borderWidth: 1.5,
-    },
-    puntoPrioridad: { width: 8, height: 8, borderRadius: 4 },
-    textoChipP: { fontSize: 12, color: c.textoSuave, fontWeight: '600' },
-    textoChipPActivo: { color: c.texto, fontWeight: '800' },
-    adjuntosBadgeMini: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 3,
-      paddingHorizontal: 7,
-      paddingVertical: 3,
-      borderRadius: 10,
-      backgroundColor: glassMini,
-    },
-    textoAdjuntosBadgeMini: {
-      fontSize: 11,
-      fontWeight: '700',
-      color: c.textoSuave,
-    },
-
-    resolucionBannerMini: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      marginTop: 8,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: 10,
-      borderWidth: 1,
-    },
-    resolucionBannerAprobada: {
-      backgroundColor: 'rgba(16,185,129,0.08)',
-      borderColor: 'rgba(16,185,129,0.25)',
-    },
-    resolucionBannerRechazada: {
-      backgroundColor: 'rgba(239,68,68,0.08)',
-      borderColor: 'rgba(239,68,68,0.25)',
-    },
-    textoResolucionBannerMini: {
-      fontSize: 11,
-      fontWeight: '600',
-      flex: 1,
-    },
-
-    detalleSeccionCard: {
-      backgroundColor: inputBg,
-      borderRadius: 18,
-      padding: 16,
-      marginBottom: 12,
-      borderWidth: 1,
-      borderColor: c.borde,
-    },
-    detalleCardResolucionAprobada: {
-      borderColor: 'rgba(16,185,129,0.35)',
-      backgroundColor: esOscuro ? 'rgba(16,185,129,0.08)' : 'rgba(16,185,129,0.04)',
-    },
-    detalleCardResolucionRechazada: {
-      borderColor: 'rgba(239,68,68,0.35)',
-      backgroundColor: esOscuro ? 'rgba(239,68,68,0.08)' : 'rgba(239,68,68,0.04)',
-    },
-    detalleResolucionTitulo: {
-      fontSize: 15,
-      fontWeight: '800',
-      letterSpacing: -0.2,
-    },
-    detalleResolucionFecha: {
-      fontSize: 11,
-      fontWeight: '600',
-      color: c.textoSuave,
-      marginTop: 1,
-    },
-    detalleLabel: {
-      fontSize: 10,
-      fontWeight: '700',
-      color: c.textoSuave,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-      marginBottom: 6,
-    },
-    detalleMotivoTexto: {
-      fontSize: 14,
-      color: c.texto,
-      lineHeight: 20,
-      fontWeight: '500',
-    },
-    detalleFilaFechas: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginTop: 4,
-    },
-    detalleFechaBox: {
-      flex: 1,
-      backgroundColor: activeSurface,
-      borderRadius: 12,
-      padding: 10,
-      alignItems: 'center',
-    },
-    detalleFechaBoxLabel: {
-      fontSize: 10,
-      fontWeight: '600',
-      color: c.textoSuave,
-      textTransform: 'uppercase',
-    },
-    detalleFechaBoxValor: {
-      fontSize: 14,
-      fontWeight: '800',
-      color: c.texto,
-      marginTop: 2,
-    },
-
-    filaAccionesDetalle: {
-      flexDirection: 'row',
-      gap: 10,
-      marginTop: 8,
-      marginBottom: 20,
-    },
-    botonEditarDetalle: {
-      flex: 1,
-      height: 50,
-      borderRadius: 25,
-      backgroundColor: esOscuro ? '#FFFFFF' : '#0F172A',
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-      ...SOMBRAS.suave,
-    },
-    textoBotonEditarDetalle: {
-      color: esOscuro ? '#0B0C1E' : '#FFFFFF',
-      fontWeight: '800',
-      fontSize: 14,
-    },
-    botonCancelarDetalle: {
-      height: 50,
-      paddingHorizontal: 18,
-      borderRadius: 25,
-      backgroundColor: 'rgba(239,68,68,0.12)',
-      borderWidth: 1,
-      borderColor: 'rgba(239,68,68,0.3)',
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 6,
-    },
-    textoBotonCancelarDetalle: {
-      color: '#EF4444',
-      fontWeight: '800',
-      fontSize: 14,
-    },
-
-    botonEnviar: {
-      marginTop: 24,
-      borderRadius: 26,
-      height: 52,
-      backgroundColor: esOscuro ? '#FFFFFF' : '#0F172A',
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-      ...SOMBRAS.suave,
-    },
-    textoBotonEnviar: {
-      color: esOscuro ? '#0B0C1E' : '#FFFFFF',
-      fontWeight: '800',
-      fontSize: 15,
-      letterSpacing: -0.2,
-    },
-  });
+// Subcomponente Chip de Filtro idéntico a Mi Pulso
+function ScopeChip({
+  label,
+  count,
+  active,
+  onPress,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <BotonAnimado
+      scaleTo={0.97}
+      onPress={onPress}
+      style={[styles.chip, active && styles.chipActive]}
+    >
+      <View style={[styles.chipCount, active && styles.chipCountActive]}>
+        <Text style={styles.chipCountText}>{count}</Text>
+      </View>
+      <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>{label}</Text>
+    </BotonAnimado>
+  );
 }
 
+// Subcomponente Tarjeta de Solicitud Bento idéntico a checkinCard
+function SolicitudCard({
+  solicitud,
+  onPress,
+}: {
+  solicitud: Absence;
+  onPress: () => void;
+}) {
+  const theme = getStatusTheme(solicitud.estado);
+  const categoria = CATEGORIAS.find((c) => c.id === solicitud.tipo);
+  const adjuntosCount =
+    (solicitud.archivos_adjuntos?.length || 0) + (solicitud.archivo_adjunto ? 1 : 0);
 
+  return (
+    <BotonAnimado
+      scaleTo={0.98}
+      onPress={onPress}
+      style={styles.checkinCard}
+      accessibilityLabel="Ver detalle de la solicitud"
+    >
+      <View style={styles.recordTop}>
+        <View style={[styles.statusPill, { backgroundColor: theme.bg }]}>
+          <View style={[styles.statusDot, { backgroundColor: theme.dot }]} />
+          <Text style={[styles.statusText, { color: theme.text }]}>{theme.label}</Text>
+        </View>
+
+        <View style={styles.arrowButton}>
+          <Feather name="arrow-up-right" size={18} color="#202020" />
+        </View>
+      </View>
+
+      <Text style={styles.recordTitle} numberOfLines={1}>
+        {solicitud.asunto || categoria?.label || 'Solicitud de ausencia'}
+      </Text>
+
+      {solicitud.motivo && solicitud.motivo !== 'Sin justificación adicional' ? (
+        <Text style={styles.recordDetail} numberOfLines={2}>
+          {solicitud.motivo}
+        </Text>
+      ) : null}
+
+      <View style={styles.recordFooter}>
+        <View style={styles.timeRow}>
+          <Feather name="clock" size={15} color="#78736F" />
+          <Text style={styles.time}>
+            {formatPeriodDate(solicitud.fecha_inicio, solicitud.fecha_fin)}
+          </Text>
+        </View>
+
+        <View style={styles.footerTags}>
+          {adjuntosCount > 0 && (
+            <View style={styles.tagPill}>
+              <Feather name="paperclip" size={11} color="#78736F" />
+              <Text style={styles.tagPillText}>{adjuntosCount}</Text>
+            </View>
+          )}
+
+          <View style={styles.tagPill}>
+            <View
+              style={[
+                styles.priorityDot,
+                {
+                  backgroundColor:
+                    PRIORIDADES.find((p) => p.id === solicitud.prioridad)?.dotColor || '#E9D2BF',
+                },
+              ]}
+            />
+            <Text style={styles.tagPillText}>
+              {PRIORIDADES.find((p) => p.id === solicitud.prioridad)?.label || 'Media'}
+            </Text>
+          </View>
+        </View>
+      </View>
+    </BotonAnimado>
+  );
+}
+
+// Subcomponente Overview Banner Ejecutivo inspirado en PulseOverviewCard
+function SolicitudesOverviewCard({
+  total,
+  pendientes,
+  aprobadas,
+  destacada,
+  onPressNueva,
+}: {
+  total: number;
+  pendientes: number;
+  aprobadas: number;
+  destacada: Absence | null;
+  onPressNueva: () => void;
+}) {
+  return (
+    <View style={styles.overviewContainer}>
+      <LinearGradient
+        colors={['#222126', '#17161A']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.overviewGradient}
+      >
+        <View style={styles.overviewHeader}>
+          <View>
+            <Text style={styles.overviewPretitle}>BALANCE DE PERMISOS</Text>
+            <Text style={styles.overviewTitle}>Tus solicitudes activas</Text>
+          </View>
+          <BotonAnimado onPress={onPressNueva} scaleTo={0.92} style={styles.overviewNewBtn}>
+            <Feather name="plus" size={16} color="#FFFFFF" />
+          </BotonAnimado>
+        </View>
+
+        <View style={styles.overviewMetricsRow}>
+          <View style={styles.overviewMetricItem}>
+            <View style={styles.overviewIconWrap}>
+              <Feather name="clock" size={13} color="#FFFFFF" />
+            </View>
+            <View>
+              <Text style={styles.overviewMetricVal}>{pendientes}</Text>
+              <Text style={styles.overviewMetricLbl}>En revisión</Text>
+            </View>
+          </View>
+
+          <View style={styles.overviewMetricItem}>
+            <View style={styles.overviewIconWrap}>
+              <Feather name="check" size={13} color="#FFFFFF" />
+            </View>
+            <View>
+              <Text style={styles.overviewMetricVal}>{aprobadas}</Text>
+              <Text style={styles.overviewMetricLbl}>Aprobadas</Text>
+            </View>
+          </View>
+
+          <View style={styles.overviewMetricItem}>
+            <View style={styles.overviewIconWrap}>
+              <Feather name="layers" size={13} color="#FFFFFF" />
+            </View>
+            <View>
+              <Text style={styles.overviewMetricVal}>{total}</Text>
+              <Text style={styles.overviewMetricLbl}>Totales</Text>
+            </View>
+          </View>
+        </View>
+
+        {destacada ? (
+          <View style={styles.overviewBottomBox}>
+            <Text style={styles.overviewBottomBoxLabel}>ÚLTIMO REGISTRO</Text>
+            <View style={styles.overviewBottomBoxContent}>
+              <Text style={styles.overviewBottomBoxTitle} numberOfLines={1}>
+                {destacada.asunto || destacada.tipo}
+              </Text>
+              <Text style={styles.overviewBottomBoxDate}>
+                {destacada.fecha_inicio} · {destacada.estado}
+              </Text>
+            </View>
+          </View>
+        ) : null}
+      </LinearGradient>
+    </View>
+  );
+}
+
+// Subcomponente Empty Card
+function EmptySolicitudesCard({
+  scope,
+  onPress,
+}: {
+  scope: FilterScope;
+  onPress: () => void;
+}) {
+  const label =
+    scope === 'todas'
+      ? 'Sin solicitudes registradas'
+      : scope === 'pendiente'
+      ? 'Sin solicitudes pendientes'
+      : scope === 'aprobada'
+      ? 'Sin solicitudes aprobadas'
+      : 'Sin solicitudes rechazadas';
+
+  return (
+    <BotonAnimado scaleTo={0.98} onPress={onPress} style={styles.checkinCard}>
+      <View style={styles.recordTop}>
+        <View style={styles.statusPill}>
+          <View style={[styles.statusDot, { backgroundColor: '#B7B2AD' }]} />
+          <Text style={styles.statusText}>{label}</Text>
+        </View>
+        <View style={styles.arrowButton}>
+          <Feather name="plus" size={18} color="#202020" />
+        </View>
+      </View>
+      <Text style={styles.recordTitle}>Solicita tu tiempo libre</Text>
+      <Text style={styles.recordDetail}>
+        Planifica tus vacaciones, descansos médicos o permisos especiales fácilmente.
+      </Text>
+      <View style={styles.recordFooter}>
+        <View style={styles.timeRow}>
+          <Feather name="clock" size={15} color="#78736F" />
+          <Text style={styles.time}>Toma menos de un minuto</Text>
+        </View>
+      </View>
+    </BotonAnimado>
+  );
+}
+
+// Skeleton de Carga
+function OverviewSkeleton() {
+  return (
+    <View style={styles.loadingCard}>
+      <Skeleton width="40%" height={16} radius={8} />
+      <View style={styles.loadingContent}>
+        <Skeleton width="100%" height={48} radius={14} />
+        <Skeleton width="100%" height={38} radius={14} />
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: '#FFFDFC' },
+  ambient: { ...StyleSheet.absoluteFill },
+  content: {
+    paddingHorizontal: 21,
+    paddingTop: 4,
+  },
+  /* Top Bar */
+  topBar: {
+    height: 52,
+    marginHorizontal: 21,
+    marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    width: 47,
+    height: 47,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SOMBRAS.suave,
+  },
+  topBarLabel: {
+    color: '#292522',
+    fontSize: 17,
+    fontWeight: '600',
+    letterSpacing: -0.5,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  addButton: {
+    width: 47,
+    height: 47,
+    borderRadius: 24,
+    backgroundColor: '#202020',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bellButton: {
+    width: 47,
+    height: 47,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SOMBRAS.suave,
+  },
+  hero: {
+    marginTop: 22,
+    marginBottom: 20,
+    color: '#1F1D1C',
+    fontSize: 34,
+    lineHeight: 38,
+    letterSpacing: -1.4,
+    fontWeight: '600',
+  },
+
+  // Overview Banner Ejecutivo
+  overviewContainer: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    shadowColor: '#000',
+    shadowOpacity: 0.16,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 5,
+  },
+  overviewGradient: {
+    padding: 18,
+    minHeight: 180,
+  },
+  overviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  overviewPretitle: {
+    color: 'rgba(255, 255, 255, 0.48)',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+  },
+  overviewTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    marginTop: 2,
+  },
+  overviewNewBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  overviewMetricsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  overviewMetricItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 14,
+    paddingVertical: 9,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.04)',
+    gap: 8,
+  },
+  overviewIconWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  overviewMetricVal: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  overviewMetricLbl: {
+    color: 'rgba(255, 255, 255, 0.52)',
+    fontSize: 10,
+    fontWeight: '500',
+  },
+  overviewBottomBox: {
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  overviewBottomBoxLabel: {
+    color: 'rgba(255, 255, 255, 0.45)',
+    fontSize: 9.5,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+  },
+  overviewBottomBoxContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 3,
+  },
+  overviewBottomBoxTitle: {
+    color: '#FFFFFF',
+    fontSize: 13.5,
+    fontWeight: '600',
+    flex: 1,
+    marginRight: 8,
+  },
+  overviewBottomBoxDate: {
+    color: 'rgba(255, 255, 255, 0.52)',
+    fontSize: 11,
+    fontWeight: '500',
+  },
+
+  // Skeleton
+  loadingCard: {
+    minHeight: 180,
+    borderRadius: 24,
+    backgroundColor: '#222222',
+    padding: 18,
+    gap: 16,
+  },
+  loadingContent: {
+    gap: 10,
+  },
+
+  // Secciones
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 26,
+    marginBottom: 14,
+  },
+  sectionTitle: {
+    color: '#24211F',
+    fontSize: 24,
+    fontWeight: '600',
+    letterSpacing: -0.8,
+  },
+  viewAll: { color: '#5F5A56', fontSize: 14, fontWeight: '600' },
+
+  // Chips
+  chips: { gap: 9, paddingRight: 20 },
+  chip: {
+    height: 50,
+    borderRadius: 25,
+    paddingHorizontal: 9,
+    paddingRight: 17,
+    backgroundColor: 'rgba(255,255,255,0.82)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(43,36,31,0.035)',
+  },
+  chipActive: { backgroundColor: '#D5E774' },
+  chipCount: {
+    minWidth: 32,
+    height: 32,
+    paddingHorizontal: 8,
+    borderRadius: 16,
+    backgroundColor: '#F5F2EF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chipCountActive: { backgroundColor: '#FFFFFF' },
+  chipCountText: { color: '#3A3531', fontSize: 14, fontWeight: '700' },
+  chipLabel: { color: '#4B4642', fontSize: 14, fontWeight: '600' },
+  chipLabelActive: { color: '#2E3023' },
+
+  // Lista de Solicitudes y Bento Cards
+  requestList: {
+    marginTop: 14,
+    gap: 12,
+  },
+  checkinCard: {
+    minHeight: 160,
+    padding: 18,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: 'rgba(43,36,31,0.035)',
+    ...SOMBRAS.suave,
+  },
+  recordTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  statusPill: {
+    minHeight: 29,
+    borderRadius: 15,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F5F2EF',
+  },
+  statusDot: { width: 7, height: 7, borderRadius: 4 },
+  statusText: { fontSize: 11, fontWeight: '700' },
+  arrowButton: {
+    width: 39,
+    height: 39,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F7F6F4',
+  },
+  recordTitle: {
+    color: '#272321',
+    fontSize: 20,
+    fontWeight: '600',
+    letterSpacing: -0.55,
+    textTransform: 'capitalize',
+    marginTop: 12,
+  },
+  recordDetail: {
+    color: '#78736F',
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 4,
+  },
+  recordFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 18,
+  },
+  timeRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  time: { color: '#78736F', fontSize: 12, fontWeight: '600' },
+  footerTags: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  tagPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    backgroundColor: '#F7F6F4',
+  },
+  tagPillText: {
+    color: '#655F5A',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  priorityDot: { width: 6, height: 6, borderRadius: 3 },
+
+  // Modales
+  modalBody: { flex: 1 },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 2,
+  },
+  modalHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  modalCategoryIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F5F2EF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCategoryText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#86807D',
+    letterSpacing: 0.6,
+  },
+  modalTitle: {
+    fontSize: 19,
+    fontWeight: '700',
+    color: '#1F1D1C',
+    letterSpacing: -0.4,
+  },
+  modalCloseButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#F5F2EF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalScroll: {
+    paddingBottom: 30,
+  },
+
+  // Detalle Modal
+  resolutionCard: {
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+  },
+  resolutionCardApproved: {
+    backgroundColor: '#F2F8EC',
+    borderColor: '#D4E8BF',
+  },
+  resolutionCardRejected: {
+    backgroundColor: '#FAF0EF',
+    borderColor: '#F0D5D3',
+  },
+  resolutionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    marginBottom: 4,
+  },
+  resolutionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  resolutionBody: {
+    fontSize: 12.5,
+    color: '#544F4B',
+    lineHeight: 18,
+    marginTop: 2,
+  },
+  detailSectionCard: {
+    backgroundColor: '#F7F6F4',
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 10,
+  },
+  detailLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#86807D',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  detailStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 2,
+  },
+  detailPriorityPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  detailPriorityText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4B4642',
+  },
+  detailPeriodRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  detailDateBox: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 10,
+    alignItems: 'center',
+    ...SOMBRAS.suave,
+  },
+  detailDateBoxLabel: {
+    fontSize: 9.5,
+    fontWeight: '600',
+    color: '#86807D',
+    textTransform: 'uppercase',
+  },
+  detailDateBoxValue: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#1F1D1C',
+    marginTop: 2,
+  },
+  detailJustificationText: {
+    fontSize: 13.5,
+    color: '#272321',
+    lineHeight: 19,
+    fontWeight: '500',
+  },
+  attachmentsList: {
+    gap: 8,
+    marginTop: 4,
+  },
+  attachmentPreviewItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 8,
+    gap: 10,
+    ...SOMBRAS.suave,
+  },
+  attachmentThumb: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+  },
+  attachmentDocIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#F5F2EF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  attachmentMeta: {
+    flex: 1,
+  },
+  attachmentName: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#202020',
+  },
+  attachmentSub: {
+    fontSize: 10.5,
+    color: '#86807D',
+    marginTop: 1,
+  },
+  detailActionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 8,
+    marginBottom: 10,
+  },
+  editButton: {
+    flex: 1,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#202020',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  editButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  cancelButton: {
+    height: 48,
+    paddingHorizontal: 18,
+    borderRadius: 24,
+    backgroundColor: '#FAF0EF',
+    borderWidth: 1,
+    borderColor: '#F0D5D3',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  cancelButtonText: {
+    color: '#833932',
+    fontSize: 13.5,
+    fontWeight: '700',
+  },
+
+  // Formularios de Creación
+  formLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#6E6864',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginTop: 14,
+    marginBottom: 8,
+  },
+  formLabelNoMargin: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#6E6864',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  dateHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  daysCountPill: {
+    backgroundColor: '#F5F2EF',
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  daysCountText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#202020',
+  },
+  optionalBadge: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#86807D',
+    backgroundColor: '#F5F2EF',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  formInput: {
+    backgroundColor: '#F7F6F4',
+    borderRadius: 16,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    fontSize: 14.5,
+    color: '#1F1D1C',
+    borderWidth: 1,
+    borderColor: 'rgba(43,36,31,0.05)',
+  },
+  textArea: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+    paddingTop: 11,
+  },
+  categoriesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  categoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F7F6F4',
+    borderWidth: 1,
+    borderColor: 'rgba(43,36,31,0.04)',
+  },
+  categoryChipActive: {
+    backgroundColor: '#202020',
+    borderColor: '#202020',
+  },
+  categoryChipLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#544F4B',
+  },
+  categoryChipLabelActive: {
+    color: '#FFFFFF',
+  },
+
+  // Selector de Fechas
+  dateRangePickerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F7F6F4',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(43,36,31,0.05)',
+  },
+  dateRangePickerCardActive: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#202020',
+  },
+  dateSlot: { flex: 1 },
+  dateSlotLabel: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: '#86807D',
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  dateSlotValueWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  dateSlotValue: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#1F1D1C',
+  },
+
+  // Calendario Embebido
+  calendarContainer: {
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    padding: 14,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(43,36,31,0.06)',
+    ...SOMBRAS.suave,
+  },
+  calHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  calMonthTitle: {
+    fontSize: 14.5,
+    fontWeight: '700',
+    color: '#1F1D1C',
+    letterSpacing: -0.2,
+  },
+  calNavBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#F5F2EF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calWeekRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  calWeekDay: {
+    width: 36,
+    textAlign: 'center',
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#86807D',
+  },
+  calDaysGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  calDayEmpty: {
+    width: '14.28%',
+    height: 36,
+  },
+  calDayBtn: {
+    width: '14.28%',
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+  },
+  calDayInRange: {
+    backgroundColor: '#F5F2EF',
+    borderRadius: 0,
+  },
+  calDayEdge: {
+    backgroundColor: '#202020',
+    borderRadius: 10,
+  },
+  calDayText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#272321',
+  },
+  calDayInRangeText: {
+    color: '#202020',
+    fontWeight: '700',
+  },
+  calDayEdgeText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  calDayTodayText: {
+    color: '#202020',
+    fontWeight: '800',
+  },
+  calTodayDot: {
+    width: 3.5,
+    height: 3.5,
+    borderRadius: 2,
+    backgroundColor: '#202020',
+    marginTop: 1,
+  },
+  calApplyBtn: {
+    marginTop: 10,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F5F2EF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calApplyBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#202020',
+  },
+
+  // Adjuntos en Form
+  attachmentFormItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F7F6F4',
+    borderRadius: 14,
+    padding: 8,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(43,36,31,0.05)',
+  },
+  removeAttachmentBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FAF0EF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  attachButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#F7F6F4',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(43,36,31,0.06)',
+    borderStyle: 'dashed',
+  },
+  attachIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SOMBRAS.suave,
+  },
+  attachTitle: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#202020',
+  },
+  attachSub: {
+    fontSize: 10.5,
+    color: '#86807D',
+    marginTop: 1,
+  },
+
+  // Prioridades en Form
+  priorityGrid: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  priorityChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: '#F7F6F4',
+    borderWidth: 1,
+    borderColor: 'rgba(43,36,31,0.05)',
+  },
+  priorityChipActive: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#202020',
+    ...SOMBRAS.suave,
+  },
+  priorityChipText: {
+    fontSize: 11.5,
+    color: '#6E6864',
+    fontWeight: '600',
+  },
+  priorityChipTextActive: {
+    color: '#202020',
+    fontWeight: '700',
+  },
+
+  // Submit Button
+  submitButton: {
+    marginTop: 22,
+    borderRadius: 24,
+    height: 50,
+    backgroundColor: '#202020',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  submitButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14.5,
+    letterSpacing: -0.2,
+  },
+});

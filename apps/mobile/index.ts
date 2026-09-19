@@ -15,6 +15,10 @@ console.log('[NEXXUS] Starting mobile entry point...');
 
 LogBox.ignoreLogs([
   'expo-notifications: Android Push notifications',
+  'Remote notifications are not supported in Expo Go',
+  '`expo-notifications` functionality is not fully supported in Expo Go',
+  'Android Push notifications are not supported in Expo Go',
+  'setLayoutAnimationEnabledExperimental is currently a no-op',
 ]);
 
 let RootComponent = App;
