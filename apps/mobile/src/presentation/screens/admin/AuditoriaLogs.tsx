@@ -408,16 +408,16 @@ export default function AuditoriaLogs() {
             <Text style={[estilos.subtitulo, isPhone && { fontSize: 12, lineHeight: 18 }]}>{subtitle}</Text>
           </View>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={[estilos.headerActions, isMobileOrTablet && { flexWrap: 'wrap' }, isPhone && { width: '100%', justifyContent: 'center', gap: 10 }]}>
+          <View style={[estilos.headerActions, isMobileOrTablet && { flexWrap: 'wrap' }, isPhone && { width: '100%', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', rowGap: 10 }]}>
             {/* Elemento tactil; envuelve contenido que puede responder a interacciones del usuario. */}
-            <TouchableOpacity style={[estilos.btnSecondary, isPhone && { width: '48%', maxWidth: 184, minHeight: 44, justifyContent: 'center', paddingHorizontal: 10 }]}>
+            <TouchableOpacity style={[estilos.btnSecondary, isPhone && { width: '48%', maxWidth: 184, minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 }]}>
               {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <MaterialIcons name="storage" size={18} color={BRAND.textMain} style={estilos.btnIcon} />
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
               <Text style={estilos.btnSecondaryText}>{btnBackup}</Text>
             </TouchableOpacity>
             {/* Elemento tactil; envuelve contenido que puede responder a interacciones del usuario. */}
-            <TouchableOpacity {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} style={[estilos.btnPrimary, isPhone && { width: '48%', maxWidth: 184, minHeight: 44, justifyContent: 'center', paddingHorizontal: 10 }]}>
+            <TouchableOpacity {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} style={[estilos.btnPrimary, isPhone && { width: '48%', maxWidth: 184, minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 }]}>
               {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <MaterialIcons {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} name="file-download" size={18} color={CONTRAST_TEXT} style={[estilos.btnIcon, estilos.btnPrimaryIcon]} />
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -444,7 +444,7 @@ export default function AuditoriaLogs() {
               />
             </View>
             {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-            <View style={[estilos.filterRow, isPhone && { justifyContent: 'center', gap: 10 }]}>
+            <View style={[estilos.filterRow, isPhone && { justifyContent: 'space-between', rowGap: 10 }]}>
               {[
                 { id: 'todos', label: translatedTodos },
                 { id: 'success', label: translatedSuccess },
@@ -452,7 +452,7 @@ export default function AuditoriaLogs() {
                 { id: 'error', label: translatedErrorLabel },
               ].map((item) => (
                 // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-                <TouchableOpacity key={item.id} onPress={() => setFiltroEstado(item.id as FiltroEstado)} style={[estilos.filterChip, filtroEstado === item.id && estilos.filterChipActivo, isPhone && { width: '47%', maxWidth: 176, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 }]}>
+                <TouchableOpacity key={item.id} onPress={() => setFiltroEstado(item.id as FiltroEstado)} style={[estilos.filterChip, filtroEstado === item.id && estilos.filterChipActivo, isPhone && { width: '48%', maxWidth: 176, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 }]}>
                   {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                   <Text style={[estilos.filterText, filtroEstado === item.id && estilos.filterTextActivo]}>{item.label}</Text>
                 </TouchableOpacity>

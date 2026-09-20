@@ -761,9 +761,9 @@ function crearEstilosAprendizaje(c: any, esOscuro: boolean) {
     errorBox: { minHeight: 42, borderRadius: RADIOS.lg, borderWidth: 1, borderColor: 'rgba(239,68,68,0.28)', backgroundColor: 'rgba(239,68,68,0.10)', flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: ESPACIADO.md, marginBottom: ESPACIADO.md },
     errorText: { ...TIPOGRAFIA.cuerpoPequeno, color: COLORES.error, flex: 1, fontWeight: '700' },
     // resumenGrid: estilo de grilla; organiza elementos en filas o columnas con separacion controlada.
-    resumenGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: ESPACIADO.sm, marginBottom: ESPACIADO.lg },
+    resumenGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: ESPACIADO.sm, marginBottom: ESPACIADO.lg },
     // tarjetaResumen: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
-    tarjetaResumen: { width: '48.5%', minHeight: 96, borderRadius: RADIOS.xl, padding: ESPACIADO.md, backgroundColor: glassMini, borderWidth: 1, borderColor: c.borde, justifyContent: 'space-between' },
+    tarjetaResumen: { width: '48%', minHeight: 96, borderRadius: RADIOS.xl, padding: ESPACIADO.md, backgroundColor: glassMini, borderWidth: 1, borderColor: c.borde, justifyContent: 'space-between' },
     // valorResumen: estilo local de la pantalla; agrupa propiedades visuales reutilizadas por el JSX.
     valorResumen: { ...TIPOGRAFIA.tituloPantalla, color: c.texto, fontSize: 26, lineHeight: 30 },
     // labelResumen: estilo de texto/etiqueta; controla legibilidad, color, peso y tamanio del texto.

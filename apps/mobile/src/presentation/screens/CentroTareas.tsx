@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
   Image,
+  Platform,
   RefreshControl,
   ScrollView,
   StatusBar,
@@ -29,6 +30,7 @@ import {
   taskMatchesDay,
 } from "@/presentation/components/tasks/taskAgendaUtils";
 import { useContextoUsuario } from "@/presentation/context/ContextoUsuario";
+import { useTemaMobile } from "@/presentation/context/TemaMobileContext";
 import { SOMBRAS } from "@/shared/constants/diseno";
 import { Task } from "domain/entities/Task";
 import { useUserTabBottomPadding } from "@/presentation/hooks/useUserTabBottomPadding";
@@ -42,6 +44,8 @@ export default function CentroTareas({
 }: {
   navigation: Navigation;
 }) {
+  const { esOscuro, colores } = useTemaMobile();
+  const styles = createStyles(colores);
   const { perfil, tareas, cargando, recargarDatos, cambiarEstadoTarea } =
     useContextoUsuario();
   const bottomPadding = useUserTabBottomPadding(115);
@@ -155,16 +159,56 @@ export default function CentroTareas({
   return (
     <SafeAreaView style={styles.screen}>
       <StatusBar
-        barStyle="dark-content"
+        barStyle={esOscuro ? "light-content" : "dark-content"}
         backgroundColor="transparent"
         translucent
       />
       <LinearGradient
         pointerEvents="none"
-        colors={["#FBEDE8", "#F6ECF6", "#FFFDFC"]}
+        colors={colores.pulso.ambient}
         locations={[0, 0.28, 0.72]}
         style={styles.ambient}
       />
+      <View style={styles.headerContainer}>
+        <View style={styles.header}>
+          <BotonAnimado
+            style={styles.profile}
+            scaleTo={0.97}
+            onPress={() => navigation.navigate("PerfilLaboral")}
+            accessibilityLabel="Abrir mi perfil"
+          >
+            {perfil?.foto_perfil ? (
+              <Image
+                source={{ uri: perfil.foto_perfil }}
+                style={styles.avatar}
+                resizeMode="cover"
+              />
+            ) : (
+              <Text style={styles.avatarInitial}>
+                {firstName.charAt(0).toUpperCase()}
+              </Text>
+            )}
+          </BotonAnimado>
+          <Text style={styles.dateLabel}>{formatMonth(anchorDate)}</Text>
+          <View style={styles.headerActions}>
+            <BotonAnimado
+              style={styles.addButton}
+              scaleTo={0.96}
+              onPress={() => navigation.navigate("BusquedaGlobal")}
+              accessibilityLabel="Buscar tareas"
+            >
+              <Feather name="search" size={Platform.OS === "ios" ? 21 : 18} color={colores.fondo} />
+            </BotonAnimado>
+            <BotonAnimado
+              style={styles.bellButton}
+              scaleTo={0.96}
+              accessibilityLabel="Más opciones"
+            >
+              <Feather name="more-horizontal" size={Platform.OS === "ios" ? 22 : 19} color={colores.texto} />
+            </BotonAnimado>
+          </View>
+        </View>
+      </View>
       <FlatList
         data={isLoading ? [] : visibleTasks}
         keyExtractor={(item) => item.id}
@@ -175,48 +219,11 @@ export default function CentroTareas({
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#202020"
+            tintColor={colores.primario}
           />
         }
         ListHeaderComponent={
           <View>
-            <View style={styles.header}>
-              <BotonAnimado
-                style={styles.profile}
-                scaleTo={0.97}
-                onPress={() => navigation.navigate("PerfilLaboral")}
-                accessibilityLabel="Abrir mi perfil"
-              >
-                {perfil?.foto_perfil ? (
-                  <Image
-                    source={{ uri: perfil.foto_perfil }}
-                    style={styles.avatar}
-                  />
-                ) : (
-                  <Text style={styles.avatarInitial}>
-                    {firstName.charAt(0).toUpperCase()}
-                  </Text>
-                )}
-              </BotonAnimado>
-              <Text style={styles.dateLabel}>{formatMonth(anchorDate)}</Text>
-              <View style={styles.headerActions}>
-                <BotonAnimado
-                  style={styles.addButton}
-                  scaleTo={0.96}
-                  onPress={() => navigation.navigate("BusquedaGlobal")}
-                  accessibilityLabel="Buscar tareas"
-                >
-                  <Feather name="search" size={21} color="#FFFFFF" />
-                </BotonAnimado>
-                <BotonAnimado
-                  style={styles.bellButton}
-                  scaleTo={0.96}
-                  accessibilityLabel="Más opciones"
-                >
-                  <Feather name="more-horizontal" size={23} color="#202020" />
-                </BotonAnimado>
-              </View>
-            </View>
             <View style={styles.titleRow}>
               <Text style={styles.title}>Mis{`\n`}tareas</Text>
               <BotonAnimado
@@ -224,7 +231,7 @@ export default function CentroTareas({
                 scaleTo={0.97}
                 onPress={() => setMonthPickerVisible(true)}
               >
-                <Feather name="calendar" size={20} color="#25211F" />
+                <Feather name="calendar" size={Platform.OS === "ios" ? 20 : 17} color={colores.pulso.icon} />
                 <Text style={styles.calendarText}>Calendario</Text>
               </BotonAnimado>
             </View>
@@ -256,6 +263,8 @@ export default function CentroTareas({
                   count={counts[item]}
                   icon={item === "urgentes" ? "star" : undefined}
                   onPress={() => setFilter(item)}
+                  styles={styles}
+                  colores={colores}
                 />
               ))}
             </ScrollView>
@@ -264,7 +273,7 @@ export default function CentroTareas({
                 <Feather
                   name={selectedDate ? "calendar" : "layers"}
                   size={19}
-                  color="#58514D"
+                  color={colores.pulso.textSecondary}
                 />
                 <Text style={styles.contextTitle}>
                   {selectedDate
@@ -281,7 +290,7 @@ export default function CentroTareas({
                   style={styles.clearDateButton}
                 >
                   <Text style={styles.clearDateText}>Ver todas</Text>
-                  <Feather name="x" size={13} color="#6E6864" />
+                  <Feather name="x" size={13} color={colores.pulso.textSecondary} />
                 </BotonAnimado>
               ) : (
                 <Text style={styles.todayLabel}>
@@ -297,7 +306,7 @@ export default function CentroTareas({
                 style={styles.error}
               >
                 <Text style={styles.errorText}>{refreshError}</Text>
-                <Feather name="refresh-cw" size={14} color="#A34A45" />
+                <Feather name="refresh-cw" size={14} color={colores.error} />
               </BotonAnimado>
             ) : null}
             {isLoading ? <TaskSkeleton /> : null}
@@ -333,12 +342,16 @@ function TaskFilter({
   count,
   icon,
   onPress,
+  styles,
+  colores,
 }: {
   active: boolean;
   label: string;
   count: number;
   icon?: React.ComponentProps<typeof Feather>["name"];
   onPress: () => void;
+  styles: ReturnType<typeof createStyles>;
+  colores: ReturnType<typeof useTemaMobile>['colores'];
 }) {
   return (
     <BotonAnimado
@@ -347,7 +360,7 @@ function TaskFilter({
       style={[styles.filter, active && styles.filterActive]}
     >
       {icon ? (
-        <Feather name={icon} size={16} color={active ? "#FFFFFF" : "#3E3936"} />
+        <Feather name={icon} size={16} color={active ? colores.pulso.chipTextActive : colores.pulso.text} />
       ) : (
         <View style={[styles.filterCount, active && styles.filterCountActive]}>
           <Text
@@ -367,51 +380,68 @@ function TaskFilter({
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#FFFDFC" },
+function createStyles(c: ReturnType<typeof useTemaMobile>['colores']) {
+  const isIOS = Platform.OS === "ios";
+  return StyleSheet.create({
+  screen: { flex: 1, backgroundColor: c.pulso.background },
   ambient: { ...StyleSheet.absoluteFill },
+  headerContainer: {
+    paddingHorizontal: 21,
+    paddingTop: isIOS ? 6 : 4,
+    paddingBottom: 8,
+    zIndex: 10,
+    backgroundColor: 'transparent',
+  },
   listContent: {
     paddingHorizontal: 21,
-    paddingTop: 4,
+    paddingTop: isIOS ? 12 : 8,
     paddingBottom: 115,
   },
   header: {
-    height: 52,
+    height: isIOS ? 54 : 48,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
   profile: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: isIOS ? 46 : 40,
+    height: isIOS ? 46 : 40,
+    borderRadius: isIOS ? 23 : 20,
     overflow: "hidden",
-    backgroundColor: "#E9D2BF",
+    backgroundColor: c.pulso.pill,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: c.pulso.border,
   },
-  avatar: { width: "100%", height: "100%" },
-  avatarInitial: { color: "#382E29", fontSize: 17, fontWeight: "700" },
+  avatar: {
+    width: isIOS ? 46 : 40,
+    height: isIOS ? 46 : 40,
+    borderRadius: isIOS ? 23 : 20,
+  },
+  avatarInitial: { color: c.pulso.text, fontSize: isIOS ? 17 : 15, fontWeight: "700" },
   dateLabel: {
-    color: "#292522",
-    fontSize: 17,
+    color: c.pulso.text,
+    fontSize: isIOS ? 17 : 15,
     fontWeight: "600",
-    letterSpacing: -0.5,
+    letterSpacing: isIOS ? -0.5 : -0.3,
   },
-  headerActions: { flexDirection: "row", gap: 10 },
+  headerActions: { flexDirection: "row", gap: isIOS ? 10 : 8 },
   addButton: {
-    width: 47,
-    height: 47,
-    borderRadius: 24,
-    backgroundColor: "#202020",
+    width: isIOS ? 46 : 40,
+    height: isIOS ? 46 : 40,
+    borderRadius: isIOS ? 23 : 20,
+    backgroundColor: c.navegacionActiva,
     alignItems: "center",
     justifyContent: "center",
   },
   bellButton: {
-    width: 47,
-    height: 47,
-    borderRadius: 24,
-    backgroundColor: "#FFFFFF",
+    width: isIOS ? 46 : 40,
+    height: isIOS ? 46 : 40,
+    borderRadius: isIOS ? 23 : 20,
+    backgroundColor: c.pulso.surfaceElevated,
+    borderWidth: 1,
+    borderColor: c.pulso.border,
     alignItems: "center",
     justifyContent: "center",
     ...SOMBRAS.suave,
@@ -420,68 +450,71 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
-    marginTop: 22,
+    marginTop: isIOS ? 10 : 6,
   },
   title: {
-    color: "#1F1D1C",
-    fontSize: 34,
-    lineHeight: 38,
+    color: c.pulso.text,
+    fontSize: isIOS ? 34 : 25,
+    lineHeight: isIOS ? 38 : 29,
     fontWeight: "600",
-    letterSpacing: -1.4,
+    letterSpacing: isIOS ? -1.4 : -0.8,
   },
   calendarPill: {
-    height: 50,
-    borderRadius: 25,
-    paddingHorizontal: 17,
-    backgroundColor: "#FFFFFF",
+    height: isIOS ? 50 : 42,
+    borderRadius: isIOS ? 25 : 21,
+    paddingHorizontal: isIOS ? 17 : 14,
+    backgroundColor: c.pulso.surfaceElevated,
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: isIOS ? 10 : 8,
     ...SOMBRAS.suave,
   },
-  calendarText: { color: "#292522", fontSize: 15, fontWeight: "600" },
-  filters: { flexDirection: "row", gap: 9, marginTop: 18, paddingRight: 4 },
+  calendarText: { color: c.pulso.text, fontSize: isIOS ? 15 : 13, fontWeight: "600" },
+  filters: { flexDirection: "row", gap: isIOS ? 9 : 6, marginTop: isIOS ? 18 : 12, paddingRight: 4 },
   filter: {
-    minHeight: 48,
-    borderRadius: 24,
-    paddingHorizontal: 13,
-    backgroundColor: "rgba(255,255,255,0.86)",
+    minHeight: isIOS ? 48 : 38,
+    borderRadius: isIOS ? 24 : 19,
+    paddingHorizontal: isIOS ? 13 : 10,
+    backgroundColor: c.pulso.surfaceElevated,
     flexDirection: "row",
     alignItems: "center",
     gap: 7,
     borderWidth: 1,
-    borderColor: "rgba(32,28,25,0.04)",
+    borderColor: c.pulso.border,
   },
-  filterActive: { backgroundColor: "#202020", borderColor: "#202020" },
+  filterActive: {
+    backgroundColor: c.pulso.chipActive,
+    borderColor: c.pulso.chipActive,
+  },
   filterCount: {
-    minWidth: 28,
-    height: 28,
-    borderRadius: 14,
-    paddingHorizontal: 7,
-    backgroundColor: "#F1EFED",
+    minWidth: isIOS ? 28 : 22,
+    height: isIOS ? 28 : 22,
+    borderRadius: isIOS ? 14 : 11,
+    paddingHorizontal: isIOS ? 7 : 5,
+    backgroundColor: c.pulso.pill,
     alignItems: "center",
     justifyContent: "center",
   },
-  filterCountActive: { backgroundColor: "rgba(255,255,255,0.16)" },
-  filterCountText: { color: "#3C3734", fontSize: 12, fontWeight: "700" },
-  filterCountTextActive: { color: "#FFFFFF" },
-  filterText: { color: "#3E3936", fontSize: 13, fontWeight: "600" },
-  filterTextActive: { color: "#FFFFFF" },
+  filterCountActive: { backgroundColor: c.pulso.chipCountActive },
+  filterCountText: { color: c.pulso.text, fontSize: isIOS ? 12 : 10.5, fontWeight: "700" },
+  filterCountTextActive: { color: c.pulso.chipTextActive },
+  filterText: { color: c.pulso.textSecondary, fontSize: isIOS ? 13 : 11.5, fontWeight: "600" },
+  filterTextActive: { color: c.pulso.chipTextActive },
   dayContext: {
-    marginTop: 24,
-    marginBottom: 14,
+    marginTop: isIOS ? 24 : 16,
+    marginBottom: isIOS ? 14 : 10,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
   contextLeft: { flexDirection: "row", alignItems: "center", gap: 9 },
   contextTitle: {
-    color: "#383330",
-    fontSize: 24,
+    color: c.pulso.text,
+    fontSize: isIOS ? 24 : 18,
     fontWeight: "600",
     letterSpacing: -0.7,
   },
-  todayLabel: { color: "#837C77", fontSize: 13, fontWeight: "600" },
+  todayLabel: { color: c.pulso.textSecondary, fontSize: isIOS ? 13 : 11.5, fontWeight: "600" },
   clearDateButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -489,10 +522,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 12,
-    backgroundColor: "#F1EFED",
+    backgroundColor: c.pulso.pill,
   },
   clearDateText: {
-    color: "#544E4A",
+    color: c.pulso.textSecondary,
     fontSize: 12,
     fontWeight: "700",
   },
@@ -501,11 +534,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     marginBottom: 14,
-    backgroundColor: "#FFF0EE",
+    backgroundColor: c.pulso.errorSurface,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
   },
-  errorText: { flex: 1, color: "#A34A45", fontSize: 12, fontWeight: "600" },
+  errorText: { flex: 1, color: c.pulso.errorText, fontSize: 12, fontWeight: "600" },
   bottomSpace: { height: 18 },
-});
+}); }

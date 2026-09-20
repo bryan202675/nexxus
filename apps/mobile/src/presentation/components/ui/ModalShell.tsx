@@ -122,8 +122,10 @@ export default function ModalShell({ visible, onClose, children, maxHeight = '85
   }));
   const estiloFondo = useAnimatedStyle(() => ({ opacity: opacidadFondo.value }));
 
+  const isIOS = Platform.OS === 'ios';
+
   return (
-    <Modal visible={activo} transparent animationType="none" onRequestClose={cerrar}>
+    <Modal visible={activo} transparent animationType="none" statusBarTranslucent={true} onRequestClose={cerrar}>
       <Animated.View style={[StyleSheet.absoluteFill, estiloFondo]}>
         <BlurView intensity={60} tint={blurTint} style={StyleSheet.absoluteFill} />
       </Animated.View>
@@ -133,7 +135,7 @@ export default function ModalShell({ visible, onClose, children, maxHeight = '85
         onTouchEnd={cerrar}
       />
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={isIOS ? 'padding' : undefined}
         style={estilos.keyboardContainer}
         pointerEvents="box-none"
       >
@@ -142,10 +144,10 @@ export default function ModalShell({ visible, onClose, children, maxHeight = '85
             style={[
               estilos.hoja,
               {
-                backgroundColor: colores.vidrioFuerte,
+                backgroundColor: colores.modal,
                 borderColor: colores.borde,
-                maxHeight,
-                paddingBottom: ESPACIADO.xl + insets.bottom,
+                maxHeight: isIOS ? maxHeight : '92%',
+                paddingBottom: isIOS ? ESPACIADO.xl + insets.bottom : Math.min(insets.bottom, 16) + 8,
               },
               estiloHoja,
               style,
@@ -161,6 +163,8 @@ export default function ModalShell({ visible, onClose, children, maxHeight = '85
   );
 }
 
+const isIOS = Platform.OS === 'ios';
+
 const estilos = StyleSheet.create({
   overlay: { justifyContent: 'flex-end' },
   keyboardContainer: {
@@ -174,7 +178,7 @@ const estilos = StyleSheet.create({
     borderWidth: 1,
     borderBottomWidth: 0,
     overflow: 'hidden',
-    padding: ESPACIADO.xl,
+    padding: isIOS ? ESPACIADO.xl : 14,
   },
-  manija: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: ESPACIADO.md },
+  manija: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: isIOS ? ESPACIADO.md : 10 },
 });

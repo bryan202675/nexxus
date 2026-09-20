@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { Text as NativeText, TextInput as NativeTextInput, TextInputProps, TextProps } from 'react-native';
+import { Platform, Text as NativeText, TextInput as NativeTextInput, TextInputProps, TextProps } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { translateWithApi } from './translatorApi';
 
 const SOURCE_LANGUAGE = 'es';
 const BRAND_TERMS = ['Nexxus'];
+const DEFAULT_MAX_FONT_MULTIPLIER = Platform.OS === 'android' ? 1.08 : 1.25;
 
 type AdminTranslationContextValue = {
   protectedTerms: string[];
@@ -323,16 +324,22 @@ const useAdminTextTranslation = (source: string) => {
   return translated;
 };
 
-const TranslatedString = ({ value }: { value: string }) => {
+const TranslatedString = ({
+  value,
+  maxFontSizeMultiplier = DEFAULT_MAX_FONT_MULTIPLIER,
+}: {
+  value: string;
+  maxFontSizeMultiplier?: number;
+}) => {
   const translated = useAdminTextTranslation(value);
-  return <NativeText>{translated}</NativeText>;
+  return <NativeText maxFontSizeMultiplier={maxFontSizeMultiplier}>{translated}</NativeText>;
 };
 
-const translateChildren = (children: React.ReactNode): React.ReactNode => {
-  if (typeof children === 'string') return <TranslatedString value={children} />;
+const translateChildren = (children: React.ReactNode, maxFontSizeMultiplier?: number): React.ReactNode => {
+  if (typeof children === 'string') return <TranslatedString value={children} maxFontSizeMultiplier={maxFontSizeMultiplier} />;
   if (Array.isArray(children)) {
     return children.map((child, index) => (
-      <React.Fragment key={`admin-text-${index}`}>{translateChildren(child)}</React.Fragment>
+      <React.Fragment key={`admin-text-${index}`}>{translateChildren(child, maxFontSizeMultiplier)}</React.Fragment>
     ));
   }
   return children;
@@ -353,16 +360,16 @@ export function AdminTranslationProvider({
   return <AdminTranslationContext.Provider value={value}>{children}</AdminTranslationContext.Provider>;
 }
 
-function AdminTranslatedSingleText({ text, ...props }: { text: string } & TextProps) {
+function AdminTranslatedSingleText({ text, maxFontSizeMultiplier = DEFAULT_MAX_FONT_MULTIPLIER, ...props }: { text: string } & TextProps) {
   const translated = useAdminTextTranslation(text);
-  return <NativeText {...props}>{translated}</NativeText>;
+  return <NativeText maxFontSizeMultiplier={maxFontSizeMultiplier} {...props}>{translated}</NativeText>;
 }
 
-export function AdminTranslatedText({ children, ...props }: TextProps) {
+export function AdminTranslatedText({ children, maxFontSizeMultiplier = DEFAULT_MAX_FONT_MULTIPLIER, ...props }: TextProps) {
   if (typeof children === 'string') {
-    return <AdminTranslatedSingleText text={children} {...props} />;
+    return <AdminTranslatedSingleText text={children} maxFontSizeMultiplier={maxFontSizeMultiplier} {...props} />;
   }
-  return <NativeText {...props}>{translateChildren(children)}</NativeText>;
+  return <NativeText maxFontSizeMultiplier={maxFontSizeMultiplier} {...props}>{translateChildren(children)}</NativeText>;
 }
 
 export function AdminTranslatedTextInput({ placeholder, ...props }: TextInputProps) {

@@ -1,9 +1,10 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useRef } from 'react';
-import { AppState, StatusBar, StyleSheet, View } from 'react-native';
+import { AppState, Platform, StatusBar, StyleSheet, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import AiAmbientBackground, { AiAmbientState } from '@/presentation/components/AiAmbientBackground';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
+import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
 import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 import { ESPACIADO } from '@/shared/constants/diseno';
@@ -21,6 +22,8 @@ interface Props {
 }
 
 export default function VoiceChatScreen({ navigation }: Props) {
+  const { colores, esOscuro } = useTemaMobile();
+  const pulse = colores.pulso;
   const { perfil } = useContextoUsuario();
   const {
     estado,
@@ -41,14 +44,6 @@ export default function VoiceChatScreen({ navigation }: Props) {
   useEffect(() => {
     if (yaInicioRef.current) return;
     yaInicioRef.current = true;
-    // Pedir permiso de micrófono (diálogo nativo) apenas se monta la pantalla puede chocar con
-    // la animación de navegación (push) que todavía está corriendo -- en iOS eso puede bloquear
-    // el hilo nativo por completo, dejando la llamada pegada en "conectando" sin ningún error ni
-    // log adicional (ni siquiera timeouts de JS llegan a dispararse). Se espera un poco antes de
-    // tocar cualquier API nativa. Un setTimeout fijo en vez de InteractionManager.runAfterInteractions
-    // a propósito: ese último espera a que se cierren TODOS los "interaction handles" registrados,
-    // y si React Navigation deja uno abierto (pasa con transiciones basadas en Reanimated, como
-    // las de esta app), runAfterInteractions nunca dispara -- mismo síntoma, otra trampa distinta.
     if (__DEV__) console.log('[VOICE] VoiceChatScreen montado, esperando 400ms antes de iniciar');
     const temporizador = setTimeout(() => {
       if (__DEV__) console.log('[VOICE] temporizador cumplido, llamando iniciarLlamada()');
@@ -92,9 +87,11 @@ export default function VoiceChatScreen({ navigation }: Props) {
         : 'idle';
   const señalAmbiental = estado === 'listening' ? nivelEntrada : estado === 'speaking' ? nivelSalida : 0;
 
+  const estilos = crearEstilosVoice(pulse, esOscuro);
+
   return (
     <SafeAreaView style={estilos.contenedor}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle={esOscuro ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
       <View style={estilos.fondoAbsoluto}>
         <AiAmbientBackground state={estadoAmbiental} signal={señalAmbiental} />
       </View>
@@ -105,10 +102,10 @@ export default function VoiceChatScreen({ navigation }: Props) {
           accessibilityLabel="Cerrar Nexxus Voice"
           style={estilos.botonCerrar}
         >
-          <Feather name="chevron-down" size={22} color="#292522" />
+          <Feather name="chevron-down" size={Platform.OS === 'ios' ? 22 : 19} color={esOscuro ? pulse.icon : '#292522'} />
         </BotonAnimado>
         <Text style={estilos.marca}>NEXXUS IA</Text>
-        <View style={estilos.botonCerrar} />
+        <View style={estilos.espacioPlaceholder} />
       </View>
 
       <View style={estilos.centro}>
@@ -134,14 +131,9 @@ export default function VoiceChatScreen({ navigation }: Props) {
               onPress={iniciarLlamada}
               accessibilityLabel="Reintentar llamada"
               scaleTo={0.94}
-              style={[
-                estilos.botonReintentar,
-                {
-                  backgroundColor: '#211E1C',
-                },
-              ]}
+              style={estilos.botonReintentar}
             >
-              <Feather name="refresh-cw" size={18} color="#FFFFFF" />
+              <Feather name="refresh-cw" size={18} color={esOscuro ? pulse.textInverse : '#FFFFFF'} />
               <Text style={estilos.textoReintentar}>Reintentar conexión</Text>
             </BotonAnimado>
 
@@ -151,7 +143,7 @@ export default function VoiceChatScreen({ navigation }: Props) {
               scaleTo={0.94}
               style={estilos.botonCancelarError}
             >
-              <Feather name="x" size={16} color="#625B56" />
+              <Feather name="x" size={16} color={esOscuro ? pulse.textSecondary : '#625B56'} />
               <Text style={estilos.textoCancelarError}>Cancelar</Text>
             </BotonAnimado>
           </View>
@@ -174,95 +166,105 @@ export default function VoiceChatScreen({ navigation }: Props) {
   );
 }
 
-const estilos = StyleSheet.create({
-  contenedor: {
-    flex: 1,
-    backgroundColor: '#FFFDFC',
-  },
-  fondoAbsoluto: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  encabezado: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    minHeight: 66,
-    paddingHorizontal: 20,
-  },
-  botonCerrar: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    shadowColor: '#302A27',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  marca: { color: '#514B47', fontSize: 11, fontWeight: '700', letterSpacing: 1.6 },
-  centro: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 26,
-  },
-  transcripcion: {
-    paddingBottom: 16,
-  },
-  pie: {
-    paddingBottom: 34,
-    paddingTop: ESPACIADO.md,
-  },
-  grupoReintentar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    paddingHorizontal: 20,
-  },
-  botonReintentar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    height: 50,
-    paddingHorizontal: 22,
-    borderRadius: 25,
-    shadowColor: '#2563EB',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.38,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  textoReintentar: {
-    fontSize: 14.5,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: -0.2,
-  },
-  botonCancelarError: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    height: 50,
-    paddingHorizontal: 18,
-    borderRadius: 25,
-    borderWidth: 1,
-    backgroundColor: 'rgba(255,255,255,0.76)',
-    borderColor: 'rgba(41,37,34,0.08)',
-  },
-  textoCancelarError: {
-    fontSize: 14,
-    fontWeight: '600',
-    letterSpacing: -0.2,
-    color: '#625B56',
-  },
-});
+function crearEstilosVoice(pulse: any, esOscuro: boolean) {
+  const isIOS = Platform.OS === 'ios';
+  return StyleSheet.create({
+    contenedor: {
+      flex: 1,
+      backgroundColor: pulse.background,
+    },
+    fondoAbsoluto: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+    },
+    encabezado: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      minHeight: isIOS ? 66 : 50,
+      paddingHorizontal: isIOS ? 20 : 16,
+    },
+    botonCerrar: {
+      width: isIOS ? 46 : 38,
+      height: isIOS ? 46 : 38,
+      borderRadius: isIOS ? 23 : 19,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: esOscuro ? pulse.surfaceElevated : 'rgba(255,255,255,0.9)',
+      borderWidth: esOscuro ? 1 : 0,
+      borderColor: pulse.border,
+      shadowColor: '#302A27',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: esOscuro ? 0.2 : 0.06,
+      shadowRadius: 10,
+      elevation: 2,
+    },
+    espacioPlaceholder: {
+      width: isIOS ? 46 : 38,
+      height: isIOS ? 46 : 38,
+    },
+    marca: { color: esOscuro ? pulse.textSecondary : '#514B47', fontSize: isIOS ? 11 : 10, fontWeight: '700', letterSpacing: 1.6 },
+    centro: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: isIOS ? 26 : 12,
+    },
+    transcripcion: {
+      paddingBottom: isIOS ? 16 : 8,
+    },
+    pie: {
+      paddingBottom: isIOS ? 34 : 18,
+      paddingTop: isIOS ? ESPACIADO.md : 6,
+    },
+    grupoReintentar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 12,
+      paddingHorizontal: 20,
+    },
+    botonReintentar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      height: 50,
+      paddingHorizontal: 22,
+      borderRadius: 25,
+      backgroundColor: esOscuro ? pulse.inverse : '#211E1C',
+      shadowColor: '#2563EB',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: esOscuro ? 0.2 : 0.38,
+      shadowRadius: 12,
+      elevation: 6,
+    },
+    textoReintentar: {
+      fontSize: 14.5,
+      fontWeight: '700',
+      color: esOscuro ? pulse.textInverse : '#FFFFFF',
+      letterSpacing: -0.2,
+    },
+    botonCancelarError: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      height: 50,
+      paddingHorizontal: 18,
+      borderRadius: 25,
+      borderWidth: 1,
+      backgroundColor: esOscuro ? pulse.surfaceElevated : 'rgba(255,255,255,0.76)',
+      borderColor: pulse.border,
+    },
+    textoCancelarError: {
+      fontSize: 14,
+      fontWeight: '600',
+      letterSpacing: -0.2,
+      color: esOscuro ? pulse.textSecondary : '#625B56',
+    },
+  });
+}

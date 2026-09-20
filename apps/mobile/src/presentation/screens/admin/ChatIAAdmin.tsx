@@ -99,8 +99,8 @@ export default function ChatIAAdmin({ navigation }: Props) {
   useEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <TouchableOpacity 
-          onPress={limpiarHistorial} 
+        <TouchableOpacity
+          onPress={limpiarHistorial}
           style={{ marginRight: 16, padding: 8 }}
           activeOpacity={0.7}
         >
@@ -124,14 +124,47 @@ export default function ChatIAAdmin({ navigation }: Props) {
   const { width } = useWindowDimensions();
   const estilos = useMemo(() => crearEstilosChat(theme, width), [theme, width]);
 
+  const defaultBottomPadding = Platform.OS === 'ios' ? 24 : 16;
+  const animBottomPadding = useRef(new Animated.Value(defaultBottomPadding)).current;
+
   useEffect(() => {
-    const mostrarSub = Keyboard.addListener('keyboardDidShow', () => setTecladoVisible(true));
-    const ocultarSub = Keyboard.addListener('keyboardDidHide', () => setTecladoVisible(false));
-    return () => {
-      mostrarSub.remove();
-      ocultarSub.remove();
+    const onShow = (e: any) => {
+      setTecladoVisible(true);
+      const duration = Platform.OS === 'ios' && e?.duration && e.duration > 0 ? e.duration : 220;
+      const targetPadding = Platform.OS === 'ios' ? 12 : 6;
+      Animated.timing(animBottomPadding, {
+        toValue: targetPadding,
+        duration,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: false,
+      }).start();
     };
-  }, []);
+
+    const onHide = (e: any) => {
+      setTecladoVisible(false);
+      const duration = Platform.OS === 'ios' && e?.duration && e.duration > 0 ? e.duration : 220;
+      Animated.timing(animBottomPadding, {
+        toValue: defaultBottomPadding,
+        duration,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: false,
+      }).start();
+    };
+
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      onShow
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      onHide
+    );
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [defaultBottomPadding]);
 
   const formatearHora = () => new Date().toLocaleTimeString(i18n.language === 'es' ? 'es-SV' : 'en-US', { hour: '2-digit', minute: '2-digit' });
 
@@ -285,6 +318,7 @@ export default function ChatIAAdmin({ navigation }: Props) {
   }
 
   function enviarMensaje(texto: string) {
+    Keyboard.dismiss();
     if (!texto.trim()) return;
 
     const mensajeUsuario: Mensaje = {
@@ -332,58 +366,68 @@ export default function ChatIAAdmin({ navigation }: Props) {
   const greeting = name ? t('chatIAAdmin.greeting_named', { name }) : t('chatIAAdmin.greeting');
 
   return (
-    <SafeAreaView style={estilos.contenedor}>
-      <StatusBar barStyle={theme.isDark ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
-      
-      {/* Dynamic Background: Solid Base with Animated Radial Glow */}
-      <View style={StyleSheet.absoluteFill}>
-        <View style={{ ...StyleSheet.absoluteFill, backgroundColor: theme.bg }} />
-        <Animated.View style={[StyleSheet.absoluteFill, { opacity: opacidadGlow }]}>
-          <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
-            <Defs>
-              <RadialGradient id="purpleGlow" cx="50%" cy="50%" rx="65%" ry="65%" fx="50%" fy="50%">
-                <Stop offset="0%" stopColor={theme.primary} stopOpacity={theme.isDark ? 0.35 : 0.16} />
-                <Stop offset="55%" stopColor={theme.purple || theme.primary} stopOpacity={theme.isDark ? 0.08 : 0.03} />
-                <Stop offset="100%" stopColor={theme.bg} stopOpacity={0} />
-              </RadialGradient>
-            </Defs>
-            <Rect width="100%" height="100%" fill="url(#purpleGlow)" />
-          </Svg>
-        </Animated.View>
-      </View>
+    <KeyboardAvoidingView
+      style={estilos.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
+    >
+      <SafeAreaView style={estilos.contenedor}>
+        <StatusBar barStyle={theme.isDark ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
 
-      <KeyboardAvoidingView style={estilos.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        {/* Dynamic Background: Solid Base with Animated Radial Glow */}
+        <View style={StyleSheet.absoluteFill}>
+          <View style={{ ...StyleSheet.absoluteFill, backgroundColor: theme.bg }} />
+          <Animated.View style={[StyleSheet.absoluteFill, { opacity: opacidadGlow }]}>
+            <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
+              <Defs>
+                <RadialGradient id="purpleGlow" cx="50%" cy="50%" rx="65%" ry="65%" fx="50%" fy="50%">
+                  <Stop offset="0%" stopColor={theme.primary} stopOpacity={theme.isDark ? 0.35 : 0.16} />
+                  <Stop offset="55%" stopColor={theme.purple || theme.primary} stopOpacity={theme.isDark ? 0.08 : 0.03} />
+                  <Stop offset="100%" stopColor={theme.bg} stopOpacity={0} />
+                </RadialGradient>
+              </Defs>
+              <Rect width="100%" height="100%" fill="url(#purpleGlow)" />
+            </Svg>
+          </Animated.View>
+        </View>
+
         {mensajes.length === 0 ? (
           /* Initial Welcome State (Gemini Style) */
           <View style={estilos.welcomeContainer}>
             <Text style={estilos.greetingText}>{greeting}</Text>
-            
+
             <View style={estilos.barraMensajeCentrada}>
               <TouchableOpacity style={estilos.botonAccionInput} activeOpacity={0.7}>
                 <MaterialIcons name="add" size={20} color={theme.muted} />
               </TouchableOpacity>
-              
+
               <TextInput
                 style={estilos.entrada}
                 placeholder="Pregunta a NexxusIA..."
                 placeholderTextColor={theme.soft}
                 value={textoEntrada}
                 onChangeText={setTextoEntrada}
-                onSubmitEditing={() => enviarMensaje(textoEntrada)}
+                onSubmitEditing={() => {
+                  Keyboard.dismiss();
+                  if (textoEntrada.trim()) {
+                    enviarMensaje(textoEntrada);
+                  }
+                }}
+                blurOnSubmit={true}
                 returnKeyType="send"
                 multiline={false}
                 maxLength={400}
               />
-              
+
               <View style={estilos.controlesDerechaInput}>
                 <View style={estilos.selectorModelo}>
                   <Text style={estilos.textoModelo}>Flash</Text>
                   <MaterialIcons name="keyboard-arrow-down" size={14} color={theme.muted} />
                 </View>
-                
+
                 {textoEntrada.trim() ? (
-                  <TouchableOpacity 
-                    onPress={() => enviarMensaje(textoEntrada)} 
+                  <TouchableOpacity
+                    onPress={() => enviarMensaje(textoEntrada)}
                     style={estilos.botonEnviar}
                     activeOpacity={0.8}
                   >
@@ -406,6 +450,8 @@ export default function ChatIAAdmin({ navigation }: Props) {
               ref={referenciaScroll}
               contentContainerStyle={estilos.scrollChat}
               showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="none"
               onContentSizeChange={() => referenciaScroll.current?.scrollToEnd({ animated: true })}
             >
               <View style={estilos.messagesContainer}>
@@ -503,7 +549,12 @@ export default function ChatIAAdmin({ navigation }: Props) {
               </View>
             </ScrollView>
 
-            <View style={[estilos.contenedorEntrada, { paddingBottom: tecladoVisible ? 12 : (Platform.OS === 'ios' ? 24 : 16) }]}>
+            <Animated.View
+              style={[
+                estilos.contenedorEntrada,
+                { paddingBottom: animBottomPadding },
+              ]}
+            >
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={estilos.sugerencias} style={estilos.sugerenciasScroll}>
                 {mensajes.length > 0 && (
                   <TouchableOpacity onPress={limpiarHistorial} style={[estilos.chipSugerencia, { borderColor: 'rgba(239, 68, 68, 0.3)', backgroundColor: theme.isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)' }]} activeOpacity={0.8}>
@@ -523,28 +574,34 @@ export default function ChatIAAdmin({ navigation }: Props) {
                 <TouchableOpacity style={estilos.botonAccionInput} activeOpacity={0.7}>
                   <MaterialIcons name="add" size={20} color={theme.muted} />
                 </TouchableOpacity>
-                
+
                 <TextInput
                   style={estilos.entrada}
                   placeholder="Pregunta a NexxusIA..."
                   placeholderTextColor={theme.soft}
                   value={textoEntrada}
                   onChangeText={setTextoEntrada}
-                  onSubmitEditing={() => enviarMensaje(textoEntrada)}
+                  onSubmitEditing={() => {
+                    Keyboard.dismiss();
+                    if (textoEntrada.trim()) {
+                      enviarMensaje(textoEntrada);
+                    }
+                  }}
+                  blurOnSubmit={true}
                   returnKeyType="send"
                   multiline={false}
                   maxLength={400}
                 />
-                
+
                 <View style={estilos.controlesDerechaInput}>
                   <View style={estilos.selectorModelo}>
                     <Text style={estilos.textoModelo}>Flash</Text>
                     <MaterialIcons name="keyboard-arrow-down" size={14} color={theme.muted} />
                   </View>
-                  
+
                   {textoEntrada.trim() ? (
-                    <TouchableOpacity 
-                      onPress={() => enviarMensaje(textoEntrada)} 
+                    <TouchableOpacity
+                      onPress={() => enviarMensaje(textoEntrada)}
                       style={estilos.botonEnviar}
                       activeOpacity={0.8}
                     >
@@ -553,9 +610,9 @@ export default function ChatIAAdmin({ navigation }: Props) {
                       </Svg>
                     </TouchableOpacity>
                   ) : (
-                    <TouchableOpacity 
-                      onPress={() => navigation.navigate('VoiceChatScreen')} 
-                      style={estilos.botonAccionInput} 
+                    <TouchableOpacity
+                      onPress={() => navigation.navigate('VoiceChatScreen')}
+                      style={estilos.botonAccionInput}
                       activeOpacity={0.7}
                       accessibilityLabel="Hablar con Nexxus IA por voz"
                     >
@@ -564,35 +621,35 @@ export default function ChatIAAdmin({ navigation }: Props) {
                   )}
                 </View>
               </View>
-            </View>
+            </Animated.View>
           </View>
         )}
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }
 
 function crearEstilosChat(theme: any, width: number) {
   const isWeb = Platform.OS === 'web';
   const esOscuro = theme.isDark;
-  
+
   return StyleSheet.create({
     contenedor: { flex: 1 },
     flex: { flex: 1 },
-    
-    welcomeContainer: { 
-      flex: 1, 
-      alignItems: 'center', 
+
+    welcomeContainer: {
+      flex: 1,
+      alignItems: 'center',
       justifyContent: 'center',
       paddingHorizontal: 20,
       gap: 28,
       paddingTop: 60,
     },
-    greetingText: { 
-      fontSize: 34, 
-      fontWeight: '300', 
-      color: theme.text, 
-      textAlign: 'center', 
+    greetingText: {
+      fontSize: 34,
+      fontWeight: '300',
+      color: theme.text,
+      textAlign: 'center',
       letterSpacing: -0.5,
       lineHeight: 44,
       fontFamily: Platform.select({
@@ -601,45 +658,45 @@ function crearEstilosChat(theme: any, width: number) {
         web: 'Outfit, Inter, system-ui, -apple-system, sans-serif'
       }),
     },
-    
-    scrollChat: { 
-      paddingHorizontal: 20, 
+
+    scrollChat: {
+      paddingHorizontal: 20,
       paddingTop: 100, // Safe padding to start under global navbar
       paddingBottom: 24,
     },
-    
-    messagesContainer: { 
+
+    messagesContainer: {
       width: '100%',
       gap: 14,
     },
-    
+
     filaUsuario: {
       width: '100%',
       alignItems: 'flex-end',
       marginVertical: 4,
     },
-    burbujaUsuario: { 
-      backgroundColor: esOscuro ? 'rgba(124, 58, 237, 0.15)' : 'rgba(124, 58, 237, 0.08)', 
-      borderWidth: 1, 
-      borderColor: esOscuro ? 'rgba(124, 58, 237, 0.3)' : 'rgba(124, 58, 237, 0.22)', 
-      paddingHorizontal: 16, 
-      paddingVertical: 10, 
-      borderRadius: 18, 
-      borderBottomRightRadius: 4, 
+    burbujaUsuario: {
+      backgroundColor: esOscuro ? 'rgba(124, 58, 237, 0.15)' : 'rgba(124, 58, 237, 0.08)',
+      borderWidth: 1,
+      borderColor: esOscuro ? 'rgba(124, 58, 237, 0.3)' : 'rgba(124, 58, 237, 0.22)',
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderRadius: 18,
+      borderBottomRightRadius: 4,
       maxWidth: '85%',
     },
-    textoBurbujaUsuario: { 
-      fontSize: 15, 
-      color: theme.text, 
+    textoBurbujaUsuario: {
+      fontSize: 15,
+      color: theme.text,
       lineHeight: 22,
     },
-    horaUsuario: { 
-      fontSize: 9, 
-      color: theme.muted, 
-      marginTop: 4, 
+    horaUsuario: {
+      fontSize: 9,
+      color: theme.muted,
+      marginTop: 4,
       textAlign: 'right',
     },
-    
+
     filaIA: {
       width: '100%',
       flexDirection: 'row',
@@ -647,12 +704,12 @@ function crearEstilosChat(theme: any, width: number) {
       gap: 12,
       marginVertical: 10,
     },
-    avatarIA: { 
-      width: 30, 
-      height: 30, 
-      borderRadius: 15, 
-      backgroundColor: theme.primary, 
-      alignItems: 'center', 
+    avatarIA: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      backgroundColor: theme.primary,
+      alignItems: 'center',
       justifyContent: 'center',
       shadowColor: theme.primary,
       shadowOffset: { width: 0, height: 2 },
@@ -660,13 +717,13 @@ function crearEstilosChat(theme: any, width: number) {
       shadowRadius: 4,
       elevation: 3,
     },
-    contenidoIA: { 
-      flex: 1, 
+    contenidoIA: {
+      flex: 1,
       gap: 3,
     },
-    nombreIA: { 
-      fontSize: 13, 
-      fontWeight: '900', 
+    nombreIA: {
+      fontSize: 13,
+      fontWeight: '900',
       color: theme.text,
       marginBottom: 2,
     },
@@ -681,9 +738,9 @@ function crearEstilosChat(theme: any, width: number) {
       alignSelf: 'flex-start',
       marginTop: 2,
     },
-    textoBurbujaIA: { 
-      fontSize: 15, 
-      color: theme.text, 
+    textoBurbujaIA: {
+      fontSize: 15,
+      color: theme.text,
       lineHeight: 22,
     },
     botonRedirect: {
@@ -716,49 +773,49 @@ function crearEstilosChat(theme: any, width: number) {
     tarjetaAccionResultado: { fontSize: 12, color: '#22C55E', fontWeight: '700' },
     tarjetaAccionResultadoError: { color: '#F87171' },
     horaIA: {
-      fontSize: 9, 
-      color: theme.muted, 
+      fontSize: 9,
+      color: theme.muted,
       marginTop: 4,
     },
-    
-    contenedorEntrada: { 
-      paddingHorizontal: 20, 
-      paddingTop: 10, 
+
+    contenedorEntrada: {
+      paddingHorizontal: 20,
+      paddingTop: 10,
       backgroundColor: 'transparent',
     },
     sugerenciasScroll: {
       marginBottom: 10,
     },
-    sugerencias: { 
+    sugerencias: {
       gap: 8,
       paddingRight: 12,
     },
-    chipSugerencia: { 
-      flexDirection: 'row', 
-      alignItems: 'center', 
-      gap: 6, 
-      paddingHorizontal: 12, 
-      paddingVertical: 8, 
-      borderRadius: 16, 
-      backgroundColor: theme.chip, 
-      borderWidth: 1, 
+    chipSugerencia: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 16,
+      backgroundColor: theme.chip,
+      borderWidth: 1,
       borderColor: theme.border,
     },
-    textoChip: { 
-      fontSize: 11, 
-      fontWeight: '800', 
+    textoChip: {
+      fontSize: 11,
+      fontWeight: '800',
       color: theme.text,
     },
-    
-    barraMensajeCentrada: { 
-      height: 52, 
-      borderRadius: 26, 
-      borderWidth: 1, 
-      borderColor: theme.border, 
-      backgroundColor: esOscuro ? 'rgba(25, 22, 40, 0.92)' : '#FFFFFF', 
-      flexDirection: 'row', 
-      alignItems: 'center', 
-      paddingHorizontal: 14, 
+
+    barraMensajeCentrada: {
+      height: 52,
+      borderRadius: 26,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: esOscuro ? 'rgba(25, 22, 40, 0.92)' : '#FFFFFF',
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 14,
       gap: 8,
       width: '90%',
       maxWidth: 600,
@@ -777,15 +834,15 @@ function crearEstilosChat(theme: any, width: number) {
         }
       })
     },
-    barraMensaje: { 
-      height: 52, 
-      borderRadius: 26, 
-      borderWidth: 1, 
-      borderColor: theme.border, 
-      backgroundColor: esOscuro ? 'rgba(25, 22, 40, 0.92)' : '#FFFFFF', 
-      flexDirection: 'row', 
-      alignItems: 'center', 
-      paddingHorizontal: 14, 
+    barraMensaje: {
+      height: 52,
+      borderRadius: 26,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: esOscuro ? 'rgba(25, 22, 40, 0.92)' : '#FFFFFF',
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 14,
       gap: 8,
       width: '100%',
       ...Platform.select({
@@ -803,10 +860,10 @@ function crearEstilosChat(theme: any, width: number) {
         }
       })
     },
-    entrada: { 
-      flex: 1, 
-      color: theme.text, 
-      fontSize: 14, 
+    entrada: {
+      flex: 1,
+      color: theme.text,
+      fontSize: 14,
       paddingVertical: 6,
       outlineStyle: isWeb ? 'none' : undefined,
     } as any,
@@ -836,26 +893,26 @@ function crearEstilosChat(theme: any, width: number) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    botonEnviar: { 
-      width: 32, 
-      height: 32, 
-      borderRadius: 16, 
-      backgroundColor: theme.primary, 
-      alignItems: 'center', 
+    botonEnviar: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: theme.primary,
+      alignItems: 'center',
       justifyContent: 'center',
     },
-    puntoEscritura: { 
-      width: 6, 
-      height: 6, 
-      borderRadius: 3, 
-      backgroundColor: theme.primary, 
+    puntoEscritura: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: theme.primary,
       marginHorizontal: 2,
     },
-    indicadorEscribiendo: { 
-      flexDirection: 'row', 
-      gap: 2, 
-      alignItems: 'center', 
-      height: 16, 
+    indicadorEscribiendo: {
+      flexDirection: 'row',
+      gap: 2,
+      alignItems: 'center',
+      height: 16,
       paddingLeft: 4,
     },
   });

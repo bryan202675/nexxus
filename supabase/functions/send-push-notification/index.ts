@@ -3,7 +3,7 @@
 // autenticado le mande push a gente de otra empresa pasando cualquier userId.
 //
 // Expo Push API: https://docs.expo.dev/push-notifications/sending-notifications/
-import { getCaller, sameCompany, safeString, withHandler, HttpError } from "../_shared/nexxus.ts";
+import { getCaller, isAdminEmpresa, sameCompany, safeString, withHandler, HttpError } from "../_shared/nexxus.ts";
 
 const EXPO_PUSH_ENDPOINT = "https://exp.host/--/api/v2/push/send";
 
@@ -22,15 +22,31 @@ Deno.serve(withHandler(async (req, admin) => {
   const data = body?.data && typeof body.data === "object" ? body.data : undefined;
   if (!userId || !titulo || !mensaje) throw new HttpError(400, "Faltan userId, titulo o mensaje.");
 
-  const { data: destinatario, error: destinatarioError } = await admin
+  const [{ data: destinatario, error: destinatarioError }, { data: callerProfile, error: callerError }] = await Promise.all([
+    admin
     .from("usuarios")
     .select("id, empresa_id")
     .eq("id", userId)
-    .maybeSingle();
+    .maybeSingle(),
+    admin.from("usuarios").select("jefe_id").eq("id", caller.id).maybeSingle(),
+  ]);
   if (destinatarioError) throw new HttpError(500, destinatarioError.message);
+  if (callerError) throw new HttpError(500, callerError.message);
   if (!destinatario) throw new HttpError(404, "No se encontró el usuario destino.");
   if (!sameCompany(caller, destinatario.empresa_id)) {
     throw new HttpError(403, "No puedes enviar notificaciones a otra empresa.");
+  }
+  const esJefeDirecto = callerProfile?.jefe_id === userId;
+  const { data: chatDirecto, error: chatError } = await admin.from("conversaciones")
+    .select("id")
+    .eq("empresa_id", caller.empresa_id)
+    .eq("tipo", "directa")
+    .contains("participante_ids", [caller.id, userId])
+    .limit(1)
+    .maybeSingle();
+  if (chatError) throw new HttpError(500, chatError.message);
+  if (!isAdminEmpresa(caller) && !esJefeDirecto && !chatDirecto) {
+    throw new HttpError(403, "Solo puedes enviar push a tu jefe directo o a un contacto de chat directo.");
   }
 
   const { data: tokens, error: tokensError } = await admin

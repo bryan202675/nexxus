@@ -40,9 +40,12 @@ import BotonAnimado from '@/presentation/components/BotonAnimado';
 import ModalShell from '@/presentation/components/ui/ModalShell';
 import Skeleton from '@/presentation/components/ui/Skeleton';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
+import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import { SOMBRAS } from '@/shared/constants/diseno';
 import { useUserTabBottomPadding } from '@/presentation/hooks/useUserTabBottomPadding';
 import { Absence, AdjuntoItem } from 'domain/entities/Absence';
+
+type PulseColors = ReturnType<typeof useTemaMobile>['colores']['pulso'];
 
 const Text = AdminTranslatedText;
 const TextInput = AdminTranslatedTextInput;
@@ -74,37 +77,37 @@ const PRIORIDADES: { id: Absence['prioridad']; label: string; dotColor: string }
   { id: 'baja', label: 'Baja', dotColor: '#D5E774' },
   { id: 'media', label: 'Media', dotColor: '#E9D2BF' },
   { id: 'alta', label: 'Alta', dotColor: '#F2AD84' },
-  { id: 'urgente', label: 'Urgente', dotColor: '#202020' },
+  { id: 'urgente', label: 'Urgente', dotColor: '#EF4444' },
 ];
 
-const getStatusTheme = (estado?: string) => {
+const getStatusTheme = (estado?: string, esOscuro?: boolean) => {
   switch (estado) {
     case 'aprobada':
       return {
-        bg: '#EAF4DC',
-        dot: '#7DA842',
-        text: '#455E24',
+        bg: esOscuro ? 'rgba(74, 222, 128, 0.15)' : '#EAF4DC',
+        dot: '#4ADE80',
+        text: esOscuro ? '#4ADE80' : '#455E24',
         label: 'Aprobada',
       };
     case 'rechazada':
       return {
-        bg: '#F6ECEB',
-        dot: '#BF665E',
-        text: '#833932',
+        bg: esOscuro ? 'rgba(248, 113, 113, 0.15)' : '#F6ECEB',
+        dot: '#F87171',
+        text: esOscuro ? '#F87171' : '#833932',
         label: 'Rechazada',
       };
     case 'cancelada':
       return {
-        bg: '#EFECE9',
-        dot: '#96908A',
-        text: '#5D5853',
+        bg: esOscuro ? 'rgba(156, 163, 175, 0.15)' : '#EFECE9',
+        dot: '#9CA3AF',
+        text: esOscuro ? '#9CA3AF' : '#5D5853',
         label: 'Cancelada',
       };
     default:
       return {
-        bg: '#FFF6E5',
-        dot: '#D6A23D',
-        text: '#7C5819',
+        bg: esOscuro ? 'rgba(251, 191, 36, 0.15)' : '#FFF6E5',
+        dot: '#FBBF24',
+        text: esOscuro ? '#FBBF24' : '#7C5819',
         label: 'Pendiente',
       };
   }
@@ -126,6 +129,9 @@ const formatPeriodDate = (inicio?: string, fin?: string) => {
 };
 
 export default function SolicitudesAusencia({ navigation }: { navigation: Navigation }) {
+  const { colores, esOscuro } = useTemaMobile();
+  const pulse = colores.pulso;
+  const styles = useMemo(() => createAusenciaStyles(pulse, esOscuro), [pulse, esOscuro]);
   const bottomPadding = useUserTabBottomPadding(96);
   const { t } = useTranslation();
   const {
@@ -477,45 +483,47 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
 
   return (
     <SafeAreaView style={styles.screen}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle={esOscuro ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
       <LinearGradient
         pointerEvents="none"
-        colors={['#FBEDE8', '#F6ECF6', '#FFFDFC']}
+        colors={pulse.ambient}
         locations={[0, 0.28, 0.72]}
         style={styles.ambient}
       />
 
       {/* Barra Superior */}
-      <View style={styles.topBar}>
-        <BotonAnimado
-          style={styles.backButton}
-          scaleTo={0.96}
-          onPress={manejarRegresar}
-          accessibilityLabel="Regresar"
-        >
-          <Feather name="arrow-left" size={21} color="#202020" />
-        </BotonAnimado>
-
-        <Text style={styles.topBarLabel}>Ausencias</Text>
-
-        <View style={styles.headerActions}>
+      <View style={styles.topBarContainer}>
+        <View style={styles.topBar}>
           <BotonAnimado
-            style={styles.addButton}
+            style={styles.backButton}
             scaleTo={0.96}
-            onPress={abrirFormularioCrear}
-            accessibilityLabel="Crear nueva solicitud"
+            onPress={manejarRegresar}
+            accessibilityLabel="Regresar"
           >
-            <Feather name="plus" size={21} color="#FFFFFF" />
+            <Feather name="arrow-left" size={Platform.OS === 'ios' ? 21 : 18} color={pulse.icon} />
           </BotonAnimado>
 
-          <BotonAnimado
-            style={styles.bellButton}
-            scaleTo={0.96}
-            onPress={() => navigation.navigate('ConfiguracionApp')}
-            accessibilityLabel="Abrir configuración"
-          >
-            <Feather name="settings" size={20} color="#202020" />
-          </BotonAnimado>
+          <Text style={styles.topBarLabel}>Ausencias</Text>
+
+          <View style={styles.headerActions}>
+            <BotonAnimado
+              style={styles.addButton}
+              scaleTo={0.96}
+              onPress={abrirFormularioCrear}
+              accessibilityLabel="Crear nueva solicitud"
+            >
+              <Feather name="plus" size={Platform.OS === 'ios' ? 21 : 18} color={pulse.textInverse} />
+            </BotonAnimado>
+
+            <BotonAnimado
+              style={styles.bellButton}
+              scaleTo={0.96}
+              onPress={() => navigation.navigate('ConfiguracionApp')}
+              accessibilityLabel="Abrir configuración"
+            >
+              <Feather name="settings" size={Platform.OS === 'ios' ? 20 : 17} color={pulse.icon} />
+            </BotonAnimado>
+          </View>
         </View>
       </View>
 
@@ -527,7 +535,7 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
           <RefreshControl
             refreshing={refreshing}
             onRefresh={refresh}
-            tintColor="#202020"
+            tintColor={pulse.inverse}
           />
         }
       >
@@ -613,6 +621,7 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
         visible={detalleModalVisible}
         onClose={() => setDetalleModalVisible(false)}
         maxHeight="92%"
+        style={styles.modalBody}
       >
         {solicitudSeleccionada && (
           <View style={styles.modalBody}>
@@ -626,7 +635,7 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
                       'calendar'
                     }
                     size={16}
-                    color="#202020"
+                    color={pulse.icon}
                   />
                 </View>
                 <View>
@@ -645,7 +654,7 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
                 scaleTo={0.92}
                 style={styles.modalCloseButton}
               >
-                <Feather name="x" size={18} color="#202020" />
+                <Feather name="x" size={18} color={pulse.icon} />
               </BotonAnimado>
             </View>
 
@@ -673,7 +682,7 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
                       }
                       size={17}
                       color={
-                        solicitudSeleccionada.estado === 'aprobada' ? '#455E24' : '#833932'
+                        solicitudSeleccionada.estado === 'aprobada' ? '#4ADE80' : '#F87171'
                       }
                     />
                     <Text
@@ -682,8 +691,8 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
                         {
                           color:
                             solicitudSeleccionada.estado === 'aprobada'
-                              ? '#455E24'
-                              : '#833932',
+                              ? esOscuro ? '#4ADE80' : '#455E24'
+                              : esOscuro ? '#F87171' : '#833932',
                         },
                       ]}
                     >
@@ -709,22 +718,22 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
                   <View
                     style={[
                       styles.statusPill,
-                      { backgroundColor: getStatusTheme(solicitudSeleccionada.estado).bg },
+                      { backgroundColor: getStatusTheme(solicitudSeleccionada.estado, esOscuro).bg },
                     ]}
                   >
                     <View
                       style={[
                         styles.statusDot,
-                        { backgroundColor: getStatusTheme(solicitudSeleccionada.estado).dot },
+                        { backgroundColor: getStatusTheme(solicitudSeleccionada.estado, esOscuro).dot },
                       ]}
                     />
                     <Text
                       style={[
                         styles.statusText,
-                        { color: getStatusTheme(solicitudSeleccionada.estado).text },
+                        { color: getStatusTheme(solicitudSeleccionada.estado, esOscuro).text },
                       ]}
                     >
-                      {getStatusTheme(solicitudSeleccionada.estado).label}
+                      {getStatusTheme(solicitudSeleccionada.estado, esOscuro).label}
                     </Text>
                   </View>
 
@@ -758,7 +767,7 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
                       {solicitudSeleccionada.fecha_inicio}
                     </Text>
                   </View>
-                  <Feather name="arrow-right" size={16} color="#86807D" />
+                  <Feather name="arrow-right" size={16} color={pulse.textTertiary} />
                   <View style={styles.detailDateBox}>
                     <Text style={styles.detailDateBoxLabel}>Hasta</Text>
                     <Text style={styles.detailDateBoxValue}>
@@ -796,7 +805,7 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
                           <Image source={{ uri: adj.uri }} style={styles.attachmentThumb} />
                         ) : (
                           <View style={styles.attachmentDocIcon}>
-                            <Feather name="file-text" size={18} color="#202020" />
+                            <Feather name="file-text" size={18} color={pulse.icon} />
                           </View>
                         )}
                         <View style={styles.attachmentMeta}>
@@ -807,7 +816,7 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
                             {adj.tipo === 'imagen' ? 'Foto adjunta' : 'Documento'}
                           </Text>
                         </View>
-                        <Feather name="external-link" size={15} color="#86807D" />
+                        <Feather name="external-link" size={15} color={pulse.textTertiary} />
                       </TouchableOpacity>
                     ))}
                     {!solicitudSeleccionada.archivos_adjuntos?.length &&
@@ -821,7 +830,7 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
                           style={styles.attachmentPreviewItem}
                         >
                           <View style={styles.attachmentDocIcon}>
-                            <Feather name="file-text" size={18} color="#202020" />
+                            <Feather name="file-text" size={18} color={pulse.icon} />
                           </View>
                           <View style={styles.attachmentMeta}>
                             <Text style={styles.attachmentName} numberOfLines={1}>
@@ -829,7 +838,7 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
                             </Text>
                             <Text style={styles.attachmentSub}>Toca para abrir</Text>
                           </View>
-                          <Feather name="external-link" size={15} color="#86807D" />
+                          <Feather name="external-link" size={15} color={pulse.textTertiary} />
                         </TouchableOpacity>
                       )}
                   </View>
@@ -844,7 +853,7 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
                     scaleTo={0.97}
                     style={styles.editButton}
                   >
-                    <Feather name="edit-3" size={16} color="#FFFFFF" />
+                    <Feather name="edit-3" size={16} color={pulse.textInverse} />
                     <Text style={styles.editButtonText}>Editar</Text>
                   </BotonAnimado>
 
@@ -853,7 +862,7 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
                     scaleTo={0.97}
                     style={styles.cancelButton}
                   >
-                    <Feather name="trash-2" size={16} color="#833932" />
+                    <Feather name="trash-2" size={16} color={esOscuro ? '#F87171' : '#833932'} />
                     <Text style={styles.cancelButtonText}>Cancelar</Text>
                   </BotonAnimado>
                 </View>
@@ -868,6 +877,7 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
         visible={modalFormVisible}
         onClose={() => setModalFormVisible(false)}
         maxHeight="92%"
+        style={styles.modalBody}
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -889,7 +899,7 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
               scaleTo={0.92}
               style={styles.modalCloseButton}
             >
-              <Feather name="x" size={18} color="#202020" />
+              <Feather name="x" size={18} color={pulse.icon} />
             </BotonAnimado>
           </View>
 
@@ -902,7 +912,7 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
             <TextInput
               style={styles.formInput}
               placeholder="Ej. Vacaciones de verano, Cita médica..."
-              placeholderTextColor="#9E9893"
+              placeholderTextColor={pulse.textTertiary}
               value={asunto}
               onChangeText={setAsunto}
             />
@@ -922,7 +932,7 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
                     <Feather
                       name={cat.icon}
                       size={14}
-                      color={active ? '#FFFFFF' : '#544F4B'}
+                      color={active ? pulse.textInverse : pulse.textTertiary}
                     />
                     <Text
                       style={[
@@ -960,11 +970,11 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
               <View style={styles.dateSlot}>
                 <Text style={styles.dateSlotLabel}>Inicio</Text>
                 <View style={styles.dateSlotValueWrap}>
-                  <Feather name="calendar" size={14} color="#78736F" />
+                  <Feather name="calendar" size={14} color={pulse.icon} />
                   <Text
                     style={[
                       styles.dateSlotValue,
-                      !fechaInicio && { color: '#9E9893' },
+                      !fechaInicio && { color: pulse.textTertiary },
                     ]}
                   >
                     {fechaInicio || 'Seleccionar'}
@@ -972,16 +982,16 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
                 </View>
               </View>
 
-              <Feather name="arrow-right" size={16} color="#86807D" />
+              <Feather name="arrow-right" size={16} color={pulse.textTertiary} />
 
               <View style={styles.dateSlot}>
                 <Text style={styles.dateSlotLabel}>Fin</Text>
                 <View style={styles.dateSlotValueWrap}>
-                  <Feather name="calendar" size={14} color="#78736F" />
+                  <Feather name="calendar" size={14} color={pulse.icon} />
                   <Text
                     style={[
                       styles.dateSlotValue,
-                      !fechaFin && { color: '#9E9893' },
+                      !fechaFin && { color: pulse.textTertiary },
                     ]}
                   >
                     {fechaFin || 'Seleccionar'}
@@ -1003,7 +1013,7 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
                     scaleTo={0.88}
                     style={styles.calNavBtn}
                   >
-                    <Feather name="chevron-left" size={18} color="#202020" />
+                    <Feather name="chevron-left" size={18} color={pulse.icon} />
                   </BotonAnimado>
                   <Text style={styles.calMonthTitle}>
                     {NOMBRES_MESES[calMes]} {calAnio}
@@ -1013,7 +1023,7 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
                     scaleTo={0.88}
                     style={styles.calNavBtn}
                   >
-                    <Feather name="chevron-right" size={18} color="#202020" />
+                    <Feather name="chevron-right" size={18} color={pulse.icon} />
                   </BotonAnimado>
                 </View>
 
@@ -1088,7 +1098,7 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
             <TextInput
               style={[styles.formInput, styles.textArea]}
               placeholder="Escribe detalles adicionales sobre tu solicitud..."
-              placeholderTextColor="#9E9893"
+              placeholderTextColor={pulse.textTertiary}
               multiline
               numberOfLines={3}
               value={motivo}
@@ -1113,7 +1123,7 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
                       <Image source={{ uri: adj.uri }} style={styles.attachmentThumb} />
                     ) : (
                       <View style={styles.attachmentDocIcon}>
-                        <Feather name="file-text" size={18} color="#202020" />
+                        <Feather name="file-text" size={18} color={pulse.icon} />
                       </View>
                     )}
                     <View style={styles.attachmentMeta}>
@@ -1129,7 +1139,7 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
                       scaleTo={0.9}
                       style={styles.removeAttachmentBtn}
                     >
-                      <Feather name="trash-2" size={15} color="#833932" />
+                      <Feather name="trash-2" size={15} color={esOscuro ? '#F87171' : '#833932'} />
                     </BotonAnimado>
                   </Animated.View>
                 ))}
@@ -1142,7 +1152,7 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
               style={styles.attachButton}
             >
               <View style={styles.attachIconWrap}>
-                <Feather name="paperclip" size={16} color="#202020" />
+                <Feather name="paperclip" size={16} color={pulse.icon} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.attachTitle}>
@@ -1150,7 +1160,7 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
                 </Text>
                 <Text style={styles.attachSub}>Formatos PDF, Word, fotos de cámara o galería</Text>
               </View>
-              <Feather name="plus" size={17} color="#78736F" />
+              <Feather name="plus" size={17} color={pulse.textTertiary} />
             </BotonAnimado>
 
             {/* Prioridad */}
@@ -1187,13 +1197,13 @@ export default function SolicitudesAusencia({ navigation }: { navigation: Naviga
               disabled={enviando}
             >
               {enviando ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color={pulse.textInverse} />
               ) : (
                 <>
                   <Text style={styles.submitButtonText}>
                     {solicitudEditando ? 'Guardar cambios' : 'Enviar solicitud'}
                   </Text>
-                  <Feather name="check" size={17} color="#FFFFFF" />
+                  <Feather name="check" size={17} color={pulse.textInverse} />
                 </>
               )}
             </BotonAnimado>
@@ -1216,6 +1226,10 @@ function ScopeChip({
   active: boolean;
   onPress: () => void;
 }) {
+  const { colores, esOscuro } = useTemaMobile();
+  const pulse = colores.pulso;
+  const styles = useMemo(() => createAusenciaStyles(pulse, esOscuro), [pulse, esOscuro]);
+
   return (
     <BotonAnimado
       scaleTo={0.97}
@@ -1238,7 +1252,10 @@ function SolicitudCard({
   solicitud: Absence;
   onPress: () => void;
 }) {
-  const theme = getStatusTheme(solicitud.estado);
+  const { colores, esOscuro } = useTemaMobile();
+  const pulse = colores.pulso;
+  const styles = useMemo(() => createAusenciaStyles(pulse, esOscuro), [pulse, esOscuro]);
+  const theme = getStatusTheme(solicitud.estado, esOscuro);
   const categoria = CATEGORIAS.find((c) => c.id === solicitud.tipo);
   const adjuntosCount =
     (solicitud.archivos_adjuntos?.length || 0) + (solicitud.archivo_adjunto ? 1 : 0);
@@ -1257,7 +1274,7 @@ function SolicitudCard({
         </View>
 
         <View style={styles.arrowButton}>
-          <Feather name="arrow-up-right" size={18} color="#202020" />
+          <Feather name="arrow-up-right" size={18} color={pulse.icon} />
         </View>
       </View>
 
@@ -1273,7 +1290,7 @@ function SolicitudCard({
 
       <View style={styles.recordFooter}>
         <View style={styles.timeRow}>
-          <Feather name="clock" size={15} color="#78736F" />
+          <Feather name="clock" size={15} color={pulse.textTertiary} />
           <Text style={styles.time}>
             {formatPeriodDate(solicitud.fecha_inicio, solicitud.fecha_fin)}
           </Text>
@@ -1282,7 +1299,7 @@ function SolicitudCard({
         <View style={styles.footerTags}>
           {adjuntosCount > 0 && (
             <View style={styles.tagPill}>
-              <Feather name="paperclip" size={11} color="#78736F" />
+              <Feather name="paperclip" size={11} color={pulse.textTertiary} />
               <Text style={styles.tagPillText}>{adjuntosCount}</Text>
             </View>
           )}
@@ -1321,10 +1338,14 @@ function SolicitudesOverviewCard({
   destacada: Absence | null;
   onPressNueva: () => void;
 }) {
+  const { colores, esOscuro } = useTemaMobile();
+  const pulse = colores.pulso;
+  const styles = useMemo(() => createAusenciaStyles(pulse, esOscuro), [pulse, esOscuro]);
+
   return (
     <View style={styles.overviewContainer}>
       <LinearGradient
-        colors={['#222126', '#17161A']}
+        colors={pulse.heroGradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.overviewGradient}
@@ -1397,6 +1418,10 @@ function EmptySolicitudesCard({
   scope: FilterScope;
   onPress: () => void;
 }) {
+  const { colores, esOscuro } = useTemaMobile();
+  const pulse = colores.pulso;
+  const styles = useMemo(() => createAusenciaStyles(pulse, esOscuro), [pulse, esOscuro]);
+
   const label =
     scope === 'todas'
       ? 'Sin solicitudes registradas'
@@ -1410,11 +1435,11 @@ function EmptySolicitudesCard({
     <BotonAnimado scaleTo={0.98} onPress={onPress} style={styles.checkinCard}>
       <View style={styles.recordTop}>
         <View style={styles.statusPill}>
-          <View style={[styles.statusDot, { backgroundColor: '#B7B2AD' }]} />
+          <View style={[styles.statusDot, { backgroundColor: pulse.textTertiary }]} />
           <Text style={styles.statusText}>{label}</Text>
         </View>
         <View style={styles.arrowButton}>
-          <Feather name="plus" size={18} color="#202020" />
+          <Feather name="plus" size={18} color={pulse.icon} />
         </View>
       </View>
       <Text style={styles.recordTitle}>Solicita tu tiempo libre</Text>
@@ -1423,7 +1448,7 @@ function EmptySolicitudesCard({
       </Text>
       <View style={styles.recordFooter}>
         <View style={styles.timeRow}>
-          <Feather name="clock" size={15} color="#78736F" />
+          <Feather name="clock" size={15} color={pulse.textTertiary} />
           <Text style={styles.time}>Toma menos de un minuto</Text>
         </View>
       </View>
@@ -1433,6 +1458,10 @@ function EmptySolicitudesCard({
 
 // Skeleton de Carga
 function OverviewSkeleton() {
+  const { colores, esOscuro } = useTemaMobile();
+  const pulse = colores.pulso;
+  const styles = useMemo(() => createAusenciaStyles(pulse, esOscuro), [pulse, esOscuro]);
+
   return (
     <View style={styles.loadingCard}>
       <Skeleton width="40%" height={16} radius={8} />
@@ -1444,859 +1473,902 @@ function OverviewSkeleton() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#FFFDFC' },
-  ambient: { ...StyleSheet.absoluteFill },
-  content: {
-    paddingHorizontal: 21,
-    paddingTop: 4,
-  },
-  /* Top Bar */
-  topBar: {
-    height: 52,
-    marginHorizontal: 21,
-    marginTop: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backButton: {
-    width: 47,
-    height: 47,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...SOMBRAS.suave,
-  },
-  topBarLabel: {
-    color: '#292522',
-    fontSize: 17,
-    fontWeight: '600',
-    letterSpacing: -0.5,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  addButton: {
-    width: 47,
-    height: 47,
-    borderRadius: 24,
-    backgroundColor: '#202020',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bellButton: {
-    width: 47,
-    height: 47,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...SOMBRAS.suave,
-  },
-  hero: {
-    marginTop: 22,
-    marginBottom: 20,
-    color: '#1F1D1C',
-    fontSize: 34,
-    lineHeight: 38,
-    letterSpacing: -1.4,
-    fontWeight: '600',
-  },
+const isIOS = Platform.OS === 'ios';
 
-  // Overview Banner Ejecutivo
-  overviewContainer: {
-    borderRadius: 24,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    shadowColor: '#000',
-    shadowOpacity: 0.16,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 5,
-  },
-  overviewGradient: {
-    padding: 18,
-    minHeight: 180,
-  },
-  overviewHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  overviewPretitle: {
-    color: 'rgba(255, 255, 255, 0.48)',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-  },
-  overviewTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-    marginTop: 2,
-  },
-  overviewNewBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  overviewMetricsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 4,
-  },
-  overviewMetricItem: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 14,
-    paddingVertical: 9,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
-    gap: 8,
-  },
-  overviewIconWrap: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  overviewMetricVal: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-  },
-  overviewMetricLbl: {
-    color: 'rgba(255, 255, 255, 0.52)',
-    fontSize: 10,
-    fontWeight: '500',
-  },
-  overviewBottomBox: {
-    marginTop: 14,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  overviewBottomBoxLabel: {
-    color: 'rgba(255, 255, 255, 0.45)',
-    fontSize: 9.5,
-    fontWeight: '700',
-    letterSpacing: 0.6,
-  },
-  overviewBottomBoxContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 3,
-  },
-  overviewBottomBoxTitle: {
-    color: '#FFFFFF',
-    fontSize: 13.5,
-    fontWeight: '600',
-    flex: 1,
-    marginRight: 8,
-  },
-  overviewBottomBoxDate: {
-    color: 'rgba(255, 255, 255, 0.52)',
-    fontSize: 11,
-    fontWeight: '500',
-  },
+function createAusenciaStyles(pulse: PulseColors, esOscuro: boolean) {
+  return StyleSheet.create({
+    screen: { flex: 1, backgroundColor: pulse.background },
+    ambient: { ...StyleSheet.absoluteFill },
+    content: {
+      paddingHorizontal: 21,
+      paddingTop: isIOS ? 12 : 8,
+    },
+    /* Top Bar */
+    topBarContainer: {
+      paddingHorizontal: 21,
+      paddingTop: isIOS ? 6 : 4,
+      paddingBottom: 8,
+      zIndex: 10,
+      backgroundColor: 'transparent',
+    },
+    topBar: {
+      height: isIOS ? 54 : 48,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    backButton: {
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: pulse.pill,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...SOMBRAS.suave,
+    },
+    topBarLabel: {
+      color: pulse.text,
+      fontSize: isIOS ? 17 : 15,
+      fontWeight: '600',
+      letterSpacing: isIOS ? -0.5 : -0.3,
+    },
+    headerActions: {
+      flexDirection: 'row',
+      gap: isIOS ? 10 : 8,
+    },
+    addButton: {
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: pulse.inverse,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    bellButton: {
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: pulse.pill,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...SOMBRAS.suave,
+    },
+    hero: {
+      marginTop: isIOS ? 22 : 16,
+      marginBottom: isIOS ? 20 : 16,
+      color: pulse.text,
+      fontSize: isIOS ? 34 : 27,
+      lineHeight: isIOS ? 38 : 31,
+      letterSpacing: isIOS ? -1.4 : -0.9,
+      fontWeight: '600',
+    },
 
-  // Skeleton
-  loadingCard: {
-    minHeight: 180,
-    borderRadius: 24,
-    backgroundColor: '#222222',
-    padding: 18,
-    gap: 16,
-  },
-  loadingContent: {
-    gap: 10,
-  },
+    // Overview Banner Ejecutivo
+    overviewContainer: {
+      borderRadius: 24,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: esOscuro ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+      shadowColor: '#000',
+      shadowOpacity: 0.16,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 5,
+    },
+    overviewGradient: {
+      padding: 18,
+      minHeight: 180,
+    },
+    overviewHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 14,
+    },
+    overviewPretitle: {
+      color: 'rgba(255, 255, 255, 0.48)',
+      fontSize: 10,
+      fontWeight: '700',
+      letterSpacing: 0.8,
+    },
+    overviewTitle: {
+      color: '#FFFFFF',
+      fontSize: 18,
+      fontWeight: '700',
+      letterSpacing: -0.3,
+      marginTop: 2,
+    },
+    overviewNewBtn: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: 'rgba(255, 255, 255, 0.12)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    overviewMetricsRow: {
+      flexDirection: 'row',
+      gap: 8,
+      marginTop: 4,
+    },
+    overviewMetricItem: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+      borderRadius: 14,
+      paddingVertical: 9,
+      paddingHorizontal: 10,
+      borderWidth: 1,
+      borderColor: 'rgba(255, 255, 255, 0.04)',
+      gap: 8,
+    },
+    overviewIconWrap: {
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    overviewMetricVal: {
+      color: '#FFFFFF',
+      fontSize: 15,
+      fontWeight: '700',
+      letterSpacing: -0.2,
+    },
+    overviewMetricLbl: {
+      color: 'rgba(255, 255, 255, 0.52)',
+      fontSize: 10,
+      fontWeight: '500',
+    },
+    overviewBottomBox: {
+      marginTop: 14,
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: 'rgba(255, 255, 255, 0.08)',
+    },
+    overviewBottomBoxLabel: {
+      color: 'rgba(255, 255, 255, 0.45)',
+      fontSize: 9.5,
+      fontWeight: '700',
+      letterSpacing: 0.6,
+    },
+    overviewBottomBoxContent: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginTop: 3,
+    },
+    overviewBottomBoxTitle: {
+      color: '#FFFFFF',
+      fontSize: 13.5,
+      fontWeight: '600',
+      flex: 1,
+      marginRight: 8,
+    },
+    overviewBottomBoxDate: {
+      color: 'rgba(255, 255, 255, 0.52)',
+      fontSize: 11,
+      fontWeight: '500',
+    },
 
-  // Secciones
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 26,
-    marginBottom: 14,
-  },
-  sectionTitle: {
-    color: '#24211F',
-    fontSize: 24,
-    fontWeight: '600',
-    letterSpacing: -0.8,
-  },
-  viewAll: { color: '#5F5A56', fontSize: 14, fontWeight: '600' },
+    // Skeleton
+    loadingCard: {
+      minHeight: 180,
+      borderRadius: 24,
+      backgroundColor: pulse.surfaceElevated,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      padding: 18,
+      gap: 16,
+    },
+    loadingContent: {
+      gap: 10,
+    },
 
-  // Chips
-  chips: { gap: 9, paddingRight: 20 },
-  chip: {
-    height: 50,
-    borderRadius: 25,
-    paddingHorizontal: 9,
-    paddingRight: 17,
-    backgroundColor: 'rgba(255,255,255,0.82)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(43,36,31,0.035)',
-  },
-  chipActive: { backgroundColor: '#D5E774' },
-  chipCount: {
-    minWidth: 32,
-    height: 32,
-    paddingHorizontal: 8,
-    borderRadius: 16,
-    backgroundColor: '#F5F2EF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chipCountActive: { backgroundColor: '#FFFFFF' },
-  chipCountText: { color: '#3A3531', fontSize: 14, fontWeight: '700' },
-  chipLabel: { color: '#4B4642', fontSize: 14, fontWeight: '600' },
-  chipLabelActive: { color: '#2E3023' },
+    // Secciones
+    sectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: 26,
+      marginBottom: 14,
+    },
+    sectionTitle: {
+      color: pulse.text,
+      fontSize: 24,
+      fontWeight: '600',
+      letterSpacing: -0.8,
+    },
+    viewAll: { color: pulse.inverse, fontSize: 14, fontWeight: '600' },
 
-  // Lista de Solicitudes y Bento Cards
-  requestList: {
-    marginTop: 14,
-    gap: 12,
-  },
-  checkinCard: {
-    minHeight: 160,
-    padding: 18,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: 'rgba(43,36,31,0.035)',
-    ...SOMBRAS.suave,
-  },
-  recordTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  statusPill: {
-    minHeight: 29,
-    borderRadius: 15,
-    paddingHorizontal: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#F5F2EF',
-  },
-  statusDot: { width: 7, height: 7, borderRadius: 4 },
-  statusText: { fontSize: 11, fontWeight: '700' },
-  arrowButton: {
-    width: 39,
-    height: 39,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F7F6F4',
-  },
-  recordTitle: {
-    color: '#272321',
-    fontSize: 20,
-    fontWeight: '600',
-    letterSpacing: -0.55,
-    textTransform: 'capitalize',
-    marginTop: 12,
-  },
-  recordDetail: {
-    color: '#78736F',
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 4,
-  },
-  recordFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 18,
-  },
-  timeRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  time: { color: '#78736F', fontSize: 12, fontWeight: '600' },
-  footerTags: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  tagPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-    backgroundColor: '#F7F6F4',
-  },
-  tagPillText: {
-    color: '#655F5A',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  priorityDot: { width: 6, height: 6, borderRadius: 3 },
+    // Chips
+    chips: { gap: 9, paddingRight: 20 },
+    chip: {
+      height: 50,
+      borderRadius: 25,
+      paddingHorizontal: 9,
+      paddingRight: 17,
+      backgroundColor: pulse.surface,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    chipActive: { backgroundColor: pulse.chipActive, borderColor: pulse.chipActive },
+    chipCount: {
+      minWidth: 32,
+      height: 32,
+      paddingHorizontal: 8,
+      borderRadius: 16,
+      backgroundColor: pulse.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    chipCountActive: { backgroundColor: pulse.surfaceElevated },
+    chipCountText: { color: pulse.text, fontSize: 14, fontWeight: '700' },
+    chipLabel: { color: pulse.textTertiary, fontSize: 14, fontWeight: '600' },
+    chipLabelActive: { color: pulse.textInverse },
 
-  // Modales
-  modalBody: { flex: 1 },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-    paddingHorizontal: 2,
-  },
-  modalHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flex: 1,
-  },
-  modalCategoryIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F5F2EF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalCategoryText: {
-    fontSize: 10.5,
-    fontWeight: '700',
-    color: '#86807D',
-    letterSpacing: 0.6,
-  },
-  modalTitle: {
-    fontSize: 19,
-    fontWeight: '700',
-    color: '#1F1D1C',
-    letterSpacing: -0.4,
-  },
-  modalCloseButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#F5F2EF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalScroll: {
-    paddingBottom: 30,
-  },
+    // Lista de Solicitudes y Bento Cards
+    requestList: {
+      marginTop: 14,
+      gap: 12,
+    },
+    checkinCard: {
+      minHeight: 160,
+      padding: 18,
+      borderRadius: 24,
+      backgroundColor: pulse.surface,
+      justifyContent: 'space-between',
+      borderWidth: 1,
+      borderColor: pulse.border,
+      ...SOMBRAS.suave,
+    },
+    recordTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    statusPill: {
+      minHeight: 29,
+      borderRadius: 15,
+      paddingHorizontal: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: pulse.pill,
+    },
+    statusDot: { width: 7, height: 7, borderRadius: 4 },
+    statusText: { fontSize: 11, fontWeight: '700' },
+    arrowButton: {
+      width: 39,
+      height: 39,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: pulse.pill,
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    recordTitle: {
+      color: pulse.text,
+      fontSize: 20,
+      fontWeight: '600',
+      letterSpacing: -0.55,
+      textTransform: 'capitalize',
+      marginTop: 12,
+    },
+    recordDetail: {
+      color: pulse.textTertiary,
+      fontSize: 13,
+      lineHeight: 18,
+      marginTop: 4,
+    },
+    recordFooter: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: 18,
+    },
+    timeRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+    time: { color: pulse.textTertiary, fontSize: 12, fontWeight: '600' },
+    footerTags: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    tagPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 10,
+      backgroundColor: pulse.pill,
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    tagPillText: {
+      color: pulse.textTertiary,
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    priorityDot: { width: 6, height: 6, borderRadius: 3 },
 
-  // Detalle Modal
-  resolutionCard: {
-    borderRadius: 18,
-    padding: 14,
-    marginBottom: 12,
-    borderWidth: 1,
-  },
-  resolutionCardApproved: {
-    backgroundColor: '#F2F8EC',
-    borderColor: '#D4E8BF',
-  },
-  resolutionCardRejected: {
-    backgroundColor: '#FAF0EF',
-    borderColor: '#F0D5D3',
-  },
-  resolutionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    marginBottom: 4,
-  },
-  resolutionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  resolutionBody: {
-    fontSize: 12.5,
-    color: '#544F4B',
-    lineHeight: 18,
-    marginTop: 2,
-  },
-  detailSectionCard: {
-    backgroundColor: '#F7F6F4',
-    borderRadius: 18,
-    padding: 14,
-    marginBottom: 10,
-  },
-  detailLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#86807D',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 6,
-  },
-  detailStatusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 2,
-  },
-  detailPriorityPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  detailPriorityText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#4B4642',
-  },
-  detailPeriodRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 4,
-  },
-  detailDateBox: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 10,
-    alignItems: 'center',
-    ...SOMBRAS.suave,
-  },
-  detailDateBoxLabel: {
-    fontSize: 9.5,
-    fontWeight: '600',
-    color: '#86807D',
-    textTransform: 'uppercase',
-  },
-  detailDateBoxValue: {
-    fontSize: 13.5,
-    fontWeight: '700',
-    color: '#1F1D1C',
-    marginTop: 2,
-  },
-  detailJustificationText: {
-    fontSize: 13.5,
-    color: '#272321',
-    lineHeight: 19,
-    fontWeight: '500',
-  },
-  attachmentsList: {
-    gap: 8,
-    marginTop: 4,
-  },
-  attachmentPreviewItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 8,
-    gap: 10,
-    ...SOMBRAS.suave,
-  },
-  attachmentThumb: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-  },
-  attachmentDocIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: '#F5F2EF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  attachmentMeta: {
-    flex: 1,
-  },
-  attachmentName: {
-    fontSize: 12.5,
-    fontWeight: '600',
-    color: '#202020',
-  },
-  attachmentSub: {
-    fontSize: 10.5,
-    color: '#86807D',
-    marginTop: 1,
-  },
-  detailActionsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 8,
-    marginBottom: 10,
-  },
-  editButton: {
-    flex: 1,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#202020',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  editButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  cancelButton: {
-    height: 48,
-    paddingHorizontal: 18,
-    borderRadius: 24,
-    backgroundColor: '#FAF0EF',
-    borderWidth: 1,
-    borderColor: '#F0D5D3',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  cancelButtonText: {
-    color: '#833932',
-    fontSize: 13.5,
-    fontWeight: '700',
-  },
+    // Modales
+    modalBody: { flex: 1, backgroundColor: pulse.background },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16,
+      paddingHorizontal: 2,
+    },
+    modalHeaderLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      flex: 1,
+    },
+    modalCategoryIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: pulse.pill,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalCategoryText: {
+      fontSize: 10.5,
+      fontWeight: '700',
+      color: pulse.textTertiary,
+      letterSpacing: 0.6,
+    },
+    modalTitle: {
+      fontSize: 19,
+      fontWeight: '700',
+      color: pulse.text,
+      letterSpacing: -0.4,
+    },
+    modalCloseButton: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      backgroundColor: pulse.pill,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalScroll: {
+      paddingBottom: 30,
+    },
 
-  // Formularios de Creación
-  formLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#6E6864',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    marginTop: 14,
-    marginBottom: 8,
-  },
-  formLabelNoMargin: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#6E6864',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  dateHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  daysCountPill: {
-    backgroundColor: '#F5F2EF',
-    paddingHorizontal: 9,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  daysCountText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#202020',
-  },
-  optionalBadge: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#86807D',
-    backgroundColor: '#F5F2EF',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  formInput: {
-    backgroundColor: '#F7F6F4',
-    borderRadius: 16,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    fontSize: 14.5,
-    color: '#1F1D1C',
-    borderWidth: 1,
-    borderColor: 'rgba(43,36,31,0.05)',
-  },
-  textArea: {
-    minHeight: 80,
-    textAlignVertical: 'top',
-    paddingTop: 11,
-  },
-  categoriesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  categoryChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#F7F6F4',
-    borderWidth: 1,
-    borderColor: 'rgba(43,36,31,0.04)',
-  },
-  categoryChipActive: {
-    backgroundColor: '#202020',
-    borderColor: '#202020',
-  },
-  categoryChipLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#544F4B',
-  },
-  categoryChipLabelActive: {
-    color: '#FFFFFF',
-  },
+    // Detalle Modal
+    resolutionCard: {
+      borderRadius: 18,
+      padding: 14,
+      marginBottom: 12,
+      borderWidth: 1,
+    },
+    resolutionCardApproved: {
+      backgroundColor: esOscuro ? 'rgba(74, 222, 128, 0.12)' : '#F2F8EC',
+      borderColor: esOscuro ? 'rgba(74, 222, 128, 0.3)' : '#D4E8BF',
+    },
+    resolutionCardRejected: {
+      backgroundColor: esOscuro ? 'rgba(248, 113, 113, 0.12)' : '#FAF0EF',
+      borderColor: esOscuro ? 'rgba(248, 113, 113, 0.3)' : '#F0D5D3',
+    },
+    resolutionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+      marginBottom: 4,
+    },
+    resolutionTitle: {
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    resolutionBody: {
+      fontSize: 12.5,
+      color: pulse.textTertiary,
+      lineHeight: 18,
+      marginTop: 2,
+    },
+    detailSectionCard: {
+      backgroundColor: pulse.surfaceElevated,
+      borderRadius: 18,
+      padding: 14,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    detailLabel: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: pulse.textTertiary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginBottom: 6,
+    },
+    detailStatusRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: 2,
+    },
+    detailPriorityPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    detailPriorityText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: pulse.text,
+    },
+    detailPeriodRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: 4,
+    },
+    detailDateBox: {
+      flex: 1,
+      backgroundColor: pulse.surface,
+      borderRadius: 12,
+      padding: 10,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: pulse.border,
+      ...SOMBRAS.suave,
+    },
+    detailDateBoxLabel: {
+      fontSize: 9.5,
+      fontWeight: '600',
+      color: pulse.textTertiary,
+      textTransform: 'uppercase',
+    },
+    detailDateBoxValue: {
+      fontSize: 13.5,
+      fontWeight: '700',
+      color: pulse.text,
+      marginTop: 2,
+    },
+    detailJustificationText: {
+      fontSize: 13.5,
+      color: pulse.text,
+      lineHeight: 19,
+      fontWeight: '500',
+    },
+    attachmentsList: {
+      gap: 8,
+      marginTop: 4,
+    },
+    attachmentPreviewItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: pulse.surface,
+      borderRadius: 14,
+      padding: 8,
+      gap: 10,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      ...SOMBRAS.suave,
+    },
+    attachmentThumb: {
+      width: 40,
+      height: 40,
+      borderRadius: 10,
+    },
+    attachmentDocIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 10,
+      backgroundColor: pulse.pill,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    attachmentMeta: {
+      flex: 1,
+    },
+    attachmentName: {
+      fontSize: 12.5,
+      fontWeight: '600',
+      color: pulse.text,
+    },
+    attachmentSub: {
+      fontSize: 10.5,
+      color: pulse.textTertiary,
+      marginTop: 1,
+    },
+    detailActionsRow: {
+      flexDirection: 'row',
+      gap: 10,
+      marginTop: 8,
+      marginBottom: 10,
+    },
+    editButton: {
+      flex: 1,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: pulse.inverse,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    },
+    editButtonText: {
+      color: pulse.textInverse,
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    cancelButton: {
+      height: 48,
+      paddingHorizontal: 18,
+      borderRadius: 24,
+      backgroundColor: esOscuro ? 'rgba(239,68,68,0.15)' : '#FAF0EF',
+      borderWidth: 1,
+      borderColor: esOscuro ? 'rgba(239,68,68,0.3)' : '#F0D5D3',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+    },
+    cancelButtonText: {
+      color: esOscuro ? '#F87171' : '#833932',
+      fontSize: 13.5,
+      fontWeight: '700',
+    },
 
-  // Selector de Fechas
-  dateRangePickerCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#F7F6F4',
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(43,36,31,0.05)',
-  },
-  dateRangePickerCardActive: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#202020',
-  },
-  dateSlot: { flex: 1 },
-  dateSlotLabel: {
-    fontSize: 9.5,
-    fontWeight: '700',
-    color: '#86807D',
-    textTransform: 'uppercase',
-    marginBottom: 2,
-  },
-  dateSlotValueWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  dateSlotValue: {
-    fontSize: 13.5,
-    fontWeight: '700',
-    color: '#1F1D1C',
-  },
+    // Formularios de Creación
+    formLabel: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: pulse.textTertiary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+      marginTop: 14,
+      marginBottom: 8,
+    },
+    formLabelNoMargin: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: pulse.textTertiary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+    },
+    dateHeaderRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginTop: 16,
+      marginBottom: 8,
+    },
+    daysCountPill: {
+      backgroundColor: pulse.pill,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      paddingHorizontal: 9,
+      paddingVertical: 3,
+      borderRadius: 10,
+    },
+    daysCountText: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: pulse.text,
+    },
+    optionalBadge: {
+      fontSize: 10,
+      fontWeight: '600',
+      color: pulse.textTertiary,
+      backgroundColor: pulse.pill,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: 6,
+    },
+    formInput: {
+      backgroundColor: pulse.surfaceElevated,
+      borderRadius: 16,
+      paddingHorizontal: 15,
+      paddingVertical: 12,
+      fontSize: 14.5,
+      color: pulse.text,
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    textArea: {
+      minHeight: 80,
+      textAlignVertical: 'top',
+      paddingTop: 11,
+    },
+    categoriesGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    categoryChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 20,
+      backgroundColor: pulse.surfaceElevated,
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    categoryChipActive: {
+      backgroundColor: pulse.inverse,
+      borderColor: pulse.inverse,
+    },
+    categoryChipLabel: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: pulse.textTertiary,
+    },
+    categoryChipLabelActive: {
+      color: pulse.textInverse,
+    },
 
-  // Calendario Embebido
-  calendarContainer: {
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    padding: 14,
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(43,36,31,0.06)',
-    ...SOMBRAS.suave,
-  },
-  calHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  calMonthTitle: {
-    fontSize: 14.5,
-    fontWeight: '700',
-    color: '#1F1D1C',
-    letterSpacing: -0.2,
-  },
-  calNavBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#F5F2EF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  calWeekRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  calWeekDay: {
-    width: 36,
-    textAlign: 'center',
-    fontSize: 10.5,
-    fontWeight: '700',
-    color: '#86807D',
-  },
-  calDaysGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  calDayEmpty: {
-    width: '14.28%',
-    height: 36,
-  },
-  calDayBtn: {
-    width: '14.28%',
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 10,
-  },
-  calDayInRange: {
-    backgroundColor: '#F5F2EF',
-    borderRadius: 0,
-  },
-  calDayEdge: {
-    backgroundColor: '#202020',
-    borderRadius: 10,
-  },
-  calDayText: {
-    fontSize: 12.5,
-    fontWeight: '600',
-    color: '#272321',
-  },
-  calDayInRangeText: {
-    color: '#202020',
-    fontWeight: '700',
-  },
-  calDayEdgeText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  calDayTodayText: {
-    color: '#202020',
-    fontWeight: '800',
-  },
-  calTodayDot: {
-    width: 3.5,
-    height: 3.5,
-    borderRadius: 2,
-    backgroundColor: '#202020',
-    marginTop: 1,
-  },
-  calApplyBtn: {
-    marginTop: 10,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F5F2EF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  calApplyBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#202020',
-  },
+    // Selector de Fechas
+    dateRangePickerCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: pulse.surfaceElevated,
+      borderRadius: 16,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    dateRangePickerCardActive: {
+      backgroundColor: pulse.surfaceElevated,
+      borderColor: pulse.inverse,
+    },
+    dateSlot: { flex: 1 },
+    dateSlotLabel: {
+      fontSize: 9.5,
+      fontWeight: '700',
+      color: pulse.textTertiary,
+      textTransform: 'uppercase',
+      marginBottom: 2,
+    },
+    dateSlotValueWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    dateSlotValue: {
+      fontSize: 13.5,
+      fontWeight: '700',
+      color: pulse.text,
+    },
 
-  // Adjuntos en Form
-  attachmentFormItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F7F6F4',
-    borderRadius: 14,
-    padding: 8,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(43,36,31,0.05)',
-  },
-  removeAttachmentBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#FAF0EF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  attachButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: '#F7F6F4',
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(43,36,31,0.06)',
-    borderStyle: 'dashed',
-  },
-  attachIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...SOMBRAS.suave,
-  },
-  attachTitle: {
-    fontSize: 12.5,
-    fontWeight: '700',
-    color: '#202020',
-  },
-  attachSub: {
-    fontSize: 10.5,
-    color: '#86807D',
-    marginTop: 1,
-  },
+    // Calendario Embebido
+    calendarContainer: {
+      borderRadius: 20,
+      backgroundColor: pulse.surfaceElevated,
+      padding: 14,
+      marginTop: 10,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      ...SOMBRAS.suave,
+    },
+    calHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    calMonthTitle: {
+      fontSize: 14.5,
+      fontWeight: '700',
+      color: pulse.text,
+      letterSpacing: -0.2,
+    },
+    calNavBtn: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      backgroundColor: pulse.pill,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    calWeekRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: 6,
+    },
+    calWeekDay: {
+      width: 36,
+      textAlign: 'center',
+      fontSize: 10.5,
+      fontWeight: '700',
+      color: pulse.textTertiary,
+    },
+    calDaysGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+    },
+    calDayEmpty: {
+      width: '14.28%',
+      height: 36,
+    },
+    calDayBtn: {
+      width: '14.28%',
+      height: 36,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 10,
+    },
+    calDayInRange: {
+      backgroundColor: pulse.pill,
+      borderRadius: 0,
+    },
+    calDayEdge: {
+      backgroundColor: pulse.inverse,
+      borderRadius: 10,
+    },
+    calDayText: {
+      fontSize: 12.5,
+      fontWeight: '600',
+      color: pulse.text,
+    },
+    calDayInRangeText: {
+      color: pulse.text,
+      fontWeight: '700',
+    },
+    calDayEdgeText: {
+      color: pulse.textInverse,
+      fontWeight: '700',
+    },
+    calDayTodayText: {
+      color: pulse.inverse,
+      fontWeight: '800',
+    },
+    calTodayDot: {
+      width: 3.5,
+      height: 3.5,
+      borderRadius: 2,
+      backgroundColor: pulse.inverse,
+      marginTop: 1,
+    },
+    calApplyBtn: {
+      marginTop: 10,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: pulse.pill,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    calApplyBtnText: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: pulse.text,
+    },
 
-  // Prioridades en Form
-  priorityGrid: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  priorityChip: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    paddingVertical: 10,
-    borderRadius: 14,
-    backgroundColor: '#F7F6F4',
-    borderWidth: 1,
-    borderColor: 'rgba(43,36,31,0.05)',
-  },
-  priorityChipActive: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#202020',
-    ...SOMBRAS.suave,
-  },
-  priorityChipText: {
-    fontSize: 11.5,
-    color: '#6E6864',
-    fontWeight: '600',
-  },
-  priorityChipTextActive: {
-    color: '#202020',
-    fontWeight: '700',
-  },
+    // Adjuntos en Form
+    attachmentFormItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: pulse.surfaceElevated,
+      borderRadius: 14,
+      padding: 8,
+      gap: 10,
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    removeAttachmentBtn: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: esOscuro ? 'rgba(239,68,68,0.15)' : '#FAF0EF',
+      borderWidth: 1,
+      borderColor: esOscuro ? 'rgba(239,68,68,0.3)' : '#F0D5D3',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    attachButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      backgroundColor: pulse.surfaceElevated,
+      borderRadius: 16,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      borderStyle: 'dashed',
+    },
+    attachIconWrap: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: pulse.pill,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...SOMBRAS.suave,
+    },
+    attachTitle: {
+      fontSize: 12.5,
+      fontWeight: '700',
+      color: pulse.text,
+    },
+    attachSub: {
+      fontSize: 10.5,
+      color: pulse.textTertiary,
+      marginTop: 1,
+    },
 
-  // Submit Button
-  submitButton: {
-    marginTop: 22,
-    borderRadius: 24,
-    height: 50,
-    backgroundColor: '#202020',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  submitButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 14.5,
-    letterSpacing: -0.2,
-  },
-});
+    // Prioridades en Form
+    priorityGrid: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    priorityChip: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 5,
+      paddingVertical: 10,
+      borderRadius: 14,
+      backgroundColor: pulse.surfaceElevated,
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    priorityChipActive: {
+      backgroundColor: pulse.surface,
+      borderColor: pulse.inverse,
+      ...SOMBRAS.suave,
+    },
+    priorityChipText: {
+      fontSize: 11.5,
+      color: pulse.textTertiary,
+      fontWeight: '600',
+    },
+    priorityChipTextActive: {
+      color: pulse.text,
+      fontWeight: '700',
+    },
+
+    // Submit Button
+    submitButton: {
+      marginTop: 22,
+      borderRadius: 24,
+      height: 50,
+      backgroundColor: pulse.inverse,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    },
+    submitButtonText: {
+      color: pulse.textInverse,
+      fontWeight: '700',
+      fontSize: 14.5,
+      letterSpacing: -0.2,
+    },
+  });
+}

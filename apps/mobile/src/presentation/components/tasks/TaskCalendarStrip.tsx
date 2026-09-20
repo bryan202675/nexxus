@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { Platform, ScrollView, StyleSheet, View } from "react-native";
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
@@ -10,6 +10,7 @@ import * as Haptics from "expo-haptics";
 import BotonAnimado from "@/presentation/components/BotonAnimado";
 import { AdminTranslatedText } from "@/shared/i18n/AdminTranslatedText";
 import { formatDayName, isSameDay } from "./taskAgendaUtils";
+import { useTemaMobile } from "@/presentation/context/TemaMobileContext";
 
 const Text = AdminTranslatedText;
 interface TaskCalendarStripProps {
@@ -27,6 +28,8 @@ function CalendarDay({
   selected: boolean;
   onPress: () => void;
 }) {
+  const { colores } = useTemaMobile();
+  const styles = createStyles(colores);
   const progress = useDerivedValue(
     () => withTiming(selected ? 1 : 0, { duration: 180 }),
     [selected]
@@ -35,12 +38,12 @@ function CalendarDay({
     backgroundColor: interpolateColor(
       progress.value,
       [0, 1],
-      ["#F1EFED", "#202020"]
+      [colores.vidrio, colores.navegacionActiva]
     ),
     transform: [{ scale: 0.97 + progress.value * 0.03 }],
   }));
   const textStyle = useAnimatedStyle(() => ({
-    color: interpolateColor(progress.value, [0, 1], ["#3B3633", "#FFFFFF"]),
+    color: interpolateColor(progress.value, [0, 1], [colores.texto, colores.fondo]),
   }));
   const handlePress = () => {
     try {
@@ -72,6 +75,8 @@ export default function TaskCalendarStrip({
   selectedDate,
   onSelect,
 }: TaskCalendarStripProps) {
+  const { colores } = useTemaMobile();
+  const styles = createStyles(colores);
   const scrollRef = useRef<ScrollView>(null);
   useEffect(() => {
     if (!selectedDate) return;
@@ -101,22 +106,25 @@ export default function TaskCalendarStrip({
   );
 }
 
-const styles = StyleSheet.create({
-  scroll: { gap: 9, paddingTop: 32, paddingBottom: 1, paddingRight: 18 },
-  pressable: { width: 48, height: 78, borderRadius: 24 },
-  day: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 4,
-  },
-  dayName: { color: "#4E4844", fontSize: 12, fontWeight: "700" },
-  dayNumberWrap: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  dayNumber: { fontSize: 15, fontWeight: "700" },
-});
+function createStyles(c: ReturnType<typeof useTemaMobile>["colores"]) {
+  const isIOS = Platform.OS === 'ios';
+  return StyleSheet.create({
+    scroll: { gap: isIOS ? 9 : 6, paddingTop: isIOS ? 32 : 12, paddingBottom: 1, paddingRight: isIOS ? 18 : 12 },
+    pressable: { width: isIOS ? 48 : 42, height: isIOS ? 78 : 64, borderRadius: isIOS ? 24 : 18 },
+    day: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingVertical: 4,
+    },
+    dayName: { color: c.textoSecundario, fontSize: isIOS ? 12 : 11, fontWeight: "700" },
+    dayNumberWrap: {
+      width: isIOS ? 46 : 38,
+      height: isIOS ? 46 : 38,
+      borderRadius: isIOS ? 23 : 19,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    dayNumber: { fontSize: isIOS ? 15 : 13, fontWeight: "700" },
+  });
+}

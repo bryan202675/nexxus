@@ -400,21 +400,9 @@ export default function ChatInterno() {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const { perfil } = useContextoUsuario();
-  const { colores: coloresTema } = useTemaMobile();
-  // Chat follows the light iOS language established by Mi Pulso and Mis tareas.
-  // Theme data remains available to the rest of the app; this screen only uses
-  // the shared semantic keys with its approved light surfaces.
-  const colores = {
-    ...coloresTema,
-    fondo: '#FCFAF8',
-    texto: '#181719',
-    textoSecundario: '#625E66',
-    textoSuave: '#928C96',
-    borde: 'rgba(29, 27, 32, 0.08)',
-    vidrio: 'rgba(255, 255, 255, 0.88)',
-    primarioClaro: '#8B5CF6',
-  };
-  const esOscuro = false;
+  const { colores, esOscuro } = useTemaMobile();
+  const pulse = colores.pulso;
+  const styles = useMemo(() => crearEstilos(pulse, esOscuro), [pulse, esOscuro]);
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -1450,8 +1438,8 @@ export default function ChatInterno() {
   };
 
   // Glass card helper styles
-  const glassBg = 'rgba(255,255,255,0.94)';
-  const cardBg = '#FFFFFF';
+  const glassBg = pulse.surfaceElevated;
+  const cardBg = pulse.surface;
 
   // Modal Flotante Cristalino para Opciones de Conversación (Silenciar, Bloquear, Borrar, etc)
   const renderActionMenuModal = () => {
@@ -1475,8 +1463,8 @@ export default function ChatInterno() {
               style={[
                 styles.actionMenuCard,
                 {
-                  backgroundColor: '#FFFFFF',
-                  borderColor: 'rgba(32,28,25,0.04)',
+                  backgroundColor: pulse.surfaceElevated,
+                  borderColor: pulse.border,
                   opacity: actionFadeAnim,
                   transform: [{ scale: actionScaleAnim }],
                 },
@@ -1484,11 +1472,11 @@ export default function ChatInterno() {
             >
               <TouchableOpacity activeOpacity={1} onPress={(e) => (e as any)?.stopPropagation?.()}>
                 <View style={styles.actionMenuHeader}>
-                  <Text style={[styles.actionMenuTitle, { color: colores.texto }]} numberOfLines={1}>
+                  <Text style={[styles.actionMenuTitle, { color: pulse.text }]} numberOfLines={1}>
                     {getTituloConversacion(actionMenuConv, perfil?.id || '', users, localCustomNames)}
                   </Text>
                   <TouchableOpacity onPress={() => cerrarActionMenuModalConAnimacion()}>
-                    <MaterialIcons name="close" size={20} color={colores.textoSuave} />
+                    <MaterialIcons name="close" size={20} color={pulse.textTertiary} />
                   </TouchableOpacity>
                 </View>
 
@@ -1498,14 +1486,14 @@ export default function ChatInterno() {
                   onPress={() => cerrarActionMenuModalConAnimacion(() => openRenameModal(actionMenuConv!))}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.actionMenuIconWrap, { backgroundColor: colores.vidrio }]}>
-                    <MaterialIcons name="edit" size={20} color={colores.texto} />
+                  <View style={[styles.actionMenuIconWrap, { backgroundColor: pulse.pill }]}>
+                    <MaterialIcons name="edit" size={20} color={pulse.icon} />
                   </View>
                   <View style={styles.actionMenuTextWrap}>
-                    <Text style={[styles.actionMenuItemText, { color: colores.texto }]}>
+                    <Text style={[styles.actionMenuItemText, { color: pulse.text }]}>
                       {t('chatInterno.actionMenu.renameTitle')}
                     </Text>
-                    <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
+                    <Text style={[styles.actionMenuItemSub, { color: pulse.textSecondary }]}>
                       {isGroupConv(actionMenuConv) ? t('chatInterno.actionMenu.renameSubGroup') : t('chatInterno.actionMenu.renameSubContact')}
                     </Text>
                   </View>
@@ -1520,20 +1508,20 @@ export default function ChatInterno() {
                   <View
                     style={[
                       styles.actionMenuIconWrap,
-                      { backgroundColor: mutedConvIds.includes(actionMenuConv.id) ? 'rgba(245,158,11,0.15)' : colores.vidrio },
+                      { backgroundColor: mutedConvIds.includes(actionMenuConv.id) ? 'rgba(245,158,11,0.15)' : pulse.pill },
                     ]}
                   >
                     <MaterialIcons
                       name={mutedConvIds.includes(actionMenuConv.id) ? 'notifications-active' : 'notifications-off'}
                       size={20}
-                      color={mutedConvIds.includes(actionMenuConv.id) ? '#F59E0B' : colores.texto}
+                      color={mutedConvIds.includes(actionMenuConv.id) ? '#F59E0B' : pulse.icon}
                     />
                   </View>
                   <View style={styles.actionMenuTextWrap}>
-                    <Text style={[styles.actionMenuItemText, { color: colores.texto }]}>
+                    <Text style={[styles.actionMenuItemText, { color: pulse.text }]}>
                       {mutedConvIds.includes(actionMenuConv.id) ? t('chatInterno.actionMenu.muteOff') : t('chatInterno.actionMenu.muteOn')}
                     </Text>
-                    <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
+                    <Text style={[styles.actionMenuItemSub, { color: pulse.textSecondary }]}>
                       {mutedConvIds.includes(actionMenuConv.id) ? t('chatInterno.actionMenu.muteOffSub') : t('chatInterno.actionMenu.muteOnSub')}
                     </Text>
                   </View>
@@ -1547,14 +1535,14 @@ export default function ChatInterno() {
                       onPress={() => cerrarActionMenuModalConAnimacion(() => handleChangeGroupPhoto(actionMenuConv!))}
                       activeOpacity={0.7}
                     >
-                      <View style={[styles.actionMenuIconWrap, { backgroundColor: colores.vidrio }]}>
-                        <MaterialIcons name="add-a-photo" size={20} color={colores.texto} />
+                      <View style={[styles.actionMenuIconWrap, { backgroundColor: pulse.pill }]}>
+                        <MaterialIcons name="add-a-photo" size={20} color={pulse.icon} />
                       </View>
                       <View style={styles.actionMenuTextWrap}>
-                        <Text style={[styles.actionMenuItemText, { color: colores.texto }]}>
+                        <Text style={[styles.actionMenuItemText, { color: pulse.text }]}>
                           {t('chatInterno.actionMenu.changePhoto')}
                         </Text>
-                        <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
+                        <Text style={[styles.actionMenuItemSub, { color: pulse.textSecondary }]}>
                           {t('chatInterno.actionMenu.changePhotoSub')}
                         </Text>
                       </View>
@@ -1565,14 +1553,14 @@ export default function ChatInterno() {
                       onPress={() => cerrarActionMenuModalConAnimacion(() => openAddMembersModal(actionMenuConv!))}
                       activeOpacity={0.7}
                     >
-                      <View style={[styles.actionMenuIconWrap, { backgroundColor: colores.vidrio }]}>
-                        <MaterialIcons name="person-add" size={20} color={colores.texto} />
+                      <View style={[styles.actionMenuIconWrap, { backgroundColor: pulse.pill }]}>
+                        <MaterialIcons name="person-add" size={20} color={pulse.icon} />
                       </View>
                       <View style={styles.actionMenuTextWrap}>
-                        <Text style={[styles.actionMenuItemText, { color: colores.texto }]}>
+                        <Text style={[styles.actionMenuItemText, { color: pulse.text }]}>
                           {t('chatInterno.actionMenu.addPeople')}
                         </Text>
-                        <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
+                        <Text style={[styles.actionMenuItemSub, { color: pulse.textSecondary }]}>
                           {t('chatInterno.actionMenu.addPeopleSub')}
                         </Text>
                       </View>
@@ -1583,14 +1571,14 @@ export default function ChatInterno() {
                       onPress={() => cerrarActionMenuModalConAnimacion(() => handleLeaveGroup(actionMenuConv!))}
                       activeOpacity={0.7}
                     >
-                      <View style={[styles.actionMenuIconWrap, { backgroundColor: 'rgba(239,68,68,0.15)' }]}>
-                        <MaterialIcons name="logout" size={20} color="#EF4444" />
+                      <View style={[styles.actionMenuIconWrap, { backgroundColor: pulse.errorSurface }]}>
+                        <MaterialIcons name="logout" size={20} color={pulse.errorText} />
                       </View>
                       <View style={styles.actionMenuTextWrap}>
-                        <Text style={[styles.actionMenuItemText, { color: '#EF4444' }]}>
+                        <Text style={[styles.actionMenuItemText, { color: pulse.errorText }]}>
                           {t('chatInterno.actionMenu.leaveGroup')}
                         </Text>
-                        <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
+                        <Text style={[styles.actionMenuItemSub, { color: pulse.textSecondary }]}>
                           {t('chatInterno.actionMenu.leaveGroupSub')}
                         </Text>
                       </View>
@@ -1605,27 +1593,27 @@ export default function ChatInterno() {
                     <View
                       style={[
                         styles.actionMenuIconWrap,
-                        { backgroundColor: blockedConvIds.includes(actionMenuConv.id) ? 'rgba(239,68,68,0.15)' : colores.vidrio },
+                        { backgroundColor: blockedConvIds.includes(actionMenuConv.id) ? pulse.errorSurface : pulse.pill },
                       ]}
                     >
                       <MaterialIcons
                         name={blockedConvIds.includes(actionMenuConv.id) ? 'lock-open' : 'block'}
                         size={20}
-                        color={blockedConvIds.includes(actionMenuConv.id) ? '#EF4444' : colores.texto}
+                        color={blockedConvIds.includes(actionMenuConv.id) ? pulse.errorText : pulse.icon}
                       />
                     </View>
                     <View style={styles.actionMenuTextWrap}>
-                      <Text style={[styles.actionMenuItemText, { color: colores.texto }]}>
+                      <Text style={[styles.actionMenuItemText, { color: pulse.text }]}>
                         {blockedConvIds.includes(actionMenuConv.id) ? t('chatInterno.actionMenu.blockOff') : t('chatInterno.actionMenu.blockOn')}
                       </Text>
-                      <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
+                      <Text style={[styles.actionMenuItemSub, { color: pulse.textSecondary }]}>
                         {blockedConvIds.includes(actionMenuConv.id) ? t('chatInterno.actionMenu.blockOffSub') : t('chatInterno.actionMenu.blockOnSub')}
                       </Text>
                     </View>
                   </TouchableOpacity>
                 )}
 
-                <View style={[styles.actionMenuDivider, { backgroundColor: colores.borde }]} />
+                <View style={[styles.actionMenuDivider, { backgroundColor: pulse.border }]} />
 
                 <TouchableOpacity
                   style={styles.actionMenuItem}
@@ -1633,18 +1621,18 @@ export default function ChatInterno() {
                   activeOpacity={0.7}
                   disabled={deletingConv}
                 >
-                  <View style={[styles.actionMenuIconWrap, { backgroundColor: 'rgba(239,68,68,0.15)' }]}>
+                  <View style={[styles.actionMenuIconWrap, { backgroundColor: pulse.errorSurface }]}>
                     {deletingConv ? (
-                      <ActivityIndicator size="small" color="#EF4444" />
+                      <ActivityIndicator size="small" color={pulse.errorText} />
                     ) : (
-                      <MaterialIcons name="delete-outline" size={20} color="#EF4444" />
+                      <MaterialIcons name="delete-outline" size={20} color={pulse.errorText} />
                     )}
                   </View>
                   <View style={styles.actionMenuTextWrap}>
-                    <Text style={[styles.actionMenuItemText, { color: '#EF4444' }]}>
+                    <Text style={[styles.actionMenuItemText, { color: pulse.errorText }]}>
                       {t('chatInterno.actionMenu.deleteConv')}
                     </Text>
-                    <Text style={[styles.actionMenuItemSub, { color: colores.textoSuave }]}>
+                    <Text style={[styles.actionMenuItemSub, { color: pulse.textSecondary }]}>
                       {t('chatInterno.actionMenu.deleteConvSub')}
                     </Text>
                   </View>
@@ -1679,8 +1667,8 @@ export default function ChatInterno() {
               style={[
                 styles.actionMenuCard,
                 {
-                  backgroundColor: '#FFFFFF',
-                  borderColor: 'rgba(32,28,25,0.04)',
+                  backgroundColor: pulse.surfaceElevated,
+                  borderColor: pulse.border,
                   opacity: renameFadeAnim,
                   transform: [{ scale: renameScaleAnim }],
                 },
@@ -1688,15 +1676,15 @@ export default function ChatInterno() {
             >
               <TouchableOpacity activeOpacity={1} onPress={(e) => (e as any)?.stopPropagation?.()}>
                 <View style={styles.actionMenuHeader}>
-                  <Text style={[styles.actionMenuTitle, { color: colores.texto, fontWeight: '900' }]}>
+                  <Text style={[styles.actionMenuTitle, { color: pulse.text, fontWeight: '900' }]}>
                     {isGroupConv(targetConvToRename) ? t('chatInterno.rename.titleGroup') : t('chatInterno.rename.titleContact')}
                   </Text>
                   <TouchableOpacity onPress={() => cerrarRenameModalConAnimacion()}>
-                    <MaterialIcons name="close" size={20} color={colores.textoSuave} />
+                    <MaterialIcons name="close" size={20} color={pulse.textTertiary} />
                   </TouchableOpacity>
                 </View>
 
-                <Text style={{ fontSize: 13, color: colores.textoSuave, marginTop: 2, marginBottom: 12 }}>
+                <Text style={{ fontSize: 13, color: pulse.textSecondary, marginTop: 2, marginBottom: 12 }}>
                   {t('chatInterno.rename.description')}
                 </Text>
 
@@ -1704,13 +1692,13 @@ export default function ChatInterno() {
                   value={renameInput}
                   onChangeText={setRenameInput}
                   placeholder={t('chatInterno.rename.placeholder')}
-                  placeholderTextColor={colores.textoSuave}
+                  placeholderTextColor={pulse.textTertiary}
                   style={[
                     styles.groupInput,
                     {
-                      color: colores.texto,
-                      borderColor: colores.borde,
-                      backgroundColor: colores.vidrio,
+                      color: pulse.text,
+                      borderColor: pulse.border,
+                      backgroundColor: pulse.pill,
                       borderRadius: 20,
                       height: 48,
                       paddingHorizontal: 16,
@@ -1726,10 +1714,10 @@ export default function ChatInterno() {
                     scaleTo={0.96}
                     style={[
                       styles.btnSecondary,
-                      { borderColor: colores.borde, borderRadius: 16, height: 42, paddingHorizontal: 18 },
+                      { borderColor: pulse.border, borderRadius: 16, height: 42, paddingHorizontal: 18 },
                     ]}
                   >
-                    <Text style={{ color: colores.texto, fontSize: 13, fontWeight: '800' }}>{t('chatInterno.common.cancel')}</Text>
+                    <Text style={{ color: pulse.text, fontSize: 13, fontWeight: '800' }}>{t('chatInterno.common.cancel')}</Text>
                   </BotonAnimado>
                   <BotonAnimado
                     disabled={sending || !renameInput.trim()}
@@ -1738,7 +1726,7 @@ export default function ChatInterno() {
                     style={[
                       styles.createBtn,
                       {
-                        backgroundColor: esOscuro ? '#FFFFFF' : '#000000',
+                        backgroundColor: pulse.inverse,
                         borderRadius: 16,
                         height: 42,
                         paddingHorizontal: 20,
@@ -1747,9 +1735,9 @@ export default function ChatInterno() {
                     ]}
                   >
                     {sending ? (
-                      <ActivityIndicator size="small" color={esOscuro ? '#000000' : '#FFFFFF'} />
+                      <ActivityIndicator size="small" color={pulse.textInverse} />
                     ) : (
-                      <Text style={{ color: esOscuro ? '#000000' : '#FFFFFF', fontSize: 13, fontWeight: '900' }}>
+                      <Text style={{ color: pulse.textInverse, fontSize: 13, fontWeight: '900' }}>
                         {t('chatInterno.common.saveChanges')}
                       </Text>
                     )}
@@ -1787,8 +1775,8 @@ export default function ChatInterno() {
               style={[
                 styles.actionMenuCard,
                 {
-                  backgroundColor: '#FFFFFF',
-                  borderColor: 'rgba(32,28,25,0.04)',
+                  backgroundColor: pulse.surfaceElevated,
+                  borderColor: pulse.border,
                   maxHeight: '80%',
                   opacity: addMembersFadeAnim,
                   transform: [{ scale: addMembersScaleAnim }],
@@ -1797,17 +1785,17 @@ export default function ChatInterno() {
             >
               <TouchableOpacity activeOpacity={1} onPress={(e) => (e as any)?.stopPropagation?.()}>
                 <View style={styles.actionMenuHeader}>
-                  <Text style={[styles.actionMenuTitle, { color: colores.texto, fontWeight: '900' }]}>
+                  <Text style={[styles.actionMenuTitle, { color: pulse.text, fontWeight: '900' }]}>
                     {t('chatInterno.addMembers.title')}
                   </Text>
                   <TouchableOpacity onPress={() => cerrarAddMembersModalConAnimacion()}>
-                    <MaterialIcons name="close" size={20} color={colores.textoSuave} />
+                    <MaterialIcons name="close" size={20} color={pulse.textTertiary} />
                   </TouchableOpacity>
                 </View>
 
                 <ScrollView style={{ maxHeight: 280, marginVertical: 12 }}>
                   {availableUsers.length === 0 ? (
-                    <Text style={[styles.noResultsText, { color: colores.textoSuave, textAlign: 'center', marginVertical: 16 }]}>
+                    <Text style={[styles.noResultsText, { color: pulse.textTertiary, textAlign: 'center', marginVertical: 16 }]}>
                       {t('chatInterno.addMembers.empty')}
                     </Text>
                   ) : (
@@ -1823,27 +1811,28 @@ export default function ChatInterno() {
                           ]}
                           activeOpacity={0.8}
                         >
-                          <View style={styles.userAvatar}>
-                            <Text style={styles.avatarLetter}>{(u.nombre || 'U').charAt(0).toUpperCase()}</Text>
+                          <View style={[styles.userAvatar, { backgroundColor: pulse.iconSurface }]}>
+                            <Text style={[styles.avatarLetter, { color: pulse.text }]}>{(u.nombre || 'U').charAt(0).toUpperCase()}</Text>
                           </View>
                           <View style={styles.userInfo}>
-                            <Text style={[styles.userName, { color: colores.texto, fontWeight: '800' }]} numberOfLines={1}>
+                            <Text style={[styles.userName, { color: pulse.text, fontWeight: '800' }]} numberOfLines={1}>
                               {u.nombre}
                             </Text>
-                            <Text style={[styles.userRole, { color: colores.textoSuave }]} numberOfLines={1}>
+                            <Text style={[styles.userRole, { color: pulse.textSecondary }]} numberOfLines={1}>
                               {u.correo || u.rol || 'Colaborador'}
                             </Text>
                           </View>
                           <View
                             style={[
                               styles.checkbox,
+                              { borderColor: pulse.borderStrong },
                               selected && {
-                                backgroundColor: esOscuro ? '#FFFFFF' : '#000000',
-                                borderColor: esOscuro ? '#FFFFFF' : '#000000',
+                                backgroundColor: pulse.inverse,
+                                borderColor: pulse.inverse,
                               },
                             ]}
                           >
-                            {selected ? <MaterialIcons name="check" size={14} color={esOscuro ? '#000000' : '#FFFFFF'} /> : null}
+                            {selected ? <MaterialIcons name="check" size={14} color={pulse.textInverse} /> : null}
                           </View>
                         </TouchableOpacity>
                       );
@@ -1857,10 +1846,10 @@ export default function ChatInterno() {
                     scaleTo={0.96}
                     style={[
                       styles.btnSecondary,
-                      { borderColor: colores.borde, borderRadius: 16, height: 42, paddingHorizontal: 18 },
+                      { borderColor: pulse.border, borderRadius: 16, height: 42, paddingHorizontal: 18 },
                     ]}
                   >
-                    <Text style={{ color: colores.texto, fontSize: 13, fontWeight: '800' }}>{t('chatInterno.common.cancel')}</Text>
+                    <Text style={{ color: pulse.text, fontSize: 13, fontWeight: '800' }}>{t('chatInterno.common.cancel')}</Text>
                   </BotonAnimado>
                   <BotonAnimado
                     disabled={sending || newMembersSelectedIds.length === 0}
@@ -1869,7 +1858,7 @@ export default function ChatInterno() {
                     style={[
                       styles.createBtn,
                       {
-                        backgroundColor: esOscuro ? '#FFFFFF' : '#000000',
+                        backgroundColor: pulse.inverse,
                         borderRadius: 16,
                         height: 42,
                         paddingHorizontal: 20,
@@ -1878,9 +1867,9 @@ export default function ChatInterno() {
                     ]}
                   >
                     {sending ? (
-                      <ActivityIndicator size="small" color={esOscuro ? '#000000' : '#FFFFFF'} />
+                      <ActivityIndicator size="small" color={pulse.textInverse} />
                     ) : (
-                      <Text style={{ color: esOscuro ? '#000000' : '#FFFFFF', fontSize: 13, fontWeight: '900' }}>
+                      <Text style={{ color: pulse.textInverse, fontSize: 13, fontWeight: '900' }}>
                         {t('chatInterno.addMembers.addCount', { count: newMembersSelectedIds.length })}
                       </Text>
                     )}
@@ -1896,16 +1885,14 @@ export default function ChatInterno() {
 
   if (!perfil || !empresaId) {
     return (
-      <SafeAreaView style={[styles.contenedor, { backgroundColor: colores.fondo }]}>
+      <SafeAreaView style={[styles.contenedor, { backgroundColor: pulse.background }]}>
         <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
-        <View style={styles.fondoAbsoluto}>
-          <FondoMobilePremium />
-        </View>
+        <LinearGradient colors={pulse.ambient} locations={[0, 0.28, 0.72]} style={styles.fondoAbsoluto} />
         <NavbarEnterprise titulo={t('chatInterno.navbar.unavailableTitle')} />
         <View style={styles.centerState}>
-          <MaterialIcons name="business" size={44} color={colores.textoSuave} />
-          <Text style={[styles.stateTitle, { color: colores.texto }]}>{t('chatInterno.unavailable.title')}</Text>
-          <Text style={[styles.stateText, { color: colores.textoSuave }]}>
+          <MaterialIcons name="business" size={44} color={pulse.textTertiary} />
+          <Text style={[styles.stateTitle, { color: pulse.text }]}>{t('chatInterno.unavailable.title')}</Text>
+          <Text style={[styles.stateText, { color: pulse.textSecondary }]}>
             {t('chatInterno.unavailable.message')}
           </Text>
         </View>
@@ -1925,14 +1912,14 @@ export default function ChatInterno() {
     const activePhoto = isRemoteUrl(rawActivePhoto) ? rawActivePhoto : undefined;
 
     return (
-      <SafeAreaView style={[styles.contenedor, { backgroundColor: colores.fondo, paddingBottom: 0 }]}>
-        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-        <LinearGradient colors={['#FBEDE8', '#F6ECF6', '#FFFDFC']} locations={[0, 0.28, 0.72]} style={styles.fondoAbsoluto} />
+      <SafeAreaView style={[styles.contenedor, { backgroundColor: pulse.background, paddingBottom: 0 }]}>
+        <StatusBar barStyle={esOscuro ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
+        <LinearGradient colors={pulse.ambient} locations={[0, 0.28, 0.72]} style={styles.fondoAbsoluto} />
 
         <Animated.View style={{ flex: 1, opacity: chatFadeAnim, transform: [{ translateY: chatSlideAnim }] }}>
           <View style={styles.conversationHeader}>
             <BotonAnimado onPress={handleCloseChat} scaleTo={0.96} style={styles.headerRoundButton}>
-              <MaterialIcons name="arrow-back" size={21} color={colores.texto} />
+              <MaterialIcons name="arrow-back" size={21} color={pulse.icon} />
             </BotonAnimado>
             <TouchableOpacity
               activeOpacity={isGroup ? 0.75 : 1}
@@ -1942,31 +1929,31 @@ export default function ChatInterno() {
               {activePhoto ? (
                 <Image source={{ uri: activePhoto }} style={styles.activeAvatarImage} />
               ) : isGroup ? (
-                <View style={styles.activeAvatarFallback}>
-                  <MaterialIcons name="groups" size={24} color="#665D69" />
+                <View style={[styles.activeAvatarFallback, { backgroundColor: pulse.iconSurface }]}>
+                  <MaterialIcons name="groups" size={24} color={pulse.textSecondary} />
                 </View>
               ) : (
-                <View style={styles.activeAvatarFallback}>
-                  <Text style={styles.activeAvatarInitial}>{(activeTitle || 'C').charAt(0).toUpperCase()}</Text>
+                <View style={[styles.activeAvatarFallback, { backgroundColor: pulse.iconSurface }]}>
+                  <Text style={[styles.activeAvatarInitial, { color: pulse.text }]}>{(activeTitle || 'C').charAt(0).toUpperCase()}</Text>
                 </View>
               )}
               <View style={styles.conversationTitleWrap}>
-                <Text style={[styles.conversationTitle, { color: colores.texto }]} numberOfLines={1}>{activeTitle}</Text>
-                <Text style={[styles.conversationSubtitle, { color: colores.textoSuave }]} numberOfLines={1}>
+                <Text style={[styles.conversationTitle, { color: pulse.text }]} numberOfLines={1}>{activeTitle}</Text>
+                <Text style={[styles.conversationSubtitle, { color: pulse.textSecondary }]} numberOfLines={1}>
                   {isGroup ? t('chatInterno.conversation.groupMembers', { count: selectedConversation.participantes?.length || selectedConversation.participanteIds?.length || 2 }) : t('chatInterno.conversation.directChat')}
                 </Text>
               </View>
             </TouchableOpacity>
             <BotonAnimado onPress={() => setActionMenuConv(selectedConversation)} scaleTo={0.96} style={styles.headerRoundButton}>
-              <MaterialIcons name="more-horiz" size={22} color={colores.texto} />
+              <MaterialIcons name="more-horiz" size={22} color={pulse.icon} />
             </BotonAnimado>
           </View>
 
         {error ? (
           <TouchableOpacity onPress={() => setError('')} style={styles.errorCard} activeOpacity={0.8}>
-            <MaterialIcons name="error-outline" size={18} color="#FCA5A5" />
+            <MaterialIcons name="error-outline" size={18} color={pulse.errorText} />
             <Text style={styles.errorText}>{error}</Text>
-            <MaterialIcons name="close" size={16} color="#FCA5A5" />
+            <MaterialIcons name="close" size={16} color={pulse.errorText} />
           </TouchableOpacity>
         ) : null}
 
@@ -1979,9 +1966,9 @@ export default function ChatInterno() {
           >
             {messages.length === 0 && !loading ? (
               <View style={styles.emptyWrap}>
-                <MaterialIcons name="chat-bubble-outline" size={40} color={colores.textoSuave} />
-                <Text style={[styles.emptyTitle, { color: colores.texto }]}>{t('chatInterno.conversation.emptyTitle')}</Text>
-                <Text style={[styles.emptySub, { color: colores.textoSuave }]}>
+                <MaterialIcons name="chat-bubble-outline" size={40} color={pulse.textTertiary} />
+                <Text style={[styles.emptyTitle, { color: pulse.text }]}>{t('chatInterno.conversation.emptyTitle')}</Text>
+                <Text style={[styles.emptySub, { color: pulse.textSecondary }]}>
                   {t('chatInterno.conversation.emptyMessage', { name: activeTitle })}
                 </Text>
               </View>
@@ -2000,8 +1987,8 @@ export default function ChatInterno() {
                       {senderPhoto ? (
                         <Image source={{ uri: senderPhoto }} style={styles.senderAvatarImage} />
                       ) : (
-                        <View style={[styles.senderAvatarFallback, { backgroundColor: colores.primarioClaro }]}>
-                          <Text style={styles.senderAvatarInitial}>{senderInitial}</Text>
+                        <View style={[styles.senderAvatarFallback, { backgroundColor: pulse.iconSurface }]}>
+                          <Text style={[styles.senderAvatarInitial, { color: pulse.text }]}>{senderInitial}</Text>
                         </View>
                       )}
                     </View>
@@ -2011,16 +1998,16 @@ export default function ChatInterno() {
                     style={[
                       styles.messageBubble,
                       own
-                        ? [styles.bubbleOwn, { backgroundColor: esOscuro ? '#FFFFFF' : '#000000', borderColor: esOscuro ? '#FFFFFF' : '#000000' }]
-                        : [styles.bubbleOther, { backgroundColor: cardBg, borderColor: colores.borde }],
+                        ? [styles.bubbleOwn, { backgroundColor: pulse.inverse, borderColor: pulse.inverse }]
+                        : [styles.bubbleOther, { backgroundColor: pulse.surfaceElevated, borderColor: pulse.border }],
                     ]}
                   >
                     {!own ? (
-                      <Text style={[styles.senderName, { color: colores.textoSecundario }]}>{senderName}</Text>
+                      <Text style={[styles.senderName, { color: colores.primarioClaro || pulse.textSecondary }]}>{senderName}</Text>
                     ) : null}
                     
                     {message.texto ? (
-                      <Text style={own ? styles.textOwn : [styles.textOther, { color: colores.texto }]}>
+                      <Text style={own ? [styles.textOwn, { color: pulse.textInverse }] : [styles.textOther, { color: pulse.text }]}>
                         {message.texto}
                       </Text>
                     ) : null}
@@ -2058,15 +2045,21 @@ export default function ChatInterno() {
                               setPreviewImageUrl(attachment.url);
                             }
                           }}
-                          style={[styles.attachmentCard, { borderColor: own ? (esOscuro ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)') : colores.borde }]}
+                          style={[
+                            styles.attachmentCard,
+                            {
+                              backgroundColor: own ? (esOscuro ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.12)') : pulse.pill,
+                              borderColor: own ? (esOscuro ? 'rgba(0,0,0,0.14)' : 'rgba(255,255,255,0.2)') : pulse.border,
+                            },
+                          ]}
                           activeOpacity={0.8}
                         >
-                          <MaterialIcons name="picture-as-pdf" size={24} color={own ? (esOscuro ? '#000000' : '#FFFFFF') : '#EF4444'} />
+                          <MaterialIcons name="picture-as-pdf" size={24} color={own ? pulse.textInverse : '#EF4444'} />
                           <View style={styles.attachmentCopy}>
-                            <Text style={[styles.attachmentName, { color: own ? (esOscuro ? '#000000' : '#FFFFFF') : colores.texto }]} numberOfLines={1}>
+                            <Text style={[styles.attachmentName, { color: own ? pulse.textInverse : pulse.text }]} numberOfLines={1}>
                               {attachment.nombre}
                             </Text>
-                            <Text style={[styles.attachmentMeta, { color: own ? (esOscuro ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.7)') : colores.textoSuave }]}>
+                            <Text style={[styles.attachmentMeta, { color: own ? (esOscuro ? 'rgba(37,35,41,0.6)' : 'rgba(255,255,255,0.7)') : pulse.textTertiary }]}>
                               {formatBytes(attachment.size)}
                             </Text>
                           </View>
@@ -2074,7 +2067,7 @@ export default function ChatInterno() {
                       );
                     })}
 
-                    <Text style={own ? styles.timeOwn : [styles.timeOther, { color: colores.textoSuave }]}>
+                    <Text style={own ? [styles.timeOwn, { color: esOscuro ? 'rgba(37,35,41,0.68)' : 'rgba(255,255,255,0.68)' }] : [styles.timeOther, { color: pulse.textTertiary }]}>
                       {new Date(message.timestamp).toLocaleTimeString('es-SV', { hour: '2-digit', minute: '2-digit' })}
                     </Text>
                   </View>
@@ -2088,24 +2081,24 @@ export default function ChatInterno() {
 
           {/* Tray de vista previa estilo WhatsApp para adjuntos múltiples */}
           {pendingAttachments.length > 0 ? (
-            <View style={[styles.pendingTray, { backgroundColor: glassBg, borderColor: colores.borde }]}>
+            <View style={[styles.pendingTray, { backgroundColor: pulse.surfaceElevated, borderColor: pulse.border }]}>
               <View style={styles.pendingTrayHeader}>
-                <Text style={[styles.pendingTrayTitle, { color: colores.texto }]}>
+                <Text style={[styles.pendingTrayTitle, { color: pulse.text }]}>
                   {t('chatInterno.attachments.title', { count: pendingAttachments.length })}
                 </Text>
                 <TouchableOpacity
                   disabled={sending}
                   onPress={pickImageAttachment}
-                  style={styles.addMoreBtn}
+                  style={[styles.addMoreBtn, { backgroundColor: pulse.pill }]}
                 >
-                  <MaterialIcons name="add-photo-alternate" size={16} color={colores.primarioClaro} />
-                  <Text style={[styles.addMoreText, { color: colores.primarioClaro }]}>{t('chatInterno.attachments.addMore')}</Text>
+                  <MaterialIcons name="add-photo-alternate" size={16} color={colores.primarioClaro || pulse.text} />
+                  <Text style={[styles.addMoreText, { color: colores.primarioClaro || pulse.text }]}>{t('chatInterno.attachments.addMore')}</Text>
                 </TouchableOpacity>
               </View>
 
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pendingScroll}>
                 {pendingAttachments.map((att, idx) => (
-                  <View key={`${att.url}-${idx}`} style={[styles.previewCard, { borderColor: colores.borde }]}>
+                  <View key={`${att.url}-${idx}`} style={[styles.previewCard, { backgroundColor: pulse.pill, borderColor: pulse.border }]}>
                     {att.tipo === 'imagen' ? (
                       <Image source={{ uri: att.url }} style={styles.previewImage} resizeMode="cover" />
                     ) : (
@@ -2113,11 +2106,11 @@ export default function ChatInterno() {
                         <View style={styles.previewDocIcon}>
                           <MaterialIcons name="picture-as-pdf" size={28} color="#EF4444" />
                         </View>
-                        <View style={styles.previewMeta}>
-                          <Text style={[styles.previewName, { color: colores.texto }]} numberOfLines={1}>
+                        <View style={[styles.previewMeta, { backgroundColor: esOscuro ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.55)' }]}>
+                          <Text style={[styles.previewName, { color: pulse.text }]} numberOfLines={1}>
                             {att.nombre}
                           </Text>
-                          <Text style={[styles.previewSize, { color: colores.textoSuave }]}>
+                          <Text style={[styles.previewSize, { color: pulse.textTertiary }]}>
                             {formatBytes(att.size)}
                           </Text>
                         </View>
@@ -2142,7 +2135,7 @@ export default function ChatInterno() {
               style={[
                 styles.blockedBanner,
                 {
-                  backgroundColor: esOscuro ? 'rgba(239, 68, 68, 0.08)' : 'rgba(239, 68, 68, 0.05)',
+                  backgroundColor: pulse.errorSurface,
                   borderColor: 'rgba(239, 68, 68, 0.35)',
                   borderRadius: 24,
                   padding: 16,
@@ -2168,10 +2161,10 @@ export default function ChatInterno() {
               </View>
 
               <View style={{ flex: 1, marginHorizontal: 10 }}>
-                <Text style={{ fontSize: 14, fontWeight: '900', color: colores.texto }}>
+                <Text style={{ fontSize: 14, fontWeight: '900', color: pulse.text }}>
                   {t('chatInterno.blocked.title')}
                 </Text>
-                <Text style={{ fontSize: 12, color: colores.textoSuave, marginTop: 2 }} numberOfLines={1}>
+                <Text style={{ fontSize: 12, color: pulse.textSecondary, marginTop: 2 }} numberOfLines={1}>
                   {t('chatInterno.blocked.message')}
                 </Text>
               </View>
@@ -2198,15 +2191,15 @@ export default function ChatInterno() {
               style={[
                 styles.inputContainer,
                 {
-                  backgroundColor: glassBg,
-                  borderColor: colores.borde,
+                  backgroundColor: pulse.surfaceElevated,
+                  borderColor: pulse.border,
                   marginBottom: alturaTeclado > 0 ? alturaTeclado + 6 : 88,
                 },
               ]}
             >
             <View style={styles.toolsWrap}>
-              <BotonAnimado disabled={sending} onPress={() => setShowAttachmentSheet(true)} scaleTo={0.94} style={styles.toolBtn}>
-                <MaterialIcons name="add" size={22} color={colores.texto} />
+              <BotonAnimado disabled={sending} onPress={() => setShowAttachmentSheet(true)} scaleTo={0.94} style={[styles.toolBtn, { backgroundColor: pulse.pill }]}>
+                <MaterialIcons name="add" size={22} color={pulse.icon} />
               </BotonAnimado>
             </View>
 
@@ -2214,8 +2207,8 @@ export default function ChatInterno() {
               value={input}
               onChangeText={setInput}
               placeholder={t('chatInterno.input.placeholder')}
-              placeholderTextColor={colores.textoSuave}
-              style={[styles.textInput, { color: colores.texto }]}
+              placeholderTextColor={pulse.textTertiary}
+              style={[styles.textInput, { color: pulse.text }]}
               multiline
             />
 
@@ -2224,15 +2217,15 @@ export default function ChatInterno() {
               onPress={sendMessage}
               style={[
                 styles.sendBtn,
-                { backgroundColor: esOscuro ? '#FFFFFF' : '#000000' },
+                { backgroundColor: pulse.inverse },
                 (sending || (!input.trim() && pendingAttachments.length === 0)) && styles.sendBtnDisabled,
               ]}
               activeOpacity={0.8}
             >
               {sending ? (
-                <ActivityIndicator size="small" color={esOscuro ? '#000000' : '#FFFFFF'} />
+                <ActivityIndicator size="small" color={pulse.textInverse} />
               ) : (
-                <MaterialIcons name="send" size={18} color={esOscuro ? '#000000' : '#FFFFFF'} />
+                <MaterialIcons name="send" size={18} color={pulse.textInverse} />
               )}
             </TouchableOpacity>
           </View>
@@ -2248,9 +2241,9 @@ export default function ChatInterno() {
           onRequestClose={() => setShowAttachmentSheet(false)}
         >
           <TouchableOpacity activeOpacity={1} onPress={() => setShowAttachmentSheet(false)} style={styles.sheetOverlay}>
-            <TouchableOpacity activeOpacity={1} onPress={(event) => event.stopPropagation()} style={styles.attachmentSheet}>
-              <View style={styles.sheetHandle} />
-              <Text style={[styles.sheetTitle, { color: colores.texto }]}>Adjuntar</Text>
+            <TouchableOpacity activeOpacity={1} onPress={(event) => event.stopPropagation()} style={[styles.attachmentSheet, { backgroundColor: pulse.surfaceElevated }]}>
+              <View style={[styles.sheetHandle, { backgroundColor: pulse.borderStrong }]} />
+              <Text style={[styles.sheetTitle, { color: pulse.text }]}>Adjuntar</Text>
               <View style={styles.attachmentActions}>
                 <BotonAnimado
                   onPress={() => {
@@ -2260,8 +2253,8 @@ export default function ChatInterno() {
                   scaleTo={0.95}
                   style={styles.attachmentAction}
                 >
-                  <View style={styles.attachmentActionIcon}><MaterialIcons name="image" size={22} color="#201F21" /></View>
-                  <Text style={[styles.attachmentActionLabel, { color: colores.texto }]}>Fotos</Text>
+                  <View style={[styles.attachmentActionIcon, { backgroundColor: pulse.pill }]}><MaterialIcons name="image" size={22} color={pulse.icon} /></View>
+                  <Text style={[styles.attachmentActionLabel, { color: pulse.text }]}>Fotos</Text>
                 </BotonAnimado>
                 <BotonAnimado
                   onPress={() => {
@@ -2271,8 +2264,8 @@ export default function ChatInterno() {
                   scaleTo={0.95}
                   style={styles.attachmentAction}
                 >
-                  <View style={styles.attachmentActionIcon}><MaterialIcons name="attach-file" size={22} color="#201F21" /></View>
-                  <Text style={[styles.attachmentActionLabel, { color: colores.texto }]}>Archivo</Text>
+                  <View style={[styles.attachmentActionIcon, { backgroundColor: pulse.pill }]}><MaterialIcons name="attach-file" size={22} color={pulse.icon} /></View>
+                  <Text style={[styles.attachmentActionLabel, { color: pulse.text }]}>Archivo</Text>
                 </BotonAnimado>
               </View>
             </TouchableOpacity>
@@ -2334,85 +2327,86 @@ export default function ChatInterno() {
 
   // ==================== VISTA 1: LISTA DE CHATS ====================
   return (
-    <SafeAreaView style={[styles.contenedor, { backgroundColor: colores.fondo }]}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      <LinearGradient colors={['#FBEDE8', '#F6ECF6', '#FFFDFC']} locations={[0, 0.28, 0.72]} style={styles.fondoAbsoluto} />
+    <SafeAreaView style={[styles.contenedor, { backgroundColor: pulse.background }]}>
+      <StatusBar barStyle={esOscuro ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
+      <LinearGradient colors={pulse.ambient} locations={[0, 0.28, 0.72]} style={styles.fondoAbsoluto} />
 
-      <View style={styles.topBar}>
-        <BotonAnimado
-          style={styles.profile}
-          scaleTo={0.97}
-          onPress={() => navigation.navigate("PerfilLaboral")}
-          accessibilityLabel="Abrir mi perfil"
-        >
-          {perfil?.foto_perfil ? (
-            <Image source={{ uri: perfil.foto_perfil }} style={styles.avatar} />
-          ) : (
-            <Text style={styles.avatarInitial}>
-              {((perfil?.nombre || 'U').trim().charAt(0) || 'U').toUpperCase()}
-            </Text>
-          )}
-        </BotonAnimado>
-        <Text style={styles.topBarLabel}>{t('chatInterno.navbar.title', 'Chat')}</Text>
-        <View style={styles.headerActions}>
+      <View style={styles.topBarContainer}>
+        <View style={styles.topBar}>
           <BotonAnimado
-            onPress={() => {
-              setSelectedUserIds([]);
-              setGroupName('');
-              setShowNewChatModal(true);
-            }}
-            scaleTo={0.96}
-            style={styles.addButton}
-            accessibilityLabel="Nuevo chat"
+            style={styles.profile}
+            scaleTo={0.97}
+            onPress={() => navigation.navigate("PerfilLaboral")}
+            accessibilityLabel="Abrir mi perfil"
           >
-            <Feather name="plus" size={22} color="#FFFFFF" />
-          </BotonAnimado>
-          <BotonAnimado
-            style={styles.bellButton}
-            scaleTo={0.96}
-            onPress={() => navigation.navigate("Notificaciones")}
-            accessibilityLabel="Abrir notificaciones"
-          >
-            <Feather name="bell" size={21} color="#202020" />
-            {totalNoLeidos > 0 && (
-              <View style={styles.notificationDot} />
+            {perfil?.foto_perfil ? (
+              <Image source={{ uri: perfil.foto_perfil }} style={styles.avatar} resizeMode="cover" />
+            ) : (
+              <Text style={[styles.avatarInitial, { color: pulse.text }]}>
+                {((perfil?.nombre || 'U').trim().charAt(0) || 'U').toUpperCase()}
+              </Text>
             )}
           </BotonAnimado>
+          <Text style={[styles.topBarLabel, { color: pulse.text }]}>{t('chatInterno.navbar.title', 'Chat')}</Text>
+          <View style={styles.headerActions}>
+            <BotonAnimado
+              onPress={() => {
+                setSelectedUserIds([]);
+                setGroupName('');
+                setShowNewChatModal(true);
+              }}
+              scaleTo={0.96}
+              style={[styles.addButton, { backgroundColor: pulse.inverse }]}
+              accessibilityLabel="Nuevo chat"
+            >
+              <Feather name="plus" size={Platform.OS === 'ios' ? 22 : 19} color={pulse.textInverse} />
+            </BotonAnimado>
+            <BotonAnimado
+              style={[styles.bellButton, { backgroundColor: pulse.surface, borderColor: pulse.border }]}
+              scaleTo={0.96}
+              onPress={() => navigation.navigate("Notificaciones")}
+              accessibilityLabel="Abrir notificaciones"
+            >
+              <Feather name="bell" size={Platform.OS === 'ios' ? 21 : 18} color={pulse.icon} />
+              {totalNoLeidos > 0 && (
+                <View style={[styles.notificationDot, { borderColor: pulse.surface }]} />
+              )}
+            </BotonAnimado>
+          </View>
         </View>
       </View>
 
       <View style={styles.titleRow}>
-        <Text style={styles.title}>
+        <Text style={[styles.title, { color: pulse.text }]}>
           {t('chatInterno.navbar.unavailableTitle', 'Mensajes')}
         </Text>
       </View>
 
       {error ? (
         <TouchableOpacity onPress={() => setError('')} style={styles.errorCard} activeOpacity={0.8}>
-          <MaterialIcons name="error-outline" size={18} color="#FCA5A5" />
+          <MaterialIcons name="error-outline" size={18} color={pulse.errorText} />
           <Text style={styles.errorText}>{error}</Text>
-          <MaterialIcons name="close" size={16} color="#FCA5A5" />
+          <MaterialIcons name="close" size={16} color={pulse.errorText} />
         </TouchableOpacity>
       ) : null}
 
       {/* Búsqueda contextual */}
       <View style={styles.actionHeader}>
-        <View style={[styles.searchBox, { backgroundColor: cardBg, borderColor: colores.borde }]}>
-          <MaterialIcons name="search" size={20} color={colores.textoSuave} />
+        <View style={[styles.searchBox, { backgroundColor: pulse.surface, borderColor: pulse.border }]}>
+          <MaterialIcons name="search" size={20} color={pulse.textTertiary} />
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholder={t('chatInterno.search.placeholder')}
-            placeholderTextColor={colores.textoSuave}
-            style={[styles.searchInput, { color: colores.texto }]}
+            placeholderTextColor={pulse.textTertiary}
+            style={[styles.searchInput, { color: pulse.text }]}
           />
           {searchQuery ? (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <MaterialIcons name="close" size={18} color={colores.textoSuave} />
+              <MaterialIcons name="close" size={18} color={pulse.textTertiary} />
             </TouchableOpacity>
           ) : null}
         </View>
-
       </View>
 
       {/* Filtros con la misma cápsula de Mis tareas */}
@@ -2433,18 +2427,18 @@ export default function ChatInterno() {
                 style={[
                   styles.chipFiltroBtn,
                   {
-                    backgroundColor: activo ? '#202020' : 'rgba(255,255,255,0.86)',
-                    borderColor: activo ? '#202020' : 'rgba(32,28,25,0.04)',
+                    backgroundColor: activo ? pulse.chipActive : pulse.surface,
+                    borderColor: activo ? pulse.chipActive : pulse.border,
                   },
                 ]}
               >
-                <View style={[styles.chipFiltroCount, activo && styles.chipFiltroCountActive]}>
-                  <Text style={[styles.chipFiltroCountText, activo && styles.chipFiltroCountTextActive]}>{chip.count}</Text>
+                <View style={[styles.chipFiltroCount, { backgroundColor: activo ? pulse.chipCountActive : pulse.pill }]}>
+                  <Text style={[styles.chipFiltroCountText, { color: activo ? pulse.chipTextActive : pulse.text }]}>{chip.count}</Text>
                 </View>
                 <Text
                   style={[
                     styles.chipFiltroTexto,
-                    { color: activo ? '#FFFFFF' : '#3E3936' },
+                    { color: activo ? pulse.chipTextActive : pulse.textSecondary },
                   ]}
                 >
                   {chip.label}
@@ -2455,7 +2449,6 @@ export default function ChatInterno() {
         </ScrollView>
       </View>
 
-      {/* Modal para iniciar nuevo chat / grupo */}
       {/* Modal para iniciar nuevo chat / grupo a pantalla completa */}
       {showNewChatModal ? (
         <Modal
@@ -2469,46 +2462,47 @@ export default function ChatInterno() {
             style={[
               styles.newChatFullScreen,
               {
+                backgroundColor: pulse.background,
                 paddingTop: Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 20) + (Platform.OS === 'ios' ? 14 : 16),
                 paddingBottom: Math.max(insets.bottom, Platform.OS === 'android' ? 16 : 12),
               },
             ]}
           >
-            <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent />
+            <StatusBar barStyle={esOscuro ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
             <KeyboardAvoidingView
               behavior={Platform.OS === 'ios' ? 'padding' : undefined}
               style={{ flex: 1 }}
             >
-              <View style={styles.newChatContainer}>
+              <View style={[styles.newChatContainer, { backgroundColor: pulse.background }]}>
                 {/* Encabezado */}
                 <View style={styles.newChatHeader}>
-                  <Text style={styles.newChatTitle}>
+                  <Text style={[styles.newChatTitle, { color: pulse.text }]}>
                     {t('chatInterno.newChat.title', 'Nueva conversación')}
                   </Text>
                   <TouchableOpacity
                     onPress={() => cerrarNuevoChatModalConAnimacion()}
-                    style={styles.newChatCloseBtn}
+                    style={[styles.newChatCloseBtn, { backgroundColor: pulse.pill }]}
                     activeOpacity={0.7}
                   >
-                    <MaterialIcons name="close" size={22} color="#202020" />
+                    <MaterialIcons name="close" size={22} color={pulse.icon} />
                   </TouchableOpacity>
                 </View>
 
                 {/* Barra de Búsqueda Clara y Espaciosa */}
-                <View style={styles.newChatSearchBox}>
-                  <MaterialIcons name="search" size={20} color="#78736F" />
+                <View style={[styles.newChatSearchBox, { backgroundColor: pulse.surface, borderColor: pulse.border }]}>
+                  <MaterialIcons name="search" size={20} color={pulse.textTertiary} />
                   <TextInput
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                     placeholder={t('chatInterno.newChat.searchPlaceholder', 'Buscar por nombre, correo o rol...')}
-                    placeholderTextColor="#9E9893"
-                    style={styles.newChatSearchInput}
+                    placeholderTextColor={pulse.textTertiary}
+                    style={[styles.newChatSearchInput, { color: pulse.text }]}
                     autoCapitalize="none"
                     autoCorrect={false}
                   />
                   {searchQuery.length > 0 ? (
                     <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                      <MaterialIcons name="cancel" size={18} color="#78736F" />
+                      <MaterialIcons name="cancel" size={18} color={pulse.textTertiary} />
                     </TouchableOpacity>
                   ) : null}
                 </View>
@@ -2521,13 +2515,13 @@ export default function ChatInterno() {
                         <TouchableOpacity
                           key={user.id}
                           onPress={() => toggleSelectedUser(user.id)}
-                          style={styles.newChatUserChip}
+                          style={[styles.newChatUserChip, { backgroundColor: pulse.inverse }]}
                           activeOpacity={0.8}
                         >
-                          <Text style={styles.newChatChipText} numberOfLines={1}>
+                          <Text style={[styles.newChatChipText, { color: pulse.textInverse }]} numberOfLines={1}>
                             {user.nombre}
                           </Text>
-                          <MaterialIcons name="close" size={14} color="#FFFFFF" />
+                          <MaterialIcons name="close" size={14} color={pulse.textInverse} />
                         </TouchableOpacity>
                       ))}
                     </ScrollView>
@@ -2536,25 +2530,25 @@ export default function ChatInterno() {
 
                 {/* Nombre de grupo si hay 2+ seleccionados */}
                 {selectedUsers.length > 1 ? (
-                  <View style={styles.newChatGroupInputContainer}>
-                    <MaterialIcons name="group" size={20} color="#78736F" />
+                  <View style={[styles.newChatGroupInputContainer, { backgroundColor: pulse.surface, borderColor: pulse.border }]}>
+                    <MaterialIcons name="group" size={20} color={pulse.textTertiary} />
                     <TextInput
                       value={groupName}
                       onChangeText={setGroupName}
                       placeholder={t('chatInterno.newChat.groupNamePlaceholder', 'Nombre del grupo (opcional)')}
-                      placeholderTextColor="#9E9893"
-                      style={styles.newChatGroupInput}
+                      placeholderTextColor={pulse.textTertiary}
+                      style={[styles.newChatGroupInput, { color: pulse.text }]}
                     />
                   </View>
                 ) : null}
 
                 {/* Título de sección de miembros disponibles */}
                 <View style={styles.newChatSectionHeader}>
-                  <Text style={styles.newChatSectionTitle}>
+                  <Text style={[styles.newChatSectionTitle, { color: pulse.textSecondary }]}>
                     {t('chatInterno.newChat.availableMembers', { count: filteredUsers.length })}
                   </Text>
                   {selectedUsers.length > 0 && (
-                    <Text style={styles.newChatSelectedCount}>
+                    <Text style={[styles.newChatSelectedCount, { color: pulse.textTertiary }]}>
                       {selectedUsers.length} {selectedUsers.length === 1 ? 'seleccionado' : 'seleccionados'}
                     </Text>
                   )}
@@ -2569,8 +2563,8 @@ export default function ChatInterno() {
                 >
                   {filteredUsers.length === 0 ? (
                     <View style={styles.newChatEmptyContainer}>
-                      <MaterialIcons name="person-search" size={44} color="#D1CCC6" />
-                      <Text style={styles.newChatEmptyText}>
+                      <MaterialIcons name="person-search" size={44} color={pulse.textTertiary} />
+                      <Text style={[styles.newChatEmptyText, { color: pulse.textTertiary }]}>
                         {t('chatInterno.newChat.noUsers', 'No se encontraron colaboradores')}
                       </Text>
                     </View>
@@ -2581,24 +2575,36 @@ export default function ChatInterno() {
                         <TouchableOpacity
                           key={user.id}
                           onPress={() => toggleSelectedUser(user.id)}
-                          style={[styles.newChatUserOption, selected && styles.newChatUserOptionSelected]}
+                          style={[
+                            styles.newChatUserOption,
+                            {
+                              backgroundColor: selected ? pulse.pill : pulse.surface,
+                              borderColor: selected ? pulse.borderStrong : pulse.border,
+                            },
+                          ]}
                           activeOpacity={0.7}
                         >
-                          <View style={styles.newChatAvatarWrap}>
+                          <View style={[styles.newChatAvatarWrap, { backgroundColor: pulse.iconSurface }]}>
                             {user.foto_perfil ? (
                               <Image source={{ uri: user.foto_perfil }} style={styles.newChatAvatarImage} resizeMode="cover" />
                             ) : (
-                              <Text style={styles.newChatAvatarLetter}>
+                              <Text style={[styles.newChatAvatarLetter, { color: pulse.text }]}>
                                 {(user.nombre || 'U').charAt(0).toUpperCase()}
                               </Text>
                             )}
                           </View>
                           <View style={styles.newChatUserInfo}>
-                            <Text style={styles.newChatUserName}>{user.nombre}</Text>
-                            <Text style={styles.newChatUserRole}>{user.rol || 'Colaborador'}</Text>
+                            <Text style={[styles.newChatUserName, { color: pulse.text }]}>{user.nombre}</Text>
+                            <Text style={[styles.newChatUserRole, { color: pulse.textSecondary }]}>{user.rol || 'Colaborador'}</Text>
                           </View>
-                          <View style={[styles.newChatCheckbox, selected && styles.newChatCheckboxSelected]}>
-                            {selected ? <MaterialIcons name="check" size={14} color="#FFFFFF" /> : null}
+                          <View
+                            style={[
+                              styles.newChatCheckbox,
+                              { borderColor: pulse.borderStrong },
+                              selected && { backgroundColor: pulse.inverse, borderColor: pulse.inverse },
+                            ]}
+                          >
+                            {selected ? <MaterialIcons name="check" size={14} color={pulse.textInverse} /> : null}
                           </View>
                         </TouchableOpacity>
                       );
@@ -2613,18 +2619,18 @@ export default function ChatInterno() {
                       disabled={sending}
                       onPress={handleStartConversation}
                       scaleTo={0.97}
-                      style={[styles.newChatCreateBtn, sending && { opacity: 0.75 }]}
+                      style={[styles.newChatCreateBtn, { backgroundColor: pulse.inverse }, sending && { opacity: 0.75 }]}
                     >
                       {sending ? (
-                        <ActivityIndicator size="small" color="#FFFFFF" />
+                        <ActivityIndicator size="small" color={pulse.textInverse} />
                       ) : (
                         <MaterialIcons
                           name={selectedUsers.length > 1 ? 'group-add' : 'chat'}
                           size={20}
-                          color="#FFFFFF"
+                          color={pulse.textInverse}
                         />
                       )}
-                      <Text style={styles.newChatCreateBtnText}>
+                      <Text style={[styles.newChatCreateBtnText, { color: pulse.textInverse }]}>
                         {sending
                           ? t('chatInterno.newChat.creating')
                           : selectedUsers.length > 1
@@ -2644,13 +2650,13 @@ export default function ChatInterno() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.listContent}>
         {loading && conversations.length === 0 ? (
           <View style={styles.loadingWrap}>
-            <ActivityIndicator size="large" color={colores.primarioClaro} />
+            <ActivityIndicator size="large" color={colores.primarioClaro || pulse.text} />
           </View>
         ) : filteredConversations.length === 0 ? (
           <View style={styles.emptyWrap}>
-            <MaterialIcons name="forum" size={44} color={colores.textoSuave} />
-            <Text style={[styles.emptyTitle, { color: colores.texto }]}>{t('chatInterno.list.emptyTitle')}</Text>
-            <Text style={[styles.emptySub, { color: colores.textoSuave }]}>
+            <MaterialIcons name="forum" size={44} color={pulse.textTertiary} />
+            <Text style={[styles.emptyTitle, { color: pulse.text }]}>{t('chatInterno.list.emptyTitle')}</Text>
+            <Text style={[styles.emptySub, { color: pulse.textSecondary }]}>
               {searchQuery
                 ? t('chatInterno.list.emptySearch')
                 : filtroTipo === 'no_leidos'
@@ -2678,8 +2684,8 @@ export default function ChatInterno() {
                 style={[
                   styles.convItem,
                   {
-                    backgroundColor: hasUnread ? '#FFFFFF' : 'rgba(255,255,255,0.86)',
-                    borderColor: 'transparent',
+                    backgroundColor: hasUnread ? pulse.surfaceElevated : pulse.surface,
+                    borderColor: pulse.border,
                   },
                   isBlocked && { opacity: 0.65 },
                 ]}
@@ -2689,14 +2695,14 @@ export default function ChatInterno() {
                     <Image source={{ uri: photoUrl }} style={styles.convAvatarImage} resizeMode="cover" />
                   ) : isGroup ? (
                     <View style={styles.groupAvatarFallback}>
-                      <MaterialIcons name="groups" size={21} color="#665D69" />
+                      <MaterialIcons name="groups" size={21} color={pulse.textSecondary} />
                     </View>
                   ) : (
-                    <Text style={styles.avatarLetter}>{(title || 'C').charAt(0).toUpperCase()}</Text>
+                    <Text style={[styles.avatarLetter, { color: pulse.text }]}>{(title || 'C').charAt(0).toUpperCase()}</Text>
                   )}
                   {isGroup && (
-                    <View style={styles.avatarGroupBadge}>
-                      <MaterialIcons name="groups" size={10} color="#FFFFFF" />
+                    <View style={[styles.avatarGroupBadge, { backgroundColor: pulse.iconSurface, borderColor: pulse.surface }]}>
+                      <MaterialIcons name="groups" size={10} color={pulse.text} />
                     </View>
                   )}
                 </View>
@@ -2705,14 +2711,14 @@ export default function ChatInterno() {
                   <View style={styles.convTopRow}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0, marginRight: 6 }}>
                       {isGroup && (
-                        <View style={styles.groupPillTag}>
-                          <Text style={styles.groupPillText}>Grupo</Text>
+                        <View style={[styles.groupPillTag, { backgroundColor: pulse.pill }]}>
+                          <Text style={[styles.groupPillText, { color: pulse.textSecondary }]}>Grupo</Text>
                         </View>
                       )}
                       <Text
                         style={[
                           styles.convTitle,
-                          { color: colores.texto, flex: 1 },
+                          { color: pulse.text, flex: 1 },
                           hasUnread && { fontWeight: '900' },
                         ]}
                         numberOfLines={1}
@@ -2721,7 +2727,7 @@ export default function ChatInterno() {
                       </Text>
                     </View>
                     {isMuted ? (
-                      <MaterialIcons name="notifications-off" size={14} color={colores.textoSuave} style={{ marginLeft: 4 }} />
+                      <MaterialIcons name="notifications-off" size={14} color={pulse.textTertiary} style={{ marginLeft: 4 }} />
                     ) : null}
                     {isBlocked ? (
                       <MaterialIcons name="block" size={14} color="#EF4444" style={{ marginLeft: 4 }} />
@@ -2730,7 +2736,7 @@ export default function ChatInterno() {
                   <Text
                     style={[
                       styles.convPreview,
-                      { color: isBlocked ? '#EF4444' : hasUnread ? colores.texto : colores.textoSuave },
+                      { color: isBlocked ? '#EF4444' : hasUnread ? pulse.text : pulse.textSecondary },
                       hasUnread && { fontWeight: '700' },
                     ]}
                     numberOfLines={1}
@@ -2742,7 +2748,7 @@ export default function ChatInterno() {
                         {preview.emisor && (isGroup || preview.emisor === 'Tú: ') ? (
                           <Text
                             style={{
-                              color: hasUnread ? '#3E3936' : '#837C77',
+                              color: hasUnread ? pulse.text : pulse.textSecondary,
                               fontWeight: '600',
                             }}
                           >
@@ -2762,7 +2768,7 @@ export default function ChatInterno() {
                     <Text
                       style={[
                         styles.convTimeText,
-                        { color: hasUnread ? '#3E3936' : '#837C77' },
+                        { color: hasUnread ? pulse.text : pulse.textTertiary },
                         hasUnread && { fontWeight: '700' },
                       ]}
                     >
@@ -2774,8 +2780,8 @@ export default function ChatInterno() {
 
                   <View style={styles.convMetaBottomRow}>
                     {hasUnread ? (
-                      <View style={styles.unreadBadgeWhatsApp}>
-                        <Text style={styles.unreadBadgeWhatsAppText}>
+                      <View style={[styles.unreadBadgeWhatsApp, { backgroundColor: pulse.inverse }]}>
+                        <Text style={[styles.unreadBadgeWhatsAppText, { color: pulse.textInverse }]}>
                           {unreadCount > 99 ? '99+' : unreadCount}
                         </Text>
                       </View>
@@ -2790,7 +2796,7 @@ export default function ChatInterno() {
                       activeOpacity={0.7}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
-                      <MaterialIcons name="more-vert" size={19} color={colores.textoSuave} />
+                      <MaterialIcons name="more-vert" size={19} color={pulse.textTertiary} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -2808,1190 +2814,1267 @@ export default function ChatInterno() {
   );
 }
 
-const styles = StyleSheet.create({
-  contenedor: {
-    flex: 1,
-    paddingBottom: 80,
-  },
-  fondoAbsoluto: {
-    ...StyleSheet.absoluteFill,
-    zIndex: -1,
-    overflow: 'hidden',
-  },
-  flex: {
-    flex: 1,
-  },
-  centerState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-    gap: 12,
-  },
-  stateTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  stateText: {
-    fontSize: 13,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  headerContainer: {
-    marginHorizontal: 16,
-    marginTop: 4,
-    borderRadius: 28,
-    overflow: 'hidden',
-  },
-  headerBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderRadius: 28,
-  },
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  headerAvatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerAvatarText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  headerTitleWrap: {
-    flex: 1,
-    minWidth: 0,
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '900',
-  },
-  headerSub: {
-    fontSize: 11,
-    fontWeight: '700',
-    marginTop: 1,
-  },
-  topBar: {
-    height: 52,
-    marginHorizontal: 21,
-    marginTop: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  profile: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: '#E9D2BF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  avatar: {
-    width: '100%',
-    height: '100%',
-  },
-  avatarInitial: {
-    color: '#382E29',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  topBarLabel: {
-    color: '#292522',
-    fontSize: 17,
-    fontWeight: '600',
-    letterSpacing: -0.5,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  addButton: {
-    width: 47,
-    height: 47,
-    borderRadius: 24,
-    backgroundColor: '#202020',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bellButton: {
-    width: 47,
-    height: 47,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...SOMBRAS.suave,
-  },
-  notificationDot: {
-    position: 'absolute',
-    top: 11,
-    right: 12,
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: '#E56C67',
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-  },
-  titleRow: {
-    marginHorizontal: 21,
-    marginTop: 22,
-  },
-  title: {
-    color: '#1F1D1C',
-    fontSize: 34,
-    lineHeight: 38,
-    fontWeight: '600',
-    letterSpacing: -1.4,
-  },
-  conversationHeader: {
-    minHeight: 72,
-    marginHorizontal: 20,
-    paddingVertical: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerRoundButton: {
-    width: 47,
-    height: 47,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.94)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#211C19',
-    shadowOpacity: 0.07,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-  },
-  conversationIdentity: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 10,
-    minWidth: 0,
-  },
-  activeAvatarImage: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-  },
-  activeAvatarFallback: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#EDE6ED',
-  },
-  activeAvatarInitial: {
-    color: '#514C54',
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  conversationTitleWrap: {
-    maxWidth: '68%',
-    marginLeft: 9,
-  },
-  conversationTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  conversationSubtitle: {
-    marginTop: 2,
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  actionHeader: {
-    marginHorizontal: 21,
-    marginTop: 18,
-  },
-  searchBox: {
-    flex: 1,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  newChatBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#0F172A',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
-  },
-  newChatBtnActive: {
-    backgroundColor: '#000000',
-  },
-  newChatCard: {
-    marginHorizontal: 16,
-    marginTop: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 14,
-    maxHeight: 320,
-    gap: 10,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  selectedRow: {
-    gap: 6,
-  },
-  userChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    gap: 6,
-  },
-  chipText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800',
-    maxWidth: 120,
-  },
-  groupInput: {
-    height: 40,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    fontSize: 13,
-  },
-  userListScroll: {
-    maxHeight: 160,
-  },
-  noResultsText: {
-    padding: 16,
-    textAlign: 'center',
-    fontSize: 12,
-  },
-  userOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-    borderRadius: 12,
-    gap: 10,
-  },
-  userOptionSelected: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
-  },
-  userAvatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarLetter: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  userInfo: {
-    flex: 1,
-    minWidth: 0,
-  },
-  userName: {
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  userRole: {
-    fontSize: 11,
-    marginTop: 1,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxSelected: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#FFFFFF',
-  },
-  createBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#0F172A',
-    height: 40,
-    borderRadius: 14,
-    gap: 8,
-    marginTop: 4,
-  },
-  createBtnText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  listContent: {
-    paddingHorizontal: 20,
-    paddingTop: 6,
-    paddingBottom: 112,
-    gap: 8,
-  },
-  loadingWrap: {
-    padding: 40,
-    alignItems: 'center',
-  },
-  emptyWrap: {
-    padding: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '900',
-  },
-  emptySub: {
-    fontSize: 13,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  chipsFiltroRow: {
-    marginTop: 18,
-    marginBottom: 12,
-  },
-  chipsFiltroScroll: {
-    paddingHorizontal: 21,
-    gap: 9,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  chipFiltroBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    minHeight: 48,
-    paddingHorizontal: 13,
-    borderRadius: 24,
-    borderWidth: 1,
-  },
-  chipFiltroTexto: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  chipFiltroCount: {
-    minWidth: 28,
-    height: 28,
-    borderRadius: 14,
-    paddingHorizontal: 7,
-    backgroundColor: '#F1EFED',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chipFiltroCountActive: { backgroundColor: 'rgba(255,255,255,0.16)' },
-  chipFiltroCountText: { color: '#3C3734', fontSize: 12, fontWeight: '700' },
-  chipFiltroCountTextActive: { color: '#FFFFFF' },
-  convItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 22,
-    borderWidth: 0,
-    gap: 12,
-  },
-  convAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#EEE7EE',
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  convAvatarGroup: {
-    backgroundColor: '#EEE7EE',
-  },
-  avatarOnlineDot: {
-    position: 'absolute',
-    bottom: -1,
-    right: -1,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#201F21',
-    borderWidth: 2.5,
-    borderColor: '#0B0C1E',
-  },
-  avatarGroupBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#665D69',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#0B0C1E',
-  },
-  groupAvatarFallback: {
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  groupPillTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 8,
-    backgroundColor: '#F1EDF1',
-    marginRight: 6,
-  },
-  groupPillText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#5E5660',
-  },
-  convCopy: {
-    flex: 1,
-    minWidth: 0,
-    justifyContent: 'center',
-  },
-  convTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  convTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  convPreview: {
-    fontSize: 13,
-    marginTop: 2,
-    lineHeight: 18,
-  },
-  convMetaCol: {
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    minHeight: 46,
-  },
-  convTimeText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  convMetaBottomRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
-  },
-  unreadBadgeWhatsApp: {
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#201F21',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 5,
-  },
-  unreadBadgeWhatsAppText: {
-    color: '#FFFFFF',
-    fontSize: 10.5,
-    fontWeight: '900',
-    lineHeight: 14,
-  },
-  errorCard: {
-    marginHorizontal: 16,
-    marginTop: 10,
-    padding: 12,
-    borderRadius: 14,
-    backgroundColor: 'rgba(239,68,68,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(248,113,113,0.3)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  errorText: {
-    color: '#FECACA',
-    flex: 1,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  messagesContent: {
-    paddingHorizontal: 20,
-    paddingTop: 14,
-    gap: 10,
-    paddingBottom: 18,
-  },
-  messageRow: {
-    width: '100%',
-  },
-  rowOwn: {
-    alignItems: 'flex-end',
-  },
-  rowOther: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'flex-start',
-  },
-  senderAvatarWrap: {
-    marginRight: 8,
-    marginBottom: 2,
-  },
-  senderAvatarImage: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(29,27,32,0.08)',
-  },
-  senderAvatarFallback: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(29,27,32,0.08)',
-  },
-  senderAvatarInitial: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  messageBubble: {
-    maxWidth: '82%',
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    borderRadius: 22,
-    gap: 6,
-  },
-  bubbleOwn: {
-    borderBottomRightRadius: 8,
-  },
-  bubbleOther: {
-    borderBottomLeftRadius: 8,
-    borderWidth: 1,
-  },
-  senderName: {
-    fontSize: 11,
-    fontWeight: '900',
-  },
-  textOwn: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  textOther: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  timeOwn: {
-    color: 'rgba(255,255,255,0.68)',
-    fontSize: 10,
-    fontWeight: '700',
-    alignSelf: 'flex-end',
-  },
-  timeOther: {
-    fontSize: 10,
-    fontWeight: '700',
-    alignSelf: 'flex-end',
-  },
-  pendingTray: {
-    marginHorizontal: 16,
-    marginBottom: 8,
-    padding: 10,
-    borderRadius: 18,
-    borderWidth: 1,
-    gap: 8,
-  },
-  pendingTrayHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 2,
-  },
-  pendingTrayTitle: {
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  addMoreBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-  },
-  addMoreText: {
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  pendingScroll: {
-    gap: 10,
-  },
-  previewCard: {
-    width: 100,
-    height: 96,
-    borderRadius: 14,
-    borderWidth: 1,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(0,0,0,0.18)',
-    position: 'relative',
-    padding: 4,
-    justifyContent: 'space-between',
-  },
-  previewImage: {
-    ...StyleSheet.absoluteFill,
-    borderRadius: 12,
-  },
-  previewDocIcon: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  previewMeta: {
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    borderRadius: 8,
-    padding: 4,
-    zIndex: 2,
-  },
-  previewName: {
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  previewSize: {
-    fontSize: 9,
-    marginTop: 1,
-  },
-  removeAttBtn: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    zIndex: 10,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    borderRadius: 10,
-  },
-  inputContainer: {
-    marginHorizontal: 20,
-    borderRadius: 28,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  toolsWrap: {
-    flexDirection: 'row',
-    gap: 4,
-  },
-  toolBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#F1EDF1',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  textInput: {
-    flex: 1,
-    minHeight: 40,
-    maxHeight: 100,
-    fontSize: 14,
-    paddingVertical: 8,
-  },
-  sendBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#201F21',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sendBtnDisabled: {
-    opacity: 0.45,
-  },
-  sheetOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(28, 25, 30, 0.28)',
-  },
-  attachmentSheet: {
-    paddingHorizontal: 22,
-    paddingTop: 10,
-    paddingBottom: 30,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    backgroundColor: '#FFFFFF',
-    ...SOMBRAS.flotante,
-  },
-  sheetHandle: {
-    width: 38,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 16,
-    backgroundColor: '#D8D2D9',
-  },
-  sheetTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: -0.2,
-  },
-  attachmentActions: {
-    flexDirection: 'row',
-    gap: 18,
-    marginTop: 18,
-  },
-  attachmentAction: {
-    alignItems: 'center',
-    minWidth: 62,
-  },
-  attachmentActionIcon: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F1EDF1',
-  },
-  attachmentActionLabel: {
-    marginTop: 7,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  attachmentCard: {
-    marginTop: 6,
-    padding: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    backgroundColor: 'rgba(0,0,0,0.12)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  attachmentImage: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-  },
-  attachmentCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  attachmentName: {
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  attachmentMeta: {
-    fontSize: 11,
-    marginTop: 1,
-  },
-  chatImageWrap: {
-    width: 220,
-    height: 220,
-    borderRadius: 14,
-    overflow: 'hidden',
-    marginTop: 4,
-    marginBottom: 4,
-  },
-  chatImageLarge: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 14,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.92)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalSafeArea: {
-    flex: 1,
-    width: '100%',
-  },
-  modalTopBar: {
-    height: 50,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    zIndex: 10,
-  },
-  modalCloseBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalCenterContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 12,
-  },
-  modalFullImage: {
-    width: '100%',
-    height: '100%',
-  },
-  convAvatarImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 22,
-  },
-  convMenuBtn: {
-    padding: 6,
-    borderRadius: 12,
-  },
-  headerOptionBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  blockedBanner: {
-    marginHorizontal: 16,
-    padding: 14,
-    borderRadius: 22,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  blockedText: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  unblockBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    backgroundColor: '#EF4444',
-  },
-  unblockText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  actionMenuOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  actionMenuCard: {
-    width: '100%',
-    maxWidth: 440,
-    borderRadius: 32,
-    borderWidth: 1,
-    padding: 22,
-    gap: 12,
-    ...SOMBRAS.flotante,
-  },
-  actionMenuHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  actionMenuTitle: {
-    fontSize: 16,
-    fontWeight: '900',
-    flex: 1,
-    marginRight: 10,
-  },
-  actionMenuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 8,
-  },
-  actionMenuIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionMenuTextWrap: {
-    flex: 1,
-  },
-  actionMenuItemText: {
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  actionMenuItemSub: {
-    fontSize: 11,
-    marginTop: 2,
-  },
-  actionMenuDivider: {
-    height: 1,
-    marginVertical: 4,
-  },
-  btnSecondary: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  newChatFullScreen: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  newChatContainer: {
-    flex: 1,
-    paddingHorizontal: 20,
-    backgroundColor: '#FFFFFF',
-  },
-  newChatHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 8,
-    paddingBottom: 14,
-    marginBottom: 6,
-  },
-  newChatTitle: {
-    color: '#1F1D1C',
-    fontSize: 24,
-    fontWeight: '800',
-    letterSpacing: -0.6,
-  },
-  newChatCloseBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#F3F0ED',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  newChatSearchBox: {
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#F5F2EF',
-    borderWidth: 1,
-    borderColor: 'rgba(32,28,25,0.06)',
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 8,
-    marginBottom: 12,
-  },
-  newChatSearchInput: {
-    flex: 1,
-    fontSize: 15,
-    color: '#1F1D1C',
-    fontWeight: '500',
-    includeFontPadding: false,
-    paddingVertical: 0,
-  },
-  newChatSelectedContainer: {
-    marginBottom: 10,
-  },
-  newChatSelectedRow: {
-    gap: 8,
-    paddingVertical: 2,
-  },
-  newChatUserChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 18,
-    backgroundColor: '#202020',
-  },
-  newChatChipText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-    maxWidth: 140,
-  },
-  newChatGroupInputContainer: {
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#F5F2EF',
-    borderWidth: 1,
-    borderColor: 'rgba(32,28,25,0.06)',
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 12,
-  },
-  newChatGroupInput: {
-    flex: 1,
-    fontSize: 14,
-    color: '#1F1D1C',
-    fontWeight: '500',
-    includeFontPadding: false,
-    paddingVertical: 0,
-  },
-  newChatSectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-    marginTop: 4,
-  },
-  newChatSectionTitle: {
-    color: '#524D49',
-    fontSize: 13,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  newChatSelectedCount: {
-    color: '#78736F',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  newChatUserListScroll: {
-    flex: 1,
-  },
-  newChatEmptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 48,
-    gap: 10,
-  },
-  newChatEmptyText: {
-    color: '#78736F',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  newChatUserOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 18,
-    marginBottom: 6,
-    backgroundColor: '#FAF9F8',
-    borderWidth: 1,
-    borderColor: 'rgba(32,28,25,0.04)',
-    gap: 12,
-  },
-  newChatUserOptionSelected: {
-    backgroundColor: '#F1EFEA',
-    borderColor: '#202020',
-  },
-  newChatAvatarWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#EAE6E1',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  newChatAvatarImage: {
-    width: '100%',
-    height: '100%',
-  },
-  newChatAvatarLetter: {
-    color: '#382E29',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  newChatUserInfo: {
-    flex: 1,
-  },
-  newChatUserName: {
-    color: '#1F1D1C',
-    fontSize: 15,
-    fontWeight: '700',
-    includeFontPadding: false,
-  },
-  newChatUserRole: {
-    color: '#78736F',
-    fontSize: 12,
-    fontWeight: '500',
-    marginTop: 2,
-    includeFontPadding: false,
-  },
-  newChatCheckbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#C7C2BC',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  newChatCheckboxSelected: {
-    backgroundColor: '#202020',
-    borderColor: '#202020',
-  },
-  newChatBottomFloatingBar: {
-    position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 8 : 6,
-    left: 20,
-    right: 20,
-  },
-  newChatCreateBtn: {
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#202020',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    ...SOMBRAS.flotante,
-  },
-  newChatCreateBtnText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '800',
-  },
-});
+function crearEstilos(pulse: ReturnType<typeof useTemaMobile>['colores']['pulso'], esOscuro: boolean) {
+  const isIOS = Platform.OS === 'ios';
+  return StyleSheet.create({
+    contenedor: {
+      flex: 1,
+      paddingBottom: 80,
+    },
+    fondoAbsoluto: {
+      ...StyleSheet.absoluteFill,
+      zIndex: -1,
+      overflow: 'hidden',
+    },
+    flex: {
+      flex: 1,
+    },
+    centerState: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 24,
+      gap: 12,
+    },
+    stateTitle: {
+      fontSize: 18,
+      fontWeight: '900',
+      color: pulse.text,
+    },
+    stateText: {
+      fontSize: 13,
+      textAlign: 'center',
+      lineHeight: 18,
+      color: pulse.textSecondary,
+    },
+    headerContainer: {
+      marginHorizontal: 16,
+      marginTop: 4,
+      borderRadius: 28,
+      overflow: 'hidden',
+    },
+    headerBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      borderRadius: 28,
+    },
+    backBtn: {
+      width: isIOS ? 40 : 36,
+      height: isIOS ? 40 : 36,
+      borderRadius: isIOS ? 20 : 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    headerAvatar: {
+      width: isIOS ? 42 : 38,
+      height: isIOS ? 42 : 38,
+      borderRadius: isIOS ? 21 : 19,
+      backgroundColor: pulse.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    headerAvatarText: {
+      color: pulse.text,
+      fontSize: 15,
+      fontWeight: '900',
+    },
+    headerTitleWrap: {
+      flex: 1,
+      minWidth: 0,
+    },
+    headerTitle: {
+      fontSize: 16,
+      fontWeight: '900',
+      color: pulse.text,
+    },
+    headerSub: {
+      fontSize: 11,
+      fontWeight: '700',
+      marginTop: 1,
+      color: pulse.textTertiary,
+    },
+    topBarContainer: {
+      paddingHorizontal: 21,
+      paddingTop: isIOS ? 6 : 4,
+      paddingBottom: 8,
+      zIndex: 10,
+      backgroundColor: 'transparent',
+    },
+    topBar: {
+      height: isIOS ? 54 : 48,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    profile: {
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: pulse.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    avatar: {
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+    },
+    avatarInitial: {
+      color: pulse.text,
+      fontSize: isIOS ? 17 : 15,
+      fontWeight: '700',
+    },
+    topBarLabel: {
+      color: pulse.text,
+      fontSize: isIOS ? 17 : 15,
+      fontWeight: '600',
+      letterSpacing: isIOS ? -0.5 : -0.3,
+    },
+    headerActions: {
+      flexDirection: 'row',
+      gap: isIOS ? 10 : 8,
+    },
+    addButton: {
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: pulse.inverse,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    bellButton: {
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: pulse.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: esOscuro ? 1 : 0,
+      borderColor: pulse.border,
+      shadowColor: pulse.shadow,
+      shadowOpacity: 0.07,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 2,
+    },
+    notificationDot: {
+      position: 'absolute',
+      top: isIOS ? 11 : 9,
+      right: isIOS ? 12 : 10,
+      width: isIOS ? 8 : 7,
+      height: isIOS ? 8 : 7,
+      borderRadius: isIOS ? 4 : 3.5,
+      backgroundColor: '#E56C67',
+      borderWidth: 1.5,
+      borderColor: pulse.surface,
+    },
+    titleRow: {
+      marginHorizontal: 21,
+      marginTop: isIOS ? 22 : 16,
+    },
+    title: {
+      color: pulse.text,
+      fontSize: isIOS ? 34 : 27,
+      lineHeight: isIOS ? 38 : 31,
+      fontWeight: '600',
+      letterSpacing: isIOS ? -1.4 : -0.9,
+    },
+    conversationHeader: {
+      minHeight: 72,
+      marginHorizontal: 20,
+      paddingVertical: 8,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    headerRoundButton: {
+      width: 47,
+      height: 47,
+      borderRadius: 24,
+      backgroundColor: pulse.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: esOscuro ? 1 : 0,
+      borderColor: pulse.border,
+      shadowColor: pulse.shadow,
+      shadowOpacity: 0.07,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 2,
+    },
+    conversationIdentity: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginHorizontal: 10,
+      minWidth: 0,
+    },
+    activeAvatarImage: {
+      width: 46,
+      height: 46,
+      borderRadius: 23,
+    },
+    activeAvatarFallback: {
+      width: 46,
+      height: 46,
+      borderRadius: 23,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: pulse.iconSurface,
+    },
+    activeAvatarInitial: {
+      color: pulse.text,
+      fontSize: 16,
+      fontWeight: '800',
+    },
+    conversationTitleWrap: {
+      maxWidth: '68%',
+      marginLeft: 9,
+    },
+    conversationTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: pulse.text,
+    },
+    conversationSubtitle: {
+      marginTop: 2,
+      fontSize: 11,
+      fontWeight: '600',
+      color: pulse.textSecondary,
+    },
+    actionHeader: {
+      marginHorizontal: 21,
+      marginTop: 18,
+    },
+    searchBox: {
+      flex: 1,
+      height: 48,
+      borderRadius: 24,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      backgroundColor: pulse.surface,
+      paddingHorizontal: 14,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: 14,
+      fontWeight: '600',
+      color: pulse.text,
+    },
+    newChatBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: pulse.inverse,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    newChatBtnActive: {
+      backgroundColor: pulse.inverse,
+    },
+    newChatCard: {
+      marginHorizontal: 16,
+      marginTop: 10,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      backgroundColor: pulse.surfaceElevated,
+      padding: 14,
+      maxHeight: 320,
+      gap: 10,
+    },
+    sectionTitle: {
+      fontSize: 13,
+      fontWeight: '900',
+      color: pulse.text,
+    },
+    selectedRow: {
+      gap: 6,
+    },
+    userChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: pulse.inverse,
+      borderRadius: 14,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      gap: 6,
+    },
+    chipText: {
+      color: pulse.textInverse,
+      fontSize: 12,
+      fontWeight: '800',
+      maxWidth: 120,
+    },
+    groupInput: {
+      height: 40,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      backgroundColor: pulse.pill,
+      paddingHorizontal: 12,
+      fontSize: 13,
+      color: pulse.text,
+    },
+    userListScroll: {
+      maxHeight: 160,
+    },
+    noResultsText: {
+      padding: 16,
+      textAlign: 'center',
+      fontSize: 12,
+      color: pulse.textTertiary,
+    },
+    userOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 8,
+      paddingHorizontal: 6,
+      borderRadius: 12,
+      gap: 10,
+    },
+    userOptionSelected: {
+      backgroundColor: pulse.pill,
+    },
+    userAvatar: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      backgroundColor: pulse.iconSurface,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarLetter: {
+      color: pulse.text,
+      fontSize: 13,
+      fontWeight: '900',
+    },
+    userInfo: {
+      flex: 1,
+      minWidth: 0,
+    },
+    userName: {
+      fontSize: 14,
+      fontWeight: '800',
+      color: pulse.text,
+    },
+    userRole: {
+      fontSize: 11,
+      marginTop: 1,
+      color: pulse.textSecondary,
+    },
+    checkbox: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: pulse.borderStrong,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    checkboxSelected: {
+      backgroundColor: pulse.inverse,
+      borderColor: pulse.inverse,
+    },
+    createBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: pulse.inverse,
+      height: 40,
+      borderRadius: 14,
+      gap: 8,
+      marginTop: 4,
+    },
+    createBtnText: {
+      color: pulse.textInverse,
+      fontSize: 13,
+      fontWeight: '900',
+    },
+    listContent: {
+      paddingHorizontal: 20,
+      paddingTop: 6,
+      paddingBottom: 112,
+      gap: 8,
+    },
+    loadingWrap: {
+      padding: 40,
+      alignItems: 'center',
+    },
+    emptyWrap: {
+      padding: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+    },
+    emptyTitle: {
+      fontSize: 16,
+      fontWeight: '900',
+      color: pulse.text,
+    },
+    emptySub: {
+      fontSize: 13,
+      textAlign: 'center',
+      lineHeight: 18,
+      color: pulse.textSecondary,
+    },
+    chipsFiltroRow: {
+      marginTop: 18,
+      marginBottom: 12,
+    },
+    chipsFiltroScroll: {
+      paddingHorizontal: 21,
+      gap: 9,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    chipFiltroBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+      minHeight: 48,
+      paddingHorizontal: 13,
+      borderRadius: 24,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      backgroundColor: pulse.surface,
+    },
+    chipFiltroTexto: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: pulse.textSecondary,
+    },
+    chipFiltroCount: {
+      minWidth: 28,
+      height: 28,
+      borderRadius: 14,
+      paddingHorizontal: 7,
+      backgroundColor: pulse.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    chipFiltroCountActive: { backgroundColor: pulse.chipCountActive },
+    chipFiltroCountText: { color: pulse.text, fontSize: 12, fontWeight: '700' },
+    chipFiltroCountTextActive: { color: pulse.chipTextActive },
+    convItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      backgroundColor: pulse.surface,
+      gap: 12,
+    },
+    convAvatar: {
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      backgroundColor: pulse.iconSurface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+    },
+    convAvatarGroup: {
+      backgroundColor: pulse.iconSurface,
+    },
+    avatarOnlineDot: {
+      position: 'absolute',
+      bottom: -1,
+      right: -1,
+      width: 14,
+      height: 14,
+      borderRadius: 7,
+      backgroundColor: '#22C55E',
+      borderWidth: 2.5,
+      borderColor: pulse.surface,
+    },
+    avatarGroupBadge: {
+      position: 'absolute',
+      bottom: -2,
+      right: -2,
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      backgroundColor: pulse.iconSurface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 2,
+      borderColor: pulse.surface,
+    },
+    groupAvatarFallback: {
+      width: '100%',
+      height: '100%',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    groupPillTag: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: 8,
+      backgroundColor: pulse.pill,
+      marginRight: 6,
+    },
+    groupPillText: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: pulse.textSecondary,
+    },
+    convCopy: {
+      flex: 1,
+      minWidth: 0,
+      justifyContent: 'center',
+    },
+    convTopRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 4,
+    },
+    convTitle: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: pulse.text,
+    },
+    convPreview: {
+      fontSize: 13,
+      marginTop: 2,
+      lineHeight: 18,
+      color: pulse.textSecondary,
+    },
+    convMetaCol: {
+      alignItems: 'flex-end',
+      justifyContent: 'space-between',
+      minHeight: 46,
+    },
+    convTimeText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: pulse.textTertiary,
+    },
+    convMetaBottomRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginTop: 4,
+    },
+    unreadBadgeWhatsApp: {
+      minWidth: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: pulse.inverse,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 5,
+    },
+    unreadBadgeWhatsAppText: {
+      color: pulse.textInverse,
+      fontSize: 10.5,
+      fontWeight: '900',
+      lineHeight: 14,
+    },
+    errorCard: {
+      marginHorizontal: 16,
+      marginTop: 10,
+      padding: 12,
+      borderRadius: 14,
+      backgroundColor: pulse.errorSurface,
+      borderWidth: 1,
+      borderColor: 'rgba(239,68,68,0.3)',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    errorText: {
+      color: pulse.errorText,
+      flex: 1,
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    messagesContent: {
+      paddingHorizontal: 20,
+      paddingTop: 14,
+      gap: 10,
+      paddingBottom: 18,
+    },
+    messageRow: {
+      width: '100%',
+    },
+    rowOwn: {
+      alignItems: 'flex-end',
+    },
+    rowOther: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      justifyContent: 'flex-start',
+    },
+    senderAvatarWrap: {
+      marginRight: 8,
+      marginBottom: 2,
+    },
+    senderAvatarImage: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    senderAvatarFallback: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: pulse.border,
+      backgroundColor: pulse.iconSurface,
+    },
+    senderAvatarInitial: {
+      color: pulse.text,
+      fontSize: 13,
+      fontWeight: '900',
+    },
+    messageBubble: {
+      maxWidth: '82%',
+      paddingHorizontal: 14,
+      paddingVertical: 11,
+      borderRadius: 22,
+      gap: 6,
+    },
+    bubbleOwn: {
+      borderBottomRightRadius: 8,
+      backgroundColor: pulse.inverse,
+      borderColor: pulse.inverse,
+    },
+    bubbleOther: {
+      borderBottomLeftRadius: 8,
+      borderWidth: 1,
+      backgroundColor: pulse.surfaceElevated,
+      borderColor: pulse.border,
+    },
+    senderName: {
+      fontSize: 11,
+      fontWeight: '900',
+    },
+    textOwn: {
+      color: pulse.textInverse,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+    textOther: {
+      fontSize: 14,
+      lineHeight: 20,
+      color: pulse.text,
+    },
+    timeOwn: {
+      color: esOscuro ? 'rgba(37,35,41,0.68)' : 'rgba(255,255,255,0.68)',
+      fontSize: 10,
+      fontWeight: '700',
+      alignSelf: 'flex-end',
+    },
+    timeOther: {
+      fontSize: 10,
+      fontWeight: '700',
+      alignSelf: 'flex-end',
+      color: pulse.textTertiary,
+    },
+    pendingTray: {
+      marginHorizontal: 16,
+      marginBottom: 8,
+      padding: 10,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      backgroundColor: pulse.surfaceElevated,
+      gap: 8,
+    },
+    pendingTrayHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 2,
+    },
+    pendingTrayTitle: {
+      fontSize: 12,
+      fontWeight: '900',
+      color: pulse.text,
+    },
+    addMoreBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 10,
+      backgroundColor: pulse.pill,
+    },
+    addMoreText: {
+      fontSize: 11,
+      fontWeight: '800',
+    },
+    pendingScroll: {
+      gap: 10,
+    },
+    previewCard: {
+      width: 100,
+      height: 96,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      overflow: 'hidden',
+      backgroundColor: pulse.pill,
+      position: 'relative',
+      padding: 4,
+      justifyContent: 'space-between',
+    },
+    previewImage: {
+      ...StyleSheet.absoluteFill,
+      borderRadius: 12,
+    },
+    previewDocIcon: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    previewMeta: {
+      backgroundColor: esOscuro ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.55)',
+      borderRadius: 8,
+      padding: 4,
+      zIndex: 2,
+    },
+    previewName: {
+      fontSize: 10,
+      fontWeight: '800',
+      color: '#FFFFFF',
+    },
+    previewSize: {
+      fontSize: 9,
+      marginTop: 1,
+      color: 'rgba(255,255,255,0.7)',
+    },
+    removeAttBtn: {
+      position: 'absolute',
+      top: 4,
+      right: 4,
+      zIndex: 10,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      borderRadius: 10,
+    },
+    inputContainer: {
+      marginHorizontal: 20,
+      borderRadius: 28,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      backgroundColor: pulse.surfaceElevated,
+      paddingHorizontal: 10,
+      paddingVertical: 7,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    toolsWrap: {
+      flexDirection: 'row',
+      gap: 4,
+    },
+    toolBtn: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: pulse.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    textInput: {
+      flex: 1,
+      minHeight: 40,
+      maxHeight: 100,
+      fontSize: 14,
+      paddingVertical: 8,
+      color: pulse.text,
+    },
+    sendBtn: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      backgroundColor: pulse.inverse,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    sendBtnDisabled: {
+      opacity: 0.45,
+    },
+    sheetOverlay: {
+      flex: 1,
+      justifyContent: 'flex-end',
+      backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    },
+    attachmentSheet: {
+      paddingHorizontal: 22,
+      paddingTop: 10,
+      paddingBottom: 30,
+      borderTopLeftRadius: 30,
+      borderTopRightRadius: 30,
+      backgroundColor: pulse.surfaceElevated,
+      ...SOMBRAS.flotante,
+    },
+    sheetHandle: {
+      width: 38,
+      height: 4,
+      borderRadius: 2,
+      alignSelf: 'center',
+      marginBottom: 16,
+      backgroundColor: pulse.borderStrong,
+    },
+    sheetTitle: {
+      fontSize: 18,
+      fontWeight: '800',
+      letterSpacing: -0.2,
+      color: pulse.text,
+    },
+    attachmentActions: {
+      flexDirection: 'row',
+      gap: 18,
+      marginTop: 18,
+    },
+    attachmentAction: {
+      alignItems: 'center',
+      minWidth: 62,
+    },
+    attachmentActionIcon: {
+      width: 54,
+      height: 54,
+      borderRadius: 27,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: pulse.pill,
+    },
+    attachmentActionLabel: {
+      marginTop: 7,
+      fontSize: 12,
+      fontWeight: '700',
+      color: pulse.text,
+    },
+    attachmentCard: {
+      marginTop: 6,
+      padding: 8,
+      borderRadius: 12,
+      borderWidth: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    attachmentImage: {
+      width: 44,
+      height: 44,
+      borderRadius: 8,
+    },
+    attachmentCopy: {
+      flex: 1,
+      minWidth: 0,
+    },
+    attachmentName: {
+      fontSize: 12,
+      fontWeight: '800',
+    },
+    attachmentMeta: {
+      fontSize: 11,
+      marginTop: 1,
+    },
+    chatImageWrap: {
+      width: 220,
+      height: 220,
+      borderRadius: 14,
+      overflow: 'hidden',
+      marginTop: 4,
+      marginBottom: 4,
+    },
+    chatImageLarge: {
+      width: '100%',
+      height: '100%',
+      borderRadius: 14,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.92)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modalSafeArea: {
+      flex: 1,
+      width: '100%',
+    },
+    modalTopBar: {
+      height: 50,
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      zIndex: 10,
+    },
+    modalCloseBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalCenterContent: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 12,
+    },
+    modalFullImage: {
+      width: '100%',
+      height: '100%',
+    },
+    convAvatarImage: {
+      width: '100%',
+      height: '100%',
+      borderRadius: 22,
+    },
+    convMenuBtn: {
+      padding: 6,
+      borderRadius: 12,
+    },
+    headerOptionBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    blockedBanner: {
+      marginHorizontal: 16,
+      padding: 14,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: 'rgba(239,68,68,0.35)',
+      backgroundColor: pulse.errorSurface,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    blockedText: {
+      flex: 1,
+      fontSize: 13,
+      fontWeight: '700',
+      color: pulse.text,
+    },
+    unblockBtn: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 12,
+      backgroundColor: '#EF4444',
+    },
+    unblockText: {
+      color: '#FFFFFF',
+      fontSize: 12,
+      fontWeight: '800',
+    },
+    actionMenuOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.72)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    actionMenuCard: {
+      width: '100%',
+      maxWidth: 440,
+      borderRadius: 32,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      backgroundColor: pulse.surfaceElevated,
+      padding: 22,
+      gap: 12,
+      ...SOMBRAS.flotante,
+    },
+    actionMenuHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 4,
+    },
+    actionMenuTitle: {
+      fontSize: 16,
+      fontWeight: '900',
+      flex: 1,
+      marginRight: 10,
+      color: pulse.text,
+    },
+    actionMenuItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingVertical: 8,
+    },
+    actionMenuIconWrap: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    actionMenuTextWrap: {
+      flex: 1,
+    },
+    actionMenuItemText: {
+      fontSize: 14,
+      fontWeight: '800',
+      color: pulse.text,
+    },
+    actionMenuItemSub: {
+      fontSize: 11,
+      marginTop: 2,
+      color: pulse.textSecondary,
+    },
+    actionMenuDivider: {
+      height: 1,
+      marginVertical: 4,
+      backgroundColor: pulse.border,
+    },
+    btnSecondary: {
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    newChatFullScreen: {
+      flex: 1,
+      backgroundColor: pulse.background,
+    },
+    newChatContainer: {
+      flex: 1,
+      paddingHorizontal: 20,
+      backgroundColor: pulse.background,
+    },
+    newChatHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingTop: 8,
+      paddingBottom: 14,
+      marginBottom: 6,
+    },
+    newChatTitle: {
+      color: pulse.text,
+      fontSize: 24,
+      fontWeight: '800',
+      letterSpacing: -0.6,
+    },
+    newChatCloseBtn: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: pulse.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    newChatSearchBox: {
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: pulse.surface,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      paddingHorizontal: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      marginTop: 8,
+      marginBottom: 12,
+    },
+    newChatSearchInput: {
+      flex: 1,
+      fontSize: 15,
+      color: pulse.text,
+      fontWeight: '500',
+      includeFontPadding: false,
+      paddingVertical: 0,
+    },
+    newChatSelectedContainer: {
+      marginBottom: 10,
+    },
+    newChatSelectedRow: {
+      gap: 8,
+      paddingVertical: 2,
+    },
+    newChatUserChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: 18,
+      backgroundColor: pulse.inverse,
+    },
+    newChatChipText: {
+      color: pulse.textInverse,
+      fontSize: 13,
+      fontWeight: '700',
+      maxWidth: 140,
+    },
+    newChatGroupInputContainer: {
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: pulse.surface,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      paddingHorizontal: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      marginBottom: 12,
+    },
+    newChatGroupInput: {
+      flex: 1,
+      fontSize: 14,
+      color: pulse.text,
+      fontWeight: '500',
+      includeFontPadding: false,
+      paddingVertical: 0,
+    },
+    newChatSectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 8,
+      marginTop: 4,
+    },
+    newChatSectionTitle: {
+      color: pulse.textSecondary,
+      fontSize: 13,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    newChatSelectedCount: {
+      color: pulse.textTertiary,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    newChatUserListScroll: {
+      flex: 1,
+    },
+    newChatEmptyContainer: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 48,
+      gap: 10,
+    },
+    newChatEmptyText: {
+      color: pulse.textTertiary,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    newChatUserOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderRadius: 18,
+      marginBottom: 6,
+      backgroundColor: pulse.surface,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      gap: 12,
+    },
+    newChatUserOptionSelected: {
+      backgroundColor: pulse.pill,
+      borderColor: pulse.borderStrong,
+    },
+    newChatAvatarWrap: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: pulse.iconSurface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+    },
+    newChatAvatarImage: {
+      width: '100%',
+      height: '100%',
+    },
+    newChatAvatarLetter: {
+      color: pulse.text,
+      fontSize: 17,
+      fontWeight: '700',
+    },
+    newChatUserInfo: {
+      flex: 1,
+    },
+    newChatUserName: {
+      color: pulse.text,
+      fontSize: 15,
+      fontWeight: '700',
+      includeFontPadding: false,
+    },
+    newChatUserRole: {
+      color: pulse.textSecondary,
+      fontSize: 12,
+      fontWeight: '500',
+      marginTop: 2,
+      includeFontPadding: false,
+    },
+    newChatCheckbox: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      borderColor: pulse.borderStrong,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    newChatCheckboxSelected: {
+      backgroundColor: pulse.inverse,
+      borderColor: pulse.inverse,
+    },
+    newChatBottomFloatingBar: {
+      position: 'absolute',
+      bottom: Platform.OS === 'ios' ? 8 : 6,
+      left: 20,
+      right: 20,
+    },
+    newChatCreateBtn: {
+      height: 52,
+      borderRadius: 26,
+      backgroundColor: pulse.inverse,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      ...SOMBRAS.flotante,
+    },
+    newChatCreateBtnText: {
+      color: pulse.textInverse,
+      fontSize: 15,
+      fontWeight: '800',
+    },
+  });
+}

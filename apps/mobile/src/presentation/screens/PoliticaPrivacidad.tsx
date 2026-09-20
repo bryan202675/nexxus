@@ -1,5 +1,5 @@
-import React from 'react';
-import { StatusBar, StyleSheet, View } from 'react-native';
+import React, { useMemo } from 'react';
+import { Platform, StatusBar, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,6 +13,7 @@ import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 
 const Text = AdminTranslatedText;
 type Icon = React.ComponentProps<typeof Feather>['name'];
+type PulseColors = ReturnType<typeof useTemaMobile>['colores']['pulso'];
 
 interface Props {
   navigation?: {
@@ -60,7 +61,9 @@ const derechosARCO = [
 
 export default function PoliticaPrivacidad({ navigation }: Props) {
   const { t } = useTranslation();
-  const { esOscuro } = useTemaMobile();
+  const { colores, esOscuro } = useTemaMobile();
+  const pulse = colores.pulso;
+  const styles = useMemo(() => createStyles(pulse, esOscuro), [pulse, esOscuro]);
   const { notificaciones, alertasNoLeidas: alertasCtx } = useContextoUsuario();
   const alertasNoLeidas = alertasCtx ?? (notificaciones?.filter((n) => !n.leida).length ?? 0);
 
@@ -75,69 +78,71 @@ export default function PoliticaPrivacidad({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={[styles.screen, esOscuro && styles.screenDark]}>
+    <SafeAreaView style={styles.screen}>
       <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
       <LinearGradient
         pointerEvents="none"
-        colors={esOscuro ? ['#151319', '#1B1720', '#141315'] : ['#FBEDE8', '#F6ECF6', '#FFFDFC']}
+        colors={esOscuro ? pulse.ambient : (['#FBEDE8', '#F6ECF6', '#FFFDFC'] as const)}
         locations={[0, 0.28, 0.72]}
         style={StyleSheet.absoluteFill}
       />
 
       {/* Barra Superior */}
-      <View style={styles.topBar}>
-        <BotonAnimado
-          style={[styles.backButton, esOscuro && styles.darkButton]}
-          scaleTo={0.96}
-          onPress={manejarRegresar}
-          accessibilityLabel="Regresar"
-        >
-          <Feather name="arrow-left" size={21} color={esOscuro ? '#F7F2ED' : '#202020'} />
-        </BotonAnimado>
-
-        <Text style={[styles.topBarLabel, esOscuro && styles.darkText]}>Privacidad</Text>
-
-        <View style={styles.headerActions}>
+      <View style={styles.topBarContainer}>
+        <View style={styles.topBar}>
           <BotonAnimado
-            style={styles.addButton}
+            style={styles.backButton}
             scaleTo={0.96}
-            onPress={() => navigation?.navigate('Notificaciones')}
-            accessibilityLabel="Abrir notificaciones"
+            onPress={manejarRegresar}
+            accessibilityLabel="Regresar"
           >
-            <Feather name="bell" size={21} color="#FFFFFF" />
-            {alertasNoLeidas > 0 && <View style={styles.notificationDot} />}
+            <Feather name="arrow-left" size={Platform.OS === 'ios' ? 21 : 18} color={pulse.icon} />
           </BotonAnimado>
 
-          <BotonAnimado
-            style={[styles.bellButton, esOscuro && styles.darkButton]}
-            scaleTo={0.96}
-            onPress={() => navigation?.navigate('ConfiguracionApp')}
-            accessibilityLabel="Abrir configuración"
-          >
-            <Feather name="settings" size={21} color={esOscuro ? '#F7F2ED' : '#202020'} />
-          </BotonAnimado>
+          <Text style={styles.topBarLabel}>Privacidad</Text>
+
+          <View style={styles.headerActions}>
+            <BotonAnimado
+              style={styles.addButton}
+              scaleTo={0.96}
+              onPress={() => navigation?.navigate('Notificaciones')}
+              accessibilityLabel="Abrir notificaciones"
+            >
+              <Feather name="bell" size={Platform.OS === 'ios' ? 21 : 18} color={pulse.textInverse} />
+              {alertasNoLeidas > 0 && <View style={styles.notificationDot} />}
+            </BotonAnimado>
+
+            <BotonAnimado
+              style={styles.bellButton}
+              scaleTo={0.96}
+              onPress={() => navigation?.navigate('ConfiguracionApp')}
+              accessibilityLabel="Abrir configuración"
+            >
+              <Feather name="settings" size={Platform.OS === 'ios' ? 21 : 18} color={pulse.icon} />
+            </BotonAnimado>
+          </View>
         </View>
       </View>
 
       <Animated.ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Hero Section con Candado Pastel centrado verticalmente */}
         <Animated.View entering={FadeInDown.duration(240).easing(Easing.out(Easing.cubic))} style={styles.hero}>
-          <View style={[styles.heroIconBadge, esOscuro && styles.heroIconBadgeDark]}>
-            <Feather name="lock" size={24} color={esOscuro ? '#D5CCC5' : '#5E534B'} />
+          <View style={styles.heroIconBadge}>
+            <Feather name="lock" size={24} color={pulse.icon} />
           </View>
           <View style={styles.heroCopy}>
-            <Text style={[styles.heroTitle, esOscuro && styles.darkText]}>Tus datos,{'\n'}bajo control</Text>
-            <Text style={[styles.heroSub, esOscuro && styles.darkSub]}>
+            <Text style={styles.heroTitle}>Tus datos,{'\n'}bajo control</Text>
+            <Text style={styles.heroSub}>
               Conoce cómo Nexxus protege tu información, accesos y actividad corporativa.
             </Text>
           </View>
         </Animated.View>
 
         {/* Datos y Permisos con iconos beige/café limpios sin badges */}
-        <Text style={[styles.sectionTitle, esOscuro && styles.darkSectionTitle]}>Datos y permisos</Text>
+        <Text style={styles.sectionTitle}>Datos y permisos</Text>
         <Animated.View
           entering={FadeInDown.duration(240).delay(45).easing(Easing.out(Easing.cubic))}
-          style={[styles.permissionsContainer, esOscuro && styles.permissionsContainerDark]}
+          style={styles.permissionsContainer}
         >
           {protections.map((item, index) => {
             const isLast = index === protections.length - 1;
@@ -147,15 +152,15 @@ export default function PoliticaPrivacidad({ navigation }: Props) {
                 key={item.title}
                 style={[
                   styles.permissionRow,
-                  !isLast && (esOscuro ? styles.rowDividerDark : styles.rowDivider),
+                  !isLast && styles.rowDivider,
                 ]}
               >
-                <View style={[styles.permissionIconWrap, esOscuro && styles.permissionIconWrapDark]}>
-                  <Feather name={item.icon} size={18} color={esOscuro ? '#D5CCC5' : '#5E534B'} />
+                <View style={styles.permissionIconWrap}>
+                  <Feather name={item.icon} size={18} color={pulse.icon} />
                 </View>
                 <View style={styles.permissionContent}>
-                  <Text style={[styles.permissionTitle, esOscuro && styles.darkText]}>{item.title}</Text>
-                  <Text style={[styles.permissionDetail, esOscuro && styles.darkSub]}>{item.detail}</Text>
+                  <Text style={styles.permissionTitle}>{item.title}</Text>
+                  <Text style={styles.permissionDetail}>{item.detail}</Text>
                 </View>
               </View>
             );
@@ -163,18 +168,18 @@ export default function PoliticaPrivacidad({ navigation }: Props) {
         </Animated.View>
 
         {/* Tus Derechos */}
-        <Text style={[styles.sectionTitle, esOscuro && styles.darkSectionTitle]}>Tus derechos</Text>
+        <Text style={styles.sectionTitle}>Tus derechos</Text>
         <Animated.View
           entering={FadeInDown.duration(240).delay(80).easing(Easing.out(Easing.cubic))}
           style={styles.rights}
         >
           {derechosARCO.map((item) => (
-            <View key={item.title} style={[styles.rightCard, esOscuro && styles.rightCardDark]}>
-              <View style={[styles.rightIconBox, esOscuro && styles.rightIconBoxDark]}>
-                <Feather name={item.icon} size={17} color={esOscuro ? '#D5CCC5' : '#5E534B'} />
+            <View key={item.title} style={styles.rightCard}>
+              <View style={styles.rightIconBox}>
+                <Feather name={item.icon} size={17} color={pulse.icon} />
               </View>
-              <Text style={[styles.rightTitle, esOscuro && styles.darkText]}>{item.title}</Text>
-              <Text style={[styles.rightDetail, esOscuro && styles.darkSub]}>{item.detail}</Text>
+              <Text style={styles.rightTitle}>{item.title}</Text>
+              <Text style={styles.rightDetail}>{item.detail}</Text>
             </View>
           ))}
         </Animated.View>
@@ -182,12 +187,12 @@ export default function PoliticaPrivacidad({ navigation }: Props) {
         {/* Aviso con menor espacio vertical */}
         <Animated.View
           entering={FadeInDown.duration(240).delay(115).easing(Easing.out(Easing.cubic))}
-          style={[styles.notice, esOscuro && styles.noticeDark]}
+          style={styles.notice}
         >
-          <View style={[styles.noticeIcon, esOscuro && styles.noticeIconDark]}>
-            <Feather name="info" size={16} color={esOscuro ? '#D5CCC5' : '#5E534B'} />
+          <View style={styles.noticeIcon}>
+            <Feather name="info" size={16} color={pulse.icon} />
           </View>
-          <Text style={[styles.noticeText, esOscuro && styles.noticeTextDark]}>
+          <Text style={styles.noticeText}>
             Para revisar sesiones activas o modificar las preferencias de tu cuenta, vuelve a Configuración. Las acciones de datos se gestionan de acuerdo con las políticas de tu empresa.
           </Text>
         </Animated.View>
@@ -196,275 +201,247 @@ export default function PoliticaPrivacidad({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#FFFDFC' },
-  screenDark: { backgroundColor: '#141315' },
+function createStyles(pulse: PulseColors, esOscuro: boolean) {
+  const isIOS = Platform.OS === 'ios';
+  return StyleSheet.create({
+    screen: { flex: 1, backgroundColor: pulse.background },
 
-  /* Top Bar */
-  topBar: {
-    height: 52,
-    marginHorizontal: 21,
-    marginTop: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backButton: {
-    width: 47,
-    height: 47,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...SOMBRAS.suave,
-  },
-  darkButton: {
-    backgroundColor: '#25212A',
-  },
-  topBarLabel: {
-    color: '#292522',
-    fontSize: 17,
-    fontWeight: '600',
-    letterSpacing: -0.5,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  addButton: {
-    width: 47,
-    height: 47,
-    borderRadius: 24,
-    backgroundColor: '#202020',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bellButton: {
-    width: 47,
-    height: 47,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...SOMBRAS.suave,
-  },
-  notificationDot: {
-    position: 'absolute',
-    top: 11,
-    right: 12,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#E5484D',
-    borderWidth: 1.5,
-    borderColor: '#202020',
-  },
+    /* Top Bar */
+    topBarContainer: {
+      paddingHorizontal: 21,
+      paddingTop: isIOS ? 6 : 4,
+      paddingBottom: 8,
+      zIndex: 10,
+      backgroundColor: 'transparent',
+    },
+    topBar: {
+      height: isIOS ? 54 : 48,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    backButton: {
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: pulse.surfaceElevated,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+    },
+    topBarLabel: {
+      color: pulse.text,
+      fontSize: isIOS ? 17 : 15,
+      fontWeight: '600',
+      letterSpacing: isIOS ? -0.5 : -0.3,
+    },
+    headerActions: {
+      flexDirection: 'row',
+      gap: isIOS ? 10 : 8,
+    },
+    addButton: {
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: pulse.inverse,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+    },
+    bellButton: {
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: pulse.surfaceElevated,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+    },
+    notificationDot: {
+      position: 'absolute',
+      top: isIOS ? 11 : 9,
+      right: isIOS ? 12 : 10,
+      width: isIOS ? 8 : 7,
+      height: isIOS ? 8 : 7,
+      borderRadius: isIOS ? 4 : 3.5,
+      backgroundColor: '#E5484D',
+      borderWidth: 1.5,
+      borderColor: pulse.inverse,
+    },
 
-  /* Content */
-  content: {
-    paddingHorizontal: 21,
-    paddingTop: 12,
-    paddingBottom: 24,
-  },
+    /* Content */
+    content: {
+      paddingHorizontal: 21,
+      paddingTop: isIOS ? 12 : 8,
+      paddingBottom: 24,
+    },
 
-  /* Hero Section */
-  hero: {
-    flexDirection: 'row',
-    gap: 16,
-    alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 26,
-  },
-  heroIconBadge: {
-    width: 58,
-    height: 58,
-    borderRadius: 20,
-    backgroundColor: '#F5EBE6',
-    borderWidth: 1,
-    borderColor: '#ECE0D8',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...SOMBRAS.suave,
-  },
-  heroIconBadgeDark: {
-    backgroundColor: 'rgba(255, 255, 255, 0.07)',
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  heroCopy: {
-    flex: 1,
-  },
-  heroTitle: {
-    color: '#251F1C',
-    fontSize: 27,
-    lineHeight: 31,
-    fontWeight: '700',
-    letterSpacing: -0.9,
-  },
-  heroSub: {
-    color: '#786E67',
-    fontSize: 12.5,
-    lineHeight: 17,
-    marginTop: 5,
-  },
+    /* Hero Section */
+    hero: {
+      flexDirection: 'row',
+      gap: 16,
+      alignItems: 'center',
+      marginTop: 10,
+      marginBottom: 26,
+    },
+    heroIconBadge: {
+      width: 58,
+      height: 58,
+      borderRadius: 20,
+      backgroundColor: pulse.surfaceElevated,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+    },
+    heroCopy: {
+      flex: 1,
+    },
+    heroTitle: {
+      color: pulse.text,
+      fontSize: 27,
+      lineHeight: 31,
+      fontWeight: '700',
+      letterSpacing: -0.9,
+    },
+    heroSub: {
+      color: pulse.textSecondary,
+      fontSize: 12.5,
+      lineHeight: 17,
+      marginTop: 5,
+    },
 
-  /* Dark mode text helpers */
-  darkText: {
-    color: '#F7F2ED',
-  },
-  darkSub: {
-    color: '#A89F97',
-  },
-  darkSectionTitle: {
-    color: '#EAE3DC',
-  },
+    /* Section Title */
+    sectionTitle: {
+      color: pulse.text,
+      fontSize: 17,
+      fontWeight: '700',
+      marginBottom: 12,
+      marginTop: 2,
+      letterSpacing: -0.3,
+    },
 
-  /* Section Title */
-  sectionTitle: {
-    color: '#3A322C',
-    fontSize: 17,
-    fontWeight: '700',
-    marginBottom: 12,
-    marginTop: 2,
-    letterSpacing: -0.3,
-  },
+    /* Datos y Permisos Container */
+    permissionsContainer: {
+      backgroundColor: pulse.surface,
+      borderRadius: 22,
+      paddingHorizontal: 16,
+      paddingVertical: 4,
+      marginBottom: 26,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+    },
+    permissionRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 13,
+      paddingVertical: 14,
+    },
+    rowDivider: {
+      borderBottomWidth: 1,
+      borderColor: pulse.border,
+    },
+    permissionIconWrap: {
+      width: 38,
+      height: 38,
+      borderRadius: 14,
+      backgroundColor: pulse.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 2,
+    },
+    permissionContent: {
+      flex: 1,
+    },
+    permissionTitle: {
+      color: pulse.text,
+      fontSize: 13.5,
+      fontWeight: '700',
+      letterSpacing: -0.2,
+      marginBottom: 3,
+    },
+    permissionDetail: {
+      color: pulse.textSecondary,
+      fontSize: 11.5,
+      lineHeight: 16,
+    },
 
-  /* Datos y Permisos Container */
-  permissionsContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: 4,
-    marginBottom: 26,
-    borderWidth: 1,
-    borderColor: '#F2ECE6',
-    ...SOMBRAS.suave,
-  },
-  permissionsContainerDark: {
-    backgroundColor: '#201C25',
-    borderColor: 'rgba(255, 255, 255, 0.07)',
-  },
-  permissionRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 13,
-    paddingVertical: 14,
-  },
-  rowDivider: {
-    borderBottomWidth: 1,
-    borderColor: '#F3ECE6',
-  },
-  rowDividerDark: {
-    borderBottomWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  permissionIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 14,
-    backgroundColor: '#F5F0EB',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
-  },
-  permissionIconWrapDark: {
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  permissionContent: {
-    flex: 1,
-  },
-  permissionTitle: {
-    color: '#322B26',
-    fontSize: 13.5,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-    marginBottom: 3,
-  },
-  permissionDetail: {
-    color: '#887E76',
-    fontSize: 11.5,
-    lineHeight: 16,
-  },
+    /* Tus Derechos */
+    rights: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+      rowGap: 10,
+      marginBottom: 20,
+    },
+    rightCard: {
+      width: '48%',
+      minHeight: 110,
+      borderRadius: 20,
+      padding: 14,
+      backgroundColor: pulse.surface,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+    },
+    rightIconBox: {
+      width: 34,
+      height: 34,
+      borderRadius: 12,
+      backgroundColor: pulse.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    rightTitle: {
+      color: pulse.text,
+      fontSize: 13,
+      fontWeight: '700',
+      marginTop: 10,
+      letterSpacing: -0.2,
+    },
+    rightDetail: {
+      color: pulse.textSecondary,
+      fontSize: 11,
+      lineHeight: 15,
+      marginTop: 3,
+    },
 
-  /* Tus Derechos */
-  rights: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 10,
-    marginBottom: 20,
-  },
-  rightCard: {
-    width: '48.5%',
-    minHeight: 110,
-    borderRadius: 20,
-    padding: 14,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#F2ECE6',
-    ...SOMBRAS.suave,
-  },
-  rightCardDark: {
-    backgroundColor: '#201C25',
-    borderColor: 'rgba(255, 255, 255, 0.07)',
-  },
-  rightIconBox: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    backgroundColor: '#F5F0EB',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rightIconBoxDark: {
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  rightTitle: {
-    color: '#332C27',
-    fontSize: 13,
-    fontWeight: '700',
-    marginTop: 10,
-    letterSpacing: -0.2,
-  },
-  rightDetail: {
-    color: '#8A8078',
-    fontSize: 11,
-    lineHeight: 15,
-    marginTop: 3,
-  },
-
-  /* Notice */
-  notice: {
-    borderRadius: 18,
-    padding: 14,
-    backgroundColor: '#F4EFEA',
-    borderWidth: 1,
-    borderColor: '#EDE5DD',
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'center',
-  },
-  noticeDark: {
-    backgroundColor: '#1E1A22',
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  noticeIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#E7DDD4',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  noticeIconDark: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  noticeText: {
-    flex: 1,
-    color: '#736860',
-    fontSize: 11.5,
-    lineHeight: 16,
-  },
-  noticeTextDark: {
-    color: '#ACA197',
-  },
-});
+    /* Notice */
+    notice: {
+      borderRadius: 18,
+      padding: 14,
+      backgroundColor: pulse.surfaceElevated,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      flexDirection: 'row',
+      gap: 12,
+      alignItems: 'center',
+    },
+    noticeIcon: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      backgroundColor: pulse.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    noticeText: {
+      flex: 1,
+      color: pulse.textSecondary,
+      fontSize: 11.5,
+      lineHeight: 16,
+    },
+  });
+}

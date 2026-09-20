@@ -5,6 +5,7 @@
  * Rediseñado con estética 100% idéntica a Mi Pulso: tipografía elegante de 34px, paleta minimalista
  * en beige/crema con pasteles suaves y negros discretos, tarjetas Bento ejecutivas, chips interactivos,
  * animaciones suaves de entrada (Reanimated), atajos de trámites y modales pulidos.
+ * Soporte completo de Modo Oscuro fiel al sistema global de Nexxus.
  */
 
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -45,9 +46,10 @@ import BotonAnimado from '@/presentation/components/BotonAnimado';
 import ModalShell from '@/presentation/components/ui/ModalShell';
 import Skeleton from '@/presentation/components/ui/Skeleton';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
+import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import { useCases } from '@/infrastructure/container';
 import { uploadManagedFile } from '@/infrastructure/storage/cloudinaryUpload';
-import { SOMBRAS } from '@/shared/constants/diseno';
+import { SOMBRAS, TEMAS_MOVILES } from '@/shared/constants/diseno';
 import { useUserTabBottomPadding } from '@/presentation/hooks/useUserTabBottomPadding';
 import { Documento, DocumentVersion } from 'domain/entities/Documento';
 
@@ -56,6 +58,8 @@ const TextInput = AdminTranslatedTextInput;
 
 type CategoriaDoc = 'todos' | Documento['tipo'];
 type IconoFeather = React.ComponentProps<typeof Feather>['name'];
+type PulseColors = ReturnType<typeof useTemaMobile>['colores']['pulso'];
+type Styles = ReturnType<typeof createStyles>;
 
 interface Props {
   navigation: {
@@ -128,6 +132,9 @@ const sanitizeFileName = (value: string) =>
     .slice(0, 80) || 'documento';
 
 export default function CentroDocumentos({ navigation }: Props) {
+  const { colores, esOscuro } = useTemaMobile();
+  const pulse = colores.pulso;
+  const styles = useMemo(() => createStyles(pulse, esOscuro), [pulse, esOscuro]);
   const bottomPadding = useUserTabBottomPadding(96);
   const { t, i18n } = useTranslation();
   const {
@@ -317,19 +324,18 @@ export default function CentroDocumentos({ navigation }: Props) {
     try {
       if (Platform.OS === 'web') {
         window.open(doc.url, '_blank');
-        return;
-      }
-
-      const extension = doc.mime === 'application/pdf' ? 'pdf' : 'bin';
-      const localUri = `${FileSystem.cacheDirectory}${sanitizeFileName(doc.titulo)}.${extension}`;
-      const result = await FileSystem.downloadAsync(doc.url, localUri);
-
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(result.uri, {
-          dialogTitle: doc.titulo,
-        });
       } else {
-        Alert.alert('Descarga completa', `Guardado en ${result.uri}`);
+        const extension = doc.mime === 'application/pdf' ? 'pdf' : 'bin';
+        const localUri = `${FileSystem.cacheDirectory}${sanitizeFileName(doc.titulo)}.${extension}`;
+        const result = await FileSystem.downloadAsync(doc.url, localUri);
+
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(result.uri, {
+            dialogTitle: doc.titulo,
+          });
+        } else {
+          Alert.alert('Descarga completa', `Guardado en ${result.uri}`);
+        }
       }
     } catch {
       // Fallback a apertura directa
@@ -543,47 +549,48 @@ export default function CentroDocumentos({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle={esOscuro ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
 
       {/* Gradiente ambiental superior idéntico a Mi Pulso */}
       <LinearGradient
         pointerEvents="none"
-        colors={['#FBEDE8', '#F6ECF6', '#FFFDFC']}
+        colors={esOscuro ? pulse.ambient : (['#FBEDE8', '#F6ECF6', '#FFFDFC'] as const)}
         locations={[0, 0.28, 0.72]}
         style={styles.ambient}
       />
 
-      {/* Barra Superior */}
-      <View style={styles.topBar}>
-        <BotonAnimado
-          style={styles.backButton}
-          scaleTo={0.96}
-          onPress={manejarRegresar}
-          accessibilityLabel="Regresar"
-        >
-          <Feather name="arrow-left" size={21} color="#202020" />
-        </BotonAnimado>
-
-        <Text style={styles.topBarLabel}>Documentos</Text>
-
-        <View style={styles.headerActions}>
+      <View style={styles.topBarContainer}>
+        <View style={styles.topBar}>
           <BotonAnimado
-            style={styles.addButton}
+            style={styles.backButton}
             scaleTo={0.96}
-            onPress={() => setModalGestionVisible(true)}
-            accessibilityLabel="Subir o solicitar documento"
+            onPress={manejarRegresar}
+            accessibilityLabel="Regresar"
           >
-            <Feather name="plus" size={22} color="#FFFFFF" />
+            <Feather name="arrow-left" size={Platform.OS === 'ios' ? 21 : 18} color={pulse.icon} />
           </BotonAnimado>
 
-          <BotonAnimado
-            style={styles.bellButton}
-            scaleTo={0.96}
-            onPress={refresh}
-            accessibilityLabel="Actualizar biblioteca"
-          >
-            <Feather name="refresh-cw" size={19} color="#202020" />
-          </BotonAnimado>
+          <Text style={styles.topBarLabel}>Documentos</Text>
+
+          <View style={styles.headerActions}>
+            <BotonAnimado
+              style={styles.addButton}
+              scaleTo={0.96}
+              onPress={() => setModalGestionVisible(true)}
+              accessibilityLabel="Subir o solicitar documento"
+            >
+              <Feather name="plus" size={Platform.OS === 'ios' ? 22 : 19} color={pulse.textInverse} />
+            </BotonAnimado>
+
+            <BotonAnimado
+              style={styles.bellButton}
+              scaleTo={0.96}
+              onPress={refresh}
+              accessibilityLabel="Actualizar biblioteca"
+            >
+              <Feather name="refresh-cw" size={Platform.OS === 'ios' ? 20 : 17} color={pulse.icon} />
+            </BotonAnimado>
+          </View>
         </View>
       </View>
 
@@ -595,7 +602,7 @@ export default function CentroDocumentos({ navigation }: Props) {
           <RefreshControl
             refreshing={refrescando}
             onRefresh={refresh}
-            tintColor="#202020"
+            tintColor={pulse.icon}
           />
         }
       >
@@ -604,7 +611,7 @@ export default function CentroDocumentos({ navigation }: Props) {
 
         {/* Tarjeta Bento Ejecutiva Principal (Bento Oscuro) */}
         {cargando && documentos.length === 0 ? (
-          <DocumentSkeleton />
+          <DocumentSkeleton styles={styles} pulse={pulse} />
         ) : (
           <Animated.View
             entering={reduceMotion ? undefined : FadeInDown.duration(240).delay(40)}
@@ -703,11 +710,11 @@ export default function CentroDocumentos({ navigation }: Props) {
 
         {/* Buscador Minimalista */}
         <View style={styles.searchContainer}>
-          <Feather name="search" size={18} color="#78736F" />
+          <Feather name="search" size={18} color={pulse.textTertiary} />
           <TextInput
             style={styles.searchInput}
             placeholder="Buscar por título, categoría o tipo..."
-            placeholderTextColor="#86807D"
+            placeholderTextColor={pulse.textTertiary}
             value={busqueda}
             onChangeText={setBusqueda}
             autoCorrect={false}
@@ -718,7 +725,7 @@ export default function CentroDocumentos({ navigation }: Props) {
               onPress={() => setBusqueda('')}
               style={styles.searchClearBtn}
             >
-              <Feather name="x" size={14} color="#544F4B" />
+              <Feather name="x" size={14} color={pulse.textSecondary} />
             </BotonAnimado>
           )}
         </View>
@@ -768,7 +775,7 @@ export default function CentroDocumentos({ navigation }: Props) {
               accessibilityLabel="Revisar documento pendiente"
             >
               <View style={styles.attentionIconBox}>
-                <Feather name="alert-circle" size={19} color="#7A6248" />
+                <Feather name="alert-circle" size={19} color={esOscuro ? '#F2AD84' : '#7A6248'} />
               </View>
               <View style={styles.attentionCopy}>
                 <Text style={styles.attentionTitle} numberOfLines={1}>
@@ -779,7 +786,7 @@ export default function CentroDocumentos({ navigation }: Props) {
                 </Text>
               </View>
               <View style={styles.attentionArrow}>
-                <Feather name="arrow-up-right" size={17} color="#202020" />
+                <Feather name="arrow-up-right" size={17} color={pulse.icon} />
               </View>
             </BotonAnimado>
           </Animated.View>
@@ -807,7 +814,7 @@ export default function CentroDocumentos({ navigation }: Props) {
                 >
                   <View style={styles.recentCardTop}>
                     <View style={styles.recentIconWrap}>
-                      <Feather name={getDocumentIcon(doc.tipo)} size={16} color="#202020" />
+                      <Feather name={getDocumentIcon(doc.tipo)} size={16} color={pulse.icon} />
                     </View>
                     <View
                       style={[
@@ -846,12 +853,15 @@ export default function CentroDocumentos({ navigation }: Props) {
                 onPress={() => manejarAbrir(doc)}
                 onDownload={() => descargarOcompartirRemoto(doc)}
                 isDownloading={descargando === doc.id}
+                styles={styles}
+                pulse={pulse}
+                esOscuro={esOscuro}
               />
             ))}
           </View>
         ) : (
           <View style={styles.emptyCard}>
-            <Feather name="folder-minus" size={36} color="#B9B3AE" />
+            <Feather name="folder-minus" size={36} color={pulse.textTertiary} />
             <Text style={styles.emptyTitle}>No se encontraron documentos</Text>
             <Text style={styles.emptySubtitle}>
               {busqueda ? 'Intenta con otros términos de búsqueda.' : 'No hay archivos en esta categoría.'}
@@ -870,24 +880,32 @@ export default function CentroDocumentos({ navigation }: Props) {
             title="Constancia laboral"
             detail="Generar comprobante de empleo oficial"
             onPress={generarConstanciaRapida}
+            styles={styles}
+            pulse={pulse}
           />
           <Shortcut
             icon="credit-card"
             title="Mi nómina y recibos"
             detail="Consultar recibos de sueldo detallados"
             onPress={() => navigation.navigate('MiSalario')}
+            styles={styles}
+            pulse={pulse}
           />
           <Shortcut
             icon="upload"
             title="Subir o solicitar documento"
             detail="Cargar comprobantes o pedir a RRHH"
             onPress={() => setModalGestionVisible(true)}
+            styles={styles}
+            pulse={pulse}
           />
           <Shortcut
-            customIcon={<MaterialIcons name="auto-awesome" size={19} color="#202020" />}
+            customIcon={<MaterialIcons name="auto-awesome" size={19} color={pulse.icon} />}
             title="Asistente IA"
             detail="Consultas sobre normativas y políticas"
             onPress={() => navigation.navigate('ChatIA')}
+            styles={styles}
+            pulse={pulse}
           />
         </View>
       </Animated.ScrollView>
@@ -910,7 +928,7 @@ export default function CentroDocumentos({ navigation }: Props) {
                 style={styles.modalCloseBtn}
                 accessibilityLabel="Cerrar visor"
               >
-                <Feather name="x" size={18} color="#202020" />
+                <Feather name="x" size={18} color={pulse.icon} />
               </BotonAnimado>
 
               <View style={styles.modalHeaderCenter}>
@@ -929,17 +947,28 @@ export default function CentroDocumentos({ navigation }: Props) {
                     style={[
                       styles.modalStatusPill,
                       {
-                        backgroundColor: docLecturaActivo.leido ? 'rgba(213,231,116,0.3)' : 'rgba(242,173,132,0.25)',
+                        backgroundColor: docLecturaActivo.leido
+                          ? (esOscuro ? 'rgba(213,231,116,0.18)' : 'rgba(213,231,116,0.3)')
+                          : (esOscuro ? 'rgba(242,173,132,0.18)' : 'rgba(242,173,132,0.25)'),
                       },
                     ]}
                   >
                     <View
                       style={[
                         styles.modalStatusDot,
-                        { backgroundColor: docLecturaActivo.leido ? '#7DA842' : '#F2AD84' },
+                        { backgroundColor: docLecturaActivo.leido ? '#D5E774' : '#F2AD84' },
                       ]}
                     />
-                    <Text style={styles.modalStatusText}>
+                    <Text
+                      style={[
+                        styles.modalStatusText,
+                        {
+                          color: docLecturaActivo.leido
+                            ? (esOscuro ? '#D5E774' : '#4B4642')
+                            : (esOscuro ? '#F2AD84' : '#4B4642'),
+                        },
+                      ]}
+                    >
                       {docLecturaActivo.leido ? 'Revisado' : 'Pendiente'}
                     </Text>
                   </View>
@@ -953,7 +982,7 @@ export default function CentroDocumentos({ navigation }: Props) {
               </View>
 
               <View style={styles.modalDocIconWrap}>
-                <Feather name={getDocumentIcon(docLecturaActivo.tipo)} size={18} color="#202020" />
+                <Feather name={getDocumentIcon(docLecturaActivo.tipo)} size={18} color={pulse.icon} />
               </View>
             </View>
 
@@ -1014,23 +1043,24 @@ export default function CentroDocumentos({ navigation }: Props) {
                   <View style={styles.markdownBox}>
                     <Markdown
                       style={{
-                        body: { fontSize: 14, color: '#272321', lineHeight: 22, fontWeight: '400' },
-                        heading1: { fontSize: 20, lineHeight: 26, fontWeight: '700', color: '#1F1D1C', marginTop: 12, marginBottom: 6 },
-                        heading2: { fontSize: 17, lineHeight: 23, fontWeight: '700', color: '#1F1D1C', marginTop: 10, marginBottom: 4 },
-                        heading3: { fontSize: 15, lineHeight: 20, fontWeight: '600', color: '#272321', marginTop: 8, marginBottom: 4 },
-                        paragraph: { marginTop: 4, marginBottom: 6, color: '#3A3531' },
+                        body: { fontSize: 14, color: pulse.text, lineHeight: 22, fontWeight: '400' },
+                        heading1: { fontSize: 20, lineHeight: 26, fontWeight: '700', color: pulse.text, marginTop: 12, marginBottom: 6 },
+                        heading2: { fontSize: 17, lineHeight: 23, fontWeight: '700', color: pulse.text, marginTop: 10, marginBottom: 4 },
+                        heading3: { fontSize: 15, lineHeight: 20, fontWeight: '600', color: pulse.text, marginTop: 8, marginBottom: 4 },
+                        paragraph: { marginTop: 4, marginBottom: 6, color: pulse.textSecondary },
                         list_item: { marginTop: 3, marginBottom: 3 },
-                        strong: { fontWeight: '700', color: '#1F1D1C' },
+                        strong: { fontWeight: '700', color: pulse.text },
                         blockquote: {
                           borderLeftWidth: 3,
-                          borderLeftColor: '#E9D2BF',
+                          borderLeftColor: esOscuro ? '#A78BFA' : '#E9D2BF',
                           paddingLeft: 12,
-                          backgroundColor: '#FBF5EE',
+                          backgroundColor: esOscuro ? 'rgba(167,139,250,0.1)' : '#FBF5EE',
                           borderRadius: 6,
                           marginVertical: 6,
                         },
                         code_inline: {
-                          backgroundColor: '#F5F2EF',
+                          backgroundColor: esOscuro ? 'rgba(255,255,255,0.08)' : '#F5F2EF',
+                          color: esOscuro ? '#A78BFA' : '#272321',
                           paddingHorizontal: 6,
                           borderRadius: 4,
                           fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
@@ -1045,12 +1075,12 @@ export default function CentroDocumentos({ navigation }: Props) {
               ) : (
                 <View style={styles.detailsTabWrap}>
                   <View style={styles.infoCardGroup}>
-                    <InfoRow label="Identificador" value={docLecturaActivo.id} />
-                    <InfoRow label="Categoría" value={docLecturaActivo.categoria || docLecturaActivo.tipo} />
-                    <InfoRow label="Fecha de Registro" value={formatearFecha(docLecturaActivo.fechaSubida, i18n.language)} />
-                    <InfoRow label="Versión Actual" value={`v${docLecturaActivo.version || 1}.0`} />
-                    <InfoRow label="Tamaño" value={docLecturaActivo.tamano || 'Documento Oficial'} />
-                    <InfoRow label="Estado" value={docLecturaActivo.leido ? 'Lectura confirmada' : 'Pendiente de confirmación'} />
+                    <InfoRow label="Identificador" value={docLecturaActivo.id} styles={styles} />
+                    <InfoRow label="Categoría" value={docLecturaActivo.categoria || docLecturaActivo.tipo} styles={styles} />
+                    <InfoRow label="Fecha de Registro" value={formatearFecha(docLecturaActivo.fechaSubida, i18n.language)} styles={styles} />
+                    <InfoRow label="Versión Actual" value={`v${docLecturaActivo.version || 1}.0`} styles={styles} />
+                    <InfoRow label="Tamaño" value={docLecturaActivo.tamano || 'Documento Oficial'} styles={styles} />
+                    <InfoRow label="Estado" value={docLecturaActivo.leido ? 'Lectura confirmada' : 'Pendiente de confirmación'} styles={styles} />
                   </View>
 
                   {/* Historial de Versiones */}
@@ -1064,12 +1094,12 @@ export default function CentroDocumentos({ navigation }: Props) {
                           scaleTo={0.98}
                           onPress={() => abrirDocumentoRemoto(v.url)}
                         >
-                          <Feather name="clock" size={14} color="#78736F" />
+                          <Feather name="clock" size={14} color={pulse.textTertiary} />
                           <View style={{ flex: 1 }}>
                             <Text style={styles.versionRowTitle}>Versión {v.version}</Text>
                             <Text style={styles.versionRowDate}>{formatearFecha(v.fecha, i18n.language)}</Text>
                           </View>
-                          <Feather name="external-link" size={14} color="#544F4B" />
+                          <Feather name="external-link" size={14} color={pulse.textSecondary} />
                         </BotonAnimado>
                       ))}
                     </View>
@@ -1085,7 +1115,7 @@ export default function CentroDocumentos({ navigation }: Props) {
                     style={styles.btnSecondaryAction}
                     onPress={() => abrirDocumentoRemoto(docLecturaActivo.url)}
                   >
-                    <Feather name="external-link" size={16} color="#202020" />
+                    <Feather name="external-link" size={16} color={pulse.icon} />
                     <Text style={styles.btnSecondaryText}>Abrir enlace externo</Text>
                   </BotonAnimado>
                 ) : null}
@@ -1095,7 +1125,7 @@ export default function CentroDocumentos({ navigation }: Props) {
                   style={styles.btnSecondaryAction}
                   onPress={() => descargarOcompartirRemoto(docLecturaActivo)}
                 >
-                  <Feather name="download" size={16} color="#202020" />
+                  <Feather name="download" size={16} color={pulse.icon} />
                   <Text style={styles.btnSecondaryText}>Descargar o compartir copia</Text>
                 </BotonAnimado>
 
@@ -1105,12 +1135,12 @@ export default function CentroDocumentos({ navigation }: Props) {
                     style={styles.btnPrimaryAction}
                     onPress={() => confirmarMarcarLeido(docLecturaActivo)}
                   >
-                    <Feather name="check" size={18} color="#FFFFFF" />
+                    <Feather name="check" size={18} color={pulse.textInverse} />
                     <Text style={styles.btnPrimaryText}>Marcar como leído y entendido</Text>
                   </BotonAnimado>
                 ) : (
                   <View style={styles.readConfirmedBadge}>
-                    <Feather name="check-circle" size={15} color="#455E24" />
+                    <Feather name="check-circle" size={15} color={esOscuro ? '#D5E774' : '#455E24'} />
                     <Text style={styles.readConfirmedText}>Lectura confirmada en el servidor</Text>
                   </View>
                 )}
@@ -1138,7 +1168,7 @@ export default function CentroDocumentos({ navigation }: Props) {
               scaleTo={0.92}
               style={styles.modalCloseBtn}
             >
-              <Feather name="x" size={18} color="#202020" />
+              <Feather name="x" size={18} color={pulse.icon} />
             </BotonAnimado>
 
             <View style={styles.modalHeaderCenter}>
@@ -1147,7 +1177,7 @@ export default function CentroDocumentos({ navigation }: Props) {
             </View>
 
             <View style={styles.modalDocIconWrap}>
-              <Feather name="folder-plus" size={18} color="#202020" />
+              <Feather name="folder-plus" size={18} color={pulse.icon} />
             </View>
           </View>
 
@@ -1222,7 +1252,7 @@ export default function CentroDocumentos({ navigation }: Props) {
                 <TextInput
                   style={styles.formTextArea}
                   placeholder="Describe para qué necesitas este documento (trámite bancario, visa, etc.)..."
-                  placeholderTextColor="#86807D"
+                  placeholderTextColor={pulse.textTertiary}
                   multiline
                   numberOfLines={4}
                   value={motivoSolicitud}
@@ -1236,10 +1266,10 @@ export default function CentroDocumentos({ navigation }: Props) {
                   disabled={enviandoSolicitud}
                 >
                   {enviandoSolicitud ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
+                    <ActivityIndicator size="small" color={pulse.textInverse} />
                   ) : (
                     <>
-                      <Feather name="send" size={17} color="#FFFFFF" />
+                      <Feather name="send" size={17} color={pulse.textInverse} />
                       <Text style={styles.btnPrimaryText}>Enviar Solicitud a RRHH</Text>
                     </>
                   )}
@@ -1251,7 +1281,7 @@ export default function CentroDocumentos({ navigation }: Props) {
                 <TextInput
                   style={styles.formInput}
                   placeholder="Ej. Certificado Médico, Constancia Estudio..."
-                  placeholderTextColor="#86807D"
+                  placeholderTextColor={pulse.textTertiary}
                   value={tituloSubida}
                   onChangeText={setTituloSubida}
                 />
@@ -1281,7 +1311,7 @@ export default function CentroDocumentos({ navigation }: Props) {
                 <Text style={styles.formLabel}>Archivo adjunto</Text>
                 {archivoSeleccionado ? (
                   <View style={styles.fileSelectedCard}>
-                    <Feather name="check-square" size={22} color="#202020" />
+                    <Feather name="check-square" size={22} color={pulse.icon} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.fileSelectedName} numberOfLines={1}>
                         {archivoSeleccionado.name}
@@ -1297,7 +1327,7 @@ export default function CentroDocumentos({ navigation }: Props) {
                       onPress={() => setArchivoSeleccionado(null)}
                       style={styles.removeFileBtn}
                     >
-                      <Feather name="trash-2" size={16} color="#9A453F" />
+                      <Feather name="trash-2" size={16} color={esOscuro ? pulse.errorText : '#9A453F'} />
                     </BotonAnimado>
                   </View>
                 ) : (
@@ -1307,7 +1337,7 @@ export default function CentroDocumentos({ navigation }: Props) {
                       style={styles.uploadButtonHalf}
                       onPress={seleccionarArchivo}
                     >
-                      <Feather name="file" size={18} color="#202020" />
+                      <Feather name="file" size={18} color={pulse.icon} />
                       <Text style={styles.uploadButtonText}>Documento / PDF</Text>
                     </BotonAnimado>
 
@@ -1316,7 +1346,7 @@ export default function CentroDocumentos({ navigation }: Props) {
                       style={styles.uploadButtonHalf}
                       onPress={seleccionarFoto}
                     >
-                      <Feather name="camera" size={18} color="#202020" />
+                      <Feather name="camera" size={18} color={pulse.icon} />
                       <Text style={styles.uploadButtonText}>Foto / Galería</Text>
                     </BotonAnimado>
                   </View>
@@ -1329,10 +1359,10 @@ export default function CentroDocumentos({ navigation }: Props) {
                   disabled={subiendoArchivo}
                 >
                   {subiendoArchivo ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
+                    <ActivityIndicator size="small" color={pulse.textInverse} />
                   ) : (
                     <>
-                      <Feather name="upload-cloud" size={18} color="#FFFFFF" />
+                      <Feather name="upload-cloud" size={18} color={pulse.textInverse} />
                       <Text style={styles.btnPrimaryText}>Subir al Expediente</Text>
                     </>
                   )}
@@ -1353,12 +1383,18 @@ function DocumentCard({
   onPress,
   onDownload,
   isDownloading,
+  styles,
+  pulse,
+  esOscuro,
 }: {
   doc: Documento;
   lang: string;
   onPress: () => void;
   onDownload: () => void;
   isDownloading: boolean;
+  styles: any;
+  pulse: PulseColors;
+  esOscuro: boolean;
 }) {
   return (
     <BotonAnimado
@@ -1372,17 +1408,28 @@ function DocumentCard({
           style={[
             styles.statusPill,
             {
-              backgroundColor: doc.leido ? 'rgba(213,231,116,0.35)' : 'rgba(242,173,132,0.25)',
+              backgroundColor: doc.leido
+                ? (esOscuro ? 'rgba(213,231,116,0.18)' : 'rgba(213,231,116,0.35)')
+                : (esOscuro ? 'rgba(242,173,132,0.18)' : 'rgba(242,173,132,0.25)'),
             },
           ]}
         >
           <View
             style={[
               styles.statusDot,
-              { backgroundColor: doc.leido ? '#7DA842' : '#F2AD84' },
+              { backgroundColor: doc.leido ? '#D5E774' : '#F2AD84' },
             ]}
           />
-          <Text style={styles.statusText}>
+          <Text
+            style={[
+              styles.statusText,
+              {
+                color: doc.leido
+                  ? (esOscuro ? '#D5E774' : '#4B4642')
+                  : (esOscuro ? '#F2AD84' : '#4B4642'),
+              },
+            ]}
+          >
             {doc.tipo.toUpperCase()} · {doc.leido ? 'Revisado' : 'Pendiente'}
           </Text>
         </View>
@@ -1397,13 +1444,13 @@ function DocumentCard({
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             {isDownloading ? (
-              <ActivityIndicator size="small" color="#202020" />
+              <ActivityIndicator size="small" color={pulse.icon} />
             ) : (
-              <Feather name="download" size={15} color="#544F4B" />
+              <Feather name="download" size={15} color={pulse.icon} />
             )}
           </TouchableOpacity>
           <View style={styles.arrowButton}>
-            <Feather name="arrow-up-right" size={17} color="#202020" />
+            <Feather name="arrow-up-right" size={17} color={pulse.icon} />
           </View>
         </View>
       </View>
@@ -1414,27 +1461,37 @@ function DocumentCard({
 
       <View style={styles.recordFooter}>
         <View style={styles.timeRow}>
-          <Feather name="clock" size={14} color="#78736F" />
+          <Feather name="clock" size={14} color={pulse.textTertiary} />
           <Text style={styles.time}>
             {formatearFecha(doc.fechaSubida, lang)} · {doc.tamano || 'Documento'}
           </Text>
         </View>
 
         <View style={styles.dimensionDots}>
-          <DimensionDot color="#D5E774" />
-          <DimensionDot color="#D9C5EE" />
-          <DimensionDot color="#F2C9B8" />
+          <DimensionDot color="#D5E774" surfaceColor={pulse.surface} />
+          <DimensionDot color="#D9C5EE" surfaceColor={pulse.surface} />
+          <DimensionDot color="#F2C9B8" surfaceColor={pulse.surface} />
         </View>
       </View>
     </BotonAnimado>
   );
 }
 
-function DimensionDot({ color }: { color: string }) {
-  return <View style={[styles.dimensionDot, { backgroundColor: color }]} />;
+function DimensionDot({ color, surfaceColor }: { color: string; surfaceColor: string }) {
+  return <View style={[stylesLocal.dimensionDot, { backgroundColor: color, borderColor: surfaceColor }]} />;
 }
 
-function InfoRow({ label, value }: { label: string; value?: string }) {
+const stylesLocal = StyleSheet.create({
+  dimensionDot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    marginLeft: -5,
+  },
+});
+
+function InfoRow({ label, value, styles }: { label: string; value?: string; styles: any }) {
   return (
     <View style={styles.infoRow}>
       <Text style={styles.infoLabel}>{label}</Text>
@@ -1449,12 +1506,16 @@ function Shortcut({
   title,
   detail,
   onPress,
+  styles,
+  pulse,
 }: {
   icon?: IconoFeather;
   customIcon?: React.ReactNode;
   title: string;
   detail: string;
   onPress: () => void;
+  styles: any;
+  pulse: PulseColors;
 }) {
   return (
     <BotonAnimado
@@ -1464,18 +1525,18 @@ function Shortcut({
       accessibilityLabel={title}
     >
       <View style={styles.shortcutIcon}>
-        {customIcon || (icon && <Feather name={icon} size={18} color="#202020" />)}
+        {customIcon || (icon && <Feather name={icon} size={18} color={pulse.icon} />)}
       </View>
       <View style={styles.shortcutCopy}>
         <Text style={styles.shortcutTitle}>{title}</Text>
         <Text style={styles.shortcutDetail}>{detail}</Text>
       </View>
-      <Feather name="chevron-right" size={16} color="#78736F" />
+      <Feather name="chevron-right" size={16} color={pulse.textTertiary} />
     </BotonAnimado>
   );
 }
 
-function DocumentSkeleton() {
+function DocumentSkeleton({ styles, pulse }: { styles: any; pulse: PulseColors }) {
   return (
     <View style={styles.skeletonCard}>
       <Skeleton width="40%" height={16} radius={8} />
@@ -1489,941 +1550,962 @@ function DocumentSkeleton() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#FFFDFC' },
-  flexOne: { flex: 1 },
-  ambient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 420,
-  },
-  topBar: {
-    height: 52,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginBottom: 4,
-  },
-  backButton: {
-    width: 47,
-    height: 47,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...SOMBRAS.suave,
-  },
-  topBarLabel: {
-    color: '#312E2C',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  addButton: {
-    width: 47,
-    height: 47,
-    borderRadius: 24,
-    backgroundColor: '#202020',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...SOMBRAS.suave,
-  },
-  bellButton: {
-    width: 47,
-    height: 47,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...SOMBRAS.suave,
-  },
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-  },
-  hero: {
-    marginTop: 18,
-    marginBottom: 18,
-    color: '#1F1D1C',
-    fontSize: 34,
-    lineHeight: 38,
-    letterSpacing: -1.4,
-    fontWeight: '600',
-  },
+function createStyles(pulse: PulseColors, esOscuro: boolean) {
+  const isIOS = Platform.OS === 'ios';
+  return StyleSheet.create({
+    screen: { flex: 1, backgroundColor: pulse.background },
+    flexOne: { flex: 1 },
+    ambient: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: 420,
+    },
+    topBarContainer: {
+      paddingHorizontal: 21,
+      paddingTop: isIOS ? 6 : 4,
+      paddingBottom: 8,
+      zIndex: 10,
+      backgroundColor: 'transparent',
+    },
+    topBar: {
+      height: isIOS ? 54 : 48,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    backButton: {
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: pulse.surfaceElevated,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+    },
+    topBarLabel: {
+      color: pulse.text,
+      fontSize: isIOS ? 17 : 15,
+      fontWeight: '600',
+      letterSpacing: isIOS ? -0.5 : -0.3,
+    },
+    headerActions: {
+      flexDirection: 'row',
+      gap: isIOS ? 10 : 8,
+    },
+    addButton: {
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: pulse.inverse,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+    },
+    bellButton: {
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: pulse.surfaceElevated,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+    },
+    content: {
+      paddingHorizontal: 20,
+      paddingTop: isIOS ? 12 : 8,
+    },
+    hero: {
+      marginTop: isIOS ? 18 : 14,
+      marginBottom: isIOS ? 18 : 14,
+      color: pulse.text,
+      fontSize: isIOS ? 34 : 27,
+      lineHeight: isIOS ? 38 : 31,
+      letterSpacing: isIOS ? -1.4 : -0.9,
+      fontWeight: '600',
+    },
 
-  // Hero Bento Card (Dark)
-  heroBentoCard: {
-    borderRadius: 25,
-    overflow: 'hidden',
-    ...SOMBRAS.suave,
-    marginBottom: 14,
-  },
-  heroGradient: {
-    padding: 20,
-    borderRadius: 25,
-  },
-  heroHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  heroHeaderLeft: {
-    gap: 6,
-  },
-  heroBentoTitle: {
-    color: '#8E8B94',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  heroStatusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-    gap: 6,
-  },
-  heroStatusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  heroStatusText: {
-    color: '#E0DDD7',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  heroArrowWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroBody: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    marginTop: 18,
-    gap: 12,
-  },
-  heroNetCol: {
-    flex: 1,
-  },
-  heroNetAmount: {
-    color: '#FFFFFF',
-    fontSize: 42,
-    lineHeight: 46,
-    fontWeight: '800',
-    letterSpacing: -1.8,
-  },
-  heroPeriodSubtitle: {
-    color: '#A09C98',
-    fontSize: 12,
-    fontWeight: '500',
-    marginTop: 4,
-  },
-  heroMetricsCol: {
-    gap: 6,
-  },
-  metricCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    minWidth: 105,
-  },
-  iconWrap: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  metricText: {
-    flex: 1,
-  },
-  metricValue: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  metricLabel: {
-    color: '#8E8B94',
-    fontSize: 9,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
+    // Hero Bento Card (Dark)
+    heroBentoCard: {
+      borderRadius: 25,
+      overflow: 'hidden',
+      borderWidth: esOscuro ? 1 : 0,
+      borderColor: 'rgba(255,255,255,0.08)',
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+      marginBottom: 14,
+    },
+    heroGradient: {
+      padding: 20,
+      borderRadius: 25,
+    },
+    heroHeaderRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+    },
+    heroHeaderLeft: {
+      gap: 6,
+    },
+    heroBentoTitle: {
+      color: '#8E8B94',
+      fontSize: 11,
+      fontWeight: '700',
+      letterSpacing: 0.8,
+      textTransform: 'uppercase',
+    },
+    heroStatusPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: 'rgba(255,255,255,0.08)',
+      paddingHorizontal: 9,
+      paddingVertical: 4,
+      borderRadius: 12,
+      alignSelf: 'flex-start',
+      gap: 6,
+    },
+    heroStatusDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+    },
+    heroStatusText: {
+      color: '#E0DDD7',
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    heroArrowWrap: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: 'rgba(255,255,255,0.06)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    heroBody: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      justifyContent: 'space-between',
+      marginTop: 18,
+      gap: 12,
+    },
+    heroNetCol: {
+      flex: 1,
+    },
+    heroNetAmount: {
+      color: '#FFFFFF',
+      fontSize: 42,
+      lineHeight: 46,
+      fontWeight: '800',
+      letterSpacing: -1.8,
+    },
+    heroPeriodSubtitle: {
+      color: '#A09C98',
+      fontSize: 12,
+      fontWeight: '500',
+      marginTop: 4,
+    },
+    heroMetricsCol: {
+      gap: 6,
+    },
+    metricCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: 'rgba(255,255,255,0.06)',
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 12,
+      minWidth: 105,
+    },
+    iconWrap: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: 'rgba(255,255,255,0.1)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    metricText: {
+      flex: 1,
+    },
+    metricValue: {
+      color: '#FFFFFF',
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    metricLabel: {
+      color: '#8E8B94',
+      fontSize: 9,
+      fontWeight: '600',
+      textTransform: 'uppercase',
+    },
 
-  // Buscador Minimalista
-  searchContainer: {
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(43,36,31,0.05)',
-    ...SOMBRAS.suave,
-    marginBottom: 14,
-  },
-  searchInput: {
-    flex: 1,
-    color: '#202020',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  searchClearBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#F5F2EF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+    // Buscador Minimalista
+    searchContainer: {
+      height: 50,
+      borderRadius: 25,
+      backgroundColor: pulse.surfaceElevated,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      gap: 10,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+      marginBottom: 14,
+    },
+    searchInput: {
+      flex: 1,
+      color: pulse.text,
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    searchClearBtn: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: pulse.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
 
-  // Categorías (ScopeChips)
-  chips: {
-    gap: 9,
-    paddingRight: 20,
-    marginBottom: 16,
-  },
-  chip: {
-    height: 48,
-    borderRadius: 24,
-    paddingHorizontal: 8,
-    paddingRight: 16,
-    backgroundColor: 'rgba(255,255,255,0.85)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(43,36,31,0.035)',
-    ...SOMBRAS.suave,
-  },
-  chipActive: {
-    backgroundColor: '#D5E774',
-  },
-  chipCount: {
-    minWidth: 30,
-    height: 30,
-    paddingHorizontal: 7,
-    borderRadius: 15,
-    backgroundColor: '#F5F2EF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chipCountActive: {
-    backgroundColor: '#FFFFFF',
-  },
-  chipCountText: {
-    color: '#3A3531',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  chipLabel: {
-    color: '#4B4642',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  chipLabelActive: {
-    color: '#2E3023',
-    fontWeight: '700',
-  },
+    // Categorías (ScopeChips)
+    chips: {
+      gap: 9,
+      paddingRight: 20,
+      marginBottom: 16,
+    },
+    chip: {
+      height: 48,
+      borderRadius: 24,
+      paddingHorizontal: 8,
+      paddingRight: 16,
+      backgroundColor: esOscuro ? pulse.surfaceElevated : 'rgba(255,255,255,0.85)',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+    },
+    chipActive: {
+      backgroundColor: pulse.chipActive,
+      borderColor: pulse.chipActive,
+    },
+    chipCount: {
+      minWidth: 30,
+      height: 30,
+      paddingHorizontal: 7,
+      borderRadius: 15,
+      backgroundColor: pulse.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    chipCountActive: {
+      backgroundColor: pulse.chipCountActive,
+    },
+    chipCountText: {
+      color: pulse.textSecondary,
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    chipLabel: {
+      color: pulse.textSecondary,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    chipLabelActive: {
+      color: pulse.chipTextActive,
+      fontWeight: '700',
+    },
 
-  // Requiere tu atención
-  attentionWrap: {
-    marginBottom: 16,
-  },
-  attentionCard: {
-    padding: 14,
-    borderRadius: 20,
-    backgroundColor: '#FBF5EE',
-    borderWidth: 1,
-    borderColor: 'rgba(224,196,170,0.45)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  attentionIconBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#F3E8DE',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  attentionCopy: {
-    flex: 1,
-  },
-  attentionTitle: {
-    color: '#272321',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  attentionSubtitle: {
-    color: '#7A6248',
-    fontSize: 11,
-    fontWeight: '500',
-    marginTop: 2,
-  },
-  attentionArrow: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.8)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+    // Requiere tu atención
+    attentionWrap: {
+      marginBottom: 16,
+    },
+    attentionCard: {
+      padding: 14,
+      borderRadius: 20,
+      backgroundColor: esOscuro ? 'rgba(242,173,132,0.12)' : '#FBF5EE',
+      borderWidth: 1,
+      borderColor: esOscuro ? 'rgba(242,173,132,0.25)' : 'rgba(224,196,170,0.45)',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    attentionIconBox: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: esOscuro ? 'rgba(242,173,132,0.20)' : '#F3E8DE',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    attentionCopy: {
+      flex: 1,
+    },
+    attentionTitle: {
+      color: pulse.text,
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    attentionSubtitle: {
+      color: esOscuro ? '#F2AD84' : '#7A6248',
+      fontSize: 11,
+      fontWeight: '500',
+      marginTop: 2,
+    },
+    attentionArrow: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: esOscuro ? pulse.pill : 'rgba(255,255,255,0.8)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
 
-  // Recientes Carousel
-  sectionWrap: {
-    marginBottom: 16,
-  },
-  recentScroll: {
-    gap: 10,
-    paddingRight: 20,
-  },
-  recentCard: {
-    width: 145,
-    minHeight: 125,
-    borderRadius: 22,
-    padding: 14,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: 'rgba(43,36,31,0.035)',
-    ...SOMBRAS.suave,
-  },
-  recentCardTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  recentIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F5F2EF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  recentDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  recentTitle: {
-    color: '#272321',
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-    marginTop: 8,
-    lineHeight: 17,
-  },
-  recentMeta: {
-    color: '#86807D',
-    fontSize: 11,
-    fontWeight: '500',
-    marginTop: 4,
-  },
+    // Recientes Carousel
+    sectionWrap: {
+      marginBottom: 16,
+    },
+    recentScroll: {
+      gap: 10,
+      paddingRight: 20,
+    },
+    recentCard: {
+      width: 145,
+      minHeight: 125,
+      borderRadius: 22,
+      padding: 14,
+      backgroundColor: pulse.surface,
+      justifyContent: 'space-between',
+      borderWidth: 1,
+      borderColor: pulse.border,
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+    },
+    recentCardTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    recentIconWrap: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: pulse.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    recentDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+    },
+    recentTitle: {
+      color: pulse.text,
+      fontSize: 13,
+      fontWeight: '700',
+      letterSpacing: -0.2,
+      marginTop: 8,
+      lineHeight: 17,
+    },
+    recentMeta: {
+      color: pulse.textSecondary,
+      fontSize: 11,
+      fontWeight: '500',
+      marginTop: 4,
+    },
 
-  // Encabezados de sección
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 10,
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    color: '#24211F',
-    fontSize: 22,
-    fontWeight: '600',
-    letterSpacing: -0.8,
-  },
-  viewAll: {
-    color: '#78736F',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  countPill: {
-    backgroundColor: '#F5F2EF',
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  countPillText: {
-    color: '#544F4B',
-    fontSize: 11,
-    fontWeight: '700',
-  },
+    // Encabezados de sección
+    sectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: 10,
+      marginBottom: 12,
+    },
+    sectionTitle: {
+      color: pulse.text,
+      fontSize: 22,
+      fontWeight: '600',
+      letterSpacing: -0.8,
+    },
+    viewAll: {
+      color: pulse.textTertiary,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    countPill: {
+      backgroundColor: pulse.pill,
+      paddingHorizontal: 9,
+      paddingVertical: 4,
+      borderRadius: 12,
+    },
+    countPillText: {
+      color: pulse.textSecondary,
+      fontSize: 11,
+      fontWeight: '700',
+    },
 
-  // Lista de Documentos
-  docsList: {
-    gap: 12,
-    marginBottom: 16,
-  },
-  docCard: {
-    minHeight: 145,
-    padding: 18,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: 'rgba(43,36,31,0.035)',
-    ...SOMBRAS.suave,
-  },
-  recordTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  statusPill: {
-    minHeight: 28,
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  statusDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-  },
-  statusText: {
-    color: '#4B4642',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  recordActionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  miniDownloadBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#F7F6F4',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  arrowButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F7F6F4',
-  },
-  docCardTitle: {
-    color: '#272321',
-    fontSize: 17,
-    fontWeight: '600',
-    letterSpacing: -0.4,
-    marginTop: 10,
-    lineHeight: 22,
-  },
-  recordFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 16,
-  },
-  timeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  time: {
-    color: '#78736F',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  dimensionDots: {
-    flexDirection: 'row',
-  },
-  dimensionDot: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    marginLeft: -5,
-  },
+    // Lista de Documentos
+    docsList: {
+      gap: 12,
+      marginBottom: 16,
+    },
+    docCard: {
+      minHeight: 145,
+      padding: 18,
+      borderRadius: 24,
+      backgroundColor: pulse.surface,
+      justifyContent: 'space-between',
+      borderWidth: 1,
+      borderColor: pulse.border,
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+    },
+    recordTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    statusPill: {
+      minHeight: 28,
+      borderRadius: 14,
+      paddingHorizontal: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    statusDot: {
+      width: 7,
+      height: 7,
+      borderRadius: 4,
+    },
+    statusText: {
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    recordActionsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    miniDownloadBtn: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      backgroundColor: pulse.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    arrowButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: pulse.pill,
+    },
+    docCardTitle: {
+      color: pulse.text,
+      fontSize: 17,
+      fontWeight: '600',
+      letterSpacing: -0.4,
+      marginTop: 10,
+      lineHeight: 22,
+    },
+    recordFooter: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: 16,
+    },
+    timeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    time: {
+      color: pulse.textTertiary,
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    dimensionDots: {
+      flexDirection: 'row',
+    },
 
-  // Empty State
-  emptyCard: {
-    padding: 30,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(43,36,31,0.04)',
-    gap: 10,
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    color: '#272321',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  emptySubtitle: {
-    color: '#86807D',
-    fontSize: 13,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
+    // Empty State
+    emptyCard: {
+      padding: 30,
+      borderRadius: 24,
+      backgroundColor: pulse.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: pulse.border,
+      gap: 10,
+      marginBottom: 16,
+    },
+    emptyTitle: {
+      color: pulse.text,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    emptySubtitle: {
+      color: pulse.textSecondary,
+      fontSize: 13,
+      textAlign: 'center',
+      lineHeight: 18,
+    },
 
-  // Shortcuts
-  shortcuts: {
-    gap: 10,
-    marginBottom: 20,
-  },
-  shortcut: {
-    minHeight: 64,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: 'rgba(43,36,31,0.035)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    ...SOMBRAS.suave,
-  },
-  shortcutIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F0ED',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  shortcutCopy: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  shortcutTitle: {
-    color: '#292624',
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 18,
-  },
-  shortcutDetail: {
-    color: '#7B7570',
-    fontSize: 12,
-    fontWeight: '500',
-    marginTop: 2,
-  },
+    // Shortcuts
+    shortcuts: {
+      gap: 10,
+      marginBottom: 20,
+    },
+    shortcut: {
+      minHeight: 64,
+      borderRadius: 20,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      backgroundColor: pulse.surface,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      flexDirection: 'row',
+      alignItems: 'center',
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+    },
+    shortcutIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: pulse.iconSurface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
+    shortcutCopy: {
+      flex: 1,
+      justifyContent: 'center',
+    },
+    shortcutTitle: {
+      color: pulse.text,
+      fontSize: 14,
+      fontWeight: '700',
+      lineHeight: 18,
+    },
+    shortcutDetail: {
+      color: pulse.textTertiary,
+      fontSize: 12,
+      fontWeight: '500',
+      marginTop: 2,
+    },
 
-  // Skeleton
-  skeletonCard: {
-    padding: 20,
-    borderRadius: 25,
-    backgroundColor: '#202020',
-    marginBottom: 16,
-  },
+    // Skeleton
+    skeletonCard: {
+      padding: 20,
+      borderRadius: 25,
+      backgroundColor: esOscuro ? pulse.surface : '#202020',
+      borderWidth: esOscuro ? 1 : 0,
+      borderColor: pulse.border,
+      marginBottom: 16,
+    },
 
-  // Modal Styles
-  modalLecturaShell: {
-    backgroundColor: '#FFFDFC',
-    height: '92%',
-    padding: 0,
-  },
-  modalGestionShell: {
-    backgroundColor: '#FFFDFC',
-    height: '88%',
-    padding: 0,
-  },
-  modalBodyWrap: {
-    flex: 1,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(43,36,31,0.06)',
-    gap: 12,
-  },
-  modalCloseBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#F5F2EF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalHeaderCenter: {
-    flex: 1,
-  },
-  modalBadgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 3,
-  },
-  modalTypePill: {
-    backgroundColor: '#F5F2EF',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  modalTypePillText: {
-    color: '#544F4B',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  modalVersionPill: {
-    backgroundColor: '#F3F0ED',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  modalVersionPillText: {
-    color: '#202020',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  modalStatusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    gap: 4,
-  },
-  modalStatusDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-  },
-  modalStatusText: {
-    color: '#4B4642',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  modalMainTitle: {
-    color: '#1F1D1C',
-    fontSize: 17,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-  },
-  modalSubtitle: {
-    color: '#86807D',
-    fontSize: 11,
-    fontWeight: '500',
-    marginTop: 2,
-  },
-  modalDocIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#F3F0ED',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+    // Modal Styles
+    modalLecturaShell: {
+      backgroundColor: pulse.background,
+      height: '92%',
+      padding: 0,
+    },
+    modalGestionShell: {
+      backgroundColor: pulse.background,
+      height: '88%',
+      padding: 0,
+    },
+    modalBodyWrap: {
+      flex: 1,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingTop: 16,
+      paddingBottom: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: pulse.border,
+      gap: 12,
+    },
+    modalCloseBtn: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: pulse.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalHeaderCenter: {
+      flex: 1,
+    },
+    modalBadgeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginBottom: 3,
+    },
+    modalTypePill: {
+      backgroundColor: pulse.pill,
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: 6,
+    },
+    modalTypePillText: {
+      color: pulse.textSecondary,
+      fontSize: 10,
+      fontWeight: '700',
+      letterSpacing: 0.3,
+    },
+    modalVersionPill: {
+      backgroundColor: pulse.pill,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+    },
+    modalVersionPillText: {
+      color: pulse.text,
+      fontSize: 10,
+      fontWeight: '700',
+    },
+    modalStatusPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+      gap: 4,
+    },
+    modalStatusDot: {
+      width: 5,
+      height: 5,
+      borderRadius: 2.5,
+    },
+    modalStatusText: {
+      fontSize: 10,
+      fontWeight: '700',
+    },
+    modalMainTitle: {
+      color: pulse.text,
+      fontSize: 17,
+      fontWeight: '700',
+      letterSpacing: -0.3,
+    },
+    modalSubtitle: {
+      color: pulse.textSecondary,
+      fontSize: 11,
+      fontWeight: '500',
+      marginTop: 2,
+    },
+    modalDocIconWrap: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: pulse.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
 
-  // Modal Tabs
-  modalTabsRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(43,36,31,0.06)',
-    paddingHorizontal: 20,
-  },
-  modalTabBtn: {
-    paddingVertical: 12,
-    marginRight: 20,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  modalTabBtnActive: {
-    borderBottomColor: '#202020',
-  },
-  modalTabText: {
-    color: '#86807D',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  modalTabTextActive: {
-    color: '#202020',
-    fontWeight: '700',
-  },
+    // Modal Tabs
+    modalTabsRow: {
+      flexDirection: 'row',
+      borderBottomWidth: 1,
+      borderBottomColor: pulse.border,
+      paddingHorizontal: 20,
+    },
+    modalTabBtn: {
+      paddingVertical: 12,
+      marginRight: 20,
+      borderBottomWidth: 2,
+      borderBottomColor: 'transparent',
+    },
+    modalTabBtnActive: {
+      borderBottomColor: pulse.inverse,
+    },
+    modalTabText: {
+      color: pulse.textTertiary,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    modalTabTextActive: {
+      color: pulse.text,
+      fontWeight: '700',
+    },
 
-  modalScroll: {
-    flex: 1,
-  },
-  modalScrollContent: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
+    modalScroll: {
+      flex: 1,
+    },
+    modalScrollContent: {
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+    },
 
-  // Visor y Markdown
-  viewerWrapper: {
-    height: 480,
-    borderRadius: 20,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(43,36,31,0.06)',
-  },
-  webview: {
-    flex: 1,
-  },
-  markdownBox: {
-    padding: 16,
-    borderRadius: 20,
-    backgroundColor: '#F9F8F6',
-    borderWidth: 1,
-    borderColor: 'rgba(43,36,31,0.05)',
-  },
+    // Visor y Markdown
+    viewerWrapper: {
+      height: 480,
+      borderRadius: 20,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: pulse.border,
+      backgroundColor: pulse.surface,
+    },
+    webview: {
+      flex: 1,
+      backgroundColor: pulse.surface,
+    },
+    markdownBox: {
+      padding: 16,
+      borderRadius: 20,
+      backgroundColor: pulse.surface,
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
 
-  // Detalles Tab
-  detailsTabWrap: {
-    gap: 16,
-  },
-  infoCardGroup: {
-    padding: 14,
-    borderRadius: 20,
-    backgroundColor: '#F9F8F6',
-    borderWidth: 1,
-    borderColor: 'rgba(43,36,31,0.05)',
-    gap: 10,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(43,36,31,0.04)',
-  },
-  infoLabel: {
-    color: '#78736F',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  infoValue: {
-    color: '#272321',
-    fontSize: 12,
-    fontWeight: '700',
-  },
+    // Detalles Tab
+    detailsTabWrap: {
+      gap: 16,
+    },
+    infoCardGroup: {
+      padding: 14,
+      borderRadius: 20,
+      backgroundColor: pulse.surface,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      gap: 10,
+    },
+    infoRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 4,
+      borderBottomWidth: 1,
+      borderBottomColor: pulse.border,
+    },
+    infoLabel: {
+      color: pulse.textSecondary,
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    infoValue: {
+      color: pulse.text,
+      fontSize: 12,
+      fontWeight: '700',
+    },
 
-  // Versiones
-  versionsSection: {
-    paddingTop: 10,
-    gap: 8,
-  },
-  versionsSectionTitle: {
-    color: '#202020',
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  versionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: 'rgba(43,36,31,0.05)',
-    gap: 10,
-    ...SOMBRAS.suave,
-  },
-  versionRowTitle: {
-    color: '#272321',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  versionRowDate: {
-    color: '#86807D',
-    fontSize: 11,
-    fontWeight: '500',
-    marginTop: 1,
-  },
+    // Versiones
+    versionsSection: {
+      paddingTop: 10,
+      gap: 8,
+    },
+    versionsSectionTitle: {
+      color: pulse.text,
+      fontSize: 14,
+      fontWeight: '700',
+      marginBottom: 4,
+    },
+    versionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 12,
+      borderRadius: 16,
+      backgroundColor: pulse.surface,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      gap: 10,
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+    },
+    versionRowTitle: {
+      color: pulse.text,
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    versionRowDate: {
+      color: pulse.textSecondary,
+      fontSize: 11,
+      fontWeight: '500',
+      marginTop: 1,
+    },
 
-  // Modal Actions Footer
-  modalActionsFooter: {
-    paddingTop: 18,
-    gap: 10,
-  },
-  btnSecondaryAction: {
-    minHeight: 48,
-    borderRadius: 24,
-    backgroundColor: '#F5F2EF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  btnSecondaryText: {
-    color: '#272321',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  btnPrimaryAction: {
-    minHeight: 50,
-    borderRadius: 25,
-    backgroundColor: '#202020',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    ...SOMBRAS.suave,
-  },
-  btnPrimaryText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: -0.1,
-  },
-  readConfirmedBadge: {
-    minHeight: 46,
-    borderRadius: 23,
-    backgroundColor: '#EAF4DC',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-  },
-  readConfirmedText: {
-    color: '#455E24',
-    fontSize: 13,
-    fontWeight: '700',
-  },
+    // Modal Actions Footer
+    modalActionsFooter: {
+      paddingTop: 18,
+      gap: 10,
+    },
+    btnSecondaryAction: {
+      minHeight: 48,
+      borderRadius: 24,
+      backgroundColor: pulse.pill,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    },
+    btnSecondaryText: {
+      color: pulse.text,
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    btnPrimaryAction: {
+      minHeight: 50,
+      borderRadius: 25,
+      backgroundColor: pulse.inverse,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+    },
+    btnPrimaryText: {
+      color: pulse.textInverse,
+      fontSize: 14,
+      fontWeight: '700',
+      letterSpacing: -0.1,
+    },
+    readConfirmedBadge: {
+      minHeight: 46,
+      borderRadius: 23,
+      backgroundColor: esOscuro ? 'rgba(213,231,116,0.15)' : '#EAF4DC',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 7,
+    },
+    readConfirmedText: {
+      color: esOscuro ? '#D5E774' : '#455E24',
+      fontSize: 13,
+      fontWeight: '700',
+    },
 
-  // Formulario Solicitud & Subida
-  formContainer: {
-    gap: 12,
-  },
-  formLabel: {
-    color: '#202020',
-    fontSize: 13,
-    fontWeight: '700',
-    marginTop: 4,
-  },
-  formInput: {
-    minHeight: 48,
-    borderRadius: 16,
-    backgroundColor: '#F9F8F6',
-    borderWidth: 1,
-    borderColor: 'rgba(43,36,31,0.06)',
-    paddingHorizontal: 14,
-    color: '#202020',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  formTextArea: {
-    minHeight: 100,
-    borderRadius: 16,
-    backgroundColor: '#F9F8F6',
-    borderWidth: 1,
-    borderColor: 'rgba(43,36,31,0.06)',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: '#202020',
-    fontSize: 14,
-    fontWeight: '500',
-    textAlignVertical: 'top',
-  },
-  optionPillsWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  optionPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 18,
-    backgroundColor: '#F5F2EF',
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  optionPillActive: {
-    backgroundColor: '#D5E774',
-  },
-  optionPillText: {
-    color: '#4B4642',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  optionPillTextActive: {
-    color: '#2E3023',
-    fontWeight: '700',
-  },
-  uploadButtonsRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  uploadButtonHalf: {
-    flex: 1,
-    minHeight: 70,
-    borderRadius: 18,
-    backgroundColor: '#F9F8F6',
-    borderWidth: 1,
-    borderColor: 'rgba(43,36,31,0.08)',
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  uploadButtonText: {
-    color: '#4B4642',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  fileSelectedCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 18,
-    backgroundColor: '#F5F2EF',
-    borderWidth: 1,
-    borderColor: 'rgba(43,36,31,0.05)',
-    gap: 10,
-  },
-  fileSelectedName: {
-    color: '#202020',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  fileSelectedSize: {
-    color: '#78736F',
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  removeFileBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#FFF0EE',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+    // Formulario Solicitud & Subida
+    formContainer: {
+      gap: 12,
+    },
+    formLabel: {
+      color: pulse.text,
+      fontSize: 13,
+      fontWeight: '700',
+      marginTop: 4,
+    },
+    formInput: {
+      minHeight: 48,
+      borderRadius: 16,
+      backgroundColor: pulse.surface,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      paddingHorizontal: 14,
+      color: pulse.text,
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    formTextArea: {
+      minHeight: 100,
+      borderRadius: 16,
+      backgroundColor: pulse.surface,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      color: pulse.text,
+      fontSize: 14,
+      fontWeight: '500',
+      textAlignVertical: 'top',
+    },
+    optionPillsWrap: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    optionPill: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 18,
+      backgroundColor: pulse.pill,
+      borderWidth: 1,
+      borderColor: 'transparent',
+    },
+    optionPillActive: {
+      backgroundColor: pulse.chipActive,
+      borderColor: pulse.chipActive,
+    },
+    optionPillText: {
+      color: pulse.textSecondary,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    optionPillTextActive: {
+      color: pulse.chipTextActive,
+      fontWeight: '700',
+    },
+    uploadButtonsRow: {
+      flexDirection: 'row',
+      gap: 10,
+    },
+    uploadButtonHalf: {
+      flex: 1,
+      minHeight: 70,
+      borderRadius: 18,
+      backgroundColor: pulse.surface,
+      borderWidth: 1,
+      borderColor: pulse.borderStrong,
+      borderStyle: 'dashed',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+    },
+    uploadButtonText: {
+      color: pulse.textSecondary,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    fileSelectedCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 12,
+      borderRadius: 18,
+      backgroundColor: pulse.surface,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      gap: 10,
+    },
+    fileSelectedName: {
+      color: pulse.text,
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    fileSelectedSize: {
+      color: pulse.textSecondary,
+      fontSize: 11,
+      fontWeight: '500',
+    },
+    removeFileBtn: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: esOscuro ? pulse.errorSurface : '#FFF0EE',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+  });
+}

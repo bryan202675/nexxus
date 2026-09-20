@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 import { Circle, Line, Path, Polygon, Svg } from "react-native-svg";
+import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, {
   interpolate,
@@ -110,10 +111,10 @@ export default function StressGaugeStep({
             stress === "bajo" && styles.disabled,
           ]}
         >
-          <Text style={styles.arrowText}>‹</Text>
+          <Feather name="chevron-left" size={isAndroid ? 20 : 24} color={contrastInverted} />
         </Pressable>
         <View style={styles.gauge}>
-          <Svg width={isAndroid ? "100%" : 245} height={isAndroid ? "100%" : 138} viewBox="0 0 320 180">
+          <Svg width={isAndroid ? (compact ? 180 : 205) : 245} height={isAndroid ? (compact ? 102 : 116) : 138} viewBox="0 0 320 180">
             <Path
               d="M28 160 A132 132 0 0 1 66.66 66.66 L106.97 106.97 A75 75 0 0 0 85 160 Z"
               fill="#22C55E"
@@ -154,7 +155,7 @@ export default function StressGaugeStep({
             stress === "critico" && styles.disabled,
           ]}
         >
-          <Text style={styles.arrowText}>›</Text>
+          <Feather name="chevron-right" size={isAndroid ? 20 : 24} color={contrastInverted} />
         </Pressable>
       </View>
       <View style={styles.copy}>
@@ -176,74 +177,78 @@ function crearEstilos(c: any, esOscuro: boolean, compact: boolean) {
     root: { flex: 1, alignItems: "center" },
     title: {
       color: c.texto,
-      fontSize: 28,
+      fontSize: isAndroid ? (compact ? 22 : 24) : 28,
       fontWeight: "800",
       textAlign: "center",
       letterSpacing: -0.8,
-      marginTop: 22,
+      marginTop: isAndroid ? (compact ? 8 : 12) : 22,
     },
     subtitle: {
       color: c.textoSuave,
-      fontSize: 14,
+      fontSize: isAndroid ? 12 : 14,
       textAlign: "center",
-      marginTop: 8,
+      marginTop: isAndroid ? 4 : 8,
     },
     card: {
       flex: 1,
       width: "100%",
-      minHeight: compact ? 238 : isAndroid ? 272 : 294,
-      marginTop: isAndroid ? 22 : 30,
-      borderRadius: 30,
+      minHeight: isAndroid ? (compact ? 165 : 190) : (compact ? 238 : 294),
+      maxHeight: isAndroid ? (compact ? 195 : 225) : undefined,
+      marginTop: isAndroid ? (compact ? 8 : 12) : 30,
+      borderRadius: isAndroid ? 22 : 30,
       backgroundColor: c.superficie,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      paddingHorizontal: isAndroid ? 14 : 5,
+      paddingHorizontal: isAndroid ? 10 : 5,
     },
     gauge: {
-      width: isAndroid ? "100%" : 245,
-      height: compact ? 144 : isAndroid ? 166 : 174,
+      width: isAndroid ? (compact ? 180 : 205) : 245,
+      height: isAndroid ? (compact ? 102 : 116) : (compact ? 144 : 174),
       justifyContent: "flex-end",
       alignItems: "center",
       overflow: "hidden",
     },
     arrow: {
-      position: isAndroid ? "absolute" : "relative",
-      width: 44,
-      height: 44,
-      borderRadius: 22,
+      position: isAndroid ? "relative" : "relative",
+      width: isAndroid ? 36 : 44,
+      height: isAndroid ? 36 : 44,
+      borderRadius: isAndroid ? 18 : 22,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: contrast,
       zIndex: 1,
     },
-    arrowPrevious: isAndroid ? { left: 14 } : {},
-    arrowNext: isAndroid ? { right: 14 } : {},
+    arrowPrevious: {},
+    arrowNext: {},
     disabled: { opacity: 0.18 },
-    arrowText: { color: inverted, fontSize: 31, lineHeight: 36, fontWeight: "400" },
+    arrowText: { color: inverted, fontSize: isAndroid ? 24 : 31, lineHeight: isAndroid ? 28 : 36, fontWeight: "400" },
     copy: {
-      height: compact ? 92 : 112,
+      height: isAndroid ? (compact ? 68 : 78) : (compact ? 92 : 112),
       alignItems: "center",
-      paddingTop: compact ? 12 : 18,
+      justifyContent: "center",
+      marginTop: isAndroid ? (compact ? 8 : 14) : 0,
+      paddingTop: isAndroid ? 0 : (compact ? 12 : 18),
+      marginBottom: isAndroid ? (compact ? 4 : 8) : 0,
     },
     eyebrow: {
       color: c.textoSuave,
-      fontSize: 11,
+      fontSize: isAndroid ? 9 : 11,
       fontWeight: "800",
       letterSpacing: 0.9,
     },
     level: {
       color: c.texto,
-      fontSize: 23,
+      fontSize: isAndroid ? 20 : 23,
       fontWeight: "900",
-      marginTop: 4,
+      marginTop: isAndroid ? 2 : 4,
       textAlign: "center",
     },
     detail: {
       color: c.textoSecundario,
-      fontSize: 14,
+      fontSize: isAndroid ? 12 : 14,
       fontWeight: "600",
-      marginTop: 4,
+      marginTop: isAndroid ? 2 : 4,
       textAlign: "center",
     },
   });

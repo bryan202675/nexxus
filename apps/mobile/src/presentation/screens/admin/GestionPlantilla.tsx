@@ -2012,27 +2012,27 @@ export default function GestionPlantilla() {
           <Text style={[estilos.subtitulo, isPhone && { fontSize: 12, lineHeight: 18 }]}>{subtitlePlantilla}</Text>
         </View>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={[estilos.headerActions, isPhone && { width: '100%', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 10 }]}>
+        <View style={[estilos.headerActions, isPhone && { width: '100%', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', rowGap: 10 }]}>
           {/* Elemento tactil; envuelve contenido que puede responder a interacciones del usuario. */}
-          <TouchableOpacity style={[estilos.btnSecondary, isPhone && { width: '48%', maxWidth: 184, justifyContent: 'center', minHeight: 46, paddingHorizontal: 10 }]} onPress={descargarPlantillaImportacion}>
+          <TouchableOpacity style={[estilos.btnSecondary, isPhone && { width: '48%', maxWidth: 184, justifyContent: 'center', minHeight: 46, paddingHorizontal: 8 }]} onPress={descargarPlantillaImportacion}>
             {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
             <MaterialIcons name="file-download" size={18} color={BRAND.textMain} style={estilos.btnIcon} />
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={estilos.btnSecondaryText}>{btnDownloadTemplate}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[estilos.btnSecondary, isPhone && { width: '48%', maxWidth: 184, justifyContent: 'center', minHeight: 46, paddingHorizontal: 10 }]} onPress={abrirSelectorImportacion} disabled={importando}>
+          <TouchableOpacity style={[estilos.btnSecondary, isPhone && { width: '48%', maxWidth: 184, justifyContent: 'center', minHeight: 46, paddingHorizontal: 8 }]} onPress={abrirSelectorImportacion} disabled={importando}>
             <MaterialIcons name="upload-file" size={18} color={BRAND.textMain} style={estilos.btnIcon} />
             <Text style={estilos.btnSecondaryText}>{importando ? btnProcessing : btnImportEmployees}</Text>
           </TouchableOpacity>
           {/* Elemento tactil; envuelve contenido que puede responder a interacciones del usuario. */}
-          <TouchableOpacity style={[estilos.btnSecondary, isPhone && { width: '48%', maxWidth: 184, justifyContent: 'center', minHeight: 46, paddingHorizontal: 10 }]}>
+          <TouchableOpacity style={[estilos.btnSecondary, isPhone && { width: '48%', maxWidth: 184, justifyContent: 'center', minHeight: 46, paddingHorizontal: 8 }]}>
             {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
             <MaterialIcons name="file-download" size={18} color={BRAND.textMain} style={estilos.btnIcon} />
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
             <Text style={estilos.btnSecondaryText}>{btnExportData}</Text>
           </TouchableOpacity>
           {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-          <TouchableOpacity {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} style={[estilos.btnPrimary, isPhone && { width: '48%', maxWidth: 184, justifyContent: 'center', minHeight: 48, paddingHorizontal: 10 }]} onPress={abrirCrear}>
+          <TouchableOpacity {...(Platform.OS === 'web' ? { className: 'nx-admin-contrast nx-force-white' } as any : {})} style={[estilos.btnPrimary, isPhone && { width: '48%', maxWidth: 184, justifyContent: 'center', minHeight: 48, paddingHorizontal: 8 }]} onPress={abrirCrear}>
             {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
             <MaterialIcons {...(Platform.OS === 'web' ? { className: 'nx-force-white' } as any : {})} name="person-add" size={18} color="#FFFFFF" style={[estilos.btnIcon, estilos.btnPrimaryIcon]} />
             {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -2138,7 +2138,7 @@ export default function GestionPlantilla() {
           />
         </View>
         {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-        <View style={[estilos.filterRow, isPhone && { gap: 10, justifyContent: 'center' }]}>
+        <View style={[estilos.filterRow, isPhone && { justifyContent: 'space-between', rowGap: 10 }]}>
             {[
               { id: 'todos', label: filterTodos },
               { id: 'activos', label: filterStatusActive },
@@ -2146,7 +2146,7 @@ export default function GestionPlantilla() {
               { id: 'riesgo', label: filterRisk },
             ].map((item) => (
               // Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI.
-              <TouchableOpacity key={item.id} onPress={() => setFiltroEstado(item.id as FiltroEstado)} style={[estilos.filterChip, filtroEstado === item.id && estilos.filterChipActivo, isPhone && { width: '47%', maxWidth: 176, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 }]}>
+              <TouchableOpacity key={item.id} onPress={() => setFiltroEstado(item.id as FiltroEstado)} style={[estilos.filterChip, filtroEstado === item.id && estilos.filterChipActivo, isPhone && { width: '48%', maxWidth: 176, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 }]}>
                 {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
                 <Text style={[estilos.filterChipText, filtroEstado === item.id && estilos.filterChipTextActivo]}>{item.label}</Text>
               </TouchableOpacity>

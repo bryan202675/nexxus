@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
 import ModalShell from '@/presentation/components/ui/ModalShell';
 import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 import { MONTH_NAMES } from './taskAgendaUtils';
+import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 
 const Text = AdminTranslatedText;
 
@@ -21,6 +22,8 @@ function TaskMonthPickerContent({
   onClose,
   onSelectMonth,
 }: Omit<TaskMonthPickerModalProps, 'visible'>) {
+  const { colores } = useTemaMobile();
+  const styles = createStyles(colores);
   const [browsingYear, setBrowsingYear] = useState(selectedDate.getFullYear());
 
   const currentRealYear = new Date().getFullYear();
@@ -74,7 +77,7 @@ function TaskMonthPickerContent({
           style={styles.closeBtn}
           accessibilityLabel="Cerrar selector"
         >
-          <Feather name="x" size={18} color="#111111" />
+          <Feather name="x" size={18} color={colores.texto} />
         </BotonAnimado>
       </View>
 
@@ -86,7 +89,7 @@ function TaskMonthPickerContent({
           style={styles.yearArrowBtn}
           accessibilityLabel="Año anterior"
         >
-          <Feather name="chevron-left" size={20} color="#111111" />
+          <Feather name="chevron-left" size={20} color={colores.texto} />
         </BotonAnimado>
 
         <View style={styles.yearCenter}>
@@ -99,7 +102,7 @@ function TaskMonthPickerContent({
           style={styles.yearArrowBtn}
           accessibilityLabel="Año siguiente"
         >
-          <Feather name="chevron-right" size={20} color="#111111" />
+          <Feather name="chevron-right" size={20} color={colores.texto} />
         </BotonAnimado>
 
         <BotonAnimado
@@ -157,7 +160,7 @@ export default function TaskMonthPickerModal({
   onSelectMonth,
 }: TaskMonthPickerModalProps) {
   return (
-    <ModalShell visible={visible} onClose={onClose} maxHeight="62%">
+    <ModalShell visible={visible} onClose={onClose} maxHeight={Platform.OS === 'ios' ? '62%' : '78%'}>
       <TaskMonthPickerContent
         key={`${selectedDate.getFullYear()}-${selectedDate.getMonth()}`}
         selectedDate={selectedDate}
@@ -168,114 +171,117 @@ export default function TaskMonthPickerModal({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    paddingBottom: 20,
-  },
-  headerRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-    paddingHorizontal: 4,
-  },
-  modalTitle: {
-    color: '#121014',
-    fontSize: 20,
-    fontWeight: '900',
-    letterSpacing: -0.5,
-  },
-  closeBtn: {
-    alignItems: 'center',
-    backgroundColor: '#F0EFEF',
-    borderRadius: 16,
-    height: 32,
-    justifyContent: 'center',
-    width: 32,
-  },
-  yearNavigator: {
-    alignItems: 'center',
-    backgroundColor: '#F6F5F7',
-    borderRadius: 18,
-    flexDirection: 'row',
-    marginBottom: 18,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-  },
-  yearArrowBtn: {
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    height: 36,
-    justifyContent: 'center',
-    width: 36,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
-  },
-  yearCenter: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  yearText: {
-    color: '#121014',
-    fontSize: 18,
-    fontWeight: '900',
-    letterSpacing: -0.3,
-  },
-  todayPill: {
-    backgroundColor: '#111111',
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  },
-  todayText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  monthsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    justifyContent: 'space-between',
-  },
-  monthItem: {
-    alignItems: 'center',
-    backgroundColor: '#F6F5F7',
-    borderRadius: 16,
-    height: 52,
-    justifyContent: 'center',
-    width: '31%',
-  },
-  selectedMonthItem: {
-    backgroundColor: '#111111',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  currentRealMonthItem: {
-    borderWidth: 1.5,
-    borderColor: '#F5AACB',
-    backgroundColor: '#FFF4F8',
-  },
-  monthText: {
-    color: '#342F35',
-    fontSize: 14.5,
-    fontWeight: '800',
-    letterSpacing: -0.2,
-  },
-  selectedMonthText: {
-    color: '#FFFFFF',
-    fontWeight: '900',
-  },
-  currentRealMonthText: {
-    color: '#D44A7E',
-    fontWeight: '900',
-  },
-});
+function createStyles(c: ReturnType<typeof useTemaMobile>['colores']) {
+  const isIOS = Platform.OS === 'ios';
+  return StyleSheet.create({
+    container: {
+      paddingBottom: isIOS ? 20 : 12,
+    },
+    headerRow: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: isIOS ? 16 : 10,
+      paddingHorizontal: 4,
+    },
+    modalTitle: {
+      color: c.texto,
+      fontSize: isIOS ? 20 : 17,
+      fontWeight: '900',
+      letterSpacing: -0.5,
+    },
+    closeBtn: {
+      alignItems: 'center',
+      backgroundColor: c.vidrio,
+      borderRadius: 16,
+      height: 32,
+      justifyContent: 'center',
+      width: 32,
+    },
+    yearNavigator: {
+      alignItems: 'center',
+      backgroundColor: c.superficie,
+      borderRadius: 18,
+      flexDirection: 'row',
+      marginBottom: isIOS ? 18 : 10,
+      paddingHorizontal: 8,
+      paddingVertical: isIOS ? 6 : 4,
+    },
+    yearArrowBtn: {
+      alignItems: 'center',
+      backgroundColor: c.superficieElevada,
+      borderRadius: 14,
+      height: 36,
+      justifyContent: 'center',
+      width: 36,
+      shadowColor: c.sombra,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 3,
+      elevation: 1,
+    },
+    yearCenter: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    yearText: {
+      color: c.texto,
+      fontSize: isIOS ? 18 : 16,
+      fontWeight: '900',
+      letterSpacing: -0.3,
+    },
+    todayPill: {
+      backgroundColor: c.navegacionActiva,
+      borderRadius: 14,
+      paddingHorizontal: isIOS ? 12 : 10,
+      paddingVertical: isIOS ? 7 : 5,
+    },
+    todayText: {
+      color: c.fondo,
+      fontSize: 11,
+      fontWeight: '800',
+    },
+    monthsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+      rowGap: isIOS ? 10 : 6,
+    },
+    monthItem: {
+      alignItems: 'center',
+      backgroundColor: c.superficie,
+      borderRadius: isIOS ? 16 : 12,
+      height: isIOS ? 52 : 42,
+      justifyContent: 'center',
+      width: '31%',
+    },
+    selectedMonthItem: {
+      backgroundColor: c.navegacionActiva,
+      shadowColor: c.sombra,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.15,
+      shadowRadius: 6,
+      elevation: 2,
+    },
+    currentRealMonthItem: {
+      borderWidth: 1.5,
+      borderColor: c.primario,
+      backgroundColor: c.vidrio,
+    },
+    monthText: {
+      color: c.texto,
+      fontSize: isIOS ? 14.5 : 12.5,
+      fontWeight: '800',
+      letterSpacing: -0.2,
+    },
+    selectedMonthText: {
+      color: c.fondo,
+      fontWeight: '900',
+    },
+    currentRealMonthText: {
+      color: c.primario,
+      fontWeight: '900',
+    },
+  });
+}

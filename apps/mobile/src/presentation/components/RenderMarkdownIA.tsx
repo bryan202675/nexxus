@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 
@@ -141,54 +141,59 @@ export default function RenderMarkdownIA({ texto, estiloBase }: Props) {
 }
 
 function crearEstilos(c: any, esOscuro: boolean) {
+  const isIOS = Platform.OS === 'ios';
+  const colorTexto = c.pulso?.text ?? c.texto;
+  const colorSecundario = c.pulso?.textSecondary ?? c.textoSecundario;
+  const colorBorde = c.pulso?.border ?? c.borde;
+
   return StyleSheet.create({
     contenedor: {
       width: '100%',
     },
     textoNormal: {
-      fontSize: 14.5,
-      lineHeight: 22,
-      color: c.texto,
+      fontSize: isIOS ? 14.5 : 13.5,
+      lineHeight: isIOS ? 22 : 19,
+      color: colorTexto,
       fontWeight: '400',
     },
     negrita: {
       fontWeight: '800',
-      color: c.texto,
+      color: colorTexto,
     },
     cursiva: {
       fontStyle: 'italic',
-      color: c.textoSecundario,
+      color: colorSecundario,
     },
     codigoInline: {
       fontFamily: 'monospace',
       backgroundColor: esOscuro ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
       paddingHorizontal: 4,
       borderRadius: 4,
-      fontSize: 13,
+      fontSize: isIOS ? 13 : 12,
       color: esOscuro ? '#A78BFA' : '#7C3AED',
     },
     parrafo: {
-      marginBottom: 6,
+      marginBottom: isIOS ? 6 : 4,
     },
     espaciador: {
       height: 4,
     },
     divisor: {
       height: 1,
-      backgroundColor: c.borde,
-      marginVertical: 8,
+      backgroundColor: colorBorde,
+      marginVertical: isIOS ? 8 : 6,
       opacity: 0.6,
     },
     bloqueEncabezado: {
-      marginTop: 8,
-      marginBottom: 6,
+      marginTop: isIOS ? 8 : 6,
+      marginBottom: isIOS ? 6 : 4,
     },
     textoEncabezado: {
-      fontSize: 15,
+      fontSize: isIOS ? 15 : 14,
       fontWeight: '900',
-      color: c.texto,
+      color: colorTexto,
       letterSpacing: -0.2,
-      lineHeight: 22,
+      lineHeight: isIOS ? 22 : 19,
     },
     filaViñeta: {
       flexDirection: 'row',
@@ -205,7 +210,7 @@ function crearEstilos(c: any, esOscuro: boolean) {
       marginRight: 8,
     },
     numeroLista: {
-      fontSize: 14,
+      fontSize: isIOS ? 14 : 13,
       fontWeight: '800',
       color: esOscuro ? '#A78BFA' : '#7C3AED',
       marginRight: 6,

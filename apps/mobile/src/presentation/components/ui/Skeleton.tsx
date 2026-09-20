@@ -36,7 +36,7 @@ export default function Skeleton({ width = '100%', height = 16, radius = RADIOS.
     <Animated.View
       style={[
         estilos.base,
-        { width, height, borderRadius: radius, backgroundColor: colores.vidrioFuerte },
+        { width, height, borderRadius: radius, backgroundColor: colores.skeletonBase },
         estiloAnimado,
         style,
       ]}

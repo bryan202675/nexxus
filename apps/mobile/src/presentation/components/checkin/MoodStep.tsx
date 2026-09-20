@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 import * as Haptics from "expo-haptics";
+import { Feather } from "@expo/vector-icons";
 import { SharedValue, withSpring } from "react-native-reanimated";
 import MoodFace, { MoodId } from "./MoodFace";
 
@@ -72,7 +73,7 @@ export default function MoodStep({
             mood === "excelente" && styles.directionDisabled,
           ]}
         >
-          <Text style={styles.directionText}>‹</Text>
+          <Feather name="chevron-left" size={isAndroid ? 20 : 24} color="#FFFFFF" />
         </Pressable>
         
         <View style={styles.textContainer}>
@@ -93,7 +94,7 @@ export default function MoodStep({
             mood === "saturado" && styles.directionDisabled,
           ]}
         >
-          <Text style={styles.directionText}>›</Text>
+          <Feather name="chevron-right" size={isAndroid ? 20 : 24} color="#FFFFFF" />
         </Pressable>
       </View>
     </View>
@@ -105,29 +106,32 @@ function createStyles(compact: boolean) {
   root: { flex: 1, alignItems: "center" },
   title: {
     color: "#17141B",
-    fontSize: compact ? 25 : isAndroid ? 27 : 29,
+    fontSize: compact ? 22 : isAndroid ? 23 : 29,
     fontWeight: "800",
     letterSpacing: -0.9,
     textAlign: "center",
-    marginTop: compact ? 10 : isAndroid ? 14 : 22,
+    marginTop: compact ? 8 : isAndroid ? 10 : 22,
   },
   subtitle: {
     color: "rgba(23,20,27,0.64)",
-    fontSize: 14,
-    marginTop: 7,
+    fontSize: isAndroid ? 12 : 14,
+    marginTop: isAndroid ? 4 : 7,
     textAlign: "center",
   },
   face: {
     flex: 1,
-    width: "100%",
-    minHeight: compact ? 194 : isAndroid ? 218 : 270,
-    marginTop: isAndroid ? 10 : 16,
+    width: isAndroid ? undefined : "100%",
+    aspectRatio: isAndroid ? 1 : undefined,
+    maxWidth: isAndroid ? "100%" : undefined,
+    alignSelf: "center",
+    minHeight: compact ? 170 : isAndroid ? 190 : 270,
+    marginTop: isAndroid ? 6 : 16,
     position: "relative",
   },
   direction: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: isAndroid ? 36 : 44,
+    height: isAndroid ? 36 : 44,
+    borderRadius: isAndroid ? 18 : 22,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#17141B",
@@ -137,9 +141,9 @@ function createStyles(compact: boolean) {
   directionDisabled: { opacity: 0.18 },
   directionText: {
     color: "#FFFFFF",
-    fontSize: 31,
+    fontSize: isAndroid ? 24 : 31,
     fontWeight: "400",
-    lineHeight: 36,
+    lineHeight: isAndroid ? 28 : 36,
   },
   stateCopy: {
     width: "100%",
@@ -147,21 +151,21 @@ function createStyles(compact: boolean) {
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    marginBottom: compact ? 12 : isAndroid ? 18 : 32,
+    marginBottom: compact ? 8 : isAndroid ? 12 : 32,
   },
   textContainer: {
     alignItems: "center",
   },
   feeling: {
     color: "rgba(23,20,27,0.54)",
-    fontSize: 10,
+    fontSize: isAndroid ? 9 : 10,
     fontWeight: "800",
     letterSpacing: 0.8,
-    marginBottom: 4,
+    marginBottom: isAndroid ? 2 : 4,
   },
   state: {
     color: "#17141B",
-    fontSize: 21,
+    fontSize: isAndroid ? 17 : 21,
     fontWeight: "900",
     letterSpacing: -0.4,
   },

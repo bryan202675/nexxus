@@ -17,6 +17,7 @@ import {
   Alert,
   Linking,
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
 } from 'react-native';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
@@ -32,7 +33,7 @@ import { useCases } from '@/infrastructure/container';
 import { supabase } from '@/infrastructure/supabase/supabaseClient';
 import { uploadManagedFile } from '@/infrastructure/storage/cloudinaryUpload';
 import { formatBytes } from '@/infrastructure/storage/uploadLimits';
-import { RADIOS, SOMBRAS } from '@/shared/constants/diseno';
+import { RADIOS } from '@/shared/constants/diseno';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
 import ModalShell from '@/presentation/components/ui/ModalShell';
 import { useToast } from '@/presentation/components/ui/ToastProvider';
@@ -127,6 +128,19 @@ export default function DetalleTareaModal({
   const [selectorDependenciaAbierto, setSelectorDependenciaAbierto] = useState(false);
   const [tareasCompania, setTareasCompania] = useState<Task[]>([]);
   const [menuAdjuntosAbierto, setMenuAdjuntosAbierto] = useState(false);
+  const [tecladoAbierto, setTecladoAbierto] = useState(false);
+
+  // Escuchar apertura y cierre del teclado para maximizar el área de escritura
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, () => setTecladoAbierto(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setTecladoAbierto(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Modal y Formulario de Solicitud de Extensión de Plazo
   const [modalExtensionVisible, setModalExtensionVisible] = useState(false);
@@ -593,16 +607,27 @@ export default function DetalleTareaModal({
       <ModalShell
         visible={visible && !modalExtensionVisible}
         onClose={onClose}
-        maxHeight="92%"
-        style={{ height: '90%' }}
+        maxHeight={Platform.OS === 'ios' ? '92%' : '90%'}
+        style={{ height: Platform.OS === 'ios' ? '90%' : '88%' }}
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
           style={estilos.contenedorFlexible}
         >
-          {/* Header con Prioridad y Cierre */}
-          <View style={estilos.header}>
-            <View style={estilos.headerTopRow}>
+          {/* Header con Prioridad y Cierre o Barra Compacta al Escribir */}
+          {!tecladoAbierto ? (
+            <View style={estilos.header}>
+              <View style={estilos.headerTopRow}>
+                <View style={estilos.headerTagPill}>
+                  <Text style={estilos.headerTagText}>NIVEL DE PRIORIDAD</Text>
+                </View>
+                <BotonAnimado onPress={onClose} scaleTo={0.92} style={estilos.botonCerrarHeader}>
+                  <Feather name="x" size={18} color={colores.texto} />
+                </BotonAnimado>
+              </View>
+
+              {/* Fila Completa de 4 Prioridades 100% Simétrica */}
               <View style={estilos.selectorPrioridadFila}>
                 {PRIORIDADES.map((p) => {
                   const activa = prioridad === p.id;
@@ -610,14 +635,17 @@ export default function DetalleTareaModal({
                     <BotonAnimado
                       key={p.id}
                       onPress={() => cambiarPrioridadRapida(p.id)}
-                      scaleTo={0.92}
+                      scaleTo={0.94}
                       style={[
                         estilos.chipPrioridad,
-                        activa && { backgroundColor: `${p.color}25`, borderColor: p.color },
+                        activa && { backgroundColor: `${p.color}22`, borderColor: p.color, borderWidth: 1.5 },
                       ]}
                     >
                       <View style={[estilos.puntoPrioridad, { backgroundColor: p.color }]} />
-                      <Text style={[estilos.textoChipPrioridad, activa && { color: p.color, fontWeight: '900' }]}>
+                      <Text
+                        style={[estilos.textoChipPrioridad, activa && { color: p.color, fontWeight: '800' }]}
+                        numberOfLines={1}
+                      >
                         {p.label}
                       </Text>
                     </BotonAnimado>
@@ -625,41 +653,45 @@ export default function DetalleTareaModal({
                 })}
               </View>
 
-              <BotonAnimado onPress={onClose} scaleTo={0.92} style={estilos.botonCerrarHeader}>
-                <Feather name="x" size={20} color={colores.texto} />
+              {/* Título Editable */}
+              <TextInput
+                style={estilos.inputTitulo}
+                value={titulo}
+                onChangeText={setTitulo}
+                onBlur={() => guardarCambios()}
+                placeholder="Título de la tarea..."
+                placeholderTextColor={colores.textoSuave}
+              />
+
+              {/* Badges de Proyecto y Fecha */}
+              <View style={estilos.metaFilaHeader}>
+                <View style={estilos.badgeInfoMeta}>
+                  <Feather name="folder" size={14} color={colores.textoSuave} />
+                  <TextInput
+                    style={estilos.inputMetaInline}
+                    value={proyecto}
+                    onChangeText={setProyecto}
+                    onBlur={() => guardarCambios()}
+                    placeholder="Proyecto / Área"
+                    placeholderTextColor={colores.textoSuave}
+                  />
+                </View>
+
+                <View style={estilos.badgeInfoMeta}>
+                  <Feather name="calendar" size={14} color={tarea.fecha_limite ? '#3B82F6' : colores.textoSuave} />
+                  <Text style={estilos.textoMetaInline}>{formatearFechaLimpia(tarea.fecha_limite)}</Text>
+                </View>
+              </View>
+            </View>
+          ) : (
+            <View style={estilos.headerTecladoCompacto}>
+              <Text style={estilos.tituloTecladoCompacto} numberOfLines={1}>{titulo || 'Editando tarea...'}</Text>
+              <BotonAnimado onPress={() => Keyboard.dismiss()} scaleTo={0.92} style={estilos.botonCerrarTeclado}>
+                <Feather name="chevron-down" size={18} color={colores.texto} />
+                <Text style={estilos.textoCerrarTeclado}>Ocultar</Text>
               </BotonAnimado>
             </View>
-
-            {/* Título Editable */}
-            <TextInput
-              style={estilos.inputTitulo}
-              value={titulo}
-              onChangeText={setTitulo}
-              onBlur={() => guardarCambios()}
-              placeholder="Título de la tarea..."
-              placeholderTextColor={colores.textoSuave}
-            />
-
-            {/* Badges de Proyecto y Fecha */}
-            <View style={estilos.metaFilaHeader}>
-              <View style={estilos.badgeInfoMeta}>
-                <Feather name="folder" size={14} color={colores.textoSuave} />
-                <TextInput
-                  style={estilos.inputMetaInline}
-                  value={proyecto}
-                  onChangeText={setProyecto}
-                  onBlur={() => guardarCambios()}
-                  placeholder="Proyecto / Área"
-                  placeholderTextColor={colores.textoSuave}
-                />
-              </View>
-
-              <View style={estilos.badgeInfoMeta}>
-                <Feather name="calendar" size={14} color={tarea.fecha_limite ? '#3B82F6' : colores.textoSuave} />
-                <Text style={estilos.textoMetaInline}>{formatearFechaLimpia(tarea.fecha_limite)}</Text>
-              </View>
-            </View>
-          </View>
+          )}
 
           {/* Pestañas de Navegación */}
           <View style={estilos.pestanasBarraWrap}>
@@ -709,6 +741,8 @@ export default function DetalleTareaModal({
             style={estilos.cuerpoScrollFlexible}
             contentContainerStyle={estilos.cuerpoScrollContent}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
           >
             {pestañaActiva === 'detalles' && (
               <View style={estilos.seccionContenido}>
@@ -724,11 +758,25 @@ export default function DetalleTareaModal({
                         scaleTo={0.96}
                         style={[
                           estilos.estadoTarjetaBtn,
-                          activo && { backgroundColor: `${est.color}22`, borderColor: est.color },
+                          activo && {
+                            backgroundColor: esOscuro ? `${est.color}22` : `${est.color}15`,
+                            borderColor: est.color,
+                          },
                         ]}
                       >
-                        <Feather name={est.icono} size={17} color={activo ? est.color : colores.textoSuave} />
-                        <Text style={[estilos.estadoTarjetaTexto, activo && { color: est.color, fontWeight: '900' }]}>
+                        <Feather
+                          name={est.icono}
+                          size={Platform.OS === 'ios' ? 18 : 17}
+                          color={activo ? est.color : colores.textoSuave}
+                          style={{ marginBottom: 4 }}
+                        />
+                        <Text
+                          style={[
+                            estilos.estadoTarjetaTexto,
+                            activo && { color: est.color, fontWeight: '800' },
+                          ]}
+                          numberOfLines={1}
+                        >
                           {est.label}
                         </Text>
                       </BotonAnimado>
@@ -803,30 +851,38 @@ export default function DetalleTareaModal({
                   />
                 </View>
 
-                {/* Dependencias con Otras Tareas */}
+                {/* Dependencias */}
                 <View style={estilos.seccionHeaderFlex}>
-                  <Text style={estilos.etiquetaSeccion}>Tareas Relacionadas ({tareasDependientes.length})</Text>
-                  <BotonAnimado onPress={abrirSelectorDependencia} scaleTo={0.92} style={estilos.botonVincularDep}>
+                  <Text style={estilos.etiquetaSeccion}>Dependencias ({tareasDependientes.length})</Text>
+                  <BotonAnimado
+                    onPress={() => setSelectorDependenciaAbierto(!selectorDependenciaAbierto)}
+                    scaleTo={0.94}
+                    style={estilos.botonVincularDep}
+                  >
                     <Feather name="link" size={13} color={colores.texto} />
                     <Text style={estilos.textoBotonVincular}>Vincular</Text>
                   </BotonAnimado>
                 </View>
+
                 {tareasDependientes.length === 0 ? (
-                  <Text style={estilos.textoVacio}>No hay tareas vinculadas como dependencia.</Text>
+                  <Text style={estilos.textoVacio}>No tiene dependencias vinculadas.</Text>
                 ) : (
-                  tareasDependientes.map((dep) => (
+                  tareasDependientes.map((dep: Task) => (
                     <View key={dep.id} style={estilos.filaDependencia}>
-                      <Feather name="layers" size={15} color={colores.textoSuave} />
+                      <Feather name="corner-down-right" size={16} color={colores.textoSuave} />
                       <Text style={estilos.dependenciaTitulo} numberOfLines={1}>{dep.titulo}</Text>
                       <Text style={estilos.dependenciaEstado}>{dep.estado}</Text>
+                      <BotonAnimado onPress={() => alternarDependencia(dep)} scaleTo={0.9}>
+                        <Feather name="x" size={16} color="#EF4444" />
+                      </BotonAnimado>
                     </View>
                   ))
                 )}
 
                 {selectorDependenciaAbierto && (
                   <View style={estilos.cajaSelectorDep}>
-                    <Text style={estilos.tituloSelectorDep}>Selecciona tareas de la empresa:</Text>
-                    <ScrollView style={{ maxHeight: 150 }} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+                    <Text style={estilos.tituloSelectorDep}>Seleccionar tareas vinculadas</Text>
+                    <ScrollView style={{ maxHeight: 150 }} nestedScrollEnabled>
                       {tareasCompania.map((tc) => {
                         const seleccionada = (tarea.dependencias || []).includes(tc.id);
                         return (
@@ -863,8 +919,10 @@ export default function DetalleTareaModal({
                 {/* Resumen de Subtareas */}
                 <View style={estilos.resumenSubtareasCard}>
                   <View style={estilos.resumenSubtareasTop}>
-                    <Text style={estilos.resumenSubtareasTitulo}>Checklist de Ejecución</Text>
-                    <Text style={estilos.resumenSubtareasBadge}>{porcentajeSubtareas}% completado</Text>
+                    <Text style={estilos.resumenSubtareasTitulo} numberOfLines={1}>Checklist de Ejecución</Text>
+                    <View style={estilos.resumenSubtareasBadgeWrap}>
+                      <Text style={estilos.resumenSubtareasBadge}>{porcentajeSubtareas}% completado</Text>
+                    </View>
                   </View>
                   <View style={estilos.barraProgresoTrack}>
                     <View style={[estilos.barraProgresoFill, { width: `${porcentajeSubtareas}%`, backgroundColor: '#10B981' }]} />
@@ -1093,12 +1151,11 @@ export default function DetalleTareaModal({
         </KeyboardAvoidingView>
       </ModalShell>
 
-      {/* Modal de Solicitud de Extensión de Plazo Amplio */}
+      {/* Modal de Solicitud de Extensión de Plazo */}
       <ModalShell
         visible={modalExtensionVisible}
         onClose={() => setModalExtensionVisible(false)}
-        maxHeight="94%"
-        style={{ height: '90%' }}
+        maxHeight={Platform.OS === 'ios' ? '88%' : '90%'}
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -1238,7 +1295,7 @@ export default function DetalleTareaModal({
               scaleTo={0.96}
               style={estilos.botonConsultarIA}
             >
-              <Text style={estilos.textoBotonConsultarIA}>Cancelar</Text>
+              <Text style={estilos.textoBotonConsultarIA} numberOfLines={1}>Cancelar</Text>
             </BotonAnimado>
 
             <BotonAnimado
@@ -1253,7 +1310,7 @@ export default function DetalleTareaModal({
               {enviandoExtension ? (
                 <ActivityIndicator size="small" color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
               ) : (
-                <Text style={estilos.textoBotonGuardarCerrar}>Enviar a Revisión</Text>
+                <Text style={estilos.textoBotonGuardarCerrar} numberOfLines={1}>Enviar a Revisión</Text>
               )}
             </BotonAnimado>
           </View>
@@ -1264,6 +1321,7 @@ export default function DetalleTareaModal({
 }
 
 function crearEstilos(c: any, esOscuro: boolean) {
+  const isIOS = Platform.OS === 'ios';
   const cardBg = esOscuro ? 'rgba(255,255,255,0.06)' : '#FFFFFF';
   const cardBorder = esOscuro ? 'rgba(255,255,255,0.08)' : 'rgba(32,28,25,0.04)';
   const surfaceMuted = esOscuro ? 'rgba(255,255,255,0.08)' : '#F4F1EE';
@@ -1276,84 +1334,135 @@ function crearEstilos(c: any, esOscuro: boolean) {
     },
 
     // Header
-    header: { marginBottom: 16 },
+    header: { marginBottom: isIOS ? 14 : 10 },
     headerExtension: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 16,
+      marginBottom: isIOS ? 14 : 10,
     },
     headerTopRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 14,
+      marginBottom: isIOS ? 10 : 8,
     },
-    selectorPrioridadFila: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+    headerTagPill: {
+      backgroundColor: surfaceMuted,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 10,
+    },
+    headerTagText: {
+      fontSize: 10.5,
+      fontWeight: '800',
+      color: c.textoSuave,
+      letterSpacing: 0.8,
+    },
+    selectorPrioridadFila: {
+      flexDirection: 'row',
+      gap: isIOS ? 6 : 5,
+      alignItems: 'center',
+      marginBottom: isIOS ? 10 : 8,
+    },
     chipPrioridad: {
+      flex: 1,
+      minWidth: 0,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
+      justifyContent: 'center',
+      gap: 5,
+      paddingHorizontal: isIOS ? 6 : 4,
+      paddingVertical: isIOS ? 8 : 6,
       borderRadius: RADIOS.completo,
       backgroundColor: cardBg,
-      borderWidth: 1,
+      borderWidth: 1.2,
       borderColor: cardBorder,
-      ...SOMBRAS.suave,
+      overflow: 'hidden',
     },
     puntoPrioridad: { width: 7, height: 7, borderRadius: 3.5 },
-    textoChipPrioridad: { fontSize: 13, fontWeight: '700', color: c.textoSuave },
+    textoChipPrioridad: { fontSize: isIOS ? 12 : 11, fontWeight: '700', color: c.textoSuave, textAlign: 'center' },
     botonCerrarHeader: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
+      width: isIOS ? 38 : 34,
+      height: isIOS ? 38 : 34,
+      borderRadius: isIOS ? 19 : 17,
       backgroundColor: cardBg,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
       borderColor: cardBorder,
-      ...SOMBRAS.suave,
+    },
+
+    // Header Compacto cuando el Teclado está Abierto
+    headerTecladoCompacto: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingBottom: 8,
+      marginBottom: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: cardBorder,
+    },
+    tituloTecladoCompacto: {
+      flex: 1,
+      fontSize: 14,
+      fontWeight: '700',
+      color: c.texto,
+      marginRight: 10,
+    },
+    botonCerrarTeclado: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 12,
+      backgroundColor: surfaceMuted,
+    },
+    textoCerrarTeclado: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: c.texto,
     },
 
     inputTitulo: {
-      fontSize: 24,
+      fontSize: isIOS ? 24 : 18,
+      lineHeight: isIOS ? 28 : 22,
       fontWeight: '700',
       color: c.texto,
       letterSpacing: -0.7,
-      paddingVertical: 4,
+      paddingVertical: isIOS ? 4 : 2,
     },
 
-    metaFilaHeader: { flexDirection: 'row', gap: 10, alignItems: 'center', marginTop: 8 },
+    metaFilaHeader: { flexDirection: 'row', gap: isIOS ? 10 : 6, alignItems: 'center', marginTop: isIOS ? 8 : 4 },
     badgeInfoMeta: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 7,
       backgroundColor: cardBg,
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      borderRadius: 20,
+      paddingHorizontal: isIOS ? 14 : 10,
+      paddingVertical: isIOS ? 8 : 5,
+      borderRadius: isIOS ? 20 : 14,
       borderWidth: 1,
       borderColor: cardBorder,
-      ...SOMBRAS.suave,
     },
-    inputMetaInline: { fontSize: 13.5, fontWeight: '600', color: c.texto, padding: 0 },
-    textoMetaInline: { fontSize: 13.5, fontWeight: '600', color: c.texto },
+    inputMetaInline: { fontSize: isIOS ? 13.5 : 12, fontWeight: '600', color: c.texto, padding: 0 },
+    textoMetaInline: { fontSize: isIOS ? 13.5 : 12, fontWeight: '600', color: c.texto },
 
     // Pestañas
     pestanasBarraWrap: {
-      marginBottom: 16,
+      marginBottom: isIOS ? 14 : 10,
     },
     pestanasScroll: {
       flexDirection: 'row',
-      gap: 8,
+      gap: isIOS ? 8 : 6,
       alignItems: 'center',
       paddingRight: 8,
     },
     pestanaBoton: {
-      minHeight: 44,
-      borderRadius: 22,
-      paddingHorizontal: 14,
+      minHeight: isIOS ? 42 : 36,
+      borderRadius: isIOS ? 21 : 18,
+      paddingHorizontal: isIOS ? 14 : 10,
       backgroundColor: surfaceSubtle,
       flexDirection: 'row',
       alignItems: 'center',
@@ -1365,12 +1474,12 @@ function crearEstilos(c: any, esOscuro: boolean) {
       backgroundColor: esOscuro ? '#FFFFFF' : '#202020',
       borderColor: esOscuro ? '#FFFFFF' : '#202020',
     },
-    pestanaTexto: { fontSize: 13, fontWeight: '600', color: esOscuro ? c.textoSuave : '#3E3936' },
+    pestanaTexto: { fontSize: isIOS ? 13 : 11.5, fontWeight: '600', color: esOscuro ? c.textoSuave : '#3E3936' },
     pestanaTextoActiva: { color: esOscuro ? '#0B0C1E' : '#FFFFFF', fontWeight: '700' },
     pestanaCountWrap: {
-      minWidth: 24,
-      height: 24,
-      borderRadius: 12,
+      minWidth: isIOS ? 24 : 20,
+      height: isIOS ? 24 : 20,
+      borderRadius: isIOS ? 12 : 10,
       paddingHorizontal: 6,
       backgroundColor: esOscuro ? 'rgba(255,255,255,0.12)' : '#F1EFED',
       alignItems: 'center',
@@ -1381,7 +1490,7 @@ function crearEstilos(c: any, esOscuro: boolean) {
     },
     pestanaCountText: {
       color: esOscuro ? c.texto : '#3C3734',
-      fontSize: 11,
+      fontSize: isIOS ? 11 : 10,
       fontWeight: '700',
     },
     pestanaCountTextActivo: {
@@ -1390,157 +1499,155 @@ function crearEstilos(c: any, esOscuro: boolean) {
 
     // Scroll flexible
     cuerpoScrollFlexible: { flex: 1 },
-    cuerpoScrollContent: { gap: 16, paddingBottom: 24 },
-    seccionContenido: { gap: 16 },
+    cuerpoScrollContent: { gap: isIOS ? 16 : 10, paddingBottom: isIOS ? 30 : 45 },
+    seccionContenido: { gap: isIOS ? 16 : 10 },
 
     etiquetaSeccion: {
-      fontSize: 13,
+      fontSize: isIOS ? 13 : 12,
       fontWeight: '700',
       color: esOscuro ? c.textoSuave : '#7E7772',
       letterSpacing: -0.2,
-      marginTop: 6,
+      marginTop: isIOS ? 6 : 4,
     },
 
     // Estado Grid
-    estadoSelectorGrid: { flexDirection: 'row', gap: 8 },
+    estadoSelectorGrid: { flexDirection: 'row', gap: isIOS ? 8 : 6, marginTop: 4 },
     estadoTarjetaBtn: {
       flex: 1,
-      flexDirection: 'row',
+      minWidth: 0,
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 8,
-      paddingVertical: 14,
-      borderRadius: 20,
+      paddingVertical: isIOS ? 12 : 10,
+      paddingHorizontal: 4,
+      borderRadius: isIOS ? 16 : 13,
       backgroundColor: cardBg,
-      borderWidth: 1,
+      borderWidth: 1.5,
       borderColor: cardBorder,
-      ...SOMBRAS.suave,
+      overflow: 'hidden',
     },
-    estadoTarjetaTexto: { fontSize: 13.5, fontWeight: '700', color: c.textoSuave },
+    estadoTarjetaTexto: { fontSize: isIOS ? 12 : 11.5, fontWeight: '700', color: c.textoSuave, textAlign: 'center' },
 
     // Progreso
     seccionHeaderFlex: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginTop: 6,
+      marginTop: isIOS ? 6 : 4,
     },
-    valorProgresoHeader: { fontSize: 16, fontWeight: '700', color: c.texto },
+    valorProgresoHeader: { fontSize: isIOS ? 16 : 14, fontWeight: '700', color: c.texto },
     barraProgresoTrack: {
-      height: 8,
+      height: isIOS ? 8 : 6,
       borderRadius: 4,
       backgroundColor: esOscuro ? 'rgba(255,255,255,0.08)' : '#F1EFED',
       overflow: 'hidden',
     },
     barraProgresoFill: { height: '100%', backgroundColor: esOscuro ? '#FFFFFF' : '#202020', borderRadius: 4 },
-    nivelesProgresoFila: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
+    nivelesProgresoFila: { flexDirection: 'row', justifyContent: 'space-between', gap: isIOS ? 8 : 5 },
     chipProgreso: {
       flex: 1,
       alignItems: 'center',
-      paddingVertical: 10,
-      borderRadius: 16,
+      paddingVertical: isIOS ? 10 : 7,
+      borderRadius: isIOS ? 16 : 12,
       backgroundColor: cardBg,
-      borderWidth: 1,
+      borderWidth: 1.2,
       borderColor: cardBorder,
-      ...SOMBRAS.suave,
+      overflow: 'hidden',
     },
     chipProgresoActivo: {
       backgroundColor: esOscuro ? '#FFFFFF' : '#202020',
       borderColor: esOscuro ? '#FFFFFF' : '#202020',
     },
-    textoChipProgreso: { fontSize: 13, fontWeight: '600', color: esOscuro ? c.textoSuave : '#544E4A' },
+    textoChipProgreso: { fontSize: isIOS ? 13 : 11.5, fontWeight: '600', color: esOscuro ? c.textoSuave : '#544E4A' },
     textoChipProgresoActivo: { color: esOscuro ? '#0B0C1E' : '#FFFFFF', fontWeight: '700' },
 
     // Tarjeta Plazo de Entrega y Extensión
     tarjetaPlazoEntrega: {
-      borderRadius: 24,
+      borderRadius: isIOS ? 24 : 18,
       backgroundColor: cardBg,
       borderWidth: 1,
       borderColor: cardBorder,
-      padding: 18,
-      gap: 16,
-      ...SOMBRAS.suave,
+      padding: isIOS ? 18 : 12,
+      gap: isIOS ? 16 : 10,
     },
-    plazoInfoFila: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+    plazoInfoFila: { flexDirection: 'row', alignItems: 'center', gap: isIOS ? 14 : 10 },
     iconoPlazoWrap: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
+      width: isIOS ? 44 : 36,
+      height: isIOS ? 44 : 36,
+      borderRadius: isIOS ? 22 : 18,
       backgroundColor: surfaceMuted,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    plazoTitulo: { fontSize: 12.5, fontWeight: '600', color: c.textoSuave },
-    plazoValor: { fontSize: 16, fontWeight: '700', color: c.texto, marginTop: 2 },
+    plazoTitulo: { fontSize: isIOS ? 12.5 : 11, fontWeight: '600', color: c.textoSuave },
+    plazoValor: { fontSize: isIOS ? 16 : 14, fontWeight: '700', color: c.texto, marginTop: 2 },
     botonPedirExtension: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       backgroundColor: esOscuro ? '#FFFFFF' : '#202020',
-      paddingVertical: 14,
-      paddingHorizontal: 18,
-      borderRadius: 22,
-      ...SOMBRAS.suave,
+      paddingVertical: isIOS ? 14 : 10,
+      paddingHorizontal: isIOS ? 18 : 14,
+      borderRadius: isIOS ? 22 : 16,
     },
     botonPedirExtensionInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     textoBotonPedirExtension: {
-      fontSize: 14,
+      fontSize: isIOS ? 14 : 12.5,
       fontWeight: '700',
       color: esOscuro ? '#0B0C1E' : '#FFFFFF',
     },
 
     // Modal de Extensión
-    tituloModalExtension: { fontSize: 22, fontWeight: '700', color: c.texto, letterSpacing: -0.5 },
-    subtituloModalExtension: { fontSize: 14, fontWeight: '600', color: c.textoSuave, marginTop: 2 },
+    tituloModalExtension: { fontSize: isIOS ? 22 : 18, fontWeight: '700', color: c.texto, letterSpacing: -0.5 },
+    subtituloModalExtension: { fontSize: isIOS ? 14 : 12, fontWeight: '600', color: c.textoSuave, marginTop: 2 },
     cardComparativaFechas: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       backgroundColor: cardBg,
-      borderRadius: 22,
+      borderRadius: isIOS ? 22 : 16,
       borderWidth: 1,
       borderColor: cardBorder,
-      padding: 16,
+      padding: isIOS ? 16 : 12,
       marginVertical: 4,
-      ...SOMBRAS.suave,
     },
     columnaFechaComp: { alignItems: 'center', flex: 1 },
     separadorFlechaComp: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
+      width: isIOS ? 40 : 34,
+      height: isIOS ? 40 : 34,
+      borderRadius: isIOS ? 20 : 17,
       backgroundColor: surfaceMuted,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    etiquetaComp: { fontSize: 12, fontWeight: '700', color: c.textoSuave, marginBottom: 4 },
-    fechaCompActual: { fontSize: 14.5, fontWeight: '700', color: c.texto },
-    fechaCompNueva: { fontSize: 15, fontWeight: '800', color: '#10B981' },
+    etiquetaComp: { fontSize: isIOS ? 12 : 11, fontWeight: '700', color: c.textoSuave, marginBottom: 4 },
+    fechaCompActual: { fontSize: isIOS ? 14.5 : 13, fontWeight: '700', color: c.texto },
+    fechaCompNueva: { fontSize: isIOS ? 15 : 13.5, fontWeight: '800', color: '#10B981' },
 
     // Cuadrícula 2x2 de Opciones de Prórroga
     gridExtensionPares: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 10,
+      justifyContent: 'space-between',
+      rowGap: isIOS ? 10 : 8,
     },
     tarjetaOpcionExtension: {
-      width: '48.5%',
-      paddingVertical: 16,
-      paddingHorizontal: 14,
-      borderRadius: 20,
+      width: '48%',
+      paddingVertical: isIOS ? 16 : 10,
+      paddingHorizontal: isIOS ? 14 : 10,
+      borderRadius: isIOS ? 20 : 14,
       backgroundColor: cardBg,
-      borderWidth: 1,
+      borderWidth: 1.2,
       borderColor: cardBorder,
       alignItems: 'center',
       justifyContent: 'center',
-      ...SOMBRAS.suave,
+      overflow: 'hidden',
     },
     tarjetaOpcionExtensionActiva: {
       backgroundColor: esOscuro ? '#FFFFFF' : '#202020',
       borderColor: esOscuro ? '#FFFFFF' : '#202020',
     },
     textoOpcionExtensionTitulo: {
-      fontSize: 15,
+      fontSize: isIOS ? 15 : 13,
       fontWeight: '700',
       color: c.texto,
     },
@@ -1548,7 +1655,7 @@ function crearEstilos(c: any, esOscuro: boolean) {
       color: esOscuro ? '#0B0C1E' : '#FFFFFF',
     },
     textoOpcionExtensionSub: {
-      fontSize: 12,
+      fontSize: isIOS ? 12 : 10.5,
       fontWeight: '500',
       color: c.textoSuave,
       marginTop: 3,
@@ -1558,23 +1665,23 @@ function crearEstilos(c: any, esOscuro: boolean) {
       opacity: 0.85,
     },
 
-    urgenciasFila: { flexDirection: 'row', gap: 10 },
+    urgenciasFila: { flexDirection: 'row', gap: isIOS ? 10 : 8 },
     chipUrgencia: {
       flex: 1,
       alignItems: 'center',
-      paddingVertical: 12,
-      borderRadius: 18,
+      paddingVertical: isIOS ? 12 : 8,
+      borderRadius: isIOS ? 18 : 14,
       backgroundColor: cardBg,
-      borderWidth: 1,
+      borderWidth: 1.2,
       borderColor: cardBorder,
-      ...SOMBRAS.suave,
+      overflow: 'hidden',
     },
     chipUrgenciaActivo: {
       backgroundColor: cardBg,
       borderColor: '#F59E0B',
       borderWidth: 1.5,
     },
-    textoChipUrgencia: { fontSize: 13.5, fontWeight: '700', color: c.textoSuave },
+    textoChipUrgencia: { fontSize: isIOS ? 13.5 : 12, fontWeight: '700', color: c.textoSuave },
     textoChipUrgenciaActivo: { color: '#F59E0B', fontWeight: '800' },
 
     // 3 Botones de soporte ordenados
@@ -1588,52 +1695,51 @@ function crearEstilos(c: any, esOscuro: boolean) {
       justifyContent: 'center',
       gap: 6,
       backgroundColor: cardBg,
-      paddingVertical: 14,
+      paddingVertical: isIOS ? 14 : 10,
       paddingHorizontal: 6,
-      borderRadius: 18,
-      borderWidth: 1,
+      borderRadius: isIOS ? 18 : 14,
+      borderWidth: 1.2,
       borderColor: cardBorder,
-      ...SOMBRAS.suave,
+      overflow: 'hidden',
     },
-    textoSoporteColumna: { fontSize: 12.5, fontWeight: '700', color: c.texto, textAlign: 'center' },
+    textoSoporteColumna: { fontSize: isIOS ? 12.5 : 11, fontWeight: '700', color: c.texto, textAlign: 'center' },
     filaAdjuntoSoporteItem: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      padding: 12,
-      borderRadius: 16,
+      padding: isIOS ? 12 : 9,
+      borderRadius: isIOS ? 16 : 12,
       backgroundColor: surfaceMuted,
       marginTop: 6,
     },
-    textoAdjuntoSoporteItem: { fontSize: 13, color: c.texto, flex: 1, marginHorizontal: 10, fontWeight: '600' },
+    textoAdjuntoSoporteItem: { fontSize: isIOS ? 13 : 11.5, color: c.texto, flex: 1, marginHorizontal: 10, fontWeight: '600' },
     bannerAvisoAprobacion: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
       backgroundColor: 'rgba(59,130,246,0.08)',
-      padding: 14,
-      borderRadius: 18,
+      padding: isIOS ? 14 : 10,
+      borderRadius: isIOS ? 18 : 14,
       borderWidth: 1,
       borderColor: 'rgba(59,130,246,0.22)',
       marginTop: 8,
       marginBottom: 10,
     },
-    textoAvisoAprobacion: { fontSize: 12.5, color: c.textoSuave, flex: 1, lineHeight: 18, fontWeight: '500' },
+    textoAvisoAprobacion: { fontSize: isIOS ? 12.5 : 11, color: c.textoSuave, flex: 1, lineHeight: isIOS ? 18 : 15, fontWeight: '500' },
 
     // Descripción
     cajaDescripcion: {
-      borderRadius: 24,
+      borderRadius: isIOS ? 24 : 18,
       backgroundColor: cardBg,
       borderWidth: 1,
       borderColor: cardBorder,
-      padding: 16,
-      ...SOMBRAS.suave,
+      padding: isIOS ? 16 : 12,
     },
     inputDescripcion: {
-      fontSize: 14.5,
+      fontSize: isIOS ? 14.5 : 13,
       color: c.texto,
-      lineHeight: 22,
-      minHeight: 85,
+      lineHeight: isIOS ? 22 : 18,
+      minHeight: isIOS ? 85 : 65,
       textAlignVertical: 'top',
       fontWeight: '500',
     },
@@ -1643,91 +1749,98 @@ function crearEstilos(c: any, esOscuro: boolean) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      paddingHorizontal: 14,
-      paddingVertical: 7,
-      borderRadius: 18,
+      paddingHorizontal: isIOS ? 14 : 10,
+      paddingVertical: isIOS ? 7 : 5,
+      borderRadius: isIOS ? 18 : 14,
       backgroundColor: cardBg,
       borderWidth: 1,
       borderColor: cardBorder,
-      ...SOMBRAS.suave,
     },
-    textoBotonVincular: { fontSize: 13, fontWeight: '700', color: c.texto },
-    textoVacio: { fontSize: 13.5, color: c.textoSuave, fontWeight: '500', paddingVertical: 6 },
+    textoBotonVincular: { fontSize: isIOS ? 13 : 11.5, fontWeight: '700', color: c.texto },
+    textoVacio: { fontSize: isIOS ? 13.5 : 12, color: c.textoSuave, fontWeight: '500', paddingVertical: 6 },
     filaDependencia: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 10,
-      padding: 14,
-      borderRadius: 20,
+      padding: isIOS ? 14 : 10,
+      borderRadius: isIOS ? 20 : 14,
       backgroundColor: cardBg,
       borderWidth: 1,
       borderColor: cardBorder,
-      ...SOMBRAS.suave,
     },
-    dependenciaTitulo: { flex: 1, fontSize: 14, fontWeight: '600', color: c.texto },
-    dependenciaEstado: { fontSize: 11.5, fontWeight: '700', color: c.textoSuave, textTransform: 'capitalize' },
+    dependenciaTitulo: { flex: 1, fontSize: isIOS ? 14 : 12.5, fontWeight: '600', color: c.texto },
+    dependenciaEstado: { fontSize: isIOS ? 11.5 : 10.5, fontWeight: '700', color: c.textoSuave, textTransform: 'capitalize' },
     cajaSelectorDep: {
       backgroundColor: cardBg,
-      padding: 16,
-      borderRadius: 20,
+      padding: isIOS ? 16 : 12,
+      borderRadius: isIOS ? 20 : 14,
       borderWidth: 1,
       borderColor: cardBorder,
       marginTop: 8,
-      ...SOMBRAS.suave,
     },
-    tituloSelectorDep: { fontSize: 13, fontWeight: '700', color: c.textoSuave, marginBottom: 8 },
-    itemOpcionDep: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9 },
-    textoOpcionDep: { flex: 1, fontSize: 13.5, color: c.texto, fontWeight: '500' },
+    tituloSelectorDep: { fontSize: isIOS ? 13 : 11.5, fontWeight: '700', color: c.textoSuave, marginBottom: 8 },
+    itemOpcionDep: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: isIOS ? 9 : 6 },
+    textoOpcionDep: { flex: 1, fontSize: isIOS ? 13.5 : 12, color: c.texto, fontWeight: '500' },
     botonCerrarSelectorDep: {
       alignSelf: 'flex-end',
-      paddingHorizontal: 18,
-      paddingVertical: 8,
+      paddingHorizontal: isIOS ? 18 : 14,
+      paddingVertical: isIOS ? 8 : 6,
       backgroundColor: esOscuro ? '#FFFFFF' : '#202020',
       borderRadius: 16,
       marginTop: 8,
     },
-    textoCerrarSelectorDep: { fontSize: 13, fontWeight: '700', color: esOscuro ? '#0B0C1E' : '#FFFFFF' },
+    textoCerrarSelectorDep: { fontSize: isIOS ? 13 : 11.5, fontWeight: '700', color: esOscuro ? '#0B0C1E' : '#FFFFFF' },
 
     // Subtareas
     resumenSubtareasCard: {
-      padding: 16,
-      borderRadius: 24,
+      padding: isIOS ? 16 : 12,
+      borderRadius: isIOS ? 24 : 18,
       backgroundColor: cardBg,
       borderWidth: 1,
       borderColor: cardBorder,
-      ...SOMBRAS.suave,
     },
-    resumenSubtareasTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-    resumenSubtareasTitulo: { fontSize: 13.5, fontWeight: '700', color: c.texto },
-    resumenSubtareasBadge: { fontSize: 13, fontWeight: '700', color: '#10B981' },
+    resumenSubtareasTop: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: isIOS ? 10 : 8,
+      gap: 8,
+    },
+    resumenSubtareasTitulo: { fontSize: isIOS ? 13.5 : 12.5, fontWeight: '700', color: c.texto, flex: 1 },
+    resumenSubtareasBadgeWrap: {
+      backgroundColor: 'rgba(16,185,129,0.12)',
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 8,
+    },
+    resumenSubtareasBadge: { fontSize: isIOS ? 11.5 : 10.5, fontWeight: '700', color: '#10B981' },
     filaSubtareaItem: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 10,
-      paddingVertical: 10,
+      paddingVertical: isIOS ? 10 : 6,
       paddingHorizontal: 4,
     },
     checkSubtarea: { padding: 4 },
-    textoSubtareaItem: { flex: 1, fontSize: 14.5, color: c.texto, fontWeight: '500' },
+    textoSubtareaItem: { flex: 1, fontSize: isIOS ? 14.5 : 13, color: c.texto, fontWeight: '500' },
     textoSubtareaTachado: { color: c.textoSuave, textDecorationLine: 'line-through' },
     btnBorrarSubtarea: { padding: 6 },
-    filaAgregarInput: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
+    filaAgregarInput: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: isIOS ? 10 : 6 },
     inputNuevaEntrada: {
       flex: 1,
-      borderRadius: 22,
+      borderRadius: isIOS ? 22 : 16,
       backgroundColor: cardBg,
       borderWidth: 1,
       borderColor: cardBorder,
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      fontSize: 14.5,
+      paddingHorizontal: isIOS ? 16 : 12,
+      paddingVertical: isIOS ? 12 : 8,
+      fontSize: isIOS ? 14.5 : 13,
       color: c.texto,
-      ...SOMBRAS.suave,
     },
     botonAgregarMini: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
+      width: isIOS ? 44 : 36,
+      height: isIOS ? 44 : 36,
+      borderRadius: isIOS ? 22 : 18,
       backgroundColor: esOscuro ? '#FFFFFF' : '#202020',
       alignItems: 'center',
       justifyContent: 'center',
@@ -1738,128 +1851,125 @@ function crearEstilos(c: any, esOscuro: boolean) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      padding: 16,
-      borderRadius: 22,
+      padding: isIOS ? 16 : 12,
+      borderRadius: isIOS ? 22 : 16,
       backgroundColor: cardBg,
       borderWidth: 1,
       borderColor: cardBorder,
-      ...SOMBRAS.suave,
     },
     adjuntarPrincipalInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    textoBotonAdjuntar: { fontSize: 14.5, fontWeight: '700', color: c.texto },
+    textoBotonAdjuntar: { fontSize: isIOS ? 14.5 : 13, fontWeight: '700', color: c.texto },
     menuOpcionesAdjunto: {
       backgroundColor: cardBg,
-      borderRadius: 20,
+      borderRadius: isIOS ? 20 : 16,
       borderWidth: 1,
       borderColor: cardBorder,
       padding: 8,
       gap: 6,
-      ...SOMBRAS.suave,
     },
     opcionAdjuntoItem: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
-      paddingVertical: 12,
-      paddingHorizontal: 14,
+      paddingVertical: isIOS ? 12 : 8,
+      paddingHorizontal: isIOS ? 14 : 10,
       borderRadius: 14,
     },
-    textoOpcionAdjunto: { fontSize: 14, fontWeight: '600', color: c.texto },
+    textoOpcionAdjunto: { fontSize: isIOS ? 14 : 12.5, fontWeight: '600', color: c.texto },
     bannerSubiendo: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 10,
-      padding: 14,
-      borderRadius: 18,
+      padding: isIOS ? 14 : 10,
+      borderRadius: isIOS ? 18 : 14,
       backgroundColor: surfaceMuted,
     },
-    textoSubiendo: { fontSize: 13, color: c.textoSuave, fontWeight: '600' },
+    textoSubiendo: { fontSize: isIOS ? 13 : 11.5, color: c.textoSuave, fontWeight: '600' },
     tarjetaAdjuntoItem: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 10,
-      borderRadius: 20,
+      borderRadius: isIOS ? 20 : 16,
       backgroundColor: cardBg,
       borderWidth: 1,
       borderColor: cardBorder,
-      padding: 14,
-      ...SOMBRAS.suave,
+      padding: isIOS ? 14 : 10,
     },
     adjuntoContenido: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
     adjuntoIconWrap: {
-      width: 42,
-      height: 42,
-      borderRadius: 21,
+      width: isIOS ? 42 : 36,
+      height: isIOS ? 42 : 36,
+      borderRadius: isIOS ? 21 : 18,
       backgroundColor: surfaceMuted,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    adjuntoTitulo: { fontSize: 14, fontWeight: '700', color: c.texto },
-    adjuntoDetalle: { fontSize: 12, color: c.textoSuave, marginTop: 2, fontWeight: '500' },
+    adjuntoTitulo: { fontSize: isIOS ? 14 : 12.5, fontWeight: '700', color: c.texto },
+    adjuntoDetalle: { fontSize: isIOS ? 12 : 10.5, color: c.textoSuave, marginTop: 2, fontWeight: '500' },
     btnBorrarAdjunto: { padding: 6 },
 
     // Comentarios
     comentarioCard: {
-      borderRadius: 20,
+      borderRadius: isIOS ? 20 : 16,
       backgroundColor: cardBg,
       borderWidth: 1,
       borderColor: cardBorder,
-      padding: 16,
-      ...SOMBRAS.suave,
+      padding: isIOS ? 16 : 12,
     },
     comentarioHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-    comentarioAutor: { fontSize: 13.5, fontWeight: '700', color: c.texto },
-    comentarioFecha: { fontSize: 11.5, color: c.textoSuave },
-    comentarioCuerpo: { fontSize: 14, color: c.texto, lineHeight: 21, fontWeight: '500' },
+    comentarioAutor: { fontSize: isIOS ? 13.5 : 12, fontWeight: '700', color: c.texto },
+    comentarioFecha: { fontSize: isIOS ? 11.5 : 10.5, color: c.textoSuave },
+    comentarioCuerpo: { fontSize: isIOS ? 14 : 12.5, color: c.texto, lineHeight: isIOS ? 21 : 18, fontWeight: '500' },
     inputEdicionComentario: {
-      fontSize: 14,
+      fontSize: isIOS ? 14 : 12.5,
       color: c.texto,
       backgroundColor: 'transparent',
-      minHeight: 50,
+      minHeight: isIOS ? 50 : 40,
     },
     filaAccionesEdicion: { flexDirection: 'row', gap: 14, marginTop: 8, justifyContent: 'flex-end' },
-    textoCancelarEdicion: { fontSize: 12.5, fontWeight: '600', color: c.textoSuave },
-    textoGuardarEdicion: { fontSize: 12.5, fontWeight: '700', color: c.texto },
+    textoCancelarEdicion: { fontSize: isIOS ? 12.5 : 11, fontWeight: '600', color: c.textoSuave },
+    textoGuardarEdicion: { fontSize: isIOS ? 12.5 : 11, fontWeight: '700', color: c.texto },
     filaAccionesComentario: { flexDirection: 'row', gap: 14, marginTop: 8, justifyContent: 'flex-end' },
-    textoAccionComentario: { fontSize: 12.5, fontWeight: '700', color: c.textoSuave },
+    textoAccionComentario: { fontSize: isIOS ? 12.5 : 11, fontWeight: '700', color: c.textoSuave },
 
     // Footer
     footer: {
       flexDirection: 'row',
-      gap: 12,
-      paddingTop: 14,
-      paddingBottom: 4,
+      gap: 10,
+      paddingTop: isIOS ? 12 : 8,
+      paddingBottom: isIOS ? 4 : 2,
       borderTopWidth: 1,
       borderTopColor: esOscuro ? 'rgba(255,255,255,0.08)' : 'rgba(32,28,25,0.06)',
     },
     botonConsultarIA: {
       flex: 1,
-      minHeight: 52,
-      borderRadius: 26,
+      minHeight: isIOS ? 48 : 42,
+      borderRadius: isIOS ? 24 : 20,
       backgroundColor: cardBg,
       borderWidth: 1,
       borderColor: cardBorder,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 8,
-      ...SOMBRAS.suave,
+      gap: 6,
+      paddingHorizontal: 8,
     },
-    textoBotonConsultarIA: { fontSize: 15, fontWeight: '700', color: c.texto },
+    textoBotonConsultarIA: { fontSize: isIOS ? 14 : 12.5, fontWeight: '700', color: c.texto, textAlign: 'center' },
     botonGuardarCerrar: {
       flex: 1,
-      minHeight: 52,
-      borderRadius: 26,
+      minHeight: isIOS ? 48 : 42,
+      borderRadius: isIOS ? 24 : 20,
       backgroundColor: esOscuro ? '#FFFFFF' : '#202020',
       alignItems: 'center',
       justifyContent: 'center',
-      ...SOMBRAS.suave,
+      paddingHorizontal: 8,
     },
     textoBotonGuardarCerrar: {
-      fontSize: 15.5,
+      fontSize: isIOS ? 14 : 12.5,
       fontWeight: '700',
       color: esOscuro ? '#0B0C1E' : '#FFFFFF',
       letterSpacing: -0.1,
+      textAlign: 'center',
     },
   });
 }

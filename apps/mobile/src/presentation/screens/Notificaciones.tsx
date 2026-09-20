@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FlatList, Image, StatusBar, StyleSheet, TouchableOpacity, View, ScrollView } from 'react-native';
+import { FlatList, Image, Platform, StatusBar, StyleSheet, TouchableOpacity, View, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,6 +10,7 @@ import { SOMBRAS } from '@/shared/constants/diseno';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
 import { EmptyState, ModalShell } from '@/presentation/components/ui';
 import { useContextoUsuario } from '@/presentation/context/ContextoUsuario';
+import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import { useUserTabBottomPadding } from '@/presentation/hooks/useUserTabBottomPadding';
 import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 import { translateWithApi } from '@/shared/i18n/translatorApi';
@@ -129,7 +130,21 @@ const grupoFecha = (fecha: string) => {
   return 'Anteriores';
 };
 
-function AvatarActividad({ notification, small = false }: { notification: Notification; small?: boolean }) {
+type PulseColors = ReturnType<typeof useTemaMobile>['colores']['pulso'];
+
+function AvatarActividad({
+  notification,
+  small = false,
+  styles,
+  pulse,
+  esOscuro,
+}: {
+  notification: Notification;
+  small?: boolean;
+  styles: any;
+  pulse: PulseColors;
+  esOscuro: boolean;
+}) {
   const actor = actorDesdeMensaje(notification.mensaje);
   const tipo = normalizarTipo(notification.tipo);
   const tamano = small ? 32 : 42;
@@ -139,7 +154,7 @@ function AvatarActividad({ notification, small = false }: { notification: Notifi
       <View style={[styles.avatar, { width: tamano, height: tamano, borderRadius: tamano / 2 }]}>
         <Text style={[styles.avatarInitial, small && styles.avatarInitialSmall]}>{iniciales(actor)}</Text>
         <View style={styles.avatarBadge}>
-          <MaterialIcons name={iconoTipo(tipo)} size={small ? 8 : 10} color="#FFFFFF" />
+          <MaterialIcons name={iconoTipo(tipo)} size={small ? 8 : 10} color={pulse.textInverse} />
         </View>
       </View>
     );
@@ -147,12 +162,15 @@ function AvatarActividad({ notification, small = false }: { notification: Notifi
 
   return (
     <View style={[styles.iconAvatar, { width: tamano, height: tamano, borderRadius: tamano / 2 }]}>
-      <MaterialIcons name={iconoTipo(tipo)} size={small ? 16 : 20} color="#202020" />
+      <MaterialIcons name={iconoTipo(tipo)} size={small ? 16 : 20} color={pulse.icon} />
     </View>
   );
 }
 
 export default function Notificaciones({ navigation }: Props) {
+  const { colores, esOscuro } = useTemaMobile();
+  const pulse = colores.pulso;
+  const styles = useMemo(() => createNotificationStyles(pulse, esOscuro), [pulse, esOscuro]);
   const { t, i18n } = useTranslation();
   const { notificaciones, leerNotificacion, perfil } = useContextoUsuario();
   const bottomPadding = useUserTabBottomPadding(116);
@@ -331,7 +349,7 @@ export default function Notificaciones({ navigation }: Props) {
             scaleTo={0.98}
             onPress={() => setGruposAbiertos((actual) => ({ ...actual, [item.group.id]: !abierto }))}
           >
-            <AvatarActividad notification={principal} />
+            <AvatarActividad notification={principal} styles={styles} pulse={pulse} esOscuro={esOscuro} />
             <View style={styles.filaTexto}>
               <View style={styles.filaTituloFila}>
                 <Text style={styles.filaTitulo} numberOfLines={1}>
@@ -346,7 +364,7 @@ export default function Notificaciones({ navigation }: Props) {
               </Text>
             </View>
             <View style={styles.botonExpandir}>
-              <Feather name={abierto ? 'chevron-up' : 'chevron-down'} size={17} color="#57534E" />
+              <Feather name={abierto ? 'chevron-up' : 'chevron-down'} size={17} color={pulse.textSecondary} />
             </View>
           </BotonAnimado>
         </Animated.View>
@@ -371,7 +389,7 @@ export default function Notificaciones({ navigation }: Props) {
           onPress={() => void abrirDetalleNotificacion(notification)}
         >
           {!notification.leida && <View style={styles.barraAcentoNoLeida} />}
-          <AvatarActividad notification={notification} />
+          <AvatarActividad notification={notification} styles={styles} pulse={pulse} esOscuro={esOscuro} />
           <View style={styles.filaTexto}>
             <View style={styles.filaTituloFila}>
               <Text style={[styles.filaTitulo, !notification.leida && styles.filaTituloNoLeida]} numberOfLines={1}>
@@ -389,7 +407,7 @@ export default function Notificaciones({ navigation }: Props) {
             </View>
           </View>
           <View style={styles.filaFin}>
-            <Feather name="chevron-right" size={17} color="#78716C" />
+            <Feather name="chevron-right" size={17} color={pulse.textTertiary} />
           </View>
         </BotonAnimado>
       </Animated.View>
@@ -402,47 +420,49 @@ export default function Notificaciones({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle={esOscuro ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
       <LinearGradient
         pointerEvents="none"
-        colors={['#FBEDE8', '#F6ECF6', '#FFFDFC']}
+        colors={pulse.ambient}
         locations={[0, 0.28, 0.75]}
         style={StyleSheet.absoluteFill}
       />
 
       {/* Barra Superior */}
-      <View style={styles.topBar}>
-        <BotonAnimado
-          style={styles.backButton}
-          scaleTo={0.96}
-          onPress={manejarRegresar}
-          accessibilityLabel="Regresar"
-        >
-          <Feather name="arrow-left" size={21} color="#202020" />
-        </BotonAnimado>
-
-        <Text style={styles.topBarLabel}>
-          {t('notificaciones.title', { defaultValue: 'Notificaciones' })}
-        </Text>
-
-        <View style={styles.headerActions}>
+      <View style={styles.topBarContainer}>
+        <View style={styles.topBar}>
           <BotonAnimado
-            style={styles.addButton}
+            style={styles.backButton}
             scaleTo={0.96}
-            onPress={() => void marcarTodasComoLeidas()}
-            accessibilityLabel="Marcar todas como leídas"
+            onPress={manejarRegresar}
+            accessibilityLabel="Regresar"
           >
-            <Feather name="check" size={21} color="#FFFFFF" />
+            <Feather name="arrow-left" size={Platform.OS === 'ios' ? 21 : 18} color={pulse.icon} />
           </BotonAnimado>
 
-          <BotonAnimado
-            style={styles.bellButton}
-            scaleTo={0.96}
-            onPress={() => navigation.navigate('BusquedaGlobal')}
-            accessibilityLabel="Buscar notificaciones"
-          >
-            <Feather name="search" size={21} color="#202020" />
-          </BotonAnimado>
+          <Text style={styles.topBarLabel}>
+            {t('notificaciones.title', { defaultValue: 'Notificaciones' })}
+          </Text>
+
+          <View style={styles.headerActions}>
+            <BotonAnimado
+              style={styles.addButton}
+              scaleTo={0.96}
+              onPress={() => void marcarTodasComoLeidas()}
+              accessibilityLabel="Marcar todas como leídas"
+            >
+              <Feather name="check" size={Platform.OS === 'ios' ? 21 : 18} color={pulse.textInverse} />
+            </BotonAnimado>
+
+            <BotonAnimado
+              style={styles.bellButton}
+              scaleTo={0.96}
+              onPress={() => navigation.navigate('BusquedaGlobal')}
+              accessibilityLabel="Buscar notificaciones"
+            >
+              <Feather name="search" size={Platform.OS === 'ios' ? 21 : 18} color={pulse.icon} />
+            </BotonAnimado>
+          </View>
         </View>
       </View>
 
@@ -485,7 +505,7 @@ export default function Notificaciones({ navigation }: Props) {
                     disabled={marcandoTodas}
                     activeOpacity={0.7}
                   >
-                    <Feather name="check" size={12} color="#1C1917" />
+                    <Feather name="check" size={12} color={pulse.text} />
                     <Text style={styles.botonMarcarSimpleTexto}>
                       {marcandoTodas ? 'Marcando...' : 'Marcar todo'}
                     </Text>
@@ -576,7 +596,7 @@ export default function Notificaciones({ navigation }: Props) {
                       <MaterialIcons
                         name={iconoTipo(normalizarTipo(destacada.tipo))}
                         size={13}
-                        color="#1C1917"
+                        color={pulse.icon}
                       />
                       <Text style={styles.destacadaTipoTexto}>
                         {etiquetaTipo(normalizarTipo(destacada.tipo))}
@@ -594,7 +614,7 @@ export default function Notificaciones({ navigation }: Props) {
 
                   <View style={styles.destacadaPie}>
                     <View style={styles.destacadaAutorWrap}>
-                      <AvatarActividad notification={destacada} small />
+                      <AvatarActividad notification={destacada} small styles={styles} pulse={pulse} esOscuro={esOscuro} />
                       <View style={styles.destacadaAutorInfo}>
                         <Text style={styles.destacadaAutorNombre}>
                           {actorDesdeMensaje(destacada.mensaje) || 'Sistema Nexxus'}
@@ -607,7 +627,7 @@ export default function Notificaciones({ navigation }: Props) {
 
                     <View style={styles.destacadaBotonAbrir}>
                       <Text style={styles.destacadaBotonAbrirTexto}>Detalle</Text>
-                      <Feather name="arrow-up-right" size={14} color="#FFFFFF" />
+                      <Feather name="arrow-up-right" size={14} color={pulse.textInverse} />
                     </View>
                   </View>
                 </BotonAnimado>
@@ -646,7 +666,7 @@ export default function Notificaciones({ navigation }: Props) {
                 <MaterialIcons
                   name={iconoTipo(notificationSeleccionadaTipo)}
                   size={15}
-                  color="#1C1917"
+                  color={pulse.icon}
                 />
                 <Text style={styles.modalTipoTexto}>
                   {etiquetaTipo(notificationSeleccionadaTipo)}
@@ -664,14 +684,14 @@ export default function Notificaciones({ navigation }: Props) {
                   onPress={() => setNotificacionSeleccionada(null)}
                   activeOpacity={0.7}
                 >
-                  <Feather name="x" size={17} color="#202020" />
+                  <Feather name="x" size={17} color={pulse.icon} />
                 </TouchableOpacity>
               </View>
             </View>
 
             {/* Tarjeta del Emisor */}
             <View style={styles.modalEmisorCard}>
-              <AvatarActividad notification={notificacionSeleccionada} />
+              <AvatarActividad notification={notificacionSeleccionada} styles={styles} pulse={pulse} esOscuro={esOscuro} />
               <View style={styles.modalEmisorInfo}>
                 <Text style={styles.modalEmisorNombre}>
                   {actorModal || 'Sistema Nexxus'}
@@ -714,7 +734,7 @@ export default function Notificaciones({ navigation }: Props) {
                         : 'external-link'
                     }
                     size={17}
-                    color="#FFFFFF"
+                    color={pulse.textInverse}
                   />
                   <Text style={styles.modalBotonPrimarioTexto}>
                     {notificationSeleccionadaTipo === 'tarea'
@@ -741,692 +761,704 @@ export default function Notificaciones({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#FFFDFC' },
+function createNotificationStyles(pulse: PulseColors, esOscuro: boolean) {
+  const isIOS = Platform.OS === 'ios';
+  return StyleSheet.create({
+    screen: { flex: 1, backgroundColor: pulse.background },
 
-  /* Top Bar */
-  topBar: {
-    height: 52,
-    marginHorizontal: 21,
-    marginTop: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backButton: {
-    width: 47,
-    height: 47,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...SOMBRAS.suave,
-  },
-  topBarLabel: {
-    color: '#292522',
-    fontSize: 17,
-    fontWeight: '600',
-    letterSpacing: -0.5,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  addButton: {
-    width: 47,
-    height: 47,
-    borderRadius: 24,
-    backgroundColor: '#202020',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bellButton: {
-    width: 47,
-    height: 47,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...SOMBRAS.suave,
-  },
+    /* Top Bar */
+    topBarContainer: {
+      paddingHorizontal: 21,
+      paddingTop: isIOS ? 6 : 4,
+      paddingBottom: 8,
+      zIndex: 10,
+      backgroundColor: 'transparent',
+    },
+    topBar: {
+      height: isIOS ? 54 : 48,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    backButton: {
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: pulse.surfaceElevated,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...(esOscuro ? {} : SOMBRAS.suave),
+    },
+    topBarLabel: {
+      color: pulse.text,
+      fontSize: isIOS ? 17 : 15,
+      fontWeight: '600',
+      letterSpacing: isIOS ? -0.5 : -0.3,
+    },
+    headerActions: {
+      flexDirection: 'row',
+      gap: isIOS ? 10 : 8,
+    },
+    addButton: {
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: pulse.inverse,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    bellButton: {
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: pulse.surfaceElevated,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...(esOscuro ? {} : SOMBRAS.suave),
+    },
 
-  content: {
-    paddingHorizontal: 21,
-    paddingTop: 0,
-    paddingBottom: 116,
-  },
+    content: {
+      paddingHorizontal: 21,
+      paddingTop: isIOS ? 12 : 8,
+      paddingBottom: 116,
+    },
 
-  /* Hero Section */
-  hero: {
-    marginTop: 22,
-    marginBottom: 20,
-  },
-  heroTitulo: {
-    color: '#1F1D1C',
-    fontSize: 34,
-    lineHeight: 38,
-    fontWeight: '600',
-    letterSpacing: -1.4,
-  },
-  heroSubtitulo: {
-    color: '#78716C',
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 6,
-    maxWidth: 300,
-  },
+    /* Hero Section */
+    hero: {
+      marginTop: isIOS ? 22 : 16,
+      marginBottom: isIOS ? 20 : 16,
+    },
+    heroTitulo: {
+      color: pulse.text,
+      fontSize: isIOS ? 34 : 27,
+      lineHeight: isIOS ? 38 : 31,
+      fontWeight: '600',
+      letterSpacing: isIOS ? -1.4 : -0.9,
+    },
+    heroSubtitulo: {
+      color: pulse.textSecondary,
+      fontSize: 14,
+      lineHeight: 20,
+      marginTop: 6,
+      maxWidth: 300,
+    },
 
-  /* Resumen Minimalista y Ligero */
-  resumenMinimalista: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(32, 28, 25, 0.06)',
-    ...SOMBRAS.suave,
-  },
-  resumenFilaSuperior: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(32, 28, 25, 0.05)',
-  },
-  resumenStatusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-  },
-  statusDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-  },
-  statusDotPending: {
-    backgroundColor: '#1C1917',
-  },
-  statusDotClear: {
-    backgroundColor: '#16A34A',
-  },
-  statusPillTexto: {
-    color: '#1C1917',
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-  },
-  botonMarcarSimple: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: 10,
-    backgroundColor: '#F5F4F2',
-  },
-  botonMarcarSimpleTexto: {
-    color: '#1C1917',
-    fontSize: 11.5,
-    fontWeight: '700',
-  },
-  resumenContadoresFila: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingTop: 10,
-  },
-  resumenItemMetrica: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  metricaNumero: {
-    color: '#1C1917',
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: -0.3,
-  },
-  metricaNumeroActivo: {
-    color: '#1C1917',
-  },
-  metricaLabel: {
-    color: '#78716C',
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  metricaSeparador: {
-    width: 1,
-    height: 20,
-    backgroundColor: 'rgba(32, 28, 25, 0.06)',
-  },
+    /* Resumen Minimalista y Ligero */
+    resumenMinimalista: {
+      backgroundColor: pulse.surfaceElevated,
+      borderRadius: 20,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      ...(esOscuro ? {} : SOMBRAS.suave),
+    },
+    resumenFilaSuperior: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingBottom: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: pulse.border,
+    },
+    resumenStatusPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+    },
+    statusDot: {
+      width: 7,
+      height: 7,
+      borderRadius: 3.5,
+    },
+    statusDotPending: {
+      backgroundColor: esOscuro ? pulse.inverse : '#1C1917',
+    },
+    statusDotClear: {
+      backgroundColor: '#16A34A',
+    },
+    statusPillTexto: {
+      color: pulse.text,
+      fontSize: 13,
+      fontWeight: '700',
+      letterSpacing: -0.2,
+    },
+    botonMarcarSimple: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 9,
+      paddingVertical: 4,
+      borderRadius: 10,
+      backgroundColor: pulse.pill,
+    },
+    botonMarcarSimpleTexto: {
+      color: pulse.text,
+      fontSize: 11.5,
+      fontWeight: '700',
+    },
+    resumenContadoresFila: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-around',
+      paddingTop: 10,
+    },
+    resumenItemMetrica: {
+      alignItems: 'center',
+      flex: 1,
+    },
+    metricaNumero: {
+      color: pulse.text,
+      fontSize: 18,
+      fontWeight: '800',
+      letterSpacing: -0.3,
+    },
+    metricaNumeroActivo: {
+      color: pulse.text,
+    },
+    metricaLabel: {
+      color: pulse.textSecondary,
+      fontSize: 11,
+      fontWeight: '600',
+      marginTop: 2,
+    },
+    metricaSeparador: {
+      width: 1,
+      height: 20,
+      backgroundColor: pulse.border,
+    },
 
-  /* Actividad Cabecera */
-  actividadCabecera: {
-    marginTop: 22,
-    marginBottom: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  actividadTituloWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  actividadTitulo: {
-    color: '#1C1917',
-    fontSize: 20,
-    fontWeight: '700',
-    letterSpacing: -0.5,
-  },
-  actividadBadgeCount: {
-    backgroundColor: 'rgba(32, 28, 25, 0.06)',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  actividadBadgeCountTexto: {
-    color: '#57534E',
-    fontSize: 11,
-    fontWeight: '700',
-  },
+    /* Actividad Cabecera */
+    actividadCabecera: {
+      marginTop: 22,
+      marginBottom: 8,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    actividadTituloWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    actividadTitulo: {
+      color: pulse.text,
+      fontSize: 20,
+      fontWeight: '700',
+      letterSpacing: -0.5,
+    },
+    actividadBadgeCount: {
+      backgroundColor: pulse.pill,
+      borderRadius: 12,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+    },
+    actividadBadgeCountTexto: {
+      color: pulse.textSecondary,
+      fontSize: 11,
+      fontWeight: '700',
+    },
 
-  /* Filtros Planos (Sin Sombras) */
-  filtrosContenedor: {
-    gap: 8,
-    paddingVertical: 6,
-    paddingRight: 10,
-  },
-  filtroPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    minHeight: 35,
-    borderRadius: 18,
-    paddingHorizontal: 13,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: 'rgba(32, 28, 25, 0.08)',
-  },
-  filtroPillActivo: {
-    backgroundColor: '#1C1917',
-    borderColor: '#1C1917',
-  },
-  filtroPillTexto: {
-    color: '#57534E',
-    fontSize: 12.5,
-    fontWeight: '600',
-  },
-  filtroPillTextoActivo: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  filtroBadge: {
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    minWidth: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  filtroBadgeInactivo: {
-    backgroundColor: '#F5F4F2',
-  },
-  filtroBadgeActivo: {
-    backgroundColor: 'rgba(255, 255, 255, 0.22)',
-  },
-  filtroBadgeTexto: {
-    color: '#78716C',
-    fontSize: 10.5,
-    fontWeight: '700',
-  },
-  filtroBadgeTextoActivo: {
-    color: '#FFFFFF',
-  },
+    /* Filtros Planos (Sin Sombras) */
+    filtrosContenedor: {
+      gap: 8,
+      paddingVertical: 6,
+      paddingRight: 10,
+    },
+    filtroPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      minHeight: 35,
+      borderRadius: 18,
+      paddingHorizontal: 13,
+      backgroundColor: pulse.surfaceElevated,
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    filtroPillActivo: {
+      backgroundColor: pulse.chipActive,
+      borderColor: pulse.chipActive,
+    },
+    filtroPillTexto: {
+      color: pulse.textSecondary,
+      fontSize: 12.5,
+      fontWeight: '600',
+    },
+    filtroPillTextoActivo: {
+      color: pulse.chipTextActive,
+      fontWeight: '700',
+    },
+    filtroBadge: {
+      borderRadius: 10,
+      paddingHorizontal: 6,
+      paddingVertical: 1,
+      minWidth: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    filtroBadgeInactivo: {
+      backgroundColor: pulse.pill,
+    },
+    filtroBadgeActivo: {
+      backgroundColor: pulse.chipCountActive,
+    },
+    filtroBadgeTexto: {
+      color: pulse.textTertiary,
+      fontSize: 10.5,
+      fontWeight: '700',
+    },
+    filtroBadgeTextoActivo: {
+      color: pulse.chipTextActive,
+    },
 
-  /* Destacada "Lo importante" */
-  destacadaSeccion: {
-    marginTop: 12,
-    marginBottom: 14,
-  },
-  destacadaCabecera: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  destacadaEtiqueta: {
-    color: '#44403C',
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-  },
-  destacadaBadgePendiente: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#F5F4F2',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(32, 28, 25, 0.08)',
-  },
-  puntoDestacada: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#1C1917',
-  },
-  destacadaBadgePendienteTexto: {
-    color: '#1C1917',
-    fontSize: 10.5,
-    fontWeight: '700',
-  },
-  destacadaCard: {
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(32, 28, 25, 0.06)',
-    ...SOMBRAS.suave,
-  },
-  destacadaTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  destacadaTipoPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    backgroundColor: '#F5F4F2',
-    borderWidth: 1,
-    borderColor: 'rgba(32, 28, 25, 0.06)',
-  },
-  destacadaTipoTexto: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#1C1917',
-  },
-  destacadaHora: {
-    color: '#A8A29E',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  destacadaTitulo: {
-    color: '#1C1917',
-    fontSize: 17,
-    lineHeight: 22,
-    fontWeight: '700',
-    letterSpacing: -0.4,
-    marginTop: 10,
-  },
-  destacadaMensaje: {
-    color: '#57534E',
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 4,
-  },
-  destacadaPie: {
-    marginTop: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(32, 28, 25, 0.05)',
-  },
-  destacadaAutorWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flex: 1,
-  },
-  destacadaAutorInfo: {
-    flex: 1,
-  },
-  destacadaAutorNombre: {
-    color: '#202020',
-    fontSize: 12.5,
-    fontWeight: '700',
-  },
-  destacadaFechaLarga: {
-    color: '#A8A29E',
-    fontSize: 11,
-    fontWeight: '500',
-    marginTop: 1,
-  },
-  destacadaBotonAbrir: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#1C1917',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 14,
-  },
-  destacadaBotonAbrirTexto: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
+    /* Destacada "Lo importante" */
+    destacadaSeccion: {
+      marginTop: 12,
+      marginBottom: 14,
+    },
+    destacadaCabecera: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 8,
+    },
+    destacadaEtiqueta: {
+      color: pulse.text,
+      fontSize: 13,
+      fontWeight: '700',
+      letterSpacing: -0.2,
+    },
+    destacadaBadgePendiente: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      backgroundColor: pulse.pill,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    puntoDestacada: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: esOscuro ? '#F2AD84' : '#1C1917',
+    },
+    destacadaBadgePendienteTexto: {
+      color: pulse.text,
+      fontSize: 10.5,
+      fontWeight: '700',
+    },
+    destacadaCard: {
+      borderRadius: 20,
+      backgroundColor: pulse.surface,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      ...(esOscuro ? {} : SOMBRAS.suave),
+    },
+    destacadaTopRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    destacadaTipoPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 8,
+      backgroundColor: pulse.pill,
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    destacadaTipoTexto: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: pulse.text,
+    },
+    destacadaHora: {
+      color: pulse.textTertiary,
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    destacadaTitulo: {
+      color: pulse.text,
+      fontSize: 17,
+      lineHeight: 22,
+      fontWeight: '700',
+      letterSpacing: -0.4,
+      marginTop: 10,
+    },
+    destacadaMensaje: {
+      color: pulse.textSecondary,
+      fontSize: 13,
+      lineHeight: 18,
+      marginTop: 4,
+    },
+    destacadaPie: {
+      marginTop: 14,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: pulse.border,
+    },
+    destacadaAutorWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      flex: 1,
+    },
+    destacadaAutorInfo: {
+      flex: 1,
+    },
+    destacadaAutorNombre: {
+      color: pulse.text,
+      fontSize: 12.5,
+      fontWeight: '700',
+    },
+    destacadaFechaLarga: {
+      color: pulse.textTertiary,
+      fontSize: 11,
+      fontWeight: '500',
+      marginTop: 1,
+    },
+    destacadaBotonAbrir: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: pulse.inverse,
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: 14,
+    },
+    destacadaBotonAbrirTexto: {
+      color: pulse.textInverse,
+      fontSize: 12,
+      fontWeight: '700',
+    },
 
-  /* Secciones por Fecha */
-  seccionCabecera: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 16,
-    marginBottom: 10,
-  },
-  fechaGrupo: {
-    color: '#57534E',
-    fontSize: 13.5,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-  },
-  seccionLinea: {
-    flex: 1,
-    height: 1,
-    backgroundColor: 'rgba(32, 28, 25, 0.06)',
-  },
+    /* Secciones por Fecha */
+    seccionCabecera: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      marginTop: 16,
+      marginBottom: 10,
+    },
+    fechaGrupo: {
+      color: pulse.textSecondary,
+      fontSize: 13.5,
+      fontWeight: '700',
+      letterSpacing: -0.2,
+    },
+    seccionLinea: {
+      flex: 1,
+      height: 1,
+      backgroundColor: pulse.border,
+    },
 
-  /* Tarjetas de Notificación */
-  tarjetaNotificacion: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 13,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(32, 28, 25, 0.05)',
-    ...SOMBRAS.suave,
-    overflow: 'hidden',
-  },
-  tarjetaNoLeida: {
-    backgroundColor: '#FFFFFF',
-    borderColor: 'rgba(32, 28, 25, 0.1)',
-  },
-  tarjetaLeida: {
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
-    opacity: 0.85,
-  },
-  tarjetaGrupo: {
-    backgroundColor: '#F8F6F4',
-    borderColor: 'rgba(32, 28, 25, 0.08)',
-  },
-  barraAcentoNoLeida: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 3.5,
-    backgroundColor: '#1C1917',
-  },
-  filaTexto: {
-    flex: 1,
-    minWidth: 0,
-  },
-  filaTituloFila: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  filaTitulo: {
-    color: '#44403C',
-    fontSize: 13.5,
-    fontWeight: '600',
-    letterSpacing: -0.2,
-    flexShrink: 1,
-  },
-  filaTituloNoLeida: {
-    color: '#1C1917',
-    fontWeight: '700',
-  },
-  puntoNoLeida: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#1C1917',
-  },
-  filaMensaje: {
-    color: '#78716C',
-    fontSize: 12,
-    lineHeight: 16,
-    marginTop: 2,
-  },
-  filaMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 6,
-  },
-  etiquetaMini: {
-    paddingHorizontal: 6,
-    paddingVertical: 1.5,
-    borderRadius: 6,
-    backgroundColor: '#F5F4F2',
-    borderWidth: 1,
-    borderColor: 'rgba(32, 28, 25, 0.06)',
-  },
-  etiquetaMiniTexto: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#383533',
-  },
-  metaSeparador: {
-    color: '#D6D3D1',
-    fontSize: 10,
-  },
-  horaRelativa: {
-    color: '#A8A29E',
-    fontSize: 10.5,
-    fontWeight: '500',
-  },
-  filaFin: {
-    paddingLeft: 4,
-  },
-  botonExpandir: {
-    padding: 4,
-  },
-  pillContadorGrupo: {
-    paddingHorizontal: 6,
-    paddingVertical: 1.5,
-    borderRadius: 6,
-    backgroundColor: '#EAE7E2',
-  },
-  pillContadorTexto: {
-    fontSize: 10.5,
-    fontWeight: '800',
-    color: '#202020',
-  },
+    /* Tarjetas de Notificación */
+    tarjetaNotificacion: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: pulse.surface,
+      borderRadius: 16,
+      padding: 13,
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      ...(esOscuro ? {} : SOMBRAS.suave),
+      overflow: 'hidden',
+    },
+    tarjetaNoLeida: {
+      backgroundColor: esOscuro ? pulse.surfaceElevated : '#FFFFFF',
+      borderColor: esOscuro ? pulse.borderStrong : 'rgba(32, 28, 25, 0.1)',
+    },
+    tarjetaLeida: {
+      backgroundColor: pulse.surface,
+      opacity: esOscuro ? 0.9 : 0.85,
+    },
+    tarjetaGrupo: {
+      backgroundColor: pulse.surfaceElevated,
+      borderColor: pulse.border,
+    },
+    barraAcentoNoLeida: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      width: 3.5,
+      backgroundColor: esOscuro ? '#F2AD84' : '#1C1917',
+    },
+    filaTexto: {
+      flex: 1,
+      minWidth: 0,
+    },
+    filaTituloFila: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    filaTitulo: {
+      color: pulse.textSecondary,
+      fontSize: 13.5,
+      fontWeight: '600',
+      letterSpacing: -0.2,
+      flexShrink: 1,
+    },
+    filaTituloNoLeida: {
+      color: pulse.text,
+      fontWeight: '700',
+    },
+    puntoNoLeida: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: esOscuro ? '#F2AD84' : '#1C1917',
+    },
+    filaMensaje: {
+      color: pulse.textSecondary,
+      fontSize: 12,
+      lineHeight: 16,
+      marginTop: 2,
+    },
+    filaMeta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginTop: 6,
+    },
+    etiquetaMini: {
+      paddingHorizontal: 6,
+      paddingVertical: 1.5,
+      borderRadius: 6,
+      backgroundColor: pulse.pill,
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    etiquetaMiniTexto: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: pulse.textSecondary,
+    },
+    metaSeparador: {
+      color: pulse.textTertiary,
+      fontSize: 10,
+    },
+    horaRelativa: {
+      color: pulse.textTertiary,
+      fontSize: 10.5,
+      fontWeight: '500',
+    },
+    filaFin: {
+      paddingLeft: 4,
+    },
+    botonExpandir: {
+      padding: 4,
+    },
+    pillContadorGrupo: {
+      paddingHorizontal: 6,
+      paddingVertical: 1.5,
+      borderRadius: 6,
+      backgroundColor: pulse.pill,
+    },
+    pillContadorTexto: {
+      fontSize: 10.5,
+      fontWeight: '800',
+      color: pulse.text,
+    },
 
-  /* Avatares Monocromáticos y Neutros */
-  avatar: {
-    backgroundColor: '#EAE6E1',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'visible',
-    borderWidth: 1,
-    borderColor: 'rgba(32, 28, 25, 0.08)',
-  },
-  avatarInitial: {
-    color: '#202020',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  avatarInitialSmall: {
-    fontSize: 10.5,
-  },
-  avatarBadge: {
-    position: 'absolute',
-    right: -2,
-    bottom: -2,
-    width: 15,
-    height: 15,
-    borderRadius: 7.5,
-    backgroundColor: '#202020',
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconAvatar: {
-    backgroundColor: '#F4F2EE',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(32, 28, 25, 0.08)',
-  },
+    /* Avatares Monocromáticos y Neutros */
+    avatar: {
+      backgroundColor: pulse.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'visible',
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    avatarInitial: {
+      color: pulse.text,
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    avatarInitialSmall: {
+      fontSize: 10.5,
+    },
+    avatarBadge: {
+      position: 'absolute',
+      right: -2,
+      bottom: -2,
+      width: 15,
+      height: 15,
+      borderRadius: 7.5,
+      backgroundColor: pulse.inverse,
+      borderWidth: 1.5,
+      borderColor: pulse.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    iconAvatar: {
+      backgroundColor: pulse.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
 
-  /* Modal de Detalle (ModalShell) */
-  modalScroll: {
-    flexGrow: 1,
-  },
-  modalContenido: {
-    paddingTop: 8,
-    paddingBottom: 16,
-  },
-  modalHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  modalTipoPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-    backgroundColor: '#F5F4F2',
-    borderWidth: 1,
-    borderColor: 'rgba(32, 28, 25, 0.08)',
-  },
-  modalTipoTexto: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#1C1917',
-  },
-  modalHeaderDerecha: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  modalEstadoPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  modalEstadoLeida: {
-    backgroundColor: '#F5F5F4',
-  },
-  modalEstadoNoLeida: {
-    backgroundColor: '#1C1917',
-  },
-  modalEstadoTexto: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  modalEstadoTextoLeida: {
-    color: '#78716C',
-  },
-  modalEstadoTextoNoLeida: {
-    color: '#FFFFFF',
-  },
-  modalBotonCerrar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalEmisorCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: '#F8F6F4',
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(32, 28, 25, 0.06)',
-  },
-  modalEmisorInfo: {
-    flex: 1,
-  },
-  modalEmisorNombre: {
-    color: '#1C1917',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  modalEmisorFecha: {
-    color: '#78716C',
-    fontSize: 11.5,
-    fontWeight: '500',
-    marginTop: 2,
-  },
-  modalCuerpo: {
-    marginBottom: 20,
-  },
-  modalTituloPrincipal: {
-    color: '#1C1917',
-    fontSize: 21,
-    lineHeight: 26,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-    marginBottom: 12,
-  },
-  modalMensajeCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(32, 28, 25, 0.06)',
-  },
-  modalMensajeTexto: {
-    color: '#332E2B',
-    fontSize: 14.5,
-    lineHeight: 22,
-    letterSpacing: -0.1,
-  },
-  modalAcciones: {
-    gap: 10,
-    marginTop: 8,
-  },
-  modalBotonPrimario: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: '#1C1917',
-  },
-  modalBotonPrimarioTexto: {
-    color: '#FFFFFF',
-    fontSize: 14.5,
-    fontWeight: '700',
-  },
-  modalBotonSecundario: {
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: 'rgba(0, 0, 0, 0.04)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalBotonSecundarioTexto: {
-    color: '#57534E',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-});
+    /* Modal de Detalle (ModalShell) */
+    modalScroll: {
+      flexGrow: 1,
+    },
+    modalContenido: {
+      paddingTop: 8,
+      paddingBottom: 16,
+    },
+    modalHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 16,
+    },
+    modalTipoPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 10,
+      backgroundColor: pulse.pill,
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    modalTipoTexto: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: pulse.text,
+    },
+    modalHeaderDerecha: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    modalEstadoPill: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 8,
+    },
+    modalEstadoLeida: {
+      backgroundColor: pulse.pill,
+    },
+    modalEstadoNoLeida: {
+      backgroundColor: pulse.inverse,
+    },
+    modalEstadoTexto: {
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    modalEstadoTextoLeida: {
+      color: pulse.textSecondary,
+    },
+    modalEstadoTextoNoLeida: {
+      color: pulse.textInverse,
+    },
+    modalBotonCerrar: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: pulse.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalEmisorCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: pulse.surface,
+      borderRadius: 16,
+      padding: 12,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    modalEmisorInfo: {
+      flex: 1,
+    },
+    modalEmisorNombre: {
+      color: pulse.text,
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    modalEmisorFecha: {
+      color: pulse.textTertiary,
+      fontSize: 11.5,
+      fontWeight: '500',
+      marginTop: 2,
+    },
+    modalCuerpo: {
+      marginBottom: 20,
+    },
+    modalTituloPrincipal: {
+      color: pulse.text,
+      fontSize: 21,
+      lineHeight: 26,
+      fontWeight: '800',
+      letterSpacing: -0.5,
+      marginBottom: 12,
+    },
+    modalMensajeCard: {
+      backgroundColor: pulse.surfaceElevated,
+      borderRadius: 16,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    modalMensajeTexto: {
+      color: pulse.text,
+      fontSize: 14.5,
+      lineHeight: 22,
+      letterSpacing: -0.1,
+    },
+    modalAcciones: {
+      gap: 10,
+      marginTop: 8,
+    },
+    modalBotonPrimario: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      height: 48,
+      borderRadius: 16,
+      backgroundColor: pulse.inverse,
+    },
+    modalBotonPrimarioTexto: {
+      color: pulse.textInverse,
+      fontSize: 14.5,
+      fontWeight: '700',
+    },
+    modalBotonSecundario: {
+      height: 44,
+      borderRadius: 14,
+      backgroundColor: pulse.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalBotonSecundarioTexto: {
+      color: pulse.textSecondary,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+  });
+}

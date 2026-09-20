@@ -26,6 +26,7 @@ import PulseOverviewCard from "@/presentation/components/pulse/PulseOverviewCard
 import { useContextoUsuario } from "@/presentation/context/ContextoUsuario";
 import { SOMBRAS } from "@/shared/constants/diseno";
 import { useUserTabBottomPadding } from "@/presentation/hooks/useUserTabBottomPadding";
+import { useTemaMobile } from "@/presentation/context/TemaMobileContext";
 import { CheckIn } from "domain/entities/CheckIn";
 
 const Text = AdminTranslatedText;
@@ -45,8 +46,15 @@ const stressLabel = (stress?: CheckIn["nivelEstres"]) =>
   stress
     ? `${stress.charAt(0).toUpperCase()}${stress.slice(1)}`
     : "Sin registro";
-const pulseAccent = (energy?: CheckIn["energia"]) =>
-  energy === "alto" ? "#D5E774" : energy === "medio" ? "#A78BFA" : "#F2AD84";
+const pulseAccent = (
+  energy: CheckIn["energia"] | undefined,
+  pulse: ReturnType<typeof useTemaMobile>["colores"]["pulso"]
+) =>
+  energy === "alto"
+    ? pulse.energyHigh
+    : energy === "medio"
+    ? pulse.energyMedium
+    : pulse.energyLow;
 const formatCheckInDate = (dateStr?: string) => {
   if (!dateStr) return "Aún sin registro";
   const date = new Date(dateStr);
@@ -123,6 +131,9 @@ function getRandomTitle(currentTitle?: string): string {
 }
 
 export default function MiPulso({ navigation }: { navigation: Navigation }) {
+  const { colores, esOscuro } = useTemaMobile();
+  const pulse = colores.pulso;
+  const styles = usePulseStyles();
   const bottomPadding = useUserTabBottomPadding(96);
   const { t } = useTranslation();
   const {
@@ -178,28 +189,17 @@ export default function MiPulso({ navigation }: { navigation: Navigation }) {
   return (
     <SafeAreaView style={styles.screen}>
       <StatusBar
-        barStyle="dark-content"
+        barStyle={esOscuro ? "light-content" : "dark-content"}
         backgroundColor="transparent"
         translucent
       />
       <LinearGradient
         pointerEvents="none"
-        colors={["#FBEDE8", "#F6ECF6", "#FFFDFC"]}
+        colors={pulse.ambient}
         locations={[0, 0.28, 0.72]}
         style={styles.ambient}
       />
-      <Animated.ScrollView
-        style={entranceStyle}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={refresh}
-            tintColor="#202020"
-          />
-        }
-      >
+      <View style={styles.headerContainer}>
         <View style={styles.header}>
           <BotonAnimado
             style={styles.profile}
@@ -211,6 +211,7 @@ export default function MiPulso({ navigation }: { navigation: Navigation }) {
               <Image
                 source={{ uri: perfil.foto_perfil }}
                 style={styles.avatar}
+                resizeMode="cover"
               />
             ) : (
               <Text style={styles.avatarInitial}>
@@ -229,7 +230,11 @@ export default function MiPulso({ navigation }: { navigation: Navigation }) {
               onPress={() => navigation.navigate("CheckInDiario")}
               accessibilityLabel="Registrar mi pulso"
             >
-              <Feather name="activity" size={22} color="#FFFFFF" />
+              <Feather
+                name="activity"
+                size={Platform.OS === "ios" ? 22 : 19}
+                color={pulse.textInverse}
+              />
             </BotonAnimado>
             <BotonAnimado
               style={styles.bellButton}
@@ -237,13 +242,30 @@ export default function MiPulso({ navigation }: { navigation: Navigation }) {
               onPress={() => navigation.navigate("Notificaciones")}
               accessibilityLabel="Abrir notificaciones"
             >
-              <Feather name="bell" size={21} color="#202020" />
+              <Feather
+                name="bell"
+                size={Platform.OS === "ios" ? 21 : 18}
+                color={pulse.icon}
+              />
               {(alertasNoLeidas > 0 || pendingNotifications > 0) && (
                 <View style={styles.notificationDot} />
               )}
             </BotonAnimado>
           </View>
         </View>
+      </View>
+      <Animated.ScrollView
+        style={entranceStyle}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={refresh}
+            tintColor={pulse.inverse}
+          />
+        }
+      >
         <Text style={styles.hero}>{heroTitle}</Text>
         {cargando && !perfil ? (
           <PulseSkeleton />
@@ -258,7 +280,7 @@ export default function MiPulso({ navigation }: { navigation: Navigation }) {
               energy={energyLabel(latest?.energia)}
               stress={stressLabel(latest?.nivelEstres)}
               streak={metrics?.racha ?? 0}
-              accent={pulseAccent(latest?.energia)}
+              accent={pulseAccent(latest?.energia, pulse)}
               onPress={() => navigation.navigate("MiBienestar")}
             />
           </Animated.View>
@@ -344,7 +366,7 @@ export default function MiPulso({ navigation }: { navigation: Navigation }) {
             onPress={() => navigation.navigate("SolicitudesAusencia")}
           />
           <Shortcut
-            customIcon={<MaterialIcons name="auto-awesome" size={19} color="#202020" />}
+            customIcon="auto-awesome"
             title="Asistente IA"
             detail="Una consulta rápida"
             onPress={() => navigation.navigate("ChatIA")}
@@ -395,6 +417,7 @@ function ScopeChip({
   active: boolean;
   onPress: () => void;
 }) {
+  const styles = usePulseStyles();
   return (
     <BotonAnimado
       scaleTo={0.97}
@@ -402,7 +425,14 @@ function ScopeChip({
       style={[styles.chip, active && styles.chipActive]}
     >
       <View style={[styles.chipCount, active && styles.chipCountActive]}>
-        <Text style={styles.chipCountText}>{count}</Text>
+        <Text
+          style={[
+            styles.chipCountText,
+            active && styles.chipCountTextActive,
+          ]}
+        >
+          {count}
+        </Text>
       </View>
       <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>
         {label}
@@ -417,7 +447,10 @@ function CheckInCard({
   checkIn: CheckIn;
   onPress: () => void;
 }) {
-  const accent = pulseAccent(checkIn.energia);
+  const { colores } = useTemaMobile();
+  const styles = usePulseStyles();
+  const pulse = colores.pulso;
+  const accent = pulseAccent(checkIn.energia, pulse);
   return (
     <BotonAnimado
       scaleTo={0.98}
@@ -433,7 +466,7 @@ function CheckInCard({
           </Text>
         </View>
         <View style={styles.arrowButton}>
-          <Feather name="arrow-up-right" size={18} color="#202020" />
+          <Feather name="arrow-up-right" size={18} color={pulse.icon} />
         </View>
       </View>
       <Text style={styles.recordTitle}>
@@ -441,7 +474,7 @@ function CheckInCard({
       </Text>
       <View style={styles.recordFooter}>
         <View style={styles.timeRow}>
-          <Feather name="clock" size={15} color="#78736F" />
+          <Feather name="clock" size={15} color={pulse.textTertiary} />
           <Text style={styles.time}>{formatCheckInDate(checkIn.fecha)}</Text>
         </View>
         <View style={styles.dimensionDots}>
@@ -460,6 +493,9 @@ function EmptyPulseCard({
   scope: Scope;
   onPress: () => void;
 }) {
+  const { colores } = useTemaMobile();
+  const styles = usePulseStyles();
+  const pulse = colores.pulso;
   const label =
     scope === "hoy"
       ? "Sin registros hoy"
@@ -476,17 +512,17 @@ function EmptyPulseCard({
     <BotonAnimado scaleTo={0.98} onPress={onPress} style={styles.checkinCard}>
       <View style={styles.recordTop}>
         <View style={styles.statusPill}>
-          <View style={[styles.statusDot, { backgroundColor: "#B7B2AD" }]} />
+          <View style={[styles.statusDot, { backgroundColor: pulse.textTertiary }]} />
           <Text style={styles.statusText}>{label}</Text>
         </View>
         <View style={styles.arrowButton}>
-          <Feather name="arrow-up-right" size={18} color="#202020" />
+          <Feather name="arrow-up-right" size={18} color={pulse.icon} />
         </View>
       </View>
       <Text style={styles.recordTitle}>{title}</Text>
       <View style={styles.recordFooter}>
         <View style={styles.timeRow}>
-          <Feather name="clock" size={15} color="#78736F" />
+          <Feather name="clock" size={15} color={pulse.textTertiary} />
           <Text style={styles.time}>Toma menos de un minuto</Text>
         </View>
       </View>
@@ -494,6 +530,7 @@ function EmptyPulseCard({
   );
 }
 function DimensionDot({ color }: { color: string }) {
+  const styles = usePulseStyles();
   return <View style={[styles.dimensionDot, { backgroundColor: color }]} />;
 }
 function Shortcut({
@@ -504,15 +541,32 @@ function Shortcut({
   onPress,
 }: {
   icon?: React.ComponentProps<typeof Feather>["name"];
-  customIcon?: React.ReactNode;
+  customIcon?: React.ComponentProps<typeof MaterialIcons>["name"];
   title: string;
   detail: string;
   onPress: () => void;
 }) {
+  const { colores } = useTemaMobile();
+  const styles = usePulseStyles();
+  const pulse = colores.pulso;
   return (
     <BotonAnimado scaleTo={0.98} onPress={onPress} style={styles.shortcut}>
       <View style={styles.shortcutIcon}>
-        {customIcon || (icon && <Feather name={icon} size={17} color="#202020" />)}
+        {customIcon ? (
+          <MaterialIcons
+            name={customIcon}
+            size={Platform.OS === "ios" ? 21 : 19}
+            color={pulse.icon}
+          />
+        ) : (
+          icon && (
+            <Feather
+              name={icon}
+              size={Platform.OS === "ios" ? 19 : 17}
+              color={pulse.icon}
+            />
+          )
+        )}
       </View>
       <View style={styles.shortcutCopy}>
         <Text style={styles.shortcutTitle}>{title}</Text>
@@ -520,11 +574,12 @@ function Shortcut({
           {detail}
         </Text>
       </View>
-      <Feather name="chevron-right" size={18} color="#8B8681" />
+      <Feather name="chevron-right" size={18} color={pulse.textTertiary} />
     </BotonAnimado>
   );
 }
 function PulseSkeleton() {
+  const styles = usePulseStyles();
   return (
     <View style={styles.loadingCard}>
       <Skeleton width="35%" height={18} radius={8} />
@@ -540,132 +595,158 @@ function PulseSkeleton() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#FFFDFC" },
+function usePulseStyles() {
+  const { colores } = useTemaMobile();
+  return useMemo(() => createPulseStyles(colores.pulso), [colores.pulso]);
+}
+
+function createPulseStyles(pulse: ReturnType<typeof useTemaMobile>["colores"]["pulso"]) {
+  const isIOS = Platform.OS === "ios";
+  return StyleSheet.create({
+  screen: { flex: 1, backgroundColor: pulse.background },
   ambient: { ...StyleSheet.absoluteFill },
+  headerContainer: {
+    paddingHorizontal: 21,
+    paddingTop: isIOS ? 6 : 4,
+    paddingBottom: 8,
+    zIndex: 10,
+    backgroundColor: 'transparent',
+  },
   content: {
     paddingHorizontal: 21,
-    paddingTop: 4,
+    paddingTop: isIOS ? 12 : 8,
   },
-  header: { height: 52, flexDirection: "row", alignItems: "center" },
+  header: { height: isIOS ? 54 : 48, flexDirection: "row", alignItems: "center" },
   profile: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: isIOS ? 46 : 40,
+    height: isIOS ? 46 : 40,
+    borderRadius: isIOS ? 23 : 20,
     overflow: "hidden",
-    backgroundColor: "#E9D2BF",
+    backgroundColor: pulse.pill,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: pulse.border,
   },
-  avatar: { width: "100%", height: "100%" },
-  avatarInitial: { color: "#382E29", fontSize: 17, fontWeight: "700" },
-  greeting: { flex: 1, marginLeft: 11 },
-  greetingLine: { color: "#312E2C", fontSize: 15, fontWeight: "500" },
-  name: { color: "#86807D", fontSize: 14, fontWeight: "500", marginTop: 2 },
-  headerActions: { flexDirection: "row", gap: 10 },
+  avatar: {
+    width: isIOS ? 46 : 40,
+    height: isIOS ? 46 : 40,
+    borderRadius: isIOS ? 23 : 20,
+  },
+  avatarInitial: { color: pulse.text, fontSize: isIOS ? 17 : 15, fontWeight: "700" },
+  greeting: { flex: 1, marginLeft: 10 },
+  greetingLine: { color: pulse.textSecondary, fontSize: isIOS ? 14 : 13.5, fontWeight: "500" },
+  name: { color: pulse.text, fontSize: isIOS ? 14 : 13.5, fontWeight: "600", marginTop: 1 },
+  headerActions: { flexDirection: "row", gap: 8 },
   addButton: {
-    width: 47,
-    height: 47,
-    borderRadius: 24,
-    backgroundColor: "#202020",
+    width: isIOS ? 46 : 40,
+    height: isIOS ? 46 : 40,
+    borderRadius: isIOS ? 23 : 20,
+    backgroundColor: pulse.inverse,
     alignItems: "center",
     justifyContent: "center",
   },
   bellButton: {
-    width: 47,
-    height: 47,
-    borderRadius: 24,
-    backgroundColor: "#FFFFFF",
+    width: isIOS ? 46 : 40,
+    height: isIOS ? 46 : 40,
+    borderRadius: isIOS ? 23 : 20,
+    backgroundColor: pulse.surfaceElevated,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: pulse.border,
     ...SOMBRAS.suave,
+    shadowColor: pulse.shadow,
   },
   notificationDot: {
     position: "absolute",
-    top: 11,
-    right: 12,
+    top: isIOS ? 11 : 9,
+    right: isIOS ? 12 : 10,
     width: 7,
     height: 7,
     borderRadius: 4,
     backgroundColor: "#E56C67",
     borderWidth: 1.5,
-    borderColor: "#FFFFFF",
+    borderColor: pulse.surfaceElevated,
   },
   hero: {
-    marginTop: 22,
-    marginBottom: 20,
-    color: "#1F1D1C",
-    fontSize: 34,
-    lineHeight: 38,
-    letterSpacing: -1.4,
+    marginTop: isIOS ? 6 : 4,
+    marginBottom: 16,
+    color: pulse.text,
+    fontSize: isIOS ? 34 : 27,
+    lineHeight: isIOS ? 38 : 31,
+    letterSpacing: -0.9,
     fontWeight: "600",
   },
   loadingCard: {
-    minHeight: 210,
-    borderRadius: 25,
-    backgroundColor: "#222222",
-    padding: 20,
+    minHeight: 180,
+    borderRadius: 22,
+    backgroundColor: pulse.heroSurface,
+    borderWidth: 1,
+    borderColor: pulse.border,
+    padding: 16,
   },
   loadingContent: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingTop: 18,
+    paddingTop: 14,
   },
-  loadingRows: { width: "39%", gap: 10 },
+  loadingRows: { width: "39%", gap: 8 },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: 26,
-    marginBottom: 14,
+    marginTop: 20,
+    marginBottom: 10,
   },
   sectionTitle: {
-    color: "#24211F",
-    fontSize: 24,
-    fontWeight: "600",
-    letterSpacing: -0.8,
+    color: pulse.text,
+    fontSize: 20,
+    fontWeight: "700",
+    letterSpacing: -0.5,
   },
-  viewAll: { color: "#5F5A56", fontSize: 14, fontWeight: "600" },
-  chips: { gap: 9, paddingRight: 20 },
+  viewAll: { color: pulse.textSecondary, fontSize: 13, fontWeight: "600" },
+  chips: { gap: 8, paddingRight: 20 },
   chip: {
-    height: 50,
-    borderRadius: 25,
-    paddingHorizontal: 9,
-    paddingRight: 17,
-    backgroundColor: "rgba(255,255,255,0.82)",
+    height: 44,
+    borderRadius: 22,
+    paddingHorizontal: 8,
+    paddingRight: 14,
+    backgroundColor: pulse.surface,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 7,
     borderWidth: 1,
-    borderColor: "rgba(43,36,31,0.035)",
+    borderColor: pulse.border,
   },
-  chipActive: { backgroundColor: "#D5E774" },
+  chipActive: { backgroundColor: pulse.chipActive, borderColor: pulse.chipActive },
   chipCount: {
-    minWidth: 32,
-    height: 32,
-    paddingHorizontal: 8,
-    borderRadius: 16,
-    backgroundColor: "#F5F2EF",
+    minWidth: 28,
+    height: 28,
+    paddingHorizontal: 7,
+    borderRadius: 14,
+    backgroundColor: pulse.pill,
     alignItems: "center",
     justifyContent: "center",
   },
-  chipCountActive: { backgroundColor: "#FFFFFF" },
-  chipCountText: { color: "#3A3531", fontSize: 14, fontWeight: "700" },
-  chipLabel: { color: "#4B4642", fontSize: 14, fontWeight: "600" },
-  chipLabelActive: { color: "#2E3023" },
+  chipCountActive: { backgroundColor: pulse.chipCountActive },
+  chipCountText: { color: pulse.text, fontSize: 12.5, fontWeight: "700" },
+  chipCountTextActive: { color: pulse.chipTextActive },
+  chipLabel: { color: pulse.textSecondary, fontSize: 13, fontWeight: "600" },
+  chipLabelActive: { color: pulse.chipTextActive },
   errorCard: {
     marginTop: 14,
     paddingHorizontal: 15,
     paddingVertical: 12,
     borderRadius: 16,
-    backgroundColor: "#FFF0EE",
+    backgroundColor: pulse.errorSurface,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  errorText: { color: "#9A453F", fontSize: 12, fontWeight: "600" },
-  retry: { color: "#9A453F", fontSize: 12, fontWeight: "800" },
+  errorText: { color: pulse.errorText, fontSize: 12, fontWeight: "600" },
+  retry: { color: pulse.errorText, fontSize: 12, fontWeight: "800" },
   checkinList: {
     marginTop: 14,
     gap: 12,
@@ -674,9 +755,12 @@ const styles = StyleSheet.create({
     minHeight: 180,
     padding: 18,
     borderRadius: 24,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: pulse.surfaceElevated,
+    borderWidth: 1,
+    borderColor: pulse.border,
     justifyContent: "space-between",
     ...SOMBRAS.suave,
+    shadowColor: pulse.shadow,
   },
   recordTop: {
     flexDirection: "row",
@@ -690,20 +774,20 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#F5F2EF",
+    backgroundColor: pulse.pill,
   },
   statusDot: { width: 7, height: 7, borderRadius: 4 },
-  statusText: { color: "#544F4B", fontSize: 11, fontWeight: "700" },
+  statusText: { color: pulse.textSecondary, fontSize: 11, fontWeight: "700" },
   arrowButton: {
     width: 39,
     height: 39,
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F7F6F4",
+    backgroundColor: pulse.iconSurface,
   },
   recordTitle: {
-    color: "#272321",
+    color: pulse.text,
     fontSize: 20,
     fontWeight: "600",
     letterSpacing: -0.55,
@@ -717,52 +801,54 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   timeRow: { flexDirection: "row", alignItems: "center", gap: 7 },
-  time: { color: "#78736F", fontSize: 12, fontWeight: "600" },
+  time: { color: pulse.textTertiary, fontSize: 12, fontWeight: "600" },
   dimensionDots: { flexDirection: "row" },
   dimensionDot: {
     width: 27,
     height: 27,
     borderRadius: 14,
     borderWidth: 2,
-    borderColor: "#FFFFFF",
+    borderColor: pulse.surfaceElevated,
     marginLeft: -7,
   },
-  shortcuts: { gap: 10 },
+  shortcuts: { gap: 8 },
   shortcut: {
-    minHeight: 64,
-    borderRadius: 18,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    backgroundColor: "#FFFFFF",
+    minHeight: isIOS ? 64 : 56,
+    borderRadius: isIOS ? 18 : 16,
+    paddingHorizontal: isIOS ? 14 : 13,
+    paddingVertical: isIOS ? 12 : 10,
+    backgroundColor: pulse.surfaceElevated,
     borderWidth: 1,
-    borderColor: "rgba(43,36,31,0.035)",
+    borderColor: pulse.border,
     flexDirection: "row",
     alignItems: "center",
     ...SOMBRAS.suave,
+    shadowColor: pulse.shadow,
   },
   shortcutIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "#F3F0ED",
+    width: isIOS ? 38 : 34,
+    height: isIOS ? 38 : 34,
+    borderRadius: isIOS ? 19 : 17,
+    backgroundColor: pulse.iconSurface,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
+    marginRight: 10,
   },
   shortcutCopy: { flex: 1, justifyContent: "center" },
   shortcutTitle: {
-    color: "#292624",
-    fontSize: 14,
+    color: pulse.text,
+    fontSize: isIOS ? 14 : 13.5,
     fontWeight: "700",
-    lineHeight: 18,
+    lineHeight: isIOS ? 18 : 17,
     includeFontPadding: false,
   },
   shortcutDetail: {
-    color: "#7B7570",
-    fontSize: 11,
+    color: pulse.textTertiary,
+    fontSize: isIOS ? 11 : 10.5,
     fontWeight: "500",
-    marginTop: 2,
-    lineHeight: 14,
+    marginTop: 1,
+    lineHeight: isIOS ? 14 : 13,
     includeFontPadding: false,
   },
-});
+  });
+}

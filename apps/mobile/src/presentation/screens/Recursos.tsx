@@ -1,6 +1,6 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useMemo } from 'react';
-import { Image, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
+import { Image, Platform, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
 import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -82,50 +82,51 @@ export default function Recursos({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle={esOscuro ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
       <LinearGradient
         pointerEvents="none"
-        colors={['#FBEDE8', '#F6ECF6', '#FFFDFC']}
+        colors={esOscuro ? colores.pulso.ambient : (['#FBEDE8', '#F6ECF6', '#FFFDFC'] as const)}
         locations={[0, 0.28, 0.72]}
-        style={styles.ambient}
+        style={StyleSheet.absoluteFill}
       />
-
-      <View style={styles.topBar}>
-        <BotonAnimado
-          style={styles.profile}
-          scaleTo={0.97}
-          onPress={() => navigation.navigate("PerfilLaboral")}
-          accessibilityLabel="Abrir mi perfil"
-        >
-          {perfil?.foto_perfil ? (
-            <Image source={{ uri: perfil.foto_perfil }} style={styles.avatar} />
-          ) : (
-            <Text style={styles.avatarInitial}>
-              {((perfil?.nombre || 'U').trim().charAt(0) || 'U').toUpperCase()}
-            </Text>
-          )}
-        </BotonAnimado>
-        <Text style={styles.topBarLabel}>{t('recursos.title', { defaultValue: 'Recursos' })}</Text>
-        <View style={styles.headerActions}>
+      <View style={styles.topBarContainer}>
+        <View style={styles.topBar}>
           <BotonAnimado
-            style={styles.addButton}
-            scaleTo={0.96}
-            onPress={() => navigation.navigate("BusquedaGlobal")}
-            accessibilityLabel="Buscar recursos"
+            style={styles.profile}
+            scaleTo={0.97}
+            onPress={() => navigation.navigate("PerfilLaboral")}
+            accessibilityLabel="Abrir mi perfil"
           >
-            <Feather name="search" size={21} color="#FFFFFF" />
-          </BotonAnimado>
-          <BotonAnimado
-            style={styles.bellButton}
-            scaleTo={0.96}
-            onPress={() => navigation.navigate("Notificaciones")}
-            accessibilityLabel="Abrir notificaciones"
-          >
-            <Feather name="bell" size={21} color="#202020" />
-            {pendingDocuments > 0 && (
-              <View style={styles.notificationDot} />
+            {perfil?.foto_perfil ? (
+              <Image source={{ uri: perfil.foto_perfil }} style={styles.avatar} resizeMode="cover" />
+            ) : (
+              <Text style={styles.avatarInitial}>
+                {((perfil?.nombre || 'U').trim().charAt(0) || 'U').toUpperCase()}
+              </Text>
             )}
           </BotonAnimado>
+          <Text style={styles.topBarLabel}>{t('recursos.title', { defaultValue: 'Recursos' })}</Text>
+          <View style={styles.headerActions}>
+            <BotonAnimado
+              style={styles.addButton}
+              scaleTo={0.96}
+              onPress={() => navigation.navigate("BusquedaGlobal")}
+              accessibilityLabel="Buscar recursos"
+            >
+              <Feather name="search" size={Platform.OS === 'ios' ? 21 : 18} color={esOscuro ? colores.pulso.textInverse : '#FFFFFF'} />
+            </BotonAnimado>
+            <BotonAnimado
+              style={styles.bellButton}
+              scaleTo={0.96}
+              onPress={() => navigation.navigate("Notificaciones")}
+              accessibilityLabel="Abrir notificaciones"
+            >
+              <Feather name="bell" size={Platform.OS === 'ios' ? 21 : 18} color={esOscuro ? colores.pulso.icon : '#202020'} />
+              {pendingDocuments > 0 && (
+                <View style={styles.notificationDot} />
+              )}
+            </BotonAnimado>
+          </View>
         </View>
       </View>
 
@@ -190,7 +191,7 @@ export default function Recursos({ navigation }: Props) {
               <Feather
                 name={action.icon}
                 size={15}
-                color={colores.texto}
+                color={esOscuro ? colores.pulso.icon : colores.texto}
               />
               <Text style={styles.quickPillText}>
                 {action.label}
@@ -210,7 +211,7 @@ export default function Recursos({ navigation }: Props) {
           {documentos.length === 0 ? (
             <View style={styles.emptyDocument}>
               <View style={styles.emptyIconBox}>
-                <Feather name="folder" size={20} color={colores.textoSuave} />
+                <Feather name="folder" size={20} color={esOscuro ? colores.pulso.textTertiary : colores.textoSuave} />
               </View>
               <Text style={styles.emptyText}>Aún no tienes documentos disponibles.</Text>
             </View>
@@ -228,7 +229,7 @@ export default function Recursos({ navigation }: Props) {
                       <Text style={styles.statusTextPending}>Pendiente de lectura</Text>
                     </View>
                     <View style={styles.arrowButton}>
-                      <Feather name="arrow-up-right" size={17} color="#1F1D1C" />
+                      <Feather name="arrow-up-right" size={17} color={esOscuro ? colores.pulso.icon : '#1F1D1C'} />
                     </View>
                   </View>
 
@@ -263,7 +264,7 @@ export default function Recursos({ navigation }: Props) {
                           <Feather
                             name={getDocumentIcon(document.tipo)}
                             size={16}
-                            color="#24211F"
+                            color={esOscuro ? colores.pulso.icon : '#24211F'}
                           />
                         </View>
                         <View style={styles.docInfo}>
@@ -276,7 +277,7 @@ export default function Recursos({ navigation }: Props) {
                             {document.leido ? ' · Leído' : ''}
                           </Text>
                         </View>
-                        <Feather name="chevron-right" size={17} color={colores.textoSuave} />
+                        <Feather name="chevron-right" size={17} color={esOscuro ? colores.pulso.textTertiary : colores.textoSuave} />
                       </BotonAnimado>
                     );
                   })}
@@ -288,94 +289,132 @@ export default function Recursos({ navigation }: Props) {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Explorar</Text>
-          <View style={styles.categoryGrid}>{categories.map((category, index) => <Animated.View key={category.title} entering={FadeInDown.duration(220).delay(100 + index * 35).easing(Easing.out(Easing.quad))} style={styles.categoryWrap}><BotonAnimado style={styles.categoryCard} scaleTo={0.98} onPress={() => navigation.navigate(category.route)}><Feather name={category.icon} size={19} color={colores.texto} /><View style={styles.categoryFooter}><View><Text style={styles.categoryTitle}>{category.title}</Text><Text style={styles.categoryDetail} numberOfLines={1}>{category.detail}</Text></View><Feather name="arrow-up-right" size={16} color={colores.textoSuave} /></View></BotonAnimado></Animated.View>)}</View>
+          <View style={styles.categoryGrid}>
+            {categories.map((category, index) => (
+              <Animated.View
+                key={category.title}
+                entering={FadeInDown.duration(220).delay(100 + index * 35).easing(Easing.out(Easing.quad))}
+                style={styles.categoryWrap}
+              >
+                <BotonAnimado
+                  style={styles.categoryCard}
+                  scaleTo={0.98}
+                  onPress={() => navigation.navigate(category.route)}
+                >
+                  <Feather name={category.icon} size={19} color={esOscuro ? colores.pulso.icon : colores.texto} />
+                  <View style={styles.categoryFooter}>
+                    <View>
+                      <Text style={styles.categoryTitle}>{category.title}</Text>
+                      <Text style={styles.categoryDetail} numberOfLines={1}>{category.detail}</Text>
+                    </View>
+                    <Feather name="arrow-up-right" size={16} color={esOscuro ? colores.pulso.textTertiary : colores.textoSuave} />
+                  </View>
+                </BotonAnimado>
+              </Animated.View>
+            ))}
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function createStyles(c: { fondo: string; texto: string; textoSuave: string; borde: string }, esOscuro: boolean) {
-  const paper = esOscuro ? 'rgba(31, 29, 38, 0.94)' : '#FFFFFF';
+function createStyles(c: any, esOscuro: boolean) {
+  const isIOS = Platform.OS === 'ios';
+  const pulse = c.pulso;
+  const paper = esOscuro ? pulse.surface : '#FFFFFF';
+
   return StyleSheet.create({
-    screen: { flex: 1, backgroundColor: '#FFFDFC' },
+    screen: { flex: 1, backgroundColor: pulse.background },
     ambient: { ...StyleSheet.absoluteFill },
+    topBarContainer: {
+      paddingHorizontal: 21,
+      paddingTop: isIOS ? 6 : 4,
+      paddingBottom: 8,
+      zIndex: 10,
+      backgroundColor: 'transparent',
+    },
     topBar: {
-      height: 52,
-      marginHorizontal: 21,
-      marginTop: 4,
+      height: isIOS ? 54 : 48,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
     },
     profile: {
-      width: 46,
-      height: 46,
-      borderRadius: 23,
-      backgroundColor: '#E9D2BF',
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: esOscuro ? pulse.iconSurface : '#E9D2BF',
       alignItems: 'center',
       justifyContent: 'center',
       overflow: 'hidden',
+      borderWidth: esOscuro ? 1 : 0,
+      borderColor: pulse.border,
     },
     avatar: {
-      width: '100%',
-      height: '100%',
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
     },
     avatarInitial: {
-      color: '#382E29',
-      fontSize: 17,
+      color: esOscuro ? pulse.text : '#382E29',
+      fontSize: isIOS ? 17 : 15,
       fontWeight: '700',
     },
     topBarLabel: {
-      color: '#292522',
-      fontSize: 17,
+      color: esOscuro ? pulse.text : '#292522',
+      fontSize: isIOS ? 17 : 15,
       fontWeight: '600',
-      letterSpacing: -0.5,
+      letterSpacing: isIOS ? -0.5 : -0.3,
     },
     headerActions: {
       flexDirection: 'row',
-      gap: 10,
+      gap: isIOS ? 10 : 8,
     },
     addButton: {
-      width: 47,
-      height: 47,
-      borderRadius: 24,
-      backgroundColor: '#202020',
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: esOscuro ? pulse.inverse : '#202020',
       alignItems: 'center',
       justifyContent: 'center',
     },
     bellButton: {
-      width: 47,
-      height: 47,
-      borderRadius: 24,
-      backgroundColor: '#FFFFFF',
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: esOscuro ? pulse.surfaceElevated : '#FFFFFF',
       alignItems: 'center',
       justifyContent: 'center',
+      borderWidth: esOscuro ? 1 : 0,
+      borderColor: pulse.border,
       ...SOMBRAS.suave,
     },
     notificationDot: {
       position: 'absolute',
-      top: 11,
-      right: 12,
-      width: 7,
-      height: 7,
-      borderRadius: 4,
+      top: isIOS ? 11 : 9,
+      right: isIOS ? 12 : 10,
+      width: isIOS ? 8 : 7,
+      height: isIOS ? 8 : 7,
+      borderRadius: isIOS ? 4 : 3.5,
       backgroundColor: '#E56C67',
       borderWidth: 1.5,
-      borderColor: '#FFFFFF',
+      borderColor: esOscuro ? pulse.surfaceElevated : '#FFFFFF',
     },
-    content: { paddingTop: 0 },
-    hero: { paddingHorizontal: 21, marginTop: 22, marginBottom: 20 },
-    heroTitle: { color: '#1F1D1C', fontSize: 34, lineHeight: 38, fontWeight: '600', letterSpacing: -1.4 },
-    heroSubtitle: { color: '#78716C', fontSize: 14, lineHeight: 20, marginTop: 6, maxWidth: 300 },
+    content: {
+      paddingTop: isIOS ? 12 : 8,
+    },
+    hero: { paddingHorizontal: 21, marginTop: isIOS ? 14 : 10, marginBottom: isIOS ? 20 : 16 },
+    heroTitle: { color: esOscuro ? pulse.text : '#1F1D1C', fontSize: isIOS ? 34 : 27, lineHeight: isIOS ? 38 : 31, fontWeight: '600', letterSpacing: isIOS ? -1.4 : -0.9 },
+    heroSubtitle: { color: esOscuro ? pulse.textSecondary : '#78716C', fontSize: 14, lineHeight: 20, marginTop: 6, maxWidth: 300 },
     heroCardWrap: { marginHorizontal: 21 },
     heroCard: {
-      backgroundColor: '#18181B',
+      backgroundColor: esOscuro ? pulse.heroSurface : '#18181B',
       borderRadius: 24,
       padding: 20,
       minHeight: 168,
       borderWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.08)',
+      borderColor: esOscuro ? pulse.borderStrong : 'rgba(255, 255, 255, 0.08)',
       justifyContent: 'space-between',
       ...SOMBRAS.flotante,
     },
@@ -393,7 +432,7 @@ function createStyles(c: { fondo: string; texto: string; textoSuave: string; bor
       width: 38,
       height: 38,
       borderRadius: 19,
-      backgroundColor: 'rgba(255, 255, 255, 0.12)',
+      backgroundColor: esOscuro ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.12)',
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -412,7 +451,7 @@ function createStyles(c: { fondo: string; texto: string; textoSuave: string; bor
       width: 34,
       height: 34,
       borderRadius: 17,
-      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+      backgroundColor: esOscuro ? 'rgba(255, 255, 255, 0.06)' : 'rgba(255, 255, 255, 0.08)',
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -420,13 +459,13 @@ function createStyles(c: { fondo: string; texto: string; textoSuave: string; bor
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+      backgroundColor: esOscuro ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.05)',
       borderRadius: 18,
       paddingVertical: 14,
       paddingHorizontal: 8,
       marginTop: 18,
       borderWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.06)',
+      borderColor: esOscuro ? 'rgba(255, 255, 255, 0.07)' : 'rgba(255, 255, 255, 0.06)',
     },
     heroMetricBox: {
       flex: 1,
@@ -457,37 +496,37 @@ function createStyles(c: { fondo: string; texto: string; textoSuave: string; bor
       backgroundColor: 'rgba(255, 255, 255, 0.1)',
     },
     section: { marginTop: 31 },
-    sectionTitle: { color: c.texto, fontSize: 20, fontWeight: '800', letterSpacing: -0.55, paddingHorizontal: 21, marginBottom: 13 },
+    sectionTitle: { color: esOscuro ? pulse.text : c.texto, fontSize: 20, fontWeight: '800', letterSpacing: -0.55, paddingHorizontal: 21, marginBottom: 13 },
     sectionHeader: { paddingHorizontal: 21, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 13 },
-    sectionHeaderTitle: { color: c.texto, fontSize: 20, fontWeight: '800', letterSpacing: -0.55 },
-    seeAll: { color: c.texto, fontSize: 12.5, fontWeight: '700' },
+    sectionHeaderTitle: { color: esOscuro ? pulse.text : c.texto, fontSize: 20, fontWeight: '800', letterSpacing: -0.55 },
+    seeAll: { color: esOscuro ? pulse.textSecondary : c.texto, fontSize: 12.5, fontWeight: '700' },
     quickActionsScroll: { marginTop: 20 },
     quickActions: { gap: 10, paddingHorizontal: 21 },
     quickPill: {
       height: 48,
       borderRadius: 24,
       paddingHorizontal: 16,
-      backgroundColor: paper,
+      backgroundColor: esOscuro ? pulse.pill : paper,
       borderWidth: 1,
-      borderColor: c.borde,
+      borderColor: esOscuro ? pulse.border : c.borde,
       flexDirection: 'row',
       gap: 8,
       alignItems: 'center',
       ...SOMBRAS.suave,
     },
-    quickPillActive: { backgroundColor: '#18181B', borderColor: '#18181B' },
-    quickPillText: { color: c.texto, fontSize: 13, fontWeight: '600' },
-    quickPillTextActive: { color: '#FFF' },
+    quickPillActive: { backgroundColor: esOscuro ? pulse.chipActive : '#18181B', borderColor: esOscuro ? pulse.chipActive : '#18181B' },
+    quickPillText: { color: esOscuro ? pulse.text : c.texto, fontSize: 13, fontWeight: '600' },
+    quickPillTextActive: { color: esOscuro ? pulse.chipTextActive : '#FFF' },
     documentsContainer: {
       paddingHorizontal: 21,
       gap: 12,
     },
     featuredDocument: {
       borderRadius: 22,
-      backgroundColor: paper,
+      backgroundColor: esOscuro ? pulse.surface : paper,
       padding: 18,
       borderWidth: 1,
-      borderColor: c.borde,
+      borderColor: esOscuro ? pulse.border : c.borde,
       ...SOMBRAS.suave,
     },
     featuredTopRow: {
@@ -502,21 +541,21 @@ function createStyles(c: { fondo: string; texto: string; textoSuave: string; bor
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      backgroundColor: '#FFF0EE',
+      backgroundColor: esOscuro ? pulse.errorSurface : '#FFF0EE',
     },
     statusDotPending: {
       width: 6,
       height: 6,
       borderRadius: 3,
-      backgroundColor: '#E06B73',
+      backgroundColor: esOscuro ? pulse.errorText : '#E06B73',
     },
     statusTextPending: {
       fontSize: 11,
       fontWeight: '600',
-      color: '#A34C56',
+      color: esOscuro ? pulse.errorText : '#A34C56',
     },
     featuredTitle: {
-      color: c.texto,
+      color: esOscuro ? pulse.text : c.texto,
       fontSize: 17,
       lineHeight: 22,
       fontWeight: '700',
@@ -527,7 +566,7 @@ function createStyles(c: { fondo: string; texto: string; textoSuave: string; bor
       marginTop: 12,
     },
     featuredMeta: {
-      color: c.textoSuave,
+      color: esOscuro ? pulse.textSecondary : c.textoSuave,
       fontSize: 12,
       textTransform: 'capitalize',
     },
@@ -535,15 +574,15 @@ function createStyles(c: { fondo: string; texto: string; textoSuave: string; bor
       width: 34,
       height: 34,
       borderRadius: 17,
-      backgroundColor: '#F4F1F5',
+      backgroundColor: esOscuro ? pulse.pill : '#F4F1F5',
       alignItems: 'center',
       justifyContent: 'center',
     },
     documentsGroupCard: {
       borderRadius: 22,
-      backgroundColor: paper,
+      backgroundColor: esOscuro ? pulse.surface : paper,
       borderWidth: 1,
-      borderColor: c.borde,
+      borderColor: esOscuro ? pulse.border : c.borde,
       overflow: 'hidden',
       ...SOMBRAS.suave,
     },
@@ -556,13 +595,13 @@ function createStyles(c: { fondo: string; texto: string; textoSuave: string; bor
     },
     docRowBorder: {
       borderBottomWidth: 1,
-      borderBottomColor: c.borde,
+      borderBottomColor: esOscuro ? pulse.border : c.borde,
     },
     docIconBox: {
       width: 38,
       height: 38,
       borderRadius: 12,
-      backgroundColor: '#F5F3F0',
+      backgroundColor: esOscuro ? pulse.pill : '#F5F3F0',
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -571,13 +610,13 @@ function createStyles(c: { fondo: string; texto: string; textoSuave: string; bor
       minWidth: 0,
     },
     docTitle: {
-      color: c.texto,
+      color: esOscuro ? pulse.text : c.texto,
       fontSize: 14,
       fontWeight: '600',
       letterSpacing: -0.2,
     },
     docMeta: {
-      color: c.textoSuave,
+      color: esOscuro ? pulse.textSecondary : c.textoSuave,
       fontSize: 11.5,
       marginTop: 2,
       textTransform: 'capitalize',
@@ -586,31 +625,40 @@ function createStyles(c: { fondo: string; texto: string; textoSuave: string; bor
       marginHorizontal: 21,
       minHeight: 120,
       borderRadius: 22,
-      backgroundColor: paper,
+      backgroundColor: esOscuro ? pulse.surface : paper,
       alignItems: 'center',
       justifyContent: 'center',
       gap: 8,
       borderWidth: 1,
-      borderColor: c.borde,
+      borderColor: esOscuro ? pulse.border : c.borde,
       ...SOMBRAS.suave,
     },
     emptyIconBox: {
       width: 40,
       height: 40,
       borderRadius: 20,
-      backgroundColor: '#F5F3F0',
+      backgroundColor: esOscuro ? pulse.pill : '#F5F3F0',
       alignItems: 'center',
       justifyContent: 'center',
     },
     emptyText: {
-      color: c.textoSuave,
+      color: esOscuro ? pulse.textSecondary : c.textoSuave,
       fontSize: 13,
     },
-    categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 21, gap: 11 },
-    categoryWrap: { width: '48.4%' },
-    categoryCard: { minHeight: 128, borderRadius: 25, backgroundColor: paper, padding: 16, justifyContent: 'space-between', ...SOMBRAS.tarjeta },
+    categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingHorizontal: 21, rowGap: 12 },
+    categoryWrap: { width: '48%' },
+    categoryCard: {
+      minHeight: 128,
+      borderRadius: 25,
+      backgroundColor: esOscuro ? pulse.surface : paper,
+      borderWidth: esOscuro ? 1 : 0,
+      borderColor: pulse.border,
+      padding: 16,
+      justifyContent: 'space-between',
+      ...SOMBRAS.tarjeta,
+    },
     categoryFooter: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 4 },
-    categoryTitle: { color: c.texto, fontSize: 15, fontWeight: '700' },
-    categoryDetail: { color: c.textoSuave, fontSize: 10.5, marginTop: 3, maxWidth: 108 },
+    categoryTitle: { color: esOscuro ? pulse.text : c.texto, fontSize: 15, fontWeight: '700' },
+    categoryDetail: { color: esOscuro ? pulse.textSecondary : c.textoSuave, fontSize: 10.5, marginTop: 3, maxWidth: 108 },
   });
 }

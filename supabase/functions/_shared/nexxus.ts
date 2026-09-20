@@ -105,6 +105,108 @@ export function sameCompany(caller: Caller, empresaId: string | null | undefined
 export const isCanonicalRole = (rol: string) =>
   ["admin", "admin_empresa", "jefe", "jefe_sector", "super_admin"].includes(rol);
 
+const AI_INJECTION_PATTERNS = [
+  /ignore\s+(?:todas?\s+)?(?:las\s+)?instrucciones/i,
+  /ignora\s+(?:todas?\s+)?(?:las\s+)?instrucciones/i,
+  /(?:muestra|revela|dime)\s+(?:el\s+)?(?:prompt|mensaje)\s+(?:del\s+)?sistema/i,
+  /system\s*prompt/i,
+  /act[úu]a\s+como\s+(?:system|desarrollador|developer)/i,
+  /jailbreak|dan\s+mode/i,
+];
+const AI_CODE_PATTERNS = [
+  /\b(?:python|php|javascript|typescript|java|c\+\+|sql|html|css)\b/i,
+  /\b(?:lista\s+enlazada|linked\s+list|algoritmo|programa(?:ci[oó]n)?|c[oó]digo)\b/i,
+  /\b(?:funci[oó]n|class|def|script)\b.*\b(?:c[oó]digo|programa)/i,
+];
+const AI_WORK_PATTERNS = [
+  /\b(?:rrhh|recursos\s+humanos|n[oó]mina|emplead[oa]s?|empresa|trabajo|laboral|bienestar|tarea|reuni[oó]n|cita|ausencia|vacaciones|permiso|asistencia|entrada|salida|calendario)\b/i,
+];
+
+export type AiInputSafety = { bloqueada: boolean; respuesta?: string };
+
+/**
+ * Filtro determinista para solicitudes claramente fuera de Nexxus o intentos conocidos de
+ * alterar las instrucciones. No sustituye los controles de autorización de cada acción.
+ */
+export function validateAiInput(prompt: string): AiInputSafety {
+  if (AI_INJECTION_PATTERNS.some((pattern) => pattern.test(prompt))) {
+    return {
+      bloqueada: true,
+      respuesta: "No puedo procesar instrucciones para cambiar mi configuración ni revelar información interna. Puedo ayudarte con RR. HH., nómina, bienestar y operaciones de Nexxus.",
+    };
+  }
+  const hasCodeTopic = AI_CODE_PATTERNS.some((pattern) => pattern.test(prompt));
+  const hasWorkTopic = AI_WORK_PATTERNS.some((pattern) => pattern.test(prompt));
+  if (hasCodeTopic && !hasWorkTopic) {
+    return {
+      bloqueada: true,
+      respuesta: "Nexxus IA está enfocada en RR. HH., nómina, bienestar y operaciones laborales. No puedo generar código ni resolver ejercicios de programación.",
+    };
+  }
+  return { bloqueada: false };
+}
+
+export function sanitizeAiHistory(history: unknown, maxEntries: number, maxChars: number): { rol: "usuario" | "asistente"; texto: string }[] {
+  if (!Array.isArray(history)) return [];
+  return history
+    .filter((entry): entry is { rol?: unknown; texto?: unknown } => !!entry && typeof entry === "object")
+    .slice(-maxEntries)
+    .map((entry) => ({
+      rol: entry.rol === "usuario" ? "usuario" : "asistente",
+      texto: safeString(entry.texto, maxChars),
+    }))
+    .filter((entry) => Boolean(entry.texto));
+}
+
+export function containsProgrammingOutput(text: string): boolean {
+  return /```|\b(?:function|const|let|var|class|def|import|SELECT\s+.+\s+FROM)\b/i.test(text);
+}
+
+/**
+ * Retorna la información de fecha y hora local exacta para El Salvador (America/El_Salvador, UTC-6, sin DST).
+ */
+export function getElSalvadorDateTime() {
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat("es-SV", {
+    timeZone: "America/El_Salvador",
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  });
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/El_Salvador",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+
+  const map: Record<string, string> = {};
+  for (const p of parts) {
+    map[p.type] = p.value;
+  }
+  const fecha = `${map.year}-${map.month}-${map.day}`;
+  const hora = `${map.hour}:${map.minute}:${map.second}`;
+  const iso = `${fecha}T${hora}-06:00`;
+  const descripcionCompleta = formatter.format(now);
+
+  return {
+    iso,
+    fecha,
+    hora,
+    descripcionCompleta,
+    zonaHoraria: "America/El_Salvador (UTC-6)",
+  };
+}
+
 // Contexto de datos para el asistente de IA (chat de texto y voz): tareas, asistencias,
 // solicitudes, etc. escopados por rol/empresa del caller. Compartido para que ambos canales
 // respondan sobre la misma informacion real, nunca inventada.
@@ -123,7 +225,17 @@ export async function buildAiContext(
       admin.from("usuarios").select(COLUMNAS_USUARIO_SEGURAS).limit(120),
       admin.from("payments").select("*").limit(80),
     ]);
-    return { alcance: "plataforma", empresas, usuarios, pagos };
+    const timeInfo = getElSalvadorDateTime();
+    return {
+      alcance: "plataforma",
+      fechaActual: timeInfo.iso,
+      horaActual: timeInfo.hora,
+      fechaHoraElSalvador: `${timeInfo.descripcionCompleta} (hora de El Salvador, UTC-6)`,
+      zonaHoraria: timeInfo.zonaHoraria,
+      empresas,
+      usuarios,
+      pagos,
+    };
   }
   if (!caller.empresa_id) throw new HttpError(412, "Tu usuario no tiene empresa asociada.");
   if (isCanonicalRole(caller.rol)) {
@@ -159,9 +271,13 @@ export async function buildAiContext(
         admin.from("feedbacks").select("*").eq("empresa_id", caller.empresa_id)
           .order("created_at", { ascending: false }).limit(60),
       ]);
+    const timeInfo = getElSalvadorDateTime();
     return {
       alcance: "empresa",
-      fechaActual: new Date().toISOString(),
+      fechaActual: timeInfo.iso,
+      horaActual: timeInfo.hora,
+      fechaHoraElSalvador: `${timeInfo.descripcionCompleta} (hora de El Salvador, UTC-6)`,
+      zonaHoraria: timeInfo.zonaHoraria,
       empresa: empresaInfo.data,
       totalEmpleados: empleadosCount.count ?? (empleados.data || []).length,
       empleados: empleados.data,
@@ -210,9 +326,13 @@ export async function buildAiContext(
     creado_por_nombre: (tarea.creado_por && nombresCreadores[tarea.creado_por]) || null,
   }));
 
+  const timeInfo = getElSalvadorDateTime();
   return {
     alcance: "personal",
-    fechaActual: new Date().toISOString(),
+    fechaActual: timeInfo.iso,
+    horaActual: timeInfo.hora,
+    fechaHoraElSalvador: `${timeInfo.descripcionCompleta} (hora de El Salvador, UTC-6)`,
+    zonaHoraria: timeInfo.zonaHoraria,
     tareas: tareasConCreador,
     ausencias: ausencias.data,
     solicitudesInternas: internas.data,
@@ -287,7 +407,24 @@ export function extractSensitiveActions(text: string): { clean: string; acciones
 const TIPOS_NOTIFICACION = new Set(["bienestar", "tarea", "aprobacion", "general"]);
 const TIPOS_AUSENCIA = new Set(["vacaciones", "permiso", "enfermedad", "incapacidad", "personal"]);
 const TIPOS_INTERNA = new Set(["adelanto", "permiso", "capacitacion", "compra", "equipo"]);
+const TIPOS_EVENTO = new Set(["reunion", "capacitacion", "feriado", "evento"]);
+const PRIORIDADES_TAREA = new Set(["Baja", "Media", "Alta", "Urgente"]);
 const FECHA_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+function hasExplicitActionIntent(prompt: string, action: "notification" | "task" | "event" | "absence" | "request" | "complete" | "clockIn" | "clockOut"): boolean {
+  const normalized = prompt.toLowerCase();
+  const patterns: Record<typeof action, RegExp> = {
+    notification: /(?:avis[ae]|alert[ae]|notific[ae]|informa).*(?:rrhh|recursos humanos|jefe|bienestar)|(?:estr[eé]s|agotad[oa]|sobrecargad[oa]|malestar)/i,
+    task: /(?:crea|crear|asigna|asignar|agrega|añade).*(?:tarea|pendiente)|(?:tarea|pendiente).*(?:para|a)\b/i,
+    event: /(?:agenda|agendar|programa|programar|crea|crear).*(?:reuni[oó]n|cita|evento|capacitaci[oó]n)|(?:reuni[oó]n|cita).*(?:ma[ñn]ana|hoy|a las|el )/i,
+    absence: /(?:solicita|solicitar|pide|pedir).*(?:vacaciones|ausencia|permiso|incapacidad|enfermedad)/i,
+    request: /(?:solicita|solicitar|pide|pedir).*(?:adelanto|compra|equipo|capacitaci[oó]n|permiso)/i,
+    complete: /(?:complet[ée]|termin[ée]|finalic[ée]|marc[ae]).*(?:tarea|pendiente)/i,
+    clockIn: /(?:marca|marcar|registr[ae]).*(?:mi )?(?:entrada|llegada)/i,
+    clockOut: /(?:marca|marcar|registr[ae]).*(?:mi )?(?:salida)/i,
+  };
+  return patterns[action].test(normalized);
+}
 
 /**
  * Ejecuta las etiquetas de accion que el modelo puede emitir como texto literal dentro de su
@@ -300,17 +437,21 @@ const FECHA_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
  *   [REQUEST_INTERNA:tipo|detalle]
  *   [COMPLETE_TASK:id]                               -- id real de una tarea del contexto
  *   [CLOCK_IN] / [CLOCK_OUT]                          -- marca entrada/salida del caller
- * Ninguna de estas es "sensible": crean o actualizan un registro que igual pasa por el flujo de
- * aprobacion normal de la empresa (o, en el caso de tareas, solo modifica una propia), no
- * ejecutan nada irreversible por si solas.
+ * Ninguna de estas se ejecuta por una instrucción encontrada en el contexto, historial o una
+ * salida aislada del modelo: la consulta original debe expresar explícitamente la intención y
+ * cada operación valida rol, empresa y datos antes de escribir.
  */
-export async function applyActionTags(admin: SupabaseClient, caller: Caller, text: string): Promise<string> {
+export async function applyActionTags(admin: SupabaseClient, caller: Caller, text: string, prompt: string): Promise<string> {
   let clean = text;
   let match: RegExpMatchArray | null;
 
   while ((match = clean.match(/\[NOTIFICATION:(\w+)\|([^|]+)\|([^\]]+)\]/))) {
     const tipoRaw = match[1].toLowerCase().trim();
     const tipo = TIPOS_NOTIFICACION.has(tipoRaw) ? tipoRaw : "general";
+    if (!hasExplicitActionIntent(prompt, "notification")) {
+      clean = clean.replace(match[0], "").trim();
+      continue;
+    }
     // El chat/voz de IA es la via mas comun para que un empleado exprese malestar en texto
     // libre ("me siento mal", "estoy agotado") -- se marca prioridad alta para que el
     // timbre/badge del admin lo resalte igual que la alerta automatica del trigger de checkins.
@@ -328,6 +469,22 @@ export async function applyActionTags(admin: SupabaseClient, caller: Caller, tex
 
   while ((match = clean.match(/\[TASK:([^|]+)\|([^|]+)\|([^|]+)\|([^\]]+)\]/))) {
     const asignadoRaw = match[4].trim();
+    const prioridad = match[1].trim();
+    if (!hasExplicitActionIntent(prompt, "task") || !PRIORIDADES_TAREA.has(prioridad)) {
+      clean = clean.replace(match[0], "").trim();
+      continue;
+    }
+    const asignadoA = asignadoRaw.toLowerCase() === "yo" || !asignadoRaw ? caller.id : asignadoRaw;
+    if (asignadoA !== caller.id && !isCanonicalRole(caller.rol)) {
+      clean = clean.replace(match[0], "").trim();
+      continue;
+    }
+    const { data: assignee } = await admin.from("usuarios").select("id")
+      .eq("id", asignadoA).eq("empresa_id", caller.empresa_id).maybeSingle();
+    if (!assignee) {
+      clean = clean.replace(match[0], "").trim();
+      continue;
+    }
     // El prompt le pide al modelo usar el id real de "empleados" cuando asigna a otra persona;
     // si de todos modos llega un valor que no es un uuid válido, el insert falla por FK y se
     // registra aquí en vez de fallar en silencio dejando al usuario creyendo que sí se asignó.
@@ -335,8 +492,8 @@ export async function applyActionTags(admin: SupabaseClient, caller: Caller, tex
       empresa_id: caller.empresa_id,
       titulo: safeString(match[2], 150),
       descripcion: safeString(match[3], 500),
-      prioridad: match[1],
-      asignado_a: asignadoRaw.toLowerCase() === "yo" || !asignadoRaw ? caller.id : asignadoRaw,
+      prioridad,
+      asignado_a: asignadoA,
       creado_por: caller.id,
       estado: "pendiente",
     });
@@ -345,11 +502,18 @@ export async function applyActionTags(admin: SupabaseClient, caller: Caller, tex
   }
 
   while ((match = clean.match(/\[EVENT:([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^\]]+)\]/))) {
+    const tipo = match[1].toLowerCase().trim();
+    const inicio = match[3].trim();
+    const fin = match[4].trim();
+    if (!hasExplicitActionIntent(prompt, "event") || !isCanonicalRole(caller.rol) || !TIPOS_EVENTO.has(tipo) || Number.isNaN(Date.parse(inicio)) || Number.isNaN(Date.parse(fin))) {
+      clean = clean.replace(match[0], "").trim();
+      continue;
+    }
     await admin.from("calendario_empresarial").insert({
       empresa_id: caller.empresa_id,
       titulo: safeString(match[2], 120),
-      fecha_inicio: match[3],
-      fecha_fin: match[4],
+      fecha_inicio: inicio,
+      fecha_fin: fin,
       descripcion: safeString(match[5], 400),
       tipo: match[1].toLowerCase().trim(),
     });
@@ -360,7 +524,7 @@ export async function applyActionTags(admin: SupabaseClient, caller: Caller, tex
     const tipoRaw = match[1].toLowerCase().trim();
     const fechaInicio = match[2].trim();
     const fechaFin = match[3].trim();
-    if (TIPOS_AUSENCIA.has(tipoRaw) && FECHA_PATTERN.test(fechaInicio) && FECHA_PATTERN.test(fechaFin)) {
+    if (hasExplicitActionIntent(prompt, "absence") && TIPOS_AUSENCIA.has(tipoRaw) && FECHA_PATTERN.test(fechaInicio) && FECHA_PATTERN.test(fechaFin) && fechaFin >= fechaInicio) {
       await admin.from("solicitudes_ausencia").insert({
         empresa_id: caller.empresa_id,
         usuario_id: caller.id,
@@ -377,7 +541,7 @@ export async function applyActionTags(admin: SupabaseClient, caller: Caller, tex
 
   while ((match = clean.match(/\[REQUEST_INTERNA:([^|]+)\|([^\]]+)\]/))) {
     const tipoRaw = match[1].toLowerCase().trim();
-    if (TIPOS_INTERNA.has(tipoRaw)) {
+    if (hasExplicitActionIntent(prompt, "request") && TIPOS_INTERNA.has(tipoRaw)) {
       await admin.from("solicitudes_internas").insert({
         empresa_id: caller.empresa_id,
         usuario_id: caller.id,
@@ -392,6 +556,10 @@ export async function applyActionTags(admin: SupabaseClient, caller: Caller, tex
 
   while ((match = clean.match(/\[COMPLETE_TASK:([^\]]+)\]/))) {
     const tareaId = match[1].trim();
+    if (!hasExplicitActionIntent(prompt, "complete")) {
+      clean = clean.replace(match[0], "").trim();
+      continue;
+    }
     // Un empleado solo puede completar sus propias tareas; jefe/admin/super_admin pueden
     // completar cualquiera de su empresa (p.ej. si delegan y confirman en nombre de otro).
     let query = admin.from("tareas").update({ estado: "completada" }).eq("id", tareaId).eq(
@@ -405,6 +573,10 @@ export async function applyActionTags(admin: SupabaseClient, caller: Caller, tex
   }
 
   while ((match = clean.match(/\[CLOCK_IN\]/))) {
+    if (!hasExplicitActionIntent(prompt, "clockIn")) {
+      clean = clean.replace(match[0], "").trim();
+      continue;
+    }
     await admin.from("asistencias").insert({
       empresa_id: caller.empresa_id,
       usuario_id: caller.id,
@@ -416,6 +588,10 @@ export async function applyActionTags(admin: SupabaseClient, caller: Caller, tex
   }
 
   while ((match = clean.match(/\[CLOCK_OUT\]/))) {
+    if (!hasExplicitActionIntent(prompt, "clockOut")) {
+      clean = clean.replace(match[0], "").trim();
+      continue;
+    }
     await admin.from("asistencias").insert({
       empresa_id: caller.empresa_id,
       usuario_id: caller.id,

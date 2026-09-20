@@ -96,7 +96,7 @@ function getModuleStyle(modulo: string) {
 }
 function formatAuditAction(accion: string): string {
   if (!accion) return "Evento del sistema";
-  let formatted = accion.replace(/_/g, " ").trim();
+  const formatted = accion.replace(/_/g, " ").trim();
   return formatted.charAt(0).toUpperCase() + formatted.slice(1);
 }
 

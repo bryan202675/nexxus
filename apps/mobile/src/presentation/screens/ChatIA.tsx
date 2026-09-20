@@ -16,7 +16,6 @@ import {
   StatusBar,
   StyleSheet,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View} from 'react-native';
 import Animated, {
   Easing,
@@ -195,12 +194,12 @@ export default function ChatIA({ navigation }: Props) {
   const [menuOpcionesVisible, setMenuOpcionesVisible] = useState(false);
   const [confirmacionBorradoVisible, setConfirmacionBorradoVisible] = useState(false);
   const [sugerenciaActiva, setSugerenciaActiva] = useState('resumen');
+  const defaultBottomSpacing = useMemo(() => {
+    return Platform.OS === 'ios' ? 88 : Math.max(8, insets.bottom) + 54;
+  }, [insets.bottom]);
 
-  const bottomSpacing = tecladoVisible
-    ? 8
-    : Platform.OS === 'ios'
-    ? 88
-    : Math.max(12, insets.bottom + 8) + 64;
+  const animBottomSpacing = useSharedValue(defaultBottomSpacing);
+  const animFocusBarra = useSharedValue(0);
 
   const alternarMenuOpciones = () => {
     const siguiente = !menuOpcionesVisible;
@@ -215,14 +214,61 @@ export default function ChatIA({ navigation }: Props) {
     transform: [{ rotate: `${rotacionPlus.value}deg` }],
   }));
 
+  const estiloAnimadoContenedorEntrada = useAnimatedStyle(() => ({
+    paddingBottom: animBottomSpacing.value,
+  }));
+
+  const estiloAnimadoBarraCapsula = useAnimatedStyle(() => ({
+    borderColor: animFocusBarra.value > 0.05
+      ? (esOscuro ? colores.pulso.borderStrong : '#211E1C')
+      : (esOscuro ? colores.pulso.borderStrong : 'rgba(0, 0, 0, 0.06)'),
+    transform: [
+      {
+        scale: 1 + animFocusBarra.value * 0.008,
+      },
+    ],
+  }));
+
   useEffect(() => {
-    const mostrarSub = Keyboard.addListener('keyboardDidShow', () => setTecladoVisible(true));
-    const ocultarSub = Keyboard.addListener('keyboardDidHide', () => setTecladoVisible(false));
-    return () => {
-      mostrarSub.remove();
-      ocultarSub.remove();
+    const onShow = (e: any) => {
+      setTecladoVisible(true);
+      const duration = Platform.OS === 'ios' && e?.duration && e.duration > 0 ? e.duration : 220;
+      const targetSpacing = Platform.OS === 'ios' ? 8 : 6;
+      animBottomSpacing.value = withTiming(targetSpacing, {
+        duration,
+        easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+      });
+      animFocusBarra.value = withTiming(1, { duration });
+
+      setTimeout(() => {
+        referenciaScroll.current?.scrollToEnd({ animated: true });
+      }, 100);
     };
-  }, []);
+
+    const onHide = (e: any) => {
+      setTecladoVisible(false);
+      const duration = Platform.OS === 'ios' && e?.duration && e.duration > 0 ? e.duration : 220;
+      animBottomSpacing.value = withTiming(defaultBottomSpacing, {
+        duration,
+        easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+      });
+      animFocusBarra.value = withTiming(0, { duration });
+    };
+
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      onShow
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      onHide
+    );
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [defaultBottomSpacing]);
 
   const formatearHora = () =>
     new Date().toLocaleTimeString(i18n.language === 'es' ? 'es-SV' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
@@ -425,8 +471,8 @@ export default function ChatIA({ navigation }: Props) {
   }
 
   function enviarMensaje(texto: string) {
-    if (!texto.trim()) return;
     Keyboard.dismiss();
+    if (!texto.trim()) return;
 
     const mensajeUsuario: Mensaje = {
       id: Date.now().toString(),
@@ -474,29 +520,35 @@ export default function ChatIA({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={estilos.contenedor} edges={['top', 'left', 'right']}>
+    <KeyboardAvoidingView
+      style={estilos.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
+    >
+      <SafeAreaView style={estilos.contenedor} edges={['top', 'left', 'right']}>
       <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
 
       <View pointerEvents="none" style={estilos.fondoAbsoluto}>
         <AiAmbientBackground state={escribiendo ? 'thinking' : 'idle'} />
       </View>
 
-      <View style={estilos.topBar}>
-        <BotonAnimado
-          style={estilos.profile}
-          scaleTo={0.97}
-          onPress={() => navigation.navigate("PerfilLaboral")}
-          accessibilityLabel="Abrir mi perfil"
-        >
-          {perfil?.foto_perfil ? (
-            <Image source={{ uri: perfil.foto_perfil }} style={estilos.avatar} />
-          ) : (
-            <Text style={estilos.avatarInitial}>
-              {((perfil?.nombre || 'U').trim().charAt(0) || 'U').toUpperCase()}
-            </Text>
-          )}
-        </BotonAnimado>
-        <Text style={estilos.topBarLabel}>Nexxus IA</Text>
+      <View style={estilos.topBarContainer}>
+        <View style={estilos.topBar}>
+          <BotonAnimado
+            style={estilos.profile}
+            scaleTo={0.97}
+            onPress={() => navigation.navigate("PerfilLaboral")}
+            accessibilityLabel="Abrir mi perfil"
+          >
+            {perfil?.foto_perfil ? (
+              <Image source={{ uri: perfil.foto_perfil }} style={estilos.avatar} resizeMode="cover" />
+            ) : (
+              <Text style={estilos.avatarInitial}>
+                {((perfil?.nombre || 'U').trim().charAt(0) || 'U').toUpperCase()}
+              </Text>
+            )}
+          </BotonAnimado>
+          <Text style={estilos.topBarLabel}>Nexxus IA</Text>
         <View style={estilos.headerActions}>
           <BotonAnimado
             onPress={abrirNexxusVoice}
@@ -504,7 +556,7 @@ export default function ChatIA({ navigation }: Props) {
             style={estilos.addButton}
             accessibilityLabel="Llamada de voz con IA"
           >
-            <IconoOndasVoz size={18} color="#FFFFFF" />
+            <IconoOndasVoz size={Platform.OS === 'ios' ? 18 : 16} color={esOscuro ? colores.pulso.textInverse : '#FFFFFF'} />
           </BotonAnimado>
           <BotonAnimado
             onPress={mensajes.length > 0 ? confirmarLimpiarChat : alternarMenuOpciones}
@@ -513,18 +565,24 @@ export default function ChatIA({ navigation }: Props) {
             accessibilityLabel={mensajes.length > 0 ? "Borrar conversación" : "Opciones de IA"}
           >
             {mensajes.length > 0 ? (
-              <Feather name="trash-2" size={19} color="#B54B45" />
+              <Feather name="trash-2" size={Platform.OS === 'ios' ? 19 : 17} color={esOscuro ? colores.pulso.errorText : '#B54B45'} />
             ) : (
-              <MaterialIcons name="tune" size={20} color="#202020" />
+              <MaterialIcons name="tune" size={Platform.OS === 'ios' ? 20 : 18} color={esOscuro ? colores.pulso.icon : '#202020'} />
             )}
           </BotonAnimado>
         </View>
       </View>
+    </View>
 
-      <KeyboardAvoidingView style={estilos.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={0}>
         {/* Estado Inicial de Bienvenida con Mascota Nexxus IA */}
         {mensajes.length === 0 ? (
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <ScrollView
+            style={estilos.flex}
+            contentContainerStyle={estilos.contenedorHeroMascotaScroll}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            bounces={false}
+          >
             <View style={estilos.contenedorHeroMascota}>
               <Animated.View entering={FadeInDown.duration(260).easing(Easing.out(Easing.quad))} style={estilos.heroContenido}>
                 <Text style={estilos.tituloHeroMascota}>
@@ -535,6 +593,7 @@ export default function ChatIA({ navigation }: Props) {
               <Animated.View entering={FadeInDown.delay(60).duration(260).easing(Easing.out(Easing.quad))} style={estilos.tarjetaEstadoIA}>
                 <Animated.View style={[estilos.iconoMascotaWrap, estiloPulsoHero]}>
                   <View style={estilos.haloMascotaExterior} />
+                  <View style={estilos.haloMascotaInterior} />
                   <Image source={MASCOTA_NEXXUS} style={estilos.mascotaImgHero} resizeMode="contain" />
                 </Animated.View>
                 <View style={estilos.estadoIACopy}>
@@ -547,11 +606,11 @@ export default function ChatIA({ navigation }: Props) {
                 <Text style={estilos.tituloPreguntas}>Preguntas rápidas</Text>
               </View>
               <Animated.View entering={FadeInUp.delay(110).duration(260)} style={estilos.wrapSugerenciasHero}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={estilos.scrollSugerenciasHero}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="none" contentContainerStyle={estilos.scrollSugerenciasHero}>
                   {SUGERENCIAS_RAPIDAS.map((sug) => (
                     <BotonAnimado key={sug.comando} onPress={() => { Keyboard.dismiss(); setSugerenciaActiva(sug.comando); enviarMensaje(sug.label); }} scaleTo={0.98}>
                       <View style={[estilos.chipSugerenciaMascota, sugerenciaActiva === sug.comando && estilos.chipSugerenciaActiva]}>
-                        <MaterialIcons name={sug.icono} size={15} color={sugerenciaActiva === sug.comando ? '#FFFFFF' : (esOscuro ? '#CBD5E1' : '#292522')} />
+                        <MaterialIcons name={sug.icono} size={Platform.OS === 'ios' ? 15 : 13} color={sugerenciaActiva === sug.comando ? (esOscuro ? colores.pulso.chipTextActive : '#FFFFFF') : (esOscuro ? colores.pulso.text : '#292522')} />
                         <Text style={[estilos.textoChipMascota, sugerenciaActiva === sug.comando && estilos.textoChipActivo]}>{sug.label}</Text>
                       </View>
                     </BotonAnimado>
@@ -563,14 +622,15 @@ export default function ChatIA({ navigation }: Props) {
                 <BotonAnimado onPress={() => { Keyboard.dismiss(); enviarMensaje(contexto.urgentes > 0 ? 'Tareas urgentes' : 'Resumen de mi día'); }} scaleTo={0.97} style={estilos.botonVerRecomendacion}><Text style={estilos.textoVerRecomendacion}>Ver</Text></BotonAnimado>
               </Animated.View>
             </View>
-          </TouchableWithoutFeedback>
+          </ScrollView>
         ) : (
           <ScrollView
             ref={referenciaScroll}
+            style={estilos.flex}
             contentContainerStyle={estilos.scrollChat}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
+            keyboardDismissMode="none"
             onContentSizeChange={() => referenciaScroll.current?.scrollToEnd({ animated: true })}
           >
             {mensajes.map((mensaje) => {
@@ -602,7 +662,7 @@ export default function ChatIA({ navigation }: Props) {
                             scaleTo={0.96}
                             style={estilos.botonRedirect}
                           >
-                            <MaterialIcons name="arrow-forward" size={15} color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
+                            <MaterialIcons name="arrow-forward" size={15} color={esOscuro ? colores.pulso.textInverse : '#FFFFFF'} />
                             <Text style={estilos.textoRedirect}>{parsed.redirect.etiqueta}</Text>
                           </BotonAnimado>
                         )}
@@ -689,7 +749,12 @@ export default function ChatIA({ navigation }: Props) {
         )}
 
         {/* Barra Inferior de Entrada */}
-        <View style={[estilos.contenedorEntrada, { paddingBottom: bottomSpacing }]}>
+        <Animated.View
+          style={[
+            estilos.contenedorEntrada,
+            estiloAnimadoContenedorEntrada,
+          ]}
+        >
           {/* Panel Desplegable Animado al Presionar '+' */}
           {menuOpcionesVisible && (
             <Animated.View
@@ -700,7 +765,7 @@ export default function ChatIA({ navigation }: Props) {
               <View style={estilos.panelMenuHeader}>
                 <View style={estilos.panelMenuHeaderIzquierda}>
                   <View style={estilos.panelMenuHeaderBadge}>
-                    <MaterialIcons name="auto-awesome" size={13} color={esOscuro ? '#FFFFFF' : '#211E1C'} />
+                    <MaterialIcons name="auto-awesome" size={13} color={esOscuro ? colores.pulso.icon : '#211E1C'} />
                   </View>
                   <Text style={estilos.panelMenuTitulo}>Opciones rápidas</Text>
                 </View>
@@ -710,7 +775,7 @@ export default function ChatIA({ navigation }: Props) {
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   accessibilityLabel="Cerrar opciones"
                 >
-                  <MaterialIcons name="close" size={15} color={esOscuro ? '#CBD5E1' : '#64748B'} />
+                  <MaterialIcons name="close" size={15} color={esOscuro ? colores.pulso.textSecondary : '#64748B'} />
                 </TouchableOpacity>
               </View>
 
@@ -727,7 +792,7 @@ export default function ChatIA({ navigation }: Props) {
                     style={estilos.itemMenuOpcion}
                   >
                     <View style={estilos.itemMenuIconoWrap}>
-                      <MaterialIcons name={sugerencia.icono} size={15} color={esOscuro ? '#FFFFFF' : '#211E1C'} />
+                      <MaterialIcons name={sugerencia.icono} size={15} color={esOscuro ? colores.pulso.icon : '#211E1C'} />
                     </View>
                     <Text style={estilos.itemMenuTexto} numberOfLines={1}>{sugerencia.label}</Text>
                   </BotonAnimado>
@@ -753,12 +818,12 @@ export default function ChatIA({ navigation }: Props) {
                   <Feather
                     name="trash-2"
                     size={14}
-                    color={mensajes.length === 0 ? (esOscuro ? '#64748B' : '#94A3B8') : '#DC2626'}
+                    color={mensajes.length === 0 ? (esOscuro ? colores.pulso.textTertiary : '#94A3B8') : (esOscuro ? colores.pulso.errorText : '#DC2626')}
                   />
                   <Text
                     style={[
                       estilos.textoAccionUtilitaria,
-                      { color: mensajes.length === 0 ? (esOscuro ? '#64748B' : '#94A3B8') : '#DC2626' },
+                      { color: mensajes.length === 0 ? (esOscuro ? colores.pulso.textTertiary : '#94A3B8') : (esOscuro ? colores.pulso.errorText : '#DC2626') },
                     ]}
                   >
                     Borrar chat
@@ -774,8 +839,8 @@ export default function ChatIA({ navigation }: Props) {
                   style={[estilos.btnAccionUtilitaria, estilos.btnAccionVoz]}
                   accessibilityLabel="Llamada de voz con Nexxus IA"
                 >
-                  <IconoOndasVoz size={14} color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
-                  <Text style={[estilos.textoAccionUtilitaria, { color: esOscuro ? '#0B0C1E' : '#FFFFFF' }]}>
+                  <IconoOndasVoz size={14} color={esOscuro ? colores.pulso.textInverse : '#FFFFFF'} />
+                  <Text style={[estilos.textoAccionUtilitaria, { color: esOscuro ? colores.pulso.textInverse : '#FFFFFF' }]}>
                     Nexxus Voice
                   </Text>
                 </BotonAnimado>
@@ -784,7 +849,7 @@ export default function ChatIA({ navigation }: Props) {
           )}
 
           {/* Cápsula de entrada con botón dinámico de Voz / Enviar */}
-          <View style={estilos.barraCapsula}>
+          <Animated.View style={[estilos.barraCapsula, estiloAnimadoBarraCapsula]}>
             <TouchableOpacity
               style={estilos.btnAccionPlus}
               activeOpacity={0.7}
@@ -795,7 +860,7 @@ export default function ChatIA({ navigation }: Props) {
                 <MaterialIcons
                   name="add"
                   size={24}
-                  color={menuOpcionesVisible ? (esOscuro ? '#FFFFFF' : '#211E1C') : (esOscuro ? 'rgba(255,255,255,0.7)' : '#64748B')}
+                  color={menuOpcionesVisible ? (esOscuro ? colores.pulso.text : '#211E1C') : (esOscuro ? colores.pulso.textSecondary : '#64748B')}
                 />
               </Animated.View>
             </TouchableOpacity>
@@ -803,10 +868,15 @@ export default function ChatIA({ navigation }: Props) {
             <TextInput
               style={estilos.entrada}
               placeholder="Pregunta a Nexxus IA..."
-              placeholderTextColor={esOscuro ? 'rgba(255,255,255,0.38)' : '#94A3B8'}
+              placeholderTextColor={esOscuro ? colores.pulso.textTertiary : '#94A3B8'}
               value={textoEntrada}
               onChangeText={setTextoEntrada}
-              onSubmitEditing={() => enviarMensaje(textoEntrada)}
+              onSubmitEditing={() => {
+                Keyboard.dismiss();
+                if (textoEntrada.trim()) {
+                  enviarMensaje(textoEntrada);
+                }
+              }}
               blurOnSubmit={true}
               returnKeyType="send"
               maxLength={500}
@@ -828,7 +898,7 @@ export default function ChatIA({ navigation }: Props) {
                       <MaterialIcons
                         name="arrow-upward"
                         size={22}
-                        color={esOscuro ? '#0B0C1E' : '#FFFFFF'}
+                        color={esOscuro ? colores.pulso.textInverse : '#FFFFFF'}
                       />
                     </View>
                   </BotonAnimado>
@@ -845,19 +915,18 @@ export default function ChatIA({ navigation }: Props) {
                     accessibilityLabel="Hablar con la IA en tiempo real"
                   >
                     <View style={estilos.botonVozOndas}>
-                      <IconoOndasVoz size={18} color={esOscuro ? '#0B0C1E' : '#FFFFFF'} />
+                      <IconoOndasVoz size={18} color={esOscuro ? colores.pulso.textInverse : '#FFFFFF'} />
                     </View>
                   </BotonAnimado>
                 </Animated.View>
               )}
             </View>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-      <Modal visible={confirmacionBorradoVisible} transparent animationType="fade" onRequestClose={() => setConfirmacionBorradoVisible(false)}>
+          </Animated.View>
+        </Animated.View>
+        <Modal visible={confirmacionBorradoVisible} transparent animationType="fade" onRequestClose={() => setConfirmacionBorradoVisible(false)}>
         <View style={estilos.overlayModal}>
           <View style={estilos.modalConfirmacion}>
-            <View style={estilos.iconoModal}><Feather name="trash-2" size={20} color="#B54B45" /></View>
+            <View style={estilos.iconoModal}><Feather name="trash-2" size={20} color={esOscuro ? colores.pulso.errorText : '#B54B45'} /></View>
             <Text style={estilos.tituloModal}>Borrar conversación</Text>
             <Text style={estilos.textoModal}>Eliminarás este historial de Nexxus IA de este dispositivo.</Text>
             <View style={estilos.accionesModal}>
@@ -867,14 +936,17 @@ export default function ChatIA({ navigation }: Props) {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }
 
 function crearEstilosChat(c: any, esOscuro: boolean) {
-  const capsulaBg = esOscuro ? '#181926' : '#FFFFFF';
-  const bordeCapsula = esOscuro ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)';
-  const cardBlanca = esOscuro ? '#181926' : '#FFFFFF';
+  const isIOS = Platform.OS === 'ios';
+  const pulse = c.pulso;
+  const capsulaBg = esOscuro ? pulse.surface : '#FFFFFF';
+  const bordeCapsula = esOscuro ? pulse.borderStrong : 'rgba(0, 0, 0, 0.06)';
+  const cardBlanca = esOscuro ? pulse.surface : '#FFFFFF';
 
   return StyleSheet.create({
     contenedor: {
@@ -890,57 +962,67 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
       flex: 1,
     },
 
-    topBar: {
-      height: 52,
+    topBarContainer: {
       paddingHorizontal: 21,
-      marginTop: 4,
+      paddingTop: isIOS ? 6 : 4,
+      paddingBottom: 8,
+      zIndex: 10,
+      backgroundColor: 'transparent',
+    },
+    topBar: {
+      height: isIOS ? 54 : 48,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
     },
     profile: {
-      width: 46,
-      height: 46,
-      borderRadius: 23,
-      backgroundColor: '#E9D2BF',
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: esOscuro ? pulse.iconSurface : '#E9D2BF',
       alignItems: 'center',
       justifyContent: 'center',
       overflow: 'hidden',
+      borderWidth: esOscuro ? 1 : 0,
+      borderColor: pulse.border,
     },
     avatar: {
-      width: '100%',
-      height: '100%',
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
     },
     avatarInitial: {
-      color: '#382E29',
-      fontSize: 17,
+      color: esOscuro ? pulse.text : '#382E29',
+      fontSize: isIOS ? 17 : 15,
       fontWeight: '700',
     },
     topBarLabel: {
-      color: '#292522',
-      fontSize: 17,
+      color: esOscuro ? pulse.text : '#292522',
+      fontSize: isIOS ? 17 : 15,
       fontWeight: '600',
-      letterSpacing: -0.5,
+      letterSpacing: isIOS ? -0.5 : -0.3,
     },
     headerActions: {
       flexDirection: 'row',
-      gap: 10,
+      gap: isIOS ? 10 : 8,
     },
     addButton: {
-      width: 47,
-      height: 47,
-      borderRadius: 24,
-      backgroundColor: '#202020',
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: esOscuro ? pulse.inverse : '#202020',
       alignItems: 'center',
       justifyContent: 'center',
     },
     bellButton: {
-      width: 47,
-      height: 47,
-      borderRadius: 24,
-      backgroundColor: '#FFFFFF',
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: esOscuro ? pulse.surfaceElevated : '#FFFFFF',
       alignItems: 'center',
       justifyContent: 'center',
+      borderWidth: esOscuro ? 1 : 0,
+      borderColor: pulse.border,
       ...SOMBRAS.suave,
     },
 
@@ -950,58 +1032,95 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
       borderRadius: 18,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: esOscuro ? 'rgba(239,68,68,0.12)' : 'rgba(239,68,68,0.08)',
+      backgroundColor: esOscuro ? pulse.errorSurface : 'rgba(239,68,68,0.08)',
       borderWidth: 1,
-      borderColor: 'rgba(239,68,68,0.25)',
+      borderColor: esOscuro ? 'rgba(239,68,68,0.3)' : 'rgba(239,68,68,0.25)',
     },
 
     // Estado Hero con Mascota Nexxus IA
+    contenedorHeroMascotaScroll: {
+      flexGrow: 1,
+      paddingBottom: isIOS ? 24 : 16,
+    },
     contenedorHeroMascota: {
-      flex: 1,
-      paddingHorizontal: 21,
-      paddingTop: 22,
-      paddingBottom: 16,
-      gap: 18,
+      paddingHorizontal: isIOS ? 21 : 16,
+      paddingTop: isIOS ? 22 : 12,
+      paddingBottom: isIOS ? 16 : 12,
+      gap: isIOS ? 18 : 12,
     },
     heroContenido: {
       alignItems: 'flex-start',
     },
     iconoMascotaWrap: {
-      width: 106,
-      height: 106,
+      width: isIOS ? 106 : 68,
+      height: isIOS ? 106 : 68,
       alignItems: 'center',
       justifyContent: 'center',
       marginBottom: 0,
     },
-    haloMascotaExterior: { position: 'absolute', width: 104, height: 104, borderRadius: 52, backgroundColor: 'rgba(167,139,250,0.18)' },
-    haloMascotaInterior: { position: 'absolute', width: 84, height: 84, borderRadius: 42, backgroundColor: 'rgba(255,255,255,0.72)', borderWidth: 1, borderColor: 'rgba(124,58,237,0.12)' },
+    haloMascotaExterior: {
+      position: 'absolute',
+      width: isIOS ? 104 : 66,
+      height: isIOS ? 104 : 66,
+      borderRadius: isIOS ? 52 : 33,
+      backgroundColor: esOscuro ? 'rgba(167,139,250,0.20)' : 'rgba(167,139,250,0.18)',
+    },
+    haloMascotaInterior: {
+      position: 'absolute',
+      width: isIOS ? 90 : 56,
+      height: isIOS ? 90 : 56,
+      borderRadius: isIOS ? 45 : 28,
+      backgroundColor: esOscuro ? 'rgba(167,139,250,0.30)' : 'rgba(167,139,250,0.25)',
+    },
     mascotaImgHero: {
-      width: 82,
-      height: 82,
+      width: isIOS ? 82 : 52,
+      height: isIOS ? 82 : 52,
     },
     tituloHeroMascota: {
-      fontSize: 34,
+      fontSize: isIOS ? 34 : 22,
       fontWeight: '600',
-      color: esOscuro ? '#FFFFFF' : '#1F1D1C',
+      color: esOscuro ? pulse.text : '#1F1D1C',
       textAlign: 'left',
-      letterSpacing: -1.4,
-      lineHeight: 38,
+      letterSpacing: isIOS ? -1.4 : -0.6,
+      lineHeight: isIOS ? 38 : 27,
     },
-    subtituloHeroMascota: { marginTop: 9, maxWidth: 310, fontSize: 14, lineHeight: 21, color: esOscuro ? 'rgba(255,255,255,0.68)' : '#78716C', textAlign: 'left' },
-    tarjetaEstadoIA: { minHeight: 150, borderRadius: 28, backgroundColor: '#211F20', padding: 18, flexDirection: 'row', alignItems: 'center', gap: 15, shadowColor: '#211E1C', shadowOpacity: 0.12, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 3 },
+    subtituloHeroMascota: {
+      marginTop: isIOS ? 9 : 4,
+      maxWidth: 310,
+      fontSize: isIOS ? 14 : 12.5,
+      lineHeight: isIOS ? 21 : 17,
+      color: esOscuro ? pulse.textSecondary : '#78716C',
+      textAlign: 'left',
+    },
+    tarjetaEstadoIA: {
+      minHeight: isIOS ? 150 : 96,
+      borderRadius: isIOS ? 28 : 20,
+      backgroundColor: esOscuro ? pulse.surface : '#211F20',
+      padding: isIOS ? 18 : 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: isIOS ? 15 : 12,
+      borderWidth: esOscuro ? 1 : 0,
+      borderColor: pulse.border,
+      shadowColor: '#211E1C',
+      shadowOpacity: esOscuro ? 0.2 : 0.12,
+      shadowRadius: 20,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 3,
+    },
     estadoIACopy: { flex: 1, gap: 4 },
-    estadoIATitulo: { color: 'rgba(255,255,255,0.68)', fontSize: 13, fontWeight: '600' },
-    estadoIADestacado: { color: '#FFFFFF', fontSize: 18, lineHeight: 23, fontWeight: '600', letterSpacing: -0.35 },
-    estadoIADetalle: { color: 'rgba(255,255,255,0.52)', fontSize: 12, lineHeight: 17 },
-    cabeceraPreguntas: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', marginTop: 2 },
-    tituloPreguntas: { color: esOscuro ? '#FFFFFF' : '#292522', fontSize: 20, fontWeight: '600', letterSpacing: -0.5 },
+    estadoIATitulo: { color: esOscuro ? pulse.textTertiary : 'rgba(255,255,255,0.68)', fontSize: isIOS ? 13 : 11.5, fontWeight: '600' },
+    estadoIADestacado: { color: esOscuro ? pulse.text : '#FFFFFF', fontSize: isIOS ? 18 : 14.5, lineHeight: isIOS ? 23 : 19, fontWeight: '600', letterSpacing: -0.35 },
+    estadoIADetalle: { color: esOscuro ? pulse.textSecondary : 'rgba(255,255,255,0.52)', fontSize: isIOS ? 12 : 11, lineHeight: isIOS ? 17 : 14 },
+    cabeceraPreguntas: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', marginTop: isIOS ? 2 : 0 },
+    tituloPreguntas: { color: esOscuro ? pulse.text : '#292522', fontSize: isIOS ? 20 : 15, fontWeight: '600', letterSpacing: isIOS ? -0.5 : -0.3 },
     wrapSugerenciasHero: {
       width: '100%',
-      marginTop: 8,
+      marginTop: isIOS ? 8 : 4,
     },
     scrollSugerenciasHero: {
       paddingRight: 20,
-      gap: 9,
+      gap: isIOS ? 9 : 7,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -1010,41 +1129,72 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
     chipSugerenciaMascota: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 7,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      borderRadius: 21,
-      backgroundColor: esOscuro ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.9)',
+      gap: isIOS ? 7 : 5,
+      paddingHorizontal: isIOS ? 14 : 11,
+      paddingVertical: isIOS ? 10 : 7,
+      borderRadius: isIOS ? 21 : 16,
+      backgroundColor: esOscuro ? pulse.surfaceElevated : 'rgba(255,255,255,0.9)',
       borderWidth: 1,
-      borderColor: bordeCapsula,
+      borderColor: esOscuro ? pulse.border : bordeCapsula,
       shadowOpacity: 0,
     },
-    chipSugerenciaActiva: { backgroundColor: '#211E1C', borderColor: '#211E1C' },
-    textoChipMascota: {
-      fontSize: 12.5,
-      fontWeight: '600',
-      color: esOscuro ? '#E2E8F0' : '#514B47',
+    chipSugerenciaActiva: {
+      backgroundColor: esOscuro ? pulse.chipActive : '#211E1C',
+      borderColor: esOscuro ? pulse.chipActive : '#211E1C',
     },
-    textoChipActivo: { color: '#FFFFFF' },
-    tarjetaRecomendacion: { minHeight: 108, padding: 17, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.9)', flexDirection: 'row', alignItems: 'flex-end', gap: 12, shadowColor: '#302A27', shadowOpacity: 0.05, shadowRadius: 14, shadowOffset: { width: 0, height: 5 }, elevation: 1 },
+    textoChipMascota: {
+      fontSize: isIOS ? 12.5 : 11.5,
+      fontWeight: '600',
+      color: esOscuro ? pulse.text : '#514B47',
+    },
+    textoChipActivo: {
+      color: esOscuro ? pulse.chipTextActive : '#FFFFFF',
+    },
+    tarjetaRecomendacion: {
+      minHeight: isIOS ? 108 : 78,
+      padding: isIOS ? 17 : 12,
+      borderRadius: isIOS ? 25 : 18,
+      backgroundColor: esOscuro ? pulse.surface : 'rgba(255,255,255,0.9)',
+      borderWidth: esOscuro ? 1 : 0,
+      borderColor: pulse.border,
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      gap: isIOS ? 12 : 8,
+      shadowColor: '#302A27',
+      shadowOpacity: esOscuro ? 0.2 : 0.05,
+      shadowRadius: 14,
+      shadowOffset: { width: 0, height: 5 },
+      elevation: 1,
+    },
     recomendacionCopy: { flex: 1, gap: 3 },
-    recomendacionEyebrow: { color: '#938C87', fontSize: 10, fontWeight: '700', letterSpacing: 0.8 },
-    recomendacionTitulo: { color: '#292522', fontSize: 17, fontWeight: '600', letterSpacing: -0.3 },
-    recomendacionDetalle: { color: '#837C77', fontSize: 12, lineHeight: 17 },
-    botonVerRecomendacion: { height: 34, paddingHorizontal: 14, borderRadius: 17, backgroundColor: '#211E1C', alignItems: 'center', justifyContent: 'center' },
-    textoVerRecomendacion: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
+    recomendacionEyebrow: { color: esOscuro ? pulse.textTertiary : '#938C87', fontSize: isIOS ? 10 : 9, fontWeight: '700', letterSpacing: 0.8 },
+    recomendacionTitulo: { color: esOscuro ? pulse.text : '#292522', fontSize: isIOS ? 17 : 14, fontWeight: '600', letterSpacing: -0.3 },
+    recomendacionDetalle: { color: esOscuro ? pulse.textSecondary : '#837C77', fontSize: isIOS ? 12 : 11, lineHeight: isIOS ? 17 : 14 },
+    botonVerRecomendacion: {
+      height: isIOS ? 34 : 28,
+      paddingHorizontal: isIOS ? 14 : 11,
+      borderRadius: isIOS ? 17 : 14,
+      backgroundColor: esOscuro ? pulse.inverse : '#211E1C',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    textoVerRecomendacion: {
+      color: esOscuro ? pulse.textInverse : '#FFFFFF',
+      fontSize: isIOS ? 12 : 11,
+      fontWeight: '600',
+    },
 
     // Historial de chat
     scrollChat: {
-      paddingHorizontal: 21,
-      paddingTop: 18,
-      paddingBottom: 24,
-      gap: 18,
+      paddingHorizontal: isIOS ? 21 : 16,
+      paddingTop: isIOS ? 18 : 12,
+      paddingBottom: isIOS ? 24 : 16,
+      gap: isIOS ? 18 : 12,
     },
     filaBurbuja: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 10,
+      gap: isIOS ? 10 : 8,
       maxWidth: '92%',
     },
     filaBurbujaIA: {
@@ -1055,16 +1205,16 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
       justifyContent: 'flex-end',
     },
     miniAvatarMascota: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
+      width: isIOS ? 28 : 24,
+      height: isIOS ? 28 : 24,
+      borderRadius: isIOS ? 14 : 12,
       alignItems: 'center',
       justifyContent: 'center',
       marginTop: 2,
     },
     miniAvatarImg: {
-      width: 26,
-      height: 26,
+      width: isIOS ? 26 : 22,
+      height: isIOS ? 26 : 22,
     },
     burbujaWrap: {
       flexShrink: 1,
@@ -1075,46 +1225,48 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
 
     // Burbuja IA
     burbujaIA: {
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-      borderRadius: 24,
+      paddingHorizontal: isIOS ? 16 : 13,
+      paddingVertical: isIOS ? 14 : 10,
+      borderRadius: isIOS ? 24 : 18,
       borderTopLeftRadius: 4,
-      backgroundColor: esOscuro ? cardBlanca : 'rgba(255,255,255,0.9)',
+      backgroundColor: esOscuro ? pulse.surface : 'rgba(255,255,255,0.9)',
       borderWidth: 1,
-      borderColor: bordeCapsula,
+      borderColor: esOscuro ? pulse.border : bordeCapsula,
       ...SOMBRAS.suave,
     },
     textoBurbujaIA: {
-      fontSize: 14,
-      lineHeight: 22,
-      color: esOscuro ? '#F1F5F9' : '#0F172A',
+      fontSize: isIOS ? 14 : 13,
+      lineHeight: isIOS ? 22 : 19,
+      color: esOscuro ? pulse.text : '#0F172A',
     },
     metaFilaIA: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'flex-start',
-      marginTop: 6,
+      marginTop: isIOS ? 6 : 4,
     },
     horaIA: {
-      fontSize: 11,
+      fontSize: isIOS ? 11 : 10,
       fontWeight: '600',
-      color: c.textoSuave,
+      color: esOscuro ? pulse.textTertiary : c.textoSuave,
     },
 
     // Burbuja Usuario
     burbujaUsuario: {
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderRadius: 20,
+      paddingHorizontal: isIOS ? 16 : 13,
+      paddingVertical: isIOS ? 12 : 9,
+      borderRadius: isIOS ? 20 : 16,
       borderBottomRightRadius: 4,
-      backgroundColor: esOscuro ? '#34224D' : '#211E1C',
+      backgroundColor: esOscuro ? '#25173B' : '#211E1C',
+      borderWidth: esOscuro ? 1 : 0,
+      borderColor: esOscuro ? 'rgba(167,139,250,0.22)' : 'transparent',
       ...SOMBRAS.suave,
     },
     textoBurbujaUsuario: {
-      fontSize: 14,
+      fontSize: isIOS ? 14 : 13,
       fontWeight: '600',
       color: '#FFFFFF',
-      lineHeight: 20,
+      lineHeight: isIOS ? 20 : 18,
     },
     metaFilaUsuario: {
       flexDirection: 'row',
@@ -1137,22 +1289,22 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
       paddingHorizontal: 12,
       paddingVertical: 8,
       borderRadius: 12,
-      backgroundColor: esOscuro ? '#FFFFFF' : '#0F172A',
+      backgroundColor: esOscuro ? pulse.inverse : '#0F172A',
       alignSelf: 'flex-start',
     },
     textoRedirect: {
       fontSize: 12,
       fontWeight: '800',
-      color: esOscuro ? '#0B0C1E' : '#FFFFFF',
+      color: esOscuro ? pulse.textInverse : '#FFFFFF',
     },
 
     tarjetaAccionSensible: {
       marginTop: 12,
       padding: 12,
       borderRadius: 16,
-      backgroundColor: esOscuro ? 'rgba(255,255,255,0.04)' : '#F8FAFC',
+      backgroundColor: esOscuro ? pulse.surfaceElevated : '#F8FAFC',
       borderWidth: 1,
-      borderColor: c.borde,
+      borderColor: esOscuro ? pulse.borderStrong : c.borde,
     },
     tarjetaAccionHeader: {
       flexDirection: 'row',
@@ -1163,7 +1315,7 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
     tarjetaAccionTitulo: {
       fontSize: 13,
       fontWeight: '800',
-      color: c.texto,
+      color: esOscuro ? pulse.text : c.texto,
       flex: 1,
     },
     tarjetaAccionBotones: {
@@ -1179,21 +1331,21 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
       borderWidth: 1,
     },
     tarjetaAccionBotonRechazar: {
-      backgroundColor: 'rgba(239,68,68,0.1)',
-      borderColor: 'rgba(239,68,68,0.25)',
+      backgroundColor: esOscuro ? pulse.errorSurface : 'rgba(239,68,68,0.1)',
+      borderColor: esOscuro ? 'rgba(239,68,68,0.3)' : 'rgba(239,68,68,0.25)',
     },
     tarjetaAccionBotonAprobar: {
-      backgroundColor: esOscuro ? '#FFFFFF' : '#0F172A',
+      backgroundColor: esOscuro ? pulse.inverse : '#0F172A',
       borderColor: 'transparent',
     },
     tarjetaAccionBotonTextoRechazar: {
       fontSize: 12,
-      color: '#EF4444',
+      color: esOscuro ? pulse.errorText : '#EF4444',
       fontWeight: '800',
     },
     tarjetaAccionBotonTextoAprobar: {
       fontSize: 12,
-      color: esOscuro ? '#0B0C1E' : '#FFFFFF',
+      color: esOscuro ? pulse.textInverse : '#FFFFFF',
       fontWeight: '800',
     },
     tarjetaAccionResultadoWrap: {
@@ -1205,7 +1357,7 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
       fontWeight: '800',
     },
     tarjetaAccionResultadoError: {
-      color: '#EF4444',
+      color: esOscuro ? pulse.errorText : '#EF4444',
     },
 
     indicadorEscribiendo: {
@@ -1216,7 +1368,7 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
     indicadorTexto: {
       fontSize: 12,
       fontWeight: '600',
-      color: c.textoSuave,
+      color: esOscuro ? pulse.textSecondary : c.textoSuave,
       marginRight: 4,
     },
     puntoEscritura: {
@@ -1237,9 +1389,9 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
       marginBottom: 10,
       padding: 16,
       borderRadius: 24,
-      backgroundColor: cardBlanca,
+      backgroundColor: esOscuro ? pulse.surfaceElevated : cardBlanca,
       borderWidth: 1,
-      borderColor: bordeCapsula,
+      borderColor: esOscuro ? pulse.borderStrong : bordeCapsula,
       ...SOMBRAS.flotante,
       gap: 12,
     },
@@ -1257,7 +1409,7 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
       width: 24,
       height: 24,
       borderRadius: 12,
-      backgroundColor: esOscuro ? 'rgba(255,255,255,0.08)' : '#F5F3F1',
+      backgroundColor: esOscuro ? pulse.pill : '#F5F3F1',
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -1265,38 +1417,39 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
       fontSize: 13,
       fontWeight: '700',
       letterSpacing: -0.2,
-      color: esOscuro ? '#FFFFFF' : '#211E1C',
+      color: esOscuro ? pulse.text : '#211E1C',
     },
     panelMenuBtnCerrar: {
       width: 28,
       height: 28,
       borderRadius: 14,
-      backgroundColor: esOscuro ? 'rgba(255,255,255,0.08)' : '#F5F3F1',
+      backgroundColor: esOscuro ? pulse.pill : '#F5F3F1',
       alignItems: 'center',
       justifyContent: 'center',
     },
     panelMenuGrid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 8,
+      justifyContent: 'space-between',
+      rowGap: 8,
     },
     itemMenuOpcion: {
-      width: '48.5%',
+      width: '48%',
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
       paddingHorizontal: 10,
       paddingVertical: 10,
       borderRadius: 14,
-      backgroundColor: esOscuro ? 'rgba(255,255,255,0.05)' : '#F7F6F4',
+      backgroundColor: esOscuro ? pulse.pill : '#F7F6F4',
       borderWidth: 1,
-      borderColor: esOscuro ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+      borderColor: esOscuro ? pulse.border : 'rgba(0,0,0,0.03)',
     },
     itemMenuIconoWrap: {
       width: 26,
       height: 26,
       borderRadius: 13,
-      backgroundColor: esOscuro ? 'rgba(255,255,255,0.1)' : '#FFFFFF',
+      backgroundColor: esOscuro ? pulse.surface : '#FFFFFF',
       alignItems: 'center',
       justifyContent: 'center',
       shadowColor: '#000000',
@@ -1308,7 +1461,7 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
       flex: 1,
       fontSize: 12,
       fontWeight: '600',
-      color: esOscuro ? '#F1F5F9' : '#383330',
+      color: esOscuro ? pulse.text : '#383330',
       letterSpacing: -0.1,
     },
     filaAccionesUtilitarias: {
@@ -1317,7 +1470,7 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
       gap: 10,
       paddingTop: 10,
       borderTopWidth: 1,
-      borderTopColor: bordeCapsula,
+      borderTopColor: esOscuro ? pulse.border : bordeCapsula,
     },
     btnAccionUtilitaria: {
       flex: 1,
@@ -1330,12 +1483,12 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
       borderWidth: 1,
     },
     btnAccionBorrar: {
-      backgroundColor: esOscuro ? 'rgba(239, 68, 68, 0.1)' : '#FEF2F2',
-      borderColor: esOscuro ? 'rgba(239, 68, 68, 0.22)' : '#FEE2E2',
+      backgroundColor: esOscuro ? pulse.errorSurface : '#FEF2F2',
+      borderColor: esOscuro ? 'rgba(239, 68, 68, 0.3)' : '#FEE2E2',
     },
     btnAccionVoz: {
-      backgroundColor: esOscuro ? '#FFFFFF' : '#211E1C',
-      borderColor: esOscuro ? '#FFFFFF' : '#211E1C',
+      backgroundColor: esOscuro ? pulse.inverse : '#211E1C',
+      borderColor: esOscuro ? pulse.inverse : '#211E1C',
     },
     btnAccionDeshabilitada: {
       opacity: 0.45,
@@ -1349,33 +1502,33 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
     },
 
     barraCapsula: {
-      marginHorizontal: 16,
-      borderRadius: 30,
+      marginHorizontal: isIOS ? 16 : 12,
+      borderRadius: isIOS ? 30 : 24,
       backgroundColor: capsulaBg,
       borderWidth: 1,
       borderColor: bordeCapsula,
       flexDirection: 'row',
       alignItems: 'center',
-      paddingLeft: 9,
-      paddingRight: 8,
-      paddingVertical: 7,
-      minHeight: 58,
+      paddingLeft: isIOS ? 9 : 6,
+      paddingRight: isIOS ? 8 : 6,
+      paddingVertical: isIOS ? 7 : 4,
+      minHeight: isIOS ? 58 : 46,
       ...SOMBRAS.suave,
     },
     btnAccionPlus: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
+      width: isIOS ? 38 : 32,
+      height: isIOS ? 38 : 32,
+      borderRadius: isIOS ? 19 : 16,
       alignItems: 'center',
       justifyContent: 'center',
     },
     entrada: {
       flex: 1,
-      fontSize: 15,
-      color: esOscuro ? '#FFFFFF' : '#0F172A',
+      fontSize: isIOS ? 15 : 13.5,
+      color: esOscuro ? pulse.text : '#0F172A',
       maxHeight: 100,
-      paddingVertical: 6,
-      paddingHorizontal: 6,
+      paddingVertical: isIOS ? 6 : 4,
+      paddingHorizontal: isIOS ? 6 : 4,
     },
     controlesDerecha: {
       flexDirection: 'row',
@@ -1383,30 +1536,86 @@ function crearEstilosChat(c: any, esOscuro: boolean) {
       gap: 4,
     },
     botonVozOndas: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      backgroundColor: esOscuro ? '#FFFFFF' : '#211E1C',
+      width: isIOS ? 38 : 32,
+      height: isIOS ? 38 : 32,
+      borderRadius: isIOS ? 19 : 16,
+      backgroundColor: esOscuro ? pulse.inverse : '#211E1C',
       alignItems: 'center',
       justifyContent: 'center',
     },
     botonEnviar: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      backgroundColor: esOscuro ? '#FFFFFF' : '#211E1C',
+      width: isIOS ? 38 : 32,
+      height: isIOS ? 38 : 32,
+      borderRadius: isIOS ? 19 : 16,
+      backgroundColor: esOscuro ? pulse.inverse : '#211E1C',
       alignItems: 'center',
       justifyContent: 'center',
     },
-    overlayModal: { flex: 1, backgroundColor: 'rgba(35,30,28,0.24)', alignItems: 'center', justifyContent: 'center', padding: 24 },
-    modalConfirmacion: { width: '100%', maxWidth: 390, padding: 22, borderRadius: 28, backgroundColor: '#FFFFFF' },
-    iconoModal: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF0EE' },
-    tituloModal: { marginTop: 15, fontSize: 20, fontWeight: '600', color: '#292522' },
-    textoModal: { marginTop: 6, fontSize: 14, lineHeight: 20, color: '#78716C' },
-    accionesModal: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 22 },
-    botonModalSecundario: { height: 42, paddingHorizontal: 16, borderRadius: 15, backgroundColor: '#F1EFED', justifyContent: 'center' },
-    textoModalSecundario: { color: '#514B47', fontSize: 13, fontWeight: '600' },
-    botonModalPeligro: { height: 42, paddingHorizontal: 16, borderRadius: 15, backgroundColor: '#B54B45', justifyContent: 'center' },
-    textoModalPeligro: { color: '#FFFFFF', fontSize: 13, fontWeight: '600' },
+    overlayModal: {
+      flex: 1,
+      backgroundColor: esOscuro ? 'rgba(0,0,0,0.65)' : 'rgba(35,30,28,0.24)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 24,
+    },
+    modalConfirmacion: {
+      width: '100%',
+      maxWidth: 390,
+      padding: 22,
+      borderRadius: 28,
+      backgroundColor: esOscuro ? pulse.surfaceElevated : '#FFFFFF',
+      borderWidth: esOscuro ? 1 : 0,
+      borderColor: pulse.borderStrong,
+    },
+    iconoModal: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: esOscuro ? pulse.errorSurface : '#FFF0EE',
+    },
+    tituloModal: {
+      marginTop: 15,
+      fontSize: 20,
+      fontWeight: '600',
+      color: esOscuro ? pulse.text : '#292522',
+    },
+    textoModal: {
+      marginTop: 6,
+      fontSize: 14,
+      lineHeight: 20,
+      color: esOscuro ? pulse.textSecondary : '#78716C',
+    },
+    accionesModal: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      gap: 10,
+      marginTop: 22,
+    },
+    botonModalSecundario: {
+      height: 42,
+      paddingHorizontal: 16,
+      borderRadius: 15,
+      backgroundColor: esOscuro ? pulse.pill : '#F1EFED',
+      justifyContent: 'center',
+    },
+    textoModalSecundario: {
+      color: esOscuro ? pulse.text : '#514B47',
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    botonModalPeligro: {
+      height: 42,
+      paddingHorizontal: 16,
+      borderRadius: 15,
+      backgroundColor: esOscuro ? '#DC2626' : '#B54B45',
+      justifyContent: 'center',
+    },
+    textoModalPeligro: {
+      color: '#FFFFFF',
+      fontSize: 13,
+      fontWeight: '600',
+    },
   });
 }

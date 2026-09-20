@@ -303,8 +303,13 @@ export function ProveedorUsuario({ children }: { children: ReactNode }) {
   const registrarPausaGuiada = async (dto: any) => {
     if (!user) return;
     try {
+      const payload = {
+        tipo: dto?.tipo || 'respiracion_4x4',
+        duracion: typeof dto?.duracion === 'number' && dto.duracion > 0 ? dto.duracion : 60,
+        fecha: dto?.fecha || new Date().toISOString(),
+      };
       // Persiste la pausa en Supabase antes de refrescar metricas.
-      await useCases.pauses.save.execute(user.id, dto);
+      await useCases.pauses.save.execute(user.id, payload);
       // Ejecuta una operacion asincrona; normalmente lee, escribe o sincroniza datos antes de continuar.
       await fetchMetrics();
     } catch (e) {

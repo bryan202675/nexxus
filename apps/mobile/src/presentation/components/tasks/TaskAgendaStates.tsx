@@ -8,17 +8,20 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
 import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
+import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 
 const Text = AdminTranslatedText;
 
 export function TaskEmptyState({ completed }: { completed: boolean }) {
+  const { colores } = useTemaMobile();
+  const styles = createStyles(colores);
   return (
     <View style={styles.emptyContainer}>
       <View style={[styles.emptyIconCircle, completed && styles.completedEmptyIcon]}>
         <Feather
           name={completed ? 'clock' : 'check'}
           size={24}
-          color="#111111"
+          color={completed ? colores.texto : colores.fondo}
         />
       </View>
       <Text style={styles.emptyTitle}>
@@ -34,6 +37,8 @@ export function TaskEmptyState({ completed }: { completed: boolean }) {
 }
 
 export function TaskSkeleton() {
+  const { colores } = useTemaMobile();
+  const styles = createStyles(colores);
   const opacity = useSharedValue(0.4);
 
   useEffect(() => {
@@ -70,7 +75,8 @@ export function TaskSkeleton() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(c: ReturnType<typeof useTemaMobile>['colores']) {
+  return StyleSheet.create({
   emptyContainer: {
     alignItems: 'center',
     paddingHorizontal: 36,
@@ -79,22 +85,22 @@ const styles = StyleSheet.create({
   },
   emptyIconCircle: {
     alignItems: 'center',
-    backgroundColor: '#FFE4BA',
+    backgroundColor: c.advertenciaSuperficie,
     borderRadius: 30,
     height: 60,
     justifyContent: 'center',
     width: 60,
-    shadowColor: '#1A0C14',
+    shadowColor: c.sombra,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
   },
   completedEmptyIcon: {
-    backgroundColor: '#EAEAEA',
+    backgroundColor: c.vidrio,
   },
   emptyTitle: {
-    color: '#121014',
+    color: c.texto,
     fontSize: 20,
     fontWeight: '900',
     letterSpacing: -0.5,
@@ -102,7 +108,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   emptySubtitle: {
-    color: '#756D73',
+    color: c.textoSecundario,
     fontSize: 13.5,
     fontWeight: '600',
     lineHeight: 19,
@@ -126,20 +132,20 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   skeletonTimeBadge: {
-    backgroundColor: '#EBE5E5',
+    backgroundColor: c.skeletonHighlight,
     borderRadius: 6,
     height: 12,
     marginTop: 14,
     width: 38,
   },
   skeletonLine: {
-    backgroundColor: '#E8E5E5',
+    backgroundColor: c.skeletonBase,
     flex: 1,
     marginTop: 8,
     width: 1,
   },
   skeletonCard: {
-    backgroundColor: '#ECE7E8',
+    backgroundColor: c.skeletonBase,
     flex: 1,
     marginBottom: 12,
   },
@@ -151,4 +157,5 @@ const styles = StyleSheet.create({
     borderRadius: 23,
     minHeight: 114,
   },
-});
+  });
+}

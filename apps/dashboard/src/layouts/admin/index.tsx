@@ -16,18 +16,18 @@ export default function Admin(props) {
   const flatRoutes = React.useMemo(() => flattenRoutes(routes), [routes]);
   const defaultPath = flatRoutes[0] ? routeUrl(flatRoutes[0].layout, flatRoutes[0].path) : "/auth/sa-login";
 
-  const [open, setOpen] = React.useState(true);
+  const [open, setOpen] = React.useState(() => typeof window === "undefined" || window.innerWidth >= 1200);
   const [currentRoute, setCurrentRoute] = React.useState(flatRoutes[0]?.name || "");
 
   React.useEffect(() => {
-    window.addEventListener("resize", () =>
-      window.innerWidth < 1200 ? setOpen(false) : setOpen(true)
-    );
+    const syncSidebar = () => setOpen(window.innerWidth >= 1200);
+    syncSidebar();
+    window.addEventListener("resize", syncSidebar);
+    return () => window.removeEventListener("resize", syncSidebar);
   }, []);
 
   React.useEffect(() => {
     getActiveRoute(flatRoutes);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, flatRoutes]);
 
   const getActiveRoute = (flatList) => {
@@ -41,18 +41,6 @@ export default function Admin(props) {
       }
     }
     return activeRouteName;
-  };
-
-  const getActiveNavbar = (flatList) => {
-    const activeNavbar = false;
-    for (let i = 0; i < flatList.length; i++) {
-      if (
-        window.location.href.indexOf(routeUrl(flatList[i].layout, flatList[i].path)) !== -1
-      ) {
-        return flatList[i].secondary;
-      }
-    }
-    return activeNavbar;
   };
 
   const getRoutes = (flatList) => {
@@ -103,6 +91,7 @@ export default function Admin(props) {
                     {getRoutes(flatRoutes)}
 
                     <Route path="/" element={<Navigate to={defaultPath} replace />} />
+                    <Route path="*" element={<Navigate to={defaultPath} replace />} />
                   </Routes>
                 </div>
               </div>

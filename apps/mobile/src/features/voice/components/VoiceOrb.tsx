@@ -5,7 +5,7 @@
  */
 
 import React, { useEffect } from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { Image, Platform, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -18,7 +18,11 @@ import { VoiceSessionState } from '../types/voice.types';
 
 const MASCOTA_NEXXUS = require('../../../../assets/nexxusIA.png');
 
-const TAMANO_BASE = 174;
+const isIOS = Platform.OS === 'ios';
+const TAMANO_BASE = isIOS ? 150 : 110;
+const EXTRA_AURA_EXT = isIOS ? 52 : 36;
+const EXTRA_AURA_INT = isIOS ? 26 : 18;
+const EXTRA_CONTENEDOR = isIOS ? 76 : 52;
 
 interface Props {
   estado: VoiceSessionState;
@@ -135,23 +139,23 @@ export default function VoiceOrb({ estado, nivelEntrada, nivelSalida }: Props) {
 
 const estilos = StyleSheet.create({
   contenedor: {
-    width: TAMANO_BASE + 80,
-    height: TAMANO_BASE + 80,
+    width: TAMANO_BASE + EXTRA_CONTENEDOR,
+    height: TAMANO_BASE + EXTRA_CONTENEDOR,
     alignItems: 'center',
     justifyContent: 'center',
   },
   auraExterior: {
     position: 'absolute',
-    width: TAMANO_BASE + 52,
-    height: TAMANO_BASE + 52,
-    borderRadius: (TAMANO_BASE + 52) / 2,
+    width: TAMANO_BASE + EXTRA_AURA_EXT,
+    height: TAMANO_BASE + EXTRA_AURA_EXT,
+    borderRadius: (TAMANO_BASE + EXTRA_AURA_EXT) / 2,
     borderWidth: 1.5,
   },
   auraInterior: {
     position: 'absolute',
-    width: TAMANO_BASE + 26,
-    height: TAMANO_BASE + 26,
-    borderRadius: (TAMANO_BASE + 26) / 2,
+    width: TAMANO_BASE + EXTRA_AURA_INT,
+    height: TAMANO_BASE + EXTRA_AURA_INT,
+    borderRadius: (TAMANO_BASE + EXTRA_AURA_INT) / 2,
     borderWidth: 2,
   },
   contenedorMascota: {
@@ -160,10 +164,10 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#7C3AED',
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.20,
-    shadowRadius: 18,
-    elevation: 6,
+    shadowRadius: 14,
+    elevation: 4,
   },
   mascotaImg: {
     width: TAMANO_BASE,

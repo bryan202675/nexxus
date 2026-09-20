@@ -7,20 +7,26 @@ import "react-native-gesture-handler";
  * Consideracion de mantenimiento: preservar firmas publicas, rutas de navegacion y lecturas/escrituras de datos al extender este archivo.
  */
 
-// Importa React, { useEffect, useRef, useState } desde React; habilita componentes, hooks y tipos base para esta pieza.
-import React, { useEffect, useRef, useState } from "react";
+// Importa React, { useEffect, useMemo, useRef, useState } desde React; habilita componentes, hooks y tipos base para esta pieza.
+import React, { useEffect, useMemo, useRef, useState } from "react";
 // Importa { View, Text, StatusBar, StyleSheet, ActivityIndicator, Platform } desde React Native; provee bloques nativos de layout, texto, listas, eventos y estilos.
 import {
   View,
   Text,
+  TextInput,
   StatusBar,
   StyleSheet,
   ActivityIndicator,
   Platform,
   Image as RNImage,
 } from "react-native";
-// Importa { NavigationContainer, useNavigation }; permite declarar navegacion, rutas y transiciones entre pantallas.
-import { NavigationContainer, useNavigation } from "@react-navigation/native";
+// Importa { NavigationContainer, useNavigation, DefaultTheme, DarkTheme }; permite declarar navegacion, rutas y transiciones entre pantallas.
+import {
+  NavigationContainer,
+  useNavigation,
+  DefaultTheme,
+  DarkTheme,
+} from "@react-navigation/native";
 import { useCases } from "./src/infrastructure/container";
 import { applyPlanCatalog } from "./src/shared/billing/plans";
 // Importa { createNativeStackNavigator }; permite declarar navegacion, rutas y transiciones entre pantallas.
@@ -84,6 +90,17 @@ RECURSOS_FONDOS.forEach((recurso) => {
     }
   } catch (e) {}
 });
+
+// Limitar escala de accesibilidad desmedida para mantener consistencia y simetría en Android
+if ((Text as any).defaultProps == null) {
+  (Text as any).defaultProps = {};
+}
+(Text as any).defaultProps.maxFontSizeMultiplier = 1.25;
+
+if ((TextInput as any).defaultProps == null) {
+  (TextInput as any).defaultProps = {};
+}
+(TextInput as any).defaultProps.maxFontSizeMultiplier = 1.25;
 
 // Deshabilitar overscroll/bounce en web (evita ver el fondo al hacer scroll)
 if (Platform.OS === "web" && typeof document !== "undefined") {
@@ -543,30 +560,52 @@ export default function App() {
     }
   }
 
+function AppContenido({ linkingConfig }: { linkingConfig: any }) {
+  const { colores, esOscuro } = useTemaMobile();
+
+  const navTheme = useMemo(() => {
+    const baseTheme = esOscuro ? DarkTheme : DefaultTheme;
+    return {
+      ...baseTheme,
+      dark: esOscuro,
+      colors: {
+        ...baseTheme.colors,
+        background: colores.fondo,
+        card: colores.superficie,
+        text: colores.texto,
+        border: colores.borde,
+        primary: colores.primario,
+      },
+    };
+  }, [esOscuro, colores]);
+
+  return (
+    <>
+      <StatusBar
+        barStyle={esOscuro ? "light-content" : "dark-content"}
+        backgroundColor="transparent"
+        translucent
+      />
+      <NavigationContainer linking={linkingConfig} theme={navTheme}>
+        <LimitadorErrores>
+          <EnrutadorPrincipal />
+        </LimitadorErrores>
+      </NavigationContainer>
+    </>
+  );
+}
+
   // Devuelve el JSX que React Native renderiza en pantalla.
   return (
     // Proveedor de contexto; entrega estado o servicios compartidos a sus componentes hijos.
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider style={{ flex: 1, backgroundColor: "#000" }}>
+      <SafeAreaProvider style={{ flex: 1 }}>
         {/* ProveedorTemaMobile renderiza una pieza visual reutilizable dentro de esta pantalla. */}
         <ProveedorTemaMobile>
           {/* ProveedorUsuario renderiza una pieza visual reutilizable dentro de esta pantalla. */}
           <ProveedorUsuario>
             <ToastProvider>
-              {/* Configura la barra de estado del sistema para que combine con el fondo de esta pantalla. */}
-              <StatusBar
-                barStyle="light-content"
-                backgroundColor="transparent"
-                translucent
-              />
-              {/* NavigationContainer renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-              <NavigationContainer linking={linkingConfig}>
-                {/* LimitadorErrores renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                <LimitadorErrores>
-                  {/* EnrutadorPrincipal renderiza una pieza visual reutilizable dentro de esta pantalla. */}
-                  <EnrutadorPrincipal />
-                </LimitadorErrores>
-              </NavigationContainer>
+              <AppContenido linkingConfig={linkingConfig} />
             </ToastProvider>
           </ProveedorUsuario>
         </ProveedorTemaMobile>

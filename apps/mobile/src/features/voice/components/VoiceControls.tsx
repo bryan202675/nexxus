@@ -5,12 +5,14 @@
  */
 
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { ESPACIADO, SOMBRAS } from '@/shared/constants/diseno';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
 import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
+
+const isIOS = Platform.OS === 'ios';
 
 const Text = AdminTranslatedText;
 
@@ -30,9 +32,10 @@ export default function VoiceControls({
   onIrAlTexto,
 }: Props) {
   const { colores, esOscuro } = useTemaMobile();
+  const pulse = colores.pulso;
 
-  const fondoVidrio = esOscuro ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.9)';
-  const bordeVidrio = esOscuro ? 'rgba(255, 255, 255, 0.12)' : 'rgba(41, 37, 34, 0.07)';
+  const fondoVidrio = esOscuro ? pulse.surfaceElevated : 'rgba(255, 255, 255, 0.9)';
+  const bordeVidrio = esOscuro ? pulse.borderStrong : 'rgba(41, 37, 34, 0.07)';
 
   return (
     <View style={estilos.contenedorDock}>
@@ -53,11 +56,11 @@ export default function VoiceControls({
           >
             <MaterialIcons
               name="keyboard"
-              size={22}
-              color={esOscuro ? '#E2E8F0' : '#514B47'}
+              size={isIOS ? 22 : 18}
+              color={esOscuro ? pulse.icon : '#514B47'}
             />
           </BotonAnimado>
-          <Text style={[estilos.etiqueta, { color: colores.textoSuave }]}>
+          <Text style={[estilos.etiqueta, { color: esOscuro ? pulse.textSecondary : colores.textoSuave }]}>
             Teclado
           </Text>
         </View>
@@ -73,7 +76,10 @@ export default function VoiceControls({
           style={[
             estilos.botonPrincipal,
             muteado
-              ? estilos.botonMuteado
+              ? {
+                  backgroundColor: esOscuro ? pulse.errorSurface : '#FFF0EE',
+                  borderColor: esOscuro ? 'rgba(239, 68, 68, 0.3)' : 'rgba(181,75,69,0.2)',
+                }
               : {
                   backgroundColor: fondoVidrio,
                   borderColor: bordeVidrio,
@@ -83,14 +89,17 @@ export default function VoiceControls({
         >
           <Feather
             name={muteado ? 'mic-off' : 'mic'}
-            size={25}
-            color={muteado ? '#B54B45' : esOscuro ? '#FFFFFF' : '#292522'}
+            size={isIOS ? 25 : 21}
+            color={muteado ? (esOscuro ? pulse.errorText : '#B54B45') : esOscuro ? pulse.icon : '#292522'}
           />
         </BotonAnimado>
         <Text
           style={[
             estilos.etiqueta,
-            { color: muteado ? '#B54B45' : colores.textoSuave, fontWeight: muteado ? '700' : '500' },
+            {
+              color: muteado ? (esOscuro ? pulse.errorText : '#B54B45') : esOscuro ? pulse.textSecondary : colores.textoSuave,
+              fontWeight: muteado ? '700' : '500',
+            },
           ]}
         >
           {muteado ? 'Silenciado' : 'Silenciar'}
@@ -105,9 +114,9 @@ export default function VoiceControls({
           accessibilityLabel="Finalizar llamada"
           style={[estilos.botonPrincipal, estilos.botonFinalizar]}
         >
-          <Feather name="phone-off" size={24} color="#FFFFFF" />
+          <Feather name="phone-off" size={isIOS ? 24 : 20} color="#FFFFFF" />
         </BotonAnimado>
-        <Text style={[estilos.etiqueta, { color: colores.textoSuave }]}>
+        <Text style={[estilos.etiqueta, { color: esOscuro ? pulse.textSecondary : colores.textoSuave }]}>
           Finalizar
         </Text>
       </View>
@@ -120,34 +129,30 @@ const estilos = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: ESPACIADO.xxl,
-    paddingHorizontal: 24,
+    gap: isIOS ? ESPACIADO.xxl : 20,
+    paddingHorizontal: isIOS ? 24 : 16,
   },
   grupoBoton: {
     alignItems: 'center',
-    gap: 8,
+    gap: isIOS ? 8 : 4,
   },
   botonPrincipal: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: isIOS ? 64 : 52,
+    height: isIOS ? 64 : 52,
+    borderRadius: isIOS ? 32 : 26,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     ...SOMBRAS.flotante,
   },
   botonSecundario: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: isIOS ? 52 : 42,
+    height: isIOS ? 52 : 42,
+    borderRadius: isIOS ? 26 : 21,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     ...SOMBRAS.flotante,
-  },
-  botonMuteado: {
-    backgroundColor: '#FFF0EE',
-    borderColor: 'rgba(181,75,69,0.2)',
   },
   botonFinalizar: {
     backgroundColor: '#B54B45',
@@ -162,7 +167,7 @@ const estilos = StyleSheet.create({
     opacity: 0.38,
   },
   etiqueta: {
-    fontSize: 12,
+    fontSize: isIOS ? 12 : 10.5,
     fontWeight: '500',
     textAlign: 'center',
     letterSpacing: -0.2,

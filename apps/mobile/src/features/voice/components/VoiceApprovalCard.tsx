@@ -5,13 +5,15 @@
  */
 
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { ESPACIADO, TIPOGRAFIA } from '@/shared/constants/diseno';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
 import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 import { SensitiveAiAction } from 'domain/entities/AiAssistant';
+
+const isIOS = Platform.OS === 'ios';
 
 const Text = AdminTranslatedText;
 
@@ -22,33 +24,46 @@ interface Props {
 
 export default function VoiceApprovalCard({ accion, onResolver }: Props) {
   const { colores, esOscuro } = useTemaMobile();
-  const fondoVidrio = esOscuro ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.92)';
-  const bordeVidrio = esOscuro ? 'rgba(255, 255, 255, 0.14)' : 'rgba(0, 0, 0, 0.08)';
+  const pulse = colores.pulso;
+  const fondoVidrio = esOscuro ? pulse.surfaceElevated : 'rgba(255, 255, 255, 0.92)';
+  const bordeVidrio = esOscuro ? pulse.borderStrong : 'rgba(0, 0, 0, 0.08)';
 
   return (
     <View style={[estilos.tarjeta, { backgroundColor: fondoVidrio, borderColor: bordeVidrio }]}>
       <View style={estilos.encabezado}>
-        <MaterialIcons name="verified-user" size={18} color={esOscuro ? '#93C5FD' : '#2563EB'} />
-        <Text style={[TIPOGRAFIA.cuerpoPequeno, estilos.titulo, { color: colores.texto }]} numberOfLines={2}>
+        <MaterialIcons name="verified-user" size={18} color={esOscuro ? '#C4B5FD' : '#2563EB'} />
+        <Text style={[TIPOGRAFIA.cuerpoPequeno, estilos.titulo, { color: esOscuro ? pulse.text : colores.texto }]} numberOfLines={2}>
           {accion.titulo}
         </Text>
       </View>
       <View style={estilos.botones}>
         <BotonAnimado
-          style={[estilos.boton, estilos.botonRechazar]}
+          style={[
+            estilos.boton,
+            {
+              backgroundColor: esOscuro ? pulse.errorSurface : 'rgba(239, 68, 68, 0.12)',
+              borderWidth: esOscuro ? 1 : 0,
+              borderColor: esOscuro ? 'rgba(239, 68, 68, 0.3)' : 'transparent',
+            },
+          ]}
           onPress={() => onResolver(accion, 'rechazada')}
           scaleTo={0.96}
           accessibilityLabel="Rechazar solicitud"
         >
-          <Text style={estilos.textoRechazar}>Rechazar</Text>
+          <Text style={[estilos.textoRechazar, { color: esOscuro ? pulse.errorText : '#EF4444' }]}>Rechazar</Text>
         </BotonAnimado>
         <BotonAnimado
-          style={[estilos.boton, estilos.botonAprobar]}
+          style={[
+            estilos.boton,
+            {
+              backgroundColor: esOscuro ? pulse.inverse : '#2563EB',
+            },
+          ]}
           onPress={() => onResolver(accion, 'aprobada')}
           scaleTo={0.96}
           accessibilityLabel="Aprobar solicitud"
         >
-          <Text style={estilos.textoAprobar}>Aprobar</Text>
+          <Text style={[estilos.textoAprobar, { color: esOscuro ? pulse.textInverse : '#FFFFFF' }]}>Aprobar</Text>
         </BotonAnimado>
       </View>
     </View>
@@ -57,12 +72,12 @@ export default function VoiceApprovalCard({ accion, onResolver }: Props) {
 
 const estilos = StyleSheet.create({
   tarjeta: {
-    borderRadius: 18,
+    borderRadius: isIOS ? 18 : 14,
     borderWidth: 1,
-    padding: ESPACIADO.md,
-    gap: ESPACIADO.sm,
-    marginHorizontal: ESPACIADO.xl,
-    marginBottom: ESPACIADO.sm,
+    padding: isIOS ? ESPACIADO.md : 10,
+    gap: isIOS ? ESPACIADO.sm : 6,
+    marginHorizontal: isIOS ? ESPACIADO.xl : 16,
+    marginBottom: isIOS ? ESPACIADO.sm : 6,
   },
   encabezado: {
     flexDirection: 'row',
@@ -72,6 +87,7 @@ const estilos = StyleSheet.create({
   titulo: {
     flex: 1,
     fontWeight: '600',
+    fontSize: isIOS ? 13.5 : 12,
   },
   botones: {
     flexDirection: 'row',
@@ -79,25 +95,17 @@ const estilos = StyleSheet.create({
   },
   boton: {
     flex: 1,
-    height: 40,
-    borderRadius: 12,
+    height: isIOS ? 40 : 34,
+    borderRadius: isIOS ? 12 : 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  botonRechazar: {
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
-  },
-  botonAprobar: {
-    backgroundColor: '#2563EB',
-  },
   textoRechazar: {
-    fontSize: 13.5,
+    fontSize: isIOS ? 13.5 : 12,
     fontWeight: '700',
-    color: '#EF4444',
   },
   textoAprobar: {
-    fontSize: 13.5,
+    fontSize: isIOS ? 13.5 : 12,
     fontWeight: '700',
-    color: '#FFFFFF',
   },
 });

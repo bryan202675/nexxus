@@ -81,14 +81,14 @@ export default function EnergyLevelStep({
           accessibilityLabel="Reducir energía"
           style={[styles.arrow, energy === "bajo" && styles.disabled]}
         >
-          <Text style={styles.arrowText}>‹</Text>
+          <Feather name="chevron-left" size={isAndroid ? 20 : 24} color={esOscuro ? "#000000" : "#FFFFFF"} />
         </Pressable>
         <View style={styles.batteryWrap}>
           <View style={styles.terminal} />
           <View style={styles.battery}>
             <Animated.View style={[styles.fill, fill]} />
             <Animated.View pointerEvents="none" style={[styles.ray, ray]}>
-              <Feather name="zap" size={42} color={esOscuro ? "#FFFFFF" : "#17141B"} fill={esOscuro ? "#FFFFFF" : "#17141B"} />
+              <Feather name="zap" size={isAndroid ? 34 : 42} color={esOscuro ? "#FFFFFF" : "#17141B"} fill={esOscuro ? "#FFFFFF" : "#17141B"} />
             </Animated.View>
           </View>
         </View>
@@ -99,7 +99,7 @@ export default function EnergyLevelStep({
           accessibilityLabel="Aumentar energía"
           style={[styles.arrow, energy === "alto" && styles.disabled]}
         >
-          <Text style={styles.arrowText}>›</Text>
+          <Feather name="chevron-right" size={isAndroid ? 20 : 24} color={esOscuro ? "#000000" : "#FFFFFF"} />
         </Pressable>
       </View>
       <View style={styles.copy}>
@@ -121,45 +121,45 @@ function crearEstilos(c: any, esOscuro: boolean, compact: boolean) {
     root: { flex: 1, alignItems: "center" },
     title: {
       color: c.texto,
-      fontSize: 28,
+      fontSize: isAndroid ? (compact ? 22 : 24) : 28,
       fontWeight: "800",
       textAlign: "center",
       letterSpacing: -0.8,
-      marginTop: 22,
+      marginTop: isAndroid ? (compact ? 8 : 12) : 22,
     },
     subtitle: {
       color: c.textoSuave,
-      fontSize: 14,
+      fontSize: isAndroid ? 12 : 14,
       textAlign: "center",
-      marginTop: 8,
+      marginTop: isAndroid ? 4 : 8,
     },
     batteryStage: {
       flex: 1,
       width: "100%",
-      minHeight: compact ? 252 : 310,
+      minHeight: isAndroid ? (compact ? 170 : 200) : (compact ? 252 : 310),
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       paddingHorizontal: 8,
     },
     batteryWrap: {
-      width: compact ? 132 : 154,
-      height: compact ? 216 : 254,
+      width: isAndroid ? (compact ? 106 : 124) : (compact ? 132 : 154),
+      height: isAndroid ? (compact ? 172 : 204) : (compact ? 216 : 254),
       alignItems: "center",
       justifyContent: "flex-end",
     },
     terminal: {
-      width: compact ? 50 : 58,
-      height: compact ? 11 : 13,
-      borderTopLeftRadius: 7,
-      borderTopRightRadius: 7,
+      width: isAndroid ? (compact ? 40 : 46) : (compact ? 50 : 58),
+      height: isAndroid ? (compact ? 8 : 10) : (compact ? 11 : 13),
+      borderTopLeftRadius: isAndroid ? 6 : 7,
+      borderTopRightRadius: isAndroid ? 6 : 7,
       backgroundColor: contrast,
     },
     battery: {
-      width: compact ? 132 : 154,
-      height: compact ? 200 : 235,
-      borderRadius: compact ? 24 : 28,
-      borderWidth: 6,
+      width: isAndroid ? (compact ? 106 : 124) : (compact ? 132 : 154),
+      height: isAndroid ? (compact ? 160 : 188) : (compact ? 200 : 235),
+      borderRadius: isAndroid ? (compact ? 18 : 22) : (compact ? 24 : 28),
+      borderWidth: isAndroid ? 5 : 6,
       borderColor: contrast,
       overflow: "hidden",
       justifyContent: "flex-end",
@@ -176,23 +176,42 @@ function crearEstilos(c: any, esOscuro: boolean, compact: boolean) {
       justifyContent: "center",
     },
     arrow: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
+      width: isAndroid ? 36 : 44,
+      height: isAndroid ? 36 : 44,
+      borderRadius: isAndroid ? 18 : 22,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: contrast,
     },
     disabled: { opacity: 0.18 },
-    arrowText: { color: inverted, fontSize: 31, lineHeight: 36, fontWeight: "400" },
-    copy: { height: compact ? 88 : 104, alignItems: "center" },
+    arrowText: {
+      color: inverted,
+      fontSize: isAndroid ? 24 : 31,
+      lineHeight: isAndroid ? 28 : 36,
+      fontWeight: "400",
+    },
+    copy: {
+      height: isAndroid ? (compact ? 70 : 80) : (compact ? 88 : 104),
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: isAndroid ? (compact ? 4 : 8) : 0,
+    },
     eyebrow: {
       color: c.textoSuave,
-      fontSize: 10,
+      fontSize: isAndroid ? 9 : 10,
       fontWeight: "800",
       letterSpacing: 0.9,
     },
-    level: { color: c.texto, fontSize: 24, fontWeight: "900", marginTop: 4 },
-    detail: { color: c.textoSecundario, fontSize: 13, marginTop: 4 },
+    level: {
+      color: c.texto,
+      fontSize: isAndroid ? 20 : 24,
+      fontWeight: "900",
+      marginTop: isAndroid ? 2 : 4,
+    },
+    detail: {
+      color: c.textoSecundario,
+      fontSize: isAndroid ? 12 : 13,
+      marginTop: isAndroid ? 2 : 4,
+    },
   });
 }

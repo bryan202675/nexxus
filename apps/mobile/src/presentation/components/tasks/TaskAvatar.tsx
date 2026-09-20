@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
+import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 
 const Text = AdminTranslatedText;
 
@@ -13,8 +14,9 @@ interface TaskAvatarProps {
 export default function TaskAvatar({
   name,
   size = 28,
-  backgroundColor = 'rgba(24, 18, 22, 0.24)',
+  backgroundColor,
 }: TaskAvatarProps) {
+  const { colores } = useTemaMobile();
   const initial = (name || 'N').trim().slice(0, 1).toUpperCase();
   const radius = Math.round(size / 2);
   const fontSize = Math.max(10, Math.round(size * 0.42));
@@ -27,11 +29,11 @@ export default function TaskAvatar({
           width: size,
           height: size,
           borderRadius: radius,
-          backgroundColor,
+          backgroundColor: backgroundColor ?? colores.vidrioFuerte,
         },
       ]}
     >
-      <Text style={[styles.initial, { fontSize }]}>{initial}</Text>
+      <Text style={[styles.initial, { color: colores.texto, fontSize }]}>{initial}</Text>
     </View>
   );
 }
@@ -42,7 +44,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   initial: {
-    color: '#FFFFFF',
     fontWeight: '900',
     letterSpacing: -0.2,
   },

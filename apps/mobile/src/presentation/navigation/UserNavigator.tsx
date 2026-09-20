@@ -39,6 +39,7 @@ import ChatInterno from "../screens/ChatInterno";
 import PanelJefe from "../screens/PanelJefe";
 import { useContextoUsuario } from "@/presentation/context/ContextoUsuario";
 import { normalizeRole } from "@/shared/auth/roles";
+import { useTemaMobile } from "@/presentation/context/TemaMobileContext";
 
 const Tab = createBottomTabNavigator();
 
@@ -70,8 +71,18 @@ function TabBarIcono({
   onPress: () => void;
 }) {
   const { t } = useTranslation();
-  const iconColor = isFocused ? "#FFFFFF" : "#302D2B";
-  const textColor = isFocused ? "#FFFFFF" : "rgba(48,45,43,0.68)";
+  const { colores } = useTemaMobile();
+  const pulse = colores.pulso;
+  const iconColor = isFocused ? pulse.textInverse : pulse.navInactive;
+  const textColor = isFocused ? pulse.textInverse : pulse.navInactive;
+  const iconSize =
+    Platform.OS === "ios"
+      ? nombreRuta === "ChatIA"
+        ? 22
+        : 20
+      : nombreRuta === "ChatIA"
+      ? 18
+      : 16.5;
 
   return (
     <TouchableOpacity
@@ -81,11 +92,12 @@ function TabBarIcono({
     >
       <MaterialIcons
         name={ICONOS_POR_RUTA[nombreRuta] || "home"}
-        size={nombreRuta === "ChatIA" ? 22 : 20}
+        size={iconSize}
         color={iconColor}
       />
       <Text
         numberOfLines={1}
+        maxFontSizeMultiplier={Platform.OS === "ios" ? 1.15 : 1.05}
         style={[
           estilos.tabLabel,
           {
@@ -103,11 +115,13 @@ function TabBarIcono({
 }
 
 function CustomTabBar({ state, navigation }: BottomTabBarProps) {
+  const { colores } = useTemaMobile();
+  const pulse = colores.pulso;
   const insets = useSafeAreaInsets();
   const totalTabs = state.routes.length;
 
   const [containerWidth, setContainerWidth] = useState(0);
-  const paddingH = 5;
+  const paddingH = Platform.OS === "ios" ? 5 : 3;
   const tabWidth =
     containerWidth > 0 ? (containerWidth - paddingH * 2) / totalTabs : 0;
 
@@ -206,7 +220,7 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   const bottomInsetOffset =
     Platform.OS === "ios"
       ? 20
-      : Math.max(12, insets.bottom + 8);
+      : Math.max(8, insets.bottom > 0 ? insets.bottom + 4 : 10);
 
   return (
     <View
@@ -221,9 +235,9 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
           style={[
             estilos.capsuleContainer,
             {
-              backgroundColor: "#FFFFFF",
-              borderColor: "rgba(31,29,28,0.06)",
-              shadowColor: "#1F1D1C",
+              backgroundColor: pulse.navSurface,
+              borderColor: pulse.border,
+              shadowColor: pulse.shadow,
             },
           ]}
         >
@@ -237,9 +251,9 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
                   estilos.indicadorDeslizante,
                   estiloIndicador,
                   {
-                    backgroundColor: "#202020",
-                    borderColor: "#202020",
-                    shadowColor: "#000000",
+                    backgroundColor: pulse.inverse,
+                    borderColor: pulse.inverse,
+                    shadowColor: pulse.shadow,
                   },
                 ]}
               />
@@ -296,20 +310,22 @@ export default function UserNavigator() {
   );
 }
 
+const isIOS = Platform.OS === "ios";
+
 const estilos = StyleSheet.create({
   tabBarContainer: {
     position: "absolute",
-    left: 16,
-    right: 16,
+    left: isIOS ? 16 : 10,
+    right: isIOS ? 16 : 10,
     alignItems: "center",
     justifyContent: "center",
     zIndex: 1000,
   },
   capsuleContainer: {
     width: "100%",
-    maxWidth: 500,
-    height: Platform.OS === "ios" ? 64 : 60,
-    borderRadius: Platform.OS === "ios" ? 28 : 26,
+    maxWidth: isIOS ? 500 : 460,
+    height: isIOS ? 64 : 50,
+    borderRadius: isIOS ? 28 : 25,
     overflow: "hidden",
     borderWidth: 1,
     ...SOMBRAS.flotante,
@@ -321,14 +337,14 @@ const estilos = StyleSheet.create({
     justifyContent: "space-between",
     position: "relative",
     overflow: "hidden",
-    borderRadius: Platform.OS === "ios" ? 28 : 26,
+    borderRadius: isIOS ? 28 : 25,
   },
   indicadorDeslizante: {
     position: "absolute",
-    top: 5,
-    bottom: 5,
-    left: 5,
-    borderRadius: Platform.OS === "ios" ? 22 : 20,
+    top: isIOS ? 5 : 3,
+    bottom: isIOS ? 5 : 3,
+    left: isIOS ? 5 : 3,
+    borderRadius: isIOS ? 22 : 20,
     overflow: "hidden",
     borderWidth: 1,
     shadowOffset: { width: 0, height: 2 },
@@ -342,14 +358,14 @@ const estilos = StyleSheet.create({
     justifyContent: "center",
     height: "100%",
     zIndex: 2,
-    paddingVertical: 3,
-    gap: 2,
+    paddingVertical: isIOS ? 3 : 1,
+    gap: isIOS ? 2 : 1,
   },
   tabLabel: {
-    fontSize: 10,
-    lineHeight: 12,
+    fontSize: isIOS ? 10 : 8.5,
+    lineHeight: isIOS ? 12 : 10,
     includeFontPadding: false,
     textAlign: "center",
-    letterSpacing: -0.1,
+    letterSpacing: isIOS ? -0.1 : -0.3,
   },
 });

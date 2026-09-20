@@ -708,9 +708,9 @@ export default function GestionNomina() {
             <Text style={[estilos.subtitulo, isPhone && { fontSize: 12, lineHeight: 18 }]}>{periodoActual}</Text>
           </View>
           {/* Bloque visual administrativo; agrupa informacion o controles dentro del panel de gestion. */}
-          <View style={[estilos.headerActions, isPhone && { width: '100%', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 10 }]}>
+          <View style={[estilos.headerActions, isPhone && { width: '100%', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', rowGap: 10 }]}>
             {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
-            <TouchableOpacity style={[estilos.btnSecondary, isPhone && { width: '48%', maxWidth: 184, minHeight: 44, justifyContent: 'center', paddingHorizontal: 10 }]} onPress={() => setModalExportVisible(true)}>
+            <TouchableOpacity style={[estilos.btnSecondary, isPhone && { width: '48%', maxWidth: 184, minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 }]} onPress={() => setModalExportVisible(true)}>
               {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
               <MaterialIcons name="file-download" size={18} color={BRAND.textMain} style={estilos.btnIcon} />
               {/* Texto visible; presenta titulos, etiquetas, valores o descripciones al usuario. */}
@@ -719,7 +719,7 @@ export default function GestionNomina() {
 
             {/* Botón para Aprobar Todas las Nóminas */}
             <TouchableOpacity
-              style={[estilos.btnSecondary, { borderColor: BRAND.success + '40', backgroundColor: BRAND.success + '10' }, isPhone && { width: '48%', maxWidth: 184, minHeight: 44, justifyContent: 'center', paddingHorizontal: 10 }]}
+              style={[estilos.btnSecondary, { borderColor: BRAND.success + '40', backgroundColor: BRAND.success + '10' }, isPhone && { width: '48%', maxWidth: 184, minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 }]}
               onPress={aprobarTodasLasNominas}
               disabled={aprobandoTodo}
             >

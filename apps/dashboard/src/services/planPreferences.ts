@@ -139,72 +139,21 @@ export async function loadPlanPreferences(empresaId: string): Promise<PlanPrefer
 }
 
 export async function requestPlanChange(planId: string) {
-  try {
-    const { data, error } = await supabase.functions.invoke("request-plan-change", {
-      body: { planId },
-    });
-    if (!error && data) {
-      return data as { planName: string; effectiveAt: string | null };
-    }
-  } catch {
-    // Fallback to client-side resolution
+  const { data, error } = await supabase.functions.invoke("request-plan-change", {
+    body: { planId },
+  });
+  if (error || !data) {
+    throw new Error(error?.message || "No se pudo solicitar el cambio de plan. Inténtalo de nuevo.");
   }
-
-  const { data: planRow } = await supabase.from("planes").select("id, nombre").eq("id", planId).maybeSingle();
-  const planName = planRow?.nombre || (planId === "starter" ? "Starter" : planId === "business" ? "Business" : "Enterprise");
-
-  try {
-    const { data: userSession } = await supabase.auth.getUser();
-    if (userSession?.user?.id) {
-      const { data: profile } = await supabase.from("usuarios").select("empresa_id").eq("id", userSession.user.id).maybeSingle();
-      if (profile?.empresa_id) {
-        await supabase.from("suscripciones").update({
-          cambio_plan_solicitado_at: new Date().toISOString(),
-        }).eq("empresa_id", profile.empresa_id);
-      }
-    }
-  } catch {
-    // Non-blocking
-  }
-
-  return {
-    planName,
-    effectiveAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-  };
+  return data as { planName: string; effectiveAt: string | null };
 }
 
 export async function confirmPlanUpgrade(planId: string, card: string) {
-  try {
-    const { data, error } = await supabase.functions.invoke("confirm-plan-upgrade", {
-      body: { planId, cardLast4: card.replace(/\D/g, "").slice(-4) },
-    });
-    if (!error && data) {
-      return data as { planName: string; effectiveAt: string };
-    }
-  } catch {
-    // Fallback
+  const { data, error } = await supabase.functions.invoke("confirm-plan-upgrade", {
+    body: { planId, cardLast4: card.replace(/\D/g, "").slice(-4) },
+  });
+  if (error || !data) {
+    throw new Error(error?.message || "No se pudo confirmar el cambio de plan. Inténtalo de nuevo.");
   }
-
-  const { data: planRow } = await supabase.from("planes").select("id, nombre").eq("id", planId).maybeSingle();
-  const planName = planRow?.nombre || (planId === "starter" ? "Starter" : planId === "business" ? "Business" : "Enterprise");
-
-  try {
-    const { data: userSession } = await supabase.auth.getUser();
-    if (userSession?.user?.id) {
-      const { data: profile } = await supabase.from("usuarios").select("empresa_id").eq("id", userSession.user.id).maybeSingle();
-      if (profile?.empresa_id && planRow?.id) {
-        await supabase.from("suscripciones").update({
-          plan_id: planRow.id,
-          estado: "activa",
-        }).eq("empresa_id", profile.empresa_id);
-      }
-    }
-  } catch {
-    // Non-blocking
-  }
-
-  return {
-    planName,
-    effectiveAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-  };
+  return data as { planName: string; effectiveAt: string };
 }

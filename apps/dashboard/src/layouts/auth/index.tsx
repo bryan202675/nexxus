@@ -54,6 +54,7 @@ export default function Auth() {
                     path="/"
                     element={<Navigate to="/auth/sa-login" replace />}
                   />
+                  <Route path="*" element={<Navigate to="/auth/sa-login" replace />} />
                 </Routes>
                 <div className="absolute right-0 hidden h-full min-h-screen md:block lg:w-[49vw] 2xl:w-[44vw]">
                   <div className="absolute flex h-full w-full items-center justify-center bg-gradient-to-br from-[#868CFF] via-[#432CF3] to-brand-500 lg:rounded-bl-[120px] xl:rounded-bl-[200px]">

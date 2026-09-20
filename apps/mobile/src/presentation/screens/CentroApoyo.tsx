@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Linking, ScrollView, StatusBar, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Linking, Platform, ScrollView, StatusBar, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,6 +25,7 @@ import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
 
 const Text = AdminTranslatedText;
 type FeatherIcon = React.ComponentProps<typeof Feather>['name'];
+type PulseColors = ReturnType<typeof useTemaMobile>['colores']['pulso'];
 
 const FAQ = [
   ['¿Cómo registro mi entrada y salida?', 'Ve a Control de asistencia desde Inicio o Recursos y marca tu entrada o salida con un toque.'],
@@ -54,15 +55,17 @@ function FaqAccordionItem({
   answer,
   isOpen,
   onToggle,
-  esOscuro,
   isLast,
+  styles,
+  pulse,
 }: {
   question: string;
   answer: string;
   isOpen: boolean;
   onToggle: () => void;
-  esOscuro: boolean;
   isLast: boolean;
+  styles: any;
+  pulse: PulseColors;
 }) {
   const rotacion = useSharedValue(isOpen ? 1 : 0);
 
@@ -82,13 +85,13 @@ function FaqAccordionItem({
       layout={LinearTransition.duration(240).easing(Easing.out(Easing.cubic))}
       style={[
         styles.faqItem,
-        !isLast && (esOscuro ? styles.rowDividerDark : styles.rowDivider),
+        !isLast && styles.rowDivider,
       ]}
     >
       <BotonAnimado style={styles.faqHeader} scaleTo={0.99} onPress={onToggle}>
-        <Text style={[styles.faqQuestion, esOscuro && styles.darkText]}>{question}</Text>
+        <Text style={styles.faqQuestion}>{question}</Text>
         <Animated.View style={chevronStyle}>
-          <Feather name="chevron-down" size={17} color={esOscuro ? '#D5CCC5' : '#5E534B'} />
+          <Feather name="chevron-down" size={17} color={pulse.textSecondary} />
         </Animated.View>
       </BotonAnimado>
       {isOpen && (
@@ -97,7 +100,7 @@ function FaqAccordionItem({
           exiting={FadeOut.duration(160).easing(Easing.in(Easing.cubic))}
           style={styles.faqBody}
         >
-          <Text style={[styles.faqAnswer, esOscuro && styles.darkSub]}>{answer}</Text>
+          <Text style={styles.faqAnswer}>{answer}</Text>
         </Animated.View>
       )}
     </Animated.View>
@@ -108,7 +111,9 @@ export default function CentroApoyo({ navigation }: Props) {
   const { t, i18n } = useTranslation();
   const { perfil, notificaciones, alertasNoLeidas: alertasCtx } = useContextoUsuario();
   const alertasNoLeidas = alertasCtx ?? (notificaciones?.filter((n) => !n.leida).length ?? 0);
-  const { esOscuro } = useTemaMobile();
+  const { colores, esOscuro } = useTemaMobile();
+  const pulse = colores.pulso;
+  const styles = useMemo(() => createStyles(pulse, esOscuro), [pulse, esOscuro]);
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [ticketId, setTicketId] = useState<string | null>(null);
@@ -210,61 +215,62 @@ export default function CentroApoyo({ navigation }: Props) {
   ];
 
   return (
-    <SafeAreaView style={[styles.screen, esOscuro && styles.screenDark]}>
+    <SafeAreaView style={styles.screen}>
       <StatusBar barStyle={esOscuro ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
       <LinearGradient
         pointerEvents="none"
-        colors={esOscuro ? ['#151319', '#1B1720', '#141315'] : ['#FBEDE8', '#F6ECF6', '#FFFDFC']}
+        colors={esOscuro ? pulse.ambient : (['#FBEDE8', '#F6ECF6', '#FFFDFC'] as const)}
         locations={[0, 0.28, 0.72]}
         style={StyleSheet.absoluteFill}
       />
 
-      {/* Barra Superior */}
-      <View style={styles.topBar}>
-        <BotonAnimado
-          style={[styles.backButton, esOscuro && styles.darkButton]}
-          scaleTo={0.96}
-          onPress={manejarRegresar}
-          accessibilityLabel="Regresar"
-        >
-          <Feather name="arrow-left" size={21} color={esOscuro ? '#F7F2ED' : '#202020'} />
-        </BotonAnimado>
-
-        <Text style={[styles.topBarLabel, esOscuro && styles.darkText]}>Centro de ayuda</Text>
-
-        <View style={styles.headerActions}>
+      <View style={styles.topBarContainer}>
+        <View style={styles.topBar}>
           <BotonAnimado
-            style={styles.addButton}
+            style={styles.backButton}
             scaleTo={0.96}
-            onPress={() => navigation.navigate('Notificaciones')}
-            accessibilityLabel="Abrir notificaciones"
+            onPress={manejarRegresar}
+            accessibilityLabel="Regresar"
           >
-            <Feather name="bell" size={21} color="#FFFFFF" />
-            {alertasNoLeidas > 0 && <View style={styles.notificationDot} />}
+            <Feather name="arrow-left" size={Platform.OS === 'ios' ? 21 : 18} color={pulse.icon} />
           </BotonAnimado>
 
-          <BotonAnimado
-            style={[styles.bellButton, esOscuro && styles.darkButton]}
-            scaleTo={0.96}
-            onPress={() => navigation.navigate('ConfiguracionApp')}
-            accessibilityLabel="Abrir configuración"
-          >
-            <Feather name="settings" size={21} color={esOscuro ? '#F7F2ED' : '#202020'} />
-          </BotonAnimado>
+          <Text style={styles.topBarLabel}>Centro de ayuda</Text>
+
+          <View style={styles.headerActions}>
+            <BotonAnimado
+              style={styles.addButton}
+              scaleTo={0.96}
+              onPress={() => navigation.navigate('Notificaciones')}
+              accessibilityLabel="Abrir notificaciones"
+            >
+              <Feather name="bell" size={Platform.OS === 'ios' ? 21 : 18} color={pulse.textInverse} />
+              {alertasNoLeidas > 0 && <View style={styles.notificationDot} />}
+            </BotonAnimado>
+
+            <BotonAnimado
+              style={styles.bellButton}
+              scaleTo={0.96}
+              onPress={() => navigation.navigate('ConfiguracionApp')}
+              accessibilityLabel="Abrir configuración"
+            >
+              <Feather name="settings" size={Platform.OS === 'ios' ? 21 : 18} color={pulse.icon} />
+            </BotonAnimado>
+          </View>
         </View>
       </View>
 
       <Animated.ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Hero Section */}
         <Animated.View entering={FadeInDown.duration(240).easing(Easing.out(Easing.cubic))} style={styles.hero}>
-          <View style={[styles.heroIconBadge, esOscuro && styles.heroIconBadgeDark]}>
-            <MaterialIcons name="support-agent" size={27} color={esOscuro ? '#D5CCC5' : '#4E4640'} />
+          <View style={styles.heroIconBadge}>
+            <MaterialIcons name="support-agent" size={27} color={pulse.icon} />
           </View>
           <View style={styles.heroCopy}>
-            <Text style={[styles.heroTitle, esOscuro && styles.darkText]}>
+            <Text style={styles.heroTitle}>
               ¿Cómo podemos{'\n'}ayudarte?
             </Text>
-            <Text style={[styles.heroSub, esOscuro && styles.darkSub]}>
+            <Text style={styles.heroSub}>
               Encuentra respuestas rápidas o abre un ticket de soporte.
             </Text>
           </View>
@@ -273,25 +279,25 @@ export default function CentroApoyo({ navigation }: Props) {
         {/* Buscador Integrado */}
         <Animated.View
           entering={FadeInDown.duration(240).delay(35).easing(Easing.out(Easing.cubic))}
-          style={[styles.searchWrap, esOscuro && styles.searchWrapDark]}
+          style={styles.searchWrap}
         >
-          <Feather name="search" size={17} color={esOscuro ? '#D5CCC5' : '#857B74'} />
+          <Feather name="search" size={17} color={pulse.textTertiary} />
           <TextInput
             value={busqueda}
             onChangeText={setBusqueda}
             placeholder="Buscar en preguntas frecuentes..."
-            placeholderTextColor={esOscuro ? '#8A8078' : '#9A9088'}
-            style={[styles.searchInput, esOscuro && styles.darkText]}
+            placeholderTextColor={pulse.textTertiary}
+            style={styles.searchInput}
           />
           {busqueda.length > 0 && (
             <BotonAnimado onPress={() => setBusqueda('')} scaleTo={0.92}>
-              <Feather name="x" size={16} color={esOscuro ? '#D5CCC5' : '#857B74'} />
+              <Feather name="x" size={16} color={pulse.textSecondary} />
             </BotonAnimado>
           )}
         </Animated.View>
 
         {/* Accesos rápidos en tarjetas 2x2 */}
-        <Text style={[styles.sectionTitle, esOscuro && styles.darkSectionTitle]}>Accesos rápidos</Text>
+        <Text style={styles.sectionTitle}>Accesos rápidos</Text>
         <Animated.View
           entering={FadeInDown.duration(240).delay(60).easing(Easing.out(Easing.cubic))}
           style={styles.grid}
@@ -299,31 +305,31 @@ export default function CentroApoyo({ navigation }: Props) {
           {acciones.map((action) => (
             <BotonAnimado
               key={action.title}
-              style={[styles.actionCard, esOscuro && styles.actionCardDark]}
+              style={styles.actionCard}
               scaleTo={0.98}
               onPress={action.action}
             >
-              <View style={[styles.actionIconBox, esOscuro && styles.actionIconBoxDark]}>
-                <Feather name={action.icon} size={17} color={esOscuro ? '#D5CCC5' : '#5E534B'} />
+              <View style={styles.actionIconBox}>
+                <Feather name={action.icon} size={17} color={pulse.icon} />
               </View>
-              <Text style={[styles.actionTitle, esOscuro && styles.darkText]}>{action.title}</Text>
-              <Text style={[styles.actionDetail, esOscuro && styles.darkSub]}>{action.detail}</Text>
+              <Text style={styles.actionTitle}>{action.title}</Text>
+              <Text style={styles.actionDetail}>{action.detail}</Text>
             </BotonAnimado>
           ))}
         </Animated.View>
 
         {/* Mis Tickets */}
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, esOscuro && styles.darkSectionTitle, { marginBottom: 0 }]}>
+          <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
             Mis tickets
           </Text>
           <BotonAnimado
             scaleTo={0.96}
-            style={[styles.newPill, esOscuro && styles.newPillDark]}
+            style={styles.newPill}
             onPress={() => setNuevoTicket(true)}
           >
-            <Feather name="plus" size={13} color={esOscuro ? '#141315' : '#FFFFFF'} style={{ marginRight: 4 }} />
-            <Text style={[styles.newPillText, esOscuro && styles.newPillTextDark]}>Nuevo ticket</Text>
+            <Feather name="plus" size={13} color={pulse.textInverse} style={{ marginRight: 4 }} />
+            <Text style={styles.newPillText}>Nuevo ticket</Text>
           </BotonAnimado>
         </View>
 
@@ -331,7 +337,7 @@ export default function CentroApoyo({ navigation }: Props) {
           {tickets.length > 0 ? (
             <Animated.View
               layout={LinearTransition.duration(240).easing(Easing.out(Easing.cubic))}
-              style={[styles.group, esOscuro && styles.groupDark]}
+              style={styles.group}
             >
               {tickets.slice(0, 3).map((ticket, index) => (
                 <Animated.View
@@ -344,38 +350,37 @@ export default function CentroApoyo({ navigation }: Props) {
                     onPress={() => setTicketId(ticket.id)}
                     style={[
                       styles.ticketRow,
-                      index < Math.min(tickets.length, 3) - 1 &&
-                        (esOscuro ? styles.rowDividerDark : styles.rowDivider),
+                      index < Math.min(tickets.length, 3) - 1 && styles.rowDivider,
                     ]}
                   >
-                    <View style={[styles.ticketIconWrap, esOscuro && styles.ticketIconWrapDark]}>
+                    <View style={styles.ticketIconWrap}>
                       <Feather
                         name={ticket.categoria === 'incidente' ? 'alert-triangle' : 'message-square'}
                         size={17}
-                        color={esOscuro ? '#D5CCC5' : '#5E534B'}
+                        color={pulse.icon}
                       />
                     </View>
                     <View style={styles.ticketCopy}>
-                      <Text style={[styles.ticketTitle, esOscuro && styles.darkText]} numberOfLines={1}>
+                      <Text style={styles.ticketTitle} numberOfLines={1}>
                         {ticket.titulo}
                       </Text>
-                      <Text style={[styles.ticketDetail, esOscuro && styles.darkSub]}>
+                      <Text style={styles.ticketDetail}>
                         {ticket.estado.replaceAll('_', ' ')} · {fecha(ticket.createdAt)}
                       </Text>
                     </View>
-                    <Feather name="chevron-right" size={17} color={esOscuro ? '#8A8078' : '#968C85'} />
+                    <Feather name="chevron-right" size={17} color={pulse.textTertiary} />
                   </BotonAnimado>
                 </Animated.View>
               ))}
             </Animated.View>
           ) : (
-            <View style={[styles.emptyCard, esOscuro && styles.emptyCardDark]}>
-              <View style={[styles.emptyIconWrap, esOscuro && styles.emptyIconWrapDark]}>
-                <Feather name="message-circle" size={18} color={esOscuro ? '#D5CCC5' : '#5E534B'} />
+            <View style={styles.emptyCard}>
+              <View style={styles.emptyIconWrap}>
+                <Feather name="message-circle" size={18} color={pulse.textTertiary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.emptyTitle, esOscuro && styles.darkText]}>Sin tickets activos</Text>
-                <Text style={[styles.emptyDetail, esOscuro && styles.darkSub]}>
+                <Text style={styles.emptyTitle}>Sin tickets activos</Text>
+                <Text style={styles.emptyDetail}>
                   Cuando abras uno, podrás darle seguimiento aquí.
                 </Text>
               </View>
@@ -384,12 +389,12 @@ export default function CentroApoyo({ navigation }: Props) {
         </Animated.View>
 
         {/* Preguntas frecuentes */}
-        <Text style={[styles.sectionTitle, esOscuro && styles.darkSectionTitle, { marginTop: 26 }]}>
+        <Text style={[styles.sectionTitle, { marginTop: 26 }]}>
           Preguntas frecuentes
         </Text>
         <Animated.View
           entering={FadeInDown.duration(240).delay(110).easing(Easing.out(Easing.cubic))}
-          style={[styles.group, esOscuro && styles.groupDark]}
+          style={styles.group}
         >
           {faq.map(([question, answer], index) => {
             const isLast = index === faq.length - 1;
@@ -403,13 +408,14 @@ export default function CentroApoyo({ navigation }: Props) {
                 answer={answer}
                 isOpen={isOpen}
                 onToggle={() => setFaqAbierta(isOpen ? null : originalIndex)}
-                esOscuro={esOscuro}
                 isLast={isLast}
+                styles={styles}
+                pulse={pulse}
               />
             );
           })}
           {!faq.length && (
-            <Text style={[styles.noResults, esOscuro && styles.darkSub]}>
+            <Text style={styles.noResults}>
               No encontramos una respuesta para esa búsqueda.
             </Text>
           )}
@@ -418,14 +424,14 @@ export default function CentroApoyo({ navigation }: Props) {
         {/* Asistencia Inmediata */}
         <Animated.View
           entering={FadeInDown.duration(240).delay(130).easing(Easing.out(Easing.cubic))}
-          style={[styles.emergency, esOscuro && styles.emergencyDark]}
+          style={styles.emergency}
         >
-          <View style={[styles.emergencyIcon, esOscuro && styles.emergencyIconDark]}>
-            <Feather name="alert-circle" size={18} color={esOscuro ? '#D5CCC5' : '#5E534B'} />
+          <View style={styles.emergencyIcon}>
+            <Feather name="alert-circle" size={18} color={esOscuro ? pulse.errorText : '#8A423E'} />
           </View>
           <View style={styles.emergencyCopy}>
-            <Text style={[styles.emergencyTitle, esOscuro && styles.darkText]}>¿Asistencia inmediata?</Text>
-            <Text style={[styles.emergencyDetail, esOscuro && styles.darkSub]}>
+            <Text style={styles.emergencyTitle}>¿Asistencia inmediata?</Text>
+            <Text style={styles.emergencyDetail}>
               Comunícate de urgencia con la línea de emergencia.
             </Text>
           </View>
@@ -444,12 +450,12 @@ export default function CentroApoyo({ navigation }: Props) {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingBottom: 24 }}
         >
-          <Text style={[styles.sheetTitle, esOscuro && styles.darkText]}>Nuevo ticket</Text>
-          <Text style={[styles.sheetSub, esOscuro && styles.darkSub]}>
+          <Text style={styles.sheetTitle}>Nuevo ticket</Text>
+          <Text style={styles.sheetSub}>
             Cuéntanos qué sucedió y nuestro equipo te dará seguimiento.
           </Text>
 
-          <Text style={[styles.fieldLabel, esOscuro && styles.darkSub]}>CATEGORÍA</Text>
+          <Text style={styles.fieldLabel}>CATEGORÍA</Text>
           <View style={styles.optionRow}>
             {(['tecnico', 'incidente', 'otro'] as TicketCategoria[]).map((item) => (
               <BotonAnimado
@@ -457,16 +463,14 @@ export default function CentroApoyo({ navigation }: Props) {
                 scaleTo={0.96}
                 style={[
                   styles.option,
-                  esOscuro && styles.optionDark,
-                  categoria === item && (esOscuro ? styles.optionActiveDark : styles.optionActive),
+                  categoria === item && styles.optionActive,
                 ]}
                 onPress={() => setCategoria(item)}
               >
                 <Text
                   style={[
                     styles.optionText,
-                    esOscuro && styles.optionTextDark,
-                    categoria === item && (esOscuro ? styles.optionTextActiveDark : styles.optionTextActive),
+                    categoria === item && styles.optionTextActive,
                   ]}
                 >
                   {item}
@@ -475,7 +479,7 @@ export default function CentroApoyo({ navigation }: Props) {
             ))}
           </View>
 
-          <Text style={[styles.fieldLabel, esOscuro && styles.darkSub, { marginTop: 12 }]}>PRIORIDAD</Text>
+          <Text style={[styles.fieldLabel, { marginTop: 12 }]}>PRIORIDAD</Text>
           <View style={styles.optionRow}>
             {PRIORIDADES.map((item) => {
               const active = prioridad === item;
@@ -485,7 +489,6 @@ export default function CentroApoyo({ navigation }: Props) {
                   scaleTo={0.96}
                   style={[
                     styles.priority,
-                    esOscuro && styles.priorityDark,
                     active && {
                       borderColor: PRIORIDAD_COLOR[item],
                       backgroundColor: `${PRIORIDAD_COLOR[item]}1E`,
@@ -496,7 +499,6 @@ export default function CentroApoyo({ navigation }: Props) {
                   <Text
                     style={[
                       styles.priorityText,
-                      esOscuro && styles.darkSub,
                       active && { color: PRIORIDAD_COLOR[item], fontWeight: '700' },
                     ]}
                   >
@@ -511,26 +513,26 @@ export default function CentroApoyo({ navigation }: Props) {
             value={titulo}
             onChangeText={setTitulo}
             placeholder="Asunto de la solicitud"
-            placeholderTextColor={esOscuro ? '#8A8078' : '#968C85'}
-            style={[styles.input, esOscuro && styles.inputDark, esOscuro && styles.darkText]}
+            placeholderTextColor={pulse.textTertiary}
+            style={styles.input}
           />
 
           <TextInput
             value={descripcion}
             onChangeText={setDescripcion}
             placeholder="Describe los detalles de tu solicitud..."
-            placeholderTextColor={esOscuro ? '#8A8078' : '#968C85'}
+            placeholderTextColor={pulse.textTertiary}
             multiline
-            style={[styles.input, styles.textArea, esOscuro && styles.inputDark, esOscuro && styles.darkText]}
+            style={[styles.input, styles.textArea]}
           />
 
           <BotonAnimado
             scaleTo={0.98}
-            style={[styles.submit, esOscuro && styles.submitDark]}
+            style={styles.submit}
             onPress={() => void crear()}
             disabled={enviando}
           >
-            <Text style={[styles.submitText, esOscuro && styles.submitTextDark]}>
+            <Text style={styles.submitText}>
               {enviando ? 'Enviando...' : 'Enviar ticket de soporte'}
             </Text>
           </BotonAnimado>
@@ -540,520 +542,475 @@ export default function CentroApoyo({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#FFFDFC' },
-  screenDark: { backgroundColor: '#141315' },
+function createStyles(pulse: PulseColors, esOscuro: boolean) {
+  const isIOS = Platform.OS === 'ios';
+  return StyleSheet.create({
+    screen: { flex: 1, backgroundColor: pulse.background },
 
-  /* Top Bar */
-  topBar: {
-    height: 52,
-    marginHorizontal: 21,
-    marginTop: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backButton: {
-    width: 47,
-    height: 47,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...SOMBRAS.suave,
-  },
-  darkButton: {
-    backgroundColor: '#25212A',
-  },
-  topBarLabel: {
-    color: '#292522',
-    fontSize: 17,
-    fontWeight: '600',
-    letterSpacing: -0.5,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  addButton: {
-    width: 47,
-    height: 47,
-    borderRadius: 24,
-    backgroundColor: '#202020',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bellButton: {
-    width: 47,
-    height: 47,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...SOMBRAS.suave,
-  },
-  notificationDot: {
-    position: 'absolute',
-    top: 11,
-    right: 12,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#E5484D',
-    borderWidth: 1.5,
-    borderColor: '#202020',
-  },
+    /* Top Bar */
+    topBarContainer: {
+      paddingHorizontal: 21,
+      paddingTop: isIOS ? 6 : 4,
+      paddingBottom: 8,
+      zIndex: 10,
+      backgroundColor: 'transparent',
+    },
+    topBar: {
+      height: isIOS ? 54 : 48,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    backButton: {
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: pulse.surfaceElevated,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+    },
+    topBarLabel: {
+      color: pulse.text,
+      fontSize: isIOS ? 17 : 15,
+      fontWeight: '600',
+      letterSpacing: isIOS ? -0.5 : -0.3,
+    },
+    headerActions: {
+      flexDirection: 'row',
+      gap: isIOS ? 10 : 8,
+    },
+    addButton: {
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: pulse.inverse,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+    },
+    bellButton: {
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: pulse.surfaceElevated,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+    },
+    notificationDot: {
+      position: 'absolute',
+      top: isIOS ? 11 : 9,
+      right: isIOS ? 12 : 10,
+      width: isIOS ? 8 : 7,
+      height: isIOS ? 8 : 7,
+      borderRadius: isIOS ? 4 : 3.5,
+      backgroundColor: '#E5484D',
+      borderWidth: 1.5,
+      borderColor: pulse.inverse,
+    },
 
-  /* Content */
-  content: {
-    paddingHorizontal: 21,
-    paddingTop: 0,
-    paddingBottom: 100,
-  },
+    /* Content */
+    content: {
+      paddingHorizontal: 21,
+      paddingTop: isIOS ? 12 : 8,
+      paddingBottom: 100,
+    },
 
-  /* Hero Section */
-  hero: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    marginTop: 22,
-    marginBottom: 20,
-  },
-  heroIconBadge: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...SOMBRAS.suave,
-  },
-  heroIconBadgeDark: {
-    backgroundColor: '#242027',
-  },
-  heroCopy: {
-    flex: 1,
-  },
-  heroTitle: {
-    color: '#201D1B',
-    fontSize: 26,
-    lineHeight: 30,
-    fontWeight: '600',
-    letterSpacing: -0.9,
-  },
-  heroSub: {
-    color: '#7D736C',
-    fontSize: 12.5,
-    lineHeight: 17,
-    marginTop: 4,
-  },
+    /* Hero Section */
+    hero: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+      marginTop: 22,
+      marginBottom: 20,
+    },
+    heroIconBadge: {
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      backgroundColor: pulse.surfaceElevated,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+    },
+    heroCopy: {
+      flex: 1,
+    },
+    heroTitle: {
+      color: pulse.text,
+      fontSize: 26,
+      lineHeight: 30,
+      fontWeight: '600',
+      letterSpacing: -0.9,
+    },
+    heroSub: {
+      color: pulse.textSecondary,
+      fontSize: 12.5,
+      lineHeight: 17,
+      marginTop: 4,
+    },
 
-  /* Buscador */
-  searchWrap: {
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 24,
-    ...SOMBRAS.suave,
-  },
-  searchWrapDark: {
-    backgroundColor: '#242027',
-  },
-  searchInput: {
-    flex: 1,
-    color: '#322B26',
-    fontSize: 13.5,
-  },
+    /* Buscador */
+    searchWrap: {
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: pulse.surfaceElevated,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      paddingHorizontal: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      marginBottom: 24,
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+    },
+    searchInput: {
+      flex: 1,
+      color: pulse.text,
+      fontSize: 13.5,
+    },
 
-  /* Titles & Dark Text Helper */
-  sectionTitle: {
-    color: '#4A423C',
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 10,
-    letterSpacing: -0.45,
-  },
-  darkSectionTitle: {
-    color: '#E8E1DA',
-  },
-  darkText: {
-    color: '#F7F2ED',
-  },
-  darkSub: {
-    color: '#B8AFA8',
-  },
+    /* Section Titles */
+    sectionTitle: {
+      color: pulse.text,
+      fontSize: 18,
+      fontWeight: '600',
+      marginBottom: 10,
+      letterSpacing: -0.45,
+    },
 
-  /* 2x2 Action Cards */
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 10,
-    marginBottom: 24,
-  },
-  actionCard: {
-    width: '48.5%',
-    minHeight: 112,
-    borderRadius: 22,
-    padding: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
-    ...SOMBRAS.suave,
-  },
-  actionCardDark: {
-    backgroundColor: '#242027',
-  },
-  actionIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F3EFEA',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionIconBoxDark: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  actionTitle: {
-    color: '#423A34',
-    fontSize: 13.5,
-    fontWeight: '700',
-    marginTop: 10,
-    letterSpacing: -0.2,
-  },
-  actionDetail: {
-    color: '#8A8077',
-    fontSize: 11,
-    lineHeight: 15,
-    marginTop: 2,
-  },
+    /* 2x2 Action Cards */
+    grid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+      rowGap: 10,
+      marginBottom: 24,
+    },
+    actionCard: {
+      width: '48%',
+      minHeight: 112,
+      borderRadius: 22,
+      padding: 14,
+      backgroundColor: pulse.surface,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+    },
+    actionIconBox: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: pulse.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    actionTitle: {
+      color: pulse.text,
+      fontSize: 13.5,
+      fontWeight: '700',
+      marginTop: 10,
+      letterSpacing: -0.2,
+    },
+    actionDetail: {
+      color: pulse.textSecondary,
+      fontSize: 11,
+      lineHeight: 15,
+      marginTop: 2,
+    },
 
-  /* Section Header */
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  newPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#202020',
-  },
-  newPillDark: {
-    backgroundColor: '#F7F2ED',
-  },
-  newPillText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  newPillTextDark: {
-    color: '#141315',
-  },
+    /* Section Header */
+    sectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 10,
+    },
+    newPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      height: 30,
+      borderRadius: 15,
+      backgroundColor: pulse.inverse,
+    },
+    newPillText: {
+      color: pulse.textInverse,
+      fontSize: 11,
+      fontWeight: '700',
+    },
 
-  /* Group Containers */
-  group: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    overflow: 'hidden',
-    ...SOMBRAS.suave,
-  },
-  groupDark: {
-    backgroundColor: '#242027',
-  },
-  rowDivider: {
-    borderBottomWidth: 1,
-    borderColor: '#F0ECE8',
-  },
-  rowDividerDark: {
-    borderBottomWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.07)',
-  },
+    /* Group Containers */
+    group: {
+      backgroundColor: pulse.surface,
+      borderRadius: 24,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: pulse.border,
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+    },
+    rowDivider: {
+      borderBottomWidth: 1,
+      borderColor: pulse.border,
+    },
 
-  /* Tickets */
-  ticketRow: {
-    minHeight: 68,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  ticketIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F4EFEA',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ticketIconWrapDark: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  ticketCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  ticketTitle: {
-    color: '#3E3731',
-    fontSize: 13.5,
-    fontWeight: '700',
-  },
-  ticketDetail: {
-    color: '#8A8078',
-    fontSize: 11,
-    marginTop: 2,
-    textTransform: 'capitalize',
-  },
+    /* Tickets */
+    ticketRow: {
+      minHeight: 68,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      gap: 12,
+    },
+    ticketIconWrap: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: pulse.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    ticketCopy: {
+      flex: 1,
+      minWidth: 0,
+    },
+    ticketTitle: {
+      color: pulse.text,
+      fontSize: 13.5,
+      fontWeight: '700',
+    },
+    ticketDetail: {
+      color: pulse.textSecondary,
+      fontSize: 11,
+      marginTop: 2,
+      textTransform: 'capitalize',
+    },
 
-  /* Empty State */
-  emptyCard: {
-    minHeight: 82,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    ...SOMBRAS.suave,
-  },
-  emptyCardDark: {
-    backgroundColor: '#242027',
-  },
-  emptyIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F2EDE7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyIconWrapDark: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  emptyTitle: {
-    color: '#4B433D',
-    fontSize: 13.5,
-    fontWeight: '700',
-  },
-  emptyDetail: {
-    color: '#8A8078',
-    fontSize: 11.5,
-    marginTop: 2,
-  },
+    /* Empty State */
+    emptyCard: {
+      minHeight: 82,
+      borderRadius: 22,
+      backgroundColor: pulse.surface,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      padding: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+    },
+    emptyIconWrap: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: pulse.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    emptyTitle: {
+      color: pulse.text,
+      fontSize: 13.5,
+      fontWeight: '700',
+    },
+    emptyDetail: {
+      color: pulse.textSecondary,
+      fontSize: 11.5,
+      marginTop: 2,
+    },
 
-  /* FAQ Accordion */
-  faqItem: {
-    overflow: 'hidden',
-  },
-  faqHeader: {
-    minHeight: 58,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  faqQuestion: {
-    flex: 1,
-    color: '#3D3630',
-    fontSize: 13.5,
-    fontWeight: '700',
-  },
-  faqBody: {
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-  },
-  faqAnswer: {
-    color: '#766D66',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  noResults: {
-    padding: 18,
-    textAlign: 'center',
-    fontSize: 12.5,
-    color: '#8A8078',
-  },
+    /* FAQ Accordion */
+    faqItem: {
+      overflow: 'hidden',
+    },
+    faqHeader: {
+      minHeight: 58,
+      paddingHorizontal: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    faqQuestion: {
+      flex: 1,
+      color: pulse.text,
+      fontSize: 13.5,
+      fontWeight: '700',
+    },
+    faqBody: {
+      paddingHorizontal: 16,
+      paddingBottom: 14,
+    },
+    faqAnswer: {
+      color: pulse.textSecondary,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    noResults: {
+      padding: 18,
+      textAlign: 'center',
+      fontSize: 12.5,
+      color: pulse.textTertiary,
+    },
 
-  /* Emergency Bar */
-  emergency: {
-    marginTop: 26,
-    minHeight: 76,
-    borderRadius: 22,
-    padding: 14,
-    backgroundColor: '#FFF6F5',
-    borderWidth: 1,
-    borderColor: '#F6DDD9',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-  },
-  emergencyDark: {
-    backgroundColor: 'rgba(197, 84, 78, 0.12)',
-    borderColor: 'rgba(197, 84, 78, 0.28)',
-  },
-  emergencyIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#FDE6E3',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emergencyIconDark: {
-    backgroundColor: 'rgba(197, 84, 78, 0.2)',
-  },
-  emergencyCopy: {
-    flex: 1,
-  },
-  emergencyTitle: {
-    color: '#8A423E',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  emergencyDetail: {
-    color: '#A06E6B',
-    fontSize: 11,
-    lineHeight: 15,
-    marginTop: 2,
-  },
-  call: {
-    height: 34,
-    borderRadius: 17,
-    paddingHorizontal: 14,
-    backgroundColor: '#C5544E',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  callText: {
-    color: '#FFFFFF',
-    fontSize: 11.5,
-    fontWeight: '700',
-  },
+    /* Emergency Bar */
+    emergency: {
+      marginTop: 26,
+      minHeight: 76,
+      borderRadius: 22,
+      padding: 14,
+      backgroundColor: esOscuro ? pulse.errorSurface : '#FFF6F5',
+      borderWidth: 1,
+      borderColor: esOscuro ? 'rgba(242, 181, 178, 0.2)' : '#F6DDD9',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 11,
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+    },
+    emergencyIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: esOscuro ? 'rgba(242, 181, 178, 0.15)' : '#FDE6E3',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    emergencyCopy: {
+      flex: 1,
+    },
+    emergencyTitle: {
+      color: esOscuro ? pulse.errorText : '#8A423E',
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    emergencyDetail: {
+      color: esOscuro ? 'rgba(242, 181, 178, 0.7)' : '#A06E6B',
+      fontSize: 11,
+      lineHeight: 15,
+      marginTop: 2,
+    },
+    call: {
+      height: 34,
+      borderRadius: 17,
+      paddingHorizontal: 14,
+      backgroundColor: pulse.inverse,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    callText: {
+      color: pulse.textInverse,
+      fontSize: 11.5,
+      fontWeight: '700',
+    },
 
-  /* Modal Sheets */
-  sheet: {
-    backgroundColor: '#FFFDFC',
-  },
-  sheetTitle: {
-    color: '#2A2420',
-    fontSize: 20,
-    fontWeight: '600',
-    letterSpacing: -0.5,
-  },
-  sheetSub: {
-    color: '#7D736C',
-    fontSize: 12.5,
-    marginTop: 4,
-    marginBottom: 18,
-  },
-  fieldLabel: {
-    color: '#8A8077',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-  },
-  optionRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 10,
-  },
-  option: {
-    flex: 1,
-    minHeight: 38,
-    borderRadius: 14,
-    backgroundColor: '#F3EFEA',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 6,
-  },
-  optionDark: {
-    backgroundColor: 'rgba(255, 255, 255, 0.07)',
-  },
-  optionActive: {
-    backgroundColor: '#202020',
-  },
-  optionActiveDark: {
-    backgroundColor: '#F7F2ED',
-  },
-  optionText: {
-    color: '#5C534D',
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'capitalize',
-  },
-  optionTextDark: {
-    color: '#D5CCC5',
-  },
-  optionTextActive: {
-    color: '#FFFFFF',
-  },
-  optionTextActiveDark: {
-    color: '#141315',
-  },
-  priority: {
-    flex: 1,
-    minHeight: 36,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E8E1DA',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  priorityDark: {
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  priorityText: {
-    color: '#7A6F67',
-    fontSize: 10,
-    fontWeight: '600',
-    textTransform: 'capitalize',
-  },
-  input: {
-    minHeight: 46,
-    borderRadius: 15,
-    paddingHorizontal: 14,
-    backgroundColor: '#F5F1EE',
-    color: '#322B26',
-    fontSize: 13,
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: '#EBE4DD',
-  },
-  inputDark: {
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  textArea: {
-    minHeight: 100,
-    paddingTop: 12,
-    textAlignVertical: 'top',
-  },
-  submit: {
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: '#202020',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 16,
-  },
-  submitDark: {
-    backgroundColor: '#F7F2ED',
-  },
-  submitText: {
-    color: '#FFFFFF',
-    fontSize: 13.5,
-    fontWeight: '700',
-  },
-  submitTextDark: {
-    color: '#141315',
-  },
-});
+    /* Modal Sheets */
+    sheet: {
+      backgroundColor: pulse.background,
+    },
+    sheetTitle: {
+      color: pulse.text,
+      fontSize: 20,
+      fontWeight: '600',
+      letterSpacing: -0.5,
+    },
+    sheetSub: {
+      color: pulse.textSecondary,
+      fontSize: 12.5,
+      marginTop: 4,
+      marginBottom: 18,
+    },
+    fieldLabel: {
+      color: pulse.textTertiary,
+      fontSize: 10,
+      fontWeight: '700',
+      letterSpacing: 0.5,
+      marginBottom: 8,
+    },
+    optionRow: {
+      flexDirection: 'row',
+      gap: 8,
+      marginBottom: 10,
+    },
+    option: {
+      flex: 1,
+      minHeight: 38,
+      borderRadius: 14,
+      backgroundColor: pulse.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 6,
+    },
+    optionActive: {
+      backgroundColor: pulse.inverse,
+    },
+    optionText: {
+      color: pulse.textSecondary,
+      fontSize: 11,
+      fontWeight: '700',
+      textTransform: 'capitalize',
+    },
+    optionTextActive: {
+      color: pulse.textInverse,
+    },
+    priority: {
+      flex: 1,
+      minHeight: 36,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      backgroundColor: pulse.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    priorityText: {
+      color: pulse.textSecondary,
+      fontSize: 10,
+      fontWeight: '600',
+      textTransform: 'capitalize',
+    },
+    input: {
+      minHeight: 46,
+      borderRadius: 15,
+      paddingHorizontal: 14,
+      backgroundColor: pulse.surface,
+      color: pulse.text,
+      fontSize: 13,
+      marginTop: 10,
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    textArea: {
+      minHeight: 100,
+      paddingTop: 12,
+      textAlignVertical: 'top',
+    },
+    submit: {
+      height: 48,
+      borderRadius: 16,
+      backgroundColor: pulse.inverse,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 16,
+    },
+    submitText: {
+      color: pulse.textInverse,
+      fontSize: 13.5,
+      fontWeight: '700',
+    },
+  });
+}

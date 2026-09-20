@@ -108,10 +108,11 @@ export default function PanelJefe({ navigation }: { navigation?: Navigation } = 
   const esJefe = normalizeRole(perfil?.rol) === "jefe";
 
   const { colores, esOscuro } = useTemaMobile();
+  const pulse = colores.pulso;
   const bottomPadding = useUserTabBottomPadding(132);
   const styles = React.useMemo(
-    () => crearEstilos(colores, esOscuro),
-    [colores, esOscuro]
+    () => crearEstilos(pulse, esOscuro),
+    [pulse, esOscuro]
   );
 
   const [dashboard, setDashboard] = useState<LeaderDashboard>(EMPTY_DASHBOARD);
@@ -251,12 +252,12 @@ export default function PanelJefe({ navigation }: { navigation?: Navigation } = 
       <SafeAreaView style={styles.centerState}>
         <LinearGradient
           pointerEvents="none"
-          colors={["#FBEDE8", "#F6ECF6", "#FFFDFC"]}
+          colors={pulse.ambient}
           locations={[0, 0.28, 0.72]}
           style={styles.ambient}
         />
         <View style={styles.stateContent}>
-          <MaterialIcons name="lock" size={34} color={colores.textoSuave} />
+          <MaterialIcons name="lock" size={34} color={pulse.textTertiary} />
           <Text style={styles.stateTitle}>
             {t("panelJefe.access_restricted_title")}
           </Text>
@@ -273,12 +274,12 @@ export default function PanelJefe({ navigation }: { navigation?: Navigation } = 
       <SafeAreaView style={styles.centerState}>
         <LinearGradient
           pointerEvents="none"
-          colors={["#FBEDE8", "#F6ECF6", "#FFFDFC"]}
+          colors={pulse.ambient}
           locations={[0, 0.28, 0.72]}
           style={styles.ambient}
         />
         <View style={styles.stateContent}>
-          <MaterialIcons name="business" size={34} color={colores.textoSuave} />
+          <MaterialIcons name="business" size={34} color={pulse.textTertiary} />
           <Text style={styles.stateTitle}>
             {t("panelJefe.no_company_title")}
           </Text>
@@ -299,15 +300,11 @@ export default function PanelJefe({ navigation }: { navigation?: Navigation } = 
       />
       <LinearGradient
         pointerEvents="none"
-        colors={["#FBEDE8", "#F6ECF6", "#FFFDFC"]}
+        colors={pulse.ambient}
         locations={[0, 0.28, 0.72]}
         style={styles.ambient}
       />
-      <Animated.ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
-        showsVerticalScrollIndicator={false}
-        style={estiloEntrada}
-      >
+      <View style={styles.topBarContainer}>
         <View style={styles.topBar}>
           <BotonAnimado
             style={styles.profile}
@@ -319,6 +316,7 @@ export default function PanelJefe({ navigation }: { navigation?: Navigation } = 
               <Image
                 source={{ uri: perfil.foto_perfil }}
                 style={styles.profileAvatar}
+                resizeMode="cover"
               />
             ) : (
               <Text style={styles.profileAvatarInitial}>
@@ -334,7 +332,7 @@ export default function PanelJefe({ navigation }: { navigation?: Navigation } = 
               onPress={() => navigation?.navigate("BusquedaGlobal")}
               accessibilityLabel="Buscar en equipo"
             >
-              <Feather name="search" size={21} color="#FFFFFF" />
+              <Feather name="search" size={Platform.OS === "ios" ? 21 : 18} color={pulse.textInverse} />
             </BotonAnimado>
             <BotonAnimado
               style={styles.bellButton}
@@ -342,13 +340,19 @@ export default function PanelJefe({ navigation }: { navigation?: Navigation } = 
               onPress={() => navigation?.navigate("Notificaciones")}
               accessibilityLabel="Abrir notificaciones"
             >
-              <Feather name="bell" size={21} color="#202020" />
+              <Feather name="bell" size={Platform.OS === "ios" ? 21 : 18} color={pulse.icon} />
               {alertasPendientes > 0 && (
                 <View style={styles.notificationDot} />
               )}
             </BotonAnimado>
           </View>
         </View>
+      </View>
+      <Animated.ScrollView
+        contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
+        showsVerticalScrollIndicator={false}
+        style={estiloEntrada}
+      >
         <View style={styles.header}>
           <Text style={styles.title}>Tu equipo,{"\n"}en foco</Text>
           <Text style={styles.subtitle}>{t("panelJefe.subtitle")}</Text>
@@ -362,69 +366,123 @@ export default function PanelJefe({ navigation }: { navigation?: Navigation } = 
           <>
             {error ? (
               <View style={styles.errorCard}>
-                <MaterialIcons name="error-outline" size={22} color="#EF4444" />
+                <MaterialIcons name="error-outline" size={22} color={pulse.errorText} />
                 <Text style={styles.errorText}>{error}</Text>
               </View>
             ) : null}
 
             <View style={styles.metricsGrid}>
-                <Metric
-                  styles={styles}
-                  colores={colores}
-                  label={t("panelJefe.metric_members")}
-                  value={dashboard.metricas.miembros}
-                  icon="groups"
-                />
-                <Metric
-                  styles={styles}
-                  colores={colores}
-                  label="Solicitudes"
-                  value={dashboard.metricas.aprobacionesPendientes}
-                  icon="inbox"
-                />
-                <Metric
-                  styles={styles}
-                  colores={colores}
-                  label="Vencidas"
-                  value={dashboard.metricas.tareasVencidas}
-                  icon="priority-high"
-                  danger={dashboard.metricas.tareasVencidas > 0}
-                />
+              <Metric
+                styles={styles}
+                pulse={pulse}
+                esOscuro={esOscuro}
+                label={t("panelJefe.metric_members")}
+                value={dashboard.metricas.miembros}
+                icon="groups"
+              />
+              <Metric
+                styles={styles}
+                pulse={pulse}
+                esOscuro={esOscuro}
+                label="Solicitudes"
+                value={dashboard.metricas.aprobacionesPendientes}
+                icon="inbox"
+              />
+              <Metric
+                styles={styles}
+                pulse={pulse}
+                esOscuro={esOscuro}
+                label="Vencidas"
+                value={dashboard.metricas.tareasVencidas}
+                icon="priority-high"
+                danger={dashboard.metricas.tareasVencidas > 0}
+              />
             </View>
 
             <Section
               styles={styles}
-              colores={colores}
               title={alertasPendientes > 0 ? "Requiere tu atención" : "Todo bajo control"}
             >
               {alertasPendientes === 0 ? (
                 <View style={styles.allClearRow}>
-                  <View style={styles.allClearIcon}><MaterialIcons name="check" size={19} color="#202020" /></View>
-                  <View><Text style={styles.attentionTitle}>Todo al día</Text><Text style={styles.attentionDetail}>No tienes pendientes que revisar.</Text></View>
+                  <View style={styles.allClearIcon}>
+                    <MaterialIcons name="check" size={19} color={esOscuro ? "#76C893" : "#2D7A4B"} />
+                  </View>
+                  <View>
+                    <Text style={styles.attentionTitle}>Todo al día</Text>
+                    <Text style={styles.attentionDetail}>No tienes pendientes que revisar.</Text>
+                  </View>
                 </View>
               ) : (
                 <>
-                  {dashboard.metricas.aprobacionesPendientes > 0 ? <AttentionRow styles={styles} icon="inbox" title="Solicitudes pendientes" detail={`${dashboard.metricas.aprobacionesPendientes} requieren respuesta`} onPress={() => setMostrarAprobaciones(true)} /> : null}
-                  {dashboard.metricas.tareasVencidas > 0 ? <AttentionRow styles={styles} icon="priority-high" title="Tareas vencidas" detail={`${dashboard.metricas.tareasVencidas} requieren seguimiento`} alert /> : null}
+                  {dashboard.metricas.aprobacionesPendientes > 0 ? (
+                    <AttentionRow
+                      styles={styles}
+                      pulse={pulse}
+                      esOscuro={esOscuro}
+                      icon="inbox"
+                      title="Solicitudes pendientes"
+                      detail={`${dashboard.metricas.aprobacionesPendientes} requieren respuesta`}
+                      onPress={() => setMostrarAprobaciones(true)}
+                    />
+                  ) : null}
+                  {dashboard.metricas.tareasVencidas > 0 ? (
+                    <AttentionRow
+                      styles={styles}
+                      pulse={pulse}
+                      esOscuro={esOscuro}
+                      icon="priority-high"
+                      title="Tareas vencidas"
+                      detail={`${dashboard.metricas.tareasVencidas} requieren seguimiento`}
+                      alert
+                    />
+                  ) : null}
                 </>
               )}
             </Section>
 
-            <Section styles={styles} colores={colores} title="Solicitudes" actionLabel="Ver todas" onAction={() => setMostrarAprobaciones(true)}>
+            <Section
+              styles={styles}
+              title="Solicitudes"
+              actionLabel="Ver todas"
+              onAction={() => setMostrarAprobaciones(true)}
+            >
               {aprobacionesVisibles.length === 0 ? (
                 <View style={styles.allClearRow}>
-                  <View style={styles.allClearIcon}><MaterialIcons name="check" size={19} color="#202020" /></View>
-                  <View><Text style={styles.attentionTitle}>Todo al día</Text><Text style={styles.attentionDetail}>No tienes solicitudes pendientes.</Text></View>
+                  <View style={styles.allClearIcon}>
+                    <MaterialIcons name="check" size={19} color={esOscuro ? "#76C893" : "#2D7A4B"} />
+                  </View>
+                  <View>
+                    <Text style={styles.attentionTitle}>Todo al día</Text>
+                    <Text style={styles.attentionDetail}>No tienes solicitudes pendientes.</Text>
+                  </View>
                 </View>
-              ) : aprobacionesVisibles.map((item, indice) => {
-                const member = dashboard.equipo.find((candidate) => candidate.id === item.empleadoId);
-                return <Animated.View key={`${item.sourceCollection}-${item.id}`} entering={FadeInDown.duration(220).delay(indice * 40)}><ApprovalCard styles={styles} esOscuro={esOscuro} colores={colores} item={item} avatarUrl={member?.foto_perfil} disabled={resolviendoId === item.id} onApprove={() => resolver(item, "aprobada")} onReject={() => setSolicitudARechazar(item)} /></Animated.View>;
-              })}
+              ) : (
+                aprobacionesVisibles.map((item, indice) => {
+                  const member = dashboard.equipo.find((candidate) => candidate.id === item.empleadoId);
+                  return (
+                    <Animated.View
+                      key={`${item.sourceCollection}-${item.id}`}
+                      entering={FadeInDown.duration(220).delay(indice * 40)}
+                    >
+                      <ApprovalCard
+                        styles={styles}
+                        pulse={pulse}
+                        esOscuro={esOscuro}
+                        item={item}
+                        avatarUrl={member?.foto_perfil}
+                        disabled={resolviendoId === item.id}
+                        onApprove={() => resolver(item, "aprobada")}
+                        onReject={() => setSolicitudARechazar(item)}
+                      />
+                    </Animated.View>
+                  );
+                })
+              )}
             </Section>
 
             <Section
               styles={styles}
-              colores={colores}
               title="Tu equipo"
               actionLabel="Ver todos"
               onAction={() => setMostrarEquipoCompleto(true)}
@@ -441,10 +499,18 @@ export default function PanelJefe({ navigation }: { navigation?: Navigation } = 
                     key={member.id}
                     entering={FadeInDown.duration(300).delay(indice * 35)}
                   >
-                    <BotonAnimado onPress={() => setMiembroSeleccionado(member)} scaleTo={0.98} style={styles.memberCard}>
+                    <BotonAnimado
+                      onPress={() => setMiembroSeleccionado(member)}
+                      scaleTo={0.98}
+                      style={styles.memberCard}
+                    >
                       <View style={styles.memberHeader}>
                         <View style={styles.avatar}>
-                          {member.foto_perfil ? <Image source={{ uri: member.foto_perfil }} style={styles.memberAvatarImage} /> : <Text style={styles.avatarText}>{member.nombre.slice(0, 1).toUpperCase()}</Text>}
+                          {member.foto_perfil ? (
+                            <Image source={{ uri: member.foto_perfil }} style={styles.memberAvatarImage} />
+                          ) : (
+                            <Text style={styles.avatarText}>{member.nombre.slice(0, 1).toUpperCase()}</Text>
+                          )}
                         </View>
                         <View style={styles.memberInfo}>
                           <Text style={styles.memberName} numberOfLines={1}>
@@ -456,12 +522,16 @@ export default function PanelJefe({ navigation }: { navigation?: Navigation } = 
                               t("panelJefe.default_employee_label")}
                           </Text>
                           <Text style={styles.memberDetail} numberOfLines={1}>
-                            {member.tareasPendientes} pendientes · {member.tareasVencidas > 0
-                              ? `${member.tareasVencidas} vencida${member.tareasVencidas === 1 ? "" : "s"}`
-                              : "al día"}
+                            {member.tareasPendientes} pendientes · {member.tareasVencidas > 0 ? (
+                              <Text style={styles.memberDetailAlert}>
+                                {`${member.tareasVencidas} vencida${member.tareasVencidas === 1 ? "" : "s"}`}
+                              </Text>
+                            ) : (
+                              "al día"
+                            )}
                           </Text>
                         </View>
-                        <MaterialIcons name="chevron-right" size={21} color="#938C87" />
+                        <MaterialIcons name="chevron-right" size={21} color={pulse.textTertiary} />
                       </View>
                     </BotonAnimado>
                   </Animated.View>
@@ -471,9 +541,7 @@ export default function PanelJefe({ navigation }: { navigation?: Navigation } = 
                 <BotonAnimado
                   onPress={() => setMostrarEquipoCompleto(true)}
                   style={styles.showMoreButton}
-                  accessibilityLabel={
-                    "Ver todo el equipo"
-                  }
+                  accessibilityLabel="Ver todo el equipo"
                 >
                   <Text style={styles.showMoreText}>
                     {`Ver todo el equipo (${equipoOrdenado.length})`}
@@ -481,7 +549,7 @@ export default function PanelJefe({ navigation }: { navigation?: Navigation } = 
                   <MaterialIcons
                     name="arrow-forward"
                     size={18}
-                    color={colores.texto}
+                    color={pulse.icon}
                   />
                 </BotonAnimado>
               )}
@@ -498,7 +566,7 @@ export default function PanelJefe({ navigation }: { navigation?: Navigation } = 
                   <MaterialIcons
                     name="fact-check"
                     size={20}
-                    color="#202020"
+                    color={pulse.icon}
                   />
                 </View>
                 <View style={{ flex: 1 }}>
@@ -508,7 +576,7 @@ export default function PanelJefe({ navigation }: { navigation?: Navigation } = 
                   </Text>
                 </View>
               </View>
-              <MaterialIcons name="chevron-right" size={21} color="#938C87" />
+              <MaterialIcons name="chevron-right" size={21} color={pulse.textTertiary} />
             </BotonAnimado>
           </>
         )}
@@ -521,26 +589,69 @@ export default function PanelJefe({ navigation }: { navigation?: Navigation } = 
         onClose={() => setMostrarEquipoCompleto(false)}
         onMemberPress={setMiembroSeleccionado}
       />
-      <ApprovalsModal visible={mostrarAprobaciones} approvals={aprobacionesOrdenadas} team={dashboard.equipo} styles={styles} colores={colores} esOscuro={esOscuro} resolvingId={resolviendoId} onClose={() => setMostrarAprobaciones(false)} onApprove={(item) => resolver(item, "aprobada")} onReject={setSolicitudARechazar} />
-      <EvaluationModal visible={mostrarEvaluacion} team={dashboard.equipo} saving={guardandoEvaluacion} onClose={() => setMostrarEvaluacion(false)} onSubmit={guardarEvaluacion} />
-      <MemberDetailModal member={miembroSeleccionado} onClose={() => setMiembroSeleccionado(null)} />
-      <RejectModal item={solicitudARechazar} onClose={() => setSolicitudARechazar(null)} onConfirm={() => { if (solicitudARechazar) { void resolver(solicitudARechazar, "rechazada"); setSolicitudARechazar(null); } }} />
+      <ApprovalsModal
+        visible={mostrarAprobaciones}
+        approvals={aprobacionesOrdenadas}
+        team={dashboard.equipo}
+        styles={styles}
+        pulse={pulse}
+        esOscuro={esOscuro}
+        resolvingId={resolviendoId}
+        onClose={() => setMostrarAprobaciones(false)}
+        onApprove={(item) => resolver(item, "aprobada")}
+        onReject={setSolicitudARechazar}
+      />
+      <EvaluationModal
+        visible={mostrarEvaluacion}
+        team={dashboard.equipo}
+        saving={guardandoEvaluacion}
+        onClose={() => setMostrarEvaluacion(false)}
+        onSubmit={guardarEvaluacion}
+      />
+      <MemberDetailModal
+        member={miembroSeleccionado}
+        onClose={() => setMiembroSeleccionado(null)}
+      />
+      <RejectModal
+        item={solicitudARechazar}
+        onClose={() => setSolicitudARechazar(null)}
+        onConfirm={() => {
+          if (solicitudARechazar) {
+            void resolver(solicitudARechazar, "rechazada");
+            setSolicitudARechazar(null);
+          }
+        }}
+      />
     </SafeAreaView>
   );
 }
 
 function Metric({
   styles,
+  pulse,
+  esOscuro,
   label,
   value,
   danger = false,
   suffix = "",
   icon,
-}: any) {
+}: {
+  styles: ReturnType<typeof crearEstilos>;
+  pulse: ReturnType<typeof useTemaMobile>["colores"]["pulso"];
+  esOscuro: boolean;
+  label: string;
+  value: number;
+  danger?: boolean;
+  suffix?: string;
+  icon?: keyof typeof MaterialIcons.glyphMap;
+}) {
+  const iconColor = danger
+    ? (esOscuro ? pulse.errorText : "#EF4444")
+    : pulse.textSecondary;
   return (
     <View style={styles.metricCard}>
       <View style={styles.metricIconWrap}>
-        <MaterialIcons name={icon || "analytics"} size={16} color={danger ? "#EF4444" : "#665D69"} />
+        <MaterialIcons name={icon || "analytics"} size={16} color={iconColor} />
       </View>
       <Text
         style={[styles.metricValue, danger && styles.dangerText]}
@@ -563,20 +674,71 @@ function Metric({
   );
 }
 
-function AttentionRow({ styles, icon, title, detail, alert = false, onPress }: any) {
-  return <BotonAnimado onPress={onPress} disabled={!onPress} scaleTo={0.98} style={styles.attentionRow}>
-    <View style={[styles.attentionIcon, alert && styles.attentionIconAlert]}><MaterialIcons name={icon} size={19} color={alert ? "#B54B45" : "#202020"} /></View>
-    <View style={styles.attentionCopy}><Text style={styles.attentionTitle}>{title}</Text><Text style={styles.attentionDetail}>{detail}</Text></View>
-    {onPress ? <MaterialIcons name="chevron-right" size={21} color="#938C87" /> : null}
-  </BotonAnimado>;
+function AttentionRow({
+  styles,
+  pulse,
+  esOscuro,
+  icon,
+  title,
+  detail,
+  alert = false,
+  onPress,
+}: {
+  styles: ReturnType<typeof crearEstilos>;
+  pulse: ReturnType<typeof useTemaMobile>["colores"]["pulso"];
+  esOscuro: boolean;
+  icon: keyof typeof MaterialIcons.glyphMap;
+  title: string;
+  detail: string;
+  alert?: boolean;
+  onPress?: () => void;
+}) {
+  const iconColor = alert
+    ? (esOscuro ? pulse.errorText : "#B54B45")
+    : pulse.icon;
+  return (
+    <BotonAnimado
+      onPress={onPress}
+      disabled={!onPress}
+      scaleTo={0.98}
+      style={styles.attentionRow}
+    >
+      <View style={[styles.attentionIcon, alert && styles.attentionIconAlert]}>
+        <MaterialIcons name={icon} size={19} color={iconColor} />
+      </View>
+      <View style={styles.attentionCopy}>
+        <Text style={styles.attentionTitle}>{title}</Text>
+        <Text style={styles.attentionDetail}>{detail}</Text>
+      </View>
+      {onPress ? (
+        <MaterialIcons name="chevron-right" size={21} color={pulse.textTertiary} />
+      ) : null}
+    </BotonAnimado>
+  );
 }
 
-function Section({ styles, colores, title, actionLabel, onAction, children }: any) {
+function Section({
+  styles,
+  title,
+  actionLabel,
+  onAction,
+  children,
+}: {
+  styles: ReturnType<typeof crearEstilos>;
+  title: string;
+  actionLabel?: string;
+  onAction?: () => void;
+  children: React.ReactNode;
+}) {
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>{title}</Text>
-        {actionLabel && onAction ? <BotonAnimado onPress={onAction} scaleTo={0.97}><Text style={styles.sectionAction}>{actionLabel}</Text></BotonAnimado> : null}
+        {actionLabel && onAction ? (
+          <BotonAnimado onPress={onAction} scaleTo={0.97}>
+            <Text style={styles.sectionAction}>{actionLabel}</Text>
+          </BotonAnimado>
+        ) : null}
       </View>
       {children}
     </View>
@@ -585,13 +747,23 @@ function Section({ styles, colores, title, actionLabel, onAction, children }: an
 
 function ApprovalCard({
   styles,
+  pulse,
   esOscuro,
   item,
   avatarUrl,
   disabled,
   onApprove,
   onReject,
-}: any) {
+}: {
+  styles: ReturnType<typeof crearEstilos>;
+  pulse: ReturnType<typeof useTemaMobile>["colores"]["pulso"];
+  esOscuro: boolean;
+  item: RequestReportItem;
+  avatarUrl?: string;
+  disabled?: boolean;
+  onApprove: () => void;
+  onReject: () => void;
+}) {
   const { t } = useTranslation();
   const tipoFormateado = formatearTipoSolicitud(item.tipo);
   const tieneRangoFechas = Boolean(item.fechaInicio || item.fechaFin);
@@ -648,7 +820,7 @@ function ApprovalCard({
         ) : null}
         {tieneRangoFechas ? (
           <View style={styles.approvalDateRow}>
-            <MaterialIcons name="event" size={14} color="#78716C" />
+            <MaterialIcons name="event" size={14} color={pulse.textTertiary} />
             <Text style={styles.approvalDateText}>
               {item.fechaInicio ? formatearFechaCorta(item.fechaInicio) : ""}
               {item.fechaFin && item.fechaFin !== item.fechaInicio
@@ -666,7 +838,7 @@ function ApprovalCard({
           style={[styles.rejectButton, disabled && styles.disabledButton]}
           activeOpacity={0.7}
         >
-          <MaterialIcons name="close" size={15} color="#B54B45" />
+          <MaterialIcons name="close" size={15} color={pulse.errorText} />
           <Text style={styles.rejectText}>{t("panelJefe.btn_reject")}</Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -675,7 +847,7 @@ function ApprovalCard({
           style={[styles.approveButton, disabled && styles.disabledButton]}
           activeOpacity={0.7}
         >
-          <MaterialIcons name="check" size={15} color="#FFFFFF" />
+          <MaterialIcons name="check" size={15} color={pulse.textInverse} />
           <Text style={styles.approveText}>{t("panelJefe.btn_approve")}</Text>
         </TouchableOpacity>
       </View>
@@ -698,6 +870,12 @@ function TeamDirectoryModal({
   onClose: () => void;
   onMemberPress: (member: LeaderTeamMember) => void;
 }) {
+  const { colores, esOscuro } = useTemaMobile();
+  const pulse = colores.pulso;
+  const directoryStyles = React.useMemo(
+    () => crearDirectoryStyles(pulse, esOscuro),
+    [pulse, esOscuro]
+  );
   const insets = useSafeAreaInsets();
   const topInset = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 16);
   const bottomInset = Math.max(insets.bottom, 20);
@@ -714,22 +892,22 @@ function TeamDirectoryModal({
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <View style={[directoryStyles.screen, { paddingTop: topInset }]}>
-        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-        <LinearGradient pointerEvents="none" colors={["#F6E8E5", "#F5EAF5", "#FFFDFC"]} locations={[0, 0.3, 0.78]} style={directoryStyles.ambient} />
+        <StatusBar barStyle={esOscuro ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
+        <LinearGradient pointerEvents="none" colors={pulse.ambient} locations={[0, 0.3, 0.78]} style={directoryStyles.ambient} />
         <View style={directoryStyles.header}>
           <BotonAnimado onPress={onClose} scaleTo={0.96} style={directoryStyles.circle}>
-            <MaterialIcons name="arrow-back" size={21} color="#202020" />
+            <MaterialIcons name="arrow-back" size={21} color={pulse.icon} />
           </BotonAnimado>
           <Text style={directoryStyles.title}>Mi equipo</Text>
           <View style={directoryStyles.headerSpacer} />
         </View>
         <View style={directoryStyles.search}>
-          <MaterialIcons name="search" size={19} color="#7B7470" />
+          <MaterialIcons name="search" size={19} color={pulse.textTertiary} />
           <TextInput
             value={query}
             onChangeText={onQueryChange}
             placeholder="Buscar empleado"
-            placeholderTextColor="#918A86"
+            placeholderTextColor={pulse.textTertiary}
             style={directoryStyles.searchInput}
           />
         </View>
@@ -747,7 +925,7 @@ function TeamDirectoryModal({
               scaleTo={0.98}
               style={directoryStyles.memberRow}
             >
-              <Avatar member={item} size={50} />
+              <Avatar member={item} size={50} pulse={pulse} directoryStyles={directoryStyles} />
               <View style={directoryStyles.memberCopy}>
                 <Text style={directoryStyles.memberName}>{item.nombre}</Text>
                 <Text style={directoryStyles.memberMeta}>{item.cargo || item.departamento || "Colaborador"}</Text>
@@ -755,7 +933,7 @@ function TeamDirectoryModal({
                   {item.tareasPendientes} tareas · {item.tareasVencidas > 0 ? `${item.tareasVencidas} vencida${item.tareasVencidas === 1 ? "" : "s"}` : "Al día"}
                 </Text>
               </View>
-              <MaterialIcons name="chevron-right" size={21} color="#938C87" />
+              <MaterialIcons name="chevron-right" size={21} color={pulse.textTertiary} />
             </BotonAnimado>
           )}
         />
@@ -777,6 +955,12 @@ function EvaluationModal({
   onClose: () => void;
   onSubmit: (payload: LeaderEvaluationPayload) => Promise<void>;
 }) {
+  const { colores, esOscuro } = useTemaMobile();
+  const pulse = colores.pulso;
+  const directoryStyles = React.useMemo(
+    () => crearDirectoryStyles(pulse, esOscuro),
+    [pulse, esOscuro]
+  );
   const insets = useSafeAreaInsets();
   const topInset = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 16);
   const bottomInset = Math.max(insets.bottom, 20);
@@ -784,11 +968,11 @@ function EvaluationModal({
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <View style={[directoryStyles.screen, { paddingTop: topInset }]}>
-        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-        <LinearGradient pointerEvents="none" colors={["#F6E8E5", "#F5EAF5", "#FFFDFC"]} locations={[0, 0.3, 0.78]} style={directoryStyles.ambient} />
+        <StatusBar barStyle={esOscuro ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
+        <LinearGradient pointerEvents="none" colors={pulse.ambient} locations={[0, 0.3, 0.78]} style={directoryStyles.ambient} />
         <View style={directoryStyles.header}>
           <BotonAnimado onPress={onClose} scaleTo={0.96} style={directoryStyles.circle}>
-            <MaterialIcons name="arrow-back" size={21} color="#202020" />
+            <MaterialIcons name="arrow-back" size={21} color={pulse.icon} />
           </BotonAnimado>
           <Text style={directoryStyles.title}>Evaluar empleado</Text>
           <View style={directoryStyles.headerSpacer} />
@@ -812,7 +996,7 @@ function ApprovalsModal({
   approvals,
   team,
   styles,
-  colores,
+  pulse,
   esOscuro,
   resolvingId,
   onClose,
@@ -823,13 +1007,17 @@ function ApprovalsModal({
   approvals: RequestReportItem[];
   team: LeaderTeamMember[];
   styles: ReturnType<typeof crearEstilos>;
-  colores: ReturnType<typeof useTemaMobile>["colores"];
+  pulse: ReturnType<typeof useTemaMobile>["colores"]["pulso"];
   esOscuro: boolean;
   resolvingId: string;
   onClose: () => void;
   onApprove: (item: RequestReportItem) => void;
   onReject: (item: RequestReportItem) => void;
 }) {
+  const directoryStyles = React.useMemo(
+    () => crearDirectoryStyles(pulse, esOscuro),
+    [pulse, esOscuro]
+  );
   const insets = useSafeAreaInsets();
   const topInset = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 16);
   const bottomInset = Math.max(insets.bottom, 20);
@@ -859,22 +1047,22 @@ function ApprovalsModal({
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <View style={[directoryStyles.screen, { paddingTop: topInset }]}>
-        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-        <LinearGradient pointerEvents="none" colors={["#F6E8E5", "#F5EAF5", "#FFFDFC"]} locations={[0, 0.3, 0.78]} style={directoryStyles.ambient} />
+        <StatusBar barStyle={esOscuro ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
+        <LinearGradient pointerEvents="none" colors={pulse.ambient} locations={[0, 0.3, 0.78]} style={directoryStyles.ambient} />
         <View style={directoryStyles.header}>
           <BotonAnimado onPress={onClose} scaleTo={0.96} style={directoryStyles.circle}>
-            <MaterialIcons name="arrow-back" size={21} color="#202020" />
+            <MaterialIcons name="arrow-back" size={21} color={pulse.icon} />
           </BotonAnimado>
           <Text style={directoryStyles.title}>Solicitudes</Text>
           <View style={directoryStyles.headerSpacer} />
         </View>
         <View style={directoryStyles.search}>
-          <MaterialIcons name="search" size={19} color="#7B7470" />
+          <MaterialIcons name="search" size={19} color={pulse.textTertiary} />
           <TextInput
             value={query}
             onChangeText={setQuery}
             placeholder="Buscar solicitud"
-            placeholderTextColor="#918A86"
+            placeholderTextColor={pulse.textTertiary}
             style={directoryStyles.searchInput}
           />
         </View>
@@ -897,7 +1085,7 @@ function ApprovalsModal({
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={directoryStyles.emptyContainer}>
-              <MaterialIcons name="inbox" size={44} color="#D1CBC7" />
+              <MaterialIcons name="inbox" size={44} color={pulse.textTertiary} />
               <Text style={directoryStyles.emptyTitle}>No hay solicitudes</Text>
               <Text style={directoryStyles.emptySubtitle}>
                 {query || selectedType !== "Todas"
@@ -909,7 +1097,7 @@ function ApprovalsModal({
           renderItem={({ item }) => (
             <ApprovalCard
               styles={styles}
-              colores={colores}
+              pulse={pulse}
               esOscuro={esOscuro}
               item={item}
               avatarUrl={team.find((member) => member.id === item.empleadoId)?.foto_perfil}
@@ -925,6 +1113,12 @@ function ApprovalsModal({
 }
 
 function MemberDetailModal({ member, onClose }: { member: LeaderTeamMember | null; onClose: () => void }) {
+  const { colores, esOscuro } = useTemaMobile();
+  const pulse = colores.pulso;
+  const directoryStyles = React.useMemo(
+    () => crearDirectoryStyles(pulse, esOscuro),
+    [pulse, esOscuro]
+  );
   const insets = useSafeAreaInsets();
   const topInset = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 16);
   const bottomInset = Math.max(insets.bottom, 20);
@@ -933,23 +1127,23 @@ function MemberDetailModal({ member, onClose }: { member: LeaderTeamMember | nul
   return (
     <Modal visible animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <View style={[directoryStyles.screen, { paddingTop: topInset, paddingBottom: bottomInset }]}>
-        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-        <LinearGradient pointerEvents="none" colors={["#F6E8E5", "#F5EAF5", "#FFFDFC"]} locations={[0, 0.3, 0.78]} style={directoryStyles.ambient} />
+        <StatusBar barStyle={esOscuro ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
+        <LinearGradient pointerEvents="none" colors={pulse.ambient} locations={[0, 0.3, 0.78]} style={directoryStyles.ambient} />
         <View style={directoryStyles.header}>
           <BotonAnimado onPress={onClose} scaleTo={0.96} style={directoryStyles.circle}>
-            <MaterialIcons name="arrow-back" size={21} color="#202020" />
+            <MaterialIcons name="arrow-back" size={21} color={pulse.icon} />
           </BotonAnimado>
           <Text style={directoryStyles.title}>Miembro</Text>
           <View style={directoryStyles.headerSpacer} />
         </View>
         <View style={directoryStyles.detailContent}>
-          <Avatar member={member} size={74} />
+          <Avatar member={member} size={74} pulse={pulse} directoryStyles={directoryStyles} />
           <Text style={directoryStyles.detailName}>{member.nombre}</Text>
           <Text style={directoryStyles.memberMeta}>{member.cargo || member.departamento || "Colaborador"}</Text>
           <View style={directoryStyles.detailStats}>
-            <DetailStat label="Tareas" value={member.tareasPendientes} />
-            <DetailStat label="Vencidas" value={member.tareasVencidas} alert />
-            <DetailStat label="Solicitudes" value={member.solicitudesPendientes} />
+            <DetailStat label="Tareas" value={member.tareasPendientes} directoryStyles={directoryStyles} />
+            <DetailStat label="Vencidas" value={member.tareasVencidas} alert directoryStyles={directoryStyles} />
+            <DetailStat label="Solicitudes" value={member.solicitudesPendientes} directoryStyles={directoryStyles} />
           </View>
         </View>
       </View>
@@ -958,13 +1152,20 @@ function MemberDetailModal({ member, onClose }: { member: LeaderTeamMember | nul
 }
 
 function RejectModal({ item, onClose, onConfirm }: { item: RequestReportItem | null; onClose: () => void; onConfirm: () => void }) {
+  const { colores, esOscuro } = useTemaMobile();
+  const pulse = colores.pulso;
+  const directoryStyles = React.useMemo(
+    () => crearDirectoryStyles(pulse, esOscuro),
+    [pulse, esOscuro]
+  );
+
   if (!item) return null;
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
       <View style={directoryStyles.rejectOverlay}>
         <View style={directoryStyles.rejectCard}>
           <View style={directoryStyles.rejectIcon}>
-            <MaterialIcons name="close" size={20} color="#B54B45" />
+            <MaterialIcons name="close" size={20} color={pulse.errorText} />
           </View>
           <Text style={directoryStyles.rejectTitle}>Rechazar solicitud</Text>
           <Text style={directoryStyles.rejectText}>
@@ -984,145 +1185,342 @@ function RejectModal({ item, onClose, onConfirm }: { item: RequestReportItem | n
   );
 }
 
-function Avatar({ member, size }: { member: LeaderTeamMember; size: number }) {
+function Avatar({
+  member,
+  size,
+  pulse,
+  directoryStyles,
+}: {
+  member: LeaderTeamMember;
+  size: number;
+  pulse: ReturnType<typeof useTemaMobile>["colores"]["pulso"];
+  directoryStyles: ReturnType<typeof crearDirectoryStyles>;
+}) {
   const style = { width: size, height: size, borderRadius: size / 2 };
-  return member.foto_perfil ? <Image source={{ uri: member.foto_perfil }} style={style} /> : <View style={[directoryStyles.avatarFallback, style]}><Text style={directoryStyles.avatarInitial}>{member.nombre.slice(0, 1).toUpperCase()}</Text></View>;
+  return member.foto_perfil ? (
+    <Image source={{ uri: member.foto_perfil }} style={style} />
+  ) : (
+    <View style={[directoryStyles.avatarFallback, style]}>
+      <Text style={directoryStyles.avatarInitial}>{member.nombre.slice(0, 1).toUpperCase()}</Text>
+    </View>
+  );
 }
 
-function DetailStat({ label, value, alert = false }: { label: string; value: number; alert?: boolean }) { return <View style={directoryStyles.detailStat}><Text style={[directoryStyles.detailValue, alert && value > 0 && directoryStyles.detailValueAlert]}>{value}</Text><Text style={directoryStyles.detailLabel}>{label}</Text></View>; }
+function DetailStat({
+  label,
+  value,
+  alert = false,
+  directoryStyles,
+}: {
+  label: string;
+  value: number;
+  alert?: boolean;
+  directoryStyles: ReturnType<typeof crearDirectoryStyles>;
+}) {
+  return (
+    <View style={directoryStyles.detailStat}>
+      <Text style={[directoryStyles.detailValue, alert && value > 0 && directoryStyles.detailValueAlert]}>
+        {value}
+      </Text>
+      <Text style={directoryStyles.detailLabel}>{label}</Text>
+    </View>
+  );
+}
 
-const directoryStyles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#FFFDFC" },
-  ambient: { ...StyleSheet.absoluteFill },
-  header: { minHeight: Platform.OS === "android" ? 52 : 56, paddingHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 },
-  circle: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "rgba(0,0,0,0.04)", shadowColor: "#211C19", shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
-  title: { color: "#211E1C", fontSize: 18, fontWeight: "700", letterSpacing: Platform.OS === "ios" ? -0.3 : 0 },
-  headerSpacer: { width: 44 },
-  search: { height: 48, marginHorizontal: 20, marginTop: 4, marginBottom: 4, paddingHorizontal: 15, borderRadius: 24, backgroundColor: "#FFFFFF", flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderColor: "rgba(0,0,0,0.04)", shadowColor: "#000", shadowOpacity: 0.03, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
-  searchInput: { flex: 1, color: "#292522", fontSize: 14, paddingVertical: Platform.OS === "android" ? 2 : 0 },
-  filterRow: { gap: 8, paddingHorizontal: 20, paddingVertical: 10 },
-  filterChip: { height: 34, paddingHorizontal: 14, borderRadius: 17, backgroundColor: Platform.OS === "ios" ? "rgba(255,255,255,0.88)" : "#FFFFFF", justifyContent: "center", borderWidth: 1, borderColor: "rgba(0,0,0,0.05)" },
-  filterChipSelected: { backgroundColor: "#211E1C", borderColor: "#211E1C" },
-  filterText: { color: "#625B56", fontSize: 13, fontWeight: "600", includeFontPadding: false },
-  filterTextSelected: { color: "#FFFFFF", fontWeight: "700" },
-  list: { paddingHorizontal: 20, paddingTop: 8, gap: 10 },
-  approvalList: { paddingHorizontal: 20, paddingTop: 8, gap: 12 },
-  memberRow: { minHeight: 76, padding: 12, borderRadius: 22, backgroundColor: Platform.OS === "ios" ? "rgba(255,255,255,0.88)" : "#FFFFFF", flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderColor: "rgba(0,0,0,0.04)", shadowColor: "#000", shadowOpacity: 0.02, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
-  memberCopy: { flex: 1, minWidth: 0 },
-  memberName: { color: "#292522", fontSize: 16, fontWeight: "600" },
-  memberMeta: { color: "#78716C", fontSize: 13, marginTop: 2 },
-  memberDetail: { color: "#938C87", fontSize: 12, marginTop: 5 },
-  avatarFallback: { alignItems: "center", justifyContent: "center", backgroundColor: "#E9D2BF" },
-  avatarInitial: { color: "#382E29", fontSize: 17, fontWeight: "700" },
-  evaluationContent: { padding: 20 },
-  period: { color: "#78716C", fontSize: 13, fontWeight: "500", marginBottom: 16, textTransform: "capitalize" },
-  detailContent: { alignItems: "center", paddingHorizontal: 20, paddingTop: 26 },
-  detailName: { color: "#292522", fontSize: 24, fontWeight: "600", marginTop: 12 },
-  detailStats: { width: "100%", flexDirection: "row", gap: 10, marginTop: 28 },
-  detailStat: { flex: 1, paddingVertical: 15, borderRadius: 18, backgroundColor: "#FFFFFF", alignItems: "center", borderWidth: 1, borderColor: "rgba(0,0,0,0.04)", shadowColor: "#000", shadowOpacity: 0.02, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
-  detailValue: { color: "#292522", fontSize: 22, fontWeight: "600" },
-  detailValueAlert: { color: "#B54B45" },
-  detailLabel: { color: "#837C77", fontSize: 12, marginTop: 3 },
-  rejectOverlay: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, backgroundColor: "rgba(31,29,28,0.4)" },
-  rejectCard: { width: "100%", maxWidth: 390, borderRadius: 28, backgroundColor: "#FFFFFF", padding: 22, shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 5 },
-  rejectIcon: { width: 42, height: 42, borderRadius: 21, backgroundColor: "#FFF0EE", alignItems: "center", justifyContent: "center" },
-  rejectTitle: { color: "#292522", fontSize: 20, fontWeight: "600", marginTop: 16 },
-  rejectText: { color: "#78716C", fontSize: 14, lineHeight: 20, marginTop: 7 },
-  rejectActions: { flexDirection: "row", justifyContent: "flex-end", gap: 10, marginTop: 22 },
-  cancelButton: { height: 42, paddingHorizontal: 16, borderRadius: 15, backgroundColor: "#F1EFED", alignItems: "center", justifyContent: "center" },
-  cancelText: { color: "#514B47", fontSize: 13, fontWeight: "600" },
-  confirmRejectButton: { height: 42, paddingHorizontal: 16, borderRadius: 15, backgroundColor: "#B54B45", alignItems: "center", justifyContent: "center" },
-  confirmRejectText: { color: "#FFFFFF", fontSize: 13, fontWeight: "600" },
-  emptyContainer: { alignItems: "center", justifyContent: "center", paddingTop: 52, paddingHorizontal: 24, gap: 6 },
-  emptyTitle: { color: "#292522", fontSize: 16, fontWeight: "600", marginTop: 6 },
-  emptySubtitle: { color: "#837C77", fontSize: 13, textAlign: "center", lineHeight: 18 },
-});
+function crearDirectoryStyles(pulse: ReturnType<typeof useTemaMobile>["colores"]["pulso"], esOscuro: boolean) {
+  return StyleSheet.create({
+    screen: { flex: 1, backgroundColor: pulse.background },
+    ambient: { ...StyleSheet.absoluteFill },
+    header: {
+      minHeight: Platform.OS === "android" ? 52 : 56,
+      paddingHorizontal: 20,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 6,
+    },
+    circle: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: pulse.surfaceElevated,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+    },
+    title: {
+      color: pulse.text,
+      fontSize: 18,
+      fontWeight: "700",
+      letterSpacing: Platform.OS === "ios" ? -0.3 : 0,
+    },
+    headerSpacer: { width: 44 },
+    search: {
+      height: 48,
+      marginHorizontal: 20,
+      marginTop: 4,
+      marginBottom: 4,
+      paddingHorizontal: 15,
+      borderRadius: 24,
+      backgroundColor: pulse.surfaceElevated,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+    },
+    searchInput: {
+      flex: 1,
+      color: pulse.text,
+      fontSize: 14,
+      paddingVertical: Platform.OS === "android" ? 2 : 0,
+    },
+    filterRow: { gap: 8, paddingHorizontal: 20, paddingVertical: 10 },
+    filterChip: {
+      height: 34,
+      paddingHorizontal: 14,
+      borderRadius: 17,
+      backgroundColor: pulse.surfaceElevated,
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    filterChipSelected: {
+      backgroundColor: pulse.chipActive,
+      borderColor: pulse.chipActive,
+    },
+    filterText: {
+      color: pulse.textSecondary,
+      fontSize: 13,
+      fontWeight: "600",
+      includeFontPadding: false,
+    },
+    filterTextSelected: {
+      color: pulse.chipTextActive,
+      fontWeight: "700",
+    },
+    list: { paddingHorizontal: 20, paddingTop: 8, gap: 10 },
+    approvalList: { paddingHorizontal: 20, paddingTop: 8, gap: 12 },
+    memberRow: {
+      minHeight: 76,
+      padding: 12,
+      borderRadius: 22,
+      backgroundColor: pulse.surfaceElevated,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+    },
+    memberCopy: { flex: 1, minWidth: 0 },
+    memberName: { color: pulse.text, fontSize: 16, fontWeight: "600" },
+    memberMeta: { color: pulse.textSecondary, fontSize: 13, marginTop: 2 },
+    memberDetail: { color: pulse.textTertiary, fontSize: 12, marginTop: 5 },
+    avatarFallback: {
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: pulse.pill,
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    avatarInitial: { color: pulse.text, fontSize: 17, fontWeight: "700" },
+    evaluationContent: { padding: 20 },
+    period: {
+      color: pulse.textSecondary,
+      fontSize: 13,
+      fontWeight: "500",
+      marginBottom: 16,
+      textTransform: "capitalize",
+    },
+    detailContent: { alignItems: "center", paddingHorizontal: 20, paddingTop: 26 },
+    detailName: { color: pulse.text, fontSize: 24, fontWeight: "600", marginTop: 12 },
+    detailStats: { width: "100%", flexDirection: "row", gap: 10, marginTop: 28 },
+    detailStat: {
+      flex: 1,
+      paddingVertical: 15,
+      borderRadius: 18,
+      backgroundColor: pulse.surfaceElevated,
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: pulse.border,
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
+    },
+    detailValue: { color: pulse.text, fontSize: 22, fontWeight: "600" },
+    detailValueAlert: { color: esOscuro ? pulse.errorText : "#B54B45" },
+    detailLabel: { color: pulse.textTertiary, fontSize: 12, marginTop: 3 },
+    rejectOverlay: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 24,
+      backgroundColor: esOscuro ? "rgba(0,0,0,0.75)" : "rgba(31,29,28,0.4)",
+    },
+    rejectCard: {
+      width: "100%",
+      maxWidth: 390,
+      borderRadius: 28,
+      backgroundColor: pulse.surfaceElevated,
+      padding: 22,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      ...SOMBRAS.tarjeta,
+      shadowColor: pulse.shadow,
+    },
+    rejectIcon: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      backgroundColor: pulse.errorSurface,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    rejectTitle: { color: pulse.text, fontSize: 20, fontWeight: "600", marginTop: 16 },
+    rejectText: { color: pulse.textSecondary, fontSize: 14, lineHeight: 20, marginTop: 7 },
+    rejectActions: { flexDirection: "row", justifyContent: "flex-end", gap: 10, marginTop: 22 },
+    cancelButton: {
+      height: 42,
+      paddingHorizontal: 16,
+      borderRadius: 15,
+      backgroundColor: pulse.pill,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    cancelText: { color: pulse.textSecondary, fontSize: 13, fontWeight: "600" },
+    confirmRejectButton: {
+      height: 42,
+      paddingHorizontal: 16,
+      borderRadius: 15,
+      backgroundColor: pulse.errorSurface,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: esOscuro ? "rgba(242,181,178,0.2)" : "rgba(181,75,69,0.2)",
+    },
+    confirmRejectText: { color: pulse.errorText, fontSize: 13, fontWeight: "600" },
+    emptyContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingTop: 52,
+      paddingHorizontal: 24,
+      gap: 6,
+    },
+    emptyTitle: { color: pulse.text, fontSize: 16, fontWeight: "600", marginTop: 6 },
+    emptySubtitle: { color: pulse.textSecondary, fontSize: 13, textAlign: "center", lineHeight: 18 },
+  });
+}
 
-function crearEstilos(c: any, esOscuro: boolean) {
+function crearEstilos(pulse: ReturnType<typeof useTemaMobile>["colores"]["pulso"], esOscuro: boolean) {
+  const isIOS = Platform.OS === "ios";
   return StyleSheet.create({
     root: {
       flex: 1,
-      backgroundColor: "#FFFDFC",
+      backgroundColor: pulse.background,
     },
     content: {
       paddingHorizontal: 21,
-      paddingTop: 4,
+      paddingTop: isIOS ? 12 : 8,
       paddingBottom: 132,
       gap: 16,
     },
     ambient: { ...StyleSheet.absoluteFill },
+    topBarContainer: {
+      paddingHorizontal: 21,
+      paddingTop: isIOS ? 6 : 4,
+      paddingBottom: 8,
+      zIndex: 10,
+      backgroundColor: 'transparent',
+    },
     topBar: {
-      height: 52,
+      height: isIOS ? 54 : 48,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
     },
     profile: {
-      width: 46,
-      height: 46,
-      borderRadius: 23,
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
       overflow: "hidden",
-      backgroundColor: "#E9D2BF",
+      backgroundColor: pulse.pill,
       alignItems: "center",
       justifyContent: "center",
+      borderWidth: 1,
+      borderColor: pulse.border,
     },
-    profileAvatar: { width: "100%", height: "100%" },
-    profileAvatarInitial: { color: "#382E29", fontSize: 17, fontWeight: "700" },
+    profileAvatar: {
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+    },
+    profileAvatarInitial: { color: pulse.text, fontSize: isIOS ? 17 : 15, fontWeight: "700" },
     topBarLabel: {
-      color: "#292522",
-      fontSize: 17,
+      color: pulse.text,
+      fontSize: isIOS ? 17 : 15,
       fontWeight: "600",
-      letterSpacing: -0.5,
+      letterSpacing: isIOS ? -0.5 : -0.3,
     },
-    headerActions: { flexDirection: "row", gap: 10 },
+    headerActions: { flexDirection: "row", gap: isIOS ? 10 : 8 },
     addButton: {
-      width: 47,
-      height: 47,
-      borderRadius: 24,
-      backgroundColor: "#202020",
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: pulse.inverse,
       alignItems: "center",
       justifyContent: "center",
     },
     bellButton: {
-      width: 47,
-      height: 47,
-      borderRadius: 24,
-      backgroundColor: "#FFFFFF",
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: pulse.surfaceElevated,
       alignItems: "center",
       justifyContent: "center",
+      borderWidth: 1,
+      borderColor: pulse.border,
       ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
     },
     notificationDot: {
       position: "absolute",
-      top: 11,
-      right: 12,
-      width: 7,
-      height: 7,
-      borderRadius: 4,
+      top: isIOS ? 11 : 9,
+      right: isIOS ? 12 : 10,
+      width: isIOS ? 8 : 7,
+      height: isIOS ? 8 : 7,
+      borderRadius: isIOS ? 4 : 3.5,
       backgroundColor: "#E56C67",
       borderWidth: 1.5,
-      borderColor: "#FFFFFF",
+      borderColor: pulse.surfaceElevated,
     },
     header: {
       gap: 4,
       marginTop: 0,
     },
     eyebrow: {
-      color: c.textoSecundario,
+      color: pulse.textSecondary,
       fontSize: 12,
       fontWeight: "800",
       letterSpacing: 0,
       textTransform: "uppercase",
     },
     title: {
-      color: "#1F1D1C",
-      fontSize: 34,
-      lineHeight: 38,
+      color: pulse.text,
+      fontSize: isIOS ? 34 : 27,
+      lineHeight: isIOS ? 38 : 31,
       fontWeight: "600",
-      letterSpacing: -1.4,
+      letterSpacing: isIOS ? -1.4 : -0.9,
     },
     subtitle: {
-      color: "#78716C",
+      color: pulse.textSecondary,
       fontSize: 14,
       lineHeight: 20,
     },
@@ -1139,43 +1537,40 @@ function crearEstilos(c: any, esOscuro: boolean) {
       paddingVertical: 14,
       paddingHorizontal: 6,
       borderRadius: 18,
-      backgroundColor: Platform.OS === "ios" ? "rgba(255,255,255,0.85)" : "#FFFFFF",
+      backgroundColor: pulse.surfaceElevated,
       borderWidth: 1,
-      borderColor: Platform.OS === "ios" ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.05)",
+      borderColor: pulse.border,
       alignItems: "center",
       justifyContent: "center",
       gap: 3,
-      shadowColor: "#000",
-      shadowOpacity: 0.03,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 2 },
-      elevation: 2,
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
     },
     metricIconWrap: {
       width: 28,
       height: 28,
       borderRadius: 14,
-      backgroundColor: "rgba(0,0,0,0.04)",
+      backgroundColor: pulse.iconSurface,
       alignItems: "center",
       justifyContent: "center",
       marginBottom: 2,
     },
     metricValue: {
-      color: "#211E1C",
+      color: pulse.text,
       fontSize: Platform.OS === "ios" ? 20 : 18,
       fontWeight: "700",
       letterSpacing: Platform.OS === "ios" ? -0.4 : 0,
       includeFontPadding: false,
     },
     metricLabel: {
-      color: "#78716C",
+      color: pulse.textSecondary,
       fontSize: Platform.OS === "ios" ? 11 : 10.5,
       fontWeight: "600",
       textAlign: "center",
       includeFontPadding: false,
     },
     dangerText: {
-      color: "#EF4444",
+      color: esOscuro ? pulse.errorText : "#EF4444",
     },
     section: {
       gap: 12,
@@ -1188,61 +1583,58 @@ function crearEstilos(c: any, esOscuro: boolean) {
       marginBottom: 2,
     },
     sectionTitle: {
-      color: c.texto,
+      color: pulse.text,
       fontSize: 19,
       fontWeight: "700",
       letterSpacing: Platform.OS === "ios" ? -0.4 : -0.2,
     },
     sectionAction: {
-      color: "#514B47",
+      color: pulse.textSecondary,
       fontSize: 12,
       fontWeight: "600",
-      backgroundColor: "rgba(255,255,255,0.75)",
+      backgroundColor: pulse.pill,
       paddingVertical: Platform.OS === "android" ? 5 : 4,
       paddingHorizontal: 12,
       borderRadius: 12,
       borderWidth: 1,
-      borderColor: "rgba(0,0,0,0.04)",
+      borderColor: pulse.border,
       includeFontPadding: false,
     },
     attentionRow: {
       minHeight: 68,
       padding: 14,
       borderRadius: 20,
-      backgroundColor: Platform.OS === "ios" ? "rgba(255,255,255,0.92)" : "#FFFFFF",
+      backgroundColor: pulse.surfaceElevated,
       flexDirection: "row",
       alignItems: "center",
       gap: 12,
       borderWidth: 1,
-      borderColor: Platform.OS === "ios" ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.05)",
-      shadowColor: "#000",
-      shadowOpacity: 0.03,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 2 },
-      elevation: 2,
+      borderColor: pulse.border,
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
     },
     attentionIcon: {
       width: 42,
       height: 42,
       borderRadius: 21,
-      backgroundColor: "#F5F3F1",
+      backgroundColor: pulse.iconSurface,
       alignItems: "center",
       justifyContent: "center",
     },
     attentionIconAlert: {
-      backgroundColor: "#FFF0EE",
+      backgroundColor: pulse.errorSurface,
     },
     attentionCopy: {
       flex: 1,
       minWidth: 0,
     },
     attentionTitle: {
-      color: "#211E1C",
+      color: pulse.text,
       fontSize: 15,
       fontWeight: "600",
     },
     attentionDetail: {
-      color: "#78716C",
+      color: pulse.textSecondary,
       fontSize: 12,
       marginTop: 2,
     },
@@ -1250,38 +1642,32 @@ function crearEstilos(c: any, esOscuro: boolean) {
       minHeight: 68,
       padding: 14,
       borderRadius: 20,
-      backgroundColor: Platform.OS === "ios" ? "rgba(255,255,255,0.92)" : "#FFFFFF",
+      backgroundColor: pulse.surfaceElevated,
       flexDirection: "row",
       alignItems: "center",
       gap: 12,
       borderWidth: 1,
-      borderColor: Platform.OS === "ios" ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.05)",
-      shadowColor: "#000",
-      shadowOpacity: 0.03,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 2 },
-      elevation: 2,
+      borderColor: pulse.border,
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
     },
     allClearIcon: {
       width: 42,
       height: 42,
       borderRadius: 21,
-      backgroundColor: "#ECFDF5",
+      backgroundColor: esOscuro ? "rgba(118, 200, 147, 0.16)" : "#ECFDF5",
       alignItems: "center",
       justifyContent: "center",
     },
     approvalCard: {
       padding: 16,
       borderRadius: 22,
-      backgroundColor: Platform.OS === "ios" ? "rgba(255,255,255,0.94)" : "#FFFFFF",
+      backgroundColor: pulse.surfaceElevated,
       gap: 12,
       borderWidth: 1,
-      borderColor: Platform.OS === "ios" ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.05)",
-      shadowColor: "#000",
-      shadowOpacity: 0.03,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 2 },
-      elevation: 2,
+      borderColor: pulse.border,
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
     },
     approvalTop: {
       flexDirection: "row",
@@ -1294,11 +1680,11 @@ function crearEstilos(c: any, esOscuro: boolean) {
       borderRadius: 21,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: "#E9D2BF",
+      backgroundColor: pulse.pill,
       overflow: "hidden",
     },
     approvalInitial: {
-      color: "#382E29",
+      color: pulse.text,
       fontSize: 16,
       fontWeight: "700",
       includeFontPadding: false,
@@ -1309,7 +1695,7 @@ function crearEstilos(c: any, esOscuro: boolean) {
       gap: 2,
     },
     approvalEmployeeName: {
-      color: "#211E1C",
+      color: pulse.text,
       fontSize: 15,
       fontWeight: "600",
       letterSpacing: Platform.OS === "ios" ? -0.2 : 0,
@@ -1324,10 +1710,10 @@ function crearEstilos(c: any, esOscuro: boolean) {
       paddingHorizontal: 8,
       paddingVertical: 2,
       borderRadius: 8,
-      backgroundColor: "rgba(0,0,0,0.04)",
+      backgroundColor: pulse.pill,
     },
     approvalTypeBadgeText: {
-      color: "#625B56",
+      color: pulse.textSecondary,
       fontSize: 11,
       fontWeight: "600",
       includeFontPadding: false,
@@ -1336,31 +1722,31 @@ function crearEstilos(c: any, esOscuro: boolean) {
       paddingHorizontal: 8,
       paddingVertical: 2,
       borderRadius: 8,
-      backgroundColor: "#FFF0EE",
+      backgroundColor: pulse.errorSurface,
     },
     approvalPriorityText: {
-      color: "#B54B45",
+      color: pulse.errorText,
       fontSize: 11,
       fontWeight: "700",
       includeFontPadding: false,
     },
     approvalPriorityBadgeAmber: {
-      backgroundColor: "#FFFBEB",
+      backgroundColor: esOscuro ? "#382F22" : "#FFFBEB",
     },
     approvalPriorityTextAmber: {
-      color: "#D97706",
+      color: esOscuro ? "#E8B86D" : "#D97706",
     },
     approvalBody: {
       gap: 4,
     },
     approvalTitle: {
-      color: "#211E1C",
+      color: pulse.text,
       fontSize: 14,
       fontWeight: "600",
       lineHeight: 19,
     },
     approvalDescription: {
-      color: "#78716C",
+      color: pulse.textSecondary,
       fontSize: 13,
       lineHeight: 18,
     },
@@ -1371,7 +1757,7 @@ function crearEstilos(c: any, esOscuro: boolean) {
       marginTop: 4,
     },
     approvalDateText: {
-      color: "#78716C",
+      color: pulse.textSecondary,
       fontSize: 12,
       fontWeight: "500",
     },
@@ -1383,20 +1769,22 @@ function crearEstilos(c: any, esOscuro: boolean) {
       marginTop: 2,
       paddingTop: 10,
       borderTopWidth: 1,
-      borderTopColor: "rgba(0,0,0,0.04)",
+      borderTopColor: pulse.border,
     },
     rejectButton: {
       height: 36,
       paddingHorizontal: 14,
       borderRadius: 18,
-      backgroundColor: "rgba(181,75,69,0.08)",
+      backgroundColor: pulse.errorSurface,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
       gap: 4,
+      borderWidth: 1,
+      borderColor: esOscuro ? "rgba(242,181,178,0.15)" : "rgba(181,75,69,0.12)",
     },
     approveButton: {
-      backgroundColor: "#17141B",
+      backgroundColor: pulse.inverse,
       height: 36,
       paddingHorizontal: 16,
       borderRadius: 18,
@@ -1406,13 +1794,13 @@ function crearEstilos(c: any, esOscuro: boolean) {
       gap: 4,
     },
     rejectText: {
-      color: "#B54B45",
+      color: pulse.errorText,
       fontWeight: "600",
       fontSize: 12,
       includeFontPadding: false,
     },
     approveText: {
-      color: "#FFFFFF",
+      color: pulse.textInverse,
       fontWeight: "600",
       fontSize: 12,
       includeFontPadding: false,
@@ -1424,15 +1812,12 @@ function crearEstilos(c: any, esOscuro: boolean) {
       minHeight: 74,
       padding: 14,
       borderRadius: 20,
-      backgroundColor: Platform.OS === "ios" ? "rgba(255,255,255,0.92)" : "#FFFFFF",
+      backgroundColor: pulse.surfaceElevated,
       marginBottom: 8,
       borderWidth: 1,
-      borderColor: Platform.OS === "ios" ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.05)",
-      shadowColor: "#000",
-      shadowOpacity: 0.03,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 2 },
-      elevation: 2,
+      borderColor: pulse.border,
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
     },
     memberHeader: {
       flexDirection: "row",
@@ -1445,11 +1830,11 @@ function crearEstilos(c: any, esOscuro: boolean) {
       borderRadius: 24,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: "#E9D2BF",
+      backgroundColor: pulse.pill,
       overflow: "hidden",
     },
     avatarText: {
-      color: "#382E29",
+      color: pulse.text,
       fontSize: 18,
       fontWeight: "700",
     },
@@ -1463,39 +1848,40 @@ function crearEstilos(c: any, esOscuro: boolean) {
       minWidth: 0,
     },
     memberName: {
-      color: "#211E1C",
+      color: pulse.text,
       fontSize: 15,
       fontWeight: "600",
     },
     memberMeta: {
-      color: "#78716C",
+      color: pulse.textSecondary,
       fontSize: 12,
       marginTop: 2,
     },
     memberDetail: {
-      color: "#938C87",
+      color: pulse.textTertiary,
       fontSize: 12,
       marginTop: 4,
+    },
+    memberDetailAlert: {
+      color: esOscuro ? pulse.errorText : "#B54B45",
+      fontWeight: "600",
     },
     showMoreButton: {
       height: 42,
       borderRadius: 21,
-      backgroundColor: Platform.OS === "ios" ? "rgba(255,255,255,0.85)" : "#FFFFFF",
+      backgroundColor: pulse.surfaceElevated,
       flexDirection: "row",
       justifyContent: "center",
       alignItems: "center",
       gap: 8,
       marginTop: 4,
       borderWidth: 1,
-      borderColor: "rgba(0,0,0,0.05)",
-      shadowColor: "#000",
-      shadowOpacity: 0.02,
-      shadowRadius: 6,
-      shadowOffset: { width: 0, height: 2 },
-      elevation: 2,
+      borderColor: pulse.border,
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
     },
     showMoreText: {
-      color: "#382E29",
+      color: pulse.text,
       fontSize: 13,
       fontWeight: "600",
       includeFontPadding: false,
@@ -1504,17 +1890,14 @@ function crearEstilos(c: any, esOscuro: boolean) {
       minHeight: 68,
       padding: 16,
       borderRadius: 20,
-      backgroundColor: Platform.OS === "ios" ? "rgba(255,255,255,0.92)" : "#FFFFFF",
+      backgroundColor: pulse.surfaceElevated,
       flexDirection: "row",
       alignItems: "center",
       gap: 12,
       borderWidth: 1,
-      borderColor: Platform.OS === "ios" ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.05)",
-      shadowColor: "#000",
-      shadowOpacity: 0.03,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 2 },
-      elevation: 2,
+      borderColor: pulse.border,
+      ...SOMBRAS.suave,
+      shadowColor: pulse.shadow,
       marginTop: 4,
     },
     evaluationCopy: {
@@ -1527,17 +1910,17 @@ function crearEstilos(c: any, esOscuro: boolean) {
       width: 42,
       height: 42,
       borderRadius: 21,
-      backgroundColor: "#F5F3F1",
+      backgroundColor: pulse.iconSurface,
       alignItems: "center",
       justifyContent: "center",
     },
     evaluationTitle: {
-      color: "#211E1C",
+      color: pulse.text,
       fontSize: 15,
       fontWeight: "600",
     },
     evaluationText: {
-      color: "#78716C",
+      color: pulse.textSecondary,
       fontSize: 12,
       marginTop: 2,
     },
@@ -1545,44 +1928,44 @@ function crearEstilos(c: any, esOscuro: boolean) {
       minHeight: 180,
       padding: 18,
       borderRadius: 18,
-      backgroundColor: c.superficie,
+      backgroundColor: pulse.surfaceElevated,
       borderWidth: 1,
-      borderColor: c.borde,
+      borderColor: pulse.border,
       justifyContent: "center",
       gap: 14,
     },
     errorCard: {
       padding: 13,
       borderRadius: 14,
-      backgroundColor: esOscuro ? "rgba(239,68,68,0.09)" : "#FEF2F2",
+      backgroundColor: pulse.errorSurface,
       borderWidth: 1,
-      borderColor: esOscuro ? "rgba(248,113,113,0.22)" : "#FCA5A5",
+      borderColor: esOscuro ? "rgba(242,181,178,0.2)" : "#FCA5A5",
       flexDirection: "row",
       alignItems: "center",
       gap: 9,
     },
     errorText: {
       flex: 1,
-      color: esOscuro ? "#FECACA" : "#991B1B",
+      color: pulse.errorText,
       fontSize: 13,
       fontWeight: "700",
     },
     centerState: {
       flex: 1,
-      backgroundColor: c.fondo,
+      backgroundColor: pulse.background,
       alignItems: "center",
       justifyContent: "center",
       padding: 24,
       gap: 10,
     },
     stateTitle: {
-      color: c.texto,
+      color: pulse.text,
       fontSize: 18,
       fontWeight: "900",
       textAlign: "center",
     },
     stateText: {
-      color: c.textoSuave,
+      color: pulse.textSecondary,
       fontSize: 13,
       lineHeight: 20,
       textAlign: "center",

@@ -184,6 +184,19 @@ export const TEMAS_MOVILES = {
     fondoProfundo: '#02030A',
     superficie: 'rgba(18,18,38,0.78)',
     superficieElevada: 'rgba(20,20,42,0.92)',
+    modal: '#1A1B24',
+    input: '#20212B',
+    inputPlaceholder: 'rgba(232,238,255,0.52)',
+    deshabilitado: 'rgba(255,255,255,0.10)',
+    exito: '#76C893',
+    advertencia: '#E8B86D',
+    advertenciaSuperficie: '#382F22',
+    error: '#E59898',
+    informacion: '#82B9E8',
+    skeletonBase: 'rgba(255,255,255,0.08)',
+    skeletonHighlight: 'rgba(255,255,255,0.16)',
+    navegacion: '#171820',
+    navegacionActiva: '#F2F0F2',
     texto: '#F8FAFF',
     textoSecundario: 'rgba(232,238,255,0.72)',
     textoSuave: 'rgba(232,238,255,0.52)',
@@ -199,6 +212,43 @@ export const TEMAS_MOVILES = {
     primario: '#7C3AED',
     primarioClaro: '#A78BFA',
     secundario: '#38BDF8',
+    pulso: {
+      background: '#0C0D11',
+      ambient: ['#17111B', '#10131B', '#0C0D11'] as const,
+      heroSurface: '#1A1A20',
+      heroGradient: ['#24212B', '#18191F'] as const,
+      heroText: '#F5F2F5',
+      heroTextSecondary: '#C4BFC8',
+      heroMetricSurface: '#202126',
+      heroMetricBorder: 'rgba(255,255,255,0.07)',
+      heroIconSurface: '#2A2B32',
+      surface: '#17181D',
+      surfaceElevated: '#1D1E24',
+      pill: '#24252C',
+      inverse: '#F2F0F2',
+      text: '#F4F2F4',
+      textSecondary: '#B5B1B8',
+      textTertiary: '#A29EA7',
+      textInverse: '#252329',
+      border: 'rgba(255,255,255,0.065)',
+      borderStrong: 'rgba(255,255,255,0.10)',
+      iconSurface: '#292A31',
+      icon: '#F4F2F4',
+      statusTrack: '#34353D',
+      errorSurface: '#321E22',
+      errorText: '#F2B5B2',
+      shadow: '#050609',
+      navSurface: '#18191F',
+      navInactive: '#AAA6AE',
+      energyHigh: '#C9D96F',
+      energyMedium: '#B39AEF',
+      energyLow: '#E9A982',
+      chipActive: '#F2F0F2',
+      chipTextActive: '#252329',
+      chipCountActive: '#FFFFFF',
+      accent: '#F2F0F2',
+      textMuted: '#A29EA7',
+    },
     gradienteFondo: ['#070712', '#0B0B19', '#02030A'] as const,
   },
   claro: {
@@ -206,6 +256,19 @@ export const TEMAS_MOVILES = {
     fondoProfundo: '#FFFDFC',
     superficie: 'rgba(255,255,255,0.78)',
     superficieElevada: 'rgba(255,255,255,0.92)',
+    modal: '#FFFFFF',
+    input: '#F5F2EF',
+    inputPlaceholder: 'rgba(15,23,42,0.50)',
+    deshabilitado: 'rgba(36,29,40,0.08)',
+    exito: '#2D7A4B',
+    advertencia: '#A96913',
+    advertenciaSuperficie: '#FFE4BA',
+    error: '#B4534D',
+    informacion: '#2563EB',
+    skeletonBase: 'rgba(36,29,40,0.10)',
+    skeletonHighlight: 'rgba(36,29,40,0.16)',
+    navegacion: '#FFFFFF',
+    navegacionActiva: '#202020',
     texto: '#111827',
     textoSecundario: 'rgba(15,23,42,0.68)',
     textoSuave: 'rgba(15,23,42,0.50)',
@@ -221,6 +284,81 @@ export const TEMAS_MOVILES = {
     primario: '#6D28D9',
     primarioClaro: '#8B5CF6',
     secundario: '#2563EB',
+    pulso: {
+      background: '#FFFDFC',
+      ambient: ['#FBEDE8', '#F6ECF6', '#FFFDFC'] as const,
+      heroSurface: '#222222',
+      heroGradient: ['#222126', '#17161A'] as const,
+      heroText: '#FFFFFF',
+      heroTextSecondary: 'rgba(255,255,255,0.70)',
+      heroMetricSurface: 'rgba(255,255,255,0.05)',
+      heroMetricBorder: 'rgba(255,255,255,0.04)',
+      heroIconSurface: 'rgba(255,255,255,0.08)',
+      surface: '#FFFFFF',
+      surfaceElevated: '#FFFFFF',
+      pill: '#F5F2EF',
+      inverse: '#202020',
+      text: '#1F1D1C',
+      textSecondary: '#5F5A56',
+      textTertiary: '#8B8681',
+      textInverse: '#FFFFFF',
+      border: 'rgba(43,36,31,0.035)',
+      borderStrong: 'rgba(43,36,31,0.10)',
+      iconSurface: '#F5F2EF',
+      icon: '#202020',
+      statusTrack: '#E5E1DE',
+      errorSurface: '#FFF0EE',
+      errorText: '#9A453F',
+      shadow: '#7F6D78',
+      navSurface: '#FFFFFF',
+      navInactive: 'rgba(48,45,43,0.68)',
+      energyHigh: '#D5E774',
+      energyMedium: '#A78BFA',
+      energyLow: '#F2AD84',
+      chipActive: '#D5E774',
+      chipTextActive: '#2E3023',
+      chipCountActive: '#FFFFFF',
+      accent: '#202020',
+      textMuted: '#5F5A56',
+    },
     gradienteFondo: ['#FFFDFC', '#FAF3F5', '#F6F0F8'] as const,
   },
 } as const;
+
+export type PulseColors = {
+  background: string;
+  ambient: readonly [string, string, string];
+  heroSurface: string;
+  heroGradient: readonly [string, string];
+  heroText: string;
+  heroTextSecondary: string;
+  heroMetricSurface: string;
+  heroMetricBorder: string;
+  heroIconSurface: string;
+  surface: string;
+  surfaceElevated: string;
+  pill: string;
+  inverse: string;
+  text: string;
+  textSecondary: string;
+  textTertiary: string;
+  textInverse: string;
+  border: string;
+  borderStrong: string;
+  iconSurface: string;
+  icon: string;
+  statusTrack: string;
+  errorSurface: string;
+  errorText: string;
+  shadow: string;
+  navSurface: string;
+  navInactive: string;
+  energyHigh: string;
+  energyMedium: string;
+  energyLow: string;
+  chipActive: string;
+  chipTextActive: string;
+  chipCountActive: string;
+  accent: string;
+  textMuted: string;
+};

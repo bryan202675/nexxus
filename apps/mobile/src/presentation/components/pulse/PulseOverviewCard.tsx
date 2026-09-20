@@ -1,12 +1,14 @@
 import React from "react";
-import { StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { AdminTranslatedText } from "@/shared/i18n/AdminTranslatedText";
 import BotonAnimado from "@/presentation/components/BotonAnimado";
 import PulseProgressRing from "./PulseProgressRing";
+import { useTemaMobile } from "@/presentation/context/TemaMobileContext";
 
 const Text = AdminTranslatedText;
+const isIOS = Platform.OS === "ios";
 
 interface PulseOverviewCardProps {
   score: number;
@@ -25,6 +27,8 @@ export default function PulseOverviewCard({
   accent,
   onPress,
 }: PulseOverviewCardProps) {
+  const { colores } = useTemaMobile();
+  const pulse = colores.pulso;
   const rows = [
     {
       icon: "zap" as const,
@@ -44,21 +48,21 @@ export default function PulseOverviewCard({
   ];
 
   const cardContent = (
-    <View style={styles.cardContainer}>
+    <View style={[styles.cardContainer, { borderColor: pulse.border, shadowColor: pulse.shadow, backgroundColor: pulse.heroSurface }]}>
       <LinearGradient
-        colors={["#222126", "#17161A"]}
+        colors={pulse.heroGradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.gradient}
       >
         {/* Clean minimal Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Pulso de hoy</Text>
+          <Text style={[styles.title, { color: pulse.heroText }]}>Pulso de hoy</Text>
           {onPress && (
             <Feather
               name="arrow-up-right"
-              size={17}
-              color="rgba(255,255,255,0.4)"
+              size={isIOS ? 20 : 17}
+              color={pulse.heroTextSecondary}
             />
           )}
         </View>
@@ -71,15 +75,15 @@ export default function PulseOverviewCard({
 
           <View style={styles.metricsCol}>
             {rows.map((row) => (
-              <View key={row.label} style={styles.metricCard}>
-                <View style={styles.iconWrap}>
-                  <Feather name={row.icon} size={14} color="#FFFFFF" />
+              <View key={row.label} style={[styles.metricCard, { backgroundColor: pulse.heroMetricSurface, borderColor: pulse.heroMetricBorder }]}>
+                <View style={[styles.iconWrap, { backgroundColor: pulse.heroIconSurface }]}>
+                  <Feather name={row.icon} size={14} color={pulse.heroText} />
                 </View>
                 <View style={styles.metricText}>
-                  <Text style={styles.metricValue} numberOfLines={1}>
+                  <Text style={[styles.metricValue, { color: pulse.heroText }]} numberOfLines={1}>
                     {row.value}
                   </Text>
-                  <Text style={styles.metricLabel}>{row.label}</Text>
+                  <Text style={[styles.metricLabel, { color: pulse.heroTextSecondary }]}>{row.label}</Text>
                 </View>
               </View>
             ))}
@@ -106,7 +110,7 @@ export default function PulseOverviewCard({
 
 const styles = StyleSheet.create({
   cardContainer: {
-    borderRadius: 24,
+    borderRadius: isIOS ? 24 : 20,
     overflow: "hidden",
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.08)",
@@ -117,18 +121,17 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   gradient: {
-    padding: 18,
-    minHeight: 195,
+    padding: isIOS ? 18 : 15,
+    minHeight: isIOS ? 195 : 172,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 14,
+    marginBottom: isIOS ? 14 : 11,
   },
   title: {
-    color: "#FFFFFF",
-    fontSize: 17,
+    fontSize: isIOS ? 17 : 15,
     fontWeight: "700",
     letterSpacing: -0.3,
   },
@@ -140,44 +143,39 @@ const styles = StyleSheet.create({
   ringCol: {
     alignItems: "center",
     justifyContent: "center",
-    paddingRight: 4,
+    paddingRight: 2,
   },
   metricsCol: {
     flex: 1,
-    marginLeft: 14,
-    gap: 7.5,
+    marginLeft: isIOS ? 14 : 12,
+    gap: isIOS ? 8 : 6,
   },
   metricCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-    borderRadius: 13,
-    paddingVertical: 7,
-    paddingHorizontal: 10,
+    borderRadius: isIOS ? 13 : 11,
+    paddingVertical: isIOS ? 7 : 5.5,
+    paddingHorizontal: isIOS ? 11 : 9,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.04)",
   },
   iconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: isIOS ? 26 : 24,
+    height: isIOS ? 26 : 24,
+    borderRadius: isIOS ? 13 : 12,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    marginRight: 9,
+    marginRight: isIOS ? 9 : 8,
   },
   metricText: {
     flex: 1,
   },
   metricValue: {
-    color: "#FFFFFF",
-    fontSize: 13.5,
+    fontSize: isIOS ? 14 : 12.5,
     fontWeight: "700",
     letterSpacing: -0.2,
   },
   metricLabel: {
-    color: "rgba(255, 255, 255, 0.52)",
-    fontSize: 10.5,
+    fontSize: isIOS ? 10.5 : 9.5,
     fontWeight: "500",
     marginTop: 0.5,
   },

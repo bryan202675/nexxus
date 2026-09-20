@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Platform, StyleSheet, Text, View } from "react-native";
+import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import Animated, {
   Easing,
@@ -58,7 +58,7 @@ export default function CheckInSummaryStep({
   }));
 
   const values = [mood, energy, `${sleep}/5`, `${workload}/5`];
-  
+
   const textStyle = dark ? styles.textLight : styles.textDark;
   const softStyle = dark ? styles.softLight : styles.softDark;
   const cardStyle = dark ? styles.cardDark : styles.cardLight;
@@ -66,8 +66,18 @@ export default function CheckInSummaryStep({
   const iconColor = dark ? "#A1A1AA" : "#71717A"; // Neutral Zinc colors instead of purple
   const dividerStyle = dark ? styles.dividerDark : styles.dividerLight;
 
+  const ContentWrapper = isAndroid ? ScrollView : View;
+  const wrapperProps = isAndroid
+    ? {
+        style: styles.scroll,
+        contentContainerStyle: styles.root,
+        showsVerticalScrollIndicator: false,
+        bounces: false,
+      }
+    : { style: styles.root };
+
   return (
-    <View style={styles.root}>
+    <ContentWrapper {...(wrapperProps as any)}>
       <Text style={[styles.title, textStyle]}>
         {success ? "Entrada registrada" : "Todo listo"}
       </Text>
@@ -82,10 +92,10 @@ export default function CheckInSummaryStep({
           <View style={styles.headerRow}>
             <View style={styles.statusRow}>
               <Text style={styles.statusText}>ENTRADA DE HOY</Text>
-              <Feather name="chevron-right" size={14} color="#22C55E" />
+              <Feather name="chevron-right" size={isAndroid ? 13 : 14} color="#22C55E" />
             </View>
             <View style={styles.locationWrap}>
-              <Feather name="map-pin" size={12} color={iconColor} />
+              <Feather name="map-pin" size={isAndroid ? 11 : 12} color={iconColor} />
               <Text style={[styles.locationText, softStyle]} numberOfLines={1}>
                 {location}
               </Text>
@@ -105,7 +115,7 @@ export default function CheckInSummaryStep({
             {values.map((value, index) => (
               <View key={METRICS[index]} style={[styles.metricBox, metricBoxStyle]}>
                 <View style={[styles.iconWrap, dark ? styles.iconWrapDark : styles.iconWrapLight]}>
-                  <Feather name={METRIC_ICONS[index]} size={16} color={iconColor} />
+                  <Feather name={METRIC_ICONS[index]} size={isAndroid ? 14 : 16} color={iconColor} />
                 </View>
                 <View style={styles.metricTextWrap}>
                   <Text style={[styles.metricName, softStyle]}>{METRICS[index]}</Text>
@@ -124,7 +134,7 @@ export default function CheckInSummaryStep({
         >
           <View style={styles.checkGlow} />
           <View style={styles.checkWrap}>
-            <Feather name="check" size={36} color="#FFFFFF" />
+            <Feather name="check" size={isAndroid ? 28 : 36} color="#FFFFFF" />
           </View>
           <Text style={[styles.confirmationTitle, textStyle]}>Jornada iniciada</Text>
           <Text style={[styles.confirmationCopy, softStyle]}>
@@ -132,41 +142,48 @@ export default function CheckInSummaryStep({
           </Text>
         </Animated.View>
       </View>
-      
+
       {!success && (
         <Text style={[styles.hint, softStyle]}>
           Podrás actualizar tu pulso más tarde si lo necesitas.
         </Text>
       )}
       {error && <Text style={styles.error}>{error}</Text>}
-    </View>
+    </ContentWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, alignItems: "center", paddingTop: isAndroid ? 12 : 22 },
+  scroll: { flex: 1, width: "100%" },
+  root: {
+    flex: isAndroid ? undefined : 1,
+    alignItems: "center",
+    paddingTop: isAndroid ? 6 : 22,
+    paddingBottom: isAndroid ? 12 : 0,
+  },
   title: {
-    fontSize: 28,
+    fontSize: isAndroid ? 22 : 28,
     fontWeight: "800",
-    letterSpacing: -0.8,
+    letterSpacing: isAndroid ? -0.5 : -0.8,
     textAlign: "center",
   },
-  subtitle: { 
-    fontSize: 15, 
-    marginTop: 6, 
-    textAlign: "center", 
-    lineHeight: 21 
+  subtitle: {
+    fontSize: isAndroid ? 12.5 : 15,
+    marginTop: isAndroid ? 3 : 6,
+    textAlign: "center",
+    lineHeight: isAndroid ? 17 : 21
   },
   textLight: { color: "#FFFFFF" },
   textDark: { color: "#241B3B" },
   softLight: { color: "rgba(255,255,255,0.6)" },
   softDark: { color: "#766D88" },
-  
+
   card: {
     width: "100%",
-    marginTop: isAndroid ? 18 : 24,
-    borderRadius: isAndroid ? 22 : 24,
-    padding: isAndroid ? 18 : 24,
+    marginTop: isAndroid ? 12 : 24,
+    borderRadius: isAndroid ? 18 : 24,
+    paddingHorizontal: isAndroid ? 16 : 24,
+    paddingVertical: isAndroid ? 14 : 24,
     borderWidth: 1,
     minHeight: isAndroid ? 0 : 340,
     justifyContent: "center",
@@ -184,9 +201,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 4,
   },
-  
+
   preview: { width: "100%" },
-  
+
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -197,118 +214,118 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 2,
   },
-  statusText: { 
-    color: "#22C55E", 
-    fontSize: 11, 
-    fontWeight: "800", 
-    letterSpacing: 0.5 
+  statusText: {
+    color: "#22C55E",
+    fontSize: isAndroid ? 10 : 11,
+    fontWeight: "800",
+    letterSpacing: 0.5
   },
-  
-  locationWrap: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    gap: 4, 
-    flex: 1, 
-    justifyContent: "flex-end", 
+
+  locationWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    flex: 1,
+    justifyContent: "flex-end",
     paddingLeft: 12,
     minWidth: 0,
   },
-  locationText: { 
-    fontSize: 12, 
-    fontWeight: "600" 
+  locationText: {
+    fontSize: isAndroid ? 11 : 12,
+    fontWeight: "600"
   },
-  
-  timeSection: { 
-    marginTop: isAndroid ? 18 : 24,
-    alignItems: "center" 
+
+  timeSection: {
+    marginTop: isAndroid ? 10 : 24,
+    alignItems: "center"
   },
-  time: { 
-    fontSize: isAndroid ? 44 : 52,
-    fontWeight: "900", 
-    letterSpacing: -1.5 
+  time: {
+    fontSize: isAndroid ? 34 : 52,
+    fontWeight: "900",
+    letterSpacing: isAndroid ? -1 : -1.5
   },
-  schedule: { 
-    fontSize: 14, 
-    fontWeight: "600", 
-    marginTop: 4 
+  schedule: {
+    fontSize: isAndroid ? 12 : 14,
+    fontWeight: "600",
+    marginTop: isAndroid ? 2 : 4
   },
-  
-  divider: { 
-    height: 1, 
-    marginVertical: isAndroid ? 18 : 24,
-    width: "100%" 
+
+  divider: {
+    height: 1,
+    marginVertical: isAndroid ? 12 : 24,
+    width: "100%"
   },
   dividerDark: { backgroundColor: "rgba(255,255,255,0.08)" },
   dividerLight: { backgroundColor: "#F4F4F5" }, // Zinc 100
-  
-  metricGrid: { 
-    flexDirection: "row", 
-    flexWrap: "wrap", 
-    justifyContent: "space-between", 
-    rowGap: isAndroid ? 10 : 12
+
+  metricGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: isAndroid ? 8 : 12
   },
   metricBox: {
     width: "48%",
     flexDirection: "row",
     alignItems: "center",
-    padding: isAndroid ? 10 : 12,
-    borderRadius: isAndroid ? 14 : 16,
+    paddingVertical: isAndroid ? 8 : 12,
+    paddingHorizontal: isAndroid ? 10 : 12,
+    borderRadius: isAndroid ? 12 : 16,
     gap: isAndroid ? 8 : 10,
   },
-  metricBoxDark: { 
+  metricBoxDark: {
     backgroundColor: "rgba(255,255,255,0.04)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.05)"
   },
-  metricBoxLight: { 
+  metricBoxLight: {
     backgroundColor: "#FAFAFA", // Neutral bright gray
-    borderWidth: 1, 
+    borderWidth: 1,
     borderColor: "#E5E5E5" // Neutral border
   },
-  
+
   iconWrap: {
-    width: isAndroid ? 30 : 34,
-    height: isAndroid ? 30 : 34,
-    borderRadius: isAndroid ? 10 : 12,
+    width: isAndroid ? 28 : 34,
+    height: isAndroid ? 28 : 34,
+    borderRadius: isAndroid ? 8 : 12,
     alignItems: "center",
     justifyContent: "center",
   },
   iconWrapDark: { backgroundColor: "rgba(255,255,255,0.08)" },
   iconWrapLight: { backgroundColor: "#F4F4F5" }, // Zinc 100
 
-  
   metricTextWrap: { flex: 1 },
-  metricName: { 
-    fontSize: 10, 
-    fontWeight: "700", 
-    textTransform: "uppercase", 
-    letterSpacing: 0.5 
+  metricName: {
+    fontSize: isAndroid ? 9 : 10,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5
   },
-  metricValue: { 
-    fontSize: 14, 
-    fontWeight: "800", 
-    marginTop: 2, 
-    textTransform: "capitalize" 
+  metricValue: {
+    fontSize: isAndroid ? 12.5 : 14,
+    fontWeight: "800",
+    marginTop: 2,
+    textTransform: "capitalize"
   },
-  
-  confirmation: { 
-    position: "absolute", 
-    alignSelf: "center", 
-    alignItems: "center", 
-    width: "100%" 
+
+  confirmation: {
+    position: "absolute",
+    alignSelf: "center",
+    alignItems: "center",
+    width: "100%"
   },
   checkGlow: {
     position: "absolute",
-    width: 130,
-    height: 130,
-    borderRadius: 65,
+    width: isAndroid ? 100 : 130,
+    height: isAndroid ? 100 : 130,
+    borderRadius: isAndroid ? 50 : 65,
     backgroundColor: "rgba(34,197,94,0.15)",
-    top: -26,
+    top: isAndroid ? -20 : -26,
   },
   checkWrap: {
-    width: 78,
-    height: 78,
-    borderRadius: 39,
+    width: isAndroid ? 60 : 78,
+    height: isAndroid ? 60 : 78,
+    borderRadius: isAndroid ? 30 : 39,
     backgroundColor: "#22C55E",
     alignItems: "center",
     justifyContent: "center",
@@ -318,29 +335,29 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 8,
   },
-  confirmationTitle: { 
-    fontSize: 26, 
-    fontWeight: "900", 
-    marginTop: 24 
+  confirmationTitle: {
+    fontSize: isAndroid ? 20 : 26,
+    fontWeight: "900",
+    marginTop: isAndroid ? 14 : 24
   },
-  confirmationCopy: { 
-    fontSize: 15, 
-    marginTop: 8, 
-    textAlign: "center" 
+  confirmationCopy: {
+    fontSize: isAndroid ? 13 : 15,
+    marginTop: isAndroid ? 4 : 8,
+    textAlign: "center"
   },
-  
-  hint: { 
-    fontSize: 13, 
-    textAlign: "center", 
-    lineHeight: 19, 
-    marginTop: isAndroid ? 18 : 24,
-    paddingHorizontal: 22 
+
+  hint: {
+    fontSize: isAndroid ? 11.5 : 13,
+    textAlign: "center",
+    lineHeight: isAndroid ? 16 : 19,
+    marginTop: isAndroid ? 10 : 24,
+    paddingHorizontal: isAndroid ? 16 : 22
   },
-  error: { 
-    color: "#EF4444", 
-    fontSize: 13, 
-    textAlign: "center", 
-    lineHeight: 18, 
-    marginTop: 12 
+  error: {
+    color: "#EF4444",
+    fontSize: 13,
+    textAlign: "center",
+    lineHeight: 18,
+    marginTop: 12
   },
 });

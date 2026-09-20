@@ -2685,7 +2685,7 @@ export const estilos = StyleSheet.create({
   // heroPanelCard: estilo de tarjeta; agrupa contenido en una superficie visual con borde, radio, sombra o fondo.
   heroPanelCard: {
     // width fija o calcula el ancho del elemento.
-    width: '48.4%',
+    width: '48%',
     // minHeight asegura una altura minima util para lectura o area tactil.
     minHeight: 76,
     // borderRadius redondea esquinas para definir la forma visual.
@@ -3006,11 +3006,12 @@ export const estilos = StyleSheet.create({
   detailsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 14,
+    justifyContent: 'space-between',
+    rowGap: 14,
   },
   // detailsGridCol: individual column item
   detailsGridCol: {
-    width: '47%',
+    width: '48%',
     minWidth: 120,
     backgroundColor: 'rgba(255, 255, 255, 0.02)',
     borderWidth: 1,

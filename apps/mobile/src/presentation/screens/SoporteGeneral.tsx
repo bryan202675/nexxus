@@ -1121,7 +1121,8 @@ function crearEstilos(c: any, esOscuro: boolean) {
     receiptGrid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 10,
+      justifyContent: 'space-between',
+      rowGap: 10,
     },
     receiptItem: {
       width: '48%',

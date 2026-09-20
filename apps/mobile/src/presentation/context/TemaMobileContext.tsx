@@ -52,10 +52,60 @@ interface TemaMobile {
     bordeFocus: string;
     superficie: string;
     superficieElevada: string;
+    modal: string;
+    input: string;
+    inputPlaceholder: string;
+    deshabilitado: string;
+    exito: string;
+    advertencia: string;
+    advertenciaSuperficie: string;
+    error: string;
+    informacion: string;
+    skeletonBase: string;
+    skeletonHighlight: string;
+    navegacion: string;
+    navegacionActiva: string;
     sombra: string;
     primario: string;
     primarioClaro: string;
     secundario: string;
+    pulso: {
+      background: string;
+      ambient: readonly [string, string, string];
+      heroSurface: string;
+      heroGradient: readonly [string, string];
+      heroText: string;
+      heroTextSecondary: string;
+      heroMetricSurface: string;
+      heroMetricBorder: string;
+      heroIconSurface: string;
+      surface: string;
+      surfaceElevated: string;
+      pill: string;
+      inverse: string;
+      text: string;
+      textSecondary: string;
+      textTertiary: string;
+      textInverse: string;
+      border: string;
+      borderStrong: string;
+      iconSurface: string;
+      icon: string;
+      statusTrack: string;
+      errorSurface: string;
+      errorText: string;
+      shadow: string;
+      navSurface: string;
+      navInactive: string;
+      energyHigh: string;
+      energyMedium: string;
+      energyLow: string;
+      chipActive: string;
+      chipTextActive: string;
+      chipCountActive: string;
+      accent: string;
+      textMuted: string;
+    };
   };
   blurTint: 'dark' | 'light';
   intensidadBlur: number;
@@ -76,21 +126,38 @@ const ContextoTemaMobile = createContext<TemaMobile | null>(null);
  * Componente ProveedorTemaMobile. Renderiza una unidad visual de la pantalla y concentra la interaccion asociada a esa vista.
  */
 export function ProveedorTemaMobile({ children }: { children: ReactNode }) {
-  // Inicializa [modo, setModo]; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
-  const [modo, setModo] = useState<ModoTemaMobile>('claro');
+  // Inicializa [modo, setModo] basado en el esquema nativo del sistema operativo (iOS/Android)
+  const [modo, setModo] = useState<ModoTemaMobile>(() => {
+    const esquemaSistema = Appearance.getColorScheme();
+    return esquemaSistema === 'dark' ? 'oscuro' : 'claro';
+  });
 
-  // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
+  // Carga preferencia persistida o se suscribe a cambios del sistema
   useEffect(() => {
-    // Actualiza estado local; esto provoca que React vuelva a renderizar la vista con la informacion nueva.
+    let tienePreferenciaManual = false;
     AsyncStorage.getItem(CLAVE_TEMA)
       .then((guardado) => {
-        // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
         if (guardado === 'oscuro' || guardado === 'claro') {
+          tienePreferenciaManual = true;
           setModo(guardado);
         }
       })
       .catch(() => undefined);
+
+    const subscripcion = Appearance.addChangeListener(({ colorScheme }) => {
+      if (!tienePreferenciaManual && (colorScheme === 'dark' || colorScheme === 'light')) {
+        setModo(colorScheme === 'dark' ? 'oscuro' : 'claro');
+      }
+    });
+
+    return () => subscripcion.remove();
   }, []);
+
+  // Mantiene los controles del sistema (barra de estado, teclado y diálogos
+  // nativos) alineados con la preferencia explícita de Nexxus.
+  useEffect(() => {
+    Appearance.setColorScheme(modo === 'oscuro' ? 'dark' : 'light');
+  }, [modo]);
 
   // Inicializa valor; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const valor = useMemo<TemaMobile>(() => {

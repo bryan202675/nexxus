@@ -5,7 +5,7 @@
  */
 
 import React, { useMemo } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   FadeInDown,
@@ -15,12 +15,14 @@ import { ESPACIADO, TIPOGRAFIA } from '@/shared/constants/diseno';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import { VoiceTranscriptEntry } from '../types/voice.types';
 
+const isIOS = Platform.OS === 'ios';
+
 interface Props {
   entradas: VoiceTranscriptEntry[];
 }
 
 const MAX_ENTRADAS_VISIBLES = 3;
-const ALTO_MAXIMO = 180;
+const ALTO_MAXIMO = isIOS ? 180 : 110;
 
 function LineaTranscripcionReveal({
   entrada,
@@ -76,7 +78,9 @@ export default function VoiceTranscript({ entradas }: Props) {
     >
       {visibles.map((entrada) => {
         const esNexxus = entrada.rol === 'nexxus';
-        const colorTexto = esNexxus ? colores.texto : colores.textoSecundario;
+        const colorTexto = esNexxus
+          ? (colores.pulso?.text ?? colores.texto)
+          : (colores.pulso?.textSecondary ?? colores.textoSecundario);
 
         return (
           <LineaTranscripcionReveal
@@ -97,7 +101,7 @@ const estilos = StyleSheet.create({
   },
   contenedor: {
     gap: ESPACIADO.xs,
-    paddingHorizontal: ESPACIADO.xl,
+    paddingHorizontal: isIOS ? ESPACIADO.xl : 16,
   },
   contenedorPalabras: {
     flexDirection: 'row',
@@ -109,6 +113,7 @@ const estilos = StyleSheet.create({
   palabra: {
     textAlign: 'center',
     letterSpacing: -0.2,
-    lineHeight: 22,
+    fontSize: isIOS ? 14 : 12.5,
+    lineHeight: isIOS ? 22 : 18,
   },
 });

@@ -6,7 +6,7 @@
     "entryPoint": "./index.ts",
     "orientation": "portrait",
     "icon": "./assets/logoNexxus2 (1) (1).png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.bryan202675.nexxus",
@@ -16,6 +16,7 @@
     },
     "android": {
       "package": "com.bryan202675.nexxus",
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/logoNexxus2 (1) (1).png",
         "backgroundColor": "#ffffff"

@@ -6,5 +6,5 @@ export function useUserTabBottomPadding(iosPadding: number): number {
 
   if (Platform.OS !== 'android') return iosPadding;
 
-  return Math.max(iosPadding, insets.bottom + 76);
+  return Math.max(iosPadding, insets.bottom + 62);
 }

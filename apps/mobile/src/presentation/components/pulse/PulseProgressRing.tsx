@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import Animated, {
   Easing,
@@ -9,11 +9,13 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { AdminTranslatedText } from "@/shared/i18n/AdminTranslatedText";
+import { useTemaMobile } from "@/presentation/context/TemaMobileContext";
 
 const Text = AdminTranslatedText;
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-const SIZE = 114;
-const STROKE = 10;
+const isIOS = Platform.OS === "ios";
+const SIZE = isIOS ? 114 : 100;
+const STROKE = isIOS ? 10 : 8.5;
 const RADIUS = (SIZE - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
@@ -26,6 +28,8 @@ export default function PulseProgressRing({
   value,
   color,
 }: PulseProgressRingProps) {
+  const { colores } = useTemaMobile();
+  const pulse = colores.pulso;
   const progress = useSharedValue(0);
   const reduceMotion = useReducedMotion();
   const safeValue = Math.max(0, Math.min(value, 100));
@@ -50,7 +54,7 @@ export default function PulseProgressRing({
           cx={SIZE / 2}
           cy={SIZE / 2}
           r={RADIUS}
-          stroke="rgba(255,255,255,0.12)"
+          stroke={pulse.statusTrack}
           strokeWidth={STROKE}
           fill="none"
         />
@@ -69,8 +73,8 @@ export default function PulseProgressRing({
       </Svg>
       <View style={styles.centerContent}>
         <View style={styles.valueWrap}>
-          <Text style={styles.value}>{safeValue}</Text>
-          <Text style={styles.percent}>%</Text>
+          <Text style={[styles.value, { color: pulse.heroText }]}>{safeValue}</Text>
+          <Text style={[styles.percent, { color: pulse.heroTextSecondary }]}>%</Text>
         </View>
       </View>
     </View>
@@ -94,14 +98,12 @@ const styles = StyleSheet.create({
     alignItems: "baseline",
   },
   value: {
-    color: "#FFFFFF",
-    fontSize: 28,
+    fontSize: isIOS ? 28 : 24,
     fontWeight: "800",
-    letterSpacing: -1.2,
+    letterSpacing: -1,
   },
   percent: {
-    color: "rgba(255,255,255,0.7)",
-    fontSize: 13,
+    fontSize: isIOS ? 13 : 12,
     fontWeight: "700",
     marginLeft: 1,
   },

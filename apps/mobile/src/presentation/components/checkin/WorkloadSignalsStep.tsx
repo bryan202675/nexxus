@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import {
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -70,8 +71,18 @@ export default function WorkloadSignalsStep({
       onWorkloadChange(next);
     }
   };
+  const ContentWrapper = isAndroid ? ScrollView : View;
+  const wrapperProps = isAndroid
+    ? {
+        style: styles.scroll,
+        contentContainerStyle: styles.root,
+        showsVerticalScrollIndicator: false,
+        bounces: false,
+      }
+    : { style: styles.root };
+
   return (
-    <View style={styles.root}>
+    <ContentWrapper {...(wrapperProps as any)}>
       <Text style={styles.title}>Carga y señales</Text>
       <Text style={styles.subtitle}>
         Ajusta la carga de trabajo y registra las señales que te acompañan.
@@ -88,7 +99,7 @@ export default function WorkloadSignalsStep({
             workload === 1 && styles.disabled,
           ]}
         >
-          <Text style={styles.arrowText}>‹</Text>
+          <Feather name="chevron-left" size={isAndroid ? 20 : 24} color={esOscuro ? "#17141B" : "#FFFFFF"} />
         </Pressable>
         <View style={styles.tower}>
           {[4, 3, 2, 1, 0].map((index) => (
@@ -111,7 +122,7 @@ export default function WorkloadSignalsStep({
             workload === 5 && styles.disabled,
           ]}
         >
-          <Text style={styles.arrowText}>›</Text>
+          <Feather name="chevron-right" size={isAndroid ? 20 : 24} color={esOscuro ? "#17141B" : "#FFFFFF"} />
         </Pressable>
       </View>
       <View style={styles.loadCopy}>
@@ -149,7 +160,7 @@ export default function WorkloadSignalsStep({
           );
         })}
       </View>
-    </View>
+    </ContentWrapper>
   );
 }
 
@@ -221,16 +232,16 @@ function WorkBlock({
     <Animated.View
       style={[
         {
-          height: 24,
+          height: isAndroid ? 21 : 24,
           borderRadius: 8,
           justifyContent: "center",
-          paddingHorizontal: 14,
+          paddingHorizontal: isAndroid ? 12 : 14,
           borderWidth: 1,
           shadowColor: "#000",
           shadowOpacity: 0.12,
-          shadowRadius: 5,
-          shadowOffset: { width: 0, height: 3 },
-          elevation: 4,
+          shadowRadius: 4,
+          shadowOffset: { width: 0, height: 2 },
+          elevation: isAndroid ? 2 : 4,
         },
         style,
       ]}
@@ -238,8 +249,8 @@ function WorkBlock({
       <Animated.View
         style={[
           {
-            width: 34,
-            height: 5,
+            width: isAndroid ? 28 : 34,
+            height: isAndroid ? 4.5 : 5,
             borderRadius: 3,
           },
           markStyle,
@@ -254,80 +265,87 @@ function crearEstilos(c: any, esOscuro: boolean, compact: boolean) {
   const contrastInverted = esOscuro ? "#17141B" : "#FFFFFF";
 
   return StyleSheet.create({
-    root: { flex: 1, alignItems: "center" },
+    scroll: { flex: 1, width: "100%" },
+    root: {
+      alignItems: "center",
+      paddingBottom: isAndroid ? 16 : 0,
+    },
     title: {
       color: c.texto,
-      fontSize: 28,
+      fontSize: isAndroid ? (compact ? 22 : 24) : 28,
       fontWeight: "800",
       textAlign: "center",
       letterSpacing: -0.8,
-      marginTop: 22,
+      marginTop: isAndroid ? (compact ? 8 : 12) : 22,
     },
     subtitle: {
       color: c.textoSuave,
-      fontSize: 14,
+      fontSize: isAndroid ? 12 : 14,
       textAlign: "center",
-      marginTop: 8,
+      marginTop: isAndroid ? 4 : 8,
     },
     towerStage: {
       width: "100%",
-      height: compact ? 170 : isAndroid ? 188 : 220,
-      marginTop: isAndroid ? 20 : 24,
+      height: isAndroid ? (compact ? 172 : 198) : 220,
+      marginTop: isAndroid ? (compact ? 10 : 16) : 24,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      borderRadius: 32,
+      paddingHorizontal: isAndroid ? 16 : 18,
+      paddingVertical: isAndroid ? 14 : 0,
+      borderRadius: isAndroid ? 24 : 32,
       backgroundColor: c.superficie,
       borderWidth: 1,
       borderColor: c.borde,
     },
     tower: {
-      width: isAndroid ? "58%" : 178,
+      width: isAndroid ? 154 : 178,
       maxWidth: 178,
-      height: compact ? 120 : isAndroid ? 136 : 160,
-      justifyContent: "flex-end",
-      gap: 6,
+      height: isAndroid ? (compact ? 126 : 140) : 160,
+      justifyContent: "center",
+      gap: isAndroid ? 5 : 6,
     },
     arrow: {
-      position: isAndroid ? "absolute" : "relative",
-      width: 44,
-      height: 44,
-      borderRadius: 22,
+      position: "relative",
+      width: isAndroid ? 38 : 44,
+      height: isAndroid ? 38 : 44,
+      borderRadius: isAndroid ? 19 : 22,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: contrast,
       zIndex: 1,
     },
-    arrowPrevious: isAndroid ? { left: 16 } : {},
-    arrowNext: isAndroid ? { right: 16 } : {},
+    arrowPrevious: {},
+    arrowNext: {},
     disabled: { opacity: 0.18 },
     arrowText: {
       color: contrastInverted,
-      fontSize: 31,
-      lineHeight: 36,
+      fontSize: isAndroid ? 24 : 31,
+      lineHeight: isAndroid ? 28 : 36,
       fontWeight: "400",
     },
     loadCopy: {
       alignItems: "center",
-      marginTop: compact ? 12 : isAndroid ? 18 : 24,
+      marginTop: isAndroid ? (compact ? 10 : 16) : (compact ? 12 : 24),
     },
     eyebrow: {
       color: c.textoSuave,
-      fontSize: 11,
+      fontSize: isAndroid ? 10 : 11,
       fontWeight: "800",
       letterSpacing: 0.9,
     },
     loadLabel: {
       color: c.texto,
-      fontSize: 24,
+      fontSize: isAndroid ? 21 : 24,
       fontWeight: "900",
-      marginTop: 4,
+      marginTop: isAndroid ? 3 : 4,
     },
     signalHeading: {
       alignSelf: "flex-start",
-      marginTop: compact ? 12 : isAndroid ? 18 : 24,
+      marginTop: isAndroid ? (compact ? 12 : 18) : (compact ? 12 : 24),
+      marginBottom: isAndroid ? (compact ? 6 : 10) : 0,
       color: c.textoSuave,
-      fontSize: 11,
+      fontSize: isAndroid ? 10 : 11,
       fontWeight: "800",
       letterSpacing: 0.9,
     },
@@ -336,18 +354,19 @@ function crearEstilos(c: any, esOscuro: boolean, compact: boolean) {
       flexDirection: "row",
       flexWrap: "wrap",
       justifyContent: "space-between",
-      marginTop: compact ? 8 : isAndroid ? 12 : 16,
+      marginTop: isAndroid ? 0 : (compact ? 8 : 16),
+      marginBottom: isAndroid ? (compact ? 12 : 18) : 20,
     },
     chip: {
       width: "48%",
-      marginBottom: compact ? 6 : isAndroid ? 8 : 12,
+      marginBottom: isAndroid ? (compact ? 6 : 9) : (compact ? 6 : 12),
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      gap: 6,
-      paddingVertical: compact ? 9 : isAndroid ? 11 : 14,
-      paddingHorizontal: 8,
-      borderRadius: 16,
+      gap: 7,
+      paddingVertical: isAndroid ? (compact ? 8 : 11) : (compact ? 9 : 14),
+      paddingHorizontal: 10,
+      borderRadius: isAndroid ? 14 : 16,
       backgroundColor: esOscuro ? "rgba(255,255,255,0.04)" : "#F8FAFC",
       borderWidth: 1,
       borderColor: esOscuro ? "rgba(255,255,255,0.12)" : "#E2E8F0",
@@ -358,7 +377,7 @@ function crearEstilos(c: any, esOscuro: boolean, compact: boolean) {
     },
     chipText: {
       color: c.textoSecundario,
-      fontSize: 14,
+      fontSize: isAndroid ? 13 : 14,
       fontWeight: "600",
     },
     chipTextActive: {

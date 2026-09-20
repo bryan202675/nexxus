@@ -1,9 +1,11 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-import { TIPOGRAFIA, ESPACIADO } from '@/shared/constants/diseno';
+import { TIPOGRAFIA } from '@/shared/constants/diseno';
 import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import { VoiceSessionError, VoiceSessionState } from '../types/voice.types';
+
+const isIOS = Platform.OS === 'ios';
 
 interface Props {
   estado: VoiceSessionState;
@@ -46,7 +48,7 @@ export default function VoiceStatus({ estado, error }: Props) {
         key={`titulo-${titulo}`}
         entering={FadeIn.duration(220)}
         exiting={FadeOut.duration(120)}
-        style={[TIPOGRAFIA.tituloSeccion, estilos.titulo, { color: colores.texto }]}
+        style={[TIPOGRAFIA.tituloSeccion, estilos.titulo, { color: colores.pulso?.text ?? colores.texto }]}
       >
         {titulo}
       </Animated.Text>
@@ -55,7 +57,7 @@ export default function VoiceStatus({ estado, error }: Props) {
           key={`subtitulo-${subtitulo}`}
           entering={FadeIn.duration(220).delay(40)}
           exiting={FadeOut.duration(120)}
-          style={[TIPOGRAFIA.cuerpo, estilos.subtitulo, { color: colores.textoSecundario }]}
+          style={[TIPOGRAFIA.cuerpo, estilos.subtitulo, { color: colores.pulso?.textSecondary ?? colores.textoSecundario }]}
         >
           {subtitulo}
         </Animated.Text>
@@ -67,16 +69,18 @@ export default function VoiceStatus({ estado, error }: Props) {
 const estilos = StyleSheet.create({
   contenedor: {
     alignItems: 'center',
-    gap: 5,
-    minHeight: 60,
+    gap: isIOS ? 5 : 3,
+    minHeight: isIOS ? 60 : 44,
   },
   titulo: {
     textAlign: 'center',
-    fontSize: 21,
+    fontSize: isIOS ? 21 : 16,
     fontWeight: '600',
+    lineHeight: isIOS ? 26 : 20,
   },
   subtitulo: {
     textAlign: 'center',
-    fontSize: 13,
+    fontSize: isIOS ? 13 : 11.5,
+    lineHeight: isIOS ? 18 : 15,
   },
 });

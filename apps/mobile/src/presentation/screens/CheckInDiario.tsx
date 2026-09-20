@@ -490,12 +490,12 @@ function createStyles(
     },
     footer: {
       paddingHorizontal: isIOS ? 24 : 20,
-      paddingTop: 10,
-      paddingBottom: isIOS ? 20 : 16,
+      paddingTop: isIOS ? 10 : 6,
+      paddingBottom: isIOS ? 20 : 12,
     },
     primary: {
-      height: 58,
-      borderRadius: 29,
+      height: isIOS ? 58 : 48,
+      borderRadius: isIOS ? 29 : 24,
       backgroundColor: "#17141B",
       flexDirection: "row",
       gap: 10,
@@ -503,7 +503,7 @@ function createStyles(
       justifyContent: "center",
     },
     primaryDisabled: { opacity: 0.65 },
-    primaryText: { color: "#FFFFFF", fontSize: 16, fontWeight: "800" },
+    primaryText: { color: "#FFFFFF", fontSize: isIOS ? 16 : 15, fontWeight: "800" },
     error: {
       flexDirection: "row",
       gap: 10,

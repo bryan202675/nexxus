@@ -43,6 +43,7 @@ import BotonAnimado from "@/presentation/components/BotonAnimado";
 import Skeleton from "@/presentation/components/ui/Skeleton";
 import ModalShell from "@/presentation/components/ui/ModalShell";
 import { useContextoUsuario } from "@/presentation/context/ContextoUsuario";
+import { useTemaMobile } from "@/presentation/context/TemaMobileContext";
 import { SOMBRAS } from "@/shared/constants/diseno";
 import { useUserTabBottomPadding } from "@/presentation/hooks/useUserTabBottomPadding";
 import { Payment } from "domain/entities/Payment";
@@ -365,7 +366,12 @@ const buildDeclaracionNominaText = (
     .filter(Boolean)
     .join("\n");
 
+type PulseColors = ReturnType<typeof useTemaMobile>['colores']['pulso'];
+
 export default function MiSalario({ navigation }: { navigation: Navigation }) {
+  const { colores, esOscuro } = useTemaMobile();
+  const pulse = colores.pulso;
+  const styles = useMemo(() => createSalaryStyles(pulse, esOscuro), [pulse, esOscuro]);
   const bottomPadding = useUserTabBottomPadding(96);
   const { t } = useTranslation();
   const { perfil, pagos, recargarDatos, cargando } = useContextoUsuario();
@@ -740,53 +746,55 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
   return (
     <SafeAreaView style={styles.screen}>
       <StatusBar
-        barStyle="dark-content"
+        barStyle={esOscuro ? "light-content" : "dark-content"}
         backgroundColor="transparent"
         translucent
       />
       <LinearGradient
         pointerEvents="none"
-        colors={["#FBEDE8", "#F6ECF6", "#FFFDFC"]}
+        colors={pulse.ambient}
         locations={[0, 0.28, 0.72]}
         style={styles.ambient}
       />
 
       {/* Barra Superior */}
-      <View style={styles.topBar}>
-        <BotonAnimado
-          style={styles.backButton}
-          scaleTo={0.96}
-          onPress={manejarRegresar}
-          accessibilityLabel="Regresar"
-        >
-          <Feather name="arrow-left" size={21} color="#202020" />
-        </BotonAnimado>
-
-        <Text style={styles.topBarLabel}>Mi Salario</Text>
-
-        <View style={styles.headerActions}>
+      <View style={styles.topBarContainer}>
+        <View style={styles.topBar}>
           <BotonAnimado
-            style={styles.addButton}
+            style={styles.backButton}
             scaleTo={0.96}
-            onPress={() => downloadReceipt(latest)}
-            disabled={downloadingDoc === `receipt-${latest.id}`}
-            accessibilityLabel="Descargar último recibo"
+            onPress={manejarRegresar}
+            accessibilityLabel="Regresar"
           >
-            {downloadingDoc === `receipt-${latest.id}` ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Feather name="download" size={21} color="#FFFFFF" />
-            )}
+            <Feather name="arrow-left" size={21} color={pulse.icon} />
           </BotonAnimado>
 
-          <BotonAnimado
-            style={styles.bellButton}
-            scaleTo={0.96}
-            onPress={refresh}
-            accessibilityLabel="Actualizar nómina"
-          >
-            <Feather name="refresh-cw" size={19} color="#202020" />
-          </BotonAnimado>
+          <Text style={styles.topBarLabel}>Mi Salario</Text>
+
+          <View style={styles.headerActions}>
+            <BotonAnimado
+              style={styles.addButton}
+              scaleTo={0.96}
+              onPress={() => downloadReceipt(latest)}
+              disabled={downloadingDoc === `receipt-${latest.id}`}
+              accessibilityLabel="Descargar último recibo"
+            >
+              {downloadingDoc === `receipt-${latest.id}` ? (
+                <ActivityIndicator size="small" color={pulse.textInverse} />
+              ) : (
+                <Feather name="download" size={21} color={pulse.textInverse} />
+              )}
+            </BotonAnimado>
+
+            <BotonAnimado
+              style={styles.bellButton}
+              scaleTo={0.96}
+              onPress={refresh}
+              accessibilityLabel="Actualizar nómina"
+            >
+              <Feather name="refresh-cw" size={19} color={pulse.icon} />
+            </BotonAnimado>
+          </View>
         </View>
       </View>
 
@@ -801,7 +809,7 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={refresh}
-            tintColor="#202020"
+            tintColor={pulse.icon}
           />
         }
       >
@@ -824,7 +832,7 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
             >
               <View style={styles.heroBentoCard}>
                 <LinearGradient
-                  colors={["#222126", "#17161A"]}
+                  colors={pulse.heroGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.heroGradient}
@@ -844,7 +852,7 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
                               backgroundColor:
                                 latest.estado === "Pagado"
                                     ? "#D5E774"
-                                    : "#E9D2BF",
+                                    : "#F2AD84",
                             },
                           ]}
                         />
@@ -857,7 +865,7 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
                       <Feather
                         name="arrow-up-right"
                         size={17}
-                        color="rgba(255,255,255,0.4)"
+                        color={pulse.heroTextSecondary}
                       />
                     </View>
                   </View>
@@ -875,7 +883,7 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
                     <View style={styles.heroMetricsCol}>
                       <View style={styles.metricCard}>
                         <View style={styles.iconWrap}>
-                          <Feather name="dollar-sign" size={13} color="#FFFFFF" />
+                          <Feather name="dollar-sign" size={13} color={pulse.heroText} />
                         </View>
                         <View style={styles.metricText}>
                           <Text style={styles.metricValue} numberOfLines={1}>
@@ -890,7 +898,7 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
 
                       <View style={styles.metricCard}>
                         <View style={styles.iconWrap}>
-                          <Feather name="pie-chart" size={13} color="#FFFFFF" />
+                          <Feather name="pie-chart" size={13} color={pulse.heroText} />
                         </View>
                         <View style={styles.metricText}>
                           <Text style={styles.metricValue} numberOfLines={1}>
@@ -907,7 +915,7 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
 
                       <View style={styles.metricCard}>
                         <View style={styles.iconWrap}>
-                          <Feather name="check-circle" size={13} color="#FFFFFF" />
+                          <Feather name="check-circle" size={13} color={pulse.heroText} />
                         </View>
                         <View style={styles.metricText}>
                           <Text style={styles.metricValue} numberOfLines={1}>
@@ -933,7 +941,7 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
             style={styles.verCompletoPill}
           >
             <Text style={styles.viewAll}>Ver completo</Text>
-            <Feather name="arrow-up-right" size={14} color="#5F5A56" />
+            <Feather name="arrow-up-right" size={14} color={pulse.textSecondary} />
           </BotonAnimado>
         </View>
 
@@ -963,7 +971,7 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
               </View>
               <View style={styles.verCompletoCardBtn}>
                 <Text style={styles.verCompletoCardText}>Ver completo</Text>
-                <Feather name="arrow-up-right" size={15} color="#202020" />
+                <Feather name="arrow-up-right" size={15} color={pulse.icon} />
               </View>
             </View>
 
@@ -1177,7 +1185,7 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
           />
           <Shortcut
             customIcon={
-              <MaterialIcons name="help-outline" size={19} color="#202020" />
+              <MaterialIcons name="help-outline" size={19} color={pulse.icon} />
             }
             title="Aclaración de nómina"
             detail="Consultar dudas sobre tu pago con RRHH"
@@ -1204,7 +1212,7 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
           />
           <Shortcut
             customIcon={
-              <MaterialIcons name="auto-awesome" size={19} color="#202020" />
+              <MaterialIcons name="auto-awesome" size={19} color={pulse.icon} />
             }
             title="Asistente de finanzas IA"
             detail="Preguntas sobre tu cálculo de renta"
@@ -1230,7 +1238,7 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
                 scaleTo={0.92}
                 style={styles.modalCloseBtn}
               >
-                <Feather name="x" size={18} color="#202020" />
+                <Feather name="x" size={18} color={pulse.icon} />
               </BotonAnimado>
               <View style={styles.modalHeaderCopy}>
                 <Text style={styles.modalSuperTitle}>COMPROBANTE OFICIAL</Text>
@@ -1245,9 +1253,9 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
                 style={styles.modalCloseBtn}
               >
                 {downloadingDoc === `receipt-${pagoSeleccionado.id}` ? (
-                  <ActivityIndicator size="small" color="#202020" />
+                  <ActivityIndicator size="small" color={pulse.icon} />
                 ) : (
-                  <Feather name="share-2" size={17} color="#202020" />
+                  <Feather name="share-2" size={17} color={pulse.icon} />
                 )}
               </BotonAnimado>
             </View>
@@ -1532,7 +1540,7 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
               scaleTo={0.92}
               style={styles.modalCloseBtn}
             >
-              <Feather name="x" size={18} color="#202020" />
+              <Feather name="x" size={18} color={pulse.icon} />
             </BotonAnimado>
             <View style={styles.modalHeaderCopy}>
               <Text style={styles.modalSuperTitle}>TRÁMITES LABORALES</Text>
@@ -1545,9 +1553,9 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
               style={styles.modalCloseBtn}
             >
               {downloadingDoc === "constancia" ? (
-                <ActivityIndicator size="small" color="#202020" />
+                <ActivityIndicator size="small" color={pulse.icon} />
               ) : (
-                <Feather name="download" size={17} color="#202020" />
+                <Feather name="download" size={17} color={pulse.icon} />
               )}
             </BotonAnimado>
           </View>
@@ -1639,7 +1647,7 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
               scaleTo={0.92}
               style={styles.modalCloseBtn}
             >
-              <Feather name="x" size={18} color="#202020" />
+              <Feather name="x" size={18} color={pulse.icon} />
             </BotonAnimado>
             <View style={styles.modalHeaderCopy}>
               <Text style={styles.modalSuperTitle}>LEGISLACIÓN FISCAL</Text>
@@ -1652,9 +1660,9 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
               style={styles.modalCloseBtn}
             >
               {downloadingDoc === "retenciones" ? (
-                <ActivityIndicator size="small" color="#202020" />
+                <ActivityIndicator size="small" color={pulse.icon} />
               ) : (
-                <Feather name="download" size={17} color="#202020" />
+                <Feather name="download" size={17} color={pulse.icon} />
               )}
             </BotonAnimado>
           </View>
@@ -1760,7 +1768,7 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
               scaleTo={0.92}
               style={styles.modalCloseBtn}
             >
-              <Feather name="x" size={18} color="#202020" />
+              <Feather name="x" size={18} color={pulse.icon} />
             </BotonAnimado>
             <View style={styles.modalHeaderCopy}>
               <Text style={styles.modalSuperTitle}>CONTRATACIÓN OFICIAL</Text>
@@ -1773,9 +1781,9 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
               style={styles.modalCloseBtn}
             >
               {downloadingDoc === "contrato" ? (
-                <ActivityIndicator size="small" color="#202020" />
+                <ActivityIndicator size="small" color={pulse.icon} />
               ) : (
-                <Feather name="download" size={17} color="#202020" />
+                <Feather name="download" size={17} color={pulse.icon} />
               )}
             </BotonAnimado>
           </View>
@@ -1863,7 +1871,7 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
               scaleTo={0.92}
               style={styles.modalCloseBtn}
             >
-              <Feather name="x" size={18} color="#202020" />
+              <Feather name="x" size={18} color={pulse.icon} />
             </BotonAnimado>
             <View style={styles.modalHeaderCopy}>
               <Text style={styles.modalSuperTitle}>DECLARACIÓN FISCAL</Text>
@@ -1876,9 +1884,9 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
               style={styles.modalCloseBtn}
             >
               {downloadingDoc === "declaracion" ? (
-                <ActivityIndicator size="small" color="#202020" />
+                <ActivityIndicator size="small" color={pulse.icon} />
               ) : (
-                <Feather name="download" size={17} color="#202020" />
+                <Feather name="download" size={17} color={pulse.icon} />
               )}
             </BotonAnimado>
           </View>
@@ -1962,7 +1970,7 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
               scaleTo={0.92}
               style={styles.modalCloseBtn}
             >
-              <Feather name="x" size={18} color="#202020" />
+              <Feather name="x" size={18} color={pulse.icon} />
             </BotonAnimado>
             <View style={styles.modalHeaderCopy}>
               <Text style={styles.modalSuperTitle}>SOPORTE Y RRHH</Text>
@@ -1985,7 +1993,7 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
               <TextInput
                 style={styles.formInput}
                 placeholder="Ej. Ajuste de horas extra / Descuento"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={pulse.textTertiary}
                 value={asuntoAclaracion}
                 onChangeText={setAsuntoAclaracion}
               />
@@ -1996,7 +2004,7 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
               <TextInput
                 style={[styles.formInput, styles.formTextArea]}
                 placeholder="Describe el periodo, concepto o monto a verificar..."
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={pulse.textTertiary}
                 multiline
                 numberOfLines={4}
                 value={motivoAclaracion}
@@ -2041,7 +2049,7 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
               scaleTo={0.92}
               style={styles.modalCloseBtn}
             >
-              <Feather name="x" size={18} color="#202020" />
+              <Feather name="x" size={18} color={pulse.icon} />
             </BotonAnimado>
             <View style={styles.modalHeaderCopy}>
               <Text style={styles.modalSuperTitle}>DISPERSIÓN BANCARIA</Text>
@@ -2113,6 +2121,8 @@ function ScopeChip({
   active: boolean;
   onPress: () => void;
 }) {
+  const { colores, esOscuro } = useTemaMobile();
+  const styles = useMemo(() => createSalaryStyles(colores.pulso, esOscuro), [colores.pulso, esOscuro]);
   return (
     <BotonAnimado
       scaleTo={0.97}
@@ -2138,6 +2148,8 @@ function BreakdownLine({
   value: string;
   isBold?: boolean;
 }) {
+  const { colores, esOscuro } = useTemaMobile();
+  const styles = useMemo(() => createSalaryStyles(colores.pulso, esOscuro), [colores.pulso, esOscuro]);
   return (
     <View style={styles.breakdownLine}>
       <Text
@@ -2171,6 +2183,9 @@ function DocDownloadBtn({
   isLoading: boolean;
   onPress: () => void;
 }) {
+  const { colores, esOscuro } = useTemaMobile();
+  const pulse = colores.pulso;
+  const styles = useMemo(() => createSalaryStyles(pulse, esOscuro), [pulse, esOscuro]);
   return (
     <BotonAnimado
       scaleTo={0.95}
@@ -2180,11 +2195,11 @@ function DocDownloadBtn({
       accessibilityLabel={`Ver ${label}`}
     >
       {isLoading ? (
-        <ActivityIndicator size="small" color="#202020" />
+        <ActivityIndicator size="small" color={pulse.icon} />
       ) : (
         <>
           <View style={styles.docBtnIconWrap}>
-            <Feather name={icon} size={13} color="#202020" />
+            <Feather name={icon} size={13} color={pulse.icon} />
           </View>
           <Text style={styles.docBtnText} numberOfLines={1}>
             {label}
@@ -2208,6 +2223,9 @@ function ModalDocActionBtn({
   isLoading: boolean;
   onPress: () => void;
 }) {
+  const { colores, esOscuro } = useTemaMobile();
+  const pulse = colores.pulso;
+  const styles = useMemo(() => createSalaryStyles(pulse, esOscuro), [pulse, esOscuro]);
   return (
     <BotonAnimado
       scaleTo={0.96}
@@ -2216,11 +2234,11 @@ function ModalDocActionBtn({
       disabled={isLoading}
     >
       {isLoading ? (
-        <ActivityIndicator size="small" color="#202020" />
+        <ActivityIndicator size="small" color={pulse.icon} />
       ) : (
         <>
           <View style={styles.modalDocIcon}>
-            <Feather name={icon} size={16} color="#202020" />
+            <Feather name={icon} size={16} color={pulse.icon} />
           </View>
           <View style={styles.modalDocTextWrap}>
             <Text style={styles.modalDocTitle}>{title}</Text>
@@ -2239,6 +2257,9 @@ function PaymentReceiptCard({
   payment: Payment;
   onPress: () => void;
 }) {
+  const { colores, esOscuro } = useTemaMobile();
+  const pulse = colores.pulso;
+  const styles = useMemo(() => createSalaryStyles(pulse, esOscuro), [pulse, esOscuro]);
   const isPaid = payment.estado === "Pagado";
   return (
     <BotonAnimado
@@ -2252,14 +2273,14 @@ function PaymentReceiptCard({
           <View
             style={[
               styles.statusDot,
-              { backgroundColor: isPaid ? "#D5E774" : "#E9D2BF" },
+              { backgroundColor: isPaid ? "#D5E774" : "#F2AD84" },
             ]}
           />
           <Text style={styles.statusText}>{payment.estado}</Text>
         </View>
         <View style={styles.verCompletoCardBtn}>
           <Text style={styles.verCompletoCardText}>Ver completo</Text>
-          <Feather name="arrow-up-right" size={14} color="#202020" />
+          <Feather name="arrow-up-right" size={14} color={pulse.icon} />
         </View>
       </View>
 
@@ -2272,13 +2293,13 @@ function PaymentReceiptCard({
 
       <View style={styles.recordFooter}>
         <View style={styles.timeRow}>
-          <Feather name="calendar" size={15} color="#78736F" />
+          <Feather name="calendar" size={15} color={pulse.textTertiary} />
           <Text style={styles.time}>{dateLabel(payment.fecha_pago)}</Text>
         </View>
         <View style={styles.dimensionDots}>
           <DimensionDot color="#D5E774" />
-          <DimensionDot color="#E9D2BF" />
-          <DimensionDot color="#F5F2EF" />
+          <DimensionDot color="#F2AD84" />
+          <DimensionDot color={pulse.surfaceElevated} />
         </View>
       </View>
     </BotonAnimado>
@@ -2286,6 +2307,8 @@ function PaymentReceiptCard({
 }
 
 function DimensionDot({ color }: { color: string }) {
+  const { colores, esOscuro } = useTemaMobile();
+  const styles = useMemo(() => createSalaryStyles(colores.pulso, esOscuro), [colores.pulso, esOscuro]);
   return <View style={[styles.dimensionDot, { backgroundColor: color }]} />;
 }
 
@@ -2302,11 +2325,14 @@ function Shortcut({
   detail: string;
   onPress: () => void;
 }) {
+  const { colores, esOscuro } = useTemaMobile();
+  const pulse = colores.pulso;
+  const styles = useMemo(() => createSalaryStyles(pulse, esOscuro), [pulse, esOscuro]);
   return (
     <BotonAnimado scaleTo={0.98} onPress={onPress} style={styles.shortcut}>
       <View style={styles.shortcutIcon}>
         {customIcon ||
-          (icon && <Feather name={icon} size={17} color="#202020" />)}
+          (icon && <Feather name={icon} size={17} color={pulse.icon} />)}
       </View>
       <View style={styles.shortcutCopy}>
         <Text style={styles.shortcutTitle}>{title}</Text>
@@ -2314,12 +2340,14 @@ function Shortcut({
           {detail}
         </Text>
       </View>
-      <Feather name="chevron-right" size={18} color="#8B8681" />
+      <Feather name="chevron-right" size={18} color={pulse.textTertiary} />
     </BotonAnimado>
   );
 }
 
 function ModalLineItem({ label, value }: { label: string; value: string }) {
+  const { colores, esOscuro } = useTemaMobile();
+  const styles = useMemo(() => createSalaryStyles(colores.pulso, esOscuro), [colores.pulso, esOscuro]);
   return (
     <View style={styles.modalLineRow}>
       <Text style={styles.modalLineLabel}>{label}</Text>
@@ -2329,6 +2357,8 @@ function ModalLineItem({ label, value }: { label: string; value: string }) {
 }
 
 function ModalInfoRow({ label, value }: { label: string; value: string }) {
+  const { colores, esOscuro } = useTemaMobile();
+  const styles = useMemo(() => createSalaryStyles(colores.pulso, esOscuro), [colores.pulso, esOscuro]);
   return (
     <View style={styles.modalInfoRow}>
       <Text style={styles.modalInfoKey}>{label}</Text>
@@ -2340,6 +2370,8 @@ function ModalInfoRow({ label, value }: { label: string; value: string }) {
 }
 
 function SalarySkeleton() {
+  const { colores, esOscuro } = useTemaMobile();
+  const styles = useMemo(() => createSalaryStyles(colores.pulso, esOscuro), [colores.pulso, esOscuro]);
   return (
     <View style={styles.loadingCard}>
       <Skeleton width="40%" height={18} radius={8} />
@@ -2359,683 +2391,698 @@ function SalarySkeleton() {
    ESTILOS LIMPIOS Y MINIMALISTAS
    ============================================================================= */
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#FFFDFC" },
-  ambient: { ...StyleSheet.absoluteFill },
-  content: {
-    paddingHorizontal: 21,
-    paddingTop: 4,
-  },
-  /* Top Bar */
-  topBar: {
-    height: 52,
-    marginHorizontal: 21,
-    marginTop: 4,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  backButton: {
-    width: 47,
-    height: 47,
-    borderRadius: 24,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-    ...SOMBRAS.suave,
-  },
-  topBarLabel: {
-    color: "#292522",
-    fontSize: 17,
-    fontWeight: "600",
-    letterSpacing: -0.5,
-  },
-  headerActions: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  addButton: {
-    width: 47,
-    height: 47,
-    borderRadius: 24,
-    backgroundColor: "#202020",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  bellButton: {
-    width: 47,
-    height: 47,
-    borderRadius: 24,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-    ...SOMBRAS.suave,
-  },
-  hero: {
-    marginTop: 22,
-    marginBottom: 20,
-    color: "#1F1D1C",
-    fontSize: 34,
-    lineHeight: 38,
-    letterSpacing: -1.4,
-    fontWeight: "600",
-  },
-  heroBentoCard: {
-    borderRadius: 24,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.08)",
-    shadowColor: "#000",
-    shadowOpacity: 0.16,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 5,
-  },
-  heroGradient: {
-    padding: 18,
-    minHeight: 195,
-  },
-  heroHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 14,
-  },
-  heroHeaderLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  heroBentoTitle: {
-    color: "#FFFFFF",
-    fontSize: 17,
-    fontWeight: "700",
-    letterSpacing: -0.3,
-  },
-  heroStatusPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-  },
-  heroStatusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  heroStatusText: {
-    color: "rgba(255, 255, 255, 0.8)",
-    fontSize: 10,
-    fontWeight: "700",
-  },
-  heroArrowWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "rgba(255, 255, 255, 0.06)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  heroBody: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  heroNetCol: {
-    flex: 1.1,
-    paddingRight: 6,
-  },
-  heroNetAmount: {
-    color: "#FFFFFF",
-    fontSize: 26,
-    fontWeight: "700",
-    letterSpacing: -0.8,
-  },
-  heroPeriodSubtitle: {
-    color: "rgba(255, 255, 255, 0.52)",
-    fontSize: 11,
-    fontWeight: "500",
-    marginTop: 4,
-    lineHeight: 16,
-  },
-  heroMetricsCol: {
-    flex: 1,
-    gap: 7,
-  },
-  metricCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-    borderRadius: 13,
-    paddingVertical: 6,
-    paddingHorizontal: 9,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.04)",
-  },
-  iconWrap: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    marginRight: 8,
-  },
-  metricText: { flex: 1 },
-  metricValue: {
-    color: "#FFFFFF",
-    fontSize: 12.5,
-    fontWeight: "700",
-    letterSpacing: -0.2,
-  },
-  metricLabel: {
-    color: "rgba(255, 255, 255, 0.52)",
-    fontSize: 10,
-    fontWeight: "500",
-    marginTop: 0.5,
-  },
-  loadingCard: {
-    minHeight: 195,
-    borderRadius: 24,
-    backgroundColor: "#222126",
-    padding: 20,
-    justifyContent: "space-between",
-  },
-  loadingContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingTop: 14,
-  },
-  loadingRows: { width: "48%", gap: 8 },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 26,
-    marginBottom: 14,
-  },
-  sectionTitle: {
-    color: "#24211F",
-    fontSize: 24,
-    fontWeight: "600",
-    letterSpacing: -0.8,
-  },
-  viewAll: { color: "#5F5A56", fontSize: 13, fontWeight: "600" },
-  verCompletoPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#F5F2EF",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-  },
-  countBadgeText: { color: "#86807D", fontSize: 13, fontWeight: "600" },
-  chips: { gap: 9, paddingRight: 20 },
-  chip: {
-    height: 50,
-    borderRadius: 25,
-    paddingHorizontal: 9,
-    paddingRight: 17,
-    backgroundColor: "rgba(255,255,255,0.82)",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    borderWidth: 1,
-    borderColor: "rgba(43,36,31,0.035)",
-  },
-  chipActive: { backgroundColor: "#D5E774" },
-  chipCount: {
-    minWidth: 32,
-    height: 32,
-    paddingHorizontal: 8,
-    borderRadius: 16,
-    backgroundColor: "#F5F2EF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  chipCountActive: { backgroundColor: "#FFFFFF" },
-  chipCountText: { color: "#3A3531", fontSize: 14, fontWeight: "700" },
-  chipLabel: { color: "#4B4642", fontSize: 14, fontWeight: "600" },
-  chipLabelActive: { color: "#2E3023" },
-  breakdownCard: {
-    padding: 18,
-    borderRadius: 24,
-    backgroundColor: "#FFFFFF",
-    ...SOMBRAS.suave,
-    borderWidth: 1,
-    borderColor: "rgba(43,36,31,0.035)",
-  },
-  linesWrapper: { marginVertical: 12, gap: 6 },
-  breakdownLine: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 4,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(43,36,31,0.06)",
-  },
-  breakdownLineLabel: { color: "#78736F", fontSize: 13, fontWeight: "500" },
-  breakdownLineLabelBold: { color: "#272321", fontWeight: "700" },
-  breakdownLineValue: { color: "#312E2C", fontSize: 13, fontWeight: "600" },
-  breakdownLineValueBold: { color: "#1F1D1C", fontWeight: "700" },
-  breakdownTotalRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#F7F6F4",
-    borderRadius: 16,
-    padding: 14,
-    marginTop: 8,
-    marginBottom: 12,
-  },
-  breakdownTotalLabel: { color: "#24211F", fontSize: 13, fontWeight: "700" },
-  breakdownTotalDate: { color: "#78736F", fontSize: 11, fontWeight: "500", marginTop: 2 },
-  breakdownTotalValue: {
-    color: "#1F1D1C",
-    fontSize: 18,
-    fontWeight: "700",
-    letterSpacing: -0.3,
-  },
-  docActionsGrid: {
-    flexDirection: "row",
-    gap: 7,
-    marginBottom: 10,
-  },
-  docBtn: {
-    flex: 1,
-    minHeight: 40,
-    borderRadius: 14,
-    backgroundColor: "#F7F6F4",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    paddingHorizontal: 4,
-    borderWidth: 1,
-    borderColor: "rgba(43,36,31,0.04)",
-  },
-  docBtnIconWrap: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  docBtnText: {
-    fontSize: 10.5,
-    fontWeight: "700",
-    color: "#312E2C",
-    letterSpacing: -0.2,
-  },
-  primaryActionButton: {
-    minHeight: 48,
-    borderRadius: 24,
-    backgroundColor: "#202020",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  primaryActionButtonText: {
-    color: "#FFFFFF",
-    fontSize: 13.5,
-    fontWeight: "700",
-    letterSpacing: -0.1,
-  },
-  paymentsList: {
-    marginTop: 14,
-    gap: 12,
-  },
-  paymentCard: {
-    minHeight: 145,
-    padding: 18,
-    borderRadius: 24,
-    backgroundColor: "#FFFFFF",
-    justifyContent: "space-between",
-    ...SOMBRAS.suave,
-    borderWidth: 1,
-    borderColor: "rgba(43,36,31,0.035)",
-  },
-  recordTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  statusPill: {
-    minHeight: 29,
-    borderRadius: 15,
-    paddingHorizontal: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#F5F2EF",
-  },
-  statusDot: { width: 7, height: 7, borderRadius: 4 },
-  statusText: { color: "#544F4B", fontSize: 11, fontWeight: "700" },
-  arrowButton: {
-    width: 39,
-    height: 39,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#F7F6F4",
-  },
-  verCompletoCardBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#F5F2EF",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-  },
-  verCompletoCardText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#312E2C",
-  },
-  paymentCardBody: { marginTop: 12 },
-  paymentCardTitle: {
-    color: "#272321",
-    fontSize: 18,
-    fontWeight: "600",
-    letterSpacing: -0.55,
-  },
-  paymentCardAmount: {
-    color: "#1F1D1C",
-    fontSize: 20,
-    fontWeight: "700",
-    letterSpacing: -0.4,
-    marginTop: 4,
-  },
-  recordFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 18,
-  },
-  timeRow: { flexDirection: "row", alignItems: "center", gap: 7 },
-  time: { color: "#78736F", fontSize: 12, fontWeight: "600" },
-  dimensionDots: { flexDirection: "row" },
-  dimensionDot: {
-    width: 27,
-    height: 27,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
-    marginLeft: -7,
-  },
-  shortcuts: { gap: 10 },
-  shortcut: {
-    minHeight: 64,
-    borderRadius: 18,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "rgba(43,36,31,0.035)",
-    flexDirection: "row",
-    alignItems: "center",
-    ...SOMBRAS.suave,
-  },
-  shortcutIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "#F3F0ED",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-  shortcutCopy: { flex: 1, justifyContent: "center" },
-  shortcutTitle: {
-    color: "#292624",
-    fontSize: 14,
-    fontWeight: "700",
-    lineHeight: 18,
-    includeFontPadding: false,
-  },
-  shortcutDetail: {
-    color: "#7B7570",
-    fontSize: 11,
-    fontWeight: "500",
-    marginTop: 2,
-    lineHeight: 14,
-    includeFontPadding: false,
-  },
-  flexModal: { flex: 1 },
-  modalContenido: {
-    backgroundColor: "#FFFDFC",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 14,
-  },
-  modalCloseBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#F5F2EF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalHeaderCopy: {
-    flex: 1,
-    marginHorizontal: 12,
-    alignItems: "center",
-  },
-  modalSuperTitle: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#86807D",
-    letterSpacing: 0.5,
-  },
-  modalMainTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#202020",
-    letterSpacing: -0.3,
-    marginTop: 2,
-  },
-  scrollModal: {
-    paddingHorizontal: 20,
-    paddingBottom: 36,
-    gap: 12,
-  },
-  modalHeroCard: {
-    backgroundColor: "#F7F5F2",
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "rgba(43,36,31,0.05)",
-  },
-  modalHeroLabel: {
-    fontSize: 10.5,
-    fontWeight: "700",
-    color: "#86807D",
-    letterSpacing: 0.5,
-  },
-  modalHeroAmount: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#1F1D1C",
-    letterSpacing: -0.6,
-    marginTop: 4,
-  },
-  modalHeroFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 10,
-  },
-  modalStatusPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  modalDateText: { fontSize: 11.5, fontWeight: "500", color: "#78736F" },
-  modalDocGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  modalDocItem: {
-    width: "48.5%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    borderWidth: 1,
-    borderColor: "rgba(43,36,31,0.05)",
-    ...SOMBRAS.suave,
-  },
-  modalDocIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#F5F2EF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalDocTextWrap: { flex: 1 },
-  modalDocTitle: { fontSize: 12.5, fontWeight: "700", color: "#202020" },
-  modalDocSubtitle: { fontSize: 10.5, fontWeight: "500", color: "#86807D", marginTop: 1 },
-  modalConstanciaTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#202020",
-    marginTop: 4,
-    letterSpacing: -0.3,
-  },
-  modalConstanciaDesc: {
-    fontSize: 12.5,
-    color: "#78736F",
-    lineHeight: 18,
-    marginTop: 6,
-  },
-  modalParagraph: {
-    fontSize: 12.5,
-    color: "#5F5A56",
-    lineHeight: 18,
-    marginTop: 4,
-  },
-  modalSectionCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "rgba(43,36,31,0.05)",
-    ...SOMBRAS.suave,
-  },
-  modalSectionTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#202020",
-    marginBottom: 8,
-    letterSpacing: -0.2,
-  },
-  modalLineRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 6,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(43,36,31,0.06)",
-  },
-  modalLineLabel: { fontSize: 13, fontWeight: "500", color: "#6A6560" },
-  modalLineValue: { fontSize: 13, fontWeight: "600", color: "#24211F" },
-  modalLineTotal: { borderBottomWidth: 0, paddingTop: 10 },
-  modalLineTotalLabel: { fontSize: 13.5, fontWeight: "700", color: "#1F1D1C" },
-  modalLineTotalValue: { fontSize: 14, fontWeight: "700", color: "#1F1D1C" },
-  modalInfoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 6,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(43,36,31,0.06)",
-  },
-  modalInfoKey: { fontSize: 12.5, fontWeight: "500", color: "#78736F" },
-  modalInfoVal: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#202020",
-    maxWidth: "65%",
-    textAlign: "right",
-  },
-  modalSealCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#F7F6F4",
-    padding: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(43,36,31,0.04)",
-  },
-  modalSealText: {
-    fontSize: 11.5,
-    color: "#78736F",
-    fontWeight: "500",
-    flex: 1,
-    lineHeight: 16,
-  },
-  modalPrimaryBtn: {
-    minHeight: 50,
-    borderRadius: 25,
-    backgroundColor: "#202020",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    marginTop: 8,
-  },
-  modalPrimaryBtnText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "700",
-    letterSpacing: -0.1,
-  },
-  modalFormInstructions: {
-    fontSize: 13,
-    color: "#78736F",
-    lineHeight: 18,
-    marginBottom: 14,
-  },
-  formGroup: { marginBottom: 14 },
-  formLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#312E2C",
-    marginBottom: 6,
-  },
-  formInput: {
-    backgroundColor: "#F7F6F4",
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 13.5,
-    color: "#1F1D1C",
-    borderWidth: 1,
-    borderColor: "rgba(43,36,31,0.06)",
-  },
-  formTextArea: {
-    minHeight: 90,
-    textAlignVertical: "top",
-  },
-});
+function createSalaryStyles(pulse: PulseColors, esOscuro: boolean) {
+  const isIOS = Platform.OS === "ios";
+  return StyleSheet.create({
+    screen: { flex: 1, backgroundColor: pulse.background },
+    ambient: { ...StyleSheet.absoluteFill },
+    content: {
+      paddingHorizontal: 21,
+      paddingTop: isIOS ? 12 : 8,
+    },
+    /* Top Bar */
+    topBarContainer: {
+      paddingHorizontal: 21,
+      paddingTop: isIOS ? 6 : 4,
+      paddingBottom: 8,
+      zIndex: 10,
+      backgroundColor: "transparent",
+    },
+    topBar: {
+      height: isIOS ? 54 : 48,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    backButton: {
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: pulse.surfaceElevated,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      alignItems: "center",
+      justifyContent: "center",
+      ...(esOscuro ? {} : SOMBRAS.suave),
+    },
+    topBarLabel: {
+      color: pulse.text,
+      fontSize: isIOS ? 17 : 15,
+      fontWeight: "600",
+      letterSpacing: isIOS ? -0.5 : -0.3,
+    },
+    headerActions: {
+      flexDirection: "row",
+      gap: isIOS ? 10 : 8,
+    },
+    addButton: {
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: pulse.inverse,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    bellButton: {
+      width: isIOS ? 46 : 40,
+      height: isIOS ? 46 : 40,
+      borderRadius: isIOS ? 23 : 20,
+      backgroundColor: pulse.surfaceElevated,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      alignItems: "center",
+      justifyContent: "center",
+      ...(esOscuro ? {} : SOMBRAS.suave),
+    },
+    hero: {
+      marginTop: isIOS ? 22 : 16,
+      marginBottom: isIOS ? 20 : 16,
+      color: pulse.text,
+      fontSize: isIOS ? 34 : 27,
+      lineHeight: isIOS ? 38 : 31,
+      letterSpacing: isIOS ? -1.4 : -0.9,
+      fontWeight: "600",
+    },
+    heroBentoCard: {
+      borderRadius: 24,
+      overflow: "hidden",
+      borderWidth: 1,
+      borderColor: pulse.border,
+      shadowColor: pulse.shadow,
+      shadowOpacity: 0.16,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 5,
+    },
+    heroGradient: {
+      padding: 18,
+      minHeight: 195,
+    },
+    heroHeaderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 14,
+    },
+    heroHeaderLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    heroBentoTitle: {
+      color: pulse.heroText,
+      fontSize: 17,
+      fontWeight: "700",
+      letterSpacing: -0.3,
+    },
+    heroStatusPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      backgroundColor: pulse.pill,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 12,
+    },
+    heroStatusDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+    },
+    heroStatusText: {
+      color: pulse.heroTextSecondary,
+      fontSize: 10,
+      fontWeight: "700",
+    },
+    heroArrowWrap: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: pulse.pill,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    heroBody: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    heroNetCol: {
+      flex: 1.1,
+      paddingRight: 6,
+    },
+    heroNetAmount: {
+      color: pulse.heroText,
+      fontSize: 26,
+      fontWeight: "700",
+      letterSpacing: -0.8,
+    },
+    heroPeriodSubtitle: {
+      color: pulse.heroTextSecondary,
+      fontSize: 11,
+      fontWeight: "500",
+      marginTop: 4,
+      lineHeight: 16,
+    },
+    heroMetricsCol: {
+      flex: 1,
+      gap: 7,
+    },
+    metricCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: pulse.pill,
+      borderRadius: 13,
+      paddingVertical: 6,
+      paddingHorizontal: 9,
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    iconWrap: {
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: pulse.iconSurface,
+      marginRight: 8,
+    },
+    metricText: { flex: 1 },
+    metricValue: {
+      color: pulse.heroText,
+      fontSize: 12.5,
+      fontWeight: "700",
+      letterSpacing: -0.2,
+    },
+    metricLabel: {
+      color: pulse.heroTextSecondary,
+      fontSize: 10,
+      fontWeight: "500",
+      marginTop: 0.5,
+    },
+    loadingCard: {
+      minHeight: 195,
+      borderRadius: 24,
+      backgroundColor: pulse.surfaceElevated,
+      padding: 20,
+      justifyContent: "space-between",
+    },
+    loadingContent: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingTop: 14,
+    },
+    loadingRows: { width: "48%", gap: 8 },
+    sectionHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginTop: 26,
+      marginBottom: 14,
+    },
+    sectionTitle: {
+      color: pulse.text,
+      fontSize: 24,
+      fontWeight: "600",
+      letterSpacing: -0.8,
+    },
+    viewAll: { color: pulse.textSecondary, fontSize: 13, fontWeight: "600" },
+    verCompletoPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      backgroundColor: pulse.pill,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 12,
+    },
+    countBadgeText: { color: pulse.textSecondary, fontSize: 13, fontWeight: "600" },
+    chips: { gap: 9, paddingRight: 20 },
+    chip: {
+      height: 50,
+      borderRadius: 25,
+      paddingHorizontal: 9,
+      paddingRight: 17,
+      backgroundColor: pulse.surfaceElevated,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    chipActive: { backgroundColor: pulse.chipActive, borderColor: pulse.chipActive },
+    chipCount: {
+      minWidth: 32,
+      height: 32,
+      paddingHorizontal: 8,
+      borderRadius: 16,
+      backgroundColor: pulse.pill,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    chipCountActive: { backgroundColor: pulse.chipCountActive },
+    chipCountText: { color: pulse.text, fontSize: 14, fontWeight: "700" },
+    chipLabel: { color: pulse.textSecondary, fontSize: 14, fontWeight: "600" },
+    chipLabelActive: { color: pulse.chipTextActive, fontWeight: "700" },
+    breakdownCard: {
+      padding: 18,
+      borderRadius: 24,
+      backgroundColor: pulse.surface,
+      ...(esOscuro ? {} : SOMBRAS.suave),
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    linesWrapper: { marginVertical: 12, gap: 6 },
+    breakdownLine: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: 4,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: pulse.border,
+    },
+    breakdownLineLabel: { color: pulse.textSecondary, fontSize: 13, fontWeight: "500" },
+    breakdownLineLabelBold: { color: pulse.text, fontWeight: "700" },
+    breakdownLineValue: { color: pulse.text, fontSize: 13, fontWeight: "600" },
+    breakdownLineValueBold: { color: pulse.text, fontWeight: "700" },
+    breakdownTotalRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      backgroundColor: pulse.surfaceElevated,
+      borderRadius: 16,
+      padding: 14,
+      marginTop: 8,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    breakdownTotalLabel: { color: pulse.text, fontSize: 13, fontWeight: "700" },
+    breakdownTotalDate: { color: pulse.textSecondary, fontSize: 11, fontWeight: "500", marginTop: 2 },
+    breakdownTotalValue: {
+      color: pulse.text,
+      fontSize: 18,
+      fontWeight: "700",
+      letterSpacing: -0.3,
+    },
+    docActionsGrid: {
+      flexDirection: "row",
+      gap: 7,
+      marginBottom: 10,
+    },
+    docBtn: {
+      flex: 1,
+      minHeight: 40,
+      borderRadius: 14,
+      backgroundColor: pulse.surfaceElevated,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 4,
+      paddingHorizontal: 4,
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    docBtnIconWrap: {
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    docBtnText: {
+      fontSize: 10.5,
+      fontWeight: "700",
+      color: pulse.text,
+      letterSpacing: -0.2,
+    },
+    primaryActionButton: {
+      minHeight: 48,
+      borderRadius: 24,
+      backgroundColor: pulse.inverse,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+    },
+    primaryActionButtonText: {
+      color: pulse.textInverse,
+      fontSize: 13.5,
+      fontWeight: "700",
+      letterSpacing: -0.1,
+    },
+    paymentsList: {
+      marginTop: 14,
+      gap: 12,
+    },
+    paymentCard: {
+      minHeight: 145,
+      padding: 18,
+      borderRadius: 24,
+      backgroundColor: pulse.surface,
+      justifyContent: "space-between",
+      ...(esOscuro ? {} : SOMBRAS.suave),
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    recordTop: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    statusPill: {
+      minHeight: 29,
+      borderRadius: 15,
+      paddingHorizontal: 10,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: pulse.pill,
+    },
+    statusDot: { width: 7, height: 7, borderRadius: 4 },
+    statusText: { color: pulse.text, fontSize: 11, fontWeight: "700" },
+    arrowButton: {
+      width: 39,
+      height: 39,
+      borderRadius: 20,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: pulse.pill,
+    },
+    verCompletoCardBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      backgroundColor: pulse.pill,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 12,
+    },
+    verCompletoCardText: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: pulse.text,
+    },
+    paymentCardBody: { marginTop: 12 },
+    paymentCardTitle: {
+      color: pulse.text,
+      fontSize: 18,
+      fontWeight: "600",
+      letterSpacing: -0.55,
+    },
+    paymentCardAmount: {
+      color: pulse.text,
+      fontSize: 20,
+      fontWeight: "700",
+      letterSpacing: -0.4,
+      marginTop: 4,
+    },
+    recordFooter: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginTop: 18,
+    },
+    timeRow: { flexDirection: "row", alignItems: "center", gap: 7 },
+    time: { color: pulse.textSecondary, fontSize: 12, fontWeight: "600" },
+    dimensionDots: { flexDirection: "row" },
+    dimensionDot: {
+      width: 27,
+      height: 27,
+      borderRadius: 14,
+      borderWidth: 2,
+      borderColor: pulse.surface,
+      marginLeft: -7,
+    },
+    shortcuts: { gap: 10 },
+    shortcut: {
+      minHeight: 64,
+      borderRadius: 18,
+      paddingHorizontal: 15,
+      paddingVertical: 12,
+      backgroundColor: pulse.surface,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      flexDirection: "row",
+      alignItems: "center",
+      ...(esOscuro ? {} : SOMBRAS.suave),
+    },
+    shortcutIcon: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: pulse.iconSurface,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 12,
+    },
+    shortcutCopy: { flex: 1, justifyContent: "center" },
+    shortcutTitle: {
+      color: pulse.text,
+      fontSize: 14,
+      fontWeight: "700",
+      lineHeight: 18,
+      includeFontPadding: false,
+    },
+    shortcutDetail: {
+      color: pulse.textSecondary,
+      fontSize: 11,
+      fontWeight: "500",
+      marginTop: 2,
+      lineHeight: 14,
+      includeFontPadding: false,
+    },
+    flexModal: { flex: 1 },
+    modalContenido: {
+      backgroundColor: pulse.background,
+    },
+    modalHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: 20,
+      paddingTop: 8,
+      paddingBottom: 14,
+    },
+    modalCloseBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: pulse.pill,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    modalHeaderCopy: {
+      flex: 1,
+      marginHorizontal: 12,
+      alignItems: "center",
+    },
+    modalSuperTitle: {
+      fontSize: 10,
+      fontWeight: "700",
+      color: pulse.textTertiary,
+      letterSpacing: 0.5,
+    },
+    modalMainTitle: {
+      fontSize: 17,
+      fontWeight: "700",
+      color: pulse.text,
+      letterSpacing: -0.3,
+      marginTop: 2,
+    },
+    scrollModal: {
+      paddingHorizontal: 20,
+      paddingBottom: 36,
+      gap: 12,
+    },
+    modalHeroCard: {
+      backgroundColor: pulse.surfaceElevated,
+      borderRadius: 20,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    modalHeroLabel: {
+      fontSize: 10.5,
+      fontWeight: "700",
+      color: pulse.textTertiary,
+      letterSpacing: 0.5,
+    },
+    modalHeroAmount: {
+      fontSize: 28,
+      fontWeight: "700",
+      color: pulse.text,
+      letterSpacing: -0.6,
+      marginTop: 4,
+    },
+    modalHeroFooter: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginTop: 10,
+    },
+    modalStatusPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: pulse.pill,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 12,
+    },
+    modalDateText: { fontSize: 11.5, fontWeight: "500", color: pulse.textSecondary },
+    modalDocGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "space-between",
+      rowGap: 8,
+    },
+    modalDocItem: {
+      width: "48%",
+      backgroundColor: pulse.surface,
+      borderRadius: 16,
+      padding: 12,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      ...(esOscuro ? {} : SOMBRAS.suave),
+    },
+    modalDocIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: pulse.pill,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    modalDocTextWrap: { flex: 1 },
+    modalDocTitle: { fontSize: 12.5, fontWeight: "700", color: pulse.text },
+    modalDocSubtitle: { fontSize: 10.5, fontWeight: "500", color: pulse.textSecondary, marginTop: 1 },
+    modalConstanciaTitle: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: pulse.text,
+      marginTop: 4,
+      letterSpacing: -0.3,
+    },
+    modalConstanciaDesc: {
+      fontSize: 12.5,
+      color: pulse.textSecondary,
+      lineHeight: 18,
+      marginTop: 6,
+    },
+    modalParagraph: {
+      fontSize: 12.5,
+      color: pulse.textSecondary,
+      lineHeight: 18,
+      marginTop: 4,
+    },
+    modalSectionCard: {
+      backgroundColor: pulse.surfaceElevated,
+      borderRadius: 18,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: pulse.border,
+      ...(esOscuro ? {} : SOMBRAS.suave),
+    },
+    modalSectionTitle: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: pulse.text,
+      marginBottom: 8,
+      letterSpacing: -0.2,
+    },
+    modalLineRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: 6,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: pulse.border,
+    },
+    modalLineLabel: { fontSize: 13, fontWeight: "500", color: pulse.textSecondary },
+    modalLineValue: { fontSize: 13, fontWeight: "600", color: pulse.text },
+    modalLineTotal: { borderBottomWidth: 0, paddingTop: 10 },
+    modalLineTotalLabel: { fontSize: 13.5, fontWeight: "700", color: pulse.text },
+    modalLineTotalValue: { fontSize: 14, fontWeight: "700", color: pulse.text },
+    modalInfoRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: 6,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: pulse.border,
+    },
+    modalInfoKey: { fontSize: 12.5, fontWeight: "500", color: pulse.textSecondary },
+    modalInfoVal: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: pulse.text,
+      maxWidth: "65%",
+      textAlign: "right",
+    },
+    modalSealCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: pulse.surfaceElevated,
+      padding: 12,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    modalSealText: {
+      fontSize: 11.5,
+      color: pulse.textSecondary,
+      fontWeight: "500",
+      flex: 1,
+      lineHeight: 16,
+    },
+    modalPrimaryBtn: {
+      minHeight: 50,
+      borderRadius: 25,
+      backgroundColor: pulse.inverse,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      marginTop: 8,
+    },
+    modalPrimaryBtnText: {
+      color: pulse.textInverse,
+      fontSize: 14,
+      fontWeight: "700",
+      letterSpacing: -0.1,
+    },
+    modalFormInstructions: {
+      fontSize: 13,
+      color: pulse.textSecondary,
+      lineHeight: 18,
+      marginBottom: 14,
+    },
+    formGroup: { marginBottom: 14 },
+    formLabel: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: pulse.text,
+      marginBottom: 6,
+    },
+    formInput: {
+      backgroundColor: pulse.surface,
+      borderRadius: 14,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      fontSize: 13.5,
+      color: pulse.text,
+      borderWidth: 1,
+      borderColor: pulse.border,
+    },
+    formTextArea: {
+      minHeight: 90,
+      textAlignVertical: "top",
+    },
+  });
+}
