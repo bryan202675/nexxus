@@ -1,10 +1,6 @@
 import React from "react";
 import { StyleSheet, View } from "react-native";
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  withTiming,
-} from "react-native-reanimated";
+import { CheckInProgressDot } from "./CheckInProgressDot";
 
 export default function CheckInProgress({
   step,
@@ -22,30 +18,7 @@ export default function CheckInProgress({
         const isActive = i + 1 === step;
         const isPast = i + 1 < step;
 
-        const animatedStyle = useAnimatedStyle(() => {
-          return {
-            width: withTiming(isActive ? 22 : 6, {
-              duration: 250,
-              easing: Easing.out(Easing.cubic),
-            }),
-            backgroundColor: withTiming(
-              isActive
-                ? dark
-                  ? "#FFFFFF"
-                  : "#17141B"
-                : isPast
-                ? dark
-                  ? "rgba(255,255,255,0.4)"
-                  : "rgba(23,20,27,0.3)"
-                : dark
-                ? "rgba(255,255,255,0.12)"
-                : "rgba(23,20,27,0.1)",
-              { duration: 250 }
-            ),
-          };
-        });
-
-        return <Animated.View key={i} style={[styles.dot, animatedStyle]} />;
+        return <CheckInProgressDot key={i} active={isActive} past={isPast} dark={dark} />;
       })}
     </View>
   );
@@ -58,9 +31,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 7,
-  },
-  dot: {
-    height: 6,
-    borderRadius: 3,
   },
 });
