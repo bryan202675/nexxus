@@ -42,7 +42,6 @@ interface DetalleTareaModalProps {
   visible: boolean;
   tarea: Task | null;
   onClose: () => void;
-  onCambiarEstado: (id: string, estado: Task['estado']) => void;
   onAbrirChat?: (tarea: Task) => void;
 }
 
@@ -92,7 +91,6 @@ export default function DetalleTareaModal({
   visible,
   tarea,
   onClose,
-  onCambiarEstado,
   onAbrirChat,
 }: DetalleTareaModalProps) {
   const { colores, esOscuro } = useTemaMobile();
@@ -220,7 +218,6 @@ export default function DetalleTareaModal({
     setEstado(nuevoEstado);
     const nuevoProgreso = nuevoEstado === 'completada' ? 100 : nuevoEstado === 'pendiente' ? 0 : Math.max(progreso, 25);
     setProgreso(nuevoProgreso);
-    onCambiarEstado(tarea!.id, nuevoEstado);
     await guardarCambios({ estado: nuevoEstado, progreso: nuevoProgreso });
   };
 

@@ -357,7 +357,6 @@ export default function CentroTareas({
           setSelectedTaskId(null);
           setLinkedTask(null);
         }}
-        onCambiarEstado={cambiarEstadoTarea}
         onAbrirChat={() => navigation.navigate("ChatIA")}
       />
     </SafeAreaView>
