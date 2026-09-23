@@ -13,6 +13,7 @@ function mapRow(row: Record<string, any>): Notification {
     tipo: row.tipo ?? 'info',
     leida: row.leida,
     fecha: row.created_at,
+    datos: row.datos ?? undefined,
   };
 }
 

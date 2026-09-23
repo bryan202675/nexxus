@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FlatList,
   Image,
@@ -34,15 +34,19 @@ import { useTemaMobile } from "@/presentation/context/TemaMobileContext";
 import { SOMBRAS } from "@/shared/constants/diseno";
 import { Task } from "domain/entities/Task";
 import { useUserTabBottomPadding } from "@/presentation/hooks/useUserTabBottomPadding";
+import { useCases } from "@/infrastructure/container";
 
 const Text = AdminTranslatedText;
 type Filter = "todas" | "pendientes" | "completadas" | "urgentes";
 type Navigation = { navigate: (route: string) => void; goBack: () => void };
+type Route = { params?: { taskId?: string } };
 
 export default function CentroTareas({
   navigation,
+  route,
 }: {
   navigation: Navigation;
+  route?: Route;
 }) {
   const { esOscuro, colores } = useTemaMobile();
   const styles = createStyles(colores);
@@ -54,6 +58,7 @@ export default function CentroTareas({
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [monthPickerVisible, setMonthPickerVisible] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [linkedTask, setLinkedTask] = useState<Task | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [monthAnchor, setMonthAnchor] = useState(() => {
     const date = new Date();
@@ -81,9 +86,29 @@ export default function CentroTareas({
   }, []);
 
   const selectedTask = useMemo(
-    () => tareas.find((task) => task.id === selectedTaskId) ?? null,
-    [selectedTaskId, tareas]
+    () => tareas.find((task) => task.id === selectedTaskId) ?? linkedTask,
+    [linkedTask, selectedTaskId, tareas]
   );
+  useEffect(() => {
+    const taskId = route?.params?.taskId;
+    if (!taskId) return;
+    const localTask = tareas.find((task) => task.id === taskId);
+    if (localTask) {
+      setLinkedTask(null);
+      setSelectedTaskId(localTask.id);
+      return;
+    }
+    let active = true;
+    void useCases.tasks.getById.execute(taskId).then((task) => {
+      if (active && task) {
+        setLinkedTask(task);
+        setSelectedTaskId(task.id);
+      }
+    }).catch(() => {
+      if (active) setLinkedTask(null);
+    });
+    return () => { active = false; };
+  }, [route?.params?.taskId, tareas]);
   const relevantTasks = useMemo(() => {
     if (!selectedDate) return tareas;
     return tareas.filter((task) => taskMatchesDay(task, selectedDate));
@@ -328,7 +353,10 @@ export default function CentroTareas({
       <DetalleTareaModal
         visible={selectedTask !== null}
         tarea={selectedTask}
-        onClose={() => setSelectedTaskId(null)}
+        onClose={() => {
+          setSelectedTaskId(null);
+          setLinkedTask(null);
+        }}
         onCambiarEstado={cambiarEstadoTarea}
         onAbrirChat={() => navigation.navigate("ChatIA")}
       />

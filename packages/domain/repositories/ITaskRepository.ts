@@ -14,6 +14,7 @@ import { Task } from '../entities/Task';
  */
 export interface ITaskRepository {
   getTasksByUser(userId: string): Promise<Task[]>;
+  getTaskById(taskId: string): Promise<Task | null>;
   subscribeTasksByUser(userId: string, callback: (tasks: Task[]) => void): () => void;
   getTasksByCompany(empresaId: string): Promise<Task[]>;
   getTasksByIds(taskIds: string[]): Promise<Task[]>;

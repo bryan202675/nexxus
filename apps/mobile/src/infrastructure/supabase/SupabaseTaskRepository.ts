@@ -44,6 +44,12 @@ export class SupabaseTaskRepository implements ITaskRepository {
     return (data || []).map(mapRow);
   }
 
+  async getTaskById(taskId: string): Promise<Task | null> {
+    const { data, error } = await supabase.from('tareas').select('*').eq('id', taskId).maybeSingle();
+    if (error) throw error;
+    return data ? mapRow(data) : null;
+  }
+
   subscribeTasksByUser(userId: string, callback: (tasks: Task[]) => void): () => void {
     return subscribeQuery(
       'tareas',

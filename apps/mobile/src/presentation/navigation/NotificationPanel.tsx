@@ -89,7 +89,7 @@ export function NotificationPanel({ visible, items, onNavigate, onClose }: { vis
   if (!visible) return null;
 
   // Declara iconFor; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const iconFor = (item: SignalItem) => item.type === 'approval' ? 'task-alt' : item.type === 'audit' ? 'manage-search' : 'warning-amber';
+  const iconFor = (item: SignalItem) => item.type === 'task' ? 'check-circle' : item.type === 'approval' ? 'task-alt' : item.type === 'audit' ? 'manage-search' : 'warning-amber';
   // Declara colorFor; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const colorFor = (item: SignalItem) => {
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
@@ -101,7 +101,7 @@ export function NotificationPanel({ visible, items, onNavigate, onClose }: { vis
     return item.tone === 'danger' ? theme.danger : item.tone === 'warning' ? theme.warning : item.tone === 'success' ? theme.success : theme.blue;
   };
   // Declara routeFor; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const routeFor = (item: SignalItem) => item.type === 'approval' || item.type === 'alert' ? 'DashboardGeneral' : 'AuditoriaLogs';
+  const routeFor = (item: SignalItem) => item.type === 'task' ? 'GestionPlantilla' : item.type === 'approval' || item.type === 'alert' ? 'DashboardGeneral' : 'AuditoriaLogs';
 
   // Devuelve el JSX que React Native renderiza en pantalla.
   return (

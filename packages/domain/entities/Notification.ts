@@ -16,4 +16,13 @@ export interface Notification {
   tipo: 'tarea' | 'anuncio' | 'privada' | 'info' | 'ausencia' | 'bienestar' | 'aprobacion' | 'mensaje';
   leida: boolean;
   fecha: string;
+  datos?: {
+    tarea_id?: string;
+    empleado_id?: string;
+    empleado_nombre?: string;
+    empleado_avatar?: string;
+    completada_en?: string;
+    proyecto_equipo_sede?: string;
+    destino?: string;
+  };
 }

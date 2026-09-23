@@ -93,6 +93,19 @@ export function useAdminSignals(user: any) {
         type: 'audit',
         tone: 'success',
       })),
+      // Las alertas de tarea se consultan desde la bandeja existente y RLS
+      // devuelve únicamente las filas dirigidas al administrador autenticado.
+      listen('tareas-completadas', 'notificaciones', 'id, titulo, cuerpo, datos, created_at, leida, tipo', (doc) => (
+        doc.tipo === 'tarea' && !doc.leida ? {
+          id: `tarea-completada-${doc.id}`,
+          title: doc.titulo || 'Tarea completada',
+          detail: doc.cuerpo || 'Un colaborador completó una tarea.',
+          type: 'task',
+          tone: 'success',
+          dueDate: doc.created_at,
+          taskId: doc.datos?.tarea_id,
+        } : null
+      )),
     ];
 
     // Devuelve el valor final calculado para esta funcion o caso de uso.

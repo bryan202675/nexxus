@@ -19,7 +19,7 @@ const Text = AdminTranslatedText;
 
 interface Props {
   navigation: {
-    navigate: (screen: string) => void;
+    navigate: (screen: string, params?: Record<string, unknown>) => void;
     goBack?: () => void;
     canGoBack?: () => boolean;
   };
@@ -294,7 +294,9 @@ export default function Notificaciones({ navigation }: Props) {
     setNotificacionSeleccionada(null);
     const tipo = normalizarTipo(item.tipo);
     if (tipo === 'tarea') {
-      navigation.navigate('CentroTareas');
+      const taskId = item.datos?.tarea_id;
+      const appRoute = perfil?.rol === 'jefe' || perfil?.rol === 'jefe_sector' ? 'AppJefe' : 'AppEmpleado';
+      navigation.navigate(appRoute, { screen: 'Tareas', params: taskId ? { taskId } : undefined });
     } else if (tipo === 'ausencia' || tipo === 'aprobacion') {
       navigation.navigate('SolicitudesAusencia');
     } else if (tipo === 'mensaje') {
@@ -738,7 +740,7 @@ export default function Notificaciones({ navigation }: Props) {
                   />
                   <Text style={styles.modalBotonPrimarioTexto}>
                     {notificationSeleccionadaTipo === 'tarea'
-                      ? 'Ir al Centro de Tareas'
+                      ? 'Abrir tarea'
                       : notificationSeleccionadaTipo === 'mensaje'
                       ? 'Abrir Mensajes'
                       : 'Ver Solicitudes'}

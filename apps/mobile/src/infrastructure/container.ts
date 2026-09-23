@@ -30,6 +30,7 @@ import { SubscribeTasks } from 'domain/application/use-cases/tasks/SubscribeTask
 import { DeleteTask } from 'domain/application/use-cases/tasks/DeleteTask';
 import { GetTasksByIds } from 'domain/application/use-cases/tasks/GetTasksByIds';
 import { GetTasksByCompany } from 'domain/application/use-cases/tasks/GetTasksByCompany';
+import { GetTaskById } from 'domain/application/use-cases/tasks/GetTaskById';
 import { GetTaskComments, SubscribeTaskComments, CreateTaskComment, UpdateTaskComment, DeleteTaskComment } from 'domain/application/use-cases/task-comments/TaskCommentUseCases';
 import { GetTaskSubtasks, SubscribeTaskSubtasks, CreateTaskSubtask, ToggleTaskSubtask, DeleteTaskSubtask } from 'domain/application/use-cases/task-subtasks/TaskSubtaskUseCases';
 import { GetTaskAttachments, SubscribeTaskAttachments, CreateTaskAttachment, DeleteTaskAttachment } from 'domain/application/use-cases/task-attachments/TaskAttachmentUseCases';
@@ -194,6 +195,7 @@ export const useCases = {
     remove: new DeleteTask(taskRepository),
     getByIds: new GetTasksByIds(taskRepository),
     getByCompany: new GetTasksByCompany(taskRepository),
+    getById: new GetTaskById(taskRepository),
     comments: {
       get: new GetTaskComments(taskCommentRepository),
       subscribe: new SubscribeTaskComments(taskCommentRepository),

@@ -34,6 +34,7 @@ import { useAdminSignals } from './useAdminSignals';
 import { NotificationPanel } from './NotificationPanel';
 import { AdminProfilePanel } from './AdminProfilePanel';
 import { BannerPantalla } from './BannerPantalla';
+import { useAdminToast } from '../screens/admin/adminToast';
 
 const Text = AdminTranslatedText;
 const TextInput = AdminTranslatedTextInput;
@@ -79,9 +80,24 @@ export function NavbarHeader({ routeName, sidebarOpen, setSidebarOpen }: { route
   const [profileOpen, setProfileOpen] = useState(false);
   // Inicializa adminSignals; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const adminSignals = useAdminSignals(user);
+  const adminToast = useAdminToast();
+  const taskSignalsSeen = useRef<Set<string> | null>(null);
   const isSuperAdmin = isSuperAdminRole(user?.rol);
   // Inicializa entrada; obtiene estado, traducciones, referencias o contexto necesarios para esta pantalla.
   const entrada = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const taskIds = adminSignals.filter((item) => item.type === 'task').map((item) => item.id);
+    if (taskSignalsSeen.current === null) {
+      taskSignalsSeen.current = new Set(taskIds);
+      return;
+    }
+    taskIds.filter((id) => !taskSignalsSeen.current?.has(id)).forEach((id) => {
+      const signal = adminSignals.find((item) => item.id === id);
+      if (signal) adminToast.success({ title: signal.title, description: signal.detail });
+    });
+    taskSignalsSeen.current = new Set(taskIds);
+  }, [adminSignals, adminToast]);
 
   // Escuchar evento global para abrir el panel de perfil desde otras pantallas (ej. ConfiguracionAdmin)
   useEffect(() => {
