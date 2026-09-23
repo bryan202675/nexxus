@@ -32,7 +32,7 @@ const Navbar = (props) => {
   };
 
   return (
-    <nav className="sticky top-4 z-40 flex flex-col gap-3 rounded-xl bg-white/10 p-2 backdrop-blur-xl dark:bg-[#00000080] md:flex-row md:items-center md:justify-between">
+    <nav className="sticky top-4 z-50 flex flex-col gap-3 rounded-xl bg-white/10 p-2 backdrop-blur-xl dark:bg-[#00000080] md:flex-row md:items-center md:justify-between">
       <div className="ml-[6px]">
         <div className="h-6 w-full pt-1">
           <span className="text-sm font-normal text-navy-700 dark:text-white">

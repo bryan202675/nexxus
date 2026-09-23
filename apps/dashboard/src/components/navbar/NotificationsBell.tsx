@@ -14,6 +14,8 @@ const PRIORIDAD_DOT: Record<string, string> = {
   baja: "bg-gray-400",
 };
 
+const esAlertaCritica = (tipo: string) => tipo === "bienestar" || tipo === "asistencia_geolocalizacion";
+
 function tiempoRelativo(iso: string) {
   const diffMs = Date.now() - new Date(iso).getTime();
   const minutos = Math.round(diffMs / 60000);
@@ -60,7 +62,7 @@ export default function NotificationsBell() {
         children={
           <div className="flex w-80 flex-col rounded-[20px] bg-white shadow-xl shadow-shadow-500 dark:!bg-navy-700 dark:shadow-none">
             <div className="flex items-center justify-between border-b border-gray-100 p-4 dark:border-white/10">
-              <p className="text-sm font-bold text-navy-700 dark:text-white">Alertas de bienestar</p>
+              <p className="text-sm font-bold text-navy-700 dark:text-white">Notificaciones</p>
               {unreadCount > 0 ? (
                 <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-bold text-red-500">{unreadCount} sin leer</span>
               ) : null}
@@ -100,7 +102,7 @@ export default function NotificationsBell() {
                     onClick={() => abrirDetalle(alerta)}
                     className="flex w-full items-start gap-3 border-b border-gray-50 px-4 py-3 text-left transition hover:bg-gray-50 dark:border-white/5 dark:hover:bg-white/5"
                   >
-                    <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${PRIORIDAD_DOT[alerta.prioridad] || PRIORIDAD_DOT.media}`} />
+                    <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${esAlertaCritica(alerta.tipo) ? (PRIORIDAD_DOT[alerta.prioridad] || PRIORIDAD_DOT.media) : "bg-emerald-500"}`} />
                     <span className="min-w-0 flex-1">
                       <span className="flex items-start justify-between gap-2">
                         <span className={`truncate text-sm ${alerta.leida ? "font-medium text-gray-600 dark:text-white/70" : "font-bold text-navy-700 dark:text-white"}`}>
@@ -124,7 +126,7 @@ export default function NotificationsBell() {
               onClick={() => navigate(cuidadoPath)}
               className="border-t border-gray-100 p-3 text-center text-xs font-bold text-brand-600 hover:underline dark:border-white/10 dark:text-brand-300"
             >
-              Ver todo en Cuidado del Equipo
+              Ver alertas de bienestar
             </button>
           </div>
         }

@@ -39,6 +39,7 @@ import { useTemaMobile } from '@/presentation/context/TemaMobileContext';
 import { useUserTabBottomPadding } from '@/presentation/hooks/useUserTabBottomPadding';
 import BotonAnimado from '@/presentation/components/BotonAnimado';
 import ModalShell from '@/presentation/components/ui/ModalShell';
+import { useAttendanceGeolocation } from '@/presentation/hooks/useAttendanceGeolocation';
 
 type PulseColors = ReturnType<typeof useTemaMobile>['colores']['pulso'];
 
@@ -55,6 +56,7 @@ interface Props {
 export default function ControlAsistencia({ navigation }: Props) {
   const { t } = useTranslation();
   const { perfil, registrarEventoAsistencia, metrics, crearSolicitudInterna } = useContextoUsuario();
+  const { register: registerGeoAttendance, status: geoStatus } = useAttendanceGeolocation();
   const { colores, esOscuro } = useTemaMobile();
   const pulse = colores.pulso;
   const bottomPadding = useUserTabBottomPadding(96);
@@ -163,7 +165,15 @@ export default function ControlAsistencia({ navigation }: Props) {
   const manejarIniciarEntrada = async () => {
     setRegistrando(true);
     try {
-      await registrarEventoAsistencia('entrada');
+      const geo = await registerGeoAttendance('entrada');
+      if (geo.estado !== 'validado') {
+        const distancia = geo.distanciaM != null ? `Estás aproximadamente a ${Math.round(geo.distanciaM)} m del punto autorizado.` : 'No fue posible asociar una geocerca para este fichaje.';
+        const precision = ` Precisión aproximada: ±${Math.round(geo.precisionM)} m.`;
+        Alert.alert(
+          geo.estado === 'fuera_de_zona' ? 'Estás fuera de la zona autorizada' : 'Fichaje pendiente de revisión',
+          `${distancia}${geo.radioM ? ` El radio permitido es ${geo.radioM} m.` : ''}${precision} Tu jornada queda pendiente de revisión y el administrador fue notificado.`,
+        );
+      }
       const ahoraIso = new Date().toISOString();
       const ahoraHora = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
       await AsyncStorage.setItem('@asistencia_inicio', ahoraIso);
@@ -175,7 +185,7 @@ export default function ControlAsistencia({ navigation }: Props) {
       setEnPausa(false);
       setSegundos(0);
     } catch (e: any) {
-      Alert.alert(t('common.error', { defaultValue: 'Error' }), `${t('controlAsistencia.alert_error_event', { defaultValue: 'No se pudo registrar la entrada.' })}\n\nDetalle: ${e.message || e}`);
+      Alert.alert(t('common.error', { defaultValue: 'Error' }), `${t('controlAsistencia.alert_error_event', { defaultValue: 'No se pudo registrar la entrada.' })}\n\n${e instanceof Error ? e.message : 'Intenta nuevamente.'}`);
     } finally {
       setRegistrando(false);
     }
@@ -215,7 +225,11 @@ export default function ControlAsistencia({ navigation }: Props) {
     setRegistrando(true);
     try {
       const tiempoTrabajado = formatearTiempo(segundos);
-      await registrarEventoAsistencia('salida');
+      const geo = await registerGeoAttendance('salida');
+      if (geo.estado !== 'validado') {
+        const distancia = geo.distanciaM != null ? `Estás aproximadamente a ${Math.round(geo.distanciaM)} m del punto autorizado.` : 'No fue posible validar la geocerca.';
+        Alert.alert(geo.estado === 'fuera_de_zona' ? 'Salida pendiente de revisión' : 'Salida pendiente de revisión', `${distancia}${geo.radioM ? ` El radio permitido es ${geo.radioM} m.` : ''} Precisión aproximada: ±${Math.round(geo.precisionM)} m. El administrador fue notificado.`);
+      }
       await AsyncStorage.removeItem('@asistencia_inicio');
       await AsyncStorage.removeItem('@asistencia_hora_entrada');
       await AsyncStorage.removeItem('@asistencia_en_pausa');
@@ -230,7 +244,7 @@ export default function ControlAsistencia({ navigation }: Props) {
         t('controlAsistencia.success_end_msg', { defaultValue: `Has completado ${tiempoTrabajado} de jornada el día de hoy.`, tiempo: tiempoTrabajado })
       );
     } catch (e: any) {
-      Alert.alert(t('common.error', { defaultValue: 'Error' }), `${t('controlAsistencia.alert_error_event', { defaultValue: 'No se pudo registrar la salida.' })}\n\nDetalle: ${e.message || e}`);
+      Alert.alert(t('common.error', { defaultValue: 'Error' }), `${t('controlAsistencia.alert_error_event', { defaultValue: 'No se pudo registrar la salida.' })}\n\n${e instanceof Error ? e.message : 'Intenta nuevamente.'}`);
     } finally {
       setRegistrando(false);
     }
@@ -362,7 +376,7 @@ export default function ControlAsistencia({ navigation }: Props) {
                       <Feather name="play" size={18} color={pulse.textInverse} />
                     )}
                     <Text style={estilos.textoBotonPrimario}>
-                      {registrando ? 'Registrando Entrada...' : t('controlAsistencia.btn_start', { defaultValue: 'Iniciar jornada' })}
+                      {registrando ? (geoStatus === 'capturing' ? 'Obteniendo ubicación...' : geoStatus === 'sending' ? 'Validando ubicación...' : 'Preparando ubicación...') : t('controlAsistencia.btn_start', { defaultValue: 'Iniciar jornada' })}
                     </Text>
                   </View>
                 </BotonAnimado>
@@ -395,7 +409,7 @@ export default function ControlAsistencia({ navigation }: Props) {
                         <Feather name="square" size={16} color="#ffffff" />
                       )}
                       <Text style={estilos.textoBotonSalida}>
-                        {t('controlAsistencia.btn_end', { defaultValue: 'Finalizar jornada' })}
+                        {registrando && (geoStatus === 'capturing' || geoStatus === 'sending') ? 'Validando ubicación...' : t('controlAsistencia.btn_end', { defaultValue: 'Finalizar jornada' })}
                       </Text>
                     </View>
                   </BotonAnimado>

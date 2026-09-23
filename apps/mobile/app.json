@@ -31,6 +31,12 @@
       "expo-font",
       "expo-audio",
       [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Nexxus usa tu ubicación únicamente al registrar entrada o salida para verificar la sede autorizada. No realiza seguimiento continuo."
+        }
+      ],
+      [
         "expo-notifications",
         {
           "icon": "./assets/logoNexxus2 (1) (1).png",

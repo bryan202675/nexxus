@@ -66,8 +66,8 @@ function notifyBrowser(alerta: TeamCareAlert) {
   }
 }
 
-// Unica suscripcion realtime a notificaciones tipo='bienestar', compartida por el
-// timbre de la navbar y el badge del sidebar (ambos consumen useTeamCareAlerts()).
+// Una sola suscripción Realtime alimenta el timbre existente con las alertas
+// críticas y las finalizaciones de tareas dirigidas al administrador.
 // Se monta una sola vez en apps/dashboard/src/layouts/admin/index.tsx.
 export function TeamCareAlertsProvider({ children }: { children: React.ReactNode }) {
   const { user, rol, empresaId } = useAuth();

@@ -97,15 +97,14 @@ export function subscribeNotificaciones(empresaId, callback, onError) {
   return subscribeTable("notificaciones", empresaId, { limit: 500 })(callback, onError);
 }
 
-// Solo las alertas de bienestar (tipo='bienestar') -- fuente compartida del timbre de
-// la navbar y del badge del sidebar en TeamCareAlertsContext. RLS ya restringe estas
-// filas a es_jefe() o al propio empleado (ver migracion cuidado_equipo_bienestar).
+// La bandeja existente conserva las alertas críticas de bienestar/asistencia y
+// añade eventos de tarea con su prioridad normal; no se crea otro inbox.
 export function subscribeAlertasBienestar(empresaId, callback, onError, limite = 300) {
   return subscribeTable("notificaciones", empresaId, {
     orderColumn: "created_at",
     ascending: false,
     limit: limite,
-    extraFilter: (q) => q.in("tipo", ["bienestar", "tarea"]),
+    extraFilter: (q) => q.in("tipo", ["bienestar", "asistencia_geolocalizacion", "tarea"]),
   })(callback, onError);
 }
 

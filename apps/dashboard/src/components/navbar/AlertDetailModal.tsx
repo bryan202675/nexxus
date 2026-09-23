@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { MdOutlineFavorite, MdCheckCircle, MdOutlineArrowForward } from "react-icons/md";
+import { MdOutlineFavorite, MdCheckCircle, MdOutlineArrowForward, MdOutlineLocationOn, MdOutlineAssignmentTurnedIn } from "react-icons/md";
 import Modal from "components/nexxus/Modal";
 import { useAuth } from "context/AuthContext";
 import { useTeamCareAlerts, TeamCareAlert } from "context/TeamCareAlertsContext";
@@ -28,14 +28,16 @@ export default function AlertDetailModal({ alert, onClose }: { alert: TeamCareAl
   if (!alert) return null;
   const prioridad = PRIORIDAD_ESTILO[alert.prioridad] || PRIORIDAD_ESTILO.media;
   const motivo = typeof alert.datos?.motivo === "string" ? alert.datos.motivo : "";
+  const isGeoAlert = alert.tipo === "asistencia_geolocalizacion";
+  const isTaskCompleted = alert.tipo === "tarea";
   const cuidadoPath = ["jefe", "jefe_sector"].includes(rol) ? routeUrl("/admin", "jefe-cuidado-equipo") : routeUrl("/admin", "empresa-cuidado-equipo");
 
   return (
-    <Modal isOpen={!!alert} onClose={onClose} title="Alerta de bienestar" width="max-w-lg">
+    <Modal isOpen={!!alert} onClose={onClose} title={isTaskCompleted ? "Tarea completada" : isGeoAlert ? "Alerta crítica de asistencia" : "Alerta de bienestar"} width="max-w-lg">
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-500/10 text-red-500">
-            <MdOutlineFavorite className="h-5 w-5" />
+          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${isTaskCompleted ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-500"}`}>
+            {isTaskCompleted ? <MdOutlineAssignmentTurnedIn className="h-5 w-5" /> : isGeoAlert ? <MdOutlineLocationOn className="h-5 w-5" /> : <MdOutlineFavorite className="h-5 w-5" />}
           </div>
           <div className="flex-1">
             <p className="text-base font-bold text-navy-700 dark:text-white">{alert.titulo}</p>
@@ -65,15 +67,15 @@ export default function AlertDetailModal({ alert, onClose }: { alert: TeamCareAl
         <div className="mt-1 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4 dark:border-white/10">
           <button
             type="button"
-            onClick={() => {
-              onClose();
-              navigate(cuidadoPath);
+              onClick={() => {
+                onClose();
+              navigate(isTaskCompleted ? routeUrl("/admin", ["jefe", "jefe_sector"].includes(rol) ? "jefe-tareas-equipo" : "empresa-plantilla") : isGeoAlert ? routeUrl("/admin", "empresa-asistencia") : cuidadoPath);
             }}
             className="flex items-center gap-1 text-sm font-bold text-brand-600 hover:underline dark:text-brand-300"
           >
-            Ir a Cuidado del Equipo <MdOutlineArrowForward className="h-4 w-4" />
+            {isTaskCompleted ? "Ver tareas" : isGeoAlert ? "Abrir mapa de asistencia" : "Ir a Cuidado del Equipo"} <MdOutlineArrowForward className="h-4 w-4" />
           </button>
-          {!alert.resuelta ? (
+          {!isTaskCompleted && !alert.resuelta ? (
             <button
               type="button"
               onClick={async () => {

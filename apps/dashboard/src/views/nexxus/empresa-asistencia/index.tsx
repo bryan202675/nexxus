@@ -23,6 +23,7 @@ import {
   subscribeDepartamentos,
 } from "services/adminRepository";
 import { formatoFecha } from "services/saFormat";
+import AttendanceGeoPanel from "components/attendance/AttendanceGeoPanel";
 
 const toLocalDateISO = (date: Date = new Date()) => {
   const y = date.getFullYear();
@@ -514,6 +515,7 @@ export default function GestionAsistencia() {
 
   return (
     <div className="flex flex-col gap-6 pb-6">
+      <AttendanceGeoPanel />
       {/* Banner de error */}
       {error && (
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-xl bg-red-50 p-4 text-xs font-bold text-red-600 dark:bg-red-500/10 dark:text-red-400">
