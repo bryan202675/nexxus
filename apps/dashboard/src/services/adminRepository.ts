@@ -105,7 +105,7 @@ export function subscribeAlertasBienestar(empresaId, callback, onError, limite =
     orderColumn: "created_at",
     ascending: false,
     limit: limite,
-    extraFilter: (q) => q.eq("tipo", "bienestar"),
+    extraFilter: (q) => q.in("tipo", ["bienestar", "tarea"]),
   })(callback, onError);
 }
 
