@@ -9,6 +9,7 @@
 import React from "react";
 import { View, Text, StyleSheet, Platform, Image } from "react-native";
 import { MaterialIcons, Feather } from "@expo/vector-icons";
+import { Bell } from "lucide-react-native";
 import { useNavigation } from "@react-navigation/native";
 import { BlurView } from "expo-blur";
 import { COLORES, ESPACIADO, SOMBRAS } from "@/shared/constants/diseno";
@@ -252,10 +253,10 @@ export default function NavbarEnterprise({
                       },
                     ]}
                   >
-                    <Feather
-                      name="bell"
-                      size={Platform.OS === "ios" ? 20 : 17}
+                    <Bell
+                      size={Platform.OS === "ios" ? 19 : 17}
                       color={colores.fondo}
+                      strokeWidth={2.2}
                     />
                     {alertasNoLeidas > 0 && (
                       <View

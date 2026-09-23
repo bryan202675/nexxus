@@ -10,6 +10,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Image, Platform, ScrollView, StyleSheet, TouchableOpacity, View, useWindowDimensions, DeviceEventEmitter } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { Bell } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { useTranslation } from 'react-i18next';
@@ -335,7 +336,7 @@ export function NavbarHeader({ routeName, sidebarOpen, setSidebarOpen }: { route
             {/* BotonAnimado renderiza una pieza visual reutilizable dentro de esta pantalla. */}
             <BotonAnimado style={estilos.iconCircle} onPress={() => setNotificationsOpen((value) => !value)}>
               {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-              <MaterialIcons name="notifications-none" size={17} color={theme.text} />
+              <Bell size={17} color={theme.text} strokeWidth={2} />
               {adminSignals.length > 0 && <View style={estilos.notifDot} />}
             </BotonAnimado>
             {/* BotonAnimado renderiza una pieza visual reutilizable dentro de esta pantalla. */}

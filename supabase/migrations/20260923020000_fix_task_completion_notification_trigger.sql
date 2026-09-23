@@ -1,5 +1,10 @@
--- Correct the completion-transition guard installed by the original migration.
--- The function must proceed only for a transition into `completada`.
+-- Fix task completion notifications:
+-- 1. Reset completion metadata when task transitions away from 'completada'.
+-- 2. Ensure each completion receives a fresh timestamp via clock_timestamp().
+-- 3. Use ON CONFLICT DO NOTHING on tarea_finalizaciones to prevent duplicate key errors.
+-- 4. Authorize super_admin users whose empresa_id may be null or system-wide.
+-- 5. Safe guard department check when departamento_id is null.
+
 create or replace function public.tareas_notificar_finalizacion()
 returns trigger
 language plpgsql
@@ -14,8 +19,17 @@ declare
   v_contexto text;
   v_destinatario record;
 begin
-  if new.estado is distinct from 'completada'
-     or old.estado is not distinct from 'completada' then
+  -- Si el nuevo estado no es completada, limpiar metadatos de finalización si antes estaba completada
+  if new.estado is distinct from 'completada' then
+    if old.estado = 'completada' then
+      new.completada_en := null;
+      new.completada_por := null;
+    end if;
+    return new;
+  end if;
+
+  -- Si ya estaba completada y no cambió de estado, no reenviar notificaciones
+  if old.estado is not distinct from 'completada' then
     return new;
   end if;
 
@@ -25,20 +39,30 @@ begin
 
   select * into v_actor
   from public.usuarios
-  where id = v_actor_id and empresa_id = new.empresa_id and estado_activo and not eliminado;
+  where id = v_actor_id
+    and (empresa_id = new.empresa_id or rol = 'super_admin')
+    and estado_activo
+    and not eliminado;
 
   if not found then
     raise exception 'No autorizado para completar esta tarea';
   end if;
 
-  new.completada_en := coalesce(new.completada_en, now());
+  new.completada_en := clock_timestamp();
   new.completada_por := v_actor_id;
 
   insert into public.tarea_finalizaciones (tarea_id, empresa_id, completada_por, completada_en)
   values (new.id, new.empresa_id, v_actor_id, new.completada_en)
+  on conflict (tarea_id, completada_en) do nothing
   returning id into v_evento_id;
 
-  v_evento_clave := 'task-completed:' || v_evento_id::text;
+  if v_evento_id is null then
+    select id into v_evento_id
+    from public.tarea_finalizaciones
+    where tarea_id = new.id and completada_en = new.completada_en;
+  end if;
+
+  v_evento_clave := 'task-completed:' || coalesce(v_evento_id::text, gen_random_uuid()::text);
   v_contexto := coalesce(
     nullif(new.datos ->> 'proyecto', ''),
     nullif(new.datos ->> 'equipo', ''),
@@ -59,12 +83,15 @@ begin
         u.rol in ('admin', 'admin_empresa')
         or u.id = new.creado_por
         or u.id = v_actor.jefe_id
-        or exists (
-          select 1
-          from public.departamentos d
-          where d.id = v_actor.departamento_id
-            and d.empresa_id = new.empresa_id
-            and d.jefe_id = u.id
+        or (
+          v_actor.departamento_id is not null
+          and exists (
+            select 1
+            from public.departamentos d
+            where d.id = v_actor.departamento_id
+              and d.empresa_id = new.empresa_id
+              and d.jefe_id = u.id
+          )
         )
       )
   loop

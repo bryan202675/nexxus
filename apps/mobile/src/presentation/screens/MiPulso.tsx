@@ -17,6 +17,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { Feather, MaterialIcons } from "@expo/vector-icons";
+import { Bell } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTranslation } from "react-i18next";
 import { AdminTranslatedText } from "@/shared/i18n/AdminTranslatedText";
@@ -242,10 +243,10 @@ export default function MiPulso({ navigation }: { navigation: Navigation }) {
               onPress={() => navigation.navigate("Notificaciones")}
               accessibilityLabel="Abrir notificaciones"
             >
-              <Feather
-                name="bell"
-                size={Platform.OS === "ios" ? 21 : 18}
+              <Bell
+                size={Platform.OS === "ios" ? 20 : 18}
                 color={pulse.icon}
+                strokeWidth={2}
               />
               {(alertasNoLeidas > 0 || pendingNotifications > 0) && (
                 <View style={styles.notificationDot} />

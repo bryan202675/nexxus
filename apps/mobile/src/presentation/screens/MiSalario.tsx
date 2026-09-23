@@ -832,7 +832,7 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
             >
               <View style={styles.heroBentoCard}>
                 <LinearGradient
-                  colors={pulse.heroGradient}
+                  colors={["#222126", "#17161A"]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.heroGradient}
@@ -865,7 +865,7 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
                       <Feather
                         name="arrow-up-right"
                         size={17}
-                        color={pulse.heroTextSecondary}
+                        color="#FFFFFF"
                       />
                     </View>
                   </View>
@@ -883,7 +883,7 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
                     <View style={styles.heroMetricsCol}>
                       <View style={styles.metricCard}>
                         <View style={styles.iconWrap}>
-                          <Feather name="dollar-sign" size={13} color={pulse.heroText} />
+                          <Feather name="dollar-sign" size={13} color="#FFFFFF" />
                         </View>
                         <View style={styles.metricText}>
                           <Text style={styles.metricValue} numberOfLines={1}>
@@ -898,7 +898,7 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
 
                       <View style={styles.metricCard}>
                         <View style={styles.iconWrap}>
-                          <Feather name="pie-chart" size={13} color={pulse.heroText} />
+                          <Feather name="pie-chart" size={13} color="#FFFFFF" />
                         </View>
                         <View style={styles.metricText}>
                           <Text style={styles.metricValue} numberOfLines={1}>
@@ -915,7 +915,7 @@ export default function MiSalario({ navigation }: { navigation: Navigation }) {
 
                       <View style={styles.metricCard}>
                         <View style={styles.iconWrap}>
-                          <Feather name="check-circle" size={13} color={pulse.heroText} />
+                          <Feather name="check-circle" size={13} color="#FFFFFF" />
                         </View>
                         <View style={styles.metricText}>
                           <Text style={styles.metricValue} numberOfLines={1}>
@@ -2467,9 +2467,10 @@ function createSalaryStyles(pulse: PulseColors, esOscuro: boolean) {
       borderRadius: 24,
       overflow: "hidden",
       borderWidth: 1,
-      borderColor: pulse.border,
-      shadowColor: pulse.shadow,
-      shadowOpacity: 0.16,
+      borderColor: esOscuro ? pulse.border : "rgba(255, 255, 255, 0.12)",
+      backgroundColor: "#18191F",
+      shadowColor: "#000000",
+      shadowOpacity: 0.2,
       shadowRadius: 16,
       shadowOffset: { width: 0, height: 6 },
       elevation: 5,
@@ -2490,7 +2491,7 @@ function createSalaryStyles(pulse: PulseColors, esOscuro: boolean) {
       gap: 8,
     },
     heroBentoTitle: {
-      color: pulse.heroText,
+      color: "#FFFFFF",
       fontSize: 17,
       fontWeight: "700",
       letterSpacing: -0.3,
@@ -2499,10 +2500,12 @@ function createSalaryStyles(pulse: PulseColors, esOscuro: boolean) {
       flexDirection: "row",
       alignItems: "center",
       gap: 5,
-      backgroundColor: pulse.pill,
+      backgroundColor: "rgba(255, 255, 255, 0.12)",
       paddingHorizontal: 8,
       paddingVertical: 3,
       borderRadius: 12,
+      borderWidth: 1,
+      borderColor: "rgba(255, 255, 255, 0.08)",
     },
     heroStatusDot: {
       width: 6,
@@ -2510,7 +2513,7 @@ function createSalaryStyles(pulse: PulseColors, esOscuro: boolean) {
       borderRadius: 3,
     },
     heroStatusText: {
-      color: pulse.heroTextSecondary,
+      color: "rgba(255, 255, 255, 0.90)",
       fontSize: 10,
       fontWeight: "700",
     },
@@ -2518,9 +2521,11 @@ function createSalaryStyles(pulse: PulseColors, esOscuro: boolean) {
       width: 28,
       height: 28,
       borderRadius: 14,
-      backgroundColor: pulse.pill,
+      backgroundColor: "rgba(255, 255, 255, 0.12)",
       alignItems: "center",
       justifyContent: "center",
+      borderWidth: 1,
+      borderColor: "rgba(255, 255, 255, 0.08)",
     },
     heroBody: {
       flexDirection: "row",
@@ -2532,13 +2537,13 @@ function createSalaryStyles(pulse: PulseColors, esOscuro: boolean) {
       paddingRight: 6,
     },
     heroNetAmount: {
-      color: pulse.heroText,
+      color: "#FFFFFF",
       fontSize: 26,
       fontWeight: "700",
       letterSpacing: -0.8,
     },
     heroPeriodSubtitle: {
-      color: pulse.heroTextSecondary,
+      color: "rgba(255, 255, 255, 0.70)",
       fontSize: 11,
       fontWeight: "500",
       marginTop: 4,
@@ -2551,12 +2556,12 @@ function createSalaryStyles(pulse: PulseColors, esOscuro: boolean) {
     metricCard: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: pulse.pill,
+      backgroundColor: "rgba(255, 255, 255, 0.08)",
       borderRadius: 13,
       paddingVertical: 6,
       paddingHorizontal: 9,
       borderWidth: 1,
-      borderColor: pulse.border,
+      borderColor: "rgba(255, 255, 255, 0.08)",
     },
     iconWrap: {
       width: 26,
@@ -2564,18 +2569,18 @@ function createSalaryStyles(pulse: PulseColors, esOscuro: boolean) {
       borderRadius: 13,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: pulse.iconSurface,
+      backgroundColor: "rgba(255, 255, 255, 0.12)",
       marginRight: 8,
     },
     metricText: { flex: 1 },
     metricValue: {
-      color: pulse.heroText,
+      color: "#FFFFFF",
       fontSize: 12.5,
       fontWeight: "700",
       letterSpacing: -0.2,
     },
     metricLabel: {
-      color: pulse.heroTextSecondary,
+      color: "rgba(255, 255, 255, 0.70)",
       fontSize: 10,
       fontWeight: "500",
       marginTop: 0.5,

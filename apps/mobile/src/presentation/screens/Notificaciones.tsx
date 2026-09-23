@@ -1,7 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FlatList, Image, Platform, StatusBar, StyleSheet, TouchableOpacity, View, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather, MaterialIcons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
+import {
+  Bell,
+  CalendarDays,
+  CheckCircle2,
+  ClipboardList,
+  Heart,
+  Megaphone,
+  MessageSquare,
+  ShieldCheck,
+} from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { Easing, FadeInDown, FadeOut, Layout } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
@@ -56,32 +66,130 @@ const actorDesdeMensaje = (mensaje: string) => {
 const iniciales = (nombre: string) =>
   nombre.split(' ').slice(0, 2).map((parte) => parte[0]).join('').toUpperCase();
 
-const etiquetaTipo = (tipo: string) => {
-  const etiquetas: Record<string, string> = {
-    bienestar: 'Bienestar',
-    tarea: 'Tarea',
-    anuncio: 'Anuncio',
-    ausencia: 'Solicitud',
-    aprobacion: 'Aprobación',
-    mensaje: 'Mensaje',
-    privada: 'Privada',
-    info: 'Aviso',
-  };
-  return etiquetas[tipo] || 'Aviso';
+export interface TipoNotificacionConfig {
+  label: string;
+  icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number; style?: any }>;
+  bg: string;
+  border: string;
+  iconColor: string;
+  pillBg: string;
+  pillBorder: string;
+  textColor: string;
+  badgeBg: string;
+  badgeIconColor: string;
+}
+
+export const obtenerConfigTipo = (tipoRaw: string, esOscuro: boolean): TipoNotificacionConfig => {
+  const tipo = normalizarTipo(tipoRaw);
+  switch (tipo) {
+    case 'bienestar':
+      return {
+        label: 'Bienestar',
+        icon: Heart,
+        bg: esOscuro ? 'rgba(251, 113, 133, 0.16)' : 'rgba(244, 63, 94, 0.10)',
+        border: esOscuro ? 'rgba(251, 113, 133, 0.32)' : 'rgba(244, 63, 94, 0.22)',
+        iconColor: esOscuro ? '#FB7185' : '#E11D48',
+        pillBg: esOscuro ? 'rgba(251, 113, 133, 0.14)' : 'rgba(244, 63, 94, 0.08)',
+        pillBorder: esOscuro ? 'rgba(251, 113, 133, 0.25)' : 'rgba(244, 63, 94, 0.18)',
+        textColor: esOscuro ? '#FDA4AF' : '#BE123C',
+        badgeBg: esOscuro ? '#E11D48' : '#F43F5E',
+        badgeIconColor: '#FFFFFF',
+      };
+    case 'tarea':
+      return {
+        label: 'Tarea',
+        icon: ClipboardList,
+        bg: esOscuro ? 'rgba(129, 140, 248, 0.16)' : 'rgba(99, 102, 241, 0.10)',
+        border: esOscuro ? 'rgba(129, 140, 248, 0.32)' : 'rgba(99, 102, 241, 0.22)',
+        iconColor: esOscuro ? '#818CF8' : '#4F46E5',
+        pillBg: esOscuro ? 'rgba(129, 140, 248, 0.14)' : 'rgba(99, 102, 241, 0.08)',
+        pillBorder: esOscuro ? 'rgba(129, 140, 248, 0.25)' : 'rgba(99, 102, 241, 0.18)',
+        textColor: esOscuro ? '#A5B4FC' : '#4338CA',
+        badgeBg: esOscuro ? '#4F46E5' : '#6366F1',
+        badgeIconColor: '#FFFFFF',
+      };
+    case 'ausencia':
+      return {
+        label: 'Solicitud',
+        icon: CalendarDays,
+        bg: esOscuro ? 'rgba(251, 191, 36, 0.16)' : 'rgba(245, 158, 11, 0.10)',
+        border: esOscuro ? 'rgba(251, 191, 36, 0.32)' : 'rgba(245, 158, 11, 0.22)',
+        iconColor: esOscuro ? '#FBBF24' : '#D97706',
+        pillBg: esOscuro ? 'rgba(251, 191, 36, 0.14)' : 'rgba(245, 158, 11, 0.08)',
+        pillBorder: esOscuro ? 'rgba(251, 191, 36, 0.25)' : 'rgba(245, 158, 11, 0.18)',
+        textColor: esOscuro ? '#FDE68A' : '#B45309',
+        badgeBg: esOscuro ? '#D97706' : '#F59E0B',
+        badgeIconColor: '#FFFFFF',
+      };
+    case 'anuncio':
+      return {
+        label: 'Anuncio',
+        icon: Megaphone,
+        bg: esOscuro ? 'rgba(192, 132, 252, 0.16)' : 'rgba(168, 85, 247, 0.10)',
+        border: esOscuro ? 'rgba(192, 132, 252, 0.32)' : 'rgba(168, 85, 247, 0.22)',
+        iconColor: esOscuro ? '#C084FC' : '#9333EA',
+        pillBg: esOscuro ? 'rgba(192, 132, 252, 0.14)' : 'rgba(168, 85, 247, 0.08)',
+        pillBorder: esOscuro ? 'rgba(192, 132, 252, 0.25)' : 'rgba(168, 85, 247, 0.18)',
+        textColor: esOscuro ? '#E9D5FF' : '#7E22CE',
+        badgeBg: esOscuro ? '#9333EA' : '#A855F7',
+        badgeIconColor: '#FFFFFF',
+      };
+    case 'aprobacion':
+      return {
+        label: 'Aprobación',
+        icon: CheckCircle2,
+        bg: esOscuro ? 'rgba(52, 211, 153, 0.16)' : 'rgba(16, 185, 129, 0.10)',
+        border: esOscuro ? 'rgba(52, 211, 153, 0.32)' : 'rgba(16, 185, 129, 0.22)',
+        iconColor: esOscuro ? '#34D399' : '#059669',
+        pillBg: esOscuro ? 'rgba(52, 211, 153, 0.14)' : 'rgba(16, 185, 129, 0.08)',
+        pillBorder: esOscuro ? 'rgba(52, 211, 153, 0.25)' : 'rgba(16, 185, 129, 0.18)',
+        textColor: esOscuro ? '#6EE7B7' : '#047857',
+        badgeBg: esOscuro ? '#059669' : '#10B981',
+        badgeIconColor: '#FFFFFF',
+      };
+    case 'mensaje':
+      return {
+        label: 'Mensaje',
+        icon: MessageSquare,
+        bg: esOscuro ? 'rgba(56, 189, 248, 0.16)' : 'rgba(14, 165, 233, 0.10)',
+        border: esOscuro ? 'rgba(56, 189, 248, 0.32)' : 'rgba(14, 165, 233, 0.22)',
+        iconColor: esOscuro ? '#38BDF8' : '#0284C7',
+        pillBg: esOscuro ? 'rgba(56, 189, 248, 0.14)' : 'rgba(14, 165, 233, 0.08)',
+        pillBorder: esOscuro ? 'rgba(56, 189, 248, 0.25)' : 'rgba(14, 165, 233, 0.18)',
+        textColor: esOscuro ? '#7DD3FC' : '#0369A1',
+        badgeBg: esOscuro ? '#0284C7' : '#0EA5E9',
+        badgeIconColor: '#FFFFFF',
+      };
+    case 'privada':
+      return {
+        label: 'Privada',
+        icon: ShieldCheck,
+        bg: esOscuro ? 'rgba(148, 163, 184, 0.16)' : 'rgba(100, 116, 139, 0.10)',
+        border: esOscuro ? 'rgba(148, 163, 184, 0.32)' : 'rgba(100, 116, 139, 0.22)',
+        iconColor: esOscuro ? '#94A3B8' : '#475569',
+        pillBg: esOscuro ? 'rgba(148, 163, 184, 0.14)' : 'rgba(100, 116, 139, 0.08)',
+        pillBorder: esOscuro ? 'rgba(148, 163, 184, 0.25)' : 'rgba(100, 116, 139, 0.18)',
+        textColor: esOscuro ? '#CBD5E1' : '#334155',
+        badgeBg: esOscuro ? '#475569' : '#64748B',
+        badgeIconColor: '#FFFFFF',
+      };
+    default:
+      return {
+        label: 'Aviso',
+        icon: Bell,
+        bg: esOscuro ? 'rgba(251, 146, 60, 0.16)' : 'rgba(234, 88, 12, 0.10)',
+        border: esOscuro ? 'rgba(251, 146, 60, 0.32)' : 'rgba(234, 88, 12, 0.22)',
+        iconColor: esOscuro ? '#FB923C' : '#EA580C',
+        pillBg: esOscuro ? 'rgba(251, 146, 60, 0.14)' : 'rgba(234, 88, 12, 0.08)',
+        pillBorder: esOscuro ? 'rgba(251, 146, 60, 0.25)' : 'rgba(234, 88, 12, 0.18)',
+        textColor: esOscuro ? '#FDBA74' : '#C2410C',
+        badgeBg: esOscuro ? '#EA580C' : '#F97316',
+        badgeIconColor: '#FFFFFF',
+      };
+  }
 };
 
-const iconoTipo = (tipo: string): keyof typeof MaterialIcons.glyphMap => {
-  const iconos: Record<string, keyof typeof MaterialIcons.glyphMap> = {
-    tarea: 'assignment',
-    ausencia: 'event-busy',
-    bienestar: 'favorite',
-    anuncio: 'campaign',
-    aprobacion: 'check-circle',
-    mensaje: 'chat-bubble',
-    privada: 'lock',
-  };
-  return iconos[tipo] || 'notifications';
-};
+const etiquetaTipo = (tipo: string) => obtenerConfigTipo(tipo, false).label;
 
 const fechaCorta = (fecha: string, locale: string) =>
   crearFecha(fecha).toLocaleTimeString(locale, {
@@ -147,22 +255,45 @@ function AvatarActividad({
 }) {
   const actor = actorDesdeMensaje(notification.mensaje);
   const tipo = normalizarTipo(notification.tipo);
-  const tamano = small ? 32 : 42;
+  const config = obtenerConfigTipo(tipo, esOscuro);
+  const Icono = config.icon;
+  const tamano = small ? 32 : 44;
+  const iconSize = small ? 15 : 20;
+  const borderRadius = small ? 10 : 13;
 
   if (actor) {
     return (
-      <View style={[styles.avatar, { width: tamano, height: tamano, borderRadius: tamano / 2 }]}>
+      <View style={[styles.avatar, { width: tamano, height: tamano, borderRadius }]}>
         <Text style={[styles.avatarInitial, small && styles.avatarInitialSmall]}>{iniciales(actor)}</Text>
-        <View style={styles.avatarBadge}>
-          <MaterialIcons name={iconoTipo(tipo)} size={small ? 8 : 10} color={pulse.textInverse} />
+        <View
+          style={[
+            styles.avatarBadge,
+            {
+              backgroundColor: config.badgeBg,
+              borderColor: esOscuro ? '#1C1917' : '#FFFFFF',
+            },
+          ]}
+        >
+          <Icono size={small ? 8 : 10} color={config.badgeIconColor} strokeWidth={2.4} />
         </View>
       </View>
     );
   }
 
   return (
-    <View style={[styles.iconAvatar, { width: tamano, height: tamano, borderRadius: tamano / 2 }]}>
-      <MaterialIcons name={iconoTipo(tipo)} size={small ? 16 : 20} color={pulse.icon} />
+    <View
+      style={[
+        styles.iconAvatar,
+        {
+          width: tamano,
+          height: tamano,
+          borderRadius,
+          backgroundColor: config.bg,
+          borderColor: config.border,
+        },
+      ]}
+    >
+      <Icono size={iconSize} color={config.iconColor} strokeWidth={2} />
     </View>
   );
 }
@@ -376,6 +507,8 @@ export default function Notificaciones({ navigation }: Props) {
     const notification = item.notification;
     const data = contenido(notification);
     const tipo = normalizarTipo(notification.tipo);
+    const config = obtenerConfigTipo(tipo, esOscuro);
+    const Icono = config.icon;
 
     return (
       <Animated.View
@@ -401,8 +534,9 @@ export default function Notificaciones({ navigation }: Props) {
             </View>
             <Text style={styles.filaMensaje} numberOfLines={2}>{data.mensaje}</Text>
             <View style={styles.filaMeta}>
-              <View style={styles.etiquetaMini}>
-                <Text style={styles.etiquetaMiniTexto}>{etiquetaTipo(tipo)}</Text>
+              <View style={[styles.etiquetaMini, { backgroundColor: config.pillBg, borderColor: config.pillBorder }]}>
+                <Icono size={11} color={config.iconColor} strokeWidth={2.2} style={styles.etiquetaMiniIcono} />
+                <Text style={[styles.etiquetaMiniTexto, { color: config.textColor }]}>{config.label}</Text>
               </View>
               <Text style={styles.metaSeparador}>•</Text>
               <Text style={styles.horaRelativa}>{fechaRelativa(notification.fecha, locale)}</Text>
@@ -553,12 +687,22 @@ export default function Notificaciones({ navigation }: Props) {
               renderItem={({ item }) => {
                 const activo = filtro === item.id;
                 const total = conteoPorFiltro(item.id);
+                const configFiltro = item.id !== 'todas' && item.id !== 'no_leidas' ? obtenerConfigTipo(item.id, esOscuro) : null;
+                const IconoFiltro = configFiltro?.icon;
+
                 return (
                   <BotonAnimado
                     style={[styles.filtroPill, activo && styles.filtroPillActivo]}
                     scaleTo={0.98}
                     onPress={() => setFiltro(item.id)}
                   >
+                    {IconoFiltro && (
+                      <IconoFiltro
+                        size={12}
+                        color={activo ? pulse.chipTextActive : configFiltro.iconColor}
+                        strokeWidth={2.2}
+                      />
+                    )}
                     <Text style={[styles.filtroPillTexto, activo && styles.filtroPillTextoActivo]}>
                       {item.label}
                     </Text>
@@ -573,68 +717,74 @@ export default function Notificaciones({ navigation }: Props) {
             />
 
             {/* Tarjeta Destacada "Lo Importante" */}
-            {destacada && (
-              <Animated.View
-                entering={FadeInDown.duration(220).delay(50).easing(Easing.out(Easing.quad))}
-                style={styles.destacadaSeccion}
-              >
-                <View style={styles.destacadaCabecera}>
-                  <Text style={styles.destacadaEtiqueta}>Lo importante</Text>
-                  {!destacada.leida && (
-                    <View style={styles.destacadaBadgePendiente}>
-                      <View style={styles.puntoDestacada} />
-                      <Text style={styles.destacadaBadgePendienteTexto}>Prioritario</Text>
-                    </View>
-                  )}
-                </View>
+            {destacada && (() => {
+              const tipoDestacada = normalizarTipo(destacada.tipo);
+              const configDestacada = obtenerConfigTipo(tipoDestacada, esOscuro);
+              const IconoDestacada = configDestacada.icon;
 
-                <BotonAnimado
-                  style={styles.destacadaCard}
-                  scaleTo={0.98}
-                  onPress={() => void abrirDetalleNotificacion(destacada)}
+              return (
+                <Animated.View
+                  entering={FadeInDown.duration(220).delay(50).easing(Easing.out(Easing.quad))}
+                  style={styles.destacadaSeccion}
                 >
-                  <View style={styles.destacadaTopRow}>
-                    <View style={styles.destacadaTipoPill}>
-                      <MaterialIcons
-                        name={iconoTipo(normalizarTipo(destacada.tipo))}
-                        size={13}
-                        color={pulse.icon}
-                      />
-                      <Text style={styles.destacadaTipoTexto}>
-                        {etiquetaTipo(normalizarTipo(destacada.tipo))}
-                      </Text>
-                    </View>
-                    <Text style={styles.destacadaHora}>{fechaRelativa(destacada.fecha, locale)}</Text>
+                  <View style={styles.destacadaCabecera}>
+                    <Text style={styles.destacadaEtiqueta}>Lo importante</Text>
+                    {!destacada.leida && (
+                      <View style={styles.destacadaBadgePendiente}>
+                        <View style={styles.puntoDestacada} />
+                        <Text style={styles.destacadaBadgePendienteTexto}>Prioritario</Text>
+                      </View>
+                    )}
                   </View>
 
-                  <Text style={styles.destacadaTitulo} numberOfLines={2}>
-                    {contenido(destacada).titulo}
-                  </Text>
-                  <Text style={styles.destacadaMensaje} numberOfLines={2}>
-                    {contenido(destacada).mensaje}
-                  </Text>
-
-                  <View style={styles.destacadaPie}>
-                    <View style={styles.destacadaAutorWrap}>
-                      <AvatarActividad notification={destacada} small styles={styles} pulse={pulse} esOscuro={esOscuro} />
-                      <View style={styles.destacadaAutorInfo}>
-                        <Text style={styles.destacadaAutorNombre}>
-                          {actorDesdeMensaje(destacada.mensaje) || 'Sistema Nexxus'}
-                        </Text>
-                        <Text style={styles.destacadaFechaLarga}>
-                          {fechaCorta(destacada.fecha, locale)} · {grupoFecha(destacada.fecha)}
+                  <BotonAnimado
+                    style={styles.destacadaCard}
+                    scaleTo={0.98}
+                    onPress={() => void abrirDetalleNotificacion(destacada)}
+                  >
+                    <View style={styles.destacadaTopRow}>
+                      <View style={[styles.destacadaTipoPill, { backgroundColor: configDestacada.pillBg, borderColor: configDestacada.pillBorder }]}>
+                        <IconoDestacada
+                          size={12}
+                          color={configDestacada.iconColor}
+                          strokeWidth={2.2}
+                        />
+                        <Text style={[styles.destacadaTipoTexto, { color: configDestacada.textColor }]}>
+                          {configDestacada.label}
                         </Text>
                       </View>
+                      <Text style={styles.destacadaHora}>{fechaRelativa(destacada.fecha, locale)}</Text>
                     </View>
 
-                    <View style={styles.destacadaBotonAbrir}>
-                      <Text style={styles.destacadaBotonAbrirTexto}>Detalle</Text>
-                      <Feather name="arrow-up-right" size={14} color={pulse.textInverse} />
+                    <Text style={styles.destacadaTitulo} numberOfLines={2}>
+                      {contenido(destacada).titulo}
+                    </Text>
+                    <Text style={styles.destacadaMensaje} numberOfLines={2}>
+                      {contenido(destacada).mensaje}
+                    </Text>
+
+                    <View style={styles.destacadaPie}>
+                      <View style={styles.destacadaAutorWrap}>
+                        <AvatarActividad notification={destacada} small styles={styles} pulse={pulse} esOscuro={esOscuro} />
+                        <View style={styles.destacadaAutorInfo}>
+                          <Text style={styles.destacadaAutorNombre}>
+                            {actorDesdeMensaje(destacada.mensaje) || 'Sistema Nexxus'}
+                          </Text>
+                          <Text style={styles.destacadaFechaLarga}>
+                            {fechaCorta(destacada.fecha, locale)} · {grupoFecha(destacada.fecha)}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.destacadaBotonAbrir}>
+                        <Text style={styles.destacadaBotonAbrirTexto}>Detalle</Text>
+                        <Feather name="arrow-up-right" size={14} color={pulse.textInverse} />
+                      </View>
                     </View>
-                  </View>
-                </BotonAnimado>
-              </Animated.View>
-            )}
+                  </BotonAnimado>
+                </Animated.View>
+              );
+            })()}
           </View>
         }
         ListEmptyComponent={
@@ -664,16 +814,22 @@ export default function Notificaciones({ navigation }: Props) {
           >
             {/* Header del Modal */}
             <View style={styles.modalHeaderRow}>
-              <View style={styles.modalTipoPill}>
-                <MaterialIcons
-                  name={iconoTipo(notificationSeleccionadaTipo)}
-                  size={15}
-                  color={pulse.icon}
-                />
-                <Text style={styles.modalTipoTexto}>
-                  {etiquetaTipo(notificationSeleccionadaTipo)}
-                </Text>
-              </View>
+              {(() => {
+                const configModal = obtenerConfigTipo(notificationSeleccionadaTipo, esOscuro);
+                const IconoModal = configModal.icon;
+                return (
+                  <View style={[styles.modalTipoPill, { backgroundColor: configModal.pillBg, borderColor: configModal.pillBorder }]}>
+                    <IconoModal
+                      size={14}
+                      color={configModal.iconColor}
+                      strokeWidth={2.2}
+                    />
+                    <Text style={[styles.modalTipoTexto, { color: configModal.textColor }]}>
+                      {configModal.label}
+                    </Text>
+                  </View>
+                );
+              })()}
 
               <View style={styles.modalHeaderDerecha}>
                 <View style={[styles.modalEstadoPill, notificacionSeleccionada.leida ? styles.modalEstadoLeida : styles.modalEstadoNoLeida]}>
@@ -1242,17 +1398,19 @@ function createNotificationStyles(pulse: PulseColors, esOscuro: boolean) {
       marginTop: 6,
     },
     etiquetaMini: {
-      paddingHorizontal: 6,
-      paddingVertical: 1.5,
-      borderRadius: 6,
-      backgroundColor: pulse.pill,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: 7,
       borderWidth: 1,
-      borderColor: pulse.border,
+    },
+    etiquetaMiniIcono: {
+      marginRight: 3.5,
     },
     etiquetaMiniTexto: {
       fontSize: 10,
       fontWeight: '700',
-      color: pulse.textSecondary,
     },
     metaSeparador: {
       color: pulse.textTertiary,
@@ -1281,7 +1439,7 @@ function createNotificationStyles(pulse: PulseColors, esOscuro: boolean) {
       color: pulse.text,
     },
 
-    /* Avatares Monocromáticos y Neutros */
+    /* Avatares y Badges */
     avatar: {
       backgroundColor: pulse.pill,
       alignItems: 'center',
@@ -1302,21 +1460,17 @@ function createNotificationStyles(pulse: PulseColors, esOscuro: boolean) {
       position: 'absolute',
       right: -2,
       bottom: -2,
-      width: 15,
-      height: 15,
-      borderRadius: 7.5,
-      backgroundColor: pulse.inverse,
+      width: 17,
+      height: 17,
+      borderRadius: 8.5,
       borderWidth: 1.5,
-      borderColor: pulse.surface,
       alignItems: 'center',
       justifyContent: 'center',
     },
     iconAvatar: {
-      backgroundColor: pulse.pill,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
-      borderColor: pulse.border,
     },
 
     /* Modal de Detalle (ModalShell) */

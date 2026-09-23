@@ -834,21 +834,21 @@ export default function HistorialCompleto({ navigation }: { navigation: Navigati
                 </View>
                 <View style={estilos.metricaDivider} />
                 <View style={estilos.metricaItem}>
-                  <Text style={[estilos.metricaValor, { color: esOscuro ? '#34D399' : '#455E24' }]}>
+                  <Text style={estilos.metricaValor}>
                     {metricasResumen.completadas}
                   </Text>
                   <Text style={estilos.metricaLabel}>Resueltos</Text>
                 </View>
                 <View style={estilos.metricaDivider} />
                 <View style={estilos.metricaItem}>
-                  <Text style={[estilos.metricaValor, { color: esOscuro ? '#FBBF24' : '#D6A23D' }]}>
+                  <Text style={estilos.metricaValor}>
                     {metricasResumen.pendientes}
                   </Text>
                   <Text style={estilos.metricaLabel}>En curso</Text>
                 </View>
                 <View style={estilos.metricaDivider} />
                 <View style={estilos.metricaItem}>
-                  <Text style={[estilos.metricaValor, { color: esOscuro ? '#93C5FD' : '#2563EB' }]}>
+                  <Text style={estilos.metricaValor}>
                     {metricasResumen.bienestar}
                   </Text>
                   <Text style={estilos.metricaLabel}>Bienestar</Text>
@@ -1161,7 +1161,7 @@ function crearEstilos(pulse: PulseColors, esOscuro: boolean) {
       width: 7,
       height: 7,
       borderRadius: 4,
-      backgroundColor: '#D5E774',
+      backgroundColor: esOscuro ? '#FFFFFF' : pulse.text,
     },
     resumenStatusText: {
       color: esOscuro ? '#E2DFE8' : pulse.textSecondary,

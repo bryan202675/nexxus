@@ -8,7 +8,7 @@
 
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, Platform, ScrollView, StyleSheet, TouchableOpacity, View, useWindowDimensions } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { AlertTriangle, CheckCircle2, ClipboardCheck, ShieldAlert, X } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
 import { useApiTranslate } from '@/shared/i18n/useApiTranslate';
 import { AdminTranslatedText } from '@/shared/i18n/AdminTranslatedText';
@@ -33,18 +33,19 @@ export function NotificationItemComponent({
   item: SignalItem;
   onNavigate: (route: string) => void;
   colorFor: (item: SignalItem) => string;
-  iconFor: (item: SignalItem) => string;
+  iconFor: (item: SignalItem) => React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
   routeFor: (item: SignalItem) => string;
   estilos: any;
   stacked?: boolean;
 }) {
   const title = useApiTranslate(item.title);
   const detail = useApiTranslate(item.detail);
+  const Icon = iconFor(item);
 
   return (
     <TouchableOpacity activeOpacity={0.86} onPress={() => onNavigate(routeFor(item))} style={estilos.notificationItem}>
       <View style={[estilos.notificationIcon, { borderColor: colorFor(item), backgroundColor: `${colorFor(item)}22` }]}>
-        <MaterialIcons name={iconFor(item) as any} size={16} color={colorFor(item)} />
+        <Icon size={16} color={colorFor(item)} strokeWidth={2.2} />
       </View>
       <View style={estilos.notificationCopy}>
         <Text style={estilos.notificationTitle} numberOfLines={stacked ? 2 : 1}>{title}</Text>
@@ -89,7 +90,7 @@ export function NotificationPanel({ visible, items, onNavigate, onClose }: { vis
   if (!visible) return null;
 
   // Declara iconFor; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
-  const iconFor = (item: SignalItem) => item.type === 'task' ? 'check-circle' : item.type === 'approval' ? 'task-alt' : item.type === 'audit' ? 'manage-search' : 'warning-amber';
+  const iconFor = (item: SignalItem) => item.type === 'task' ? CheckCircle2 : item.type === 'approval' ? ClipboardCheck : item.type === 'audit' ? ShieldAlert : AlertTriangle;
   // Declara colorFor; guarda un valor intermedio para que el resto del modulo pueda usarlo con un nombre claro.
   const colorFor = (item: SignalItem) => {
     // Evalua una condicion clave; separa el camino normal de estados vacios, errores o permisos insuficientes.
@@ -153,7 +154,7 @@ export function NotificationPanel({ visible, items, onNavigate, onClose }: { vis
           {/* Elemento interactivo; ejecuta una accion al tocarlo y funciona como boton dentro de la UI. */}
           <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={estilos.notificationCloseButton}>
             {/* Icono visual; refuerza el significado de la accion, estado o categoria mostrada. */}
-            <MaterialIcons name="close" size={22} color={theme.text} />
+            <X size={20} color={theme.text} strokeWidth={2} />
           </TouchableOpacity>
         </View>
         {/* Bloque de layout; organiza otros elementos visuales y aplica estilos de espaciado/alineacion. */}

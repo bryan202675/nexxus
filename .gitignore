@@ -23,3 +23,4 @@ build/
 .env*
 .idea/
 prototypes/
+supabase/.temp/
