@@ -89,6 +89,10 @@ export default function SaLogin() {
   return (
     <div className="mt-16 mb-16 flex h-full w-full items-center justify-center px-2 md:mx-0 md:px-0 lg:mb-10 lg:items-center lg:justify-start">
       <form onSubmit={entrarConCorreo} className="mt-[10vh] w-full max-w-full flex-col items-center md:pl-4 lg:pl-0 xl:max-w-[420px]">
+        <div className="mb-6 flex justify-center lg:justify-start">
+          <img src="/isoNexxusBlack.png" alt="Nexxus Logo" className="h-16 w-auto object-contain dark:hidden" />
+          <img src="/isoNexxus.png" alt="Nexxus Logo" className="hidden h-16 w-auto object-contain dark:block" />
+        </div>
         <h4 className="mb-2.5 text-4xl font-bold text-navy-700 dark:text-white">
           Nexxus Workspace
         </h4>
@@ -163,6 +167,16 @@ export default function SaLogin() {
             Regístrate
           </Link>
         </p>
+
+        <div className="mt-6 flex flex-col items-center gap-4">
+          <div className="h-px w-full bg-gray-200 dark:bg-navy-700" />
+          <Link
+            to="/auth/empleado-login"
+            className="flex h-[50px] w-full items-center justify-center rounded-xl border border-gray-200 bg-transparent text-sm font-medium text-navy-700 transition duration-200 hover:bg-gray-100 dark:border-white/10 dark:text-white dark:hover:bg-white/5"
+          >
+            Ingresar como empleado
+          </Link>
+        </div>
       </form>
     </div>
   );

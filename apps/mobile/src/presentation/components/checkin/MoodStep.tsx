@@ -39,7 +39,7 @@ export default function MoodStep({
       const next = Math.round(clampIndex(index));
       const item = MOODS[next];
       if (item.id !== mood) {
-        void Haptics.selectionAsync();
+        void Haptics.selectionAsync().catch(() => {});
         onChange(item.id);
       }
     },

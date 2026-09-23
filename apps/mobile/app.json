@@ -2,6 +2,7 @@
   "expo": {
     "name": "nexxus",
     "slug": "nexxus",
+    "scheme": "nexxus",
     "version": "1.0.0",
     "entryPoint": "./index.ts",
     "orientation": "portrait",

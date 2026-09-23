@@ -67,7 +67,7 @@ export default function WorkloadSignalsStep({
   const change = (direction: -1 | 1) => {
     const next = Math.max(1, Math.min(5, workload + direction));
     if (next !== workload) {
-      void Haptics.selectionAsync();
+      void Haptics.selectionAsync().catch(() => {});
       onWorkloadChange(next);
     }
   };

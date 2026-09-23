@@ -160,7 +160,7 @@ export default function RestLevelStep({
   const change = (direction: -1 | 1) => {
     const next = Math.max(1, Math.min(5, value + direction));
     if (next !== value) {
-      void Haptics.selectionAsync();
+      void Haptics.selectionAsync().catch(() => {});
       onChange(next);
     }
   };

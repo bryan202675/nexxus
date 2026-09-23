@@ -1,6 +1,7 @@
 import React from "react";
 
 import SaLogin from "views/nexxus/sa-login";
+import EmpleadoLogin from "views/nexxus/empleado-login";
 import Registro from "views/nexxus/registro";
 import RecuperarContrasena from "views/nexxus/recuperar-contrasena";
 import RestablecerContrasena from "views/nexxus/restablecer-contrasena";
@@ -423,6 +424,12 @@ const authRoutes = [
     layout: "/auth",
     path: "sa-login",
     component: <SaLogin />,
+  },
+  {
+    name: "Iniciar sesión (Empleado)",
+    layout: "/auth",
+    path: "empleado-login",
+    component: <EmpleadoLogin />,
   },
   {
     name: "Crear cuenta",

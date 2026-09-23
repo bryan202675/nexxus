@@ -62,7 +62,7 @@ export default function EnergyLevelStep({
   const select = (direction: -1 | 1) => {
     const next = Math.max(0, Math.min(2, indexOf(energy) + direction));
     if (next !== indexOf(energy)) {
-      void Haptics.selectionAsync();
+      void Haptics.selectionAsync().catch(() => {});
       onChange(LEVELS[next].id);
     }
   };

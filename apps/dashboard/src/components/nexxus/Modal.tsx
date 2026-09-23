@@ -24,6 +24,11 @@ export default function Modal({
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
 
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   useEffect(() => {
     if (isOpen) {
       previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -36,7 +41,7 @@ export default function Modal({
       const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key === "Escape") {
           e.preventDefault();
-          onClose();
+          onCloseRef.current();
           return;
         }
         if (e.key !== "Tab" || !dialogRef.current) return;
@@ -69,7 +74,7 @@ export default function Modal({
       }, 220);
       return () => clearTimeout(timer);
     }
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!mounted || typeof document === "undefined") return null;
 

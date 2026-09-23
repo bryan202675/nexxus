@@ -86,7 +86,7 @@ export default function StressGaugeStep({
   const change = (direction: -1 | 1) => {
     const next = Math.max(0, Math.min(3, indexOf(stress) + direction));
     if (next !== indexOf(stress)) {
-      void Haptics.selectionAsync();
+      void Haptics.selectionAsync().catch(() => {});
       onChange(LEVELS[next].id);
     }
   };
