@@ -68,7 +68,7 @@ declare
   v_contexto text;
   v_destinatario record;
 begin
-  if new.estado is not distinct from 'completada'
+  if new.estado is distinct from 'completada'
      or old.estado is not distinct from 'completada' then
     return new;
   end if;
